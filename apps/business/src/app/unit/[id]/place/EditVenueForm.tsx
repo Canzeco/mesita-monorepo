@@ -82,7 +82,7 @@ function nullableUrl(v: string): string | null {
   if (t === "") return null;
   // Auto-upgrade to https so the server-side validator (which requires
   // https://) doesn't reject perfectly reasonable input. Covers:
-  //   - "instagram.com/foo"  →  "https://instagram.com/foo"
+  //   - "instagram.com/foo"→  "https://instagram.com/foo"
   //   - "http://yourplace.mx" → "https://yourplace.mx"
   if (/^https:\/\//i.test(t)) return t;
   if (/^http:\/\//i.test(t)) return t.replace(/^http:/i, "https:");

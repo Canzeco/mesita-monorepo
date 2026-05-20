@@ -502,7 +502,7 @@ function FirstTimeSection({
   const [rate, setRate] = useState<RateChoice>(20);
   return (
     <section className="flex flex-col gap-2">
-      <p className="text-muted-foreground text-[11px] font-bold tracking-[0.18em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
         First-time visitors
       </p>
       <div className="bg-primary/5 ring-primary/15 rounded-2xl p-5 ring-1">
@@ -540,7 +540,7 @@ function ReturningTierGrid({
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <p className="text-muted-foreground text-[11px] font-bold tracking-[0.18em] uppercase">
+      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
         Returning visitors · by tier
       </p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -614,7 +614,7 @@ function RatePicker({
         <span className="font-display text-primary text-xl font-semibold">
           %
         </span>
-        <span className="text-muted-foreground ml-1 text-[11px] font-bold tracking-[0.16em] uppercase">
+        <span className="text-muted-foreground ml-1 text-[11px] font-medium tracking-[0.14em] uppercase">
           {label}
         </span>
       </p>
@@ -663,11 +663,11 @@ function AudienceStat({
         <p className="font-display text-lg font-bold tabular-nums">
           {count.toLocaleString()}
         </p>
-        <p className="text-muted-foreground max-w-[55%] text-right text-[10px] font-bold tracking-[0.16em] uppercase">
+        <p className="text-muted-foreground max-w-[55%] text-right text-[10px] font-medium tracking-[0.14em] uppercase">
           {countLabel}
         </p>
       </div>
-      <p className="text-primary mt-0.5 text-[10px] font-bold tracking-[0.16em] uppercase">
+      <p className="text-primary mt-0.5 text-[10px] font-medium tracking-[0.14em] uppercase">
         {sub}
       </p>
       {publicPool && (

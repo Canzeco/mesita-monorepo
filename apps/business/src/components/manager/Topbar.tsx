@@ -10,13 +10,13 @@ export function Topbar({
   subtitle?: string;
 }) {
   return (
-    <header className="border-border bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-20 flex items-center gap-3 border-b px-4 py-3.5 pl-14 backdrop-blur-md md:gap-4 md:px-6 md:py-4 md:pl-6">
+    <header className="bg-background/80 sticky top-0 z-20 flex items-center gap-3 px-4 py-4 pl-14 backdrop-blur-md md:gap-4 md:px-8 md:pl-8">
       <div className="min-w-0 flex-1">
-        <h1 className="font-display truncate text-lg leading-tight font-semibold tracking-tight md:text-xl">
+        <h1 className="font-display truncate text-xl leading-none font-semibold tracking-tight md:text-2xl">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-muted-foreground mt-0.5 truncate text-[12px] leading-snug md:text-[13px]">
+          <p className="text-muted-foreground mt-1 truncate text-[13px] leading-snug">
             {subtitle}
           </p>
         )}

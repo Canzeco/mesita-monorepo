@@ -99,7 +99,7 @@ export default async function ManagerPromosPage({
         subtitle="Promos — plan, fiscal type, Welcome coupon, and per-tier rates"
       />
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
+        <div className="mx-auto max-w-5xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <PromosClient venue={active} />
         </div>
       </div>

@@ -130,7 +130,7 @@ export default async function ManagerHomePage({
     <>
       <Topbar title={active.name} subtitle="Home — your unit at a glance." />
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
+        <div className="mx-auto flex max-w-5xl flex-col gap-7 px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           {venues.length > 1 && (
             <UnitSwitcher
               venues={venues.map((v) => ({ id: v.id, name: v.name }))}
@@ -243,38 +243,26 @@ function ActiveUnitCard({
     status: string;
   };
 }) {
+  // Name is already in the Topbar — this row carries the venue's
+  // characterisation: vibe + category + fiscal badge + cashback rate.
   const subtitle = [venue.vibe, venue.category]
     .filter(Boolean)
     .join(" · ")
     .toLowerCase();
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-secondary text-[10px] font-bold tracking-[0.18em] uppercase">
-            Active unit
-          </p>
-          <h2 className="font-display mt-1 truncate text-2xl font-semibold tracking-tight">
-            {venue.name}
-          </h2>
-          {subtitle && (
-            <p className="text-muted-foreground mt-0.5 text-sm">{subtitle}</p>
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <FiscalBadge fiscalType={venue.fiscal_type} size="sm" />
-            {venue.cashback_percent != null && venue.cashback_percent > 0 && (
-              <span className="bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
-                <Sparkles className="h-2.5 w-2.5" />
-                {venue.cashback_percent}%{" "}
-                {venue.fiscal_type === "formal" ? "cashback" : "discount"}
-              </span>
-            )}
-            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase">
-              {venue.status}
-            </span>
-          </div>
-        </div>
-      </div>
+    <section className="flex flex-wrap items-center gap-2.5">
+      {subtitle && <p className="text-muted-foreground text-sm">{subtitle}</p>}
+      <FiscalBadge fiscalType={venue.fiscal_type} size="sm" />
+      {venue.cashback_percent != null && venue.cashback_percent > 0 && (
+        <span className="bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+          <Sparkles className="h-2.5 w-2.5" />
+          {venue.cashback_percent}%{" "}
+          {venue.fiscal_type === "formal" ? "cashback" : "discount"}
+        </span>
+      )}
+      <span className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
+        {venue.status}
+      </span>
     </section>
   );
 }
@@ -285,18 +273,13 @@ function WeekSnapshot() {
   // Mock numbers — these get replaced with real EF reads once the analytics
   // pipeline lands. Tone of voice: declarative and concrete, not "your KPIs".
   const stats = [
-    { label: "Visits this week", value: 142, delta: "+18%", Icon: TrendingUp },
-    { label: "Coupons claimed", value: 64, delta: "+9", Icon: Ticket },
-    { label: "Profile views", value: "2,310", delta: "+12%", Icon: Eye },
-    {
-      label: "Influenced spend",
-      value: "MX$48,720",
-      delta: "+MX$6.1K",
-      Icon: Activity,
-    },
+    { label: "Visits", value: 142, delta: "+18%" },
+    { label: "Coupons claimed", value: 64, delta: "+9" },
+    { label: "Profile views", value: "2,310", delta: "+12%" },
+    { label: "Influenced spend", value: "MX$48,720", delta: "+MX$6.1K" },
   ];
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       <header className="flex items-baseline justify-between gap-3">
         <h3 className="font-display text-base font-semibold tracking-tight">
           This week
@@ -305,21 +288,12 @@ function WeekSnapshot() {
           vs. last 7 days
         </span>
       </header>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="border-border grid grid-cols-2 divide-x divide-y rounded-2xl border md:grid-cols-4 md:divide-y-0">
         {stats.map((s) => {
-          const Icon = s.Icon;
           return (
-            <div
-              key={s.label}
-              className="border-border bg-card rounded-2xl border p-4"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
-                  {s.label}
-                </p>
-                <Icon className="text-muted-foreground h-3.5 w-3.5" />
-              </div>
-              <p className="font-display mt-2 text-2xl font-bold tracking-tight tabular-nums">
+            <div key={s.label} className="px-4 py-4">
+              <p className="text-muted-foreground text-[11px]">{s.label}</p>
+              <p className="font-display mt-1 text-2xl font-semibold tracking-tight tabular-nums">
                 {s.value}
               </p>
               <p className="text-secondary mt-0.5 text-[11px] font-semibold">
@@ -550,18 +524,18 @@ function StoryQueueCard() {
       </header>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="bg-muted/40 rounded-xl p-3">
-          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
             Pending review
           </p>
-          <p className="font-display mt-1 text-2xl font-bold tabular-nums">
+          <p className="font-display mt-1 text-2xl font-semibold tabular-nums">
             {pending}
           </p>
         </div>
         <div className="bg-muted/40 rounded-xl p-3">
-          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
             Verified today
           </p>
-          <p className="font-display mt-1 text-2xl font-bold tabular-nums">
+          <p className="font-display mt-1 text-2xl font-semibold tabular-nums">
             {verifiedToday}
           </p>
         </div>

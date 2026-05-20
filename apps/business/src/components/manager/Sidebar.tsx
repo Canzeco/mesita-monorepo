@@ -114,7 +114,7 @@ export function Sidebar({
         type="button"
         onClick={() => setDrawerOpen(true)}
         aria-label="Open menu"
-        className="border-border bg-card text-foreground hover:bg-muted fixed top-3 left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition md:hidden"
+        className="border-border bg-card text-foreground hover:bg-muted fixed top-3 left-3 z-30 flex h-9 w-9 items-center justify-center rounded-full border transition md:hidden"
       >
         <Menu className="h-4 w-4" />
       </button>
@@ -138,12 +138,12 @@ export function Sidebar({
           "md:relative md:w-64 md:translate-x-0 md:transition-none",
         )}
       >
-        <div className="border-border flex items-center justify-between border-b px-4 py-4">
+        <div className="flex items-center justify-between px-4 pt-5 pb-3">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span className="bg-peacock shadow-glow flex h-8 w-8 items-center justify-center rounded-full text-base">
+            <span className="bg-peacock shadow-glow flex h-7 w-7 items-center justify-center rounded-full text-sm">
               🦚
             </span>
-            <span className="font-display text-lg font-semibold tracking-tight">
+            <span className="font-display text-base font-semibold tracking-tight">
               mesita.
             </span>
           </Link>
@@ -250,7 +250,7 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="border-border space-y-1 border-t p-3">
+        <div className="space-y-1 px-3 pt-3 pb-4">
           <SidebarDisabled Icon={PlayCircle} label="Tutorials" />
           <SidebarDisabled Icon={Settings} label="Settings" />
           <SidebarDisabled Icon={LifeBuoy} label="Help & docs" />

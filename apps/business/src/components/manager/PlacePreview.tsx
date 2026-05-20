@@ -149,7 +149,7 @@ function DetailPreview({ venue }: { venue: Venue }) {
       <div className="bg-background">
         <div className="relative">
           <div className="absolute top-3 left-3 z-20">
-            <span className="text-foreground flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-sm backdrop-blur">
+            <span className="text-foreground flex h-9 w-9 items-center justify-center rounded-full bg-white/95 backdrop-blur">
               <ArrowLeft className="h-4 w-4" />
             </span>
           </div>

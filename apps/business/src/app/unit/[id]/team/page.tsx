@@ -23,7 +23,7 @@ export default async function TeamPage({
     <>
       <Topbar title="Team" subtitle="Managers and WhatsApp validators" />
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-6">
+        <div className="mx-auto flex max-w-5xl flex-col gap-7 px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <div className="border-secondary/40 bg-secondary/5 text-secondary rounded-2xl border border-dashed px-4 py-3 text-[12px]">
             Preview — the team data below is a sketch. Real member + validator
             management lands after the manager-list-team Edge Function is wired
