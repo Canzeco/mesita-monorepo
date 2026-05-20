@@ -7,6 +7,7 @@ import {
   FilePen,
   ListPlus,
   ListChecks,
+  ListFilter,
   KeyRound,
   X,
 } from "lucide-react";
@@ -25,6 +26,7 @@ type NavItem = {
 };
 
 const UNIT_NAV: NavItem[] = [
+  { href: "/units/bulk-search", label: "Bulk search units", Icon: ListFilter },
   { href: "/units/create", label: "Manually create unit", Icon: FilePlus },
   { href: "/units/update", label: "Manually update unit", Icon: FilePen },
   { href: "/units/bulk-create", label: "Bulk create units", Icon: ListPlus },
