@@ -10,7 +10,7 @@ export function SimpleHeader({
   return (
     <header className="border-border flex items-center gap-3 border-b px-4 py-3">
       <Link
-        href="/guest/profile"
+        href="/profile"
         className="bg-peacock shadow-glow flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg"
         aria-label="Profile"
       >

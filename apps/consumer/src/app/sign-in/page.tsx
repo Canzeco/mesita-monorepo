@@ -7,7 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 // Phone is the identity. /auth/post-signin then routes the freshly-authed
-// user to /guest/onboard or /guest/discover/swipe based on profile state.
+// user to /onboard or /discover/swipe based on profile state.
 const GUEST_AFTER_AUTH = "/auth/post-signin?audience=guest";
 
 function safeNext(raw: string | undefined): string {

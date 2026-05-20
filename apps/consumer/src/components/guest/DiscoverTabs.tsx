@@ -7,10 +7,10 @@ import { Flame, LayoutGrid, Map as MapIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/guest/discover/swipe", label: "Swipe", Icon: Flame },
-  { href: "/guest/discover/catalog", label: "Catalog", Icon: LayoutGrid },
-  { href: "/guest/discover/map", label: "Map", Icon: MapIcon },
-  { href: "/guest/discover/ai", label: "AI", Icon: Sparkles },
+  { href: "/discover/swipe", label: "Swipe", Icon: Flame },
+  { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
+  { href: "/discover/map", label: "Map", Icon: MapIcon },
+  { href: "/discover/ai", label: "AI", Icon: Sparkles },
 ];
 
 export function DiscoverTabs() {

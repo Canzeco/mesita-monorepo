@@ -319,7 +319,7 @@ function CurrentClassCard() {
 
 function SubscriptionPathBox() {
   // Path 2 — paid monthly subscription, tier-as-product. Each row links to
-  // /guest/subscribe/[tier] which today stops at the checkout CTA (Stripe
+  // /subscribe/[tier] which today stops at the checkout CTA (Stripe
   // wiring lands next).
   const currentIdx = ["bronze", "silver", "gold", "diamond"].indexOf(
     CURRENT_USER.tier,
@@ -405,7 +405,7 @@ function SubscriptionPathBox() {
                   </span>
                 ) : (
                   <Link
-                    href={`/guest/subscribe/${t.id}`}
+                    href={`/subscribe/${t.id}`}
                     className="bg-pink-gradient rounded-full px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-sm"
                   >
                     Subscribe
@@ -634,20 +634,20 @@ function SettingsTab() {
       </div>
 
       <SignOutButton
-        redirectTo="/guest/sign-in"
+        redirectTo="/sign-in"
         className="border-border bg-card hover:bg-muted mt-5 flex w-full items-center justify-center gap-2 rounded-full border py-4 text-sm font-semibold transition"
       />
       <p className="text-muted-foreground mt-3 text-center text-[11px]">
         Not signed in?{" "}
         <Link
-          href="/guest/sign-in"
+          href="/sign-in"
           className="text-foreground font-semibold hover:underline"
         >
           Sign in
         </Link>
         {" · "}
         <Link
-          href="/guest/sign-up"
+          href="/sign-up"
           className="text-foreground font-semibold hover:underline"
         >
           Create account

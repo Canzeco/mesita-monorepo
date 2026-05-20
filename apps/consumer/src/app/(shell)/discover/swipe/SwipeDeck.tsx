@@ -23,7 +23,7 @@ export function SwipeDeck({
       <EmptyDeck
         title="Couldn't load venues"
         body={fetchError}
-        actionHref="/guest/discover/swipe"
+        actionHref="/discover/swipe"
         actionLabel="Try again"
       />
     );
@@ -200,7 +200,7 @@ function Deck({ venues }: { venues: Venue[] }) {
         >
           <VenueSwipeCardFace
             venue={v}
-            hrefInfo={`/guest/venue/${v.id}`}
+            hrefInfo={`/venues/${v.id}`}
             carousel
             priority
             className="absolute inset-0"

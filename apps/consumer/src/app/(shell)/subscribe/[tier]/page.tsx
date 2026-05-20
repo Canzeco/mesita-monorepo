@@ -64,7 +64,7 @@ export default async function SubscribePage({
     <div className="bg-background flex flex-1 flex-col overflow-y-auto">
       <header className="border-border bg-background/95 sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3 backdrop-blur">
         <Link
-          href="/guest/profile"
+          href="/profile"
           aria-label="Back to profile"
           className="bg-muted text-foreground hover:bg-muted/70 flex h-9 w-9 items-center justify-center rounded-full transition"
         >

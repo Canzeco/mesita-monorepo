@@ -12,7 +12,7 @@ export default async function GuestQrPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/guest/sign-in?next=/guest/qr");
+  if (!user) redirect("/sign-in?next=/qr");
 
   let profile;
   try {
@@ -48,7 +48,7 @@ export default async function GuestQrPage() {
         <p className="text-muted-foreground px-6 pt-2 pb-8 text-center text-[11px]">
           Need help?{" "}
           <Link
-            href="/guest/profile"
+            href="/profile"
             className="text-foreground font-semibold hover:underline"
           >
             Account &amp; balance

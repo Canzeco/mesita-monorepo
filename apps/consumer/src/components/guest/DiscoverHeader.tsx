@@ -53,7 +53,7 @@ export function DiscoverHeader() {
     <div className="border-border/60 border-b px-3 pt-2 pb-2.5">
       <div className="flex items-center gap-2">
         <Link
-          href="/guest/profile"
+          href="/profile"
           className="bg-peacock shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-lg"
           aria-label="Profile"
         >
@@ -186,7 +186,7 @@ export function DiscoverHeader() {
 
 // Top-right header chip. Replaces the old QR-only square with a tier-colored
 // avatar showing the user's current Mesita class (B / S / G / D). Tap still
-// routes to /guest/qr, which carries the QR and the balance — so the
+// routes to /qr, which carries the QR and the balance — so the
 // affordance is preserved and the class becomes glanceable at all times.
 function ClassChip() {
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier);
@@ -205,7 +205,7 @@ function ClassChip() {
   })();
   return (
     <Link
-      href="/guest/qr"
+      href="/qr"
       aria-label={`My QR · Mesita ${meta?.label ?? "class"}`}
       className={cn(
         "font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-base font-bold shadow-sm transition hover:opacity-90",

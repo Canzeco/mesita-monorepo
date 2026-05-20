@@ -5,10 +5,10 @@ import { BottomNav } from "@/components/guest/BottomNav";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchGuestProfile } from "@/lib/api/tickets";
 
-// Mandatory onboarding gate for every page inside /guest/(shell).
+// Mandatory onboarding gate for every page inside /(shell).
 //
 // No exceptions: a guest with a half-filled profile (no name / country /
-// birthday / sex) gets bounced to /guest/onboard. Onboard is the only
+// birthday / sex) gets bounced to /onboard. Onboard is the only
 // surface that knows how to collect the missing fields, so every other
 // route assumes the row is complete and renders accordingly. This kills
 // the "Complete your profile" half-state — it should never be reachable.
@@ -24,7 +24,7 @@ export default async function GuestShellLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/guest/sign-in");
+  if (!user) redirect("/sign-in");
 
   // guest-get-profile lazily creates the row, so a brand-new account still
   // reads back successfully (just with null fields). If the EF throws, we
@@ -36,9 +36,9 @@ export default async function GuestShellLayout({
       !!profile.country &&
       !!profile.birthday &&
       !!profile.sex;
-    if (!onboarded) redirect("/guest/onboard");
+    if (!onboarded) redirect("/onboard");
   } catch {
-    redirect("/guest/onboard");
+    redirect("/onboard");
   }
 
   return (

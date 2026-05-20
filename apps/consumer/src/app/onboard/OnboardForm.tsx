@@ -49,7 +49,7 @@ export function OnboardForm() {
           birthday,
           country,
         });
-        router.push("/guest/discover/swipe");
+        router.push("/discover/swipe");
         router.refresh();
       } catch (err) {
         setError(

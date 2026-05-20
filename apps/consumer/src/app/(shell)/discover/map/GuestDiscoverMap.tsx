@@ -147,7 +147,7 @@ function MapView({
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   // Tapped marker — drives the bottom preview card. Clicking the card
-  // navigates to /guest/venue/[id]; tapping the close pill clears it.
+  // navigates to /venues/[id]; tapping the close pill clears it.
   const [selected, setSelected] = useState<Venue | null>(null);
   // Lazy init lets us reason about geolocation support up-front, before any
   // effect runs. Once mounted we move to "asking" inside the effect.
@@ -278,7 +278,7 @@ function MapView({
         <VenuePreview
           venue={selected}
           onDismiss={() => setSelected(null)}
-          onOpen={() => router.push(`/guest/venue/${selected.id}`)}
+          onOpen={() => router.push(`/venues/${selected.id}`)}
         />
       )}
     </div>

@@ -51,7 +51,7 @@ export default async function VenueDetailPage({
         </h2>
         <p className="text-muted-foreground max-w-sm text-sm">{fetchError}</p>
         <Link
-          href="/guest/discover/swipe"
+          href="/discover/swipe"
           className="bg-foreground text-background mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90"
         >
           Back to discover
@@ -66,7 +66,7 @@ export default async function VenueDetailPage({
       <div className="relative">
         <div className="absolute top-3 left-3 z-20">
           <Link
-            href="/guest/discover/swipe"
+            href="/discover/swipe"
             className="text-foreground flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-sm backdrop-blur transition hover:bg-white"
             aria-label="Back"
           >

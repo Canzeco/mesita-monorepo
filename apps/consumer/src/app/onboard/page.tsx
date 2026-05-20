@@ -6,11 +6,11 @@ import { apiFetchGuestProfile } from "@/lib/api/tickets";
 import { OnboardForm } from "./OnboardForm";
 
 // Guest onboarding — server-side gated. The middleware already blocks
-// signed-out users from /guest/profile and friends, but onboard sits
+// signed-out users from /profile and friends, but onboard sits
 // between sign-up and the actual app, so it has its own checks:
 //
-//   - signed out          → /guest/sign-in (with next=/guest/onboard)
-//   - already onboarded   → /guest/discover/swipe (don't re-collect data)
+//   - signed out          → /sign-in (with next=/onboard)
+//   - already onboarded   → /discover/swipe (don't re-collect data)
 //   - signed in, no name  → render the form
 //
 // AppSwitcher is intentionally absent: a new guest who's literally
@@ -23,7 +23,7 @@ export default async function GuestOnboardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/guest/sign-in?next=/guest/onboard");
+  if (!user) redirect("/sign-in?next=/onboard");
 
   // Completeness predicate is the same one the (shell) layout uses to
   // gate every authed surface — name + country + birthday + sex. If we
@@ -37,7 +37,7 @@ export default async function GuestOnboardPage() {
       !!profile.country &&
       !!profile.birthday &&
       !!profile.sex;
-    if (onboarded) redirect("/guest/discover/swipe");
+    if (onboarded) redirect("/discover/swipe");
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.

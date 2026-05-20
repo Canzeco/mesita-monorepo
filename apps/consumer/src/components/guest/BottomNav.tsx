@@ -7,24 +7,24 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   {
-    href: "/guest/discover/swipe",
+    href: "/discover/swipe",
     Icon: Compass,
     label: "Discover",
-    match: "/guest/discover",
+    match: "/discover",
   },
   {
-    href: "/guest/saved",
+    href: "/saved",
     Icon: Bookmark,
     label: "Saved",
-    match: "/guest/saved",
+    match: "/saved",
   },
-  { href: "/guest/qr", Icon: QrCode, label: "My QR", match: "/guest/qr" },
-  { href: "/guest/share", Icon: Share2, label: "Share", match: "/guest/share" },
+  { href: "/qr", Icon: QrCode, label: "My QR", match: "/qr" },
+  { href: "/share", Icon: Share2, label: "Share", match: "/share" },
   {
-    href: "/guest/profile",
+    href: "/profile",
     Icon: User,
     label: "Profile",
-    match: "/guest/profile",
+    match: "/profile",
   },
 ];
 

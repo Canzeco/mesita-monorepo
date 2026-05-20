@@ -7,7 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // Phone-OTP collapses sign-in and sign-up into one flow: the first verify
 // creates the user, every subsequent verify signs them in. This route
 // stays for backwards compatibility with bookmarks + the landing CTA but
-// renders the same form as /guest/sign-in.
+// renders the same form as /sign-in.
 export const dynamic = "force-dynamic";
 
 const GUEST_AFTER_SIGNUP = "/auth/post-signin?audience=guest";

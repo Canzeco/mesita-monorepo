@@ -15,7 +15,7 @@ export default async function GuestProfilePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/guest/sign-in?next=/guest/profile");
+  if (!user) redirect("/sign-in?next=/profile");
 
   // guest-profile auto-creates the row on first call; we also pull the
   // onboarding extras separately because the lean profile endpoint only
