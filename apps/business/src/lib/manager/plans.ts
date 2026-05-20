@@ -41,9 +41,9 @@ export const PLANS: PlanRow[] = [
   {
     id: "formal_pro",
     label: "Formal Pro",
-    price: "$400",
+    price: "$200",
     cadence: "MX / month",
-    priceLabel: "$400 MX / mo",
+    priceLabel: "$200 MX / mo",
     mechanic: "Cashback",
     visibility: "Priority",
     fiscalScope: "formal",
@@ -60,9 +60,9 @@ export const PLANS: PlanRow[] = [
   {
     id: "informal_pro",
     label: "Informal Pro",
-    price: "$800",
+    price: "$400",
     cadence: "MX / month",
-    priceLabel: "$800 MX / mo",
+    priceLabel: "$400 MX / mo",
     mechanic: "Discount",
     visibility: "Priority",
     fiscalScope: "informal",
