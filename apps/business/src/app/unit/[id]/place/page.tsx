@@ -4,6 +4,7 @@ import { Plus, Store } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
+import { readVerifiedSuperAdminKey } from "@/lib/super-admin";
 import { EditVenueForm } from "./EditVenueForm";
 
 export const dynamic = "force-dynamic";
@@ -14,18 +15,30 @@ export default async function ManagerPlacePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=/unit/${id}/place`);
-
   const requestedUnit = id;
+
+  // Super-admin mode skips the Supabase session entirely: getUnitOverview
+  // detects the cookie and routes through manager-get-overview with the
+  // x-super-admin-key header.
+  const isSuperAdmin = (await readVerifiedSuperAdminKey()) !== null;
+  let supabase: Awaited<ReturnType<typeof createServerSupabase>> | null = null;
+  if (!isSuperAdmin) {
+    supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) redirect(`/sign-in?next=/unit/${id}/place`);
+  }
 
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;
   try {
-    overview = await getUnitOverview(supabase, requestedUnit, 0);
+    overview = await getUnitOverview(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase ?? (null as any)),
+      requestedUnit,
+      0,
+    );
   } catch (err) {
     overviewError =
       err instanceof Error ? err.message : "Could not load your venues.";
