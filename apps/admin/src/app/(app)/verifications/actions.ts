@@ -1,0 +1,79 @@
+"use server";
+
+import { efInvoke } from "@/lib/supabase-ef";
+
+export type VerificationMethod = "ai_call" | "video" | "postcard";
+export type VerificationStatus = "pending" | "approved" | "rejected";
+
+export type AdminVerification = {
+  id: string;
+  venue_id: string;
+  requester_id: string;
+  method: VerificationMethod;
+  payload: Record<string, unknown>;
+  requester_email: string;
+  status: VerificationStatus;
+  reject_reason: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  decided_via: "auto" | "admin" | null;
+  created_at: string;
+  venue: {
+    id: string;
+    slug: string;
+    name: string;
+    status: string;
+    phone: string | null;
+    address: string | null;
+    google_place_id: string | null;
+  } | null;
+};
+
+type ListResponse = {
+  verifications: AdminVerification[];
+  autoVerifyVenues: boolean;
+  autoVerifyUpdatedAt: string | null;
+};
+
+export type ListResult =
+  | { ok: true; data: ListResponse }
+  | { ok: false; error: string };
+
+export async function listVerifications(): Promise<ListResult> {
+  const r = await efInvoke<ListResponse>("admin-list-verifications", {});
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}
+
+export type DecideResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function decideVerification(
+  verificationId: string,
+  decision: "approved" | "rejected",
+  rejectReason: string,
+): Promise<DecideResult> {
+  const r = await efInvoke<unknown>("admin-decide-verification", {
+    verificationId,
+    decision,
+    rejectReason: decision === "rejected" ? rejectReason : undefined,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true };
+}
+
+export type SetAutoVerifyResult =
+  | { ok: true; enabled: boolean }
+  | { ok: false; error: string };
+
+export async function setAutoVerify(
+  enabled: boolean,
+): Promise<SetAutoVerifyResult> {
+  const r = await efInvoke<{ autoVerifyVenues: boolean }>(
+    "admin-set-auto-verify",
+    { enabled },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, enabled: r.data.autoVerifyVenues };
+}
