@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue, type VenuePlan } from "@/lib/api/venues";
+import type { Tier } from "@/lib/guest-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,10 +47,8 @@ type RateChoice = (typeof RATE_CHOICES)[number];
 
 // ─── Tier ladder catalog ──────────────────────────────────────────────────
 
-type TierId = "bronze" | "silver" | "gold" | "diamond";
-
 type TierMeta = {
-  id: TierId;
+  id: Tier;
   label: string;
   visitRange: string;
   defaultRate: RateChoice;
@@ -697,7 +696,7 @@ function AudienceStat({
   );
 }
 
-function TierChip({ tier, label }: { tier: TierId; label: string }) {
+function TierChip({ tier, label }: { tier: Tier; label: string }) {
   const tone = (() => {
     switch (tier) {
       case "bronze":

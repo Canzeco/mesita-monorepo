@@ -3,21 +3,57 @@ import { Sidebar } from "@/components/manager/Sidebar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
+import { readVerifiedSuperAdminKey } from "@/lib/super-admin";
 
 // Sidebar-wrapped manager shell. Lives under a route group so the URL
 // stays /manager/<page> while sibling routes (sign-in, sign-up, onboard,
 // create_unit) opt out of the shell and render full-screen.
 //
-// Mandatory onboarding gate: a manager who hasn't filled their name gets
-// bounced to /manager/onboard. No exceptions — every shell page assumes
-// the profile is complete and the half-state isn't reachable.
+// Two auth paths:
+//   - Normal users: Supabase session + onboarded profile required.
+//   - Super-admin operators: HttpOnly cookie set by /super-admin/enter
+//     short-circuits both checks so the admin console can deep-link an
+//     operator into any venue. Sidebar shows just that one venue.
 export const dynamic = "force-dynamic";
 
 export default async function ManagerShellLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
+
+  const superAdminKey = await readVerifiedSuperAdminKey();
+  if (superAdminKey) {
+    let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
+    try {
+      // The super-admin path loads just the requested venue; passing a
+      // dummy client is fine because getUnitOverview detects the cookie
+      // and bypasses the Supabase client entirely.
+      overview = await getUnitOverview(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        null as any,
+        id,
+        0,
+      );
+    } catch (err) {
+      console.error("[manager/(shell)] super-admin overview:", err);
+    }
+    return (
+      <div className="bg-background flex h-screen w-screen overflow-hidden">
+        <Sidebar
+          venues={overview?.venues ?? []}
+          user={{ email: null, fullName: "Super admin" }}
+        />
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   const supabase = await createServerSupabase();
   const {
     data: { user },

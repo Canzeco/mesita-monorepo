@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
+import { SUPER_ADMIN_MODE_COOKIE } from "@/lib/super-admin-cookies";
 
 export type VenueListingType = "partner" | "web";
 export type VenueStatus = "lead" | "active" | "paused" | "archived";
@@ -266,10 +267,40 @@ export async function apiUpdateVenue(
   client: SupabaseClient,
   input: UpdateVenueInput,
 ): Promise<Venue & { phone: string | null; updated_at: string }> {
+  // Super-admin mode: client JS can't read the HttpOnly token cookie, so
+  // the mutation goes through a Next.js Route Handler that does. We
+  // detect the mode via the non-HttpOnly flag cookie.
+  if (typeof document !== "undefined" && isSuperAdminMode()) {
+    const res = await fetch("/api/super-admin/update-unit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const text = await res.text();
+    const body = (text ? JSON.parse(text) : {}) as
+      | {
+          ok: true;
+          venue: Venue & { phone: string | null; updated_at: string };
+        }
+      | { ok: false; error?: string };
+    if (!body.ok) {
+      throw new Error(body.error ?? `update failed (HTTP ${res.status})`);
+    }
+    return body.venue;
+  }
+
   const { venue } = await invokeEF<{
     venue: Venue & { phone: string | null; updated_at: string };
   }>(client, "manager-update-unit", input);
   return venue;
+}
+
+function isSuperAdminMode(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split(";")
+    .map((c) => c.trim())
+    .some((c) => c.startsWith(`${SUPER_ADMIN_MODE_COOKIE}=`));
 }
 
 // Destructive: drops the venue + every dependent row (tickets,
