@@ -10,7 +10,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
 export type VenueListingType = "partner" | "web";
-export type VenueStatus = "lead" | "active" | "paused" | "archived";
+export type VenueStatus =
+  | "lead"
+  | "pending_review"
+  | "pending_verification"
+  | "active"
+  | "paused"
+  | "archived";
 
 export type FiscalType = "formal" | "informal";
 // Three-plan venue catalog: Free (default) + one Pro plan per fiscal type.

@@ -113,11 +113,11 @@ export function CreateUnitForm() {
         );
         setCreateReport(enrichment);
         setCreateStage("Done");
-        // Land on the new venue's edit page so the manager sees the row they
-        // just created — without ?unit= they'd be dropped on the first venue
-        // alphabetically, which is confusing when they have several.
+        // Ownership verification gates the new venue. Land on /verify
+        // so the manager picks a method (AI call, video, or postcard)
+        // before they can manage anything.
         window.setTimeout(() => {
-          router.push(`/unit/${venue.id}/home`);
+          router.push(`/unit/${venue.id}/verify`);
           router.refresh();
         }, 600);
       } catch (err) {
