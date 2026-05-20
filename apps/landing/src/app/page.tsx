@@ -15,18 +15,11 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 // Landing page — single-source-of-truth marketing surface.
 //
-// Composition is intentionally flat: seven sections in order, nothing
+// Composition is intentionally flat: six sections in order, nothing
 // nested. Each section is its own function so the file reads top-to-
 // bottom and the section order matches the page order.
 //
@@ -34,9 +27,12 @@ import { Badge } from "@/components/ui/badge";
 //   2. <Hero />            Headline + download CTAs + product shot
 //   3. <ForGuests />       Solutions for guests (3 cards)
 //   4. <ForVenues />       Solutions for venues (5 cards)
-//   5. <Pricing />         Venue pricing (3 plans + fiscal-type explainer)
-//   6. <FAQ />             Six essentials, expandable
-//   7. <Footer />          © Mesita 2026 etc.
+//   5. <FAQ />             Six essentials, expandable
+//   6. <Footer />          © Mesita 2026 etc.
+//
+// Pricing (the three-plan grid + fiscal-type explainer) lives on the
+// manager app under /unit/<id>/promos — keeping it inside the auth
+// surface keeps the public site focused on the value prop.
 
 export default function Home() {
   return (
@@ -45,7 +41,6 @@ export default function Home() {
       <Hero />
       <ForGuests />
       <ForVenues />
-      <Pricing />
       <FAQ />
       <Footer />
     </main>
@@ -74,9 +69,6 @@ function Nav() {
           </a>
           <a href="#venues" className="hover:text-foreground transition">
             Venues
-          </a>
-          <a href="#pricing" className="hover:text-foreground transition">
-            Pricing
           </a>
           <a href="#faq" className="hover:text-foreground transition">
             FAQ
@@ -351,186 +343,7 @@ function ForVenues() {
   );
 }
 
-// ─── 5. Pricing for Venues ───────────────────────────────────────────────
-
-function Pricing() {
-  const plans: {
-    id: string;
-    name: string;
-    price: string;
-    cadence: string;
-    mechanic: string;
-    visibility: string;
-    audience: "any" | "formal" | "informal";
-    blurb: string;
-    bullets: string[];
-    featured?: boolean;
-  }[] = [
-    {
-      id: "free",
-      name: "Free",
-      price: "$0",
-      cadence: "MX / month",
-      mechanic: "None",
-      visibility: "Minimum",
-      audience: "any",
-      blurb:
-        "Auto-listed from Google Business. Discoverable + accepts AI reservations. No coupons, no dashboard writes.",
-      bullets: ["Auto-listed", "AI reservations", "No coupon mechanic"],
-    },
-    {
-      id: "formal_pro",
-      name: "Formal Pro",
-      price: "$400",
-      cadence: "MX / month",
-      mechanic: "Cashback",
-      visibility: "Priority",
-      audience: "formal",
-      blurb:
-        "Cashback on card payments through Mesita. Priority placement across swipe, map, catalog, AI planner.",
-      bullets: [
-        "Per-tier cashback rates",
-        "Mesita wallet — guests redeem at any partner",
-        "Story bonus & AI verification",
-        "Full Place / Rewards / Wallet / Team dashboard",
-      ],
-      featured: true,
-    },
-    {
-      id: "informal_pro",
-      name: "Informal Pro",
-      price: "$800",
-      cadence: "MX / month",
-      mechanic: "Discount",
-      visibility: "Priority",
-      audience: "informal",
-      blurb:
-        "Instant discount on the cash bill. Priority placement. 2× formal because Mesita captures no wallet / data.",
-      bullets: [
-        "Per-tier discount rates",
-        "Discount revealed at the bill — cash or card",
-        "Story bonus & AI verification",
-        "Place / Rewards / Team dashboard",
-      ],
-      featured: true,
-    },
-  ];
-
-  return (
-    <section id="pricing" className="border-border border-b">
-      <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
-        <header className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
-              Pricing
-            </p>
-            <h2 className="font-display mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
-              Three plans. Per venue. Cancel anytime.
-            </h2>
-          </div>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            The coupon mechanic is pinned by your fiscal type — Formal partners
-            run cashback, Informal partners run instant discount. Switch fiscal
-            type and the plan list re-narrows.
-          </p>
-        </header>
-
-        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {plans.map((p) => (
-            <Card
-              key={p.id}
-              className={
-                p.featured
-                  ? "border-foreground shadow-elev relative gap-3 rounded-2xl"
-                  : "relative gap-3 rounded-2xl"
-              }
-            >
-              {p.featured && (
-                <Badge className="bg-pink-gradient shadow-glow absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
-                  Featured
-                </Badge>
-              )}
-              <CardHeader>
-                <CardTitle className="font-display text-2xl font-semibold tracking-tight">
-                  {p.name}
-                </CardTitle>
-                <p className="font-display text-4xl font-bold tabular-nums">
-                  {p.price}
-                  <span className="text-muted-foreground ml-1 text-sm font-normal">
-                    {p.cadence}
-                  </span>
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <Badge variant="secondary" className="rounded-full">
-                    {p.mechanic}
-                  </Badge>
-                  <Badge variant="secondary" className="rounded-full">
-                    {p.visibility} visibility
-                  </Badge>
-                </div>
-                <CardDescription className="text-[13px] leading-relaxed">
-                  {p.blurb}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-1 flex-col gap-4">
-                <ul className="flex flex-1 flex-col gap-1.5 text-[12px]">
-                  {p.bullets.map((b) => (
-                    <li key={b} className="flex items-start gap-2 leading-snug">
-                      <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  asChild
-                  size="lg"
-                  variant={p.featured ? "default" : "outline"}
-                  className={
-                    p.featured
-                      ? "bg-pink-gradient shadow-glow rounded-full text-white hover:opacity-90"
-                      : "rounded-full"
-                  }
-                >
-                  <Link href="/manager/sign-up">
-                    {p.id === "free" ? "Use Free" : "Become a partner"}
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="text-muted-foreground mt-10 grid grid-cols-1 gap-3 text-[13px] leading-relaxed md:grid-cols-3">
-          <p>
-            <span className="text-foreground font-semibold">
-              Per-venue billing.
-            </span>{" "}
-            Multi-unit operators pick a plan per location — different plans per
-            venue are fine. Manager accounts are always free.
-          </p>
-          <p>
-            <span className="text-foreground font-semibold">
-              Why Informal is 2× Formal.
-            </span>{" "}
-            Formal partners feed the Mesita wallet — transaction data and a
-            redemption network on the back-end. Informal pays more for the same
-            priority placement.
-          </p>
-          <p>
-            <span className="text-foreground font-semibold">
-              Payment rail rule.
-            </span>{" "}
-            Cashback only counts when the guest pays by card through Mesita. At
-            Informal venues the discount applies at the bill — cash or card,
-            either works.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── 6. FAQs ─────────────────────────────────────────────────────────────
+// ─── 5. FAQs ─────────────────────────────────────────────────────────────
 
 function FAQ() {
   const items: { q: string; a: string }[] = [
@@ -594,7 +407,7 @@ function FAQ() {
   );
 }
 
-// ─── 7. Footer ───────────────────────────────────────────────────────────
+// ─── 6. Footer ───────────────────────────────────────────────────────────
 
 function Footer() {
   const year = new Date().getFullYear();
@@ -616,9 +429,6 @@ function Footer() {
           </a>
           <a href="#venues" className="hover:text-foreground transition">
             For venues
-          </a>
-          <a href="#pricing" className="hover:text-foreground transition">
-            Pricing
           </a>
           <a href="#faq" className="hover:text-foreground transition">
             FAQ
