@@ -16,6 +16,7 @@ import {
   Sparkles,
   Video,
 } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiEnrichCreateVenue,
@@ -28,13 +29,24 @@ import {
   apiVerifyCallCode,
   type LookupResult,
   type LookupVenue,
-  type VerificationMethod,
 } from "@/lib/api/verifications";
 import { Field } from "@/components/shared";
 import { INPUT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 220;
+
+// Callbacks the parent provides for each terminal outcome of the
+// verification form. The form is self-contained — it owns method,
+// OTP, and video state — but doesn't know the page's routing
+// strategy, so the parent decides what to do.
+type VerificationCallbacks = {
+  supabase: SupabaseClient;
+  signedInEmail: string;
+  onApproved: (venueId: string) => void;
+  onAwaitingAdmin: () => void;
+  onPendingForReview: () => void;
+};
 
 export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const router = useRouter();
@@ -57,31 +69,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const [generatePending, startGenerate] = useTransition();
   const [generateStage, setGenerateStage] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
-
-  // Submit-verification state. Default ai_call: the phone OTP loop is
-  // the path ~95% of operators take. Video walkthrough is the escape
-  // hatch for venues that can't pick up — surfaced as a quiet toggle
-  // inside the form, not as a peer option.
-  const [method, setMethod] = useState<VerificationMethod>("ai_call");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [verifyPending, startVerify] = useTransition();
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-
-  // ai_call phase 2: after submit returns, we sit on an OTP card until
-  // the operator enters the 6-digit code (or cancels back to the
-  // method picker).
-  const [otp, setOtp] = useState<
-    | {
-        verificationId: string;
-        venueId: string;
-        venuePhone: string | null;
-        mockCode: string | null;
-      }
-    | null
-  >(null);
-  const [otpCode, setOtpCode] = useState("");
-  const [otpPending, startOtp] = useTransition();
-  const [otpError, setOtpError] = useState<string | null>(null);
 
   // Debounced autocomplete.
   useEffect(() => {
@@ -119,7 +106,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     setLookup(null);
     setLookupError(null);
     setGenerateError(null);
-    setVerifyError(null);
     startLookup(async () => {
       try {
         const r = await apiLookupVenue(supabase, prediction.placeId);
@@ -139,7 +125,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     setLookup(null);
     setLookupError(null);
     setGenerateError(null);
-    setVerifyError(null);
     sessionTokenRef.current = newSessionToken();
   };
 
@@ -187,97 +172,23 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     });
   };
 
-  const onSubmitVerification = (
-    e: React.FormEvent<HTMLFormElement>,
-    venueId: string,
-    venuePhone: string | null,
-  ) => {
-    e.preventDefault();
-    setVerifyError(null);
-    if (method === "video") {
-      if (!/^https:\/\/[^\s]+$/.test(videoUrl.trim())) {
-        setVerifyError("Paste an https:// URL to a hosted video.");
-        return;
-      }
-    }
-    startVerify(async () => {
-      try {
-        const r = await apiSubmitVerification(supabase, {
-          venueId,
-          method,
-          requesterEmail: signedInEmail,
-          videoUrl: method === "video" ? videoUrl.trim() : undefined,
-        });
-        // ai_call always lands status='pending' — we wait for the
-        // operator to enter the 6-digit code via the OTP card.
-        if (method === "ai_call") {
-          setOtp({
-            verificationId: r.id,
-            venueId,
-            venuePhone,
-            mockCode: r.mockCode,
-          });
-          setOtpCode("");
-          setOtpError(null);
-          return;
-        }
-        if (r.status === "approved") {
-          router.push(`/unit/${venueId}/home`);
-          router.refresh();
-          return;
-        }
-        // Manual review — refresh the lookup so the UI shows
-        // "pending_by_me" state with the new request.
-        await refreshLookup();
-      } catch (err) {
-        setVerifyError(
-          err instanceof Error ? err.message : "Could not submit.",
-        );
-      }
-    });
-  };
-
-  const onVerifyOtp = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!otp || otpPending) return;
-    setOtpError(null);
-    const cleanCode = otpCode.trim();
-    if (!/^\d{6}$/.test(cleanCode)) {
-      setOtpError("Code must be 6 digits.");
-      return;
-    }
-    startOtp(async () => {
-      try {
-        const { venueId, awaitingAdmin } = await apiVerifyCallCode(
-          supabase,
-          otp.verificationId,
-          cleanCode,
-        );
-        if (awaitingAdmin) {
-          // Phone auto-confirm is off — the code is valid but a
-          // super-admin still has to approve. Drop the OTP card and
-          // refresh the lookup so the operator sees the
-          // "pending_by_me" state with the request now flagged
-          // code-verified.
-          setOtp(null);
-          setOtpCode("");
-          await refreshLookup();
-          return;
-        }
-        router.push(`/unit/${venueId}/home`);
-        router.refresh();
-      } catch (err) {
-        setOtpError(err instanceof Error ? err.message : "Could not verify.");
-      }
-    });
-  };
-
-  const cancelOtp = () => {
-    setOtp(null);
-    setOtpCode("");
-    setOtpError(null);
-    // The pending row stays in the DB — operator can resubmit and a new
-    // code will be generated (the EF dedups by deleting prior pending).
+  // Verification outcomes share the same wiring across all three
+  // claimable-state cards: approved → push to the unit; pending
+  // (admin queue or OTP-verified-awaiting-admin) → refresh the
+  // lookup so the card re-renders into the right pending state.
+  const verificationCallbacks: VerificationCallbacks = {
+    supabase,
+    signedInEmail,
+    onApproved: (venueId) => {
+      router.push(`/unit/${venueId}/home`);
+      router.refresh();
+    },
+    onAwaitingAdmin: () => {
+      void refreshLookup();
+    },
+    onPendingForReview: () => {
+      void refreshLookup();
+    },
   };
 
   return (
@@ -383,20 +294,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         <ErrorCard message={lookupError} onRetry={refreshLookup} />
       )}
 
-      {selected && lookup && otp && (
-        <OtpCard
-          venuePhone={otp.venuePhone}
-          mockCode={otp.mockCode}
-          code={otpCode}
-          setCode={setOtpCode}
-          pending={otpPending}
-          error={otpError}
-          onSubmit={onVerifyOtp}
-          onCancel={cancelOtp}
-        />
-      )}
-
-      {selected && lookup && !otp && (
+      {selected && lookup && (
         <>
           {lookup.state === "not_in_mesita" && (
             <NotInMesitaCard
@@ -409,18 +307,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           )}
 
           {lookup.state === "web_listed_unclaimed" && (
-            <WebListedCard
-              venue={lookup.venue}
-              method={method}
-              setMethod={setMethod}
-              videoUrl={videoUrl}
-              setVideoUrl={setVideoUrl}
-              pending={verifyPending}
-              error={verifyError}
-              onSubmit={(e) =>
-                onSubmitVerification(e, lookup.venue.id, lookup.venue.phone)
-              }
-            />
+            <WebListedCard venue={lookup.venue} {...verificationCallbacks} />
           )}
 
           {lookup.state === "pending_by_me" && (
@@ -430,30 +317,14 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
                 typeof (lookup.verification.payload as Record<string, unknown>)
                   .codeVerifiedAt === "string"
               }
-              method={method}
-              setMethod={setMethod}
-              videoUrl={videoUrl}
-              setVideoUrl={setVideoUrl}
-              pending={verifyPending}
-              error={verifyError}
-              onSubmit={(e) =>
-                onSubmitVerification(e, lookup.venue.id, lookup.venue.phone)
-              }
+              {...verificationCallbacks}
             />
           )}
 
           {lookup.state === "pending_by_other" && (
             <PendingByOtherCard
               venue={lookup.venue}
-              method={method}
-              setMethod={setMethod}
-              videoUrl={videoUrl}
-              setVideoUrl={setVideoUrl}
-              pending={verifyPending}
-              error={verifyError}
-              onSubmit={(e) =>
-                onSubmitVerification(e, lookup.venue.id, lookup.venue.phone)
-              }
+              {...verificationCallbacks}
             />
           )}
 
@@ -535,51 +406,46 @@ function NotInMesitaCard({
   );
 }
 
-function WebListedCard(props: {
-  venue: LookupVenue;
-  method: VerificationMethod;
-  setMethod: (m: VerificationMethod) => void;
-  videoUrl: string;
-  setVideoUrl: (v: string) => void;
-  pending: boolean;
-  error: string | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-}) {
+function WebListedCard({
+  venue,
+  ...callbacks
+}: { venue: LookupVenue } & VerificationCallbacks) {
   return (
     <section className="border-border bg-card flex flex-col gap-5 rounded-2xl border p-5">
       <StatusBadge tone="info">Web listed · no verified owner</StatusBadge>
-      <VenueIdentity venue={props.venue} />
+      <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        This venue is on Mesita but no one has proved ownership yet. Pick up
-        the phone at the venue to claim it in seconds.
+        This venue is on Mesita but no one has proved ownership. Pick a
+        verification path below — both happen right here on this page.
       </p>
-      <VerificationForm venuePhone={props.venue.phone} {...props} />
+      <VerificationForm
+        venueId={venue.id}
+        venuePhone={venue.phone}
+        {...callbacks}
+      />
     </section>
   );
 }
 
-function PendingByMeCard(props: {
+function PendingByMeCard({
+  venue,
+  codeVerified,
+  ...callbacks
+}: {
   venue: LookupVenue;
   // True when the operator already passed the phone OTP step — the
   // row is only sitting here because phone auto-confirm is OFF on the
   // admin side. Different copy + no re-submit form.
   codeVerified: boolean;
-  method: VerificationMethod;
-  setMethod: (m: VerificationMethod) => void;
-  videoUrl: string;
-  setVideoUrl: (v: string) => void;
-  pending: boolean;
-  error: string | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-}) {
-  if (props.codeVerified) {
+} & VerificationCallbacks) {
+  if (codeVerified) {
     return (
       <section className="border-secondary/40 bg-card flex flex-col gap-5 rounded-2xl border p-5">
         <StatusBadge tone="secondary">
           <CheckCircle2 className="h-3 w-3" />
           Code verified · admin reviewing
         </StatusBadge>
-        <VenueIdentity venue={props.venue} />
+        <VenueIdentity venue={venue} />
         <p className="text-muted-foreground text-sm leading-relaxed">
           We received your OTP and confirmed it&apos;s correct. A Mesita
           admin is doing a final review and will grant ownership shortly
@@ -595,38 +461,41 @@ function PendingByMeCard(props: {
         <Clock className="h-3 w-3" />
         Your verification is awaiting review
       </StatusBadge>
-      <VenueIdentity venue={props.venue} />
+      <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Re-submit if you didn&apos;t pick up — the new request replaces the
-        pending one.
+        Re-submit below if you didn&apos;t pick up — the new request
+        replaces the pending one.
       </p>
-      <VerificationForm venuePhone={props.venue.phone} {...props} />
+      <VerificationForm
+        venueId={venue.id}
+        venuePhone={venue.phone}
+        {...callbacks}
+      />
     </section>
   );
 }
 
-function PendingByOtherCard(props: {
-  venue: LookupVenue;
-  method: VerificationMethod;
-  setMethod: (m: VerificationMethod) => void;
-  videoUrl: string;
-  setVideoUrl: (v: string) => void;
-  pending: boolean;
-  error: string | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-}) {
+function PendingByOtherCard({
+  venue,
+  ...callbacks
+}: { venue: LookupVenue } & VerificationCallbacks) {
   return (
     <section className="border-border bg-card flex flex-col gap-5 rounded-2xl border p-5">
       <StatusBadge tone="warn">
         <Clock className="h-3 w-3" />
         Someone else is verifying — you can also submit
       </StatusBadge>
-      <VenueIdentity venue={props.venue} />
+      <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Another operator has a pending claim. Whoever proves ownership first
-        wins — if it&apos;s really your venue, just pick up the phone.
+        Another operator has a pending claim. Whoever proves ownership
+        first wins — if it&apos;s really your venue, just pick up the
+        phone.
       </p>
-      <VerificationForm venuePhone={props.venue.phone} {...props} />
+      <VerificationForm
+        venueId={venue.id}
+        venuePhone={venue.phone}
+        {...callbacks}
+      />
     </section>
   );
 }
@@ -684,112 +553,6 @@ function VerifiedPartnerCard({
   );
 }
 
-// AI-call phase 2. The submit EF dialled the venue's Google-listed
-// phone with a 6-digit code; operator picks up, hears the code, types
-// it here. In mock mode (no Twilio configured) the EF also returns
-// the plain code so the operator can self-test the loop.
-function OtpCard({
-  venuePhone,
-  mockCode,
-  code,
-  setCode,
-  pending,
-  error,
-  onSubmit,
-  onCancel,
-}: {
-  venuePhone: string | null;
-  mockCode: string | null;
-  code: string;
-  setCode: (v: string) => void;
-  pending: boolean;
-  error: string | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onCancel: () => void;
-}) {
-  return (
-    <section className="border-foreground/15 bg-card flex flex-col gap-4 rounded-2xl border p-5">
-      <StatusBadge tone="info">
-        <Phone className="h-3 w-3" />
-        Call placed · enter the 6-digit code
-      </StatusBadge>
-      <p className="text-sm leading-relaxed">
-        We rang{" "}
-        <span className="font-mono font-semibold">
-          {venuePhone ?? "(no phone on file)"}
-        </span>{" "}
-        and read out a 6-digit code. Pick up at the venue, write it down,
-        and type it below.
-      </p>
-
-      {mockCode && (
-        <div className="border-amber-200 bg-amber-50 text-amber-900 flex items-start gap-3 rounded-xl border p-3 text-[12px]">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <p className="font-semibold">Mock mode — no real call placed</p>
-            <p className="mt-0.5 leading-relaxed">
-              Twilio isn&apos;t configured yet, so type{" "}
-              <span className="font-mono font-bold tracking-widest">
-                {mockCode}
-              </span>{" "}
-              to complete the loop.
-            </p>
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-          placeholder="123456"
-          autoFocus
-          className="border-border bg-background h-14 w-full rounded-xl border px-4 text-center font-mono text-2xl tracking-[0.5em] outline-none"
-        />
-        {error && (
-          <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm">
-            {error}
-          </p>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={pending || code.length !== 6}
-            className={cn(
-              "flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
-              "bg-pink-gradient shadow-glow text-white",
-            )}
-          >
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Verifying…
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Verify code
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={pending}
-            className="border-border text-muted-foreground inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition disabled:opacity-50"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </section>
-  );
-}
-
 function ErrorCard({
   message,
   onRetry,
@@ -815,6 +578,419 @@ function ErrorCard({
   );
 }
 
+// ── Verification form ─────────────────────────────────────────────────
+
+// One self-contained form with a Phone / Video tab strip at the top.
+// Everything happens on this page — the phone tab runs the full OTP
+// dance inline (request the call → wait for code entry → verify),
+// the video tab is a single-shot URL submit. No redirects between
+// sub-steps; tab state is preserved when the operator hops back and
+// forth.
+type TabKey = "ai_call" | "video";
+
+// Phone tab is a small state machine: idle → placing → awaiting_code
+// (after the EF returns the verification ID) → verifying (after the
+// operator submits the code). Errors push it back one step.
+type CallState =
+  | { kind: "idle" }
+  | { kind: "placing" }
+  | {
+      kind: "awaiting_code";
+      verificationId: string;
+      mockCode: string | null;
+    }
+  | {
+      kind: "verifying";
+      verificationId: string;
+      mockCode: string | null;
+    };
+
+function VerificationForm({
+  venueId,
+  venuePhone,
+  supabase,
+  signedInEmail,
+  onApproved,
+  onAwaitingAdmin,
+  onPendingForReview,
+}: {
+  venueId: string;
+  venuePhone: string | null;
+} & VerificationCallbacks) {
+  const [tab, setTab] = useState<TabKey>("ai_call");
+
+  // Phone tab state.
+  const [callState, setCallState] = useState<CallState>({ kind: "idle" });
+  const [otpCode, setOtpCode] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  // Video tab state.
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoPending, startVideo] = useTransition();
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  const switchTab = (next: TabKey) => {
+    setTab(next);
+    setPhoneError(null);
+    setVideoError(null);
+  };
+
+  const placeCall = () => {
+    if (callState.kind === "placing" || callState.kind === "verifying") return;
+    setPhoneError(null);
+    setOtpCode("");
+    setCallState({ kind: "placing" });
+    void (async () => {
+      try {
+        const r = await apiSubmitVerification(supabase, {
+          venueId,
+          method: "ai_call",
+          requesterEmail: signedInEmail,
+        });
+        setCallState({
+          kind: "awaiting_code",
+          verificationId: r.id,
+          mockCode: r.mockCode,
+        });
+      } catch (err) {
+        setPhoneError(
+          err instanceof Error ? err.message : "Could not place call.",
+        );
+        setCallState({ kind: "idle" });
+      }
+    })();
+  };
+
+  const verifyCode = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (callState.kind !== "awaiting_code") return;
+    const code = otpCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setPhoneError("Code must be 6 digits.");
+      return;
+    }
+    const { verificationId, mockCode } = callState;
+    setPhoneError(null);
+    setCallState({ kind: "verifying", verificationId, mockCode });
+    void (async () => {
+      try {
+        const { venueId: vId, awaitingAdmin } = await apiVerifyCallCode(
+          supabase,
+          verificationId,
+          code,
+        );
+        if (awaitingAdmin) onAwaitingAdmin();
+        else onApproved(vId);
+      } catch (err) {
+        setPhoneError(
+          err instanceof Error ? err.message : "Could not verify.",
+        );
+        setCallState({ kind: "awaiting_code", verificationId, mockCode });
+      }
+    })();
+  };
+
+  const submitVideo = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!/^https:\/\/[^\s]+$/.test(videoUrl.trim())) {
+      setVideoError("Paste an https:// URL to a hosted video.");
+      return;
+    }
+    setVideoError(null);
+    startVideo(async () => {
+      try {
+        const r = await apiSubmitVerification(supabase, {
+          venueId,
+          method: "video",
+          requesterEmail: signedInEmail,
+          videoUrl: videoUrl.trim(),
+        });
+        if (r.status === "approved") onApproved(venueId);
+        else onPendingForReview();
+      } catch (err) {
+        setVideoError(
+          err instanceof Error ? err.message : "Could not submit.",
+        );
+      }
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <MethodTabs tab={tab} setTab={switchTab} />
+      {tab === "ai_call" ? (
+        <PhoneTab
+          venuePhone={venuePhone}
+          state={callState}
+          otpCode={otpCode}
+          setOtpCode={setOtpCode}
+          error={phoneError}
+          onPlaceCall={placeCall}
+          onVerify={verifyCode}
+        />
+      ) : (
+        <VideoTab
+          videoUrl={videoUrl}
+          setVideoUrl={setVideoUrl}
+          pending={videoPending}
+          error={videoError}
+          onSubmit={submitVideo}
+        />
+      )}
+    </div>
+  );
+}
+
+function MethodTabs({
+  tab,
+  setTab,
+}: {
+  tab: TabKey;
+  setTab: (next: TabKey) => void;
+}) {
+  return (
+    <div className="bg-muted/60 inline-flex self-start rounded-full p-1">
+      <TabButton active={tab === "ai_call"} onClick={() => setTab("ai_call")}>
+        <Phone className="h-3.5 w-3.5" />
+        Phone
+      </TabButton>
+      <TabButton active={tab === "video"} onClick={() => setTab("video")}>
+        <Video className="h-3.5 w-3.5" />
+        Video
+      </TabButton>
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition",
+        active
+          ? "bg-card text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PhoneTab({
+  venuePhone,
+  state,
+  otpCode,
+  setOtpCode,
+  error,
+  onPlaceCall,
+  onVerify,
+}: {
+  venuePhone: string | null;
+  state: CallState;
+  otpCode: string;
+  setOtpCode: (v: string) => void;
+  error: string | null;
+  onPlaceCall: () => void;
+  onVerify: (e: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  if (state.kind === "idle" || state.kind === "placing") {
+    const placing = state.kind === "placing";
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-muted-foreground text-[13px] leading-relaxed">
+          Our AI dials{" "}
+          <span className="text-foreground font-mono font-semibold">
+            {venuePhone ?? "the Google-listed phone"}
+          </span>{" "}
+          and reads out a 6-digit code. Pick up at the venue and type
+          the code below — all on this page.
+        </p>
+        <button
+          type="button"
+          onClick={onPlaceCall}
+          disabled={placing}
+          className={cn(
+            "flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold transition disabled:opacity-50",
+            "bg-pink-gradient shadow-glow text-white",
+          )}
+        >
+          {placing ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              AI is dialing…
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-5 w-5" />
+              Have AI call my venue
+            </>
+          )}
+        </button>
+        {error && <ErrorBlurb>{error}</ErrorBlurb>}
+      </div>
+    );
+  }
+
+  // awaiting_code or verifying — same layout; the verify button
+  // switches into a spinner while the EF round-trip is in flight.
+  const verifying = state.kind === "verifying";
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="border-secondary/30 bg-secondary/5 text-secondary flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-relaxed">
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>
+          AI placed the call to{" "}
+          <span className="text-foreground font-mono font-semibold">
+            {venuePhone ?? "the venue"}
+          </span>
+          . Pick up and listen for the 6-digit code, then enter it
+          below.
+        </p>
+      </div>
+
+      {state.mockCode && (
+        <div className="border-amber-200 bg-amber-50 text-amber-900 flex items-start gap-2 rounded-xl border p-3 text-[12px] leading-relaxed">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            <span className="font-semibold">Mock mode</span> — Twilio
+            isn&apos;t wired yet, so no real call was placed. Type{" "}
+            <span className="font-mono font-bold tracking-widest">
+              {state.mockCode}
+            </span>{" "}
+            to complete the loop.
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={onVerify} className="flex flex-col gap-3">
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          value={otpCode}
+          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+          placeholder="123456"
+          autoFocus
+          disabled={verifying}
+          className="border-border bg-background h-14 w-full rounded-xl border px-4 text-center font-mono text-2xl tracking-[0.5em] outline-none disabled:opacity-60"
+        />
+        {error && <ErrorBlurb>{error}</ErrorBlurb>}
+        <button
+          type="submit"
+          disabled={verifying || otpCode.length !== 6}
+          className={cn(
+            "flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
+            "bg-pink-gradient shadow-glow text-white",
+          )}
+        >
+          {verifying ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verifying…
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="h-4 w-4" />
+              Verify code
+            </>
+          )}
+        </button>
+      </form>
+
+      <button
+        type="button"
+        onClick={onPlaceCall}
+        disabled={verifying}
+        className="text-muted-foreground hover:text-foreground mt-1 inline-flex items-center justify-center gap-1.5 self-center text-[12px] font-medium transition disabled:opacity-50"
+      >
+        <Phone className="h-3.5 w-3.5" />
+        Didn&apos;t pick up? Re-dial with a fresh code
+      </button>
+    </div>
+  );
+}
+
+function VideoTab({
+  videoUrl,
+  setVideoUrl,
+  pending,
+  error,
+  onSubmit,
+}: {
+  videoUrl: string;
+  setVideoUrl: (v: string) => void;
+  pending: boolean;
+  error: string | null;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <Field
+        label="Walkthrough video URL"
+        hint="≤3 minutes showing the venue's interior. Loom, Drive, YouTube unlisted — anything public-via-link is fine."
+      >
+        <input
+          type="url"
+          value={videoUrl}
+          onChange={(e) => setVideoUrl(e.target.value)}
+          placeholder="https://loom.com/share/..."
+          inputMode="url"
+          autoCapitalize="none"
+          spellCheck={false}
+          required
+          autoFocus
+          className={INPUT_CLASS}
+        />
+      </Field>
+      <button
+        type="submit"
+        disabled={pending}
+        className={cn(
+          "flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
+          "bg-foreground text-background",
+        )}
+      >
+        {pending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Submitting…
+          </>
+        ) : (
+          <>
+            <Send className="h-4 w-4" />
+            Submit walkthrough for review
+          </>
+        )}
+      </button>
+      <p className="text-muted-foreground text-center text-[11px] leading-relaxed">
+        Reviewed by a Mesita admin — usually within 24 hours.
+      </p>
+      {error && <ErrorBlurb>{error}</ErrorBlurb>}
+    </form>
+  );
+}
+
+function ErrorBlurb({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm">
+      {children}
+    </p>
+  );
+}
+
 // ── Shared bits ───────────────────────────────────────────────────────
 
 function VenueIdentity({ venue }: { venue: LookupVenue }) {
@@ -828,131 +1004,6 @@ function VenueIdentity({ venue }: { venue: LookupVenue }) {
       </ReadOnlyField>
       <ReadOnlyField label="Address">{venue.address ?? "—"}</ReadOnlyField>
     </div>
-  );
-}
-
-// Asymmetric on purpose: the AI phone call is the only thing shown by
-// default — single huge CTA, the path the vast majority of operators
-// take. Video walkthrough sits below as a quiet secondary toggle for
-// the <5% of venues that can't answer their listed phone. Contact email
-// is never asked here; we use the signed-in user's email server-side.
-function VerificationForm({
-  venuePhone,
-  method,
-  setMethod,
-  videoUrl,
-  setVideoUrl,
-  pending,
-  error,
-  onSubmit,
-}: {
-  venuePhone: string | null;
-  method: VerificationMethod;
-  setMethod: (m: VerificationMethod) => void;
-  videoUrl: string;
-  setVideoUrl: (v: string) => void;
-  pending: boolean;
-  error: string | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-}) {
-  return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      {method === "ai_call" ? (
-        <>
-          <button
-            type="submit"
-            disabled={pending}
-            className={cn(
-              "flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold transition disabled:opacity-50",
-              "bg-pink-gradient shadow-glow text-white",
-            )}
-          >
-            {pending ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Placing call…
-              </>
-            ) : (
-              <>
-                <Phone className="h-5 w-5" />
-                Call my venue to verify
-              </>
-            )}
-          </button>
-          <p className="text-muted-foreground px-2 text-center text-[12px] leading-relaxed">
-            We&apos;ll ring{" "}
-            <span className="text-foreground font-mono font-semibold">
-              {venuePhone ?? "the Google-listed phone"}
-            </span>{" "}
-            and read out a 6-digit code. Type the code on the next step.
-          </p>
-        </>
-      ) : (
-        <>
-          <Field
-            label="Hosted video URL"
-            hint="≤3 minutes showing the venue's interior. Loom, Drive, YouTube unlisted — anything public-via-link is fine."
-          >
-            <input
-              type="url"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="https://loom.com/share/..."
-              inputMode="url"
-              autoCapitalize="none"
-              spellCheck={false}
-              required
-              autoFocus
-              className={INPUT_CLASS}
-            />
-          </Field>
-          <button
-            type="submit"
-            disabled={pending}
-            className={cn(
-              "flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
-              "bg-foreground text-background",
-            )}
-          >
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting…
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4" />
-                Submit walkthrough for review
-              </>
-            )}
-          </button>
-        </>
-      )}
-
-      {error && (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm">
-          {error}
-        </p>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setMethod(method === "ai_call" ? "video" : "ai_call")}
-        className="text-muted-foreground hover:text-foreground mt-1 inline-flex items-center justify-center gap-1.5 self-center text-[12px] font-medium transition"
-      >
-        {method === "ai_call" ? (
-          <>
-            <Video className="h-3.5 w-3.5" />
-            Can&apos;t pick up? Send a video walkthrough instead
-          </>
-        ) : (
-          <>
-            <Phone className="h-3.5 w-3.5" />
-            Use the phone call flow instead
-          </>
-        )}
-      </button>
-    </form>
   );
 }
 
@@ -1007,4 +1058,3 @@ function newSessionToken(): string {
   }
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
-
