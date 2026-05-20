@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Copy,
   Check,
@@ -9,12 +9,25 @@ import {
   Play,
   Download,
   ChevronRight,
+  MapPin,
 } from "lucide-react";
+import {
+  APIProvider,
+  Map,
+  AdvancedMarker,
+  InfoWindow,
+  useMap,
+  useMapsLibrary,
+} from "@vis.gl/react-google-maps";
+
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
 
 type PlaceLite = {
   id: string;
   displayName: string;
   formattedAddress: string;
+  lat: number | null;
+  lng: number | null;
 };
 
 type QueryResult = {
@@ -318,6 +331,8 @@ export default function BulkSearchUnitsPage() {
             </section>
           )}
 
+          <MapPanel places={result.uniquePlaces} />
+
           <section>
             <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
               By query
@@ -456,4 +471,130 @@ function QueryRow({
 function csvCell(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
+}
+
+// Map ID required by AdvancedMarker. Google's free demo ID is fine for an
+// internal admin tool — no custom styling, no usage attribution split needed.
+const MAP_ID = "DEMO_MAP_ID";
+
+function MapPanel({ places }: { places: PlaceLite[] }) {
+  const mappable = useMemo(
+    () => places.filter((p) => p.lat !== null && p.lng !== null),
+    [places],
+  );
+  const missing = places.length - mappable.length;
+
+  if (!GOOGLE_MAPS_KEY) {
+    return (
+      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
+        <p className="font-medium text-foreground">Map unavailable</p>
+        <p className="mt-1">
+          NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY isn't set on this deployment.
+        </p>
+      </section>
+    );
+  }
+
+  if (mappable.length === 0) {
+    return (
+      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
+        <p className="font-medium text-foreground">No mappable results</p>
+        <p className="mt-1">
+          None of the returned places included coordinates.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="border-border bg-card shadow-elev overflow-hidden rounded-2xl border">
+      <div className="border-border flex items-center justify-between gap-3 border-b px-5 py-3">
+        <div className="flex items-center gap-2">
+          <MapPin className="text-secondary h-4 w-4" />
+          <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
+            Map
+          </h2>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          {mappable.length}{" "}
+          {mappable.length === 1 ? "marker" : "markers"}
+          {missing > 0 && (
+            <> · {missing} without coordinates</>
+          )}
+        </p>
+      </div>
+      <div className="h-[440px] w-full">
+        <APIProvider apiKey={GOOGLE_MAPS_KEY}>
+          <Map
+            mapId={MAP_ID}
+            defaultCenter={{ lat: 23.6345, lng: -102.5528 }}
+            defaultZoom={5}
+            gestureHandling="greedy"
+            disableDefaultUI={false}
+            clickableIcons={false}
+          >
+            <MapMarkers places={mappable} />
+            <FitBoundsToPlaces places={mappable} />
+          </Map>
+        </APIProvider>
+      </div>
+    </section>
+  );
+}
+
+function FitBoundsToPlaces({ places }: { places: PlaceLite[] }) {
+  const map = useMap();
+  const coreLib = useMapsLibrary("core");
+  useEffect(() => {
+    if (!map || !coreLib || places.length === 0) return;
+    const bounds = new coreLib.LatLngBounds();
+    for (const p of places) {
+      if (p.lat !== null && p.lng !== null) {
+        bounds.extend({ lat: p.lat, lng: p.lng });
+      }
+    }
+    if (bounds.isEmpty()) return;
+    map.fitBounds(bounds, 48);
+  }, [map, coreLib, places]);
+  return null;
+}
+
+function MapMarkers({ places }: { places: PlaceLite[] }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <>
+      {places.map((p) => (
+        <AdvancedMarker
+          key={p.id}
+          position={{ lat: p.lat as number, lng: p.lng as number }}
+          onClick={() => setOpenId((id) => (id === p.id ? null : p.id))}
+        >
+          <span className="bg-primary ring-background block h-3 w-3 rounded-full shadow ring-2" />
+        </AdvancedMarker>
+      ))}
+      {openId !== null &&
+        (() => {
+          const p = places.find((x) => x.id === openId);
+          if (!p || p.lat === null || p.lng === null) return null;
+          return (
+            <InfoWindow
+              position={{ lat: p.lat, lng: p.lng }}
+              onCloseClick={() => setOpenId(null)}
+            >
+              <div className="max-w-[240px] text-xs">
+                <p className="text-foreground text-sm font-medium">
+                  {p.displayName || "(no name)"}
+                </p>
+                <p className="text-muted-foreground mt-0.5">
+                  {p.formattedAddress}
+                </p>
+                <p className="text-muted-foreground/70 mt-1 font-mono break-all">
+                  {p.id}
+                </p>
+              </div>
+            </InfoWindow>
+          );
+        })()}
+    </>
+  );
 }
