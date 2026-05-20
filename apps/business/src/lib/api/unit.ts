@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MyVenue } from "./venues";
 import type { VenueTicket } from "./tickets";
 import { invokeEF } from "./_invoke";
-import { readVerifiedSuperAdminKey } from "@/lib/super-admin";
+import { getSuperAdminKey } from "@/lib/super-admin";
 
 export type UnitOverview = {
   user: { id: string; email: string | null };
@@ -25,7 +25,7 @@ async function fetchUnitOverview(
   // anon/user session) and call the EF directly with the operator's
   // ADMIN_ACCESS_KEY in the `x-super-admin-key` header. The EF skips JWT
   // + venue_members checks and returns just the requested venue.
-  const superKey = await readVerifiedSuperAdminKey();
+  const superKey = await getSuperAdminKey();
   if (superKey) {
     if (!activeUnitId) {
       throw new Error("super-admin overview requires activeUnitId");

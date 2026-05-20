@@ -4,7 +4,7 @@ import { Plus, Store } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
-import { readVerifiedSuperAdminKey } from "@/lib/super-admin";
+import { getSuperAdminKey } from "@/lib/super-admin";
 import { EditVenueForm } from "./EditVenueForm";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function ManagerPlacePage({
   // Super-admin mode skips the Supabase session entirely: getUnitOverview
   // detects the cookie and routes through manager-get-overview with the
   // x-super-admin-key header.
-  const isSuperAdmin = (await readVerifiedSuperAdminKey()) !== null;
+  const isSuperAdmin = (await getSuperAdminKey()) !== null;
   let supabase: Awaited<ReturnType<typeof createServerSupabase>> | null = null;
   if (!isSuperAdmin) {
     supabase = await createServerSupabase();

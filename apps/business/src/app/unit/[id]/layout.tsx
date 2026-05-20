@@ -3,7 +3,7 @@ import { Sidebar } from "@/components/manager/Sidebar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
-import { readVerifiedSuperAdminKey } from "@/lib/super-admin";
+import { getSuperAdminKey } from "@/lib/super-admin";
 
 // Sidebar-wrapped manager shell. Lives under a route group so the URL
 // stays /manager/<page> while sibling routes (sign-in, sign-up, onboard,
@@ -25,7 +25,7 @@ export default async function ManagerShellLayout({
 }) {
   const { id } = await params;
 
-  const superAdminKey = await readVerifiedSuperAdminKey();
+  const superAdminKey = await getSuperAdminKey();
   if (superAdminKey) {
     let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
     try {
