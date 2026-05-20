@@ -7,18 +7,31 @@ type RequestBody = {
   maxResultsPerQuery?: unknown;
 };
 
+type EFPlace = {
+  id: string;
+  displayName: string;
+  formattedAddress: string;
+  lat: number | null;
+  lng: number | null;
+  existsInMesita: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 type EFResponse = {
   ok: true;
   queries: Array<{
     query: string;
-    places: Array<{ id: string; displayName: string; formattedAddress: string }>;
+    places: EFPlace[];
     truncated: boolean;
     error: string | null;
   }>;
-  uniquePlaces: Array<{ id: string; displayName: string; formattedAddress: string }>;
+  uniquePlaces: EFPlace[];
   uniqueCount: number;
   regionCode: string;
   maxResultsPerQuery: number;
+  mesitaMatchCount: number;
+  mesitaLookupError: string | null;
 };
 
 export async function POST(req: NextRequest) {

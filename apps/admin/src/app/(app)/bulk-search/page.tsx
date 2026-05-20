@@ -9,6 +9,7 @@ import {
   Play,
   Download,
   ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
 import { PlacesMap } from "@/components/PlacesMap";
 import type {
@@ -111,11 +112,21 @@ export default function BulkSearchUnitsPage() {
 
   function downloadCsv() {
     if (!result) return;
-    const rows: string[] = ["query,place_id,name,address"];
+    const rows: string[] = [
+      "query,place_id,name,address,in_mesita,created_at,updated_at",
+    ];
     for (const q of result.queries) {
       for (const p of q.places) {
         rows.push(
-          [q.query, p.id, p.displayName, p.formattedAddress]
+          [
+            q.query,
+            p.id,
+            p.displayName,
+            p.formattedAddress,
+            p.existsInMesita ? "yes" : "no",
+            p.createdAt ?? "",
+            p.updatedAt ?? "",
+          ]
             .map(csvCell)
             .join(","),
         );
@@ -292,6 +303,15 @@ export default function BulkSearchUnitsPage() {
                     <> · {duplicatesCount} duplicates filtered</>
                   )}{" "}
                   · region {result.regionCode}
+                  {result.mesitaLookupError === null && (
+                    <>
+                      {" · "}
+                      <span className="text-foreground font-medium">
+                        {result.mesitaMatchCount}
+                      </span>{" "}
+                      already in Mesita
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -338,6 +358,18 @@ export default function BulkSearchUnitsPage() {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {result.mesitaLookupError && (
+            <section className="border-amber-500/40 bg-amber-500/5 flex items-start gap-3 rounded-2xl border p-4 text-sm text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">
+                  Couldn't check which places are already in Mesita
+                </p>
+                <p className="mt-1 opacity-90">{result.mesitaLookupError}</p>
+              </div>
             </section>
           )}
 
@@ -405,6 +437,7 @@ function QueryRow({
 }) {
   const [open, setOpen] = useState(false);
   const hasResults = q.places.length > 0;
+  const mesitaHits = q.places.filter((p) => p.existsInMesita).length;
   const copyKey = `q:${q.query}`;
   return (
     <li>
@@ -421,6 +454,12 @@ function QueryRow({
           }
         />
         <span className="flex-1 truncate text-sm font-medium">{q.query}</span>
+        {mesitaHits > 0 && !q.error && (
+          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium">
+            <CheckCircle2 className="h-3 w-3" />
+            {mesitaHits} in Mesita
+          </span>
+        )}
         {q.error ? (
           <span className="text-destructive bg-destructive/10 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
             error
@@ -470,12 +509,47 @@ function QueryRow({
                     className="grid grid-cols-1 gap-2 px-3 py-2 text-xs md:grid-cols-[1fr_auto] md:items-center"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {p.displayName || "(no name)"}
+                      <p className="flex items-center gap-2 truncate text-sm font-medium">
+                        <span className="truncate">
+                          {p.displayName || "(no name)"}
+                        </span>
+                        {p.existsInMesita && (
+                          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                            <CheckCircle2 className="h-3 w-3" />
+                            In Mesita
+                          </span>
+                        )}
                       </p>
                       <p className="text-muted-foreground truncate">
                         {p.formattedAddress}
                       </p>
+                      {p.existsInMesita && (p.createdAt || p.updatedAt) && (
+                        <p className="text-muted-foreground/80 mt-0.5 truncate text-[11px]">
+                          {p.createdAt && (
+                            <>
+                              added{" "}
+                              <span
+                                className="text-foreground/70 font-medium"
+                                title={p.createdAt}
+                              >
+                                {formatShortDate(p.createdAt)}
+                              </span>
+                            </>
+                          )}
+                          {p.createdAt && p.updatedAt && " · "}
+                          {p.updatedAt && (
+                            <>
+                              updated{" "}
+                              <span
+                                className="text-foreground/70 font-medium"
+                                title={p.updatedAt}
+                              >
+                                {formatShortDate(p.updatedAt)}
+                              </span>
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
                     <code className="text-muted-foreground bg-muted/40 max-w-full truncate rounded-lg px-2 py-1 font-mono">
                       {p.id}
@@ -494,6 +568,16 @@ function QueryRow({
 function csvCell(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
+}
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function formatUsdEstimate(amount: number): string {
