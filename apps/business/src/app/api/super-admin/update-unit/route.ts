@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readVerifiedSuperAdminKey } from "@/lib/super-admin";
+import { getSuperAdminKey } from "@/lib/super-admin";
 
 // Client-side mutation proxy for super-admin mode.
 //
@@ -12,7 +12,7 @@ import { readVerifiedSuperAdminKey } from "@/lib/super-admin";
 // header in lieu of a bearer JWT and skips the venue_members check.
 
 export async function POST(req: NextRequest) {
-  const key = await readVerifiedSuperAdminKey();
+  const key = await getSuperAdminKey();
   if (!key) {
     return NextResponse.json(
       { ok: false, error: "Not in super-admin mode." },

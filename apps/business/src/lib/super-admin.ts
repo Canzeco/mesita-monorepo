@@ -17,6 +17,13 @@
 // Server-only: this module reads HttpOnly cookies via `next/headers`. If a
 // client component ever imports it Next.js will throw at use-site. Cookie
 // name constants live in `super-admin-cookies.ts` so they're safe to share.
+//
+// We do NOT validate the cookie value here. The Supabase Edge Functions
+// are the only auth gate — they compare the forwarded value against the
+// ADMIN_ACCESS_KEY secret on every request. Validating here would mean
+// duplicating the secret on the manager web's Vercel env, which adds a
+// rotation surface for no security gain (a bad cookie still fails at the
+// EF; a good cookie is the only one that does anything).
 import { cookies } from "next/headers";
 import { SUPER_ADMIN_KEY_COOKIE } from "./super-admin-cookies";
 
@@ -29,17 +36,4 @@ export {
 export async function getSuperAdminKey(): Promise<string | null> {
   const jar = await cookies();
   return jar.get(SUPER_ADMIN_KEY_COOKIE)?.value ?? null;
-}
-
-// Throws if the cookie is missing or doesn't match ADMIN_ACCESS_KEY. The
-// matcher exists so server code can validate before passing the key onward
-// — never trust the cookie's presence alone, since the env var may have
-// been rotated since the cookie was set.
-export async function readVerifiedSuperAdminKey(): Promise<string | null> {
-  const expected = process.env.ADMIN_ACCESS_KEY;
-  if (!expected) return null;
-  const cookieKey = await getSuperAdminKey();
-  if (!cookieKey) return null;
-  if (cookieKey !== expected) return null;
-  return cookieKey;
 }

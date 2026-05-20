@@ -14,31 +14,21 @@ import {
 // strips the token from the URL bar before the venue page paints, which
 // keeps the secret out of browser history and outbound Referer headers.
 //
-// We deliberately don't accept a Place ID here: resolving placeId →
-// venueId requires service-role privileges that the manager web doesn't
-// have. The admin web does the resolution via admin-find-venue and
-// embeds the venueId in the link.
+// We deliberately don't validate the token here — the Supabase Edge
+// Functions are the source of truth and they re-check the token against
+// the ADMIN_ACCESS_KEY secret on every call. If the cookie value is wrong
+// the EF returns 401 and the page renders an error; the manager web
+// itself never needs to know the secret.
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token") ?? "";
   const unitId = url.searchParams.get("unitId") ?? "";
 
-  const expected = process.env.ADMIN_ACCESS_KEY;
-  if (!expected) {
+  if (!token) {
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Manager web is missing ADMIN_ACCESS_KEY env var. Set it in Vercel (Settings → Environment Variables, server only).",
-      },
-      { status: 500 },
-    );
-  }
-  if (!token || token !== expected) {
-    return NextResponse.json(
-      { ok: false, error: "Invalid or missing super-admin token." },
-      { status: 401 },
+      { ok: false, error: "Missing token query parameter." },
+      { status: 400 },
     );
   }
   if (!unitId) {
