@@ -6,7 +6,7 @@ import {
   AlertTriangle,
   Calendar,
   Check,
-  CircleDollarSign,
+  CheckCircle2,
   CreditCard,
   Filter,
   GraduationCap,
@@ -19,6 +19,15 @@ import {
 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue, type VenuePlan } from "@/lib/api/venues";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { TicketTypesCard } from "@/components/manager/TicketTypesCard";
 import { cn } from "@/lib/utils";
 import { PLANS, mechanicForPlan } from "@/lib/manager/plans";
@@ -130,28 +139,25 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   const mechanic = mechanicForPlan(plan);
   const savedMechanic = mechanicForPlan(venue.plan);
 
-  const planFiscalScope = useMemo(() => {
-    const meta = PLANS.find((p) => p.id === plan);
-    return meta?.fiscalScope ?? "any";
-  }, [plan]);
-  const fiscalMismatch =
-    planFiscalScope !== "any" &&
-    ((isFormal && planFiscalScope === "informal") ||
-      (!isFormal && planFiscalScope === "formal"));
+  const [pendingPlanId, setPendingPlanId] = useState<VenuePlan | null>(null);
 
-  const submit = () => {
-    if (plan === venue.plan) return;
+  const selectPlan = (target: VenuePlan) => {
+    if (target === venue.plan || pending) return;
     setError(null);
     setSaved(false);
+    setPlan(target);
+    setPendingPlanId(target);
     startSubmit(async () => {
       try {
-        await apiUpdateVenue(supabase, { id: venue.id, plan });
+        await apiUpdateVenue(supabase, { id: venue.id, plan: target });
         setSaved(true);
         router.refresh();
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Couldn't save the plan.",
         );
+      } finally {
+        setPendingPlanId(null);
       }
     });
   };
@@ -161,93 +167,167 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   return (
     <div className="flex flex-col gap-6">
       {/* ── Plan ─────────────────────────────────────────────────────── */}
-      <section className="border-border bg-card rounded-2xl border shadow-sm">
-        <header className="border-border flex flex-col gap-3 border-b px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+      <section className="flex flex-col gap-6">
+        <header className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-secondary text-[10px] font-bold tracking-[0.18em] uppercase">
-              Plan
+            <p className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
+              Pricing
             </p>
-            <h2 className="font-display mt-0.5 text-xl font-semibold tracking-tight">
-              Pick a plan
+            <h2 className="font-display mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
+              Three plans. Per venue. Cancel anytime.
             </h2>
           </div>
-          <FiscalSegmentedToggle
-            current={venue.fiscal_type}
-            pending={fiscalPending}
-            onSwitch={switchFiscal}
-          />
+          <p className="text-muted-foreground max-w-sm text-sm">
+            The coupon mechanic is pinned by your fiscal type — Formal partners
+            run cashback, Informal partners run instant discount. Switch fiscal
+            type and the plan list re-narrows.
+          </p>
         </header>
 
+        <FiscalSegmentedToggle
+          current={venue.fiscal_type}
+          pending={fiscalPending}
+          onSwitch={switchFiscal}
+        />
+
         {fiscalError && (
-          <p className="border-border bg-destructive/5 text-destructive border-b px-6 py-2 text-xs">
+          <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
             {fiscalError}
           </p>
         )}
 
-        <ul className="divide-border divide-y">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {PLANS.map((p) => {
-            const selected = plan === p.id;
-            const currentlyActive = venue.plan === p.id;
+            const isCurrent = p.id === venue.plan;
             const scope = p.fiscalScope;
             const wrongFiscal =
               scope !== "any" &&
               ((isFormal && scope === "informal") ||
                 (!isFormal && scope === "formal"));
+            const isPending = pendingPlanId === p.id;
+            const buttonLabel = isCurrent
+              ? "Current plan"
+              : wrongFiscal
+                ? "Switch fiscal first"
+                : p.id === "free"
+                  ? "Use Free"
+                  : `Become ${p.label}`;
             return (
-              <PlanRow
+              <Card
                 key={p.id}
-                plan={p}
-                selected={selected}
-                currentlyActive={currentlyActive}
-                wrongFiscal={wrongFiscal}
-                onSelect={() => setPlan(p.id)}
-              />
+                className={cn(
+                  "relative gap-3 rounded-2xl",
+                  p.featured && "border-foreground shadow-elev",
+                  wrongFiscal && !isCurrent && "opacity-60",
+                )}
+              >
+                {isCurrent && (
+                  <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                    Current
+                  </Badge>
+                )}
+                {!isCurrent && p.featured && (
+                  <Badge className="bg-pink-gradient shadow-glow absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+                    Featured
+                  </Badge>
+                )}
+                <CardHeader>
+                  <CardTitle className="font-display text-2xl font-semibold tracking-tight">
+                    {p.label}
+                  </CardTitle>
+                  <p className="font-display text-4xl font-bold tabular-nums">
+                    {p.price}
+                    <span className="text-muted-foreground ml-1 text-sm font-normal">
+                      {p.cadence}
+                    </span>
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="secondary" className="rounded-full">
+                      {p.mechanic}
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {p.visibility} visibility
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-[13px] leading-relaxed">
+                    {p.blurb}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col gap-4">
+                  <ul className="flex flex-1 flex-col gap-1.5 text-[12px]">
+                    {p.bullets.map((b) => (
+                      <li
+                        key={b}
+                        className="flex items-start gap-2 leading-snug"
+                      >
+                        <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant={p.featured ? "default" : "outline"}
+                    onClick={() => selectPlan(p.id)}
+                    disabled={isCurrent || wrongFiscal || pending}
+                    className={cn(
+                      "rounded-full",
+                      p.featured &&
+                        !isCurrent &&
+                        "bg-pink-gradient shadow-glow text-white hover:opacity-90",
+                    )}
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : null}
+                    {buttonLabel}
+                  </Button>
+                </CardContent>
+              </Card>
             );
           })}
-        </ul>
+        </div>
 
-        <div className="border-border flex flex-col gap-3 border-t px-6 py-5">
-          <PaymentRailLine isFormal={isFormal} />
+        <PaymentRailLine isFormal={isFormal} />
 
-          {fiscalMismatch && (
-            <p className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-2 rounded-lg border px-3 py-2 text-[12px] leading-relaxed">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                The plan you picked doesn&apos;t match your fiscal type. Switch
-                fiscal at the top or pick a matching plan — otherwise tickets
-                refuse to open.
-              </span>
-            </p>
-          )}
+        {(error || saved) && (
+          <p
+            className={cn(
+              "rounded-lg px-3 py-2 text-xs",
+              error
+                ? "bg-destructive/10 text-destructive"
+                : "bg-secondary/10 text-secondary",
+            )}
+          >
+            {error ?? "Plan saved."}
+          </p>
+        )}
 
-          {(error || saved) && (
-            <p
-              className={cn(
-                "rounded-lg px-3 py-2 text-xs",
-                error
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-secondary/10 text-secondary",
-              )}
-            >
-              {error ?? "Plan saved."}
-            </p>
-          )}
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={submit}
-              disabled={pending || plan === venue.plan || fiscalMismatch}
-              className="bg-pink-gradient shadow-glow inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {pending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4" />
-              )}
-              {plan === venue.plan ? "Saved" : "Save plan"}
-            </button>
-          </div>
+        <div className="text-muted-foreground grid grid-cols-1 gap-3 text-[13px] leading-relaxed md:grid-cols-3">
+          <p>
+            <span className="text-foreground font-semibold">
+              Per-venue billing.
+            </span>{" "}
+            Multi-unit operators pick a plan per location — different plans per
+            venue are fine. Manager accounts are always free.
+          </p>
+          <p>
+            <span className="text-foreground font-semibold">
+              Why Informal is 2× Formal.
+            </span>{" "}
+            Formal partners feed the Mesita wallet — transaction data and a
+            redemption network on the back-end. Informal pays more for the same
+            priority placement.
+          </p>
+          <p>
+            <span className="text-foreground font-semibold">
+              Payment rail rule.
+            </span>{" "}
+            Cashback only counts when the guest pays by card through Mesita. At
+            Informal venues the discount applies at the bill — cash or card,
+            either works.
+          </p>
         </div>
       </section>
 
@@ -275,82 +355,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         <AdvancedSegmentationGrid />
       </SegmentationGroup>
     </div>
-  );
-}
-
-// ─── Plan row ─────────────────────────────────────────────────────────────
-
-function PlanRow({
-  plan,
-  selected,
-  currentlyActive,
-  wrongFiscal,
-  onSelect,
-}: {
-  plan: (typeof PLANS)[number];
-  selected: boolean;
-  currentlyActive: boolean;
-  wrongFiscal: boolean;
-  onSelect: () => void;
-}) {
-  const MechanicIcon =
-    plan.mechanic === "Cashback"
-      ? CircleDollarSign
-      : plan.mechanic === "Discount"
-        ? Percent
-        : Sparkles;
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        className={cn(
-          "flex w-full items-start gap-4 px-6 py-4 text-left transition",
-          selected ? "bg-secondary/5" : "hover:bg-muted/40",
-          wrongFiscal && "opacity-60",
-        )}
-      >
-        <span
-          className={cn(
-            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition",
-            selected
-              ? "border-secondary bg-secondary"
-              : "border-muted-foreground/40",
-          )}
-        >
-          {selected && (
-            <span className="bg-background h-1.5 w-1.5 rounded-full" />
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p className="font-display text-base font-semibold tracking-tight">
-              {plan.label}
-            </p>
-            <p className="font-display text-foreground text-sm font-semibold tabular-nums">
-              {plan.priceLabel}
-            </p>
-            {currentlyActive && (
-              <span className="bg-secondary/15 text-secondary rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-                Active
-              </span>
-            )}
-            {wrongFiscal && !currentlyActive && (
-              <span className="bg-destructive/10 text-destructive rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-                Wrong fiscal
-              </span>
-            )}
-          </div>
-          <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-            {plan.blurb}
-          </p>
-        </div>
-        <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
-          <Pill icon={MechanicIcon}>{plan.mechanic}</Pill>
-          <Pill icon={Sparkles}>{plan.visibility}</Pill>
-        </div>
-      </button>
-    </li>
   );
 }
 
@@ -714,21 +718,6 @@ function TierChip({ tier, label }: { tier: TierId; label: string }) {
       )}
     >
       {label}
-    </span>
-  );
-}
-
-function Pill({
-  icon: Icon,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="bg-muted text-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
-      <Icon className="h-2.5 w-2.5" />
-      {children}
     </span>
   );
 }
