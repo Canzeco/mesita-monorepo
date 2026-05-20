@@ -9,7 +9,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // server action is needed here. The only server-side action left is
 // signing out (clears the SSR cookie), invoked from SignOutButton.
 
-export type AuthFormState = {
+type AuthFormState = {
   error?: string;
   info?: string;
 } | null;

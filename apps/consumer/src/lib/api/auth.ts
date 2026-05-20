@@ -11,7 +11,7 @@ import { invokeEF } from "./_invoke";
 
 type AppRole = "guest" | "staff" | "manager" | "admin";
 
-export type GuestSigninResult = {
+type GuestSigninResult = {
   role: AppRole;
   guest: {
     id: string;

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type MediaItem =
+type MediaItem =
   | { type: "image"; src: string }
   | { type: "video"; src: string; poster?: string };
 

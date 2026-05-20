@@ -73,7 +73,7 @@ export type Venue = {
   story?: string;
 };
 
-export const VENUES: Venue[] = [
+const VENUES: Venue[] = [
   {
     id: "casa-luminar",
     name: "Casa Luminar",

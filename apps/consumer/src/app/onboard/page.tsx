@@ -12,10 +12,6 @@ import { OnboardForm } from "./OnboardForm";
 //   - signed out          → /sign-in (with next=/onboard)
 //   - already onboarded   → /discover/swipe (don't re-collect data)
 //   - signed in, no name  → render the form
-//
-// AppSwitcher is intentionally absent: a new guest who's literally
-// filling out the welcome form shouldn't see the manager / validator
-// surfaces. They came here to use Mesita as a guest.
 export const dynamic = "force-dynamic";
 
 export default async function GuestOnboardPage() {

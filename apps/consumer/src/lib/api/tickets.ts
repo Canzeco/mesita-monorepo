@@ -58,7 +58,7 @@ export async function apiFetchGuestProfile(
 
 // All 10 kinds from the spec. `none` means "no Mesita transaction" —
 // kept here for typing completeness but never persisted to the table.
-export type TicketKind =
+type TicketKind =
   | "none"
   | "p_c"
   | "s_p_sf_c"
@@ -69,7 +69,7 @@ export type TicketKind =
   | "r_dp"
   | "r_s_dp_sf";
 
-export type TicketStatus =
+type TicketStatus =
   | "open"
   | "pending_pay"
   | "awaiting_story"
