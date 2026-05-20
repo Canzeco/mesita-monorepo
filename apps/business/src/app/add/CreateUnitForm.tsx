@@ -32,35 +32,9 @@ import {
 } from "@/lib/api/verifications";
 import { Field } from "@/components/shared";
 import { INPUT_CLASS } from "@/lib/ui-classes";
-import { isEmail } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 220;
-
-// Two verification methods. Postcard came up in the schema but UX-wise
-// is too slow for v0; not surfaced. The EF still accepts it if needed
-// later.
-const METHODS: {
-  id: VerificationMethod;
-  label: string;
-  blurb: string;
-  Icon: typeof Phone;
-}[] = [
-  {
-    id: "ai_call",
-    label: "AI phone call",
-    blurb:
-      "We call the Google-listed phone with a 6-digit code. Pick up and read it back.",
-    Icon: Phone,
-  },
-  {
-    id: "video",
-    label: "Walkthrough video",
-    blurb:
-      "Paste a ≤3-minute video URL showing the venue's interior (Loom, Drive, YouTube unlisted).",
-    Icon: Video,
-  },
-];
 
 export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const router = useRouter();
@@ -84,10 +58,12 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const [generateStage, setGenerateStage] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
-  // Submit-verification state.
-  const [method, setMethod] = useState<VerificationMethod>("video");
+  // Submit-verification state. Default ai_call: the phone OTP loop is
+  // the path ~95% of operators take. Video walkthrough is the escape
+  // hatch for venues that can't pick up — surfaced as a quiet toggle
+  // inside the form, not as a peer option.
+  const [method, setMethod] = useState<VerificationMethod>("ai_call");
   const [videoUrl, setVideoUrl] = useState("");
-  const [email, setEmail] = useState(signedInEmail);
   const [verifyPending, startVerify] = useTransition();
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
@@ -218,11 +194,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   ) => {
     e.preventDefault();
     setVerifyError(null);
-    const cleanEmail = email.trim().toLowerCase();
-    if (!isEmail(cleanEmail)) {
-      setVerifyError("Contact email must look like name@domain.tld.");
-      return;
-    }
     if (method === "video") {
       if (!/^https:\/\/[^\s]+$/.test(videoUrl.trim())) {
         setVerifyError("Paste an https:// URL to a hosted video.");
@@ -234,7 +205,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         const r = await apiSubmitVerification(supabase, {
           venueId,
           method,
-          requesterEmail: cleanEmail,
+          requesterEmail: signedInEmail,
           videoUrl: method === "video" ? videoUrl.trim() : undefined,
         });
         // ai_call always lands status='pending' — we wait for the
@@ -277,11 +248,22 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     }
     startOtp(async () => {
       try {
-        const { venueId } = await apiVerifyCallCode(
+        const { venueId, awaitingAdmin } = await apiVerifyCallCode(
           supabase,
           otp.verificationId,
           cleanCode,
         );
+        if (awaitingAdmin) {
+          // Phone auto-confirm is off — the code is valid but a
+          // super-admin still has to approve. Drop the OTP card and
+          // refresh the lookup so the operator sees the
+          // "pending_by_me" state with the request now flagged
+          // code-verified.
+          setOtp(null);
+          setOtpCode("");
+          await refreshLookup();
+          return;
+        }
         router.push(`/unit/${venueId}/home`);
         router.refresh();
       } catch (err) {
@@ -433,8 +415,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
               setMethod={setMethod}
               videoUrl={videoUrl}
               setVideoUrl={setVideoUrl}
-              email={email}
-              setEmail={setEmail}
               pending={verifyPending}
               error={verifyError}
               onSubmit={(e) =>
@@ -446,12 +426,14 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           {lookup.state === "pending_by_me" && (
             <PendingByMeCard
               venue={lookup.venue}
+              codeVerified={
+                typeof (lookup.verification.payload as Record<string, unknown>)
+                  .codeVerifiedAt === "string"
+              }
               method={method}
               setMethod={setMethod}
               videoUrl={videoUrl}
               setVideoUrl={setVideoUrl}
-              email={email}
-              setEmail={setEmail}
               pending={verifyPending}
               error={verifyError}
               onSubmit={(e) =>
@@ -467,8 +449,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
               setMethod={setMethod}
               videoUrl={videoUrl}
               setVideoUrl={setVideoUrl}
-              email={email}
-              setEmail={setEmail}
               pending={verifyPending}
               error={verifyError}
               onSubmit={(e) =>
@@ -561,8 +541,6 @@ function WebListedCard(props: {
   setMethod: (m: VerificationMethod) => void;
   videoUrl: string;
   setVideoUrl: (v: string) => void;
-  email: string;
-  setEmail: (v: string) => void;
   pending: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
@@ -572,26 +550,45 @@ function WebListedCard(props: {
       <StatusBadge tone="info">Web listed · no verified owner</StatusBadge>
       <VenueIdentity venue={props.venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        This venue is on Mesita but no one has proved ownership yet. Pick a
-        method below to claim it.
+        This venue is on Mesita but no one has proved ownership yet. Pick up
+        the phone at the venue to claim it in seconds.
       </p>
-      <VerificationForm {...props} submitLabel="Submit verification" />
+      <VerificationForm venuePhone={props.venue.phone} {...props} />
     </section>
   );
 }
 
 function PendingByMeCard(props: {
   venue: LookupVenue;
+  // True when the operator already passed the phone OTP step — the
+  // row is only sitting here because phone auto-confirm is OFF on the
+  // admin side. Different copy + no re-submit form.
+  codeVerified: boolean;
   method: VerificationMethod;
   setMethod: (m: VerificationMethod) => void;
   videoUrl: string;
   setVideoUrl: (v: string) => void;
-  email: string;
-  setEmail: (v: string) => void;
   pending: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }) {
+  if (props.codeVerified) {
+    return (
+      <section className="border-secondary/40 bg-card flex flex-col gap-5 rounded-2xl border p-5">
+        <StatusBadge tone="secondary">
+          <CheckCircle2 className="h-3 w-3" />
+          Code verified · admin reviewing
+        </StatusBadge>
+        <VenueIdentity venue={props.venue} />
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          We received your OTP and confirmed it&apos;s correct. A Mesita
+          admin is doing a final review and will grant ownership shortly
+          — you&apos;ll see this venue in your dashboard once they
+          approve. No action needed from you.
+        </p>
+      </section>
+    );
+  }
   return (
     <section className="border-secondary/30 bg-card flex flex-col gap-5 rounded-2xl border p-5">
       <StatusBadge tone="warn">
@@ -600,9 +597,10 @@ function PendingByMeCard(props: {
       </StatusBadge>
       <VenueIdentity venue={props.venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        You can submit a fresh request below — it replaces the pending one.
+        Re-submit if you didn&apos;t pick up — the new request replaces the
+        pending one.
       </p>
-      <VerificationForm {...props} submitLabel="Replace pending request" />
+      <VerificationForm venuePhone={props.venue.phone} {...props} />
     </section>
   );
 }
@@ -613,8 +611,6 @@ function PendingByOtherCard(props: {
   setMethod: (m: VerificationMethod) => void;
   videoUrl: string;
   setVideoUrl: (v: string) => void;
-  email: string;
-  setEmail: (v: string) => void;
   pending: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
@@ -627,10 +623,10 @@ function PendingByOtherCard(props: {
       </StatusBadge>
       <VenueIdentity venue={props.venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Another operator has a pending claim on this venue. Whoever gets
-        approved first becomes the verified owner.
+        Another operator has a pending claim. Whoever proves ownership first
+        wins — if it&apos;s really your venue, just pick up the phone.
       </p>
-      <VerificationForm {...props} submitLabel="Submit a competing claim" />
+      <VerificationForm venuePhone={props.venue.phone} {...props} />
     </section>
   );
 }
@@ -835,103 +831,103 @@ function VenueIdentity({ venue }: { venue: LookupVenue }) {
   );
 }
 
+// Asymmetric on purpose: the AI phone call is the only thing shown by
+// default — single huge CTA, the path the vast majority of operators
+// take. Video walkthrough sits below as a quiet secondary toggle for
+// the <5% of venues that can't answer their listed phone. Contact email
+// is never asked here; we use the signed-in user's email server-side.
 function VerificationForm({
+  venuePhone,
   method,
   setMethod,
   videoUrl,
   setVideoUrl,
-  email,
-  setEmail,
   pending,
   error,
   onSubmit,
-  submitLabel,
 }: {
+  venuePhone: string | null;
   method: VerificationMethod;
   setMethod: (m: VerificationMethod) => void;
   videoUrl: string;
   setVideoUrl: (v: string) => void;
-  email: string;
-  setEmail: (v: string) => void;
   pending: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  submitLabel: string;
 }) {
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {METHODS.map((m) => {
-          const Icon = m.Icon;
-          const active = method === m.id;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setMethod(m.id)}
-              className={cn(
-                "border-border flex flex-col items-start gap-2 rounded-2xl border p-4 text-left transition",
-                active
-                  ? "border-foreground bg-foreground/[0.04] shadow-sm"
-                  : "bg-background hover:border-foreground/30",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full transition",
-                  active
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </span>
-              <p className="font-display text-sm font-semibold tracking-tight">
-                {m.label}
-              </p>
-              <p className="text-muted-foreground text-[12px] leading-snug">
-                {m.blurb}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-
-      {method === "video" && (
-        <Field
-          label="Hosted video URL"
-          hint="≤3 minutes. Loom, Drive, YouTube unlisted, anything public-via-link is fine."
-        >
-          <input
-            type="url"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="https://loom.com/share/..."
-            inputMode="url"
-            autoCapitalize="none"
-            spellCheck={false}
-            required
-            className={INPUT_CLASS}
-          />
-        </Field>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      {method === "ai_call" ? (
+        <>
+          <button
+            type="submit"
+            disabled={pending}
+            className={cn(
+              "flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold transition disabled:opacity-50",
+              "bg-pink-gradient shadow-glow text-white",
+            )}
+          >
+            {pending ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Placing call…
+              </>
+            ) : (
+              <>
+                <Phone className="h-5 w-5" />
+                Call my venue to verify
+              </>
+            )}
+          </button>
+          <p className="text-muted-foreground px-2 text-center text-[12px] leading-relaxed">
+            We&apos;ll ring{" "}
+            <span className="text-foreground font-mono font-semibold">
+              {venuePhone ?? "the Google-listed phone"}
+            </span>{" "}
+            and read out a 6-digit code. Type the code on the next step.
+          </p>
+        </>
+      ) : (
+        <>
+          <Field
+            label="Hosted video URL"
+            hint="≤3 minutes showing the venue's interior. Loom, Drive, YouTube unlisted — anything public-via-link is fine."
+          >
+            <input
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://loom.com/share/..."
+              inputMode="url"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              autoFocus
+              className={INPUT_CLASS}
+            />
+          </Field>
+          <button
+            type="submit"
+            disabled={pending}
+            className={cn(
+              "flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
+              "bg-foreground text-background",
+            )}
+          >
+            {pending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Submitting…
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Submit walkthrough for review
+              </>
+            )}
+          </button>
+        </>
       )}
-
-      <Field
-        label="Contact email"
-        hint="Used only if we need a follow-up — we won't email you otherwise."
-      >
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          inputMode="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-          className={INPUT_CLASS}
-        />
-      </Field>
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm">
@@ -940,22 +936,19 @@ function VerificationForm({
       )}
 
       <button
-        type="submit"
-        disabled={pending}
-        className={cn(
-          "flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
-          "bg-pink-gradient shadow-glow text-white",
-        )}
+        type="button"
+        onClick={() => setMethod(method === "ai_call" ? "video" : "ai_call")}
+        className="text-muted-foreground hover:text-foreground mt-1 inline-flex items-center justify-center gap-1.5 self-center text-[12px] font-medium transition"
       >
-        {pending ? (
+        {method === "ai_call" ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Submitting…
+            <Video className="h-3.5 w-3.5" />
+            Can&apos;t pick up? Send a video walkthrough instead
           </>
         ) : (
           <>
-            <Send className="h-4 w-4" />
-            {submitLabel}
+            <Phone className="h-3.5 w-3.5" />
+            Use the phone call flow instead
           </>
         )}
       </button>

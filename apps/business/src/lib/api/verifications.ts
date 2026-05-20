@@ -93,14 +93,22 @@ export async function apiSubmitVerification(
   };
 }
 
+export type VerifyCallCodeResult = {
+  venueId: string;
+  // True when the EF accepted the OTP but auto_verify_ai_call was off,
+  // so the row sits in the admin queue awaiting a human decision.
+  // False (default) means ownership was granted on the spot.
+  awaitingAdmin: boolean;
+};
+
 // Phase 2 of the ai_call flow: operator types the 6-digit code they
 // received (or saw in the mock banner) and we hash-compare server-side.
 export async function apiVerifyCallCode(
   client: SupabaseClient,
   verificationId: string,
   code: string,
-): Promise<{ venueId: string }> {
-  return invokeEF<{ venueId: string }>(client, "manager-verify-call-code", {
+): Promise<VerifyCallCodeResult> {
+  return invokeEF<VerifyCallCodeResult>(client, "manager-verify-call-code", {
     verificationId,
     code,
   });
