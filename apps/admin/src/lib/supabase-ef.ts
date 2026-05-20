@@ -1,15 +1,9 @@
-import { getAdminKey } from "@/lib/admin-key";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 // Server-side helper for calling Supabase Edge Functions from the admin
-// app. Admin EFs are deployed with `verify_jwt = false` — the gateway
-// lets the request through without any project key — and gate themselves
-// on the `x-admin-key` header (compared against `ADMIN_ACCESS_KEY` in
-// Supabase secrets). The admin key arrives here from an HttpOnly cookie
-// set at /login, so it never touches the browser-side JS.
-//
-// Only `NEXT_PUBLIC_SUPABASE_URL` is needed in env.
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+// app. Auth is the operator's Supabase session (Google OAuth) — the
+// JWT is attached automatically by supabase-js. The EFs check the JWT's
+// email against public.super_admins.
 
 type InvokeResult<T> =
   | { ok: true; status: number; data: T }
@@ -19,60 +13,57 @@ export async function efInvoke<T>(
   fnName: string,
   body: unknown,
 ): Promise<InvokeResult<T>> {
-  if (!SUPABASE_URL) {
+  let supabase: Awaited<ReturnType<typeof createServerSupabase>>;
+  try {
+    supabase = await createServerSupabase();
+  } catch (err) {
     return {
       ok: false,
       status: 500,
-      error: "Admin app is missing NEXT_PUBLIC_SUPABASE_URL. Set it in Vercel env.",
+      error: err instanceof Error ? err.message : "Supabase client init failed.",
       data: null,
     };
   }
 
-  const adminKey = await getAdminKey();
-  if (!adminKey) {
+  const { data: parsed, error } = await supabase.functions.invoke<unknown>(
+    fnName,
+    { body: body as Record<string, unknown> },
+  );
+
+  if (error) {
+    // FunctionsHttpError stashes the original Response on .context. Peel
+    // off the EF's `{ ok: false, error }` body for a useful message.
+    const ctx = (error as { context?: Response }).context;
+    let inner: unknown = null;
+    if (ctx && typeof ctx.clone === "function") {
+      inner = await ctx
+        .clone()
+        .json()
+        .catch(() => null);
+    }
+    const innerError =
+      inner && typeof inner === "object" && "error" in inner
+        ? String((inner as { error: unknown }).error)
+        : null;
     return {
       ok: false,
-      status: 401,
-      error: "Admin key is not set on this device. Go to /login to enter one.",
-      data: null,
+      status: 0,
+      error: innerError ?? error.message ?? `EF ${fnName} failed`,
+      data: inner,
     };
   }
 
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-key": adminKey,
-    },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-
-  const text = await res.text();
-  let parsed: unknown = null;
-  try {
-    parsed = text ? JSON.parse(text) : null;
-  } catch {
-    return {
-      ok: false,
-      status: res.status,
-      error: `EF ${fnName} returned non-JSON body: ${text.slice(0, 200)}`,
-      data: null,
-    };
-  }
-
-  const okFromBody =
-    parsed !== null &&
-    typeof parsed === "object" &&
-    (parsed as { ok?: unknown }).ok === true;
-
-  if (!okFromBody) {
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    (parsed as { ok?: unknown }).ok !== true
+  ) {
     const errMsg =
       parsed && typeof parsed === "object" && "error" in parsed
         ? String((parsed as { error: unknown }).error)
-        : `EF ${fnName} failed with HTTP ${res.status}`;
-    return { ok: false, status: res.status, error: errMsg, data: parsed };
+        : `EF ${fnName} returned no ok body`;
+    return { ok: false, status: 0, error: errMsg, data: parsed };
   }
 
-  return { ok: true, status: res.status, data: parsed as T };
+  return { ok: true, status: 200, data: parsed as T };
 }

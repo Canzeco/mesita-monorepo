@@ -1,6 +1,5 @@
 "use server";
 
-import { getAdminKey } from "@/lib/admin-key";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // Default manager web origin used when the env var isn't set on Vercel —
@@ -37,14 +36,6 @@ export async function findVenueForSuperAdmin(
     return { ok: false, error: "Paste a Google Place ID first." };
   }
 
-  const adminKey = await getAdminKey();
-  if (!adminKey) {
-    return {
-      ok: false,
-      error: "Admin key isn't set on this device. Sign in at /login.",
-    };
-  }
-
   const result = await efInvoke<EFResponse>("admin-find-venue", { placeId });
   if (!result.ok) {
     return { ok: false, error: result.error };
@@ -55,10 +46,13 @@ export async function findVenueForSuperAdmin(
     return { ok: true, found: false, placeId };
   }
 
+  // Clean URL — the operator opens this in a fresh tab, the manager web's
+  // middleware sees no session and bounces through /sign-in if needed.
+  // Once signed in (as themselves, via Google), the manager-get-overview
+  // EF reads their JWT, finds their email in super_admins, and grants
+  // venue access regardless of venue_members.
   const managerOrigin =
     (process.env.MANAGER_WEB_URL ?? "").trim() || MANAGER_WEB_URL_FALLBACK;
-  // URL-as-truth: the manager web reads `?superkey=` on every venue page,
-  // so we skip the legacy `/super-admin/enter` hop and link straight to Home.
-  const link = `${managerOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home?superkey=${encodeURIComponent(adminKey)}`;
+  const link = `${managerOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home`;
   return { ok: true, found: true, venue, link };
 }

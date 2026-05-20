@@ -1,12 +1,11 @@
-import { authStoreKey } from "./actions";
 import { safeNext } from "@/lib/safe-next";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 
 export const dynamic = "force-dynamic";
 
 const ERROR_COPY: Record<string, string> = {
-  missing_key: "Paste your admin key.",
-  invalid_key:
-    "That key was rejected by the server. Double-check it and try again.",
+  oauth_failed:
+    "Google sign-in failed. Try again, or ask another admin if it keeps happening.",
 };
 
 export default async function LoginPage({
@@ -18,14 +17,9 @@ export default async function LoginPage({
   const next = safeNext(params.next);
   const errorMessage = params.error ? ERROR_COPY[params.error] : null;
 
-  const action = authStoreKey.bind(null, next);
-
   return (
     <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
-      <form
-        action={action}
-        className="border-border bg-card shadow-elev flex w-full max-w-sm flex-col gap-5 rounded-2xl border p-6"
-      >
+      <div className="border-border bg-card shadow-elev flex w-full max-w-sm flex-col gap-5 rounded-2xl border p-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="bg-peacock shadow-glow flex h-10 w-10 items-center justify-center rounded-full text-base">
             🦚
@@ -38,27 +32,12 @@ export default async function LoginPage({
               Admin
             </h1>
             <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-              Paste your admin key. It&apos;s stored locally and sent with
-              every admin call.
+              Sign in with your Google account. Only allowlisted operators
+              can perform admin actions — everyone else lands on a polite
+              empty state.
             </p>
           </div>
         </div>
-
-        <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-xs font-medium">
-            Admin key
-          </span>
-          <input
-            type="password"
-            name="key"
-            required
-            autoFocus
-            autoComplete="off"
-            spellCheck={false}
-            className="border-border bg-background focus:border-foreground/40 h-11 w-full rounded-xl border px-3 text-sm outline-none transition"
-            placeholder="••••••••"
-          />
-        </label>
 
         {errorMessage && (
           <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs leading-relaxed">
@@ -66,13 +45,8 @@ export default async function LoginPage({
           </p>
         )}
 
-        <button
-          type="submit"
-          className="bg-foreground text-background flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
-        >
-          Save key
-        </button>
-      </form>
+        <GoogleSignInButton next={next} />
+      </div>
     </div>
   );
 }

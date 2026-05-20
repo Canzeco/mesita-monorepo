@@ -1,38 +1,81 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Shield } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
-import { getAdminKey } from "@/lib/admin-key";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { efInvoke } from "@/lib/supabase-ef";
+import { authSignOut } from "@/app/auth/actions";
 
-// Layout for the admin surface. Pages are intentionally not gated —
-// the operator can navigate anywhere — but every privileged action
-// the pages perform attaches the admin key (from the HttpOnly cookie)
-// when calling Supabase Edge Functions. Without a key set, those
-// actions return 401.
+// Admin shell layout. Two gates, in order:
 //
-// We surface that state inline via the banner below so the operator
-// always knows whether their next click will actually do anything.
+//   1. Signed-in via Supabase (Google OAuth). The middleware bounces
+//      anonymous users to /login.
+//   2. The signed-in email is in public.super_admins. The admin-whoami
+//      EF does the lookup. Non-allowlisted operators get a polite
+//      "not authorised" empty state — the EFs themselves also re-check,
+//      so even if someone bypassed this gate, no privileged action would
+//      go through.
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const hasKey = (await getAdminKey()) !== null;
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const whoami = await efInvoke<{ email: string | null; isSuperAdmin: boolean }>(
+    "admin-whoami",
+    {},
+  );
+
+  if (!whoami.ok || !whoami.data.isSuperAdmin) {
+    return (
+      <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
+        <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-4 rounded-2xl border p-6 text-center">
+          <span className="bg-muted mx-auto flex h-10 w-10 items-center justify-center rounded-full">
+            <Shield className="text-muted-foreground h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight">
+              Not authorised
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              You&apos;re signed in as{" "}
+              <span className="text-foreground font-semibold">
+                {user.email ?? "(no email)"}
+              </span>
+              , but that account isn&apos;t on the super-admin list. Ask an
+              existing admin to add you.
+            </p>
+          </div>
+          <form action={authSignOut}>
+            <button
+              type="submit"
+              className="bg-foreground text-background mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90"
+            >
+              Sign out
+            </button>
+          </form>
+          <p className="text-muted-foreground text-[11px]">
+            Trying to sign in as someone else?{" "}
+            <Link href="/login" className="font-semibold underline">
+              Back to sign-in
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-dvh">
-      <Sidebar hasKey={hasKey} />
-      <main className="flex-1 overflow-x-hidden">
-        {!hasKey && (
-          <div className="border-border bg-destructive/5 text-destructive flex items-center justify-between gap-3 border-b px-6 py-2.5 text-xs">
-            <span>
-              No admin key set — privileged actions will fail until you{" "}
-              <Link href="/login" className="font-semibold underline">
-                set one
-              </Link>
-              .
-            </span>
-          </div>
-        )}
-        {children}
-      </main>
+      <Sidebar email={whoami.data.email ?? user.email ?? null} />
+      <main className="flex-1 overflow-x-hidden">{children}</main>
     </div>
   );
 }
