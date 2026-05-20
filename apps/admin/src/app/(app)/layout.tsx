@@ -73,9 +73,11 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex h-dvh overflow-hidden">
       <Sidebar email={whoami.data.email ?? user.email ?? null} />
-      <main className="flex-1 overflow-x-hidden">{children}</main>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        {children}
+      </main>
     </div>
   );
 }

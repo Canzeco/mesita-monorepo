@@ -29,7 +29,7 @@ const UNIT_NAV: NavItem[] = [
 export function Sidebar({ email }: { email: string | null }) {
   const pathname = usePathname();
   return (
-    <aside className="border-border bg-card flex h-dvh w-64 shrink-0 flex-col gap-6 border-r px-3 pt-5 pb-4">
+    <aside className="border-border bg-card flex h-full w-64 shrink-0 flex-col gap-6 overflow-hidden border-r px-3 pt-5 pb-4">
       <Link href="/" className="inline-flex items-center gap-2 px-2">
         <span className="bg-peacock shadow-glow flex h-7 w-7 items-center justify-center rounded-full text-sm">
           🦚
@@ -43,7 +43,7 @@ export function Sidebar({ email }: { email: string | null }) {
         </span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
         <p className="text-muted-foreground px-2 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
           Units
         </p>
