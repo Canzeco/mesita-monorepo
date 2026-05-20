@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FilePlus, FilePen, ListPlus, ListChecks } from "lucide-react";
+import {
+  FilePlus,
+  FilePen,
+  ListPlus,
+  ListChecks,
+  LogOut,
+} from "lucide-react";
+import { authLogout } from "@/app/login/actions";
 
 // Admin sidebar. Single section for now — "Units" — with four actions.
 // Sections / items will grow as the admin tooling expands (managers,
@@ -27,10 +34,7 @@ export function Sidebar() {
   const pathname = usePathname();
   return (
     <aside className="border-border bg-card flex h-dvh w-64 shrink-0 flex-col gap-6 border-r px-3 pt-5 pb-4">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 px-2"
-      >
+      <Link href="/" className="inline-flex items-center gap-2 px-2">
         <span className="bg-peacock shadow-glow flex h-7 w-7 items-center justify-center rounded-full text-sm">
           🦚
         </span>
@@ -43,7 +47,7 @@ export function Sidebar() {
         </span>
       </Link>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-1 flex-col gap-1">
         <p className="text-muted-foreground px-2 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
           Units
         </p>
@@ -66,6 +70,16 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <form action={authLogout}>
+        <button
+          type="submit"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </button>
+      </form>
     </aside>
   );
 }
