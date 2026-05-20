@@ -35,19 +35,11 @@ const PROTECTED_RULES: GateRule[] = [
   { prefix: "/saved", signIn: "/sign-in" },
 ];
 
-// Within a protected prefix, these subpaths stay public (sign-in, sign-up).
-// Anything else under the prefix is gated.
-const PUBLIC_AUTH_PATHS = new Set<string>([]);
-
 // Sign-in / sign-up pages where a signed-in visitor should be bounced
 // through post-signin.
-const SIGNED_IN_BOUNCE: Record<string, "guest"> = {
-  "/sign-in": "guest",
-  "/sign-up": "guest",
-};
+const SIGNED_IN_BOUNCE = new Set(["/sign-in", "/sign-up"]);
 
 function shouldGate(pathname: string): { signIn: string } | null {
-  if (PUBLIC_AUTH_PATHS.has(pathname)) return null;
   for (const { prefix, signIn } of PROTECTED_RULES) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       return { signIn };
@@ -110,20 +102,17 @@ export async function updateSupabaseSession(request: NextRequest) {
 
   // Already-signed-in bounce. We keep the user's own `?next=` intact so a
   // deep link that forced a sign-in still lands at the original target.
-  if (user && pathname in SIGNED_IN_BOUNCE) {
-    const audience = SIGNED_IN_BOUNCE[pathname];
+  if (user && SIGNED_IN_BOUNCE.has(pathname)) {
     const bounce = request.nextUrl.clone();
     bounce.pathname = "/auth/post-signin";
     const incomingNext = request.nextUrl.searchParams.get("next");
-    const params = new URLSearchParams({ audience });
-    if (
+    const safeNext =
       incomingNext &&
       incomingNext.startsWith("/") &&
       !incomingNext.startsWith("//")
-    ) {
-      params.set("next", incomingNext);
-    }
-    bounce.search = `?${params.toString()}`;
+        ? incomingNext
+        : null;
+    bounce.search = safeNext ? `?next=${encodeURIComponent(safeNext)}` : "";
     return NextResponse.redirect(bounce);
   }
 

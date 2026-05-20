@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Calendar, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CURRENT_USER, TIERS } from "@/lib/guest-data";
+import { CURRENT_USER, TIERS, tierBadgeClass } from "@/lib/guest-data";
 
 const CITIES = [
   "Monterrey",
@@ -191,25 +191,13 @@ export function DiscoverHeader() {
 function ClassChip() {
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier);
   const initial = (meta?.label ?? CURRENT_USER.tier).charAt(0).toUpperCase();
-  const tone = (() => {
-    switch (CURRENT_USER.tier) {
-      case "silver":
-        return "bg-tier-silver text-foreground";
-      case "gold":
-        return "bg-tier-gold text-black";
-      case "diamond":
-        return "bg-tier-diamond text-white";
-      default:
-        return "bg-tier-bronze text-white";
-    }
-  })();
   return (
     <Link
       href="/qr"
       aria-label={`My QR · Mesita ${meta?.label ?? "class"}`}
       className={cn(
         "font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-base font-bold transition hover:opacity-90",
-        tone,
+        tierBadgeClass(CURRENT_USER.tier),
       )}
     >
       {initial}

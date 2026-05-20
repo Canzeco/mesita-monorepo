@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // Phone is the identity. /auth/post-signin then routes the freshly-authed
 // user to /onboard or /discover/swipe based on profile state.
-const GUEST_AFTER_AUTH = "/auth/post-signin?audience=guest";
+const GUEST_AFTER_AUTH = "/auth/post-signin";
 
 function safeNext(raw: string | undefined): string {
   if (!raw) return GUEST_AFTER_AUTH;

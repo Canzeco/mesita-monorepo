@@ -1189,3 +1189,19 @@ export const ACHIEVEMENTS: Achievement[] = [
 export function venueById(id: string): Venue | undefined {
   return VENUES.find((v) => v.id === id);
 }
+
+// Canonical bg + text class per tier. Used wherever a tier needs the
+// brand-color chip treatment (avatars, pills, hero rows). Compose with
+// cn() at the call site when extra modifiers (size, rounding) are needed.
+export function tierBadgeClass(tier: Tier): string {
+  switch (tier) {
+    case "bronze":
+      return "bg-tier-bronze text-white";
+    case "silver":
+      return "bg-tier-silver text-foreground";
+    case "gold":
+      return "bg-tier-gold text-black";
+    case "diamond":
+      return "bg-tier-diamond text-white";
+  }
+}

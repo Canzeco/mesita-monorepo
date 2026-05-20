@@ -35,6 +35,7 @@ import {
   TIERS,
   TRANSACTIONS,
   ACHIEVEMENTS,
+  tierBadgeClass,
   venueById,
   type Achievement,
   type AchievementCategory,
@@ -252,10 +253,7 @@ function ClassLadderCard() {
             <span
               className={cn(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                t.id === "bronze" && "bg-tier-bronze text-white",
-                t.id === "silver" && "bg-tier-silver text-foreground",
-                t.id === "gold" && "bg-tier-gold text-black",
-                t.id === "diamond" && "bg-tier-diamond text-white",
+                tierBadgeClass(t.id),
               )}
             >
               {t.label[0]}
@@ -296,16 +294,13 @@ function CurrentClassCard() {
         return "Default tier — anyone with a Mesita account starts here";
     }
   })();
-  const tone =
-    CURRENT_USER.tier === "bronze"
-      ? "bg-tier-bronze text-white"
-      : CURRENT_USER.tier === "silver"
-        ? "bg-tier-silver text-foreground"
-        : CURRENT_USER.tier === "gold"
-          ? "bg-tier-gold text-black"
-          : "bg-tier-diamond text-white";
   return (
-    <section className={cn("rounded-2xl p-5 shadow-sm", tone)}>
+    <section
+      className={cn(
+        "rounded-2xl p-5 shadow-sm",
+        tierBadgeClass(CURRENT_USER.tier),
+      )}
+    >
       <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
         Your class
       </p>
@@ -368,10 +363,7 @@ function SubscriptionPathBox() {
               <span
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                  t.id === "bronze" && "bg-tier-bronze text-white",
-                  t.id === "silver" && "bg-tier-silver text-foreground",
-                  t.id === "gold" && "bg-tier-gold text-black",
-                  t.id === "diamond" && "bg-tier-diamond text-white",
+                  tierBadgeClass(t.id),
                 )}
               >
                 {t.label[0]}

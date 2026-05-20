@@ -10,7 +10,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // renders the same form as /sign-in.
 export const dynamic = "force-dynamic";
 
-const GUEST_AFTER_SIGNUP = "/auth/post-signin?audience=guest";
+const GUEST_AFTER_SIGNUP = "/auth/post-signin";
 
 export default async function GuestSignUpPage() {
   const supabase = await createServerSupabase();
