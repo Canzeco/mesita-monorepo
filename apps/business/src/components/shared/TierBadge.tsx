@@ -6,13 +6,9 @@ import {
   BADGE_ICON_CLASS,
   type BadgeSize,
 } from "./badge-sizing";
+import type { Tier } from "@/lib/guest-data";
 
-// Guest class — the four-tier ladder. Bronze is the default; Silver / Gold
-// / Diamond scale on either Instagram follower count or a monthly Mesita
-// subscription ($200 / $500 / $1,000 MXN). The class IS the brand — a
-// subscriber is "Mesita Silver", not "a Silver member". Diamond can also
-// be granted by invite or manual appeal.
-export type Tier = "bronze" | "silver" | "gold" | "diamond";
+export type { Tier };
 
 const TIER_STYLE: Record<Tier, { tone: string; Icon: typeof Crown }> = {
   bronze: { tone: "bg-tier-bronze/90 text-white", Icon: Medal },
