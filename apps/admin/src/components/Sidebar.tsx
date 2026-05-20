@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BadgeCheck,
   FilePen,
   ListPlus,
   ListChecks,
@@ -25,6 +26,7 @@ type NavItem = {
 };
 
 const UNIT_NAV: NavItem[] = [
+  { href: "/units/verifications", label: "Unit verification requests", Icon: BadgeCheck },
   { href: "/units/update", label: "Manually update unit", Icon: FilePen },
   { href: "/units/bulk-search", label: "Bulk search units", Icon: ListFilter },
   { href: "/units/bulk-create", label: "Bulk create units", Icon: ListPlus },
