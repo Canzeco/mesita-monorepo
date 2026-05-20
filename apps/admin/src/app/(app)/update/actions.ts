@@ -57,6 +57,8 @@ export async function findVenueForSuperAdmin(
 
   const managerOrigin =
     (process.env.MANAGER_WEB_URL ?? "").trim() || MANAGER_WEB_URL_FALLBACK;
-  const link = `${managerOrigin.replace(/\/$/, "")}/super-admin/enter?token=${encodeURIComponent(adminKey)}&unitId=${encodeURIComponent(venue.id)}`;
+  // URL-as-truth: the manager web reads `?superkey=` on every venue page,
+  // so we skip the legacy `/super-admin/enter` hop and link straight to Home.
+  const link = `${managerOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home?superkey=${encodeURIComponent(adminKey)}`;
   return { ok: true, found: true, venue, link };
 }
