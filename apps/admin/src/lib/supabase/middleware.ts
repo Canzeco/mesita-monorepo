@@ -2,15 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Refreshes the Supabase session cookies on every request, then gates
-// the admin surface on a verified admin role. /login + /auth/callback
-// are the only public surfaces; everything else 307s to /login when
-// either (a) no session, or (b) session belongs to a non-admin.
+// the admin surface on a verified admin role. /login is the only
+// public surface; everything else 307s to /login when either (a) no
+// session, or (b) session belongs to a non-admin.
 //
 // We check role via app_metadata.role === "admin". This metadata is
 // server-controlled (you can only edit it from Supabase Studio / via
 // the service_role key) so end users can't grant themselves admin.
 
-const PUBLIC_PATHS = new Set(["/login", "/auth/callback"]);
+const PUBLIC_PATHS = new Set(["/login"]);
 
 export async function updateAdminSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
