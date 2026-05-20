@@ -52,6 +52,26 @@ const MAX_RESULTS = 50;
 const MIN_RESULTS = 1;
 const PAGE_SIZE = 20;
 
+// Google Places Text Search pricing (SKU model effective 2025-03-01).
+// The backend field mask includes places.location, which lands every
+// request in the Text Search Pro SKU regardless of the other fields.
+// Pricing for the 0–100K monthly tier — beyond that the tier rate
+// drops, so this is a worst-case estimate. The first 5,000 Pro requests
+// each month are free, shared across the whole project; surfaced in
+// the tooltip rather than discounted from the headline number, since
+// the remaining free quota isn't visible from the browser.
+const PRICE_PER_REQUEST_USD = 0.032;
+const FREE_PRO_REQUESTS_PER_MONTH = 5000;
+
+const MAP_HEIGHT_PX = 440;
+const MAP_DEFAULT_CENTER = { lat: 23.6345, lng: -102.5528 };
+const MAP_DEFAULT_ZOOM = 5;
+const MAP_FIT_BOUNDS_PADDING_PX = 48;
+const MARKER_FILL_COLOR = "#E91E63";
+const MARKER_STROKE_COLOR = "#FFFFFF";
+const MARKER_STROKE_WIDTH = 2;
+const MARKER_SCALE = 6;
+
 const EXAMPLE_QUERIES = [
   "Mejores restaurantes en San Pedro",
   "Mezcalerías en Oaxaca",
@@ -83,6 +103,7 @@ export default function BulkSearchUnitsPage() {
   const overLimit = queries.length > MAX_QUERIES;
   const estimatedApiCalls =
     queries.length * Math.ceil(maxResults / PAGE_SIZE);
+  const estimatedCostUsd = estimatedApiCalls * PRICE_PER_REQUEST_USD;
   const failedQueries = result?.queries.filter((q) => q.error !== null) ?? [];
   const totalRawCount =
     result?.queries.reduce((n, q) => n + q.places.length, 0) ?? 0;
@@ -573,11 +594,11 @@ function MapPanel({ places }: { places: PlaceLite[] }) {
           )}
         </p>
       </div>
-      <div className="h-[440px] w-full">
+      <div style={{ height: MAP_HEIGHT_PX }} className="w-full">
         <APIProvider apiKey={GOOGLE_MAPS_KEY}>
           <Map
-            defaultCenter={{ lat: 23.6345, lng: -102.5528 }}
-            defaultZoom={5}
+            defaultCenter={MAP_DEFAULT_CENTER}
+            defaultZoom={MAP_DEFAULT_ZOOM}
             gestureHandling="greedy"
             disableDefaultUI
             zoomControl
@@ -605,7 +626,7 @@ function FitBoundsToPlaces({ places }: { places: PlaceLite[] }) {
       }
     }
     if (bounds.isEmpty()) return;
-    map.fitBounds(bounds, 48);
+    map.fitBounds(bounds, MAP_FIT_BOUNDS_PADDING_PX);
   }, [map, coreLib, places]);
   return null;
 }
@@ -625,11 +646,11 @@ function MapMarkers({ places }: { places: PlaceLite[] }) {
         map,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          fillColor: "#E91E63",
+          fillColor: MARKER_FILL_COLOR,
           fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 2,
-          scale: 6,
+          strokeColor: MARKER_STROKE_COLOR,
+          strokeWeight: MARKER_STROKE_WIDTH,
+          scale: MARKER_SCALE,
         },
         optimized: true,
       });

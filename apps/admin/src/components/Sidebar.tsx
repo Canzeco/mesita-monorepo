@@ -13,12 +13,6 @@ import {
 } from "lucide-react";
 import { authClearKey } from "@/app/login/actions";
 
-// Admin sidebar. Single section for now — "Units" — with four actions.
-// Sections / items will grow as the admin tooling expands (managers,
-// guests, audit logs, etc.). The footer surfaces the admin-key state
-// so the operator always knows whether the next privileged action
-// will succeed or 401.
-
 type NavItem = {
   href: string;
   label: string;
