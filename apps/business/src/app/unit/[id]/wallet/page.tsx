@@ -12,26 +12,20 @@ import { Topbar } from "@/components/manager/Topbar";
 import { WALLET, TRANSACTIONS } from "@/lib/manager-data";
 import { cn } from "@/lib/utils";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { readSuperKeyFromSearchParams } from "@/lib/super-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function WalletPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const sp = await searchParams;
-  if (!readSuperKeyFromSearchParams(sp)) {
-    const supabase = await createServerSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) redirect(`/sign-in?next=/unit/${id}/wallet`);
-  }
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/sign-in?next=/unit/${id}/wallet`);
 
   return (
     <>

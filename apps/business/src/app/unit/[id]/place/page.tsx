@@ -4,24 +4,25 @@ import { Plus, Store } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
-import { readSuperKeyFromSearchParams, withSuperKey } from "@/lib/super-admin";
+import { getSuperAdminKey } from "@/lib/super-admin";
 import { EditVenueForm } from "./EditVenueForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function ManagerPlacePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const sp = await searchParams;
-  const superKey = readSuperKeyFromSearchParams(sp);
+  const requestedUnit = id;
 
+  // Super-admin mode skips the Supabase session entirely: getUnitOverview
+  // detects the cookie and routes through manager-get-overview with the
+  // x-super-admin-key header.
+  const isSuperAdmin = (await getSuperAdminKey()) !== null;
   let supabase: Awaited<ReturnType<typeof createServerSupabase>> | null = null;
-  if (!superKey) {
+  if (!isSuperAdmin) {
     supabase = await createServerSupabase();
     const {
       data: { user },
@@ -32,7 +33,12 @@ export default async function ManagerPlacePage({
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;
   try {
-    overview = await getUnitOverview(supabase, id, 0, superKey);
+    overview = await getUnitOverview(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase ?? (null as any)),
+      requestedUnit,
+      0,
+    );
   } catch (err) {
     overviewError =
       err instanceof Error ? err.message : "Could not load your venues.";
@@ -51,7 +57,7 @@ export default async function ManagerPlacePage({
                 {overviewError}
               </p>
               <Link
-                href={withSuperKey(`/unit/${id}/place`, superKey)}
+                href={`/unit/${id}/place`}
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 Try again

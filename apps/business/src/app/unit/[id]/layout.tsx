@@ -3,17 +3,17 @@ import { Sidebar } from "@/components/manager/Sidebar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
-import { getSuperAdminKey } from "@/lib/super-admin-server";
+import { getSuperAdminKey } from "@/lib/super-admin";
 
-// Sidebar-wrapped manager shell. Two auth paths:
+// Sidebar-wrapped manager shell. Lives under a route group so the URL
+// stays /manager/<page> while sibling routes (sign-in, sign-up, onboard,
+// create_unit) opt out of the shell and render full-screen.
 //
+// Two auth paths:
 //   - Normal users: Supabase session + onboarded profile required.
-//   - Super-admin operators: `?superkey=` query param. Middleware copies
-//     that value to a request header so this layout can recognise the mode
-//     without reaching for searchParams (layouts don't receive them in
-//     Next.js). The Sidebar reads the key from window.location.search on
-//     the client so internal navigation preserves it.
-
+//   - Super-admin operators: HttpOnly cookie set by /super-admin/enter
+//     short-circuits both checks so the admin console can deep-link an
+//     operator into any venue. Sidebar shows just that one venue.
 export const dynamic = "force-dynamic";
 
 export default async function ManagerShellLayout({
@@ -25,11 +25,19 @@ export default async function ManagerShellLayout({
 }) {
   const { id } = await params;
 
-  const superKey = await getSuperAdminKey();
-  if (superKey) {
+  const superAdminKey = await getSuperAdminKey();
+  if (superAdminKey) {
     let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
     try {
-      overview = await getUnitOverview(null, id, 0, superKey);
+      // The super-admin path loads just the requested venue; passing a
+      // dummy client is fine because getUnitOverview detects the cookie
+      // and bypasses the Supabase client entirely.
+      overview = await getUnitOverview(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        null as any,
+        id,
+        0,
+      );
     } catch (err) {
       console.error("[manager/(shell)] super-admin overview:", err);
     }

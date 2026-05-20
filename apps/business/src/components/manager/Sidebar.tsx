@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Store,
@@ -22,7 +22,6 @@ import {
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import type { MyVenue } from "@/lib/api/venues";
-import { SUPER_ADMIN_QUERY_PARAM, withSuperKey } from "@/lib/super-admin";
 
 type NavItem = {
   // Sub-path under /unit/[id]/, e.g. "home", "place", "promos".
@@ -68,9 +67,6 @@ export function Sidebar({
   user: { email: string | null; fullName: string | null } | null;
 }) {
   const pathname = usePathname();
-  const search = useSearchParams();
-  const superKey = search?.get(SUPER_ADMIN_QUERY_PARAM) ?? null;
-  const isSuperAdmin = !!superKey;
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -103,14 +99,12 @@ export function Sidebar({
   const currentSlug = subPath?.split("/")[0] ?? null;
 
   const navHref = (slug: string) =>
-    activeUnitId
-      ? withSuperKey(`/unit/${activeUnitId}/${slug}`, superKey)
-      : "/";
+    activeUnitId ? `/unit/${activeUnitId}/${slug}` : "/";
 
   // When switching between venues, stay on the same sub-page if possible.
   const switchUnitHref = (venueId: string) => {
     const slug = currentSlug ?? "home";
-    return withSuperKey(`/unit/${venueId}/${slug}`, superKey);
+    return `/unit/${venueId}/${slug}`;
   };
 
   return (
@@ -200,19 +194,17 @@ export function Sidebar({
                       )}
                     </Link>
                   ))}
-                  {!isSuperAdmin && (
-                    <Link
-                      href="/add"
-                      onClick={() => {
-                        setUnitPickerOpen(false);
-                        closeDrawer();
-                      }}
-                      className="border-border text-secondary hover:bg-secondary/5 flex w-full items-center gap-2 border-t px-3 py-2.5 text-left text-sm font-semibold transition"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add new unit
-                    </Link>
-                  )}
+                  <Link
+                    href="/add"
+                    onClick={() => {
+                      setUnitPickerOpen(false);
+                      closeDrawer();
+                    }}
+                    className="border-border text-secondary hover:bg-secondary/5 flex w-full items-center gap-2 border-t px-3 py-2.5 text-left text-sm font-semibold transition"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add new unit
+                  </Link>
                 </div>
               )}
             </>
@@ -276,13 +268,11 @@ export function Sidebar({
                   {user.email ?? ""}
                 </p>
               </div>
-              {!isSuperAdmin && (
-                <SignOutButton
-                  redirectTo="/sign-in"
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
-                  label=""
-                />
-              )}
+              <SignOutButton
+                redirectTo="/sign-in"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
+                label=""
+              />
             </div>
           ) : (
             <Link

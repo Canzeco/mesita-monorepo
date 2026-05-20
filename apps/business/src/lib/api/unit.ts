@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MyVenue } from "./venues";
 import type { VenueTicket } from "./tickets";
 import { invokeEF } from "./_invoke";
+import { getSuperAdminKey } from "@/lib/super-admin";
 
 export type UnitOverview = {
   user: { id: string; email: string | null };
@@ -16,15 +17,15 @@ export type UnitOverview = {
 };
 
 async function fetchUnitOverview(
-  client: SupabaseClient | null,
+  client: SupabaseClient,
   activeUnitId: string | null,
   ticketsLimit = 20,
-  superKey: string | null = null,
 ): Promise<UnitOverview> {
   // Super-admin mode: bypass the Supabase client (which would attach the
   // anon/user session) and call the EF directly with the operator's
-  // ADMIN_ACCESS_KEY in the `x-super-admin-key` header. The EF skips JWT +
-  // venue_members checks and returns just the requested venue.
+  // ADMIN_ACCESS_KEY in the `x-super-admin-key` header. The EF skips JWT
+  // + venue_members checks and returns just the requested venue.
+  const superKey = await getSuperAdminKey();
   if (superKey) {
     if (!activeUnitId) {
       throw new Error("super-admin overview requires activeUnitId");
@@ -52,9 +53,6 @@ async function fetchUnitOverview(
     const { ok: _ok, ...rest } = body;
     void _ok;
     return rest as UnitOverview;
-  }
-  if (!client) {
-    throw new Error("getUnitOverview requires a Supabase client when no superKey is provided");
   }
   return invokeEF<UnitOverview>(client, "manager-get-overview", {
     activeUnitId: activeUnitId ?? undefined,

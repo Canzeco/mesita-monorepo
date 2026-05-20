@@ -1,26 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
-import {
-  SUPER_ADMIN_HEADER,
-  SUPER_ADMIN_QUERY_PARAM,
-} from "@/lib/super-admin";
 
-// Routing rules. Three passes:
+// Routing rules. Two passes:
 //
-// 1. "Super-admin mode" — any request with `?superkey=<value>` is forwarded
-//    to the page with that value copied to an `x-mesita-superkey` request
-//    header. Server components read the header via `getSuperAdminKey()` —
-//    layouts in particular can't reach searchParams, so the indirection is
-//    what makes the unit shell render for super-admin operators. The
-//    signed-out wall is skipped for these requests; the EF re-validates the
-//    key on every call.
-//
-// 2. "Signed-out wall" — any path that requires a user. If the request
+// 1. "Signed-out wall" — any path that requires a user. If the request
 //    arrives without a session, we redirect to the right sign-in page
 //    and pass a `?next=` so the post-signin router lands them back here.
 //
-// 3. "Already-signed-in bounce" — sign-in / sign-up pages should not be
+// 2. "Already-signed-in bounce" — sign-in / sign-up pages should not be
 //    visited while the user is already authenticated. We bounce them
 //    through /auth/post-signin which forwards to onboard or dashboard
 //    depending on whether the corresponding profile has a full_name.
@@ -72,16 +60,6 @@ function shouldGate(pathname: string): { signIn: string } | null {
 // call time (not module load) so middleware code is import-safe during the
 // build's page-data collection.
 export async function updateSupabaseSession(request: NextRequest) {
-  // Super-admin shortcut: when the URL carries `?superkey=`, copy the value
-  // to a request header so server components can read it via headers(), and
-  // skip the rest of the auth dance — the EFs re-check the key themselves.
-  const superKey = request.nextUrl.searchParams.get(SUPER_ADMIN_QUERY_PARAM);
-  if (superKey && superKey.length > 0) {
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set(SUPER_ADMIN_HEADER, superKey);
-    return NextResponse.next({ request: { headers: requestHeaders } });
-  }
-
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !publishableKey) {

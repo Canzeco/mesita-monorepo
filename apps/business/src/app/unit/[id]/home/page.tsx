@@ -7,6 +7,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Eye,
   Image as ImageIcon,
   Instagram,
   MapPin,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   Store,
   Ticket,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
@@ -23,15 +25,14 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { FiscalBadge } from "@/components/shared";
 import { cn } from "@/lib/utils";
-import { readSuperKeyFromSearchParams, withSuperKey } from "@/lib/super-admin";
 
-// /unit/<id>/home — the dashboard root. Branches by venue count:
+// /manager/home — the dashboard root. Branches by venue count:
 //
 //   0 venues   → CTA to /add
 //   1 venue    → the venue's overview + jump-offs to Place / Promos /
 //                Validator + this-week snapshot, completeness,
 //                top guests, upcoming reservations, story queue, tips.
-//   2+ venues  → unit switcher + selected venue overview
+//   2+ venues  → unit switcher (via ?unit=<id>) + selected venue overview
 //
 // The thin-dashboard era is over: Home now carries enough information to
 // make the manager open it daily even when nothing's broken. Heavy edits
@@ -42,28 +43,22 @@ export const dynamic = "force-dynamic";
 
 export default async function ManagerHomePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const sp = await searchParams;
-  const superKey = readSuperKeyFromSearchParams(sp);
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/sign-in?next=/unit/${id}/home`);
 
-  if (!superKey) {
-    const supabase = await createServerSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) redirect(`/sign-in?next=/unit/${id}/home`);
-  }
+  const requestedUnit = id;
 
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;
   try {
-    const client = superKey ? null : await createServerSupabase();
-    overview = await getUnitOverview(client, id, 0, superKey);
+    overview = await getUnitOverview(supabase, requestedUnit, 0);
   } catch (err) {
     overviewError =
       err instanceof Error ? err.message : "Could not load your venues.";
@@ -83,7 +78,7 @@ export default async function ManagerHomePage({
                 {overviewError}
               </p>
               <Link
-                href={withSuperKey(`/unit/${id}/home`, superKey)}
+                href={`/unit/${id}/home`}
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 Try again
@@ -140,7 +135,6 @@ export default async function ManagerHomePage({
             <UnitSwitcher
               venues={venues.map((v) => ({ id: v.id, name: v.name }))}
               activeId={active.id}
-              superKey={superKey}
             />
           )}
 
@@ -160,7 +154,7 @@ export default async function ManagerHomePage({
 
           <PlacePreview venue={active} />
 
-          <QuickActions activeId={active.id} superKey={superKey} />
+          <QuickActions activeId={active.id} />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <PlaceCompletenessCard
@@ -175,7 +169,6 @@ export default async function ManagerHomePage({
                 email: active.email,
               }}
               unitId={active.id}
-              superKey={superKey}
             />
             <TopGuestsCard />
             <StoryQueueCard />
@@ -191,18 +184,15 @@ export default async function ManagerHomePage({
             fiscalType={active.fiscal_type}
             cashbackPercent={active.cashback_percent}
             photoCount={active.photos?.length ?? 0}
-            superKey={superKey}
           />
 
-          {!superKey && (
-            <Link
-              href="/add"
-              className="border-border bg-card text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-2 rounded-full border border-dashed px-4 py-2 text-sm font-semibold transition"
-            >
-              <Plus className="h-4 w-4" />
-              Add another unit
-            </Link>
-          )}
+          <Link
+            href="/add"
+            className="border-border bg-card text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-2 rounded-full border border-dashed px-4 py-2 text-sm font-semibold transition"
+          >
+            <Plus className="h-4 w-4" />
+            Add another unit
+          </Link>
         </div>
       </div>
     </>
@@ -214,11 +204,9 @@ export default async function ManagerHomePage({
 function UnitSwitcher({
   venues,
   activeId,
-  superKey,
 }: {
   venues: { id: string; name: string }[];
   activeId: string;
-  superKey: string | null;
 }) {
   return (
     <nav className="-mx-1 flex flex-wrap gap-2">
@@ -227,7 +215,7 @@ function UnitSwitcher({
         return (
           <Link
             key={v.id}
-            href={withSuperKey(`/unit/${v.id}/home`, superKey)}
+            href={`/unit/${v.id}/home`}
             className={
               on
                 ? "bg-foreground text-background rounded-full px-3 py-1.5 text-xs font-semibold"
@@ -321,13 +309,7 @@ function WeekSnapshot() {
 
 // ── Quick actions ───────────────────────────────────────────────────────
 
-function QuickActions({
-  activeId,
-  superKey,
-}: {
-  activeId: string;
-  superKey: string | null;
-}) {
+function QuickActions({ activeId }: { activeId: string }) {
   const tabs: {
     href: string;
     label: string;
@@ -335,13 +317,13 @@ function QuickActions({
     Icon: typeof Store;
   }[] = [
     {
-      href: withSuperKey(`/unit/${activeId}/place`, superKey),
+      href: `/unit/${activeId}/place`,
       label: "Place",
       sub: "Photos, hours, channels, story",
       Icon: Store,
     },
     {
-      href: withSuperKey(`/unit/${activeId}/promos`, superKey),
+      href: `/unit/${activeId}/promos`,
       label: "Promos",
       sub: "Plan, fiscal type, Welcome + tier rates",
       Icon: Ticket,
@@ -384,7 +366,6 @@ function QuickActions({
 function PlaceCompletenessCard({
   venue,
   unitId,
-  superKey,
 }: {
   venue: {
     pitch: string | null;
@@ -397,7 +378,6 @@ function PlaceCompletenessCard({
     email: string | null;
   };
   unitId: string;
-  superKey: string | null;
 }) {
   // Concrete checklist of "do this and your profile reads as ready" — each
   // tied to a real field on the venue. Lets a manager land on Home and
@@ -469,7 +449,7 @@ function PlaceCompletenessCard({
         })}
       </ul>
       <Link
-        href={withSuperKey(`/unit/${unitId}/place`, superKey)}
+        href={`/unit/${unitId}/place`}
         className="text-foreground hover:text-primary mt-4 inline-flex items-center gap-1 text-[12px] font-semibold"
       >
         Open Place <ArrowRight className="h-3 w-3" />
@@ -741,13 +721,11 @@ function NextActionTip({
   fiscalType,
   cashbackPercent,
   photoCount,
-  superKey,
 }: {
   unitId: string;
   fiscalType: "formal" | "informal";
   cashbackPercent: number | null;
   photoCount: number;
-  superKey: string | null;
 }) {
   // Picks the single most-impactful next move based on the venue's current
   // state. One tip at a time keeps the surface focused — manager sees it,
@@ -757,7 +735,7 @@ function NextActionTip({
       return {
         title: "Add more photos to win the swipe",
         body: "Cards with 3+ photos convert 2× better. Aim for a hero shot, a vibe shot, and the bill / menu.",
-        href: withSuperKey(`/unit/${unitId}/place`, superKey),
+        href: `/unit/${unitId}/place`,
         cta: "Open Place",
       };
     }
@@ -765,14 +743,14 @@ function NextActionTip({
       return {
         title: `Set your ${fiscalType === "formal" ? "cashback" : "discount"} rate`,
         body: "Promos lets you set a Welcome rate for first-time guests and per-tier rates for returning ones.",
-        href: withSuperKey(`/unit/${unitId}/promos`, superKey),
+        href: `/unit/${unitId}/promos`,
         cta: "Open Promos",
       };
     }
     return {
       title: "Try a Welcome coupon at 20%",
       body: "Welcome converts the cold pool of guests near you who've never visited. 20% is the sweet spot on first visit.",
-      href: withSuperKey(`/unit/${unitId}/promos`, superKey),
+      href: `/unit/${unitId}/promos`,
       cta: "Open Promos",
     };
   })();

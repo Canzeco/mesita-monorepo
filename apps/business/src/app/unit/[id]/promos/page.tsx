@@ -1,40 +1,28 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus, Store } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
-import { readSuperKeyFromSearchParams, withSuperKey } from "@/lib/super-admin";
 import { PromosClient } from "./PromosClient";
 
 // Server shell: loads the active venue (carries fiscal_type + current plan)
-// and hands the client component everything it needs to render.
+// and hands the client component everything it needs to render. Auth-gating
+// already happens in middleware; we just resolve the unit overview here.
 export const dynamic = "force-dynamic";
 
 export default async function ManagerPromosPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const sp = await searchParams;
-  const superKey = readSuperKeyFromSearchParams(sp);
-
-  let supabase: Awaited<ReturnType<typeof createServerSupabase>> | null = null;
-  if (!superKey) {
-    supabase = await createServerSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) redirect(`/sign-in?next=/unit/${id}/promos`);
-  }
+  const supabase = await createServerSupabase();
+  const requestedUnit = id;
 
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;
   try {
-    overview = await getUnitOverview(supabase, id, 0, superKey);
+    overview = await getUnitOverview(supabase, requestedUnit, 0);
   } catch (err) {
     overviewError =
       err instanceof Error ? err.message : "Could not load your venues.";
@@ -56,7 +44,7 @@ export default async function ManagerPromosPage({
                 {overviewError}
               </p>
               <Link
-                href={withSuperKey(`/unit/${id}/promos`, superKey)}
+                href={`/unit/${id}/promos`}
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 Try again

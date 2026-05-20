@@ -8,7 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
-import { SUPER_ADMIN_QUERY_PARAM } from "@/lib/super-admin";
+import { SUPER_ADMIN_MODE_COOKIE } from "@/lib/super-admin-cookies";
 
 export type VenueListingType = "partner" | "web";
 export type VenueStatus = "lead" | "active" | "paused" | "archived";
@@ -267,16 +267,11 @@ export async function apiUpdateVenue(
   client: SupabaseClient,
   input: UpdateVenueInput,
 ): Promise<Venue & { phone: string | null; updated_at: string }> {
-  // Super-admin mode: the operator's session has no Supabase JWT for this
-  // venue. The superkey lives in the URL, so we read it from
-  // window.location.search and forward it to the proxy route — which then
-  // calls the EF with the `x-super-admin-key` header on our behalf. We
-  // don't ship the secret to a third party — it's just bouncing between
-  // our own client, our own Next.js route, and our own Edge Function.
-  const superKey = browserSuperKey();
-  if (superKey) {
-    const proxyUrl = `/api/super-admin/update-unit?${SUPER_ADMIN_QUERY_PARAM}=${encodeURIComponent(superKey)}`;
-    const res = await fetch(proxyUrl, {
+  // Super-admin mode: client JS can't read the HttpOnly token cookie, so
+  // the mutation goes through a Next.js Route Handler that does. We
+  // detect the mode via the non-HttpOnly flag cookie.
+  if (typeof document !== "undefined" && isSuperAdminMode()) {
+    const res = await fetch("/api/super-admin/update-unit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -300,11 +295,12 @@ export async function apiUpdateVenue(
   return venue;
 }
 
-function browserSuperKey(): string | null {
-  if (typeof window === "undefined") return null;
-  const sp = new URLSearchParams(window.location.search);
-  const value = sp.get(SUPER_ADMIN_QUERY_PARAM);
-  return value && value.length > 0 ? value : null;
+function isSuperAdminMode(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split(";")
+    .map((c) => c.trim())
+    .some((c) => c.startsWith(`${SUPER_ADMIN_MODE_COOKIE}=`));
 }
 
 // Destructive: drops the venue + every dependent row (tickets,

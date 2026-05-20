@@ -12,26 +12,20 @@ import {
 import { tierBadgeClass } from "@/lib/guest-data";
 import { cn } from "@/lib/utils";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { readSuperKeyFromSearchParams } from "@/lib/super-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function PerformancePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const sp = await searchParams;
-  if (!readSuperKeyFromSearchParams(sp)) {
-    const supabase = await createServerSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) redirect(`/sign-in?next=/unit/${id}/performance`);
-  }
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/sign-in?next=/unit/${id}/performance`);
 
   const maxFunnel = FUNNEL[0].value;
   const selected = VALIDATOR_FEED[0];
