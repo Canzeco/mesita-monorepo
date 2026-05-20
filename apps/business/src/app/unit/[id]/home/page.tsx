@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
+import { PlacePreview } from "@/components/manager/PlacePreview";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { FiscalBadge } from "@/components/shared";
@@ -150,6 +151,8 @@ export default async function ManagerHomePage({
           />
 
           <WeekSnapshot />
+
+          <PlacePreview venue={active} />
 
           <QuickActions activeId={active.id} />
 

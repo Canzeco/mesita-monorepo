@@ -9,15 +9,15 @@ import { PartnerBadge, RatePill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 
-// Live preview of how the venue surfaces inside the guest app.
+// Preview of how the venue surfaces inside the guest app. Renders on the
+// /home page so the manager always sees their public face at a glance.
+// To change what guests see, edit in Place and save — this preview reads
+// the persisted state, not a draft.
 //
 // Cross-route imports note: the guest UI components live under
 // src/components/guest/* — Next.js app router doesn't enforce any "guest
 // app" vs "manager app" boundary, so importing from there into a manager
-// surface is idiomatic. We extracted VenueSwipeCardFace and
-// VenueCatalogCard from their original colocated spots specifically so
-// both routes share the same source of truth instead of duplicating
-// chrome.
+// surface is idiomatic.
 
 type Tab = "swipe" | "catalog" | "detail";
 
@@ -39,8 +39,7 @@ export function PlacePreview({ venue }: { venue: Venue }) {
           </h3>
           <p className="text-muted-foreground mt-1 text-xs">
             What guests see across the swipe deck, catalog rows, and venue page.
-            Updates as you edit — saving persists; the preview itself is just a
-            window.
+            Edit your venue in Place to update.
           </p>
         </div>
       </header>

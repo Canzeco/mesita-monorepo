@@ -30,10 +30,8 @@ import {
   apiUpdateVenue,
   type MyVenue,
   type UpdateVenueInput,
-  type Venue,
 } from "@/lib/api/venues";
 import { Field } from "@/components/shared";
-import { PlacePreview } from "@/components/manager/PlacePreview";
 import { cn } from "@/lib/utils";
 import { isEmail } from "@/lib/validators";
 import {
@@ -260,80 +258,6 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
     setPhotos([...photos, url]);
     setNewPhotoUrl("");
   };
-
-  // Live draft fed to PlacePreview. Mirrors the persisted Venue shape but
-  // overlays the in-progress form state, so the preview updates as the
-  // manager types. Fields the form doesn't touch (id, slug, listing_type,
-  // fiscal_type, plan, lat/lng, created_at) come straight from `venue`.
-  const draftVenue: Venue = useMemo(() => {
-    const priceNum =
-      priceLevel === ""
-        ? null
-        : Number.isFinite(Number(priceLevel))
-          ? Number(priceLevel)
-          : null;
-    const cashbackNum =
-      cashbackPercent === ""
-        ? null
-        : Number.isFinite(Number(cashbackPercent))
-          ? Number(cashbackPercent)
-          : null;
-    return {
-      id: venue.id,
-      slug: venue.slug,
-      name: name.trim() || venue.name,
-      category: category.trim() || null,
-      vibe: vibe.trim() || null,
-      price_level: priceNum,
-      listing_type: venue.listing_type,
-      status,
-      fiscal_type: venue.fiscal_type,
-      plan: venue.plan,
-      lat: venue.lat,
-      lng: venue.lng,
-      address: address.trim() || null,
-      closes_at: closesAt.trim() || null,
-      phone: phone.trim() || null,
-      pitch: pitch.trim() || null,
-      story: story.trim() || null,
-      cashback_percent: cashbackNum,
-      photos,
-      website_url: links.website_url || null,
-      instagram_url: links.instagram_url || null,
-      tiktok_url: links.tiktok_url || null,
-      facebook_url: links.facebook_url || null,
-      whatsapp_url: links.whatsapp_url || null,
-      opentable_url: links.opentable_url || null,
-      resy_url: links.resy_url || null,
-      uber_eats_url: links.uber_eats_url || null,
-      rappi_url: links.rappi_url || null,
-      x_url: links.x_url || null,
-      youtube_url: links.youtube_url || null,
-      threads_url: links.threads_url || null,
-      reddit_url: links.reddit_url || null,
-      didi_food_url: links.didi_food_url || null,
-      tripadvisor_url: links.tripadvisor_url || null,
-      google_maps_url: links.google_maps_url || null,
-      email: email.trim() || null,
-      created_at: venue.created_at,
-    };
-  }, [
-    name,
-    status,
-    category,
-    vibe,
-    priceLevel,
-    address,
-    closesAt,
-    phone,
-    cashbackPercent,
-    pitch,
-    story,
-    photos,
-    links,
-    email,
-    venue,
-  ]);
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
@@ -692,8 +616,6 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           </span>
         </div>
       </Section>
-
-      <PlacePreview venue={draftVenue} />
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">

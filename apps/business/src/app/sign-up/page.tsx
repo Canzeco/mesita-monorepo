@@ -34,8 +34,7 @@ export default async function ManagerSignUpPage() {
             Become a partner
           </h1>
           <p className="text-muted-foreground mt-1.5 text-sm">
-            Sign up with Google, Apple, or email. You can add your venue right
-            after.
+            Sign up with Google or email. You can add your venue right after.
           </p>
         </div>
 
