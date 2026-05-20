@@ -41,7 +41,7 @@ export default function SharePage() {
         </div>
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-5 py-5">
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-hidden px-4 pt-3 pb-4">
         {tab === "guests" && <GuestsTab />}
         {tab === "venues" && <VenuesTab />}
         {tab === "creators" && <CreatorsTab />}
@@ -137,7 +137,7 @@ function PrimaryCta({
       type="button"
       onClick={onClick}
       disabled={!share}
-      className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-full py-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-60"
+      className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-60"
     >
       {flash === "shared" ? (
         <>
@@ -177,19 +177,19 @@ function GuestsTab() {
   ];
   const slots = 5;
   return (
-    <div className="flex flex-col gap-5">
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        You&apos;ve got {slots} gift cards to hand out. Send your code and the
-        first friends who use it each get $100 MXN — courtesy of you.
+    <div className="flex h-full flex-col gap-3">
+      <p className="text-muted-foreground text-[13px] leading-snug">
+        You&apos;ve got {slots} $100 MXN gift cards. Share your code; the first
+        friends to use it each get $100 on us.
       </p>
 
-      <div className="border-border bg-card rounded-3xl border p-5 shadow-sm">
-        <div className="flex min-h-[200px] items-stretch gap-3">
-          <div className="flex w-[34%] flex-col items-center justify-between py-2">
-            <span className="text-5xl leading-none" aria-hidden>
+      <div className="border-border bg-card rounded-3xl border p-4 shadow-sm">
+        <div className="flex items-stretch gap-3">
+          <div className="flex w-[32%] flex-col items-center justify-between py-1">
+            <span className="text-4xl leading-none" aria-hidden>
               🎀
             </span>
-            <p className="text-muted-foreground/80 text-[10px] leading-snug font-medium tracking-[0.18em] uppercase">
+            <p className="text-muted-foreground/80 text-[9px] leading-snug font-medium tracking-[0.18em] uppercase">
               To a
               <br />
               friend
@@ -202,31 +202,29 @@ function GuestsTab() {
             style={{
               backgroundImage:
                 "linear-gradient(to bottom, var(--border) 50%, transparent 50%)",
-              backgroundSize: "1px 8px",
+              backgroundSize: "1px 6px",
               backgroundRepeat: "repeat-y",
             }}
             aria-hidden
           />
-          <div className="flex flex-1 flex-col justify-between text-right">
-            <p className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
-              Mesita 🌲
-              <br />
-              Gift card
+          <div className="flex flex-1 flex-col justify-between gap-2 text-right">
+            <p className="text-muted-foreground text-[9px] font-medium tracking-[0.18em] uppercase">
+              Mesita 🌲 · Gift card
             </p>
             <div>
-              <p className="font-display text-6xl leading-none font-semibold tracking-tight">
+              <p className="font-display text-5xl leading-none font-semibold tracking-tight">
                 $100
               </p>
-              <p className="text-muted-foreground mt-1.5 text-[10px] font-medium tracking-[0.4em]">
+              <p className="text-muted-foreground mt-1 text-[9px] font-medium tracking-[0.4em]">
                 MXN
               </p>
             </div>
             <div className="flex items-end justify-end gap-2">
               <div>
-                <p className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
+                <p className="text-muted-foreground text-[9px] font-medium tracking-[0.18em] uppercase">
                   Code
                 </p>
-                <p className="mt-0.5 font-mono text-sm font-semibold">
+                <p className="mt-0.5 font-mono text-[13px] font-semibold">
                   {giftCode}
                 </p>
               </div>
@@ -249,44 +247,42 @@ function GuestsTab() {
 
       <div>
         <div className="flex items-center justify-between px-1">
-          <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
             Friends you&apos;ve treated
           </p>
-          <p className="text-secondary text-[11px] font-semibold">
+          <p className="text-secondary text-[10px] font-semibold">
             {treated.length} gifted · {slots - treated.length} to go
           </p>
         </div>
-        <div className="mt-3 grid grid-cols-5 gap-2">
+        <div className="mt-2 grid grid-cols-5 gap-1.5">
           {Array.from({ length: slots }).map((_, i) => {
             const f = treated[i];
             if (f) {
               return (
-                <div key={i} className="flex flex-col items-center gap-1.5">
-                  <div className="bg-pink-gradient relative aspect-square w-full overflow-hidden rounded-2xl">
-                    <span className="font-display absolute inset-0 flex items-center justify-center text-xl font-bold text-white">
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className="bg-pink-gradient relative aspect-square w-full overflow-hidden rounded-xl">
+                    <span className="font-display absolute inset-0 flex items-center justify-center text-base font-bold text-white">
                       {f.initials}
                     </span>
-                    <span className="bg-tier-gold absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full text-black shadow-sm">
-                      <Check className="h-3 w-3" strokeWidth={3} />
+                    <span className="bg-tier-gold absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full text-black shadow-sm">
+                      <Check className="h-2.5 w-2.5" strokeWidth={3} />
                     </span>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[11px] leading-none font-semibold">
-                      {f.name}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-[10px]">
-                      {f.date}
-                    </p>
-                  </div>
+                  <p className="text-[10px] leading-none font-semibold">
+                    {f.name}
+                  </p>
+                  <p className="text-muted-foreground text-[9px] leading-none">
+                    {f.date}
+                  </p>
                 </div>
               );
             }
             return (
-              <div key={i} className="flex flex-col items-center gap-1.5">
-                <div className="border-border text-muted-foreground/60 flex aspect-square w-full items-center justify-center rounded-2xl border border-dashed">
-                  <Plus className="h-5 w-5" />
+              <div key={i} className="flex flex-col items-center gap-1">
+                <div className="border-border text-muted-foreground/60 flex aspect-square w-full items-center justify-center rounded-xl border border-dashed">
+                  <Plus className="h-4 w-4" />
                 </div>
-                <p className="text-muted-foreground text-center text-[10px] font-medium tracking-wider uppercase">
+                <p className="text-muted-foreground text-center text-[9px] font-medium tracking-wider uppercase">
                   Waiting
                 </p>
               </div>
@@ -295,7 +291,7 @@ function GuestsTab() {
         </div>
       </div>
 
-      <div className="mt-2">
+      <div className="mt-auto">
         <PrimaryCta
           label="Send a gift to a friend"
           share={{
