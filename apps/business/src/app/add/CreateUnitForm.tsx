@@ -300,19 +300,11 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Search card */}
-      <section className="border-border bg-card rounded-2xl border p-5">
-        <h3 className="font-display text-lg font-semibold tracking-tight">
-          Find the Google business profile
-        </h3>
-        <p className="text-muted-foreground mt-1 text-xs">
-          We pull the catalog entry straight from Google Places — no manual
-          fill-in.
-        </p>
-
-        <div className="relative mt-4">
-          <div className="border-border bg-background flex items-center gap-2 rounded-xl border px-3">
-            <Search className="text-muted-foreground h-4 w-4 shrink-0" />
+      {/* Search card — big elevated input, the page's primary action. */}
+      <div className="relative">
+        <div className="border-border bg-card shadow-elev rounded-3xl border p-1">
+          <div className="border-border bg-background flex items-center gap-3 rounded-[20px] border px-5">
+            <Search className="text-muted-foreground h-5 w-5 shrink-0" />
             <input
               type="text"
               autoFocus
@@ -326,14 +318,14 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
                 }
                 if (next.trim().length < 2) setPredictions([]);
               }}
-              placeholder="Casa Luminar, Polanco…"
-              className="placeholder:text-muted-foreground h-11 w-full bg-transparent text-sm outline-none"
+              placeholder="Search by venue name — e.g. Casa Luminar, Strana…"
+              className="placeholder:text-muted-foreground/60 h-14 w-full bg-transparent text-base outline-none"
             />
-            {selected && (
+            {selected && !searching && !lookupPending && (
               <button
                 type="button"
                 onClick={reset}
-                className="text-muted-foreground hover:text-foreground text-[11px] font-medium"
+                className="text-muted-foreground hover:text-foreground shrink-0 text-xs font-semibold"
               >
                 Clear
               </button>
@@ -342,59 +334,67 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
               <Loader2 className="text-muted-foreground h-4 w-4 shrink-0 animate-spin" />
             )}
           </div>
+        </div>
 
-          {!selected && predictions.length > 0 && (
-            <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-10 mt-1 max-h-72 overflow-y-auto rounded-xl border">
-              {predictions.map((p) => (
-                <li key={p.placeId}>
-                  <button
-                    type="button"
-                    onClick={() => pick(p)}
-                    className="hover:bg-muted/60 flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition"
+        {!selected && predictions.length > 0 && (
+          <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-20 mt-2 max-h-80 overflow-y-auto rounded-2xl border p-1">
+            {predictions.map((p) => (
+              <li key={p.placeId}>
+                <button
+                  type="button"
+                  onClick={() => pick(p)}
+                  className="hover:bg-muted/60 flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition"
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                      p.inMesita
+                        ? "bg-secondary/15 text-secondary"
+                        : "bg-muted text-muted-foreground",
+                    )}
                   >
-                    <MapPin className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="block truncate text-sm font-semibold">
-                          {p.mainText}
-                        </span>
-                        {p.inMesita && (
-                          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-                            On Mesita
-                          </span>
-                        )}
+                    <MapPin className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="block truncate text-sm font-semibold">
+                        {p.mainText}
                       </span>
-                      {p.secondaryText && (
-                        <span className="text-muted-foreground block truncate text-[11px]">
-                          {p.secondaryText}
+                      {p.inMesita && (
+                        <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+                          On Mesita
                         </span>
                       )}
                     </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                    {p.secondaryText && (
+                      <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
+                        {p.secondaryText}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-          {searchError && (
-            <p className="bg-destructive/10 text-destructive mt-2 rounded-lg px-3 py-2 text-xs">
-              {searchError}
-            </p>
-          )}
+      {searchError && (
+        <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
+          {searchError}
+        </p>
+      )}
 
-          {!selected &&
-            !searching &&
-            !searchError &&
-            query.trim().length >= 2 &&
-            predictions.length === 0 && (
-              <p className="text-muted-foreground mt-2 px-1 text-xs">
-                No matches. Try a different spelling, drop the city
-                qualifier, or paste the venue&apos;s exact Google profile
-                name.
-              </p>
-            )}
-        </div>
-      </section>
+      {!selected &&
+        !searching &&
+        !searchError &&
+        query.trim().length >= 2 &&
+        predictions.length === 0 && (
+          <p className="text-muted-foreground px-1 text-xs">
+            No matches. Try a different spelling, drop the city qualifier,
+            or paste the venue&apos;s exact Google profile name.
+          </p>
+        )}
 
       {/* Result card */}
       {selected && lookupError && (

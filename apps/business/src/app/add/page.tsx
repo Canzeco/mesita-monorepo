@@ -37,9 +37,8 @@ export default async function CreateUnitPage() {
             Add a venue
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Search the Google profile. If it&apos;s already on Mesita
-            we&apos;ll show its status; otherwise we&apos;ll generate one and
-            you can claim ownership in the same step.
+            Type the venue&apos;s name. We pull the profile from Google
+            and show its current Mesita status inline.
           </p>
         </header>
         <CreateUnitForm signedInEmail={user.email ?? ""} />
