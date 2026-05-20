@@ -29,35 +29,21 @@ type GateRule = {
 };
 
 const PROTECTED_RULES: GateRule[] = [
-  // Manager surfaces — sign-in / sign-up are listed in PUBLIC_AUTH_PATHS
-  // below so they aren't blocked by their own prefix.
-  { prefix: "/manager", signIn: "/manager/sign-in" },
-  { prefix: "/validator", signIn: "/manager/sign-in" },
-  // Admin surfaces have their own sign-in (email + MFA + @canzeco.com).
-  { prefix: "/admin", signIn: "/admin/sign-in" },
-  // Guest private surfaces.
-  { prefix: "/guest/profile", signIn: "/guest/sign-in" },
-  { prefix: "/guest/qr", signIn: "/guest/sign-in" },
-  { prefix: "/guest/saved", signIn: "/guest/sign-in" },
+  // Manager private surfaces — the per-unit shell and the venue creation
+  // flow. Sign-in / sign-up live at /sign-in and /sign-up which are public.
+  { prefix: "/unit", signIn: "/sign-in" },
+  { prefix: "/onboard", signIn: "/sign-in" },
+  { prefix: "/add", signIn: "/sign-in" },
 ];
 
-// Within a protected prefix, these subpaths stay public (sign-in, sign-up).
-// Anything else under the prefix is gated.
-const PUBLIC_AUTH_PATHS = new Set([
-  "/manager/sign-in",
-  "/manager/sign-up",
-  "/admin/sign-in",
-]);
+// Within a protected prefix, these subpaths stay public.
+const PUBLIC_AUTH_PATHS = new Set<string>([]);
 
 // Sign-in / sign-up pages where a signed-in visitor should be bounced
-// through post-signin. Each entry maps the path to the audience flag the
-// router needs so it can pick the right onboarded check.
-const SIGNED_IN_BOUNCE: Record<string, "guest" | "manager" | "admin"> = {
-  "/manager/sign-in": "manager",
-  "/manager/sign-up": "manager",
-  "/guest/sign-in": "guest",
-  "/guest/sign-up": "guest",
-  "/admin/sign-in": "admin",
+// through post-signin.
+const SIGNED_IN_BOUNCE: Record<string, "manager"> = {
+  "/sign-in": "manager",
+  "/sign-up": "manager",
 };
 
 function shouldGate(pathname: string): { signIn: string } | null {

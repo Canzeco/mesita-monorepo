@@ -63,7 +63,7 @@ export default async function ManagerSignInPage({
         <p className="text-muted-foreground mt-6 text-center text-xs">
           New partner?{" "}
           <Link
-            href="/manager/sign-up"
+            href="/sign-up"
             className="text-foreground font-semibold hover:underline"
           >
             Create an account

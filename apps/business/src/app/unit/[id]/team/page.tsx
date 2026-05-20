@@ -7,12 +7,17 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function TeamPage() {
+export default async function TeamPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/manager/sign-in?next=/manager/team");
+  if (!user) redirect(`/sign-in?next=/unit/${id}/team`);
 
   return (
     <>

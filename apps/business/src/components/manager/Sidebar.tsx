@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Store,
@@ -24,10 +24,10 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import type { MyVenue } from "@/lib/api/venues";
 
 type NavItem = {
-  href: string;
+  // Sub-path under /unit/[id]/, e.g. "home", "place", "promos".
+  slug: string;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
-  exact?: boolean;
   disabled?: boolean;
 };
 
@@ -35,18 +35,29 @@ const NAV: NavItem[] = [
   // Home is the dashboard root; Place / Promos / Validator are the deep
   // work surfaces. Promos owns the plan picker, fiscal toggle, Welcome
   // coupon, and per-tier cashback/discount rates in one place.
-  { href: "/manager/home", label: "Home", Icon: LayoutDashboard },
-  { href: "/manager/place", label: "Place", Icon: Store },
-  { href: "/manager/promos", label: "Promos", Icon: Gift },
+  { slug: "home", label: "Home", Icon: LayoutDashboard },
+  { slug: "place", label: "Place", Icon: Store },
+  { slug: "promos", label: "Promos", Icon: Gift },
   {
-    href: "/manager/performance",
+    slug: "performance",
     label: "Performance",
     Icon: BarChart3,
     disabled: true,
   },
-  { href: "/manager/wallet", label: "Wallet", Icon: Wallet, disabled: true },
-  { href: "/manager/team", label: "Team", Icon: Users, disabled: true },
+  { slug: "wallet", label: "Wallet", Icon: Wallet, disabled: true },
+  { slug: "team", label: "Team", Icon: Users, disabled: true },
 ];
+
+// Parse "/unit/<id>/<rest>" → { id, rest }.
+function parseUnitPath(pathname: string | null): {
+  id: string | null;
+  rest: string | null;
+} {
+  if (!pathname) return { id: null, rest: null };
+  const m = pathname.match(/^\/unit\/([^/]+)(?:\/(.*))?$/);
+  if (!m) return { id: null, rest: null };
+  return { id: m[1] ?? null, rest: m[2] ?? null };
+}
 
 export function Sidebar({
   venues,
@@ -56,14 +67,11 @@ export function Sidebar({
   user: { email: string | null; fullName: string | null } | null;
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Lock body scroll while the mobile drawer is open — otherwise the page
-  // behind the backdrop can be swiped. (Sidebar nav/unit Links close the
-  // drawer via their own onClick handlers below — no effect-on-navigation
-  // shenanigans needed.)
+  // behind the backdrop can be swiped.
   useEffect(() => {
     if (drawerOpen) {
       const prev = document.body.style.overflow;
@@ -76,23 +84,27 @@ export function Sidebar({
 
   const closeDrawer = () => setDrawerOpen(false);
 
-  // Auth pages render edge-to-edge under /manager/*: there's no session yet,
-  // so the sidebar (unit-picker, nav, profile card) has nothing to show.
-  if (pathname?.startsWith("/manager/sign-")) {
+  // Sign-in / sign-up render edge-to-edge: there's no session yet, so the
+  // sidebar has nothing to show.
+  if (pathname?.startsWith("/sign-")) {
     return null;
   }
 
-  // The active unit is URL-driven (?unit=<venueId>). Falls back to the first
-  // venue the manager owns when the URL has nothing useful.
-  const unitParam = searchParams.get("unit");
+  // The active unit is URL-driven (/unit/<venueId>/...). Falls back to the
+  // first venue the manager owns when the URL has no unit segment.
+  const { id: unitFromPath, rest: subPath } = parseUnitPath(pathname);
   const activeVenue =
-    venues.find((v) => v.id === unitParam) ?? venues[0] ?? null;
+    venues.find((v) => v.id === unitFromPath) ?? venues[0] ?? null;
   const activeUnitId = activeVenue?.id ?? null;
-  const navHrefWithUnit = (base: string) =>
-    activeUnitId ? `${base}?unit=${activeUnitId}` : base;
+  const currentSlug = subPath?.split("/")[0] ?? null;
+
+  const navHref = (slug: string) =>
+    activeUnitId ? `/unit/${activeUnitId}/${slug}` : "/";
+
+  // When switching between venues, stay on the same sub-page if possible.
   const switchUnitHref = (venueId: string) => {
-    const path = pathname ?? "/manager";
-    return `${path}?unit=${venueId}`;
+    const slug = currentSlug ?? "home";
+    return `/unit/${venueId}/${slug}`;
   };
 
   return (
@@ -120,12 +132,9 @@ export function Sidebar({
       <aside
         aria-label="Manager navigation"
         className={cn(
-          // Shared
           "border-border bg-card z-40 flex h-full w-72 shrink-0 flex-col border-r",
-          // Mobile: fixed-position drawer, slides in from the left.
           "fixed inset-y-0 left-0 -translate-x-full transition-transform duration-200 ease-out",
           drawerOpen && "translate-x-0",
-          // Desktop: relative inside the flex layout, always visible, narrower.
           "md:relative md:w-64 md:translate-x-0 md:transition-none",
         )}
       >
@@ -138,7 +147,6 @@ export function Sidebar({
               mesita.
             </span>
           </Link>
-          {/* Close button — mobile-only, sits where the hamburger normally lives. */}
           <button
             type="button"
             onClick={() => setDrawerOpen(false)}
@@ -187,7 +195,7 @@ export function Sidebar({
                     </Link>
                   ))}
                   <Link
-                    href="/manager/create_unit"
+                    href="/add"
                     onClick={() => {
                       setUnitPickerOpen(false);
                       closeDrawer();
@@ -206,11 +214,11 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 py-3">
-          {NAV.map(({ href, label, Icon, exact, disabled }) => {
+          {NAV.map(({ slug, label, Icon, disabled }) => {
             if (disabled) {
               return (
                 <div
-                  key={href}
+                  key={slug}
                   aria-disabled
                   className="text-muted-foreground/50 flex cursor-not-allowed items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium"
                 >
@@ -222,13 +230,11 @@ export function Sidebar({
                 </div>
               );
             }
-            const active = exact
-              ? pathname === href
-              : pathname.startsWith(href);
+            const active = currentSlug === slug;
             return (
               <Link
-                key={href}
-                href={navHrefWithUnit(href)}
+                key={slug}
+                href={navHref(slug)}
                 onClick={closeDrawer}
                 className={cn(
                   "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition",
@@ -263,14 +269,14 @@ export function Sidebar({
                 </p>
               </div>
               <SignOutButton
-                redirectTo="/manager/sign-in"
+                redirectTo="/sign-in"
                 className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
                 label=""
               />
             </div>
           ) : (
             <Link
-              href="/manager/sign-in"
+              href="/sign-in"
               className="border-border bg-background hover:bg-muted mt-1 flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition"
             >
               Sign in or create account
@@ -348,7 +354,7 @@ function UnitAvatar({ name }: { name: string }) {
 }
 
 function EmptyUnitTrigger({ isAuthenticated }: { isAuthenticated: boolean }) {
-  const href = isAuthenticated ? "/manager/create_unit" : "/manager/sign-in";
+  const href = isAuthenticated ? "/add" : "/sign-in";
   return (
     <Link
       href={href}
@@ -375,8 +381,6 @@ function venueSubtitle(v: MyVenue): string {
   return v.address ?? "—";
 }
 
-// Prefer the manager's own name over the email local-part for the avatar
-// initial — once they've onboarded, their initial should match their face.
 function personInitial(fullName: string | null, email: string | null): string {
   const source = (fullName ?? email ?? "").trim();
   return source.slice(0, 1).toUpperCase() || "?";

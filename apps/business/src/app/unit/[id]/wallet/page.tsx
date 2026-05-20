@@ -15,12 +15,17 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function WalletPage() {
+export default async function WalletPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/manager/sign-in?next=/manager/wallet");
+  if (!user) redirect(`/sign-in?next=/unit/${id}/wallet`);
 
   return (
     <>

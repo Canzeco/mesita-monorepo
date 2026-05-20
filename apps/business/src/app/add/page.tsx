@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { CreateUnitForm } from "./CreateUnitForm";
 
-// Route lives at /manager/create_unit. Distinct from /manager/onboard:
+// Route lives at /add. Distinct from /manager/onboard:
 // onboard creates the manager_profile (once per person), create_unit
 // creates a venue (N times per person — multi-unit operators).
 //
@@ -19,14 +19,14 @@ export default async function CreateUnitPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/manager/sign-in?next=/manager/create_unit");
+    redirect("/sign-in?next=/add");
   }
 
   return (
     <div className="bg-background min-h-dvh w-full">
       <div className="mx-auto flex max-w-2xl flex-col px-4 py-6 md:px-6 md:py-10">
         <Link
-          href="/manager/home"
+          href="/"
           className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1 self-start text-sm transition"
         >
           <ChevronLeft className="h-4 w-4" />

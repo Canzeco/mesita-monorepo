@@ -22,7 +22,7 @@ export default async function ManagerShellLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/manager/sign-in");
+  if (!user) redirect("/sign-in");
 
   // Sidebar needs the venue list AND the manager's own profile so it can
   // greet them by name. Both go through Edge Functions in parallel; the
@@ -46,7 +46,7 @@ export default async function ManagerShellLayout({
   } else {
     console.error("[manager/(shell)] manager-profile:", profileResult.reason);
   }
-  if (!manager?.full_name) redirect("/manager/onboard");
+  if (!manager?.full_name) redirect("/onboard");
 
   return (
     <div className="bg-background flex h-screen w-screen overflow-hidden">

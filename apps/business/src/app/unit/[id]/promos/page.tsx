@@ -11,13 +11,13 @@ import { PromosClient } from "./PromosClient";
 export const dynamic = "force-dynamic";
 
 export default async function ManagerPromosPage({
-  searchParams,
+  params,
 }: {
-  searchParams: Promise<{ unit?: string }>;
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const supabase = await createServerSupabase();
-  const params = await searchParams;
-  const requestedUnit = params.unit?.toString() ?? null;
+  const requestedUnit = id;
 
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;
@@ -44,7 +44,7 @@ export default async function ManagerPromosPage({
                 {overviewError}
               </p>
               <Link
-                href="/manager/promos"
+                href={`/unit/${id}/promos`}
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 Try again
@@ -77,7 +77,7 @@ export default async function ManagerPromosPage({
                 set your cashback or discount rates.
               </p>
               <Link
-                href="/manager/create_unit"
+                href="/add"
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />

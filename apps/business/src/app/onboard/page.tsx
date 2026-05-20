@@ -6,10 +6,10 @@ import { ManagerOnboardForm } from "./ManagerOnboardForm";
 
 // Manager onboarding — captures the manager's own name + phone after
 // signup. Distinct from venue creation; this is about the *person*, the
-// venue gets its own wizard step at /manager/create_unit.
+// venue gets its own wizard step at /add.
 //
 // Server-gated:
-//   - signed out         → /manager/sign-in (with next=/manager/onboard)
+//   - signed out         → /manager/sign-in (with next=/onboard)
 //   - already onboarded  → /manager/home (don't re-collect a name)
 //   - signed in, no name → render the form
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export default async function ManagerOnboardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/manager/sign-in?next=/manager/onboard");
+  if (!user) redirect("/sign-in?next=/onboard");
 
   // manager-get-profile lazily creates the row, so this works for fresh
   // OAuth users too. Treat a thrown response as "render the form" — the
@@ -27,7 +27,7 @@ export default async function ManagerOnboardPage() {
   try {
     const profile = await apiGetManagerProfile(supabase);
     if (profile.full_name) {
-      redirect("/manager/home");
+      redirect("/");
     }
   } catch (err) {
     console.error("[manager/onboard] manager-get-profile:", err);

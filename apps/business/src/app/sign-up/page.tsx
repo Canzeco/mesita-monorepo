@@ -47,7 +47,7 @@ export default async function ManagerSignUpPage() {
         <p className="text-muted-foreground mt-6 text-center text-xs">
           Already a partner?{" "}
           <Link
-            href="/manager/sign-in"
+            href="/sign-in"
             className="text-foreground font-semibold hover:underline"
           >
             Sign in

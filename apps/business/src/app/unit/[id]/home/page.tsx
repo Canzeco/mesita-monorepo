@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 // /manager/home — the dashboard root. Branches by venue count:
 //
-//   0 venues   → CTA to /manager/create_unit
+//   0 venues   → CTA to /add
 //   1 venue    → the venue's overview + jump-offs to Place / Promos /
 //                Validator + this-week snapshot, completeness,
 //                top guests, upcoming reservations, story queue, tips.
@@ -41,18 +41,18 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function ManagerHomePage({
-  searchParams,
+  params,
 }: {
-  searchParams: Promise<{ unit?: string }>;
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/manager/sign-in?next=/manager/home");
+  if (!user) redirect(`/sign-in?next=/unit/${id}/home`);
 
-  const params = await searchParams;
-  const requestedUnit = params.unit?.toString() ?? null;
+  const requestedUnit = id;
 
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;
@@ -77,7 +77,7 @@ export default async function ManagerHomePage({
                 {overviewError}
               </p>
               <Link
-                href="/manager/home"
+                href={`/unit/${id}/home`}
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 Try again
@@ -110,7 +110,7 @@ export default async function ManagerHomePage({
                 automatically.
               </p>
               <Link
-                href="/manager/create_unit"
+                href="/add"
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
@@ -177,13 +177,14 @@ export default async function ManagerHomePage({
           </div>
 
           <NextActionTip
+            unitId={active.id}
             fiscalType={active.fiscal_type}
             cashbackPercent={active.cashback_percent}
             photoCount={active.photos?.length ?? 0}
           />
 
           <Link
-            href="/manager/create_unit"
+            href="/add"
             className="border-border bg-card text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-2 rounded-full border border-dashed px-4 py-2 text-sm font-semibold transition"
           >
             <Plus className="h-4 w-4" />
@@ -211,7 +212,7 @@ function UnitSwitcher({
         return (
           <Link
             key={v.id}
-            href={`/manager/home?unit=${v.id}`}
+            href={`/unit/${v.id}/home`}
             className={
               on
                 ? "bg-foreground text-background rounded-full px-3 py-1.5 text-xs font-semibold"
@@ -339,13 +340,13 @@ function QuickActions({ activeId }: { activeId: string }) {
     Icon: typeof Store;
   }[] = [
     {
-      href: `/manager/place?unit=${activeId}`,
+      href: `/unit/${activeId}/place`,
       label: "Place",
       sub: "Photos, hours, channels, story",
       Icon: Store,
     },
     {
-      href: `/manager/promos?unit=${activeId}`,
+      href: `/unit/${activeId}/promos`,
       label: "Promos",
       sub: "Plan, fiscal type, Welcome + tier rates",
       Icon: Ticket,
@@ -471,7 +472,7 @@ function PlaceCompletenessCard({
         })}
       </ul>
       <Link
-        href={`/manager/place?unit=${unitId}`}
+        href={`/unit/${unitId}/place`}
         className="text-foreground hover:text-primary mt-4 inline-flex items-center gap-1 text-[12px] font-semibold"
       >
         Open Place <ArrowRight className="h-3 w-3" />
@@ -739,10 +740,12 @@ function RecentActivityCard() {
 // ── Next-action tip ─────────────────────────────────────────────────────
 
 function NextActionTip({
+  unitId,
   fiscalType,
   cashbackPercent,
   photoCount,
 }: {
+  unitId: string;
   fiscalType: "formal" | "informal";
   cashbackPercent: number | null;
   photoCount: number;
@@ -755,7 +758,7 @@ function NextActionTip({
       return {
         title: "Add more photos to win the swipe",
         body: "Cards with 3+ photos convert 2× better. Aim for a hero shot, a vibe shot, and the bill / menu.",
-        href: "/manager/place",
+        href: `/unit/${unitId}/place`,
         cta: "Open Place",
       };
     }
@@ -763,14 +766,14 @@ function NextActionTip({
       return {
         title: `Set your ${fiscalType === "formal" ? "cashback" : "discount"} rate`,
         body: "Promos lets you set a Welcome rate for first-time guests and per-tier rates for returning ones.",
-        href: "/manager/promos",
+        href: `/unit/${unitId}/promos`,
         cta: "Open Promos",
       };
     }
     return {
       title: "Try a Welcome coupon at 20%",
       body: "Welcome converts the cold pool of guests near you who've never visited. 20% is the sweet spot on first visit.",
-      href: "/manager/promos",
+      href: `/unit/${unitId}/promos`,
       cta: "Open Promos",
     };
   })();

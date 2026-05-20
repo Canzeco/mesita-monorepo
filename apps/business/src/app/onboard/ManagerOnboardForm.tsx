@@ -34,7 +34,7 @@ export function ManagerOnboardForm() {
     void (async () => {
       try {
         await apiCreateManagerProfile(supabase, { full_name: trimmed });
-        router.push("/manager/create_unit");
+        router.push("/add");
         router.refresh();
       } catch (err) {
         setError(
@@ -76,7 +76,7 @@ export function ManagerOnboardForm() {
       </button>
       <button
         type="button"
-        onClick={() => router.push("/manager/home")}
+        onClick={() => router.push("/")}
         disabled={pending}
         className="text-muted-foreground/80 hover:text-foreground mt-1 block w-full text-center text-[11px] underline-offset-2 hover:underline"
       >

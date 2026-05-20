@@ -1,41 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [
-      // /manager/{rewards,membership} → /manager/promos. The previous split
-      // collapsed back into one surface: plan + fiscal type + Welcome
-      // coupon + per-tier rates all live under Promos now.
-      {
-        source: "/manager/rewards",
-        destination: "/manager/promos",
-        permanent: true,
-      },
-      {
-        source: "/manager/membership",
-        destination: "/manager/promos",
-        permanent: true,
-      },
-      {
-        source: "/manager/subscription",
-        destination: "/manager/promos",
-        permanent: true,
-      },
-      // /manager/analytics renamed to /manager/performance.
-      {
-        source: "/manager/analytics",
-        destination: "/manager/performance",
-        permanent: true,
-      },
-      // /manager/console renamed to /manager/home — Home reads more like an
-      // owner's daily landing pad than a SaaS "console".
-      {
-        source: "/manager/console",
-        destination: "/manager/home",
-        permanent: true,
-      },
-    ];
-  },
   images: {
     remotePatterns: [
       // Mock photography (legacy mock-data fallbacks).
