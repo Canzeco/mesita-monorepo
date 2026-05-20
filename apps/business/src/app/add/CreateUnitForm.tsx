@@ -292,8 +292,15 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
                   >
                     <MapPin className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
-                        {p.mainText}
+                      <span className="flex items-center gap-2">
+                        <span className="block truncate text-sm font-semibold">
+                          {p.mainText}
+                        </span>
+                        {p.inMesita && (
+                          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+                            On Mesita
+                          </span>
+                        )}
                       </span>
                       {p.secondaryText && (
                         <span className="text-muted-foreground block truncate text-[11px]">
@@ -312,6 +319,18 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
               {searchError}
             </p>
           )}
+
+          {!selected &&
+            !searching &&
+            !searchError &&
+            query.trim().length >= 2 &&
+            predictions.length === 0 && (
+              <p className="text-muted-foreground mt-2 px-1 text-xs">
+                No matches. Try a different spelling, drop the city
+                qualifier, or paste the venue&apos;s exact Google profile
+                name.
+              </p>
+            )}
         </div>
       </section>
 

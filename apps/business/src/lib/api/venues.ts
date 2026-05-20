@@ -68,6 +68,10 @@ export type PlacePrediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
+  // True when the prediction came from Mesita's own catalog (the venue
+  // already exists). Lets the UI badge it so the operator knows they're
+  // about to claim an existing profile vs generate a new one.
+  inMesita?: boolean;
 };
 
 export type EnrichmentReport = {
