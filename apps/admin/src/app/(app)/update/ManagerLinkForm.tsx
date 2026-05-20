@@ -9,9 +9,9 @@ import {
   Search,
   AlertTriangle,
 } from "lucide-react";
-import { findVenueForSuperAdmin, type FindVenueResult } from "./actions";
+import { findVenueByPlaceId, type FindVenueResult } from "./actions";
 
-export function SuperAdminLinkForm() {
+export function ManagerLinkForm() {
   const [placeId, setPlaceId] = useState("");
   const [result, setResult] = useState<FindVenueResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -22,7 +22,7 @@ export function SuperAdminLinkForm() {
     setResult(null);
     setCopied(false);
     startTransition(async () => {
-      const r = await findVenueForSuperAdmin(placeId);
+      const r = await findVenueByPlaceId(placeId);
       setResult(r);
     });
   };

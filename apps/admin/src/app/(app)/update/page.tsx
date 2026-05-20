@@ -1,4 +1,4 @@
-import { SuperAdminLinkForm } from "./SuperAdminLinkForm";
+import { ManagerLinkForm } from "./ManagerLinkForm";
 
 export default function UpdateUnitPage() {
   return (
@@ -17,7 +17,7 @@ export default function UpdateUnitPage() {
         grants access, not the URL.
       </p>
 
-      <SuperAdminLinkForm />
+      <ManagerLinkForm />
     </div>
   );
 }

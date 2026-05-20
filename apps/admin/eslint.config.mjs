@@ -13,6 +13,23 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Underscore-prefix is the intentional-unused convention here —
+      // honour it on vars, args, destructured rest discriminants, and
+      // caught errors. Cleans up the `void _foo` workaround pattern.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

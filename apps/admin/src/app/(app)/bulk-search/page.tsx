@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { PlacesMap } from "@/components/PlacesMap";
 import type {
-  PlaceLite,
   QueryResult,
   SearchResponse,
   SearchErrorResponse,
@@ -366,7 +365,7 @@ export default function BulkSearchUnitsPage() {
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
                 <p className="font-medium">
-                  Couldn't check which places are already in Mesita
+                  Couldn&apos;t check which places are already in Mesita
                 </p>
                 <p className="mt-1 opacity-90">{result.mesitaLookupError}</p>
               </div>

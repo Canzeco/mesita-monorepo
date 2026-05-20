@@ -28,7 +28,7 @@ export type FindVenueResult =
   | { ok: true; found: false; placeId: string }
   | { ok: false; error: string };
 
-export async function findVenueForSuperAdmin(
+export async function findVenueByPlaceId(
   rawPlaceId: string,
 ): Promise<FindVenueResult> {
   const placeId = (rawPlaceId ?? "").trim();
