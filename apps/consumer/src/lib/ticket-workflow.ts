@@ -1,5 +1,4 @@
 import type { SavedItem, Venue } from "./guest-data";
-import { ticketType } from "./guest-data";
 
 type WorkflowAction = "attach-screenshot" | "show-qr" | "stripe-checkout";
 
@@ -195,5 +194,5 @@ export function workflowFor(
 }
 
 export function getTicketType(item: SavedItem): TicketType {
-  return ticketType(item.steps);
+  return item.steps.join("") as TicketType;
 }
