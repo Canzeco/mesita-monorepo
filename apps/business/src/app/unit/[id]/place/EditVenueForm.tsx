@@ -39,6 +39,17 @@ import {
   TEXTAREA_CLASS as TEXTAREA,
 } from "@/lib/ui-classes";
 
+// Schema char limits — kept in lock-step with the venues table CHECK
+// constraints. Update both sides if these change.
+const VENUE_NAME_MAX = 120;
+const VENUE_TAG_MAX = 80;
+const VENUE_ADDRESS_MAX = 300;
+const VENUE_CLOSES_AT_MAX = 5;
+const VENUE_PITCH_MAX = 200;
+const VENUE_STORY_MAX = 1500;
+
+const SAVED_TOAST_DURATION_MS = 2200;
+
 const PRICE_OPTIONS = [
   { value: "", label: "—" },
   { value: "1", label: "$ · Budget" },
@@ -219,7 +230,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         await apiUpdateVenue(supabase, payload);
         setSaved(true);
         router.refresh();
-        window.setTimeout(() => setSaved(false), 2200);
+        window.setTimeout(() => setSaved(false), SAVED_TOAST_DURATION_MS);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not save.");
       }
@@ -266,7 +277,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            maxLength={120}
+            maxLength={VENUE_NAME_MAX}
             className={INPUT}
             required
           />
@@ -307,7 +318,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
             <input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              maxLength={80}
+              maxLength={VENUE_TAG_MAX}
               className={INPUT}
             />
           </Field>
@@ -315,7 +326,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
             <input
               value={vibe}
               onChange={(e) => setVibe(e.target.value)}
-              maxLength={80}
+              maxLength={VENUE_TAG_MAX}
               className={INPUT}
             />
           </Field>
@@ -327,7 +338,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            maxLength={300}
+            maxLength={VENUE_ADDRESS_MAX}
             className={INPUT}
           />
         </Field>
@@ -335,7 +346,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           <input
             value={closesAt}
             onChange={(e) => setClosesAt(e.target.value)}
-            maxLength={5}
+            maxLength={VENUE_CLOSES_AT_MAX}
             className={INPUT}
           />
         </Field>
@@ -349,7 +360,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           <input
             value={pitch}
             onChange={(e) => setPitch(e.target.value)}
-            maxLength={200}
+            maxLength={VENUE_PITCH_MAX}
             className={INPUT}
           />
         </Field>
@@ -360,7 +371,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           <textarea
             value={story}
             onChange={(e) => setStory(e.target.value)}
-            maxLength={1500}
+            maxLength={VENUE_STORY_MAX}
             className={TEXTAREA}
           />
         </Field>
