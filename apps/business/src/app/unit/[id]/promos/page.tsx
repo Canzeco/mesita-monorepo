@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, Store } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
+import { PageErrorState } from "@/components/manager/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { PromosClient } from "./PromosClient";
@@ -29,30 +30,13 @@ export default async function ManagerPromosPage({
   }
   if (overviewError) {
     return (
-      <>
-        <Topbar
-          title="Promos"
-          subtitle="Plan, fiscal type, Welcome coupon, per-tier rates"
-        />
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
-            <div className="border-destructive/40 bg-destructive/5 rounded-2xl border p-10 text-center">
-              <h2 className="font-display text-destructive text-xl font-semibold tracking-tight">
-                Couldn&apos;t load the venue
-              </h2>
-              <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
-                {overviewError}
-              </p>
-              <Link
-                href={`/unit/${id}/promos`}
-                className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
-              >
-                Try again
-              </Link>
-            </div>
-          </div>
-        </div>
-      </>
+      <PageErrorState
+        title="Promos"
+        subtitle="Plan, fiscal type, Welcome coupon, per-tier rates"
+        heading="Couldn't load the venue"
+        message={overviewError}
+        retryHref={`/unit/${id}/promos`}
+      />
     );
   }
 

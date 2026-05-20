@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 // The shape every EF returns. Discriminated on `ok` so TypeScript narrows
 // correctly after the helper's success check.
-export type EFResult<T> =
+type EFResult<T> =
   | ({ ok: true } & T)
   | { ok: false; error: string; code?: string | null };
 
@@ -41,9 +41,9 @@ export async function invokeEF<T>(
   if (!data.ok) {
     throw new Error(data.error ?? fallback);
   }
-  // After the ok check TS narrows away the failure arm.
+  // After the ok check TS narrows away the failure arm; drop the
+  // discriminator before returning.
   const { ok: _ok, ...rest } = data;
-  void _ok;
   return rest as T;
 }
 
@@ -52,7 +52,7 @@ export async function invokeEF<T>(
 // The real body (the EF's `{ ok: false, error: "…" }`) lives directly on
 // `error.context` — that field IS the Response, not `{ response }`. Peel it
 // off so the UI gets a useful message.
-export async function readInvokeError(error: unknown): Promise<string | null> {
+async function readInvokeError(error: unknown): Promise<string | null> {
   try {
     const res = (error as { context?: Response }).context;
     if (!res || typeof res.clone !== "function") return null;

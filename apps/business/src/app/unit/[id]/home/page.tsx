@@ -7,7 +7,6 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  Eye,
   Image as ImageIcon,
   Instagram,
   MapPin,
@@ -16,28 +15,21 @@ import {
   Sparkles,
   Store,
   Ticket,
-  TrendingUp,
   Users,
 } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
+import { PageErrorState } from "@/components/manager/PageErrorState";
 import { PlacePreview } from "@/components/manager/PlacePreview";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { FiscalBadge } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
-// /manager/home — the dashboard root. Branches by venue count:
-//
-//   0 venues   → CTA to /add
-//   1 venue    → the venue's overview + jump-offs to Place / Promos /
-//                Validator + this-week snapshot, completeness,
-//                top guests, upcoming reservations, story queue, tips.
-//   2+ venues  → unit switcher (via ?unit=<id>) + selected venue overview
-//
-// The thin-dashboard era is over: Home now carries enough information to
-// make the manager open it daily even when nothing's broken. Heavy edits
-// still live on Place / Promos / Team / Validator — Home just surfaces
-// "what changed since yesterday".
+// /unit/<id>/home — the dashboard root. Empty-state CTA if the operator
+// has no venues yet, otherwise: overview + jump-offs to Place / Promos /
+// Validator, this-week snapshot, completeness, top guests, upcoming
+// reservations, story queue, next-action tip. A unit switcher appears
+// when the operator is a member of more than one venue.
 
 export const dynamic = "force-dynamic";
 
@@ -66,27 +58,13 @@ export default async function ManagerHomePage({
 
   if (overviewError) {
     return (
-      <>
-        <Topbar title="Home" subtitle="Your venues, at a glance." />
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
-            <div className="border-destructive/40 bg-destructive/5 rounded-2xl border p-10 text-center">
-              <h2 className="font-display text-destructive text-xl font-semibold tracking-tight">
-                Couldn&apos;t load your home
-              </h2>
-              <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
-                {overviewError}
-              </p>
-              <Link
-                href={`/unit/${id}/home`}
-                className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
-              >
-                Try again
-              </Link>
-            </div>
-          </div>
-        </div>
-      </>
+      <PageErrorState
+        title="Home"
+        subtitle="Your venues, at a glance."
+        heading="Couldn't load your home"
+        message={overviewError}
+        retryHref={`/unit/${id}/home`}
+      />
     );
   }
 

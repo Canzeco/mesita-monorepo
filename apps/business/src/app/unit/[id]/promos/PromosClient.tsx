@@ -14,7 +14,6 @@ import {
   Loader2,
   MapPin,
   Percent,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
