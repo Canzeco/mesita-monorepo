@@ -617,7 +617,10 @@ function VerificationForm({
   venueId: string;
   venuePhone: string | null;
 } & VerificationCallbacks) {
-  const [tab, setTab] = useState<TabKey>("ai_call");
+  // Auto-pick video when the venue has no Google-listed phone —
+  // there's no number for us to dial, so the phone tab is dead-end.
+  const phoneAvailable = !!venuePhone;
+  const [tab, setTab] = useState<TabKey>(phoneAvailable ? "ai_call" : "video");
 
   // Phone state.
   const [callState, setCallState] = useState<CallState>({ kind: "idle" });
@@ -717,7 +720,18 @@ function VerificationForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <MethodTabs tab={tab} setTab={switchTab} />
+      <MethodTabs
+        tab={tab}
+        setTab={switchTab}
+        phoneAvailable={phoneAvailable}
+      />
+      {!phoneAvailable && tab === "video" && (
+        <p className="text-muted-foreground -mt-1 text-[11px] leading-relaxed">
+          No phone listed on Google for this venue, so phone call
+          verification isn&apos;t available — submit a walkthrough
+          video instead.
+        </p>
+      )}
       {tab === "ai_call" ? (
         <PhoneSection
           venuePhone={venuePhone}
@@ -744,13 +758,19 @@ function VerificationForm({
 function MethodTabs({
   tab,
   setTab,
+  phoneAvailable,
 }: {
   tab: TabKey;
   setTab: (next: TabKey) => void;
+  phoneAvailable: boolean;
 }) {
   return (
-    <div className="bg-muted/60 grid grid-cols-2 gap-1 rounded-full p-1">
-      <TabButton active={tab === "ai_call"} onClick={() => setTab("ai_call")}>
+    <div className="bg-muted/70 grid grid-cols-2 gap-1 rounded-2xl p-1">
+      <TabButton
+        active={tab === "ai_call"}
+        disabled={!phoneAvailable}
+        onClick={() => setTab("ai_call")}
+      >
         <Phone className="h-4 w-4" />
         Phone call
       </TabButton>
@@ -764,10 +784,12 @@ function MethodTabs({
 
 function TabButton({
   active,
+  disabled,
   onClick,
   children,
 }: {
   active: boolean;
+  disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -775,11 +797,13 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-[13px] font-semibold transition",
+        "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition",
+        "disabled:cursor-not-allowed disabled:opacity-40",
         active
-          ? "bg-card text-foreground shadow-sm"
+          ? "bg-card text-foreground ring-foreground/5 shadow-md ring-1"
           : "text-muted-foreground hover:text-foreground",
       )}
     >
@@ -959,23 +983,24 @@ function VideoSection({
         type="submit"
         disabled={pending}
         className={cn(
-          "flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
-          "bg-foreground text-background",
+          "flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold transition disabled:opacity-50",
+          "bg-pink-gradient shadow-glow text-white",
         )}
       >
         {pending ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
             Submitting…
           </>
         ) : (
           <>
-            <Send className="h-4 w-4" />
-            Submit walkthrough for review
+            <Send className="h-5 w-5" />
+            Submit walkthrough
           </>
         )}
       </button>
-      <p className="text-muted-foreground text-center text-[11px] leading-relaxed">
+      <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-center text-[12px]">
+        <Clock className="h-3.5 w-3.5" />
         Reviewed by a Mesita admin — usually within 24 hours.
       </p>
       {error && <ErrorBlurb>{error}</ErrorBlurb>}
@@ -995,14 +1020,28 @@ function ErrorBlurb({ children }: { children: React.ReactNode }) {
 
 function VenueIdentity({ venue }: { venue: LookupVenue }) {
   return (
-    <div className="border-border bg-background grid grid-cols-1 gap-3 rounded-xl border p-4 sm:grid-cols-2">
-      <ReadOnlyField label="Venue" wide>
+    <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4">
+      <p className="font-display text-lg leading-tight font-semibold tracking-tight">
         {venue.name}
-      </ReadOnlyField>
-      <ReadOnlyField label="Google-listed phone">
-        {venue.phone ?? "—"}
-      </ReadOnlyField>
-      <ReadOnlyField label="Address">{venue.address ?? "—"}</ReadOnlyField>
+      </p>
+      <div className="text-muted-foreground flex flex-col gap-1.5 text-[12px] sm:flex-row sm:items-center sm:gap-4">
+        <span className="inline-flex items-center gap-1.5">
+          <Phone className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-foreground font-mono">
+            {venue.phone ?? (
+              <span className="text-muted-foreground italic">
+                no phone listed
+              </span>
+            )}
+          </span>
+        </span>
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate" title={venue.address ?? undefined}>
+            {venue.address ?? "no address"}
+          </span>
+        </span>
+      </div>
     </div>
   );
 }
@@ -1029,25 +1068,6 @@ function StatusBadge({
     >
       {children}
     </span>
-  );
-}
-
-function ReadOnlyField({
-  label,
-  children,
-  wide,
-}: {
-  label: string;
-  children: React.ReactNode;
-  wide?: boolean;
-}) {
-  return (
-    <div className={wide ? "sm:col-span-2" : ""}>
-      <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
-        {label}
-      </p>
-      <p className="mt-0.5 truncate text-sm font-semibold">{children}</p>
-    </div>
   );
 }
 
