@@ -1,4 +1,5 @@
 import { authStoreKey } from "./actions";
+import { safeNext } from "@/lib/safe-next";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const next =
-    params.next?.startsWith("/") && !params.next.startsWith("//")
-      ? params.next
-      : "/";
+  const next = safeNext(params.next);
   const errorMessage = params.error ? ERROR_COPY[params.error] : null;
 
   const action = authStoreKey.bind(null, next);

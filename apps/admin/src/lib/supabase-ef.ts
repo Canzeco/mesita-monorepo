@@ -11,7 +11,7 @@ import { getAdminKey } from "@/lib/admin-key";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
-export type InvokeResult<T> =
+type InvokeResult<T> =
   | { ok: true; status: number; data: T }
   | { ok: false; status: number; error: string; data: unknown };
 

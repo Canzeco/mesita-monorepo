@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Copy,
   Check,
@@ -9,48 +9,31 @@ import {
   Play,
   Download,
   ChevronRight,
-  MapPin,
+  CheckCircle2,
 } from "lucide-react";
-import {
-  APIProvider,
-  Map,
-  InfoWindow,
-  useMap,
-  useMapsLibrary,
-} from "@vis.gl/react-google-maps";
-
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
-
-type PlaceLite = {
-  id: string;
-  displayName: string;
-  formattedAddress: string;
-  lat: number | null;
-  lng: number | null;
-};
-
-type QueryResult = {
-  query: string;
-  places: PlaceLite[];
-  truncated: boolean;
-  error: string | null;
-};
-
-type SearchResponse = {
-  ok: true;
-  queries: QueryResult[];
-  uniquePlaces: PlaceLite[];
-  uniqueCount: number;
-  regionCode: string;
-  maxResultsPerQuery: number;
-};
-
-type ErrorResponse = { ok: false; error: string };
+import { PlacesMap } from "@/components/PlacesMap";
+import type {
+  PlaceLite,
+  QueryResult,
+  SearchResponse,
+  SearchErrorResponse,
+} from "@/lib/places-types";
 
 const MAX_QUERIES = 200;
 const MAX_RESULTS = 50;
 const MIN_RESULTS = 1;
 const PAGE_SIZE = 20;
+
+// Google Places Text Search pricing (SKU model effective 2025-03-01).
+// The backend field mask includes places.location, which lands every
+// request in the Text Search Pro SKU regardless of the other fields.
+// Pricing for the 0–100K monthly tier — beyond that the tier rate
+// drops, so this is a worst-case estimate. The first 5,000 Pro requests
+// each month are free, shared across the whole project; surfaced in
+// the tooltip rather than discounted from the headline number, since
+// the remaining free quota isn't visible from the browser.
+const PRICE_PER_REQUEST_USD = 0.032;
+const FREE_PRO_REQUESTS_PER_MONTH = 5000;
 
 const EXAMPLE_QUERIES = [
   "Mejores restaurantes en San Pedro",
@@ -81,8 +64,9 @@ export default function BulkSearchUnitsPage() {
   );
 
   const overLimit = queries.length > MAX_QUERIES;
-  const estimatedApiCalls =
-    queries.length * Math.ceil(maxResults / PAGE_SIZE);
+  const pagesPerQuery = Math.ceil(maxResults / PAGE_SIZE);
+  const estimatedApiCalls = queries.length * pagesPerQuery;
+  const estimatedCostUsd = estimatedApiCalls * PRICE_PER_REQUEST_USD;
   const failedQueries = result?.queries.filter((q) => q.error !== null) ?? [];
   const totalRawCount =
     result?.queries.reduce((n, q) => n + q.places.length, 0) ?? 0;
@@ -103,7 +87,7 @@ export default function BulkSearchUnitsPage() {
           maxResultsPerQuery: maxResults,
         }),
       });
-      const data: SearchResponse | ErrorResponse = await res.json();
+      const data: SearchResponse | SearchErrorResponse = await res.json();
       if (!data.ok) {
         setError(data.error || `Search failed (HTTP ${res.status})`);
         return;
@@ -128,11 +112,21 @@ export default function BulkSearchUnitsPage() {
 
   function downloadCsv() {
     if (!result) return;
-    const rows: string[] = ["query,place_id,name,address"];
+    const rows: string[] = [
+      "query,place_id,name,address,in_mesita,created_at,updated_at",
+    ];
     for (const q of result.queries) {
       for (const p of q.places) {
         rows.push(
-          [q.query, p.id, p.displayName, p.formattedAddress]
+          [
+            q.query,
+            p.id,
+            p.displayName,
+            p.formattedAddress,
+            p.existsInMesita ? "yes" : "no",
+            p.createdAt ?? "",
+            p.updatedAt ?? "",
+          ]
             .map(csvCell)
             .join(","),
         );
@@ -254,6 +248,13 @@ export default function BulkSearchUnitsPage() {
           </ParamCard>
         </div>
 
+        <CostCalculator
+          queries={queries.length}
+          pagesPerQuery={pagesPerQuery}
+          totalCalls={estimatedApiCalls}
+          totalCostUsd={estimatedCostUsd}
+        />
+
         <div className="flex items-center justify-end pt-1">
           <button
             type="button"
@@ -302,6 +303,15 @@ export default function BulkSearchUnitsPage() {
                     <> · {duplicatesCount} duplicates filtered</>
                   )}{" "}
                   · region {result.regionCode}
+                  {result.mesitaLookupError === null && (
+                    <>
+                      {" · "}
+                      <span className="text-foreground font-medium">
+                        {result.mesitaMatchCount}
+                      </span>{" "}
+                      already in Mesita
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -351,7 +361,19 @@ export default function BulkSearchUnitsPage() {
             </section>
           )}
 
-          <MapPanel places={result.uniquePlaces} />
+          {result.mesitaLookupError && (
+            <section className="border-amber-500/40 bg-amber-500/5 flex items-start gap-3 rounded-2xl border p-4 text-sm text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">
+                  Couldn't check which places are already in Mesita
+                </p>
+                <p className="mt-1 opacity-90">{result.mesitaLookupError}</p>
+              </div>
+            </section>
+          )}
+
+          <PlacesMap places={result.uniquePlaces} />
 
           <section>
             <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
@@ -415,6 +437,7 @@ function QueryRow({
 }) {
   const [open, setOpen] = useState(false);
   const hasResults = q.places.length > 0;
+  const mesitaHits = q.places.filter((p) => p.existsInMesita).length;
   const copyKey = `q:${q.query}`;
   return (
     <li>
@@ -431,6 +454,12 @@ function QueryRow({
           }
         />
         <span className="flex-1 truncate text-sm font-medium">{q.query}</span>
+        {mesitaHits > 0 && !q.error && (
+          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium">
+            <CheckCircle2 className="h-3 w-3" />
+            {mesitaHits} in Mesita
+          </span>
+        )}
         {q.error ? (
           <span className="text-destructive bg-destructive/10 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
             error
@@ -480,12 +509,47 @@ function QueryRow({
                     className="grid grid-cols-1 gap-2 px-3 py-2 text-xs md:grid-cols-[1fr_auto] md:items-center"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {p.displayName || "(no name)"}
+                      <p className="flex items-center gap-2 truncate text-sm font-medium">
+                        <span className="truncate">
+                          {p.displayName || "(no name)"}
+                        </span>
+                        {p.existsInMesita && (
+                          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                            <CheckCircle2 className="h-3 w-3" />
+                            In Mesita
+                          </span>
+                        )}
                       </p>
                       <p className="text-muted-foreground truncate">
                         {p.formattedAddress}
                       </p>
+                      {p.existsInMesita && (p.createdAt || p.updatedAt) && (
+                        <p className="text-muted-foreground/80 mt-0.5 truncate text-[11px]">
+                          {p.createdAt && (
+                            <>
+                              added{" "}
+                              <span
+                                className="text-foreground/70 font-medium"
+                                title={p.createdAt}
+                              >
+                                {formatShortDate(p.createdAt)}
+                              </span>
+                            </>
+                          )}
+                          {p.createdAt && p.updatedAt && " · "}
+                          {p.updatedAt && (
+                            <>
+                              updated{" "}
+                              <span
+                                className="text-foreground/70 font-medium"
+                                title={p.updatedAt}
+                              >
+                                {formatShortDate(p.updatedAt)}
+                              </span>
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
                     <code className="text-muted-foreground bg-muted/40 max-w-full truncate rounded-lg px-2 py-1 font-mono">
                       {p.id}
@@ -506,168 +570,118 @@ function csvCell(s: string): string {
   return s;
 }
 
-// Inline map style for a cleaner look — kills Google's default POI clutter
-// (other restaurants, hotels, hospitals, attractions, transit lines, etc.)
-// so our own markers stand out. We deliberately do NOT set a `mapId` on
-// <Map>: when a Map ID is set, Google ignores the `styles` array because
-// styling is supposed to be configured cloud-side. Without `mapId` we lose
-// AdvancedMarker support, so the markers are drawn imperatively via the
-// classic google.maps.Marker class instead.
-const CLEAN_MAP_STYLE: google.maps.MapTypeStyle[] = [
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  {
-    featureType: "road",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "administrative.land_parcel",
-    stylers: [{ visibility: "off" }],
-  },
-];
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
-function MapPanel({ places }: { places: PlaceLite[] }) {
-  const mappable = useMemo(
-    () => places.filter((p) => p.lat !== null && p.lng !== null),
-    [places],
-  );
-  const missing = places.length - mappable.length;
+function formatUsdEstimate(amount: number): string {
+  if (amount <= 0) return "$0.00";
+  if (amount < 0.01) return "<$0.01";
+  if (amount < 100) return `$${amount.toFixed(2)}`;
+  return `$${Math.round(amount).toLocaleString()}`;
+}
 
-  if (!GOOGLE_MAPS_KEY) {
-    return (
-      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
-        <p className="font-medium text-foreground">Map unavailable</p>
-        <p className="mt-1">
-          NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY isn't set on this deployment.
-        </p>
-      </section>
-    );
-  }
-
-  if (mappable.length === 0) {
-    return (
-      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
-        <p className="font-medium text-foreground">No mappable results</p>
-        <p className="mt-1">
-          None of the returned places included coordinates.
-        </p>
-      </section>
-    );
-  }
-
+function CostCalculator({
+  queries,
+  pagesPerQuery,
+  totalCalls,
+  totalCostUsd,
+}: {
+  queries: number;
+  pagesPerQuery: number;
+  totalCalls: number;
+  totalCostUsd: number;
+}) {
+  const pricePerCallLabel = `$${PRICE_PER_REQUEST_USD.toFixed(3)}`;
+  const freeTierLabel = FREE_PRO_REQUESTS_PER_MONTH.toLocaleString();
   return (
-    <section className="border-border bg-card shadow-elev overflow-hidden rounded-2xl border">
-      <div className="border-border flex items-center justify-between gap-3 border-b px-5 py-3">
-        <div className="flex items-center gap-2">
-          <MapPin className="text-secondary h-4 w-4" />
-          <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
-            Map
-          </h2>
+    <div className="border-border bg-card shadow-elev rounded-2xl border px-5 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+            Estimated cost
+          </p>
+          <p className="text-muted-foreground/80 mt-1 text-xs">
+            Text Search Pro SKU · 0–100K monthly tier
+          </p>
         </div>
-        <p className="text-muted-foreground text-xs">
-          {mappable.length}{" "}
-          {mappable.length === 1 ? "marker" : "markers"}
-          {missing > 0 && (
-            <> · {missing} without coordinates</>
-          )}
+        <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">
+          {formatUsdEstimate(totalCostUsd)}
         </p>
       </div>
-      <div className="h-[440px] w-full">
-        <APIProvider apiKey={GOOGLE_MAPS_KEY}>
-          <Map
-            defaultCenter={{ lat: 23.6345, lng: -102.5528 }}
-            defaultZoom={5}
-            gestureHandling="greedy"
-            disableDefaultUI
-            zoomControl
-            clickableIcons={false}
-            styles={CLEAN_MAP_STYLE}
-          >
-            <MapMarkers places={mappable} />
-            <FitBoundsToPlaces places={mappable} />
-          </Map>
-        </APIProvider>
+
+      <div className="border-border mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs sm:grid-cols-4">
+        <CalcStep
+          label="Queries"
+          value={queries.toLocaleString()}
+          op=""
+        />
+        <CalcStep
+          label="Pages / query"
+          value={pagesPerQuery.toLocaleString()}
+          op="×"
+        />
+        <CalcStep
+          label="Price / call"
+          value={pricePerCallLabel}
+          op="×"
+        />
+        <CalcStep
+          label="Total calls"
+          value={totalCalls.toLocaleString()}
+          op="="
+          emphasis
+        />
       </div>
-    </section>
+
+      <p className="text-muted-foreground/70 mt-3 text-[11px] leading-relaxed">
+        Worst-case estimate. The first {freeTierLabel} Pro calls each month
+        are free across the whole Google Cloud project, and per-call price
+        drops in higher volume tiers. Each page of 20 results is one
+        billable request.
+      </p>
+    </div>
   );
 }
 
-function FitBoundsToPlaces({ places }: { places: PlaceLite[] }) {
-  const map = useMap();
-  const coreLib = useMapsLibrary("core");
-  useEffect(() => {
-    if (!map || !coreLib || places.length === 0) return;
-    const bounds = new coreLib.LatLngBounds();
-    for (const p of places) {
-      if (p.lat !== null && p.lng !== null) {
-        bounds.extend({ lat: p.lat, lng: p.lng });
-      }
-    }
-    if (bounds.isEmpty()) return;
-    map.fitBounds(bounds, 48);
-  }, [map, coreLib, places]);
-  return null;
-}
-
-function MapMarkers({ places }: { places: PlaceLite[] }) {
-  const map = useMap();
-  const markerLib = useMapsLibrary("marker");
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!map || !markerLib) return;
-    const markers: google.maps.Marker[] = [];
-    for (const p of places) {
-      if (p.lat === null || p.lng === null) continue;
-      const marker = new markerLib.Marker({
-        position: { lat: p.lat, lng: p.lng },
-        map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: "#E91E63",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 2,
-          scale: 6,
-        },
-        optimized: true,
-      });
-      marker.addListener("click", () => {
-        setOpenId((id) => (id === p.id ? null : p.id));
-      });
-      markers.push(marker);
-    }
-    return () => {
-      for (const m of markers) {
-        m.setMap(null);
-      }
-    };
-  }, [map, markerLib, places]);
-
-  const openPlace =
-    openId === null ? null : places.find((p) => p.id === openId) ?? null;
-
-  if (!openPlace || openPlace.lat === null || openPlace.lng === null) {
-    return null;
-  }
-
+function CalcStep({
+  label,
+  value,
+  op,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  op: string;
+  emphasis?: boolean;
+}) {
   return (
-    <InfoWindow
-      position={{ lat: openPlace.lat, lng: openPlace.lng }}
-      onCloseClick={() => setOpenId(null)}
-    >
-      <div className="max-w-[240px] text-xs">
-        <p className="text-foreground text-sm font-medium">
-          {openPlace.displayName || "(no name)"}
+    <div className="flex items-center gap-2">
+      {op && (
+        <span className="text-muted-foreground/60 font-mono text-base leading-none">
+          {op}
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+          {label}
         </p>
-        <p className="text-muted-foreground mt-0.5">
-          {openPlace.formattedAddress}
-        </p>
-        <p className="text-muted-foreground/70 mt-1 font-mono break-all">
-          {openPlace.id}
+        <p
+          className={
+            "font-display mt-0.5 truncate text-lg font-semibold tabular-nums " +
+            (emphasis ? "text-foreground" : "text-foreground/85")
+          }
+        >
+          {value}
         </p>
       </div>
-    </InfoWindow>
+    </div>
   );
 }
+
