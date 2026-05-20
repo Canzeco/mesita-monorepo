@@ -1,4 +1,3 @@
-import { safeNext } from "@/lib/safe-next";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +10,9 @@ const ERROR_COPY: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const params = await searchParams;
-  const next = safeNext(params.next);
   const errorMessage = params.error ? ERROR_COPY[params.error] : null;
 
   return (
@@ -45,7 +43,7 @@ export default async function LoginPage({
           </p>
         )}
 
-        <GoogleSignInButton next={next} />
+        <GoogleSignInButton />
       </div>
     </div>
   );

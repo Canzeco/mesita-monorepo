@@ -51,9 +51,12 @@ export async function updateSupabaseSession(request: NextRequest) {
   if (!PUBLIC_PATHS(pathname) && !user) {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/login";
-    signInUrl.search = `?next=${encodeURIComponent(
-      pathname + request.nextUrl.search,
-    )}`;
+    // No `?next=` — Supabase's OAuth allow-list match includes query
+    // strings, so anything added to the login URL would also need to
+    // travel through Google's redirect, which only works if every
+    // possible value is on the allow list. Operators always re-land
+    // at /; trivial to navigate from there.
+    signInUrl.search = "";
     return NextResponse.redirect(signInUrl);
   }
 

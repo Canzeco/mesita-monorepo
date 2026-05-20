@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 
-// Single "Sign in with Google" button. Builds the OAuth redirect target
-// so the callback lands the operator at whatever page they were trying
-// to reach (or / by default).
-export function GoogleSignInButton({ next }: { next: string }) {
+// Single "Sign in with Google" button. The OAuth redirectTo is the bare
+// `/auth/callback` so it matches the Supabase allow-list verbatim —
+// stashing extra state in query params would force every operator to
+// register a wildcard variant. The admin shell always re-routes to /
+// after signin; deep-link state isn't preserved (low-stakes for admin).
+export function GoogleSignInButton() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +18,7 @@ export function GoogleSignInButton({ next }: { next: string }) {
     setError(null);
     try {
       const supabase = createBrowserSupabase();
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const redirectTo = `${window.location.origin}/auth/callback`;
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo },
