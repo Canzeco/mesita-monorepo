@@ -10,9 +10,11 @@ export default function UpdateUnitPage() {
         Manually update unit
       </h1>
       <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-        Paste a Google Place ID. If the venue is already in Mesita, you'll
-        get a one-shot super-admin link that opens its Place editor in the
-        manager console with no team membership required.
+        Paste a Google Place ID. If the venue is in Mesita, you&apos;ll get a
+        clean link to its Home in the manager console. Open it signed
+        into your operator account at manager.mesita.ai and you can read
+        or edit anything — your email being in super_admins is what
+        grants access, not the URL.
       </p>
 
       <SuperAdminLinkForm />

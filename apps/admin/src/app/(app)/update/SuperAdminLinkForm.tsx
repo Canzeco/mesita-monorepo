@@ -54,8 +54,9 @@ export function SuperAdminLinkForm() {
             />
             <div className="border-border flex items-center justify-between gap-3 border-t px-5 py-3">
               <p className="text-muted-foreground text-xs">
-                We resolve this against the venues table and build a
-                super-admin deep-link with the operator token baked in.
+                We resolve this against the venues table and hand you a
+                clean link. Sign into manager.mesita.ai with your operator
+                account to edit.
               </p>
               <button
                 type="submit"
@@ -117,7 +118,7 @@ export function SuperAdminLinkForm() {
 
           <div className="bg-background mt-5 rounded-2xl p-4">
             <p className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
-              Super-admin link
+              Manager link
             </p>
             <code className="text-foreground/80 mt-2 block max-w-full overflow-x-auto rounded-lg px-2 py-2 font-mono text-xs leading-relaxed">
               {result.link}
@@ -146,9 +147,10 @@ export function SuperAdminLinkForm() {
               </a>
             </div>
             <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
-              The link carries the shared admin token. Opening it sets an
-              HttpOnly cookie on the manager web and drops you straight on
-              the venue's Place editor — no manager account needed.
+              Plain URL — no token. Open it signed into your manager
+              account; the EFs check your email against super_admins and
+              grant venue access. The Topbar will show a Super-admin
+              banner so you know elevation is active.
             </p>
           </div>
         </section>
