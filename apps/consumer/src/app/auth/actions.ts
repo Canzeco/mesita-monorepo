@@ -8,14 +8,11 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // PhoneOtpForm via the browser Supabase client, so no email/password
 // server action is needed here. The only server-side action left is
 // signing out (clears the SSR cookie), invoked from SignOutButton.
-
-type AuthFormState = {
-  error?: string;
-  info?: string;
-} | null;
-
+//
+// SignOutButton renders <form action={authSignOut.bind(null, "/")}> so
+// React passes the FormData as the trailing arg — we accept it just to
+// match the form-action signature and never read it.
 export async function authSignOut(redirectTo: string, _formData: FormData) {
-  void _formData;
   const supabase = await createServerSupabase();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
