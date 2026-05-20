@@ -1,10 +1,7 @@
 import type { SavedItem, Venue } from "./guest-data";
 import { ticketType } from "./guest-data";
 
-export type WorkflowAction =
-  | "attach-screenshot"
-  | "show-qr"
-  | "stripe-checkout";
+type WorkflowAction = "attach-screenshot" | "show-qr" | "stripe-checkout";
 
 export type WorkflowStep = {
   title: string;
@@ -13,7 +10,7 @@ export type WorkflowStep = {
   forClarity?: boolean;
 };
 
-export type TicketType = "R" | "PC" | "RPC" | "PSC" | "RPSC";
+type TicketType = "R" | "PC" | "RPC" | "PSC" | "RPSC";
 
 export function workflowFor(
   type: TicketType,

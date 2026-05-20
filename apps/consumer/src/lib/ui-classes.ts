@@ -12,10 +12,6 @@
 export const INPUT_CLASS =
   "h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none transition focus:border-foreground/40";
 
-// Multi-line input — same skin, taller, with vertical padding.
-export const TEXTAREA_CLASS =
-  "min-h-[100px] w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition focus:border-foreground/40";
-
 // Destructive feedback (form errors, failed actions). Lower contrast than
 // the destructive color full-strength so it reads as a notice, not an alert.
 export const ERROR_BOX_CLASS =

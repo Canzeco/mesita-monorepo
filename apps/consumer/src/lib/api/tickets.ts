@@ -1,7 +1,9 @@
-// Frontend API surface for ticket / cashback / discount / story Edge Functions.
+// Frontend API surface for the guest-facing ticket / cashback / story EFs.
 //
 // Same constraints as api/venues.ts: clients call exactly one Edge Function
-// per helper; helpers never compose multiple Edge Functions.
+// per helper; helpers never compose multiple Edge Functions. Manager- and
+// validator-side helpers (create/cancel/verify/mark-paid/lookup) live in
+// the manager app's tree — guest never invokes them.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -19,7 +21,7 @@ export type GuestProfile = {
   cashback_balance_cents: number;
 };
 
-export type GuestOnboardingInput = {
+type GuestOnboardingInput = {
   full_name: string;
   sex: "male" | "female" | "other";
   birthday: string; // YYYY-MM-DD
@@ -29,17 +31,11 @@ export type GuestOnboardingInput = {
   phone?: string;
 };
 
-export type GuestFullProfile = GuestProfile & {
-  sex: string | null;
-  birthday: string | null;
-  country: string | null;
-};
-
 export async function apiUpdateGuestProfile(
   client: SupabaseClient,
   input: GuestOnboardingInput,
-): Promise<GuestFullProfile> {
-  const { guest } = await invokeEF<{ guest: GuestFullProfile }>(
+): Promise<GuestProfile> {
+  const { guest } = await invokeEF<{ guest: GuestProfile }>(
     client,
     "guest-update-profile",
     input,
@@ -47,14 +43,15 @@ export async function apiUpdateGuestProfile(
   return guest;
 }
 
-// Destructive: drops the caller's guest row + every dependent ticket /
-// cashback_ledger entry, plus the auth.users row so the email can
-// re-sign-up clean. Caller's session ends — the client should sign out
-// and redirect to the sign-in page after.
-export async function apiDeleteGuestAccount(
+export async function apiFetchGuestProfile(
   client: SupabaseClient,
-): Promise<{ id: string }> {
-  return await invokeEF<{ id: string }>(client, "guest-delete-account", {});
+): Promise<GuestProfile> {
+  const { guest } = await invokeEF<{ guest: GuestProfile }>(
+    client,
+    "guest-get-profile",
+    {},
+  );
+  return guest;
 }
 
 // ─── Ticket taxonomy ─────────────────────────────────────────────────────
@@ -89,7 +86,7 @@ export type StoryStatus =
   | "waiter_verified"
   | "waiter_rejected";
 
-export type ReservationStatus =
+type ReservationStatus =
   | "pending"
   | "confirmed"
   | "declined"
@@ -98,38 +95,24 @@ export type ReservationStatus =
 
 export type FiscalType = "formal" | "informal";
 
-export const FORMAL_KINDS: ReadonlySet<TicketKind> = new Set([
+const FORMAL_KINDS: ReadonlySet<TicketKind> = new Set([
   "p_c",
   "s_p_sf_c",
   "r_p_c",
   "r_s_p_sf_c",
 ]);
-export const STORY_KINDS: ReadonlySet<TicketKind> = new Set([
+const STORY_KINDS: ReadonlySet<TicketKind> = new Set([
   "s_p_sf_c",
   "r_s_p_sf_c",
   "s_dp_sf",
   "r_s_dp_sf",
 ]);
-export const RESERVATION_KINDS: ReadonlySet<TicketKind> = new Set([
+const RESERVATION_KINDS: ReadonlySet<TicketKind> = new Set([
   "r_p_c",
   "r_s_p_sf_c",
   "r_dp",
   "r_s_dp_sf",
 ]);
-
-// Human-readable label per kind. Kept here so both validator + guest views
-// share the same vocabulary.
-export const KIND_LABEL: Record<TicketKind, string> = {
-  none: "No transaction",
-  p_c: "Payment → Cashback",
-  s_p_sf_c: "Story → Payment → Cashback",
-  r_p_c: "Reservation → Payment → Cashback",
-  r_s_p_sf_c: "Reservation → Story → Payment → Cashback",
-  dp: "Discounted payment",
-  s_dp_sf: "Story → Discounted payment",
-  r_dp: "Reservation → Discounted payment",
-  r_s_dp_sf: "Reservation → Story → Discounted payment",
-};
 
 export function ticketIsFormal(kind: TicketKind): boolean {
   return FORMAL_KINDS.has(kind);
@@ -181,22 +164,7 @@ export type GuestTicket = Ticket & {
   } | null;
 };
 
-export type VenueTicket = Ticket & {
-  guest: { id: string; code: string; full_name: string | null } | null;
-};
-
-// ─── Reads ───────────────────────────────────────────────────────────────
-
-export async function apiFetchGuestProfile(
-  client: SupabaseClient,
-): Promise<GuestProfile> {
-  const { guest } = await invokeEF<{ guest: GuestProfile }>(
-    client,
-    "guest-get-profile",
-    {},
-  );
-  return guest;
-}
+// ─── Reads + writes (guest-side only) ────────────────────────────────────
 
 export async function apiFetchMyTickets(
   client: SupabaseClient,
@@ -208,146 +176,6 @@ export async function apiFetchMyTickets(
     { limit },
   );
   return tickets;
-}
-
-export async function apiFetchVenueTickets(
-  client: SupabaseClient,
-  venueId: string,
-  limit = 20,
-): Promise<VenueTicket[]> {
-  const { tickets } = await invokeEF<{ tickets: VenueTicket[] }>(
-    client,
-    "manager-list-tickets",
-    { venueId, limit },
-  );
-  return tickets;
-}
-
-// ─── Writes ──────────────────────────────────────────────────────────────
-
-export type CreateTicketInput = {
-  venueId: string;
-  guestCode: string;
-  kind: TicketKind;
-  checkSubtotalCents: number;
-  tipCents: number;
-  /** Only used on formal kinds. Capped server-side at min(balance, total). */
-  redeemCents?: number;
-  /** Reservation fields (R-prefixed kinds). All optional today; the AI agent
-   *  layer will populate them once it's live. */
-  reservationAt?: string;
-  reservationPartySize?: number;
-  reservationChannel?:
-    | "voice"
-    | "whatsapp"
-    | "instagram_dm"
-    | "web_form"
-    | "email";
-  reservationNotes?: string;
-};
-
-type CreateTicketPayload = {
-  ticket: Ticket;
-  venue: { id: string; name: string; fiscal_type: FiscalType };
-  guest: { id: string; code: string; full_name: string | null };
-};
-
-export async function apiCreateTicket(
-  client: SupabaseClient,
-  input: CreateTicketInput,
-): Promise<CreateTicketPayload> {
-  return invokeEF<CreateTicketPayload>(client, "manager-create-ticket", input);
-}
-
-type MarkPaidPayload = {
-  ticket: {
-    id: string;
-    status: TicketStatus;
-    paid_at: string | null;
-    cashback_cents: number | null;
-    story_status?: StoryStatus;
-  };
-  cashbackCreditedCents: number;
-  cashbackRedeemedCents?: number;
-  guestBalanceAfterCents: number | null;
-  alreadyPaid?: boolean;
-  awaitingStory?: boolean;
-};
-
-export async function apiMarkTicketPaid(
-  client: SupabaseClient,
-  ticketId: string,
-): Promise<{
-  ticket: MarkPaidPayload["ticket"];
-  cashbackCreditedCents: number;
-  cashbackRedeemedCents: number;
-  guestBalanceAfterCents: number | null;
-  alreadyPaid: boolean;
-  awaitingStory: boolean;
-}> {
-  const data = await invokeEF<MarkPaidPayload>(client, "manager-mark-paid", {
-    ticketId,
-  });
-  return {
-    ticket: data.ticket,
-    cashbackCreditedCents: data.cashbackCreditedCents,
-    cashbackRedeemedCents: data.cashbackRedeemedCents ?? 0,
-    guestBalanceAfterCents: data.guestBalanceAfterCents,
-    alreadyPaid: data.alreadyPaid ?? false,
-    awaitingStory: data.awaitingStory ?? false,
-  };
-}
-
-export async function apiLookupGuest(
-  client: SupabaseClient,
-  code: string,
-): Promise<{
-  id: string;
-  code: string;
-  full_name: string | null;
-  cashback_balance_cents: number;
-}> {
-  const { guest } = await invokeEF<{
-    guest: {
-      id: string;
-      code: string;
-      full_name: string | null;
-      cashback_balance_cents: number;
-    };
-  }>(client, "manager-find-guest", { code });
-  return guest;
-}
-
-export async function apiCancelTicket(
-  client: SupabaseClient,
-  ticketId: string,
-  reason?: string,
-): Promise<void> {
-  await invokeEF(client, "manager-cancel-ticket", { ticketId, reason });
-}
-
-export async function apiVerifyStory(
-  client: SupabaseClient,
-  input: { ticketId: string; decision: "approve" | "reject"; reason?: string },
-): Promise<{
-  ticket: Ticket;
-  cashbackCreditedCents: number;
-  cashbackRedeemedCents: number;
-  guestBalanceAfterCents: number | null;
-}> {
-  const data = await invokeEF<{
-    ticket: Ticket;
-    cashbackCreditedCents: number;
-    cashbackRedeemedCents: number;
-    guestBalanceAfterCents: number | null;
-    alreadyDecided?: boolean;
-  }>(client, "manager-verify-story", input);
-  return {
-    ticket: data.ticket,
-    cashbackCreditedCents: data.cashbackCreditedCents,
-    cashbackRedeemedCents: data.cashbackRedeemedCents,
-    guestBalanceAfterCents: data.guestBalanceAfterCents,
-  };
 }
 
 export async function apiSubmitStory(

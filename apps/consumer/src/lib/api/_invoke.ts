@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 // The shape every EF returns. Discriminated on `ok` so TypeScript narrows
 // correctly after the helper's success check.
-export type EFResult<T> =
+type EFResult<T> =
   | ({ ok: true } & T)
   | { ok: false; error: string; code?: string | null };
 
