@@ -26,11 +26,11 @@ type NavItem = {
 };
 
 const UNIT_NAV: NavItem[] = [
-  { href: "/units/verifications", label: "Unit verification requests", Icon: BadgeCheck },
-  { href: "/units/update", label: "Manually update unit", Icon: FilePen },
-  { href: "/units/bulk-search", label: "Bulk search units", Icon: ListFilter },
-  { href: "/units/bulk-create", label: "Bulk create units", Icon: ListPlus },
-  { href: "/units/bulk-update", label: "Bulk update units", Icon: ListChecks },
+  { href: "/verifications", label: "Unit verification requests", Icon: BadgeCheck },
+  { href: "/update", label: "Manually update unit", Icon: FilePen },
+  { href: "/bulk-search", label: "Bulk search units", Icon: ListFilter },
+  { href: "/bulk-create", label: "Bulk create units", Icon: ListPlus },
+  { href: "/bulk-update", label: "Bulk update units", Icon: ListChecks },
 ];
 
 export function Sidebar({ hasKey }: { hasKey: boolean }) {
