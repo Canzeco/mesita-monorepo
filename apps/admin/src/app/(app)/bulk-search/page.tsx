@@ -47,7 +47,9 @@ type SearchResponse = {
 
 type ErrorResponse = { ok: false; error: string };
 
-const MAX_QUERIES = 50;
+const MAX_QUERIES = 200;
+const MAX_RESULTS = 50;
+const MIN_RESULTS = 1;
 const PAGE_SIZE = 20;
 
 const EXAMPLE_QUERIES = [
@@ -59,7 +61,7 @@ const EXAMPLE_QUERIES = [
 export default function BulkSearchUnitsPage() {
   const [queriesText, setQueriesText] = useState("");
   const [regionCode, setRegionCode] = useState("MX");
-  const [maxResults, setMaxResults] = useState(60);
+  const [maxResults, setMaxResults] = useState(MAX_RESULTS);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -166,87 +168,106 @@ export default function BulkSearchUnitsPage() {
       </header>
 
       {/* Form */}
-      <section className="border-border bg-card shadow-elev mt-8 rounded-3xl border p-1">
-        <div className="border-border bg-background rounded-[20px] border">
-          <textarea
-            id="queries"
-            value={queriesText}
-            onChange={(e) => setQueriesText(e.target.value)}
-            rows={7}
-            placeholder={EXAMPLE_QUERIES.join("\n")}
-            spellCheck={false}
-            className="placeholder:text-muted-foreground/50 block w-full resize-y rounded-[20px] bg-transparent px-5 py-4 font-mono text-sm leading-relaxed outline-none"
-          />
-          <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3 text-xs">
-            <div className="flex items-center gap-3">
-              <span
-                className={
-                  overLimit
-                    ? "text-destructive font-medium"
-                    : "text-foreground/70"
-                }
-              >
-                {queries.length} {queries.length === 1 ? "query" : "queries"}
-                {overLimit ? ` — over ${MAX_QUERIES} cap` : ""}
-              </span>
-              {queries.length > 0 && !overLimit && (
-                <>
-                  <span className="text-muted-foreground/50">·</span>
-                  <span>~{estimatedApiCalls} Google API calls</span>
-                </>
-              )}
-              {queries.length === 0 && (
-                <button
-                  type="button"
-                  onClick={() => setQueriesText(EXAMPLE_QUERIES.join("\n"))}
-                  className="text-secondary hover:text-secondary/80 font-medium underline-offset-2 hover:underline"
-                >
-                  Try examples
-                </button>
-              )}
+      <section className="mt-8 space-y-4">
+        <div className="border-border bg-card shadow-elev rounded-3xl border p-1">
+          <div className="border-border bg-background rounded-[20px] border">
+            <textarea
+              id="queries"
+              value={queriesText}
+              onChange={(e) => setQueriesText(e.target.value)}
+              rows={7}
+              placeholder={EXAMPLE_QUERIES.join("\n")}
+              spellCheck={false}
+              className="placeholder:text-muted-foreground/50 block w-full resize-y rounded-[20px] bg-transparent px-5 py-4 font-mono text-sm leading-relaxed outline-none"
+            />
+            <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3 text-xs">
+              <div className="flex items-center gap-3">
+                <span>
+                  ~{estimatedApiCalls} Google API call
+                  {estimatedApiCalls === 1 ? "" : "s"}
+                </span>
+                {queries.length === 0 && (
+                  <>
+                    <span className="text-muted-foreground/50">·</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setQueriesText(EXAMPLE_QUERIES.join("\n"))
+                      }
+                      className="text-secondary hover:text-secondary/80 font-medium underline-offset-2 hover:underline"
+                    >
+                      Try examples
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 px-2 pt-4 pb-2">
-          <ControlChip label="Region">
+        {/* Three big param cards */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <ParamCard
+            label="Queries"
+            footer={`of ${MAX_QUERIES} max`}
+            tone={overLimit ? "warn" : "default"}
+          >
+            <span className="font-display text-5xl font-semibold tracking-tight tabular-nums">
+              {queries.length}
+            </span>
+          </ParamCard>
+
+          <ParamCard
+            label="Results per query"
+            footer={`${MIN_RESULTS}–${MAX_RESULTS} range`}
+          >
+            <input
+              type="number"
+              min={MIN_RESULTS}
+              max={MAX_RESULTS}
+              value={maxResults}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isNaN(n)) return;
+                setMaxResults(
+                  Math.min(MAX_RESULTS, Math.max(MIN_RESULTS, Math.round(n))),
+                );
+              }}
+              aria-label="Max results per query"
+              className="font-display w-full bg-transparent text-center text-5xl font-semibold tracking-tight tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+          </ParamCard>
+
+          <ParamCard label="Region" footer="ISO-3166-1 alpha-2">
             <input
               value={regionCode}
-              onChange={(e) => setRegionCode(e.target.value)}
+              onChange={(e) =>
+                setRegionCode(
+                  e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase(),
+                )
+              }
               maxLength={2}
               placeholder="MX"
-              aria-label="ISO-3166-1 alpha-2 region code"
-              className="w-10 bg-transparent text-center font-mono text-sm uppercase outline-none"
+              aria-label="Region code"
+              className="font-display block w-full bg-transparent text-center font-mono text-5xl font-semibold tracking-tight uppercase outline-none"
             />
-          </ControlChip>
-          <ControlChip label="Max / query">
-            <select
-              value={maxResults}
-              onChange={(e) => setMaxResults(Number(e.target.value))}
-              aria-label="Max results per query"
-              className="cursor-pointer appearance-none bg-transparent pr-1 text-sm outline-none"
-            >
-              <option value={20}>20</option>
-              <option value={40}>40</option>
-              <option value={60}>60</option>
-            </select>
-          </ControlChip>
+          </ParamCard>
+        </div>
 
-          <div className="ml-auto">
-            <button
-              type="button"
-              onClick={runSearch}
-              disabled={running || queries.length === 0 || overLimit}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {running ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4 fill-current" />
-              )}
-              {running ? "Searching…" : "Run search"}
-            </button>
-          </div>
+        <div className="flex items-center justify-end pt-1">
+          <button
+            type="button"
+            onClick={runSearch}
+            disabled={running || queries.length === 0 || overLimit}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {running ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 fill-current" />
+            )}
+            {running ? "Searching…" : "Run search"}
+          </button>
         </div>
       </section>
 
@@ -353,19 +374,32 @@ export default function BulkSearchUnitsPage() {
   );
 }
 
-function ControlChip({
+function ParamCard({
   label,
+  footer,
+  tone = "default",
   children,
 }: {
   label: string;
+  footer: string;
+  tone?: "default" | "warn";
   children: React.ReactNode;
 }) {
+  const toneClasses =
+    tone === "warn"
+      ? "border-destructive/40 text-destructive"
+      : "border-border text-foreground";
   return (
-    <label className="border-border bg-background hover:border-border/80 focus-within:border-primary inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm transition">
-      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+    <label
+      className={`bg-card shadow-elev flex flex-col gap-1 rounded-2xl border px-5 py-4 transition focus-within:border-primary ${toneClasses}`}
+    >
+      <span className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
         {label}
       </span>
-      {children}
+      <div className="flex items-center justify-center py-1">{children}</div>
+      <span className="text-muted-foreground text-center text-[11px]">
+        {footer}
+      </span>
     </label>
   );
 }
