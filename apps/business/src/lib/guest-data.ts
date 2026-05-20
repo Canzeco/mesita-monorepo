@@ -748,39 +748,6 @@ export const TIERS: {
   },
 ];
 
-export type Transaction = {
-  id: string;
-  venueId: string;
-  amount: number;
-  when: string;
-  expires?: string;
-};
-
-export const TRANSACTIONS: Transaction[] = [
-  {
-    id: "t-1",
-    venueId: "casa-luminar",
-    amount: 140,
-    when: "2 days ago",
-    expires: "88d",
-  },
-  { id: "t-2", venueId: "neon-bar", amount: -380, when: "5 days ago" },
-  {
-    id: "t-3",
-    venueId: "loto-cafe",
-    amount: 180,
-    when: "1 week ago",
-    expires: "83d",
-  },
-  { id: "t-4", venueId: "mar-verde", amount: -260, when: "2 weeks ago" },
-  {
-    id: "t-5",
-    venueId: "casa-luminar",
-    amount: 90,
-    when: "3 weeks ago",
-    expires: "69d",
-  },
-];
 
 
 export function venueById(id: string): Venue | undefined {
