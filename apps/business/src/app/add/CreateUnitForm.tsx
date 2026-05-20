@@ -810,11 +810,11 @@ function PhoneSection({
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted-foreground text-[13px] leading-relaxed">
-          Our AI dials{" "}
+          We dial{" "}
           <span className="text-foreground font-mono font-semibold">
             {venuePhone ?? "the Google-listed phone"}
           </span>{" "}
-          and reads out a 6-digit code. Pick up at the venue and type
+          and read out a 6-digit code. Pick up at the venue and type
           the code below — all on this page.
         </p>
         <button
@@ -829,12 +829,12 @@ function PhoneSection({
           {placing ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              AI is dialing…
+              Dialing…
             </>
           ) : (
             <>
-              <Sparkles className="h-5 w-5" />
-              Have AI call my venue
+              <Phone className="h-5 w-5" />
+              Call my venue
             </>
           )}
         </button>
@@ -851,12 +851,12 @@ function PhoneSection({
       <div className="border-secondary/30 bg-secondary/5 text-secondary flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-relaxed">
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
-          AI placed the call to{" "}
+          We called{" "}
           <span className="text-foreground font-mono font-semibold">
             {venuePhone ?? "the venue"}
-          </span>
-          . Pick up and listen for the 6-digit code, then enter it
-          below.
+          </span>{" "}
+          and read out a 6-digit code. Pick up at the venue and type
+          it below.
         </p>
       </div>
 
