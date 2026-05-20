@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Copy,
   Check,
@@ -9,43 +9,14 @@ import {
   Play,
   Download,
   ChevronRight,
-  MapPin,
 } from "lucide-react";
-import {
-  APIProvider,
-  Map,
-  InfoWindow,
-  useMap,
-  useMapsLibrary,
-} from "@vis.gl/react-google-maps";
-
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
-
-type PlaceLite = {
-  id: string;
-  displayName: string;
-  formattedAddress: string;
-  lat: number | null;
-  lng: number | null;
-};
-
-type QueryResult = {
-  query: string;
-  places: PlaceLite[];
-  truncated: boolean;
-  error: string | null;
-};
-
-type SearchResponse = {
-  ok: true;
-  queries: QueryResult[];
-  uniquePlaces: PlaceLite[];
-  uniqueCount: number;
-  regionCode: string;
-  maxResultsPerQuery: number;
-};
-
-type ErrorResponse = { ok: false; error: string };
+import { PlacesMap } from "@/components/PlacesMap";
+import type {
+  PlaceLite,
+  QueryResult,
+  SearchResponse,
+  SearchErrorResponse,
+} from "@/lib/places-types";
 
 const MAX_QUERIES = 200;
 const MAX_RESULTS = 50;
@@ -62,15 +33,6 @@ const PAGE_SIZE = 20;
 // the remaining free quota isn't visible from the browser.
 const PRICE_PER_REQUEST_USD = 0.032;
 const FREE_PRO_REQUESTS_PER_MONTH = 5000;
-
-const MAP_HEIGHT_PX = 440;
-const MAP_DEFAULT_CENTER = { lat: 23.6345, lng: -102.5528 };
-const MAP_DEFAULT_ZOOM = 5;
-const MAP_FIT_BOUNDS_PADDING_PX = 48;
-const MARKER_FILL_COLOR = "#E91E63";
-const MARKER_STROKE_COLOR = "#FFFFFF";
-const MARKER_STROKE_WIDTH = 2;
-const MARKER_SCALE = 6;
 
 const EXAMPLE_QUERIES = [
   "Mejores restaurantes en San Pedro",
@@ -101,8 +63,8 @@ export default function BulkSearchUnitsPage() {
   );
 
   const overLimit = queries.length > MAX_QUERIES;
-  const estimatedApiCalls =
-    queries.length * Math.ceil(maxResults / PAGE_SIZE);
+  const pagesPerQuery = Math.ceil(maxResults / PAGE_SIZE);
+  const estimatedApiCalls = queries.length * pagesPerQuery;
   const estimatedCostUsd = estimatedApiCalls * PRICE_PER_REQUEST_USD;
   const failedQueries = result?.queries.filter((q) => q.error !== null) ?? [];
   const totalRawCount =
@@ -124,7 +86,7 @@ export default function BulkSearchUnitsPage() {
           maxResultsPerQuery: maxResults,
         }),
       });
-      const data: SearchResponse | ErrorResponse = await res.json();
+      const data: SearchResponse | SearchErrorResponse = await res.json();
       if (!data.ok) {
         setError(data.error || `Search failed (HTTP ${res.status})`);
         return;
@@ -203,17 +165,9 @@ export default function BulkSearchUnitsPage() {
             />
             <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3 text-xs">
               <div className="flex items-center gap-3">
-                <span
-                  title={`Google Places Text Search Pro SKU: $${PRICE_PER_REQUEST_USD.toFixed(3)} per request (0–100K monthly tier). The first ${FREE_PRO_REQUESTS_PER_MONTH.toLocaleString()} Pro requests each month are free across the whole project, so actual charges may be lower depending on prior usage this month. Each page of results counts as one billable request.`}
-                >
+                <span>
                   ~{estimatedApiCalls} Google API call
                   {estimatedApiCalls === 1 ? "" : "s"}
-                  {estimatedApiCalls > 0 && (
-                    <>
-                      {" · ~"}
-                      {formatUsdEstimate(estimatedCostUsd)}
-                    </>
-                  )}
                 </span>
                 {queries.length === 0 && (
                   <>
@@ -282,6 +236,13 @@ export default function BulkSearchUnitsPage() {
             />
           </ParamCard>
         </div>
+
+        <CostCalculator
+          queries={queries.length}
+          pagesPerQuery={pagesPerQuery}
+          totalCalls={estimatedApiCalls}
+          totalCostUsd={estimatedCostUsd}
+        />
 
         <div className="flex items-center justify-end pt-1">
           <button
@@ -380,7 +341,7 @@ export default function BulkSearchUnitsPage() {
             </section>
           )}
 
-          <MapPanel places={result.uniquePlaces} />
+          <PlacesMap places={result.uniquePlaces} />
 
           <section>
             <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
@@ -536,174 +497,107 @@ function csvCell(s: string): string {
 }
 
 function formatUsdEstimate(amount: number): string {
-  if (amount <= 0) return "$0";
+  if (amount <= 0) return "$0.00";
   if (amount < 0.01) return "<$0.01";
   if (amount < 100) return `$${amount.toFixed(2)}`;
   return `$${Math.round(amount).toLocaleString()}`;
 }
 
-// Inline map style for a cleaner look — kills Google's default POI clutter
-// (other restaurants, hotels, hospitals, attractions, transit lines, etc.)
-// so our own markers stand out. We deliberately do NOT set a `mapId` on
-// <Map>: when a Map ID is set, Google ignores the `styles` array because
-// styling is supposed to be configured cloud-side. Without `mapId` we lose
-// AdvancedMarker support, so the markers are drawn imperatively via the
-// classic google.maps.Marker class instead.
-const CLEAN_MAP_STYLE: google.maps.MapTypeStyle[] = [
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  {
-    featureType: "road",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "administrative.land_parcel",
-    stylers: [{ visibility: "off" }],
-  },
-];
-
-function MapPanel({ places }: { places: PlaceLite[] }) {
-  const mappable = useMemo(
-    () => places.filter((p) => p.lat !== null && p.lng !== null),
-    [places],
-  );
-  const missing = places.length - mappable.length;
-
-  if (!GOOGLE_MAPS_KEY) {
-    return (
-      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
-        <p className="font-medium text-foreground">Map unavailable</p>
-        <p className="mt-1">
-          NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY isn't set on this deployment.
-        </p>
-      </section>
-    );
-  }
-
-  if (mappable.length === 0) {
-    return (
-      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
-        <p className="font-medium text-foreground">No mappable results</p>
-        <p className="mt-1">
-          None of the returned places included coordinates.
-        </p>
-      </section>
-    );
-  }
-
+function CostCalculator({
+  queries,
+  pagesPerQuery,
+  totalCalls,
+  totalCostUsd,
+}: {
+  queries: number;
+  pagesPerQuery: number;
+  totalCalls: number;
+  totalCostUsd: number;
+}) {
+  const pricePerCallLabel = `$${PRICE_PER_REQUEST_USD.toFixed(3)}`;
+  const freeTierLabel = FREE_PRO_REQUESTS_PER_MONTH.toLocaleString();
   return (
-    <section className="border-border bg-card shadow-elev overflow-hidden rounded-2xl border">
-      <div className="border-border flex items-center justify-between gap-3 border-b px-5 py-3">
-        <div className="flex items-center gap-2">
-          <MapPin className="text-secondary h-4 w-4" />
-          <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
-            Map
-          </h2>
+    <div className="border-border bg-card shadow-elev rounded-2xl border px-5 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+            Estimated cost
+          </p>
+          <p className="text-muted-foreground/80 mt-1 text-xs">
+            Text Search Pro SKU · 0–100K monthly tier
+          </p>
         </div>
-        <p className="text-muted-foreground text-xs">
-          {mappable.length}{" "}
-          {mappable.length === 1 ? "marker" : "markers"}
-          {missing > 0 && (
-            <> · {missing} without coordinates</>
-          )}
+        <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">
+          {formatUsdEstimate(totalCostUsd)}
         </p>
       </div>
-      <div style={{ height: MAP_HEIGHT_PX }} className="w-full">
-        <APIProvider apiKey={GOOGLE_MAPS_KEY}>
-          <Map
-            defaultCenter={MAP_DEFAULT_CENTER}
-            defaultZoom={MAP_DEFAULT_ZOOM}
-            gestureHandling="greedy"
-            disableDefaultUI
-            zoomControl
-            clickableIcons={false}
-            styles={CLEAN_MAP_STYLE}
-          >
-            <MapMarkers places={mappable} />
-            <FitBoundsToPlaces places={mappable} />
-          </Map>
-        </APIProvider>
+
+      <div className="border-border mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs sm:grid-cols-4">
+        <CalcStep
+          label="Queries"
+          value={queries.toLocaleString()}
+          op=""
+        />
+        <CalcStep
+          label="Pages / query"
+          value={pagesPerQuery.toLocaleString()}
+          op="×"
+        />
+        <CalcStep
+          label="Price / call"
+          value={pricePerCallLabel}
+          op="×"
+        />
+        <CalcStep
+          label="Total calls"
+          value={totalCalls.toLocaleString()}
+          op="="
+          emphasis
+        />
       </div>
-    </section>
+
+      <p className="text-muted-foreground/70 mt-3 text-[11px] leading-relaxed">
+        Worst-case estimate. The first {freeTierLabel} Pro calls each month
+        are free across the whole Google Cloud project, and per-call price
+        drops in higher volume tiers. Each page of 20 results is one
+        billable request.
+      </p>
+    </div>
   );
 }
 
-function FitBoundsToPlaces({ places }: { places: PlaceLite[] }) {
-  const map = useMap();
-  const coreLib = useMapsLibrary("core");
-  useEffect(() => {
-    if (!map || !coreLib || places.length === 0) return;
-    const bounds = new coreLib.LatLngBounds();
-    for (const p of places) {
-      if (p.lat !== null && p.lng !== null) {
-        bounds.extend({ lat: p.lat, lng: p.lng });
-      }
-    }
-    if (bounds.isEmpty()) return;
-    map.fitBounds(bounds, MAP_FIT_BOUNDS_PADDING_PX);
-  }, [map, coreLib, places]);
-  return null;
-}
-
-function MapMarkers({ places }: { places: PlaceLite[] }) {
-  const map = useMap();
-  const markerLib = useMapsLibrary("marker");
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!map || !markerLib) return;
-    const markers: google.maps.Marker[] = [];
-    for (const p of places) {
-      if (p.lat === null || p.lng === null) continue;
-      const marker = new markerLib.Marker({
-        position: { lat: p.lat, lng: p.lng },
-        map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: MARKER_FILL_COLOR,
-          fillOpacity: 1,
-          strokeColor: MARKER_STROKE_COLOR,
-          strokeWeight: MARKER_STROKE_WIDTH,
-          scale: MARKER_SCALE,
-        },
-        optimized: true,
-      });
-      marker.addListener("click", () => {
-        setOpenId((id) => (id === p.id ? null : p.id));
-      });
-      markers.push(marker);
-    }
-    return () => {
-      for (const m of markers) {
-        m.setMap(null);
-      }
-    };
-  }, [map, markerLib, places]);
-
-  const openPlace =
-    openId === null ? null : places.find((p) => p.id === openId) ?? null;
-
-  if (!openPlace || openPlace.lat === null || openPlace.lng === null) {
-    return null;
-  }
-
+function CalcStep({
+  label,
+  value,
+  op,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  op: string;
+  emphasis?: boolean;
+}) {
   return (
-    <InfoWindow
-      position={{ lat: openPlace.lat, lng: openPlace.lng }}
-      onCloseClick={() => setOpenId(null)}
-    >
-      <div className="max-w-[240px] text-xs">
-        <p className="text-foreground text-sm font-medium">
-          {openPlace.displayName || "(no name)"}
+    <div className="flex items-center gap-2">
+      {op && (
+        <span className="text-muted-foreground/60 font-mono text-base leading-none">
+          {op}
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+          {label}
         </p>
-        <p className="text-muted-foreground mt-0.5">
-          {openPlace.formattedAddress}
-        </p>
-        <p className="text-muted-foreground/70 mt-1 font-mono break-all">
-          {openPlace.id}
+        <p
+          className={
+            "font-display mt-0.5 truncate text-lg font-semibold tabular-nums " +
+            (emphasis ? "text-foreground" : "text-foreground/85")
+          }
+        >
+          {value}
         </p>
       </div>
-    </InfoWindow>
+    </div>
   );
 }
+
