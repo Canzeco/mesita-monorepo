@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BadgeCheck,
+  Bell,
   FilePen,
   ListPlus,
   ListChecks,
@@ -18,12 +18,19 @@ type NavItem = {
   Icon: React.ComponentType<{ className?: string }>;
 };
 
+// Verifications were dropped from the sidebar when ownership flipped
+// to fully-automatic (phone OTP / video AI / WhatsApp fallback) — the
+// /verifications route still exists as the admin escape hatch for
+// manual grants, but it's not part of the day-to-day surface.
 const UNIT_NAV: NavItem[] = [
-  { href: "/verifications", label: "Unit verification requests", Icon: BadgeCheck },
   { href: "/update", label: "Manually update unit", Icon: FilePen },
   { href: "/bulk-search", label: "Bulk search units", Icon: ListFilter },
   { href: "/bulk-create", label: "Bulk create units", Icon: ListPlus },
   { href: "/bulk-update", label: "Bulk update units", Icon: ListChecks },
+];
+
+const INBOX_NAV: NavItem[] = [
+  { href: "/notifications", label: "Notifications", Icon: Bell },
 ];
 
 export function Sidebar({ email }: { email: string | null }) {
@@ -43,28 +50,9 @@ export function Sidebar({ email }: { email: string | null }) {
         </span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
-        <p className="text-muted-foreground px-2 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
-          Units
-        </p>
-        {UNIT_NAV.map(({ href, label, Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={
-                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition " +
-                (active
-                  ? "bg-secondary/10 text-secondary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground")
-              }
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto">
+        <NavSection label="Units" items={UNIT_NAV} pathname={pathname} />
+        <NavSection label="Inbox" items={INBOX_NAV} pathname={pathname} />
       </nav>
 
       {email && (
@@ -80,5 +68,41 @@ export function Sidebar({ email }: { email: string | null }) {
         </form>
       )}
     </aside>
+  );
+}
+
+function NavSection({
+  label,
+  items,
+  pathname,
+}: {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-muted-foreground px-2 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
+        {label}
+      </p>
+      {items.map(({ href, label, Icon }) => {
+        const active = pathname === href;
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={
+              "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition " +
+              (active
+                ? "bg-secondary/10 text-secondary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground")
+            }
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </Link>
+        );
+      })}
+    </div>
   );
 }
