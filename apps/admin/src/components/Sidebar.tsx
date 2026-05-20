@@ -15,8 +15,8 @@ type NavItem = {
 };
 
 const UNIT_NAV: NavItem[] = [
-  { href: "/units/create", label: "Create unit", Icon: FilePlus },
-  { href: "/units/update", label: "Update unit", Icon: FilePen },
+  { href: "/units/create", label: "Manually create unit", Icon: FilePlus },
+  { href: "/units/update", label: "Manually update unit", Icon: FilePen },
   { href: "/units/bulk-create", label: "Bulk create units", Icon: ListPlus },
   { href: "/units/bulk-update", label: "Bulk update units", Icon: ListChecks },
 ];
