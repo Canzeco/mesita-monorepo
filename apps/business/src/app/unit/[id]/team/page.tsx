@@ -4,20 +4,26 @@ import { Plus, Phone, MessageCircle, Crown, ChevronRight } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
 import { TEAM, VALIDATORS } from "@/lib/manager-data";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { readSuperKeyFromSearchParams } from "@/lib/super-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=/unit/${id}/team`);
+  const sp = await searchParams;
+  if (!readSuperKeyFromSearchParams(sp)) {
+    const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) redirect(`/sign-in?next=/unit/${id}/team`);
+  }
 
   return (
     <>

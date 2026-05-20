@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSuperAdminKey } from "@/lib/super-admin";
+import { SUPER_ADMIN_QUERY_PARAM } from "@/lib/super-admin";
 
 // Client-side mutation proxy for super-admin mode.
 //
-// EditVenueForm runs in the browser and can't read the HttpOnly cookie
-// that holds the super-admin token. So when the form notices it's in
-// super-admin mode (via the non-HttpOnly flag cookie), it POSTs the
-// same body to this route instead of calling Supabase directly. This
-// handler reads the HttpOnly cookie server-side, then forwards to the
+// EditVenueForm + PromosClient run in the browser; in super-admin mode
+// they hold the superkey in `window.location.search` (URL = source of
+// truth) and POST here with `?superkey=<value>` on the URL. This handler
+// reads the key out of the request URL, forwards the body to the
 // manager-update-unit EF with `x-super-admin-key` — the EF accepts that
 // header in lieu of a bearer JWT and skips the venue_members check.
 
 export async function POST(req: NextRequest) {
-  const key = await getSuperAdminKey();
+  const key = req.nextUrl.searchParams.get(SUPER_ADMIN_QUERY_PARAM);
   if (!key) {
     return NextResponse.json(
-      { ok: false, error: "Not in super-admin mode." },
+      { ok: false, error: "Missing superkey query parameter." },
       { status: 401 },
     );
   }
