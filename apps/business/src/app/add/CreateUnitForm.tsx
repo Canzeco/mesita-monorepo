@@ -86,7 +86,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         if (!cancelled) setPredictions(results);
       } catch (err) {
         if (!cancelled) {
-          setSearchError(err instanceof Error ? err.message : "Search failed.");
+          setSearchError(errMsg(err, "Search failed."));
           setPredictions([]);
         }
       } finally {
@@ -111,9 +111,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         const r = await apiLookupVenue(supabase, prediction.placeId);
         setLookup(r);
       } catch (err) {
-        setLookupError(
-          err instanceof Error ? err.message : "Could not look up that venue.",
-        );
+        setLookupError(errMsg(err, "Could not look up that venue."));
       }
     });
   };
@@ -134,9 +132,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
       const r = await apiLookupVenue(supabase, selected.placeId);
       setLookup(r);
     } catch (err) {
-      setLookupError(
-        err instanceof Error ? err.message : "Could not refresh lookup.",
-      );
+      setLookupError(errMsg(err, "Could not refresh lookup."));
     }
   };
 
@@ -162,9 +158,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         setGenerateStage("Done");
         await refreshLookup();
       } catch (err) {
-        setGenerateError(
-          err instanceof Error ? err.message : "Could not create venue.",
-        );
+        setGenerateError(errMsg(err, "Could not create venue."));
         setGenerateStage(null);
       } finally {
         window.clearInterval(stageInterval);
@@ -314,8 +308,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
             <PendingByMeCard
               venue={lookup.venue}
               codeVerified={
-                typeof (lookup.verification.payload as Record<string, unknown>)
-                  .codeVerifiedAt === "string"
+                typeof lookup.verification.payload.codeVerifiedAt === "string"
               }
               {...verificationCallbacks}
             />
@@ -656,9 +649,7 @@ function VerificationForm({
           mockCode: r.mockCode,
         });
       } catch (err) {
-        setPhoneError(
-          err instanceof Error ? err.message : "Could not place call.",
-        );
+        setPhoneError(errMsg(err, "Could not place call."));
         setCallState({ kind: "idle" });
       }
     })();
@@ -685,9 +676,7 @@ function VerificationForm({
         if (awaitingAdmin) onAwaitingAdmin();
         else onApproved(vId);
       } catch (err) {
-        setPhoneError(
-          err instanceof Error ? err.message : "Could not verify.",
-        );
+        setPhoneError(errMsg(err, "Could not verify."));
         setCallState({ kind: "awaiting_code", verificationId, mockCode });
       }
     })();
@@ -695,7 +684,8 @@ function VerificationForm({
 
   const submitVideo = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!/^https:\/\/[^\s]+$/.test(videoUrl.trim())) {
+    const url = videoUrl.trim();
+    if (!/^https:\/\/[^\s]+$/.test(url)) {
       setVideoError("Paste an https:// URL to a hosted video.");
       return;
     }
@@ -706,14 +696,12 @@ function VerificationForm({
           venueId,
           method: "video",
           requesterEmail: signedInEmail,
-          videoUrl: videoUrl.trim(),
+          videoUrl: url,
         });
         if (r.status === "approved") onApproved(venueId);
         else onPendingForReview();
       } catch (err) {
-        setVideoError(
-          err instanceof Error ? err.message : "Could not submit.",
-        );
+        setVideoError(errMsg(err, "Could not submit."));
       }
     });
   };
@@ -1071,10 +1059,16 @@ function StatusBadge({
   );
 }
 
-// Untouched helper from the previous version.
 function newSessionToken(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+// Unwrap an arbitrary thrown value to a user-facing message, falling
+// back to the call-site default when the throwable isn't an Error
+// (e.g. fetch rejected with a plain object).
+function errMsg(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
 }
