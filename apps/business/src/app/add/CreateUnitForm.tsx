@@ -580,16 +580,17 @@ function ErrorCard({
 
 // ── Verification form ─────────────────────────────────────────────────
 
-// Phone is THE flow on /add — there are no peer tabs, no method
-// picker, no decision-paralysis grid. The AI call + OTP entry happen
-// on this same page as a single state machine. Video is a tiny
-// escape-hatch link at the bottom for the rare venue that genuinely
-// can't pick up; opening it swaps the phone form out in-place. No
-// page changes ever.
+// Single self-contained form. Both methods are visible up top via a
+// compact Phone | Video tab strip; switching tabs swaps the body
+// in-place. Whichever you pick, the whole flow — including the OTP
+// entry for phone — runs on this same page. No nav, no modal, no
+// separate OTP card.
 
 // Phone state machine: idle → placing → awaiting_code (after the EF
 // returns the verification ID) → verifying (after the operator
 // submits the code). Errors push it back one step.
+type TabKey = "ai_call" | "video";
+
 type CallState =
   | { kind: "idle" }
   | { kind: "placing" }
@@ -616,7 +617,7 @@ function VerificationForm({
   venueId: string;
   venuePhone: string | null;
 } & VerificationCallbacks) {
-  const [videoMode, setVideoMode] = useState(false);
+  const [tab, setTab] = useState<TabKey>("ai_call");
 
   // Phone state.
   const [callState, setCallState] = useState<CallState>({ kind: "idle" });
@@ -627,6 +628,12 @@ function VerificationForm({
   const [videoUrl, setVideoUrl] = useState("");
   const [videoPending, startVideo] = useTransition();
   const [videoError, setVideoError] = useState<string | null>(null);
+
+  const switchTab = (next: TabKey) => {
+    setTab(next);
+    setPhoneError(null);
+    setVideoError(null);
+  };
 
   const placeCall = () => {
     if (callState.kind === "placing" || callState.kind === "verifying") return;
@@ -709,16 +716,9 @@ function VerificationForm({
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      {videoMode ? (
-        <VideoSection
-          videoUrl={videoUrl}
-          setVideoUrl={setVideoUrl}
-          pending={videoPending}
-          error={videoError}
-          onSubmit={submitVideo}
-        />
-      ) : (
+    <div className="flex flex-col gap-4">
+      <MethodTabs tab={tab} setTab={switchTab} />
+      {tab === "ai_call" ? (
         <PhoneSection
           venuePhone={venuePhone}
           state={callState}
@@ -728,29 +728,63 @@ function VerificationForm({
           onPlaceCall={placeCall}
           onVerify={verifyCode}
         />
+      ) : (
+        <VideoSection
+          videoUrl={videoUrl}
+          setVideoUrl={setVideoUrl}
+          pending={videoPending}
+          error={videoError}
+          onSubmit={submitVideo}
+        />
       )}
-      <button
-        type="button"
-        onClick={() => {
-          setVideoMode((v) => !v);
-          setPhoneError(null);
-          setVideoError(null);
-        }}
-        className="text-muted-foreground hover:text-foreground mt-1 inline-flex items-center justify-center gap-1.5 self-center text-[12px] font-medium transition"
-      >
-        {videoMode ? (
-          <>
-            <Phone className="h-3.5 w-3.5" />
-            Use the phone call flow instead
-          </>
-        ) : (
-          <>
-            <Video className="h-3.5 w-3.5" />
-            Can&apos;t pick up? Send a video walkthrough instead
-          </>
-        )}
-      </button>
     </div>
+  );
+}
+
+function MethodTabs({
+  tab,
+  setTab,
+}: {
+  tab: TabKey;
+  setTab: (next: TabKey) => void;
+}) {
+  return (
+    <div className="bg-muted/60 grid grid-cols-2 gap-1 rounded-full p-1">
+      <TabButton active={tab === "ai_call"} onClick={() => setTab("ai_call")}>
+        <Phone className="h-4 w-4" />
+        Phone call
+      </TabButton>
+      <TabButton active={tab === "video"} onClick={() => setTab("video")}>
+        <Video className="h-4 w-4" />
+        Video
+      </TabButton>
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-[13px] font-semibold transition",
+        active
+          ? "bg-card text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
