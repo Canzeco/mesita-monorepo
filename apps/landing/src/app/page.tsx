@@ -8,14 +8,19 @@ import {
   TrendingUp,
   Instagram,
   BarChart3,
-  Smartphone,
-  Apple,
-  Globe,
+  Store,
+  UserCircle,
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
+// Subdomain URLs — landing lives on mesita.ai, guest + manager are
+// separate apps. Keep absolute so links work from any environment.
+const GUEST_URL = "https://guest.mesita.ai";
+const MANAGER_SIGNUP_URL = "https://manager.mesita.ai/sign-up";
+const MANAGER_SIGNIN_URL = "https://manager.mesita.ai/sign-in";
 
 // Landing page — single-source-of-truth marketing surface.
 //
@@ -74,12 +79,22 @@ function Nav() {
             FAQ
           </a>
         </nav>
-        <Button asChild size="sm" className="rounded-full">
-          <Link href="/manager/sign-up">
-            List your venue
-            <ArrowRight />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="hidden rounded-full sm:inline-flex"
+          >
+            <Link href={GUEST_URL}>Open Mesita</Link>
+          </Button>
+          <Button asChild size="sm" className="rounded-full">
+            <Link href={MANAGER_SIGNUP_URL}>
+              List your venue
+              <ArrowRight />
+            </Link>
+          </Button>
+        </div>
       </div>
     </header>
   );
@@ -108,38 +123,29 @@ function Hero() {
           product; everyone benefits.
         </p>
 
-        {/* Download CTAs: three rails (App Store, Google Play, Web). iOS +
-            Android are pre-launch — the Web Guest experience is live now
-            so the click has somewhere real to land. */}
-        <div className="mt-2 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-          <DownloadButton
-            disabled
-            primary={false}
-            label="Coming on"
-            store="App Store"
-            Icon={Apple}
+        {/* Two-path CTA: symmetric buttons for guests and venues. Same
+            shape, size, hover; the only difference is the color treatment
+            so the eye can still tell them apart at a glance. Both routes
+            already live on production subdomains. */}
+        <div className="mt-2 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+          <PathButton
+            href={GUEST_URL}
+            Icon={UserCircle}
+            eyebrow="I'm a guest"
+            label="Open Mesita"
+            variant="primary"
           />
-          <DownloadButton
-            disabled
-            primary={false}
-            label="Coming on"
-            store="Google Play"
-            Icon={Smartphone}
+          <PathButton
+            href={MANAGER_SIGNUP_URL}
+            Icon={Store}
+            eyebrow="I run a venue"
+            label="List your venue"
+            variant="dark"
           />
-          <Button
-            asChild
-            size="lg"
-            className="bg-pink-gradient shadow-glow rounded-full px-5 text-white hover:opacity-90"
-          >
-            <Link href="/guest">
-              <Globe />
-              Open the web app
-            </Link>
-          </Button>
         </div>
 
         <p className="text-muted-foreground text-xs">
-          Free to use · No download required for the web · Cashback on every
+          Free for guests · Set up your venue in 10 minutes · Cashback on every
           visit
         </p>
 
@@ -159,36 +165,37 @@ function Hero() {
   );
 }
 
-function DownloadButton({
-  label,
-  store,
+function PathButton({
+  href,
   Icon,
-  primary,
-  disabled,
+  eyebrow,
+  label,
+  variant,
 }: {
+  href: string;
+  Icon: typeof UserCircle;
+  eyebrow: string;
   label: string;
-  store: string;
-  Icon: typeof Apple;
-  primary: boolean;
-  disabled?: boolean;
+  variant: "primary" | "dark";
 }) {
-  const className = primary
-    ? "bg-foreground text-background hover:opacity-90"
-    : "border border-border bg-background text-foreground hover:bg-muted/50";
+  const className =
+    variant === "primary"
+      ? "bg-pink-gradient shadow-glow text-white"
+      : "bg-foreground text-background";
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-left transition disabled:cursor-default disabled:opacity-70 ${className}`}
+    <Link
+      href={href}
+      className={`group inline-flex items-center justify-center gap-3 rounded-full px-5 py-4 text-left transition hover:opacity-90 ${className}`}
     >
       <Icon className="h-5 w-5 shrink-0" />
       <span className="flex flex-col leading-tight">
-        <span className="text-[9px] tracking-[0.18em] uppercase opacity-70">
-          {label}
+        <span className="text-[10px] tracking-[0.18em] uppercase opacity-80">
+          {eyebrow}
         </span>
-        <span className="text-[13px] font-semibold">{store}</span>
+        <span className="text-[15px] font-semibold">{label}</span>
       </span>
-    </button>
+      <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+    </Link>
   );
 }
 
@@ -254,6 +261,22 @@ function ForGuests() {
               </article>
             );
           })}
+        </div>
+        <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted-foreground inline-flex items-center gap-2 text-[13px]">
+            <CheckCircle2 className="text-secondary h-4 w-4" />
+            Free forever. No download required for the web.
+          </p>
+          <Button
+            asChild
+            size="lg"
+            className="bg-pink-gradient shadow-glow rounded-full text-white hover:opacity-90"
+          >
+            <Link href={GUEST_URL}>
+              Open Mesita
+              <ArrowRight />
+            </Link>
+          </Button>
         </div>
       </div>
     </section>
@@ -333,11 +356,22 @@ function ForVenues() {
             );
           })}
         </div>
-        <p className="text-muted-foreground mt-10 inline-flex items-center gap-2 text-[13px]">
-          <CheckCircle2 className="text-secondary h-4 w-4" />
-          Setup in 10 minutes. No hardware, no POS, no app for staff —
-          everything runs from a browser.
-        </p>
+        <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted-foreground inline-flex items-center gap-2 text-[13px]">
+            <CheckCircle2 className="text-secondary h-4 w-4" />
+            Setup in 10 minutes. No hardware, no POS, no app for staff.
+          </p>
+          <Button
+            asChild
+            size="lg"
+            className="bg-foreground text-background hover:bg-foreground rounded-full hover:opacity-90"
+          >
+            <Link href={MANAGER_SIGNUP_URL}>
+              List your venue
+              <ArrowRight />
+            </Link>
+          </Button>
+        </div>
       </div>
     </section>
   );
@@ -434,7 +468,7 @@ function Footer() {
             FAQ
           </a>
           <Link
-            href="/manager/sign-in"
+            href={MANAGER_SIGNIN_URL}
             className="hover:text-foreground transition"
           >
             Manager sign-in
