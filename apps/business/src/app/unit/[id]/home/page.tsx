@@ -24,7 +24,6 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { FiscalBadge } from "@/components/shared";
 import { cn } from "@/lib/utils";
-import { redirectIfUnverified } from "@/lib/manager/gate";
 
 // /unit/<id>/home — the dashboard root. Empty-state CTA if the operator
 // has no venues yet, otherwise: overview + jump-offs to Place / Promos /
@@ -104,7 +103,6 @@ export default async function ManagerHomePage({
   }
 
   const active = overview?.active?.venue ?? venues[0];
-  redirectIfUnverified(active.id, active.status);
 
   return (
     <>

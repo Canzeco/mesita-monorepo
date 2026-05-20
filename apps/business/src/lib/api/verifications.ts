@@ -1,8 +1,4 @@
 // Frontend API surface for ownership-verification Edge Functions.
-//
-// Manager submits one of three methods (ai_call / video / postcard);
-// the EF either auto-approves (when app_settings.auto_verify_venues is
-// true) or leaves the row pending for an admin to decide.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -21,6 +17,45 @@ export type Verification = {
   decided_via: "auto" | "admin" | null;
   created_at: string;
 };
+
+// Slim venue shape the lookup EF returns.
+export type LookupVenue = {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  listing_type: "web" | "partner" | "unclaimed";
+  address: string | null;
+  phone: string | null;
+  photos: string[];
+  category: string | null;
+  vibe: string | null;
+  cashback_percent: number | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type LookupResult =
+  | { state: "not_in_mesita"; venue: null }
+  | { state: "web_listed_unclaimed"; venue: LookupVenue }
+  | {
+      state: "pending_by_me";
+      venue: LookupVenue;
+      verification: Verification;
+    }
+  | { state: "pending_by_other"; venue: LookupVenue }
+  | {
+      state: "verified_partner";
+      venue: LookupVenue;
+      owner: { id: string; email: string | null };
+    };
+
+export async function apiLookupVenue(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<LookupResult> {
+  return invokeEF<LookupResult>(client, "manager-lookup-venue", { placeId });
+}
 
 export type SubmitVerificationInput = {
   venueId: string;
@@ -42,14 +77,4 @@ export async function apiSubmitVerification(
     };
   }>(client, "manager-submit-verification", input);
   return { id: verification.id, status: verification.status };
-}
-
-export async function apiGetVerification(
-  client: SupabaseClient,
-  venueId: string,
-): Promise<Verification | null> {
-  const { verification } = await invokeEF<{
-    verification: Verification | null;
-  }>(client, "manager-get-verification", { venueId });
-  return verification;
 }

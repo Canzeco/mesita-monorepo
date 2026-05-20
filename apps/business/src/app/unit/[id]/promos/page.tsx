@@ -4,7 +4,6 @@ import { Topbar } from "@/components/manager/Topbar";
 import { PageErrorState } from "@/components/manager/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
-import { redirectIfUnverified } from "@/lib/manager/gate";
 import { PromosClient } from "./PromosClient";
 
 // Server shell: loads the active venue (carries fiscal_type + current plan)
@@ -76,7 +75,6 @@ export default async function ManagerPromosPage({
   }
 
   const active = overview.active?.venue ?? overview.venues[0];
-  redirectIfUnverified(active.id, active.status);
 
   return (
     <>

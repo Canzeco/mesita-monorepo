@@ -34,13 +34,15 @@ export default async function CreateUnitPage() {
         </Link>
         <header className="mb-6">
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            Create unit
+            Add a venue
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            A minute of setup. Live the moment you save.
+            Search the Google profile. If it&apos;s already on Mesita
+            we&apos;ll show its status; otherwise we&apos;ll generate one and
+            you can claim ownership in the same step.
           </p>
         </header>
-        <CreateUnitForm />
+        <CreateUnitForm signedInEmail={user.email ?? ""} />
       </div>
     </div>
   );
