@@ -2,16 +2,20 @@
 //
 // Wrapped in React.cache so the manager layout and the active page (which
 // both need the bundle) reuse a single Edge Function round trip per render.
+// The EF decides super-admin elevation server-side from the caller's JWT
+// against public.super_admins; the client never carries a key.
 
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MyVenue } from "./venues";
 import type { VenueTicket } from "./tickets";
 import { invokeEF } from "./_invoke";
-import { getSuperAdminKey } from "@/lib/super-admin";
 
 export type UnitOverview = {
   user: { id: string; email: string | null };
+  // True when the EF resolved the caller as a super-admin (their email
+  // is in public.super_admins). Drives the Topbar banner.
+  isSuperAdmin: boolean;
   venues: MyVenue[];
   active: { venue: MyVenue; recentTickets: VenueTicket[] } | null;
 };
@@ -21,39 +25,6 @@ async function fetchUnitOverview(
   activeUnitId: string | null,
   ticketsLimit = 20,
 ): Promise<UnitOverview> {
-  // Super-admin mode: bypass the Supabase client (which would attach the
-  // anon/user session) and call the EF directly with the operator's
-  // ADMIN_ACCESS_KEY in the `x-super-admin-key` header. The EF skips JWT
-  // + venue_members checks and returns just the requested venue.
-  const superKey = await getSuperAdminKey();
-  if (superKey) {
-    if (!activeUnitId) {
-      throw new Error("super-admin overview requires activeUnitId");
-    }
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!url) {
-      throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
-    }
-    const res = await fetch(`${url}/functions/v1/manager-get-overview`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-super-admin-key": superKey,
-      },
-      body: JSON.stringify({ activeUnitId, ticketsLimit }),
-      cache: "no-store",
-    });
-    const text = await res.text();
-    const body = (text ? JSON.parse(text) : {}) as
-      | ({ ok: true } & UnitOverview)
-      | { ok: false; error?: string };
-    if (!body.ok) {
-      throw new Error(body.error ?? `manager-get-overview HTTP ${res.status}`);
-    }
-    const { ok: _ok, ...rest } = body;
-    void _ok;
-    return rest as UnitOverview;
-  }
   return invokeEF<UnitOverview>(client, "manager-get-overview", {
     activeUnitId: activeUnitId ?? undefined,
     ticketsLimit,
