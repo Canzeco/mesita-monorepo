@@ -30,7 +30,13 @@ export function OAuthButtons({ next }: { next: string }) {
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        // Force Google's account chooser. Without this, Google reuses
+        // the active browser session and the user can't switch identities
+        // after landing on an "Not authorised" / wrong-account state.
+        queryParams: { prompt: "select_account" },
+      },
     });
     if (error) {
       setError(error.message);
