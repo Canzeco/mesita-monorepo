@@ -1,3 +1,5 @@
+import { SuperAdminLinkForm } from "./SuperAdminLinkForm";
+
 export default function UpdateUnitPage() {
   return (
     <div className="mx-auto max-w-3xl px-8 pt-12 pb-14">
@@ -8,9 +10,12 @@ export default function UpdateUnitPage() {
         Manually update unit
       </h1>
       <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-        Search a venue and edit fields by hand. The picker plus the
-        same field editor used on the manager Place page land here next.
+        Paste a Google Place ID. If the venue is already in Mesita, you'll
+        get a one-shot super-admin link that opens its Place editor in the
+        manager console with no team membership required.
       </p>
+
+      <SuperAdminLinkForm />
     </div>
   );
 }
