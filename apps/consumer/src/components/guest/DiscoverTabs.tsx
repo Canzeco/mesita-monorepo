@@ -30,7 +30,7 @@ export function DiscoverTabs() {
 
   return (
     <div className="px-3 pt-2 pb-1">
-      <div className="border-border bg-card/70 flex items-center gap-1 rounded-full border p-1 shadow-sm backdrop-blur">
+      <div className="border-border bg-card/70 flex items-center gap-1 rounded-full border p-1 backdrop-blur">
         {TABS.map(({ href, label, Icon }) => {
           const active = activeHref === href;
           return (

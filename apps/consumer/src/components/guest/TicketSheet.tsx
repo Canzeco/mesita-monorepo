@@ -127,7 +127,7 @@ export function TicketSheet({
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="bg-card/90 text-foreground absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur"
+                className="bg-card/90 text-foreground absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -267,7 +267,7 @@ export function TicketSheet({
                         className="object-contain"
                         unoptimized
                       />
-                      <div className="bg-background/90 absolute top-3 left-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-sm backdrop-blur">
+                      <div className="bg-background/90 absolute top-3 left-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold backdrop-blur">
                         {storyStatus === "verifying" ? (
                           <>
                             <Loader2 className="text-secondary h-3 w-3 animate-spin" />

@@ -66,7 +66,7 @@ export function VenueCatalogCard({
   );
 
   const className =
-    "block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:shadow-md";
+    "block overflow-hidden rounded-2xl border border-border bg-card  transition hover:shadow-md";
 
   if (href === null) {
     return <div className={className}>{inner}</div>;

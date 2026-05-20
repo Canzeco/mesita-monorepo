@@ -240,11 +240,11 @@ function MapView({
 
       {/* Top overlay: counts + legend */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3">
-        <div className="bg-card/95 text-foreground pointer-events-auto rounded-full px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur">
+        <div className="bg-card/95 text-foreground pointer-events-auto rounded-full px-3 py-1.5 text-[11px] font-semibold backdrop-blur">
           <Compass className="mr-1 inline-block h-3 w-3 -translate-y-0.5" />
           {venues.length} of {totalVenues} near here
         </div>
-        <div className="bg-card/95 text-foreground pointer-events-auto flex flex-col gap-1 rounded-2xl p-2 text-[10px] font-semibold shadow-sm backdrop-blur">
+        <div className="bg-card/95 text-foreground pointer-events-auto flex flex-col gap-1 rounded-2xl p-2 text-[10px] font-semibold backdrop-blur">
           <LegendDot
             color={PARTNER_COLOR}
             icon={<Sparkles className="h-2.5 w-2.5" />}
@@ -259,7 +259,7 @@ function MapView({
 
       {/* Geolocation state banner */}
       {(locationStatus === "denied" || locationStatus === "unsupported") && (
-        <div className="bg-card/95 text-muted-foreground pointer-events-auto absolute inset-x-3 top-14 z-10 rounded-2xl px-3 py-2 text-[11px] shadow-sm backdrop-blur">
+        <div className="bg-card/95 text-muted-foreground pointer-events-auto absolute inset-x-3 top-14 z-10 rounded-2xl px-3 py-2 text-[11px] backdrop-blur">
           {locationStatus === "denied"
             ? "Location off — showing Monterrey by default. Enable location in your browser to centre on you."
             : "Geolocation isn't supported on this device."}

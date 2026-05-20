@@ -156,7 +156,7 @@ export function ImageCarousel({
           aria-label={muted ? "Unmute video" : "Mute video"}
           data-no-swipe
           className={cn(
-            "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80",
+            "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white backdrop-blur transition hover:bg-black/80",
             mutePosition === "top-right"
               ? items.length > 1
                 ? "top-12 right-3"
@@ -178,7 +178,7 @@ export function ImageCarousel({
             <span
               key={i}
               className={cn(
-                "h-1.5 rounded-full bg-white shadow-sm transition-all duration-200",
+                "h-1.5 rounded-full bg-white transition-all duration-200",
                 i === idx ? "w-5 opacity-100" : "w-1.5 opacity-60",
               )}
             />

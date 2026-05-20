@@ -129,7 +129,7 @@ function CardOverlay({ venue, hrefInfo }: { venue: Venue; hrefInfo?: string }) {
             href={hrefInfo}
             data-no-swipe
             aria-label="More info"
-            className="text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur transition hover:bg-white"
+            className="text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 backdrop-blur transition hover:bg-white"
           >
             <Info className="h-4 w-4" />
           </Link>

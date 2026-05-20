@@ -90,7 +90,7 @@ export default async function SubscribePage({
                 : "bg-tier-diamond shadow-elev rounded-2xl p-5 text-white"
           }
         >
-          <p className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-80">
+          <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
             Mesita Class
           </p>
           <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">

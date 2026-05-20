@@ -184,13 +184,13 @@ function InstagramPathBox({ onConnect }: { onConnect: () => void }) {
     <button
       type="button"
       onClick={onConnect}
-      className="flex items-center gap-4 rounded-2xl bg-[linear-gradient(135deg,oklch(0.93_0.05_30),oklch(0.92_0.08_50))] p-4 text-left shadow-sm transition hover:shadow-md"
+      className="flex items-center gap-4 rounded-2xl bg-[linear-gradient(135deg,oklch(0.93_0.05_30),oklch(0.92_0.08_50))] p-4 text-left transition hover:shadow-md"
     >
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white">
         <Instagram className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-foreground/70 text-[10px] font-bold tracking-[0.18em] uppercase">
+        <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
           Path 1 · Free
         </p>
         <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
@@ -232,7 +232,7 @@ function ClassLadderCard() {
   return (
     <section className="border-border bg-card rounded-2xl border p-5 shadow-sm">
       <header className="flex items-center justify-between">
-        <p className="text-secondary text-[10px] font-bold tracking-[0.18em] uppercase">
+        <p className="text-secondary text-[10px] font-medium tracking-[0.14em] uppercase">
           Class ladder
         </p>
         <span className="text-muted-foreground text-[11px]">
@@ -306,7 +306,7 @@ function CurrentClassCard() {
           : "bg-tier-diamond text-white";
   return (
     <section className={cn("rounded-2xl p-5 shadow-sm", tone)}>
-      <p className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-80">
+      <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
         Your class
       </p>
       <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">
@@ -330,7 +330,7 @@ function SubscriptionPathBox() {
     <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-secondary text-[10px] font-bold tracking-[0.18em] uppercase">
+          <p className="text-secondary text-[10px] font-medium tracking-[0.14em] uppercase">
             Path 2 · Subscribe
           </p>
           <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
@@ -730,7 +730,7 @@ function VerifyInstagramSheet({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             disabled={code.length < 8}
-            className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white shadow-sm transition disabled:opacity-60"
+            className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white transition disabled:opacity-60"
           >
             <BadgeCheck className="h-4 w-4" />
             Verify

@@ -1,14 +1,14 @@
 export type Tier = "bronze" | "silver" | "gold" | "diamond";
 
-export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
-export type ExternalReview = {
+type ExternalReview = {
   source: "google" | "uber" | "facebook" | "instagram";
   value: string;
   meta: string;
 };
 
-export type VenueVisitor = {
+type VenueVisitor = {
   name: string;
   handle: string;
   followers: string;
@@ -19,9 +19,9 @@ export type VenueVisitor = {
   ratings: { food: number; service: number; atm: number; value: number };
 };
 
-export type VenueHour = { day: Weekday; label: string; range: string };
+type VenueHour = { day: Weekday; label: string; range: string };
 
-export type VenueMedia =
+type VenueMedia =
   | { type: "image"; src: string }
   | { type: "video"; src: string; poster?: string };
 
@@ -446,7 +446,7 @@ export const VENUES: Venue[] = [
 
 export type StepKey = "R" | "P" | "S" | "C";
 
-export type SavedItemState = "arrive" | "calling" | "booking" | "show-qr";
+type SavedItemState = "arrive" | "calling" | "booking" | "show-qr";
 
 export type SavedItem = {
   id: string;
@@ -677,15 +677,12 @@ export const COUNTRIES: Country[] = [
 export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
   COUNTRIES.map((c) => [c.code, c]),
 );
-export const COUNTRY_BY_NAME: Record<string, Country> = Object.fromEntries(
-  COUNTRIES.map((c) => [c.name, c]),
-);
 
 // How the current tier was granted. The Class tab shows different copy
 // depending on origin (e.g. "earned via 7.3K Instagram followers" vs
 // "subscribed · renews Dec 12"), and `subscription` is the only origin
 // that allows a downgrade/cancel action.
-export type TierOrigin = "default" | "instagram" | "subscription" | "appeal";
+type TierOrigin = "default" | "instagram" | "subscription" | "appeal";
 
 // Mock guest used by the Profile + Discover header until real guest-side
 // reads are wired up. Only carries the fields the UI actually reads — name,
@@ -748,7 +745,7 @@ export const TIERS: {
   },
 ];
 
-export type Transaction = {
+type Transaction = {
   id: string;
   venueId: string;
   amount: number;
@@ -1191,17 +1188,4 @@ export const ACHIEVEMENTS: Achievement[] = [
 
 export function venueById(id: string): Venue | undefined {
   return VENUES.find((v) => v.id === id);
-}
-
-export function tierBadgeClass(tier: Tier): string {
-  switch (tier) {
-    case "bronze":
-      return "bg-tier-bronze text-black";
-    case "silver":
-      return "bg-tier-silver text-black";
-    case "gold":
-      return "bg-tier-gold text-black";
-    case "diamond":
-      return "bg-tier-diamond text-black";
-  }
 }

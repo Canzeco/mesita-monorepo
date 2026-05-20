@@ -88,7 +88,7 @@ export function MyQrClient({
             type="button"
             onClick={onCopy}
             aria-label={copied ? "Code copied" : "Copy code"}
-            className="border-border bg-background text-foreground hover:bg-muted flex items-center gap-2 rounded-full border px-4 py-2 text-base font-bold tracking-[0.2em] tabular-nums transition"
+            className="border-border bg-background text-foreground hover:bg-muted flex items-center gap-2 rounded-full border px-4 py-2 text-base font-medium tracking-[0.16em] tabular-nums transition"
           >
             {profile.code}
             {copied ? (
@@ -324,7 +324,7 @@ function StoryUpload({
           type="button"
           onClick={() => void submit()}
           disabled={pending}
-          className="bg-pink-gradient inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[12px] font-semibold text-white shadow-sm disabled:opacity-60"
+          className="bg-pink-gradient inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[12px] font-semibold text-white disabled:opacity-60"
         >
           {pending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

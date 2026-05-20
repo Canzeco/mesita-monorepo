@@ -216,7 +216,7 @@ function Deck({ venues }: { venues: Venue[] }) {
           </div>
           <div
             className={cn(
-              "bg-pink-gradient pointer-events-none absolute top-4 right-4 z-30 rounded-full px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase shadow-sm transition-all",
+              "bg-pink-gradient pointer-events-none absolute top-4 right-4 z-30 rounded-full px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
               dragX > 30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
             )}
           >

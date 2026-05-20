@@ -59,7 +59,7 @@ export function DiscoverHeader() {
         >
           🦚
         </Link>
-        <div className="border-border bg-card/70 flex min-w-0 flex-1 items-center gap-1 rounded-full border p-1 shadow-sm backdrop-blur">
+        <div className="border-border bg-card/70 flex min-w-0 flex-1 items-center gap-1 rounded-full border p-1 backdrop-blur">
           <button
             type="button"
             onClick={() => setOpen(open === "city" ? null : "city")}
@@ -208,7 +208,7 @@ function ClassChip() {
       href="/qr"
       aria-label={`My QR · Mesita ${meta?.label ?? "class"}`}
       className={cn(
-        "font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-base font-bold shadow-sm transition hover:opacity-90",
+        "font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-base font-bold transition hover:opacity-90",
         tone,
       )}
     >

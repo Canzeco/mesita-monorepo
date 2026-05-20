@@ -114,7 +114,7 @@ export function SavedItemCard({
     <button
       type="button"
       onClick={onClick}
-      className="border-border bg-card flex h-[140px] w-full items-stretch overflow-hidden border text-left shadow-sm transition active:opacity-80"
+      className="border-border bg-card flex h-[140px] w-full items-stretch overflow-hidden border text-left transition active:opacity-80"
     >
       <div className="relative h-auto w-28 shrink-0">
         <Image
