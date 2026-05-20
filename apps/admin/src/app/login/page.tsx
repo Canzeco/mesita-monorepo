@@ -1,12 +1,11 @@
-import { authSignInWithToken } from "./actions";
+import { authStoreKey } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 const ERROR_COPY: Record<string, string> = {
-  invalid_token: "Wrong token.",
-  missing_token: "Paste your admin token.",
-  not_admin:
-    "Signed in, but the account doesn't have admin role. Fix in Supabase Studio.",
+  missing_key: "Paste your admin key.",
+  invalid_key:
+    "That key was rejected by the server. Double-check it and try again.",
 };
 
 export default async function LoginPage({
@@ -21,7 +20,7 @@ export default async function LoginPage({
       : "/";
   const errorMessage = params.error ? ERROR_COPY[params.error] : null;
 
-  const action = authSignInWithToken.bind(null, next);
+  const action = authStoreKey.bind(null, next);
 
   return (
     <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
@@ -38,24 +37,26 @@ export default async function LoginPage({
               Mesita
             </p>
             <h1 className="font-display mt-0.5 text-2xl font-semibold tracking-tight">
-              Admin sign-in
+              Admin
             </h1>
             <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-              Paste the admin token.
+              Paste your admin key. It&apos;s stored locally and sent with
+              every admin call.
             </p>
           </div>
         </div>
 
         <label className="block">
           <span className="text-muted-foreground mb-1.5 block text-xs font-medium">
-            Token
+            Admin key
           </span>
           <input
             type="password"
-            name="password"
+            name="key"
             required
             autoFocus
-            autoComplete="current-password"
+            autoComplete="off"
+            spellCheck={false}
             className="border-border bg-background focus:border-foreground/40 h-11 w-full rounded-xl border px-3 text-sm outline-none transition"
             placeholder="••••••••"
           />
@@ -71,7 +72,7 @@ export default async function LoginPage({
           type="submit"
           className="bg-foreground text-background flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
         >
-          Enter
+          Save key
         </button>
       </form>
     </div>

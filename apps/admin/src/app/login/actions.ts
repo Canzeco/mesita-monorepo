@@ -1,42 +1,42 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { ADMIN_EMAIL } from "@/lib/auth";
+import {
+  ADMIN_KEY_COOKIE,
+  ADMIN_KEY_MAX_AGE_SECONDS,
+} from "@/lib/admin-key";
 
 function safeNext(raw: string | undefined): string {
   if (!raw) return "/";
   return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 }
 
-// Sign-in. The form sends just a password — the email is fixed
-// (ADMIN_EMAIL) and never exposed to the operator. Supabase verifies
-// the password and sets the standard SSR session cookies; the
-// middleware then checks app_metadata.role === "admin" on every
-// request, so a non-admin who somehow gets the password to the admin
-// account still wouldn't get past the gate (though there's only one
-// admin user, so practically the password IS the gate).
-export async function authSignInWithToken(next: string, formData: FormData) {
-  const password = String(formData.get("password") ?? "");
-  if (!password) {
-    redirect("/login?error=missing_token");
+// Stores the operator's admin key in an HttpOnly cookie. The key
+// itself is never validated here — the Supabase Edge Functions
+// downstream validate it on every privileged call (comparing against
+// ADMIN_ACCESS_KEY in Supabase Function secrets). If the key is wrong,
+// the operator will see action errors on the actual pages.
+export async function authStoreKey(next: string, formData: FormData) {
+  const key = String(formData.get("key") ?? "").trim();
+  if (!key) {
+    redirect("/login?error=missing_key");
   }
 
-  const supabase = await createServerSupabase();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: ADMIN_EMAIL,
-    password,
+  const jar = await cookies();
+  jar.set(ADMIN_KEY_COOKIE, key, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: ADMIN_KEY_MAX_AGE_SECONDS,
   });
-
-  if (error) {
-    redirect("/login?error=invalid_token");
-  }
 
   redirect(safeNext(next));
 }
 
-export async function authLogout() {
-  const supabase = await createServerSupabase();
-  await supabase.auth.signOut();
+export async function authClearKey() {
+  const jar = await cookies();
+  jar.delete(ADMIN_KEY_COOKIE);
   redirect("/login");
 }

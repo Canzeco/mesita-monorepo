@@ -7,15 +7,16 @@ import {
   FilePen,
   ListPlus,
   ListChecks,
-  LogOut,
+  KeyRound,
+  X,
 } from "lucide-react";
-import { authLogout } from "@/app/login/actions";
+import { authClearKey } from "@/app/login/actions";
 
 // Admin sidebar. Single section for now — "Units" — with four actions.
 // Sections / items will grow as the admin tooling expands (managers,
-// guests, audit logs, etc.). Same Mesita pink-red theme as the manager
-// console (semantic tokens from globals.css) — admin uses the brand
-// look even though it's an internal surface.
+// guests, audit logs, etc.). The footer surfaces the admin-key state
+// so the operator always knows whether the next privileged action
+// will succeed or 401.
 
 type NavItem = {
   href: string;
@@ -30,7 +31,7 @@ const UNIT_NAV: NavItem[] = [
   { href: "/units/bulk-update", label: "Bulk update units", Icon: ListChecks },
 ];
 
-export function Sidebar() {
+export function Sidebar({ hasKey }: { hasKey: boolean }) {
   const pathname = usePathname();
   return (
     <aside className="border-border bg-card flex h-dvh w-64 shrink-0 flex-col gap-6 border-r px-3 pt-5 pb-4">
@@ -71,15 +72,28 @@ export function Sidebar() {
         })}
       </nav>
 
-      <form action={authLogout}>
-        <button
-          type="submit"
-          className="text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+      {hasKey ? (
+        <form action={authClearKey}>
+          <button
+            type="submit"
+            className="border-border text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition"
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+              <KeyRound className="text-secondary h-4 w-4" />
+            </span>
+            <span className="flex-1 text-left">Admin key set</span>
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </form>
+      ) : (
+        <Link
+          href="/login"
+          className="border-destructive/40 text-destructive hover:bg-destructive/10 flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition"
         >
-          <LogOut className="h-4 w-4" />
-          Sign out
-        </button>
-      </form>
+          <KeyRound className="h-4 w-4" />
+          <span className="flex-1 text-left">Set admin key</span>
+        </Link>
+      )}
     </aside>
   );
 }
