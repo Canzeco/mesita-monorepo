@@ -14,7 +14,6 @@ import {
 import {
   APIProvider,
   Map,
-  AdvancedMarker,
   InfoWindow,
   useMap,
   useMapsLibrary,
@@ -473,9 +472,26 @@ function csvCell(s: string): string {
   return s;
 }
 
-// Map ID required by AdvancedMarker. Google's free demo ID is fine for an
-// internal admin tool — no custom styling, no usage attribution split needed.
-const MAP_ID = "DEMO_MAP_ID";
+// Inline map style for a cleaner look — kills Google's default POI clutter
+// (other restaurants, hotels, hospitals, attractions, transit lines, etc.)
+// so our own markers stand out. We deliberately do NOT set a `mapId` on
+// <Map>: when a Map ID is set, Google ignores the `styles` array because
+// styling is supposed to be configured cloud-side. Without `mapId` we lose
+// AdvancedMarker support, so the markers are drawn imperatively via the
+// classic google.maps.Marker class instead.
+const CLEAN_MAP_STYLE: google.maps.MapTypeStyle[] = [
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "road",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "administrative.land_parcel",
+    stylers: [{ visibility: "off" }],
+  },
+];
 
 function MapPanel({ places }: { places: PlaceLite[] }) {
   const mappable = useMemo(
@@ -526,12 +542,13 @@ function MapPanel({ places }: { places: PlaceLite[] }) {
       <div className="h-[440px] w-full">
         <APIProvider apiKey={GOOGLE_MAPS_KEY}>
           <Map
-            mapId={MAP_ID}
             defaultCenter={{ lat: 23.6345, lng: -102.5528 }}
             defaultZoom={5}
             gestureHandling="greedy"
-            disableDefaultUI={false}
+            disableDefaultUI
+            zoomControl
             clickableIcons={false}
+            styles={CLEAN_MAP_STYLE}
           >
             <MapMarkers places={mappable} />
             <FitBoundsToPlaces places={mappable} />
@@ -560,41 +577,63 @@ function FitBoundsToPlaces({ places }: { places: PlaceLite[] }) {
 }
 
 function MapMarkers({ places }: { places: PlaceLite[] }) {
+  const map = useMap();
+  const markerLib = useMapsLibrary("marker");
   const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!map || !markerLib) return;
+    const markers: google.maps.Marker[] = [];
+    for (const p of places) {
+      if (p.lat === null || p.lng === null) continue;
+      const marker = new markerLib.Marker({
+        position: { lat: p.lat, lng: p.lng },
+        map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: "#E91E63",
+          fillOpacity: 1,
+          strokeColor: "#FFFFFF",
+          strokeWeight: 2,
+          scale: 6,
+        },
+        optimized: true,
+      });
+      marker.addListener("click", () => {
+        setOpenId((id) => (id === p.id ? null : p.id));
+      });
+      markers.push(marker);
+    }
+    return () => {
+      for (const m of markers) {
+        m.setMap(null);
+      }
+    };
+  }, [map, markerLib, places]);
+
+  const openPlace =
+    openId === null ? null : places.find((p) => p.id === openId) ?? null;
+
+  if (!openPlace || openPlace.lat === null || openPlace.lng === null) {
+    return null;
+  }
+
   return (
-    <>
-      {places.map((p) => (
-        <AdvancedMarker
-          key={p.id}
-          position={{ lat: p.lat as number, lng: p.lng as number }}
-          onClick={() => setOpenId((id) => (id === p.id ? null : p.id))}
-        >
-          <span className="bg-primary ring-background block h-3 w-3 rounded-full shadow ring-2" />
-        </AdvancedMarker>
-      ))}
-      {openId !== null &&
-        (() => {
-          const p = places.find((x) => x.id === openId);
-          if (!p || p.lat === null || p.lng === null) return null;
-          return (
-            <InfoWindow
-              position={{ lat: p.lat, lng: p.lng }}
-              onCloseClick={() => setOpenId(null)}
-            >
-              <div className="max-w-[240px] text-xs">
-                <p className="text-foreground text-sm font-medium">
-                  {p.displayName || "(no name)"}
-                </p>
-                <p className="text-muted-foreground mt-0.5">
-                  {p.formattedAddress}
-                </p>
-                <p className="text-muted-foreground/70 mt-1 font-mono break-all">
-                  {p.id}
-                </p>
-              </div>
-            </InfoWindow>
-          );
-        })()}
-    </>
+    <InfoWindow
+      position={{ lat: openPlace.lat, lng: openPlace.lng }}
+      onCloseClick={() => setOpenId(null)}
+    >
+      <div className="max-w-[240px] text-xs">
+        <p className="text-foreground text-sm font-medium">
+          {openPlace.displayName || "(no name)"}
+        </p>
+        <p className="text-muted-foreground mt-0.5">
+          {openPlace.formattedAddress}
+        </p>
+        <p className="text-muted-foreground/70 mt-1 font-mono break-all">
+          {openPlace.id}
+        </p>
+      </div>
+    </InfoWindow>
   );
 }
