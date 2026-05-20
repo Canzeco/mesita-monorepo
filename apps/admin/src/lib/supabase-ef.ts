@@ -7,9 +7,9 @@ import { getAdminKey } from "@/lib/admin-key";
 // Supabase secrets). The admin key arrives here from an HttpOnly cookie
 // set at /login, so it never touches the browser-side JS.
 //
-// Only `SUPABASE_URL` is needed in env.
+// Only `NEXT_PUBLIC_SUPABASE_URL` is needed in env.
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
 export type InvokeResult<T> =
   | { ok: true; status: number; data: T }
@@ -23,7 +23,7 @@ export async function efInvoke<T>(
     return {
       ok: false,
       status: 500,
-      error: "Admin app is missing SUPABASE_URL. Set it in Vercel env.",
+      error: "Admin app is missing NEXT_PUBLIC_SUPABASE_URL. Set it in Vercel env.",
       data: null,
     };
   }
