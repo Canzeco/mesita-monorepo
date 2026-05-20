@@ -1,22 +1,15 @@
 import { getAdminKey } from "@/lib/admin-key";
 
 // Server-side helper for calling Supabase Edge Functions from the admin
-// app's route handlers and server actions. Two pieces of auth ride on
-// every call:
+// app. Admin EFs are deployed with `verify_jwt = false` — the gateway
+// lets the request through without any project key — and gate themselves
+// on the `x-admin-key` header (compared against `ADMIN_ACCESS_KEY` in
+// Supabase secrets). The admin key arrives here from an HttpOnly cookie
+// set at /login, so it never touches the browser-side JS.
 //
-//   - `Authorization: Bearer <anon-key>` — required by Supabase's
-//     gateway to route the request to the function, even for functions
-//     with `verify_jwt = false`. This is the same anon key the public
-//     guest reads use; it is not a secret.
-//   - `x-admin-key: <operator-entered key>` — Mesita's own gate. The
-//     function compares it against `ADMIN_ACCESS_KEY` in Supabase
-//     secrets and returns 401 if missing or wrong.
-//
-// Reads `SUPABASE_URL` + `SUPABASE_ANON_KEY` from server env (NOT
-// `NEXT_PUBLIC_*` — these never need to ship to the browser).
+// Only `SUPABASE_URL` is needed in env.
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? "";
 
 export type InvokeResult<T> =
   | { ok: true; status: number; data: T }
@@ -26,12 +19,11 @@ export async function efInvoke<T>(
   fnName: string,
   body: unknown,
 ): Promise<InvokeResult<T>> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  if (!SUPABASE_URL) {
     return {
       ok: false,
       status: 500,
-      error:
-        "Admin app is missing SUPABASE_URL / SUPABASE_ANON_KEY. Set them in Vercel env.",
+      error: "Admin app is missing SUPABASE_URL. Set it in Vercel env.",
       data: null,
     };
   }
@@ -50,8 +42,6 @@ export async function efInvoke<T>(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      apikey: SUPABASE_ANON_KEY,
       "x-admin-key": adminKey,
     },
     body: JSON.stringify(body),
