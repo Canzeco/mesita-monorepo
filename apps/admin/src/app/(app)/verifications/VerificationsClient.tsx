@@ -11,10 +11,10 @@ import {
   Phone,
   Video,
   X,
-  Zap,
 } from "lucide-react";
 import {
   type AdminVerification,
+  type AutoVerifyMethod,
   decideVerification,
   setAutoVerify,
 } from "./actions";
@@ -33,33 +33,42 @@ const METHOD_LABEL = {
 
 export function VerificationsClient({
   initialVerifications,
-  initialAutoVerify,
+  initialAutoVerifyAiCall,
+  initialAutoVerifyVideo,
   initialAutoVerifyUpdatedAt,
 }: {
   initialVerifications: AdminVerification[];
-  initialAutoVerify: boolean;
+  initialAutoVerifyAiCall: boolean;
+  initialAutoVerifyVideo: boolean;
   initialAutoVerifyUpdatedAt: string | null;
 }) {
   const [verifications, setVerifications] = useState(initialVerifications);
-  const [autoVerify, setAutoVerifyState] = useState(initialAutoVerify);
+  const [autoAiCall, setAutoAiCall] = useState(initialAutoVerifyAiCall);
+  const [autoVideo, setAutoVideo] = useState(initialAutoVerifyVideo);
   const [autoVerifyUpdatedAt, setAutoVerifyUpdatedAt] = useState(
     initialAutoVerifyUpdatedAt,
   );
   const [topError, setTopError] = useState<string | null>(null);
-  const [autoPending, startAutoToggle] = useTransition();
+  const [pendingMethod, setPendingMethod] = useState<AutoVerifyMethod | null>(
+    null,
+  );
+  const [, startAutoToggle] = useTransition();
 
-  const onToggleAuto = () => {
-    if (autoPending) return;
+  const toggleMethod = (method: AutoVerifyMethod) => {
+    if (pendingMethod) return;
     setTopError(null);
-    const next = !autoVerify;
+    const next = method === "ai_call" ? !autoAiCall : !autoVideo;
+    setPendingMethod(method);
     startAutoToggle(async () => {
-      const r = await setAutoVerify(next);
+      const r = await setAutoVerify(method, next);
+      setPendingMethod(null);
       if (!r.ok) {
         setTopError(r.error);
         return;
       }
-      setAutoVerifyState(r.enabled);
-      setAutoVerifyUpdatedAt(new Date().toISOString());
+      setAutoAiCall(r.autoVerifyAiCall);
+      setAutoVideo(r.autoVerifyVideo);
+      setAutoVerifyUpdatedAt(r.autoVerifyUpdatedAt);
     });
   };
 
@@ -81,12 +90,29 @@ export function VerificationsClient({
 
   return (
     <div className="mt-8 flex flex-col gap-8">
-      <AutoModeToggle
-        enabled={autoVerify}
-        pending={autoPending}
-        onToggle={onToggleAuto}
-        updatedAt={autoVerifyUpdatedAt}
-      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <AutoModeToggle
+          method="ai_call"
+          label="Auto-confirm phone OTP"
+          blurb="When ON, picking up the call and reading the 6-digit code grants ownership instantly. When OFF, the code is still validated but the request lands here for manual approval."
+          enabled={autoAiCall}
+          pending={pendingMethod === "ai_call"}
+          onToggle={() => toggleMethod("ai_call")}
+        />
+        <AutoModeToggle
+          method="video"
+          label="Auto-confirm video walkthrough"
+          blurb="When ON, any submitted video URL grants ownership without review — for trusted operators only. When OFF, every video lands here for a human to watch."
+          enabled={autoVideo}
+          pending={pendingMethod === "video"}
+          onToggle={() => toggleMethod("video")}
+        />
+      </div>
+      <p className="text-muted-foreground -mt-4 text-[11px]">
+        {autoVerifyUpdatedAt
+          ? `Policy last changed ${formatDate(autoVerifyUpdatedAt)}`
+          : "Policy never changed"}
+      </p>
 
       {topError && (
         <div className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-3 rounded-2xl border p-4 text-sm">
@@ -111,16 +137,21 @@ export function VerificationsClient({
 }
 
 function AutoModeToggle({
+  method,
+  label,
+  blurb,
   enabled,
   pending,
   onToggle,
-  updatedAt,
 }: {
+  method: AutoVerifyMethod;
+  label: string;
+  blurb: string;
   enabled: boolean;
   pending: boolean;
   onToggle: () => void;
-  updatedAt: string | null;
 }) {
+  const Icon = method === "ai_call" ? Phone : Video;
   return (
     <div className="border-border bg-card flex items-start gap-4 rounded-2xl border p-5">
       <span
@@ -131,20 +162,14 @@ function AutoModeToggle({
             : "bg-muted text-muted-foreground")
         }
       >
-        <Zap className="h-5 w-5" />
+        <Icon className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-display text-base font-semibold tracking-tight">
-          Auto-approve mode
+          {label}
         </p>
         <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
-          When ON, submitted verification requests skip this queue and land
-          as approved on insert. The venue flips to <code>active</code>{" "}
-          immediately. Existing approved + rejected requests are kept in the
-          history below either way.
-        </p>
-        <p className="text-muted-foreground mt-1 text-[11px]">
-          {updatedAt ? `Last changed ${formatDate(updatedAt)}` : "Never changed"}
+          {blurb}
         </p>
       </div>
       <button
@@ -257,13 +282,20 @@ function VerificationRow({
           </KV>
         )}
         {verification.method === "ai_call" && (
-          <KV label="Phone we would call" wide>
-            <span className="font-mono">
-              {typeof verification.payload.phoneCalled === "string"
-                ? verification.payload.phoneCalled
-                : "(no phone on venue)"}
-            </span>
-          </KV>
+          <>
+            <KV label="Phone called">
+              <span className="font-mono">
+                {typeof verification.payload.phoneCalled === "string"
+                  ? verification.payload.phoneCalled
+                  : "(no phone on venue)"}
+              </span>
+            </KV>
+            <KV label="OTP verified">
+              {typeof verification.payload.codeVerifiedAt === "string"
+                ? formatDate(verification.payload.codeVerifiedAt)
+                : "—"}
+            </KV>
+          </>
         )}
         {verification.status === "rejected" && verification.reject_reason && (
           <KV label="Rejection reason" wide>

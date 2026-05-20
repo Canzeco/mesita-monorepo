@@ -24,7 +24,8 @@ export default async function VerificationsPage() {
       <Header />
       <VerificationsClient
         initialVerifications={result.data.verifications}
-        initialAutoVerify={result.data.autoVerifyVenues}
+        initialAutoVerifyAiCall={result.data.autoVerifyAiCall}
+        initialAutoVerifyVideo={result.data.autoVerifyVideo}
         initialAutoVerifyUpdatedAt={result.data.autoVerifyUpdatedAt}
       />
     </div>
@@ -41,10 +42,9 @@ function Header() {
         Unit verification requests
       </h1>
       <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-        Managers submit one of three methods (AI call, video, postcard) to
-        prove they operate the venue they just created. Approve to flip the
-        venue to active; reject with a reason and they can submit a fresh
-        request.
+        Managers prove ownership via phone OTP (auto-confirmed by default,
+        so it never lands here) or a walkthrough video (queued for review
+        by default). Toggle either to flip the policy.
       </p>
     </>
   );

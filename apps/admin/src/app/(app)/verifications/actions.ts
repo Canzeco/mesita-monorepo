@@ -31,7 +31,8 @@ export type AdminVerification = {
 
 type ListResponse = {
   verifications: AdminVerification[];
-  autoVerifyVenues: boolean;
+  autoVerifyAiCall: boolean;
+  autoVerifyVideo: boolean;
   autoVerifyUpdatedAt: string | null;
 };
 
@@ -63,17 +64,31 @@ export async function decideVerification(
   return { ok: true };
 }
 
+export type AutoVerifyMethod = "ai_call" | "video";
+
 export type SetAutoVerifyResult =
-  | { ok: true; enabled: boolean }
+  | {
+      ok: true;
+      autoVerifyAiCall: boolean;
+      autoVerifyVideo: boolean;
+      autoVerifyUpdatedAt: string | null;
+    }
   | { ok: false; error: string };
 
 export async function setAutoVerify(
+  method: AutoVerifyMethod,
   enabled: boolean,
 ): Promise<SetAutoVerifyResult> {
-  const r = await efInvoke<{ autoVerifyVenues: boolean }>(
-    "admin-set-auto-verify",
-    { enabled },
-  );
+  const r = await efInvoke<{
+    autoVerifyAiCall: boolean;
+    autoVerifyVideo: boolean;
+    autoVerifyUpdatedAt: string | null;
+  }>("admin-set-auto-verify", { method, enabled });
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, enabled: r.data.autoVerifyVenues };
+  return {
+    ok: true,
+    autoVerifyAiCall: r.data.autoVerifyAiCall,
+    autoVerifyVideo: r.data.autoVerifyVideo,
+    autoVerifyUpdatedAt: r.data.autoVerifyUpdatedAt,
+  };
 }
