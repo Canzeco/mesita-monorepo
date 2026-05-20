@@ -203,9 +203,17 @@ export default function BulkSearchUnitsPage() {
             />
             <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3 text-xs">
               <div className="flex items-center gap-3">
-                <span>
+                <span
+                  title={`Google Places Text Search Pro SKU: $${PRICE_PER_REQUEST_USD.toFixed(3)} per request (0–100K monthly tier). The first ${FREE_PRO_REQUESTS_PER_MONTH.toLocaleString()} Pro requests each month are free across the whole project, so actual charges may be lower depending on prior usage this month. Each page of results counts as one billable request.`}
+                >
                   ~{estimatedApiCalls} Google API call
                   {estimatedApiCalls === 1 ? "" : "s"}
+                  {estimatedApiCalls > 0 && (
+                    <>
+                      {" · ~"}
+                      {formatUsdEstimate(estimatedCostUsd)}
+                    </>
+                  )}
                 </span>
                 {queries.length === 0 && (
                   <>
@@ -525,6 +533,13 @@ function QueryRow({
 function csvCell(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
+}
+
+function formatUsdEstimate(amount: number): string {
+  if (amount <= 0) return "$0";
+  if (amount < 0.01) return "<$0.01";
+  if (amount < 100) return `$${amount.toFixed(2)}`;
+  return `$${Math.round(amount).toLocaleString()}`;
 }
 
 // Inline map style for a cleaner look — kills Google's default POI clutter
