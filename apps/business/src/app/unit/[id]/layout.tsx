@@ -63,6 +63,7 @@ export default async function ManagerShellLayout({
     <div className="bg-background flex h-screen w-screen overflow-hidden">
       <Sidebar
         venues={overview?.venues ?? []}
+        isSuperAdmin={isSuperAdmin}
         user={{
           email: user.email ?? null,
           fullName: isSuperAdmin

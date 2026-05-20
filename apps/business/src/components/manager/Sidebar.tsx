@@ -18,6 +18,7 @@ import {
   PlayCircle,
   Menu,
   X,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -59,12 +60,19 @@ function parseUnitPath(pathname: string | null): {
   return { id: m[1] ?? null, rest: m[2] ?? null };
 }
 
+// Default admin web origin used to build the "Back to admin" exit shown
+// to super-admin operators. Hardcoded to manager.mesita.ai's sibling on
+// prod; override per environment by setting NEXT_PUBLIC_ADMIN_WEB_URL.
+const ADMIN_WEB_URL_FALLBACK = "https://admin.mesita.ai";
+
 export function Sidebar({
   venues,
   user,
+  isSuperAdmin = false,
 }: {
   venues: MyVenue[];
   user: { email: string | null; fullName: string | null } | null;
+  isSuperAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
@@ -159,55 +167,59 @@ export function Sidebar({
 
         <div className="px-3 pt-3">
           {activeVenue ? (
-            <>
-              <UnitTrigger
-                venue={activeVenue}
-                open={unitPickerOpen}
-                onToggle={() => setUnitPickerOpen((o) => !o)}
-              />
-              {unitPickerOpen && (
-                <div className="border-border bg-card mt-2 overflow-hidden rounded-2xl border">
-                  {venues.map((v) => (
+            isSuperAdmin ? (
+              <SuperAdminVenueCard venue={activeVenue} />
+            ) : (
+              <>
+                <UnitTrigger
+                  venue={activeVenue}
+                  open={unitPickerOpen}
+                  onToggle={() => setUnitPickerOpen((o) => !o)}
+                />
+                {unitPickerOpen && (
+                  <div className="border-border bg-card mt-2 overflow-hidden rounded-2xl border">
+                    {venues.map((v) => (
+                      <Link
+                        key={v.id}
+                        href={switchUnitHref(v.id)}
+                        onClick={() => {
+                          setUnitPickerOpen(false);
+                          closeDrawer();
+                        }}
+                        className={cn(
+                          "hover:bg-muted/40 flex w-full items-center gap-3 px-3 py-2.5 text-left transition",
+                          v.id === activeVenue.id && "bg-secondary/5",
+                        )}
+                      >
+                        <UnitAvatar name={v.name} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm leading-tight font-semibold">
+                            {v.name}
+                          </p>
+                          <p className="text-muted-foreground truncate text-[11px]">
+                            {venueSubtitle(v)}
+                          </p>
+                        </div>
+                        {v.id === activeVenue.id && (
+                          <Check className="text-secondary h-4 w-4 shrink-0" />
+                        )}
+                      </Link>
+                    ))}
                     <Link
-                      key={v.id}
-                      href={switchUnitHref(v.id)}
+                      href="/add"
                       onClick={() => {
                         setUnitPickerOpen(false);
                         closeDrawer();
                       }}
-                      className={cn(
-                        "hover:bg-muted/40 flex w-full items-center gap-3 px-3 py-2.5 text-left transition",
-                        v.id === activeVenue.id && "bg-secondary/5",
-                      )}
+                      className="border-border text-secondary hover:bg-secondary/5 flex w-full items-center gap-2 border-t px-3 py-2.5 text-left text-sm font-semibold transition"
                     >
-                      <UnitAvatar name={v.name} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm leading-tight font-semibold">
-                          {v.name}
-                        </p>
-                        <p className="text-muted-foreground truncate text-[11px]">
-                          {venueSubtitle(v)}
-                        </p>
-                      </div>
-                      {v.id === activeVenue.id && (
-                        <Check className="text-secondary h-4 w-4 shrink-0" />
-                      )}
+                      <Plus className="h-4 w-4" />
+                      Add new unit
                     </Link>
-                  ))}
-                  <Link
-                    href="/add"
-                    onClick={() => {
-                      setUnitPickerOpen(false);
-                      closeDrawer();
-                    }}
-                    className="border-border text-secondary hover:bg-secondary/5 flex w-full items-center gap-2 border-t px-3 py-2.5 text-left text-sm font-semibold transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add new unit
-                  </Link>
-                </div>
-              )}
-            </>
+                  </div>
+                )}
+              </>
+            )
           ) : (
             <EmptyUnitTrigger isAuthenticated={!!user} />
           )}
@@ -251,6 +263,7 @@ export function Sidebar({
         </nav>
 
         <div className="space-y-1 px-3 pt-3 pb-4">
+          {isSuperAdmin && <BackToAdminLink />}
           <SidebarDisabled Icon={PlayCircle} label="Tutorials" />
           <SidebarDisabled Icon={Settings} label="Settings" />
           <SidebarDisabled Icon={LifeBuoy} label="Help & docs" />
@@ -350,6 +363,42 @@ function UnitAvatar({ name }: { name: string }) {
     <span className="bg-pink-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold text-white shadow-sm">
       {initial}
     </span>
+  );
+}
+
+// Static venue identifier shown to super-admin operators instead of the
+// venue picker. Super-admins always operate on the one venue they
+// deep-linked to from the admin console; there's nothing to pick.
+function SuperAdminVenueCard({ venue }: { venue: MyVenue }) {
+  return (
+    <div className="border-border bg-background flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5">
+      <UnitAvatar name={venue.name} />
+      <div className="min-w-0 flex-1">
+        <p className="font-display truncate text-base leading-tight font-semibold tracking-tight">
+          {venue.name}
+        </p>
+        <p className="text-muted-foreground truncate text-[11px]">
+          {venueSubtitle(venue)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Exit hatch shown in super-admin mode so operators can hop back to the
+// admin console (where they pick a different venue by Google Place ID).
+function BackToAdminLink() {
+  const adminOrigin =
+    (process.env.NEXT_PUBLIC_ADMIN_WEB_URL ?? "").trim() ||
+    ADMIN_WEB_URL_FALLBACK;
+  return (
+    <Link
+      href={`${adminOrigin.replace(/\/$/, "")}/update`}
+      className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-medium transition"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      <span className="flex-1">Back to admin</span>
+    </Link>
   );
 }
 
