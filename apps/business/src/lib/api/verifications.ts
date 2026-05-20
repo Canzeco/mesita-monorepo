@@ -64,17 +64,44 @@ export type SubmitVerificationInput = {
   videoUrl?: string;
 };
 
+export type SubmitVerificationResult = {
+  id: string;
+  status: VerificationStatus;
+  // Populated only for ai_call submissions in mock mode (no Twilio).
+  // The frontend shows this so the operator can test the OTP loop
+  // without an actual phone call.
+  mockCode: string | null;
+};
+
 export async function apiSubmitVerification(
   client: SupabaseClient,
   input: SubmitVerificationInput,
-): Promise<{ id: string; status: VerificationStatus }> {
-  const { verification } = await invokeEF<{
+): Promise<SubmitVerificationResult> {
+  const { verification, mockCode } = await invokeEF<{
     verification: {
       id: string;
       status: VerificationStatus;
       decided_via: "auto" | "admin" | null;
       decided_at: string | null;
     };
+    mockCode: string | null;
   }>(client, "manager-submit-verification", input);
-  return { id: verification.id, status: verification.status };
+  return {
+    id: verification.id,
+    status: verification.status,
+    mockCode: mockCode ?? null,
+  };
+}
+
+// Phase 2 of the ai_call flow: operator types the 6-digit code they
+// received (or saw in the mock banner) and we hash-compare server-side.
+export async function apiVerifyCallCode(
+  client: SupabaseClient,
+  verificationId: string,
+  code: string,
+): Promise<{ venueId: string }> {
+  return invokeEF<{ venueId: string }>(client, "manager-verify-call-code", {
+    verificationId,
+    code,
+  });
 }

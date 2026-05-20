@@ -25,6 +25,7 @@ import {
 import {
   apiLookupVenue,
   apiSubmitVerification,
+  apiVerifyCallCode,
   type LookupResult,
   type LookupVenue,
   type VerificationMethod,
@@ -89,6 +90,22 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const [email, setEmail] = useState(signedInEmail);
   const [verifyPending, startVerify] = useTransition();
   const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  // ai_call phase 2: after submit returns, we sit on an OTP card until
+  // the operator enters the 6-digit code (or cancels back to the
+  // method picker).
+  const [otp, setOtp] = useState<
+    | {
+        verificationId: string;
+        venueId: string;
+        venuePhone: string | null;
+        mockCode: string | null;
+      }
+    | null
+  >(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpPending, startOtp] = useTransition();
+  const [otpError, setOtpError] = useState<string | null>(null);
 
   // Debounced autocomplete.
   useEffect(() => {
@@ -197,6 +214,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const onSubmitVerification = (
     e: React.FormEvent<HTMLFormElement>,
     venueId: string,
+    venuePhone: string | null,
   ) => {
     e.preventDefault();
     setVerifyError(null);
@@ -219,8 +237,20 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           requesterEmail: cleanEmail,
           videoUrl: method === "video" ? videoUrl.trim() : undefined,
         });
+        // ai_call always lands status='pending' — we wait for the
+        // operator to enter the 6-digit code via the OTP card.
+        if (method === "ai_call") {
+          setOtp({
+            verificationId: r.id,
+            venueId,
+            venuePhone,
+            mockCode: r.mockCode,
+          });
+          setOtpCode("");
+          setOtpError(null);
+          return;
+        }
         if (r.status === "approved") {
-          // Auto-approved — they now own the venue. Land them on it.
           router.push(`/unit/${venueId}/home`);
           router.refresh();
           return;
@@ -234,6 +264,38 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         );
       }
     });
+  };
+
+  const onVerifyOtp = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!otp || otpPending) return;
+    setOtpError(null);
+    const cleanCode = otpCode.trim();
+    if (!/^\d{6}$/.test(cleanCode)) {
+      setOtpError("Code must be 6 digits.");
+      return;
+    }
+    startOtp(async () => {
+      try {
+        const { venueId } = await apiVerifyCallCode(
+          supabase,
+          otp.verificationId,
+          cleanCode,
+        );
+        router.push(`/unit/${venueId}/home`);
+        router.refresh();
+      } catch (err) {
+        setOtpError(err instanceof Error ? err.message : "Could not verify.");
+      }
+    });
+  };
+
+  const cancelOtp = () => {
+    setOtp(null);
+    setOtpCode("");
+    setOtpError(null);
+    // The pending row stays in the DB — operator can resubmit and a new
+    // code will be generated (the EF dedups by deleting prior pending).
   };
 
   return (
@@ -339,7 +401,20 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         <ErrorCard message={lookupError} onRetry={refreshLookup} />
       )}
 
-      {selected && lookup && (
+      {selected && lookup && otp && (
+        <OtpCard
+          venuePhone={otp.venuePhone}
+          mockCode={otp.mockCode}
+          code={otpCode}
+          setCode={setOtpCode}
+          pending={otpPending}
+          error={otpError}
+          onSubmit={onVerifyOtp}
+          onCancel={cancelOtp}
+        />
+      )}
+
+      {selected && lookup && !otp && (
         <>
           {lookup.state === "not_in_mesita" && (
             <NotInMesitaCard
@@ -362,7 +437,9 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
               setEmail={setEmail}
               pending={verifyPending}
               error={verifyError}
-              onSubmit={(e) => onSubmitVerification(e, lookup.venue.id)}
+              onSubmit={(e) =>
+                onSubmitVerification(e, lookup.venue.id, lookup.venue.phone)
+              }
             />
           )}
 
@@ -377,7 +454,9 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
               setEmail={setEmail}
               pending={verifyPending}
               error={verifyError}
-              onSubmit={(e) => onSubmitVerification(e, lookup.venue.id)}
+              onSubmit={(e) =>
+                onSubmitVerification(e, lookup.venue.id, lookup.venue.phone)
+              }
             />
           )}
 
@@ -392,7 +471,9 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
               setEmail={setEmail}
               pending={verifyPending}
               error={verifyError}
-              onSubmit={(e) => onSubmitVerification(e, lookup.venue.id)}
+              onSubmit={(e) =>
+                onSubmitVerification(e, lookup.venue.id, lookup.venue.phone)
+              }
             />
           )}
 
@@ -603,6 +684,112 @@ function VerifiedPartnerCard({
           Report fraud
         </a>
       </div>
+    </section>
+  );
+}
+
+// AI-call phase 2. The submit EF dialled the venue's Google-listed
+// phone with a 6-digit code; operator picks up, hears the code, types
+// it here. In mock mode (no Twilio configured) the EF also returns
+// the plain code so the operator can self-test the loop.
+function OtpCard({
+  venuePhone,
+  mockCode,
+  code,
+  setCode,
+  pending,
+  error,
+  onSubmit,
+  onCancel,
+}: {
+  venuePhone: string | null;
+  mockCode: string | null;
+  code: string;
+  setCode: (v: string) => void;
+  pending: boolean;
+  error: string | null;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <section className="border-foreground/15 bg-card flex flex-col gap-4 rounded-2xl border p-5">
+      <StatusBadge tone="info">
+        <Phone className="h-3 w-3" />
+        Call placed · enter the 6-digit code
+      </StatusBadge>
+      <p className="text-sm leading-relaxed">
+        We rang{" "}
+        <span className="font-mono font-semibold">
+          {venuePhone ?? "(no phone on file)"}
+        </span>{" "}
+        and read out a 6-digit code. Pick up at the venue, write it down,
+        and type it below.
+      </p>
+
+      {mockCode && (
+        <div className="border-amber-200 bg-amber-50 text-amber-900 flex items-start gap-3 rounded-xl border p-3 text-[12px]">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">Mock mode — no real call placed</p>
+            <p className="mt-0.5 leading-relaxed">
+              Twilio isn&apos;t configured yet, so type{" "}
+              <span className="font-mono font-bold tracking-widest">
+                {mockCode}
+              </span>{" "}
+              to complete the loop.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+          placeholder="123456"
+          autoFocus
+          className="border-border bg-background h-14 w-full rounded-xl border px-4 text-center font-mono text-2xl tracking-[0.5em] outline-none"
+        />
+        {error && (
+          <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm">
+            {error}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit"
+            disabled={pending || code.length !== 6}
+            className={cn(
+              "flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
+              "bg-pink-gradient shadow-glow text-white",
+            )}
+          >
+            {pending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Verifying…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Verify code
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="border-border text-muted-foreground inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
     </section>
   );
 }
