@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { authSignUpWithEmail } from "@/app/auth/actions";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const MANAGER_AFTER_SIGNUP = "/auth/post-signin?audience=manager";
+const MANAGER_AFTER_SIGNUP = "/auth/post-signin";
 
 export default async function ManagerSignUpPage() {
   const supabase = await createServerSupabase();
@@ -33,13 +34,24 @@ export default async function ManagerSignUpPage() {
             Become a partner
           </h1>
           <p className="text-muted-foreground mt-1.5 text-sm">
-            Email and password to start. You can add your venue right after.
+            Sign up with Google, Apple, or email. You can add your venue right
+            after.
           </p>
+        </div>
+
+        <OAuthButtons next={MANAGER_AFTER_SIGNUP} />
+
+        <div className="my-5 flex items-center gap-3">
+          <span className="bg-border h-px flex-1" />
+          <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+            or
+          </span>
+          <span className="bg-border h-px flex-1" />
         </div>
 
         <EmailAuthForm
           action={action}
-          submitLabel="Create account"
+          submitLabel="Create account with email"
           passwordAutoComplete="new-password"
           minPassword={8}
         />
