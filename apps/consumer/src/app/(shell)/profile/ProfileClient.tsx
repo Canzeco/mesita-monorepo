@@ -33,6 +33,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   CURRENT_USER,
   TIERS,
+  TIER_ORDER,
   TRANSACTIONS,
   ACHIEVEMENTS,
   tierBadgeClass,
@@ -316,9 +317,7 @@ function SubscriptionPathBox() {
   // Path 2 — paid monthly subscription, tier-as-product. Each row links to
   // /subscribe/[tier] which today stops at the checkout CTA (Stripe
   // wiring lands next).
-  const currentIdx = ["bronze", "silver", "gold", "diamond"].indexOf(
-    CURRENT_USER.tier,
-  );
+  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
   const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
 
   return (
@@ -344,7 +343,7 @@ function SubscriptionPathBox() {
         {TIERS.map((t) => {
           const isCurrent = t.id === CURRENT_USER.tier;
           const isPaidTier = t.priceMxn > 0;
-          const tierIdx = ["bronze", "silver", "gold", "diamond"].indexOf(t.id);
+          const tierIdx = TIER_ORDER.indexOf(t.id);
           const brand = `Mesita ${t.label}`;
           // A user "has" a paid tier already if their current is >= this one.
           // We surface that so they don't try to sub at a lower tier than

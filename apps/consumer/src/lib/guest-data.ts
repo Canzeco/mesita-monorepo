@@ -1,4 +1,5 @@
-export type Tier = "bronze" | "silver" | "gold" | "diamond";
+export const TIER_ORDER = ["bronze", "silver", "gold", "diamond"] as const;
+export type Tier = (typeof TIER_ORDER)[number];
 
 type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
