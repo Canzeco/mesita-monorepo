@@ -19,7 +19,7 @@ export default async function GuestOnboardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/onboard");
+  if (!user) redirect("/?next=/onboard");
 
   // Completeness predicate is the same one the (shell) layout uses to
   // gate every authed surface — name + country + birthday + sex. If we

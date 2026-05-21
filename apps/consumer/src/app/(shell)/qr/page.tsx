@@ -12,7 +12,7 @@ export default async function GuestQrPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/qr");
+  if (!user) redirect("/?next=/qr");
 
   let profile;
   try {

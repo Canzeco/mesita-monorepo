@@ -24,7 +24,7 @@ export default async function GuestShellLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  if (!user) redirect("/");
 
   // guest-get-profile lazily creates the row, so a brand-new account still
   // reads back successfully (just with null fields). If the EF throws, we

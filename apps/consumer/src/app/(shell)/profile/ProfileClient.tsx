@@ -625,13 +625,13 @@ function SettingsTab() {
       </div>
 
       <SignOutButton
-        redirectTo="/sign-in"
+        redirectTo="/"
         className="border-border bg-card hover:bg-muted mt-5 flex w-full items-center justify-center gap-2 rounded-full border py-4 text-sm font-semibold transition"
       />
       <p className="text-muted-foreground mt-3 text-center text-[11px]">
         Not signed in?{" "}
         <Link
-          href="/sign-in"
+          href="/"
           className="text-foreground font-semibold hover:underline"
         >
           Sign in

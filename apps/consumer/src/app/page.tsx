@@ -1,15 +1,59 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
+import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 
-// Route guests to the right starting point based on whether they have a
-// session yet. Signed in → discover. Signed out → sign-in (which will
-// bounce them to discover once auth lands).
+// Root of the guest subdomain. Strong routing contract:
+//
+//   no session              → render auth (this page)
+//   session + no profile    → /onboard
+//   session + onboarded     → /discover/swipe   (the actual app)
+//
+// /sign-in and /sign-up used to live as their own routes; they now
+// redirect here. Guest auth is a single phone-OTP flow, so there's no
+// Sign in vs Create account toggle — the first verify creates the user,
+// every subsequent verify signs them in.
+
 export const dynamic = "force-dynamic";
 
-export default async function GuestIndexPage() {
+const GUEST_AFTER_AUTH = "/auth/post-signin";
+
+function safeNext(raw: string | undefined): string {
+  if (!raw) return GUEST_AFTER_AUTH;
+  return raw.startsWith("/") && !raw.startsWith("//") ? raw : GUEST_AFTER_AUTH;
+}
+
+export default async function GuestRootPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  redirect(user ? "/discover/swipe" : "/sign-in");
+
+  // Signed in — never render auth. The post-signin router handles the
+  // profile / onboarded fork.
+  if (user) {
+    redirect(safeNext(params.next));
+  }
+
+  const next = safeNext(params.next);
+
+  return (
+    <EnterpriseAuthLayout
+      title="Sign in with your phone"
+      subtitle="We'll text you a one-time code. No password, no email."
+      footer={
+        <>
+          By continuing you agree to Mesita&apos;s terms of service and privacy
+          policy.
+        </>
+      }
+    >
+      <PhoneOtpForm redirectAfter={next} />
+    </EnterpriseAuthLayout>
+  );
 }

@@ -24,7 +24,7 @@ export default async function PostSigninPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  if (!user) redirect("/");
 
   const params = await searchParams;
   const explicitNext =

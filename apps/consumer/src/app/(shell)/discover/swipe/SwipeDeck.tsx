@@ -253,7 +253,7 @@ function Deck({ venues }: { venues: Venue[] }) {
         <button
           type="button"
           onClick={save}
-          className="bg-pink-gradient shadow-glow flex h-12 flex-[1.6] items-center justify-center gap-2 rounded-full text-sm font-semibold text-white"
+          className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold text-white"
         >
           {v.listing_type === "partner" ? (
             <>
