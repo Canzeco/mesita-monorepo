@@ -137,6 +137,17 @@ export function ImageCarousel({
                 fill
                 sizes={sizes}
                 priority={priority && i === 0}
+                // In transform mode every photo sits at flex offset N×100%
+                // inside an overflow:hidden track, so the browser counts
+                // non-active photos as clipped and native lazy loading
+                // never fires. Force eager so paging reveals a photo.
+                loading={
+                  priority && i === 0
+                    ? undefined
+                    : noNativeScroll
+                      ? "eager"
+                      : "lazy"
+                }
                 draggable={false}
                 className="object-cover select-none [-webkit-user-drag:none]"
               />
