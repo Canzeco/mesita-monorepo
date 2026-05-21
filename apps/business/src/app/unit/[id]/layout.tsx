@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/manager/Sidebar";
-import { SuperAdminBanner } from "@/components/manager/SuperAdminBanner";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
@@ -69,8 +68,10 @@ export default async function ManagerShellLayout({
           fullName: isSuperAdmin ? "Super admin" : (manager?.full_name ?? null),
         }}
       />
+      {/* SuperAdminBanner is mounted globally by the root layout, so
+          it's already visible above this layout. The shell only wraps
+          the sidebar + content. */}
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {isSuperAdmin && <SuperAdminBanner />}
         {children}
       </main>
     </div>
