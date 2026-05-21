@@ -1,6 +1,6 @@
 // Frontend API surface for ownership-verification Edge Functions.
 //
-// Three methods power the /add flow:
+// Two auto-verify methods power the /add flow:
 //
 //   ai_call         — Twilio call/SMS reads a 6-digit code to the
 //                     Google-listed phone. (Currently mock-only;
@@ -10,10 +10,12 @@
 //                     Firecrawl-discovered on-domain email. (Currently
 //                     mock-only; same mockCode contract.) Auto-grants
 //                     ownership on correct code.
-//   manual_contact  — Always available. Writes a pending row so the
-//                     admin queue sees the request, then routes the
-//                     operator to Mesita ops via WhatsApp / SMS / email
-//                     (region-adaptive). Never auto-verifies.
+//
+// The third "Talk to us" option is now a direct wa.me deep-link to
+// Mesita ops — no EF round-trip, no admin queue row. See the WhatsApp
+// constant in CreateUnitForm. The legacy manager-requests-manual-review
+// EF still exists server-side for historical rows but is no longer
+// wrapped here.
 //
 // All EFs follow the <caller>-<verb>-<words> naming convention; this
 // module is a thin typed wrapper around them via invokeEF.
@@ -175,28 +177,3 @@ export async function apiManagerVerifiesEmail(
   });
 }
 
-// ── Manual fallback ───────────────────────────────────────────────────
-
-export type RequestManualReviewResult = {
-  verificationId: string;
-  region: ManualRegion;
-  contact: {
-    whatsapp: string | null;
-    sms: string | null;
-    email: string;
-  };
-  venueName: string;
-};
-
-export async function apiManagerRequestsManualReview(
-  client: SupabaseClient,
-  venueId: string,
-  requesterEmail: string,
-  note?: string,
-): Promise<RequestManualReviewResult> {
-  return invokeEF<RequestManualReviewResult>(
-    client,
-    "manager-requests-manual-review",
-    { venueId, requesterEmail, note },
-  );
-}

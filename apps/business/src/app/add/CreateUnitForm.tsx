@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -15,7 +15,6 @@ import {
   MessagesSquare,
   Phone,
   Search,
-  Send,
   Sparkles,
 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -28,7 +27,6 @@ import {
 } from "@/lib/api/venues";
 import {
   apiLookupVenue,
-  apiManagerRequestsManualReview,
   apiManagerSendsEmailOtp,
   apiManagerSendsPhoneOtp,
   apiManagerVerifiesEmail,
@@ -52,6 +50,13 @@ const GENERATE_STAGES = [
   "Synthesising the catalog entry…",
 ];
 
+// Mesita ops WhatsApp number (E.164). Direct fallback channel for
+// ownership claims that can't be auto-verified by phone or email.
+// Hardcoded so the "Talk to us" button always works regardless of
+// Supabase env config — the lookup EF still surfaces `methods.manual`
+// but the UI no longer reads it.
+const MESITA_OPS_WHATSAPP_E164 = "+524445499597";
+
 // Callbacks the parent provides for each terminal outcome of a
 // verification flow. The picker + bodies are self-contained but don't
 // know the page's routing strategy.
@@ -60,7 +65,6 @@ type VerificationCallbacks = {
   signedInEmail: string;
   onApproved: (venueId: string) => void;
   onAwaitingAdmin: () => void;
-  onManualSubmitted: () => void;
 };
 
 export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
@@ -183,9 +187,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
       router.refresh();
     },
     onAwaitingAdmin: () => {
-      void refreshLookup();
-    },
-    onManualSubmitted: () => {
       void refreshLookup();
     },
   };
@@ -610,7 +611,7 @@ function MethodsPicker({
 
   if (bareListing) {
     // Skip the picker chrome entirely — there's only one option to take.
-    return <ManualBody venue={venue} methods={methods} {...callbacks} />;
+    return <WhatsAppBody venue={venue} />;
   }
 
   return (
@@ -649,9 +650,7 @@ function MethodsPicker({
       {method === "email" && (
         <EmailBody venue={venue} methods={methods} {...callbacks} />
       )}
-      {method === "manual" && (
-        <ManualBody venue={venue} methods={methods} {...callbacks} />
-      )}
+      {method === "manual" && <WhatsAppBody venue={venue} />}
     </div>
   );
 }
@@ -1034,220 +1033,33 @@ function EmailBody({
   );
 }
 
-// ── Manual fallback body ──────────────────────────────────────────────
+// ── WhatsApp fallback body ────────────────────────────────────────────
 
-// Always available. Writes a manual_contact row so the admin queue
-// sees the request, then opens the operator's preferred channel
-// (region-adaptive: WhatsApp for LatAm, SMS for US, email always).
-// Does NOT auto-verify.
-
-type ManualState =
-  | { kind: "idle" }
-  | { kind: "submitting" }
-  | { kind: "submitted" };
-
-function ManualBody({
-  venue,
-  methods,
-  supabase,
-  signedInEmail,
-  onManualSubmitted,
-}: {
-  venue: LookupVenue;
-  methods: LookupMethods;
-} & VerificationCallbacks) {
-  const [state, setState] = useState<ManualState>({ kind: "idle" });
-  const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  // Prefilled message for whichever channel the operator opens. Kept
-  // identical across channels so the admin sees the same intent
-  // regardless of how they were reached.
-  const prefilledMessage = useMemo(
-    () =>
-      `Hi Mesita — I'd like to claim "${venue.name}" on Mesita. Venue ID: ${venue.id}.`,
-    [venue.id, venue.name],
-  );
-
-  const { region, whatsapp, sms, email } = methods.manual;
-
-  const submitRequest = async () => {
-    if (state.kind !== "idle") return;
-    setError(null);
-    setState({ kind: "submitting" });
-    try {
-      await apiManagerRequestsManualReview(
-        supabase,
-        venue.id,
-        signedInEmail,
-        note.trim() || undefined,
-      );
-      setState({ kind: "submitted" });
-      onManualSubmitted();
-    } catch (err) {
-      setError(errMsg(err, "Could not submit request."));
-      setState({ kind: "idle" });
-    }
-  };
-
-  if (state.kind === "submitted") {
-    return (
-      <div className="border-secondary/30 bg-secondary/5 flex flex-col gap-3 rounded-2xl border p-4">
-        <div className="text-secondary flex items-center gap-2 text-sm font-semibold">
-          <CheckCircle2 className="h-4 w-4" />
-          Request logged
-        </div>
-        <p className="text-muted-foreground text-[13px] leading-relaxed">
-          A Mesita teammate will reach out at{" "}
-          <span className="text-foreground font-semibold">{signedInEmail}</span>{" "}
-          shortly. In the meantime you can ping us directly — pick the channel
-          that&apos;s easiest:
-        </p>
-        <ContactButtons
-          region={region}
-          whatsapp={whatsapp}
-          sms={sms}
-          email={email}
-          venueName={venue.name}
-          message={prefilledMessage}
-        />
-      </div>
-    );
-  }
-
+// Always-available manual path. Opens a wa.me deep-link with a
+// prefilled claim message to Mesita ops. No DB row, no admin queue —
+// ops handles the conversation directly. Phone/email auto-verify
+// remain the happy paths; this is the fallback when neither is
+// available or when the operator wants a human.
+function WhatsAppBody({ venue }: { venue: LookupVenue }) {
+  const waNumber = MESITA_OPS_WHATSAPP_E164.replace(/[^\d]/g, "");
+  const message = `Hi Mesita — I'd like to claim "${venue.name}" on Mesita. Venue ID: ${venue.id}.`;
+  const href = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
   return (
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-[13px] leading-relaxed">
-        We&apos;ll route your claim to a Mesita teammate who&apos;ll verify in
-        person. Add a quick note (optional) so we know what to ask, then
-        submit.
+        Send our team a WhatsApp — we&apos;ll verify in person and follow up.
       </p>
-
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value.slice(0, 500))}
-        placeholder="Anything that helps us verify — your role, when we can call, etc."
-        rows={3}
-        className="border-border bg-background placeholder:text-muted-foreground/60 min-h-[88px] w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:border-foreground/40"
-      />
-
-      {error && <ErrorBlurb>{error}</ErrorBlurb>}
-
-      <button
-        type="button"
-        onClick={submitRequest}
-        disabled={state.kind === "submitting"}
-        className={cn(
-          "flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
-          "bg-pink-gradient shadow-glow text-white",
-        )}
-      >
-        {state.kind === "submitting" ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Submitting…
-          </>
-        ) : (
-          <>
-            <Send className="h-4 w-4" />
-            Submit request
-          </>
-        )}
-      </button>
-
-      <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-center text-[12px]">
-        <Clock className="h-3.5 w-3.5" />
-        A Mesita admin reviews — usually within 24 hours.
-      </p>
-
-      <RegionHint region={region} whatsapp={whatsapp} sms={sms} />
-    </div>
-  );
-}
-
-function ContactButtons({
-  region,
-  whatsapp,
-  sms,
-  email,
-  venueName,
-  message,
-}: {
-  region: "mx_latam" | "us" | "other";
-  whatsapp: string | null;
-  sms: string | null;
-  email: string;
-  venueName: string;
-  message: string;
-}) {
-  const subject = `Verify "${venueName}" on Mesita`;
-  const mailto = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-  // Primary channel by region, then email floor. WhatsApp/SMS only
-  // render when ops env vars are set; otherwise users see email-only.
-  const showWhatsapp = region === "mx_latam" && !!whatsapp;
-  const showSms = region === "us" && !!sms;
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {showWhatsapp && whatsapp && (
-        <a
-          href={`https://wa.me/${whatsapp.replace(/[^\d]/g, "")}?text=${encodeURIComponent(message)}`}
-          target="_blank"
-          rel="noreferrer"
-          className="bg-whatsapp inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-        >
-          <MessageCircle className="h-4 w-4" />
-          WhatsApp us
-        </a>
-      )}
-      {showSms && sms && (
-        <a
-          href={`sms:${sms}?body=${encodeURIComponent(message)}`}
-          className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
-        >
-          <MessageCircle className="h-4 w-4" />
-          Text us
-        </a>
-      )}
       <a
-        href={mailto}
-        className="border-border bg-card hover:bg-muted inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="bg-whatsapp flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold text-white transition hover:opacity-90"
       >
-        <Mail className="h-4 w-4" />
-        Email {email}
+        <MessageCircle className="h-5 w-5" />
+        Talk to us on WhatsApp
       </a>
     </div>
   );
-}
-
-function RegionHint({
-  region,
-  whatsapp,
-  sms,
-}: {
-  region: "mx_latam" | "us" | "other";
-  whatsapp: string | null;
-  sms: string | null;
-}) {
-  if (region === "mx_latam" && !whatsapp) {
-    return (
-      <p className="text-muted-foreground text-center text-[11px] leading-relaxed">
-        WhatsApp routing coming soon — we&apos;ll reach you by email at{" "}
-        <span className="text-foreground font-semibold">hello@mesita.ai</span>{" "}
-        in the meantime.
-      </p>
-    );
-  }
-  if (region === "us" && !sms) {
-    return (
-      <p className="text-muted-foreground text-center text-[11px] leading-relaxed">
-        SMS routing coming soon — we&apos;ll reach you by email at{" "}
-        <span className="text-foreground font-semibold">hello@mesita.ai</span>{" "}
-        in the meantime.
-      </p>
-    );
-  }
-  return null;
 }
 
 // ── Shared bits ───────────────────────────────────────────────────────
