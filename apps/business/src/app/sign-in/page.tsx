@@ -4,13 +4,10 @@ import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { authSignInWithEmail } from "@/app/auth/actions";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { AuthCard, AuthShell, SignedInChip } from "@/components/auth/AuthShell";
 
 export const dynamic = "force-dynamic";
 
-// Manager auth: Google, Apple, or email + password. The B2B partner pool.
-// After sign-in, /auth/post-signin calls manager-signin-email (also covers
-// the OAuth path) to stamp app_metadata.role + lazy-create the managers
-// row, then routes to /onboard or /unit/<id>/home depending on profile.
 const MANAGER_AFTER_AUTH = "/auth/post-signin";
 
 function safeNext(raw: string | undefined): string {
@@ -36,36 +33,23 @@ export default async function ManagerSignInPage({
   const action = authSignInWithEmail.bind(null, next);
 
   return (
-    <div className="flex h-full w-full items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <span className="bg-peacock shadow-glow flex h-9 w-9 items-center justify-center rounded-full text-base">
-              🦚
-            </span>
-            <span className="font-display text-xl font-semibold tracking-tight">
-              mesita.
-            </span>
-          </Link>
-          <h1 className="font-display mt-6 text-2xl font-semibold tracking-tight">
-            Manager sign in
-          </h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">
-            Guest accounts use the phone sign-in instead.
-          </p>
-        </div>
-
-        {params.error === "oauth_failed" && (
-          <p className="bg-destructive/10 text-destructive mb-4 rounded-lg px-3 py-2 text-xs leading-relaxed">
-            That sign-in didn&apos;t go through. Try again, or use email below.
-          </p>
-        )}
-
+    <AuthShell>
+      <AuthCard
+        title="Manager sign in"
+        subtitle="Guest accounts use the phone sign-in instead."
+        chip={
+          params.error === "oauth_failed" ? (
+            <SignedInChip tone="error">
+              That sign-in didn&apos;t go through. Try again, or use email below.
+            </SignedInChip>
+          ) : null
+        }
+      >
         <OAuthButtons next={next} />
 
         <div className="my-5 flex items-center gap-3">
           <span className="bg-border h-px flex-1" />
-          <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+          <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
             or
           </span>
           <span className="bg-border h-px flex-1" />
@@ -78,7 +62,7 @@ export default async function ManagerSignInPage({
           minPassword={1}
         />
 
-        <p className="text-muted-foreground mt-6 text-center text-xs">
+        <p className="text-muted-foreground mt-6 text-center text-[12.5px]">
           New partner?{" "}
           <Link
             href="/sign-up"
@@ -87,7 +71,7 @@ export default async function ManagerSignInPage({
             Create an account
           </Link>
         </p>
-      </div>
-    </div>
+      </AuthCard>
+    </AuthShell>
   );
 }

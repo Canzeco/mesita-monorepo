@@ -11,6 +11,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Plus,
   Search,
   Send,
   Sparkles,
@@ -48,9 +49,19 @@ type VerificationCallbacks = {
   onPendingForReview: () => void;
 };
 
+type Intent = "new" | "claim";
+
 export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabase(), []);
+
+  // Top-level intent toggle. "new" = "I'm adding a venue not on Mesita
+  // yet"; "claim" = "I want to claim a venue that's already listed".
+  // The toggle filters predictions (claim shows only inMesita matches,
+  // new shows the rest) — the actual result panel is still driven by
+  // the lookup, so picking against your intent works fine, the toggle
+  // is a curator, not a gate.
+  const [intent, setIntent] = useState<Intent>("new");
 
   // Search/autocomplete state.
   const sessionTokenRef = useRef(newSessionToken());
@@ -59,6 +70,10 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PlacePrediction | null>(null);
+
+  const visiblePredictions = predictions.filter((p) =>
+    intent === "claim" ? p.inMesita : !p.inMesita,
+  );
 
   // Lookup state (after pick).
   const [lookupPending, startLookup] = useTransition();
@@ -167,9 +182,9 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   };
 
   // Verification outcomes share the same wiring across all three
-  // claimable-state cards: approved → push to the unit; pending
-  // (admin queue or OTP-verified-awaiting-admin) → refresh the
-  // lookup so the card re-renders into the right pending state.
+  // claimable-state cards: approved → push into the unit dashboard;
+  // pending (admin queue or OTP-verified-awaiting-admin) → refresh
+  // the lookup so the card re-renders into the right pending state.
   const verificationCallbacks: VerificationCallbacks = {
     supabase,
     signedInEmail,
@@ -186,12 +201,26 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Search card — big elevated input, the page's primary action. */}
+    <div className="flex flex-col gap-4">
+      {/* Intent segmented toggle (HTML mockup: .seg) */}
+      <IntentSegment
+        intent={intent}
+        setIntent={(next) => {
+          setIntent(next);
+          // Switching intent drops the selection so the user re-picks
+          // a prediction that matches the new intent.
+          if (selected) {
+            setSelected(null);
+            setLookup(null);
+          }
+        }}
+      />
+
+      {/* Search box (HTML mockup: .searchbox) */}
       <div className="relative">
-        <div className="border-border bg-card shadow-elev rounded-3xl border p-1">
+        <div className="border-border bg-card shadow-elev rounded-[26px] border p-[5px]">
           <div className="border-border bg-background flex items-center gap-3 rounded-[20px] border px-5">
-            <Search className="text-muted-foreground h-5 w-5 shrink-0" />
+            <Search className="text-muted-foreground h-[19px] w-[19px] shrink-0" />
             <input
               type="text"
               autoFocus
@@ -223,14 +252,15 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           </div>
         </div>
 
-        {!selected && predictions.length > 0 && (
-          <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-20 mt-2 max-h-80 overflow-y-auto rounded-2xl border p-1">
-            {predictions.map((p) => (
+        {/* Predictions list (HTML mockup: .predlist) */}
+        {!selected && visiblePredictions.length > 0 && (
+          <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-20 mt-2.5 max-h-80 overflow-y-auto rounded-[18px] border p-1.5">
+            {visiblePredictions.map((p) => (
               <li key={p.placeId}>
                 <button
                   type="button"
                   onClick={() => pick(p)}
-                  className="hover:bg-muted/60 flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition"
+                  className="hover:bg-muted/60 flex w-full items-start gap-3 rounded-[13px] p-3 text-left transition"
                 >
                   <span
                     className={cn(
@@ -248,13 +278,13 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
                         {p.mainText}
                       </span>
                       {p.inMesita && (
-                        <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+                        <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase">
                           On Mesita
                         </span>
                       )}
                     </span>
                     {p.secondaryText && (
-                      <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
+                      <span className="text-muted-foreground mt-0.5 block truncate text-[11.5px]">
                         {p.secondaryText}
                       </span>
                     )}
@@ -276,10 +306,11 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         !searching &&
         !searchError &&
         query.trim().length >= 2 &&
-        predictions.length === 0 && (
-          <p className="text-muted-foreground px-1 text-xs">
-            No matches. Try a different spelling, drop the city qualifier,
-            or paste the venue&apos;s exact Google profile name.
+        visiblePredictions.length === 0 && (
+          <p className="text-muted-foreground px-1 text-xs leading-relaxed">
+            {intent === "claim"
+              ? "No venues on Mesita match that name. Try a different spelling or switch to “New venue”."
+              : "No matches. Try a different spelling, drop the city qualifier, or paste the venue's exact Google profile name."}
           </p>
         )}
 
@@ -349,7 +380,7 @@ function NotInMesitaCard({
   onGenerate: () => void;
 }) {
   return (
-    <section className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-5">
+    <section className="border-border bg-card flex flex-col gap-4 rounded-[22px] border p-6">
       <StatusBadge tone="muted">Not on Mesita yet</StatusBadge>
       <div>
         <p className="font-display text-lg font-semibold tracking-tight">
@@ -404,7 +435,7 @@ function WebListedCard({
   ...callbacks
 }: { venue: LookupVenue } & VerificationCallbacks) {
   return (
-    <section className="border-border bg-card flex flex-col gap-5 rounded-2xl border p-5">
+    <section className="border-border bg-card flex flex-col gap-5 rounded-[22px] border p-6">
       <StatusBadge tone="info">Web listed · no verified owner</StatusBadge>
       <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
@@ -433,7 +464,7 @@ function PendingByMeCard({
 } & VerificationCallbacks) {
   if (codeVerified) {
     return (
-      <section className="border-secondary/40 bg-card flex flex-col gap-5 rounded-2xl border p-5">
+      <section className="border-secondary/40 bg-card flex flex-col gap-5 rounded-[22px] border p-6">
         <StatusBadge tone="secondary">
           <CheckCircle2 className="h-3 w-3" />
           Code verified · admin reviewing
@@ -449,7 +480,7 @@ function PendingByMeCard({
     );
   }
   return (
-    <section className="border-secondary/30 bg-card flex flex-col gap-5 rounded-2xl border p-5">
+    <section className="border-secondary/30 bg-card flex flex-col gap-5 rounded-[22px] border p-6">
       <StatusBadge tone="warn">
         <Clock className="h-3 w-3" />
         Your verification is awaiting review
@@ -473,7 +504,7 @@ function PendingByOtherCard({
   ...callbacks
 }: { venue: LookupVenue } & VerificationCallbacks) {
   return (
-    <section className="border-border bg-card flex flex-col gap-5 rounded-2xl border p-5">
+    <section className="border-border bg-card flex flex-col gap-5 rounded-[22px] border p-6">
       <StatusBadge tone="warn">
         <Clock className="h-3 w-3" />
         Someone else is verifying — you can also submit
@@ -501,7 +532,7 @@ function VerifiedPartnerCard({
   ownerEmail: string | null;
 }) {
   return (
-    <section className="border-secondary/40 bg-card flex flex-col gap-4 rounded-2xl border p-5">
+    <section className="border-secondary/40 bg-card flex flex-col gap-4 rounded-[22px] border p-6">
       <StatusBadge tone="secondary">
         <CheckCircle2 className="h-3 w-3" />
         Verified partner
@@ -1005,6 +1036,55 @@ function ErrorBlurb({ children }: { children: React.ReactNode }) {
 }
 
 // ── Shared bits ───────────────────────────────────────────────────────
+
+// Intent toggle (HTML mockup: .seg). Two equal columns, muted track,
+// active pill rendered with bg-card + soft shadow.
+function IntentSegment({
+  intent,
+  setIntent,
+}: {
+  intent: Intent;
+  setIntent: (next: Intent) => void;
+}) {
+  return (
+    <div className="bg-muted grid grid-cols-2 gap-[5px] rounded-2xl p-[5px]">
+      <SegButton active={intent === "new"} onClick={() => setIntent("new")}>
+        <Plus className="h-4 w-4" />
+        New venue
+      </SegButton>
+      <SegButton active={intent === "claim"} onClick={() => setIntent("claim")}>
+        <CheckCircle2 className="h-4 w-4" />
+        Claim a listing
+      </SegButton>
+    </div>
+  );
+}
+
+function SegButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold transition",
+        active
+          ? "bg-card text-foreground shadow-md"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 function VenueIdentity({ venue }: { venue: LookupVenue }) {
   return (
