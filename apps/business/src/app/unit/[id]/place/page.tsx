@@ -20,7 +20,7 @@ export default async function ManagerPlacePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=/unit/${id}/place`);
+  if (!user) redirect(`/?next=/unit/${id}/place`);
 
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;

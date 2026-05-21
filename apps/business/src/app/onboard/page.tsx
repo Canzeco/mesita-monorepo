@@ -10,8 +10,8 @@ import { ManagerOnboardForm } from "./ManagerOnboardForm";
 // gets its own wizard step at /add.
 //
 // Server-gated:
-//   - signed out         → /sign-in (with next=/onboard)
-//   - already onboarded  → /add (skip past us)
+//   - signed out         → / (with next=/onboard)
+//   - already onboarded  → /central (skip past us)
 //   - signed in, no name → render the form
 //
 // Renders AppHeader on top so the operator has a visible sign-out
@@ -25,7 +25,7 @@ export default async function ManagerOnboardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/onboard");
+  if (!user) redirect("/?next=/onboard");
 
   // redirect() throws NEXT_REDIRECT, so it MUST live outside the
   // try/catch — otherwise the catch swallows the redirect and the
@@ -36,7 +36,7 @@ export default async function ManagerOnboardPage() {
   } catch (err) {
     console.error("[manager/onboard] manager-get-profile:", err);
   }
-  if (profile?.full_name) redirect("/add");
+  if (profile?.full_name) redirect("/central");
 
   return (
     <AuthShell header={<AppHeader email={user.email ?? null} venues={[]} />}>

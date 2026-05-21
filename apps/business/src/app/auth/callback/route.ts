@@ -6,8 +6,8 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // the requested `next` (defaulting to /auth/post-signin which stamps the
 // manager role + handles the onboarded-vs-not branch).
 //
-// On failure we send the user back to /sign-in with a banner — they get
-// to retry without ending up in a half-broken state.
+// On failure we send the user back to the root auth surface with a
+// banner — they get to retry without ending up in a half-broken state.
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -26,5 +26,5 @@ export async function GET(request: Request) {
     console.error("[auth/callback] exchangeCodeForSession:", error);
   }
 
-  return NextResponse.redirect(`${origin}/sign-in?error=oauth_failed`);
+  return NextResponse.redirect(`${origin}/?error=oauth_failed`);
 }

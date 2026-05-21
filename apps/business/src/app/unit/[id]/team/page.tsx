@@ -17,7 +17,7 @@ export default async function TeamPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=/unit/${id}/team`);
+  if (!user) redirect(`/?next=/unit/${id}/team`);
 
   return (
     <>

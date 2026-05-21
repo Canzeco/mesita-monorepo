@@ -26,7 +26,7 @@ export default async function PerformancePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=/unit/${id}/performance`);
+  if (!user) redirect(`/?next=/unit/${id}/performance`);
 
   const maxFunnel = FUNNEL[0].value;
   const selected = VALIDATOR_FEED[0];

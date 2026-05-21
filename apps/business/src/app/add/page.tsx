@@ -20,7 +20,7 @@ export default async function CreateUnitPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/add");
+  if (!user) redirect("/?next=/add");
 
   // Best-effort venues fetch so AppHeader can render the
   // jump-to-venue menu. Failure here shouldn't break /add itself —

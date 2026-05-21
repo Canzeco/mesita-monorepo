@@ -25,7 +25,7 @@ export default async function WalletPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=/unit/${id}/wallet`);
+  if (!user) redirect(`/?next=/unit/${id}/wallet`);
 
   return (
     <>

@@ -31,7 +31,7 @@ export default async function ManagerShellLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  if (!user) redirect("/");
 
   // Overview first — its `isSuperAdmin` field tells us whether to enforce
   // the onboarded-profile redirect. Profile load runs in parallel either

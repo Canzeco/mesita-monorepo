@@ -34,7 +34,7 @@ export function ManagerOnboardForm() {
     void (async () => {
       try {
         await apiCreateManagerProfile(supabase, { full_name: trimmed });
-        router.push("/add");
+        router.push("/central");
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));
@@ -68,17 +68,9 @@ export function ManagerOnboardForm() {
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <>
-            Continue to venue setup <ArrowRight className="h-4 w-4" />
+            Continue <ArrowRight className="h-4 w-4" />
           </>
         )}
-      </button>
-      <button
-        type="button"
-        onClick={() => router.push("/")}
-        disabled={pending}
-        className="text-muted-foreground/80 hover:text-foreground mt-1 block w-full text-center text-[11px] underline-offset-2 hover:underline"
-      >
-        Skip for now — set up the venue later
       </button>
     </form>
   );

@@ -43,7 +43,7 @@ export default async function ManagerHomePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/sign-in?next=/unit/${id}/home`);
+  if (!user) redirect(`/?next=/unit/${id}/home`);
 
   const requestedUnit = id;
 
