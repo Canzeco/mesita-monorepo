@@ -64,13 +64,25 @@ export type MyVenue = Venue & {
   updated_at?: string;
 };
 
+// Per-row state mirrored from the lookup EF, plus a self/other split
+// for the owned case so the picker can flag "you own this" inline.
+export type PredictionStatus =
+  | "not_in_mesita"
+  | "web_listed"
+  | "verified_partner_other"
+  | "verified_partner_self";
+
 export type PlacePrediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
-  // True when the prediction came from Mesita's own catalog (the venue
-  // already exists). Lets the UI badge it so the operator knows they're
-  // about to claim an existing profile vs generate a new one.
+  // Drives the per-row badge in the picker. Older EF builds emit only
+  // `inMesita`; treat a missing status as not_in_mesita / web_listed
+  // based on that flag (see the resolver in the form component).
+  status?: PredictionStatus;
+  // Legacy. True when the prediction came from Mesita's own catalog.
+  // Kept so a frontend deployed before the status-aware EF still gets a
+  // usable signal; new code should branch on `status`.
   inMesita?: boolean;
 };
 

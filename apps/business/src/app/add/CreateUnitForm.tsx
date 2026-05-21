@@ -7,11 +7,11 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  Crown,
   Loader2,
   Mail,
   MapPin,
   Phone,
-  Plus,
   Search,
   Send,
   Sparkles,
@@ -23,6 +23,7 @@ import {
   apiEnrichCreateVenue,
   apiPlacesAutocomplete,
   type PlacePrediction,
+  type PredictionStatus,
 } from "@/lib/api/venues";
 import {
   apiLookupVenue,
@@ -49,19 +50,9 @@ type VerificationCallbacks = {
   onPendingForReview: () => void;
 };
 
-type Intent = "new" | "claim";
-
 export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabase(), []);
-
-  // Top-level intent toggle. "new" = "I'm adding a venue not on Mesita
-  // yet"; "claim" = "I want to claim a venue that's already listed".
-  // The toggle filters predictions (claim shows only inMesita matches,
-  // new shows the rest) — the actual result panel is still driven by
-  // the lookup, so picking against your intent works fine, the toggle
-  // is a curator, not a gate.
-  const [intent, setIntent] = useState<Intent>("new");
 
   // Search/autocomplete state.
   const sessionTokenRef = useRef(newSessionToken());
@@ -70,10 +61,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PlacePrediction | null>(null);
-
-  const visiblePredictions = predictions.filter((p) =>
-    intent === "claim" ? p.inMesita : !p.inMesita,
-  );
 
   // Lookup state (after pick).
   const [lookupPending, startLookup] = useTransition();
@@ -202,20 +189,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Intent segmented toggle (HTML mockup: .seg) */}
-      <IntentSegment
-        intent={intent}
-        setIntent={(next) => {
-          setIntent(next);
-          // Switching intent drops the selection so the user re-picks
-          // a prediction that matches the new intent.
-          if (selected) {
-            setSelected(null);
-            setLookup(null);
-          }
-        }}
-      />
-
       {/* Search box (HTML mockup: .searchbox) */}
       <div className="relative">
         <div className="border-border bg-card shadow-elev rounded-[26px] border p-[5px]">
@@ -253,45 +226,50 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         </div>
 
         {/* Predictions list (HTML mockup: .predlist) */}
-        {!selected && visiblePredictions.length > 0 && (
+        {!selected && predictions.length > 0 && (
           <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-20 mt-2.5 max-h-80 overflow-y-auto rounded-[18px] border p-1.5">
-            {visiblePredictions.map((p) => (
-              <li key={p.placeId}>
-                <button
-                  type="button"
-                  onClick={() => pick(p)}
-                  className="hover:bg-muted/60 flex w-full items-start gap-3 rounded-[13px] p-3 text-left transition"
-                >
-                  <span
-                    className={cn(
-                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                      p.inMesita
-                        ? "bg-secondary/15 text-secondary"
-                        : "bg-muted text-muted-foreground",
-                    )}
+            {predictions.map((p) => {
+              const status = predictionStatus(p);
+              const meta = PREDICTION_BADGE[status];
+              return (
+                <li key={p.placeId}>
+                  <button
+                    type="button"
+                    onClick={() => pick(p)}
+                    className="hover:bg-muted/60 flex w-full items-start gap-3 rounded-[13px] p-3 text-left transition"
                   >
-                    <MapPin className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="block truncate text-sm font-semibold">
-                        {p.mainText}
+                    <span
+                      className={cn(
+                        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                        meta.iconClass,
+                      )}
+                    >
+                      <meta.Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="block truncate text-sm font-semibold">
+                          {p.mainText}
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase",
+                            meta.badgeClass,
+                          )}
+                        >
+                          {meta.label}
+                        </span>
                       </span>
-                      {p.inMesita && (
-                        <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase">
-                          On Mesita
+                      {p.secondaryText && (
+                        <span className="text-muted-foreground mt-0.5 block truncate text-[11.5px]">
+                          {p.secondaryText}
                         </span>
                       )}
                     </span>
-                    {p.secondaryText && (
-                      <span className="text-muted-foreground mt-0.5 block truncate text-[11.5px]">
-                        {p.secondaryText}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -306,11 +284,11 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         !searching &&
         !searchError &&
         query.trim().length >= 2 &&
-        visiblePredictions.length === 0 && (
+        predictions.length === 0 && (
           <p className="text-muted-foreground px-1 text-xs leading-relaxed">
-            {intent === "claim"
-              ? "No venues on Mesita match that name. Try a different spelling or switch to “New venue”."
-              : "No matches. Try a different spelling, drop the city qualifier, or paste the venue's exact Google profile name."}
+            No matches. Try a different spelling, drop the city
+            qualifier, or paste the venue&apos;s exact Google profile
+            name.
           </p>
         )}
 
@@ -1037,54 +1015,52 @@ function ErrorBlurb({ children }: { children: React.ReactNode }) {
 
 // ── Shared bits ───────────────────────────────────────────────────────
 
-// Intent toggle (HTML mockup: .seg). Two equal columns, muted track,
-// active pill rendered with bg-card + soft shadow.
-function IntentSegment({
-  intent,
-  setIntent,
-}: {
-  intent: Intent;
-  setIntent: (next: Intent) => void;
-}) {
-  return (
-    <div className="bg-muted grid grid-cols-2 gap-[5px] rounded-2xl p-[5px]">
-      <SegButton active={intent === "new"} onClick={() => setIntent("new")}>
-        <Plus className="h-4 w-4" />
-        New venue
-      </SegButton>
-      <SegButton active={intent === "claim"} onClick={() => setIntent("claim")}>
-        <CheckCircle2 className="h-4 w-4" />
-        Claim a listing
-      </SegButton>
-    </div>
-  );
+// Resolves a prediction to one of the four picker statuses. The EF emits
+// `status` directly; the `inMesita` fallback keeps the picker working
+// against older EF deploys (web_listed is the closest match — ownership
+// info isn't available pre-status).
+function predictionStatus(p: PlacePrediction): PredictionStatus {
+  if (p.status) return p.status;
+  return p.inMesita ? "web_listed" : "not_in_mesita";
 }
 
-function SegButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold transition",
-        active
-          ? "bg-card text-foreground shadow-md"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
+// Per-row badge presentation. Keyed by status so the picker stays in
+// lock-step with the EF, and so a new status added later forces a
+// type-checked update here.
+const PREDICTION_BADGE: Record<
+  PredictionStatus,
+  {
+    label: string;
+    Icon: typeof MapPin;
+    iconClass: string;
+    badgeClass: string;
+  }
+> = {
+  not_in_mesita: {
+    label: "Not on Mesita",
+    Icon: MapPin,
+    iconClass: "bg-muted text-muted-foreground",
+    badgeClass: "bg-muted text-muted-foreground",
+  },
+  web_listed: {
+    label: "Web listed",
+    Icon: MapPin,
+    iconClass: "bg-secondary/15 text-secondary",
+    badgeClass: "bg-secondary/15 text-secondary",
+  },
+  verified_partner_other: {
+    label: "Verified partner",
+    Icon: CheckCircle2,
+    iconClass: "bg-amber-100 text-amber-700",
+    badgeClass: "bg-amber-100 text-amber-700",
+  },
+  verified_partner_self: {
+    label: "You own this",
+    Icon: Crown,
+    iconClass: "bg-pink-gradient text-white",
+    badgeClass: "bg-pink-gradient text-white",
+  },
+};
 
 function VenueIdentity({ venue }: { venue: LookupVenue }) {
   return (
