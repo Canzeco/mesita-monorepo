@@ -15,9 +15,8 @@ import { authSignInWithEmail, authSignUpWithEmail } from "@/app/auth/actions";
 //   session + no profile    → /onboard
 //   session + onboarded     → /central
 //
-// /sign-in and /sign-up used to live as their own routes; they now
-// redirect here. The same enterprise layout renders both modes via the
-// AuthTabs client toggle — Sign in (default) or Create account.
+// Both Sign in and Create account modes live here behind the AuthTabs
+// client toggle. ?mode=signup deep-links to the create variant.
 
 export const dynamic = "force-dynamic";
 

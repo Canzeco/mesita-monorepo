@@ -9,9 +9,9 @@ import { BarChart3, Camera, Search, Star } from "lucide-react";
 //           passes the title + subtitle + form children, this layout
 //           handles the chrome.
 //
-// Used by /, /sign-in, /sign-up. The right pane keeps the same
-// max-width as the old centered AuthShell so the form proportions
-// don't change — only the surrounding chrome.
+// Used only by `/` — that page hosts both Sign in and Create account
+// via the AuthTabs control. The right pane keeps the same max-width
+// as the old centered AuthShell so the form proportions don't change.
 
 export function EnterpriseAuthLayout({
   title,

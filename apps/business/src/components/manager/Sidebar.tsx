@@ -273,14 +273,14 @@ export function Sidebar({
                 </p>
               </div>
               <SignOutButton
-                redirectTo="/sign-in"
+                redirectTo="/"
                 className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
                 label=""
               />
             </div>
           ) : (
             <Link
-              href="/sign-in"
+              href="/"
               className="border-border bg-background hover:bg-muted mt-1 flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition"
             >
               Sign in or create account
@@ -402,7 +402,7 @@ function BackToAdminLink() {
 }
 
 function EmptyUnitTrigger({ isAuthenticated }: { isAuthenticated: boolean }) {
-  const href = isAuthenticated ? "/add" : "/sign-in";
+  const href = isAuthenticated ? "/add" : "/";
   return (
     <Link
       href={href}

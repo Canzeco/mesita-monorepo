@@ -7,14 +7,14 @@ import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import type { AuthFormState } from "@/app/auth/actions";
 import { cn } from "@/lib/utils";
 
-// Folds the old /sign-in and /sign-up surfaces into one tabbed control
-// at `/`. The parent server page binds the matching server action for
-// each mode (signIn vs signUp) and passes both bound actions in — the
-// tabs flip which one we render. Pre-selecting the create tab via
-// ?mode=signup lets a deep link still land directly on create-account.
+// Tabbed Sign in / Create account control rendered inside `/`. The
+// parent server page binds the matching server action for each mode
+// (signIn vs signUp) and passes both bound actions in — the tabs flip
+// which one we render. ?mode=signup pre-selects the create tab so deep
+// links land directly on create-account.
 //
-// Actions stay server-side; this client component just owns the
-// in-flight tab state. OAuth lives above both — same provider regardless
+// Actions stay server-side; this client component just owns the in-
+// flight tab state. OAuth lives above both — same provider regardless
 // of whether the user is signing in or creating an account.
 
 type BoundAction = (

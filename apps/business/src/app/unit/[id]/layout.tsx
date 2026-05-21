@@ -7,7 +7,7 @@ import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
 
 // Sidebar-wrapped manager shell. Auth flow is now one path:
 //   - Require a Supabase session (middleware bounces signed-out users
-//     to /sign-in).
+//     to /).
 //   - Load the unit overview. The EF reads the JWT and decides whether
 //     the caller is a super-admin (email in public.super_admins) — when
 //     true, the EF skips the venue_members check and returns the
