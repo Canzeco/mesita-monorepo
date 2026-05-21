@@ -26,7 +26,7 @@ export default async function AppLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/");
 
   const whoami = await efInvoke<{ email: string | null; isSuperAdmin: boolean }>(
     "admin-whoami",
@@ -63,7 +63,7 @@ export default async function AppLayout({
           </form>
           <p className="text-muted-foreground text-[11px]">
             Trying to sign in as someone else?{" "}
-            <Link href="/login" className="font-semibold underline">
+            <Link href="/" className="font-semibold underline">
               Back to sign-in
             </Link>
           </p>

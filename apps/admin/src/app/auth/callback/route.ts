@@ -20,5 +20,5 @@ export async function GET(request: Request) {
     console.error("[admin auth/callback] exchangeCodeForSession:", error);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
+  return NextResponse.redirect(`${origin}/?error=oauth_failed`);
 }

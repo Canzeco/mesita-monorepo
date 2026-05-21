@@ -6,13 +6,15 @@ import { NextResponse, type NextRequest } from "next/server";
 // page-data collection.
 //
 // Routing rules:
-//   - `/login` and `/auth/*` are always public.
+//   - `/` (the auth surface) and `/auth/*` (callback) are always public.
+//   - `/login` is the legacy redirect — also public so its forwarder can
+//     run before middleware bounces an unauthed request.
 //   - Everything else requires a Supabase session; signed-out users
-//     bounce to /login. The (app) layout enforces the second check
-//     (super_admins allowlist).
+//     bounce to /. The (app) layout enforces the second check (the
+//     super_admins allowlist).
 
 const PUBLIC_PATHS = (path: string) =>
-  path === "/login" || path.startsWith("/auth/");
+  path === "/" || path === "/login" || path.startsWith("/auth/");
 
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -50,7 +52,7 @@ export async function updateSupabaseSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   if (!PUBLIC_PATHS(pathname) && !user) {
     const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = "/login";
+    signInUrl.pathname = "/";
     // No `?next=` — Supabase's OAuth allow-list match includes query
     // strings, so anything added to the login URL would also need to
     // travel through Google's redirect, which only works if every

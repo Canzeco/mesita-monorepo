@@ -42,7 +42,7 @@ export function Sidebar({ email }: { email: string | null }) {
   const pathname = usePathname();
   return (
     <aside className="border-border bg-card flex h-full w-64 shrink-0 flex-col gap-6 overflow-hidden border-r px-3 pt-5 pb-4">
-      <Link href="/" className="inline-flex items-center gap-2 px-2">
+      <Link href="/central" className="inline-flex items-center gap-2 px-2">
         <span className="bg-peacock shadow-glow flex h-7 w-7 items-center justify-center rounded-full text-sm">
           🦚
         </span>
