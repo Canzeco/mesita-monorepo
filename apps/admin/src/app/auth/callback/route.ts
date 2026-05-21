@@ -6,7 +6,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // the admin shell. The (app) layout runs the super_admins allowlist
 // check and either renders the surface or the "not authorised" state.
 //
-// On failure we send the user back to /login with an error flag.
+// On failure we send the user back to / with an error flag.
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");

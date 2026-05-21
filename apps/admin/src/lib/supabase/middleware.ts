@@ -7,14 +7,12 @@ import { NextResponse, type NextRequest } from "next/server";
 //
 // Routing rules:
 //   - `/` (the auth surface) and `/auth/*` (callback) are always public.
-//   - `/login` is the legacy redirect — also public so its forwarder can
-//     run before middleware bounces an unauthed request.
 //   - Everything else requires a Supabase session; signed-out users
 //     bounce to /. The (app) layout enforces the second check (the
 //     super_admins allowlist).
 
 const PUBLIC_PATHS = (path: string) =>
-  path === "/" || path === "/login" || path.startsWith("/auth/");
+  path === "/" || path.startsWith("/auth/");
 
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

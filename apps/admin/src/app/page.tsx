@@ -1,17 +1,13 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
-import { GoogleSignInButton } from "@/app/login/GoogleSignInButton";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 // Root of the admin subdomain. Strong routing contract:
 //
-//   no session              → render auth (this page, Google sign-in only)
-//   session                 → /central   ((app) layout does the super_admins
-//                                         allowlist check before rendering)
-//
-// /login used to host this; it now redirects here. The (app) layout
-// still handles non-allowlisted callers with the "Not authorised" empty
-// state once they're past auth.
+//   no session → render auth (Google sign-in)
+//   session    → /central ((app) layout runs the super_admins allowlist;
+//                non-allowlisted callers land on the polite empty state)
 
 export const dynamic = "force-dynamic";
 
