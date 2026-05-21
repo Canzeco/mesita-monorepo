@@ -19,8 +19,11 @@ import { Badge } from "@/components/ui/badge";
 // Subdomain URLs — landing lives on mesita.ai, guest + manager are
 // separate apps. Keep absolute so links work from any environment.
 const GUEST_URL = "https://guest.mesita.ai";
-const MANAGER_SIGNUP_URL = "https://manager.mesita.ai/sign-up";
-const MANAGER_SIGNIN_URL = "https://manager.mesita.ai/sign-in";
+// Manager auth lives at the subdomain root — `?mode=signup` lands the
+// AuthTabs control on the Create account variant. Bare URL renders the
+// default Sign in mode.
+const MANAGER_SIGNUP_URL = "https://manager.mesita.ai/?mode=signup";
+const MANAGER_SIGNIN_URL = "https://manager.mesita.ai/";
 
 // Landing page — single-source-of-truth marketing surface.
 //
@@ -218,8 +221,8 @@ function ForGuests() {
       Icon: CalendarCheck,
     },
     {
-      title: "Cashback that compounds",
-      body: "Pay through Mesita and earn cashback to your wallet at Formal partners; get an instant discount at Informal ones. Your balance auto-applies to your next bill at any partner, Formal or Informal.",
+      title: "Classes and rewards",
+      body: "Bronze is free for everyone. Earn Silver, Gold, or Diamond through Instagram followers or a Mesita subscription — and unlock higher cashback at every partner, an instant discount at Informal ones, plus priority tables, private openings, and other perks that scale with your class.",
       Icon: Wallet,
     },
   ];
