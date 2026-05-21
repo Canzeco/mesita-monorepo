@@ -5,13 +5,13 @@ import type { Database } from "./database.types";
 // Routing rules. Two passes:
 //
 // 1. "Signed-out wall" — any path that requires a user. If the request
-//    arrives without a session, we redirect to the right sign-in page
-//    and pass a `?next=` so the post-signin router lands them back here.
+//    arrives without a session, we redirect to / (the auth surface) and
+//    pass a `?next=` so the post-signin router lands them back here.
 //
-// 2. "Already-signed-in bounce" — sign-in / sign-up pages should not be
-//    visited while the user is already authenticated. We bounce them
-//    through /auth/post-signin which forwards to onboard or dashboard
-//    depending on whether the corresponding profile has a full_name.
+// 2. "Already-signed-in bounce" — / hosts the auth surface; signed-in
+//    visitors should not see it. We bounce them through
+//    /auth/post-signin which forwards to onboard or the app depending
+//    on whether the profile has a full_name.
 //
 // The onboarded-vs-not check is intentionally NOT in middleware — that
 // requires an Edge Function call per request, which is too expensive.
@@ -21,31 +21,17 @@ import type { Database } from "./database.types";
 // so anonymous visitors can swipe before signing up. /profile,
 // /qr, /saved are private because they expose personal data.
 
-type GateRule = {
-  // Path that requires auth. Match is "exact OR starts with `${prefix}/`".
-  prefix: string;
-  // Where to bounce signed-out users.
-  signIn: string;
-};
+const PROTECTED_PREFIXES = ["/profile", "/qr", "/saved"];
 
-const PROTECTED_RULES: GateRule[] = [
-  // Guest private surfaces.
-  { prefix: "/profile", signIn: "/sign-in" },
-  { prefix: "/qr", signIn: "/sign-in" },
-  { prefix: "/saved", signIn: "/sign-in" },
-];
+// Routes where a signed-in visitor should be bounced through post-signin.
+// Only `/` now — the legacy /sign-in and /sign-up redirect routes were
+// removed once external callers (landing page) were updated to `/`.
+const SIGNED_IN_BOUNCE = new Set(["/"]);
 
-// Sign-in / sign-up pages where a signed-in visitor should be bounced
-// through post-signin.
-const SIGNED_IN_BOUNCE = new Set(["/sign-in", "/sign-up"]);
-
-function shouldGate(pathname: string): { signIn: string } | null {
-  for (const { prefix, signIn } of PROTECTED_RULES) {
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return { signIn };
-    }
-  }
-  return null;
+function shouldGate(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 // Refreshes Supabase auth cookies on every request. Env vars are read at
@@ -90,10 +76,9 @@ export async function updateSupabaseSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Signed-out wall.
-  const gate = shouldGate(pathname);
-  if (gate && !user) {
+  if (shouldGate(pathname) && !user) {
     const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = gate.signIn;
+    signInUrl.pathname = "/";
     signInUrl.search = `?next=${encodeURIComponent(
       pathname + request.nextUrl.search,
     )}`;

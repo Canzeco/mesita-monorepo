@@ -9,10 +9,8 @@ import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 //   session + no profile    → /onboard
 //   session + onboarded     → /discover/swipe   (the actual app)
 //
-// /sign-in and /sign-up used to live as their own routes; they now
-// redirect here. Guest auth is a single phone-OTP flow, so there's no
-// Sign in vs Create account toggle — the first verify creates the user,
-// every subsequent verify signs them in.
+// Phone OTP collapses sign-in and create-account into one flow — the
+// first verify creates the user, every subsequent verify signs them in.
 
 export const dynamic = "force-dynamic";
 

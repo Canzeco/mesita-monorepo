@@ -9,7 +9,7 @@ import { OnboardForm } from "./OnboardForm";
 // signed-out users from /profile and friends, but onboard sits
 // between sign-up and the actual app, so it has its own checks:
 //
-//   - signed out          → /sign-in (with next=/onboard)
+//   - signed out          → / (with next=/onboard)
 //   - already onboarded   → /discover/swipe (don't re-collect data)
 //   - signed in, no name  → render the form
 export const dynamic = "force-dynamic";

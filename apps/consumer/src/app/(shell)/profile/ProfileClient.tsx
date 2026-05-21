@@ -636,13 +636,6 @@ function SettingsTab() {
         >
           Sign in
         </Link>
-        {" · "}
-        <Link
-          href="/sign-up"
-          className="text-foreground font-semibold hover:underline"
-        >
-          Create account
-        </Link>
       </p>
       <p className="text-muted-foreground mt-4 text-center text-[11px]">
         Mesita · v2.4.1
