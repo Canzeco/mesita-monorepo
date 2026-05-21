@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -11,11 +11,12 @@ import {
   Loader2,
   Mail,
   MapPin,
+  MessageCircle,
+  MessagesSquare,
   Phone,
   Search,
   Send,
   Sparkles,
-  Video,
 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -27,20 +28,22 @@ import {
 } from "@/lib/api/venues";
 import {
   apiLookupVenue,
-  apiSubmitVerification,
-  apiVerifyCallCode,
+  apiManagerRequestsManualReview,
+  apiManagerSendsEmailOtp,
+  apiManagerSendsPhoneOtp,
+  apiManagerVerifiesEmail,
+  apiManagerVerifiesPhone,
+  type LookupMethods,
   type LookupResult,
   type LookupVenue,
 } from "@/lib/api/verifications";
-import { Field } from "@/components/shared";
-import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 220;
 
 // Rolling status messages cycled into the Generate button while
-// manager-create-unit is running. Each is shown for GENERATE_STAGE_MS so
-// the spinner doesn't feel stuck on a single label.
+// manager-create-unit is running.
 const GENERATE_STAGE_MS = 6000;
 const GENERATE_STAGES = [
   "Fetching Google profile…",
@@ -49,16 +52,15 @@ const GENERATE_STAGES = [
   "Synthesising the catalog entry…",
 ];
 
-// Callbacks the parent provides for each terminal outcome of the
-// verification form. The form is self-contained — it owns method,
-// OTP, and video state — but doesn't know the page's routing
-// strategy, so the parent decides what to do.
+// Callbacks the parent provides for each terminal outcome of a
+// verification flow. The picker + bodies are self-contained but don't
+// know the page's routing strategy.
 type VerificationCallbacks = {
   supabase: SupabaseClient;
   signedInEmail: string;
   onApproved: (venueId: string) => void;
   onAwaitingAdmin: () => void;
-  onPendingForReview: () => void;
+  onManualSubmitted: () => void;
 };
 
 export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
@@ -173,10 +175,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     });
   };
 
-  // Verification outcomes share the same wiring across all three
-  // claimable-state cards: approved → push into the unit dashboard;
-  // pending (admin queue or OTP-verified-awaiting-admin) → refresh
-  // the lookup so the card re-renders into the right pending state.
   const verificationCallbacks: VerificationCallbacks = {
     supabase,
     signedInEmail,
@@ -187,14 +185,14 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     onAwaitingAdmin: () => {
       void refreshLookup();
     },
-    onPendingForReview: () => {
+    onManualSubmitted: () => {
       void refreshLookup();
     },
   };
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search box (HTML mockup: .searchbox) */}
+      {/* Search box */}
       <div className="relative">
         <div className="border-border bg-card shadow-elev rounded-[26px] border p-[5px]">
           <div className="border-border bg-background flex items-center gap-3 rounded-[20px] border px-5">
@@ -230,7 +228,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           </div>
         </div>
 
-        {/* Predictions list (HTML mockup: .predlist) */}
         {!selected && predictions.length > 0 && (
           <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-20 mt-2.5 max-h-80 overflow-y-auto rounded-[18px] border p-1.5">
             {predictions.map((p) => {
@@ -296,7 +293,6 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           </p>
         )}
 
-      {/* Result card */}
       {selected && lookupError && (
         <ErrorCard message={lookupError} onRetry={refreshLookup} />
       )}
@@ -314,12 +310,17 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           )}
 
           {lookup.state === "web_listed_unclaimed" && (
-            <WebListedCard venue={lookup.venue} {...verificationCallbacks} />
+            <WebListedCard
+              venue={lookup.venue}
+              methods={lookup.methods}
+              {...verificationCallbacks}
+            />
           )}
 
           {lookup.state === "pending_by_me" && (
             <PendingByMeCard
               venue={lookup.venue}
+              methods={lookup.methods}
               codeVerified={
                 typeof lookup.verification.payload.codeVerifiedAt === "string"
               }
@@ -330,6 +331,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
           {lookup.state === "pending_by_other" && (
             <PendingByOtherCard
               venue={lookup.venue}
+              methods={lookup.methods}
               {...verificationCallbacks}
             />
           )}
@@ -410,34 +412,36 @@ function NotInMesitaCard({
 
 function WebListedCard({
   venue,
+  methods,
   ...callbacks
-}: { venue: LookupVenue } & VerificationCallbacks) {
+}: {
+  venue: LookupVenue;
+  methods: LookupMethods;
+} & VerificationCallbacks) {
   return (
     <section className="border-border bg-card flex flex-col gap-5 rounded-[22px] border p-6">
       <StatusBadge tone="info">Web listed · no verified owner</StatusBadge>
       <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        This venue is on Mesita but no one has proved ownership. Pick a
-        verification path below — both happen right here on this page.
+        Prove you own this venue. Phone and email checks land instantly when
+        the code clears — manual takes a short look from our team.
       </p>
-      <VerificationForm
-        venueId={venue.id}
-        venuePhone={venue.phone}
-        {...callbacks}
-      />
+      <MethodsPicker venue={venue} methods={methods} {...callbacks} />
     </section>
   );
 }
 
 function PendingByMeCard({
   venue,
+  methods,
   codeVerified,
   ...callbacks
 }: {
   venue: LookupVenue;
-  // True when the operator already passed the phone OTP step — the
-  // row is only sitting here because phone auto-confirm is OFF on the
-  // admin side. Different copy + no re-submit form.
+  methods: LookupMethods;
+  // True when the operator already passed the OTP step — the row is
+  // only sitting in the admin queue because auto-verify is OFF for
+  // that method. Different copy + no re-submit form.
   codeVerified: boolean;
 } & VerificationCallbacks) {
   if (codeVerified) {
@@ -449,10 +453,10 @@ function PendingByMeCard({
         </StatusBadge>
         <VenueIdentity venue={venue} />
         <p className="text-muted-foreground text-sm leading-relaxed">
-          We received your OTP and confirmed it&apos;s correct. A Mesita admin
-          is doing a final review and will grant ownership shortly — you&apos;ll
-          see this venue in your dashboard once they approve. No action needed
-          from you.
+          We received your code and confirmed it&apos;s correct. A Mesita
+          admin is doing a final review and will grant ownership shortly —
+          you&apos;ll see this venue in your dashboard once they approve. No
+          action needed from you.
         </p>
       </section>
     );
@@ -465,22 +469,22 @@ function PendingByMeCard({
       </StatusBadge>
       <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Re-submit below if you didn&apos;t pick up — the new request replaces
-        the pending one.
+        Re-submit below if you didn&apos;t finish the loop — the new request
+        replaces the pending one.
       </p>
-      <VerificationForm
-        venueId={venue.id}
-        venuePhone={venue.phone}
-        {...callbacks}
-      />
+      <MethodsPicker venue={venue} methods={methods} {...callbacks} />
     </section>
   );
 }
 
 function PendingByOtherCard({
   venue,
+  methods,
   ...callbacks
-}: { venue: LookupVenue } & VerificationCallbacks) {
+}: {
+  venue: LookupVenue;
+  methods: LookupMethods;
+} & VerificationCallbacks) {
   return (
     <section className="border-border bg-card flex flex-col gap-5 rounded-[22px] border p-6">
       <StatusBadge tone="warn">
@@ -490,13 +494,9 @@ function PendingByOtherCard({
       <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
         Another operator has a pending claim. Whoever proves ownership first
-        wins — if it&apos;s really your venue, just pick up the phone.
+        wins — if it&apos;s really your venue, run any of the methods below.
       </p>
-      <VerificationForm
-        venueId={venue.id}
-        venuePhone={venue.phone}
-        {...callbacks}
-      />
+      <MethodsPicker venue={venue} methods={methods} {...callbacks} />
     </section>
   );
 }
@@ -579,212 +579,89 @@ function ErrorCard({
   );
 }
 
-// ── Verification form ─────────────────────────────────────────────────
+// ── Methods picker ────────────────────────────────────────────────────
 
-// Single self-contained form. Both methods are visible up top via a
-// compact Phone | Video tab strip; switching tabs swaps the body
-// in-place. Whichever you pick, the whole flow — including the OTP
-// entry for phone — runs on this same page. No nav, no modal, no
-// separate OTP card.
+// Three verification paths share the same parent card body. The picker
+// only renders chips for the methods that are actually available — phone
+// when the venue has a Google-listed number, email when a Firecrawl-
+// discovered email is on-domain with the website, and the manual
+// fallback always. A bare listing (no phone, no on-domain email)
+// collapses to the manual body directly with no picker chrome.
 
-// Phone state machine: idle → placing → awaiting_code (after the EF
-// returns the verification ID) → verifying (after the operator
-// submits the code). Errors push it back one step.
-type TabKey = "ai_call" | "video";
+type MethodKey = "phone" | "email" | "manual";
 
-type CallState =
-  | { kind: "idle" }
-  | { kind: "placing" }
-  | {
-      kind: "awaiting_code";
-      verificationId: string;
-      mockCode: string | null;
-    }
-  | {
-      kind: "verifying";
-      verificationId: string;
-      mockCode: string | null;
-    };
-
-function VerificationForm({
-  venueId,
-  venuePhone,
-  supabase,
-  signedInEmail,
-  onApproved,
-  onAwaitingAdmin,
-  onPendingForReview,
+function MethodsPicker({
+  venue,
+  methods,
+  ...callbacks
 }: {
-  venueId: string;
-  venuePhone: string | null;
+  venue: LookupVenue;
+  methods: LookupMethods;
 } & VerificationCallbacks) {
-  // Auto-pick video when the venue has no Google-listed phone —
-  // there's no number for us to dial, so the phone tab is dead-end.
-  const phoneAvailable = !!venuePhone;
-  const [tab, setTab] = useState<TabKey>(phoneAvailable ? "ai_call" : "video");
+  const bareListing = !methods.phone.available && !methods.email.available;
 
-  // Phone state.
-  const [callState, setCallState] = useState<CallState>({ kind: "idle" });
-  const [otpCode, setOtpCode] = useState("");
-  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const initialMethod: MethodKey = methods.phone.available
+    ? "phone"
+    : methods.email.available
+      ? "email"
+      : "manual";
 
-  // Video state.
-  const [videoUrl, setVideoUrl] = useState("");
-  const [videoPending, startVideo] = useTransition();
-  const [videoError, setVideoError] = useState<string | null>(null);
+  const [method, setMethod] = useState<MethodKey>(initialMethod);
 
-  const switchTab = (next: TabKey) => {
-    setTab(next);
-    setPhoneError(null);
-    setVideoError(null);
-  };
-
-  const placeCall = () => {
-    if (callState.kind === "placing" || callState.kind === "verifying") return;
-    setPhoneError(null);
-    setOtpCode("");
-    setCallState({ kind: "placing" });
-    void (async () => {
-      try {
-        const r = await apiSubmitVerification(supabase, {
-          venueId,
-          method: "ai_call",
-          requesterEmail: signedInEmail,
-        });
-        setCallState({
-          kind: "awaiting_code",
-          verificationId: r.id,
-          mockCode: r.mockCode,
-        });
-      } catch (err) {
-        setPhoneError(errMsg(err, "Could not place call."));
-        setCallState({ kind: "idle" });
-      }
-    })();
-  };
-
-  const verifyCode = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (callState.kind !== "awaiting_code") return;
-    const code = otpCode.trim();
-    if (!/^\d{6}$/.test(code)) {
-      setPhoneError("Code must be 6 digits.");
-      return;
-    }
-    const { verificationId, mockCode } = callState;
-    setPhoneError(null);
-    setCallState({ kind: "verifying", verificationId, mockCode });
-    void (async () => {
-      try {
-        const { venueId: vId, awaitingAdmin } = await apiVerifyCallCode(
-          supabase,
-          verificationId,
-          code,
-        );
-        if (awaitingAdmin) onAwaitingAdmin();
-        else onApproved(vId);
-      } catch (err) {
-        setPhoneError(errMsg(err, "Could not verify."));
-        setCallState({ kind: "awaiting_code", verificationId, mockCode });
-      }
-    })();
-  };
-
-  const submitVideo = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const url = videoUrl.trim();
-    if (!/^https:\/\/[^\s]+$/.test(url)) {
-      setVideoError("Paste an https:// URL to a hosted video.");
-      return;
-    }
-    setVideoError(null);
-    startVideo(async () => {
-      try {
-        const r = await apiSubmitVerification(supabase, {
-          venueId,
-          method: "video",
-          requesterEmail: signedInEmail,
-          videoUrl: url,
-        });
-        if (r.status === "approved") onApproved(venueId);
-        else onPendingForReview();
-      } catch (err) {
-        setVideoError(errMsg(err, "Could not submit."));
-      }
-    });
-  };
+  if (bareListing) {
+    // Skip the picker chrome entirely — there's only one option to take.
+    return <ManualBody venue={venue} methods={methods} {...callbacks} />;
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      <MethodTabs
-        tab={tab}
-        setTab={switchTab}
-        phoneAvailable={phoneAvailable}
-      />
-      {!phoneAvailable && tab === "video" && (
-        <p className="text-muted-foreground -mt-1 text-[11px] leading-relaxed">
-          No phone listed on Google for this venue, so phone call verification
-          isn&apos;t available — submit a walkthrough video instead.
-        </p>
+      <div className="bg-muted/70 grid grid-flow-col auto-cols-fr gap-1 rounded-2xl p-1">
+        {methods.phone.available && (
+          <MethodChip
+            active={method === "phone"}
+            onClick={() => setMethod("phone")}
+          >
+            <Phone className="h-4 w-4" />
+            Phone
+          </MethodChip>
+        )}
+        {methods.email.available && (
+          <MethodChip
+            active={method === "email"}
+            onClick={() => setMethod("email")}
+          >
+            <Mail className="h-4 w-4" />
+            Email
+          </MethodChip>
+        )}
+        <MethodChip
+          active={method === "manual"}
+          onClick={() => setMethod("manual")}
+        >
+          <MessagesSquare className="h-4 w-4" />
+          Talk to us
+        </MethodChip>
+      </div>
+
+      {method === "phone" && (
+        <PhoneBody venue={venue} methods={methods} {...callbacks} />
       )}
-      {tab === "ai_call" ? (
-        <PhoneSection
-          venuePhone={venuePhone}
-          state={callState}
-          otpCode={otpCode}
-          setOtpCode={setOtpCode}
-          error={phoneError}
-          onPlaceCall={placeCall}
-          onVerify={verifyCode}
-        />
-      ) : (
-        <VideoSection
-          videoUrl={videoUrl}
-          setVideoUrl={setVideoUrl}
-          pending={videoPending}
-          error={videoError}
-          onSubmit={submitVideo}
-        />
+      {method === "email" && (
+        <EmailBody venue={venue} methods={methods} {...callbacks} />
+      )}
+      {method === "manual" && (
+        <ManualBody venue={venue} methods={methods} {...callbacks} />
       )}
     </div>
   );
 }
 
-function MethodTabs({
-  tab,
-  setTab,
-  phoneAvailable,
-}: {
-  tab: TabKey;
-  setTab: (next: TabKey) => void;
-  phoneAvailable: boolean;
-}) {
-  return (
-    <div className="bg-muted/70 grid grid-cols-2 gap-1 rounded-2xl p-1">
-      <TabButton
-        active={tab === "ai_call"}
-        disabled={!phoneAvailable}
-        onClick={() => setTab("ai_call")}
-      >
-        <Phone className="h-4 w-4" />
-        Phone call
-      </TabButton>
-      <TabButton active={tab === "video"} onClick={() => setTab("video")}>
-        <Video className="h-4 w-4" />
-        Video
-      </TabButton>
-    </div>
-  );
-}
-
-function TabButton({
+function MethodChip({
   active,
-  disabled,
   onClick,
   children,
 }: {
   active: boolean;
-  disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -792,11 +669,9 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       aria-pressed={active}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition",
-        "disabled:cursor-not-allowed disabled:opacity-40",
         active
           ? "bg-card text-foreground ring-foreground/5 shadow-md ring-1"
           : "text-muted-foreground hover:text-foreground",
@@ -807,38 +682,97 @@ function TabButton({
   );
 }
 
-function PhoneSection({
-  venuePhone,
-  state,
-  otpCode,
-  setOtpCode,
-  error,
-  onPlaceCall,
-  onVerify,
+// ── Phone OTP body ────────────────────────────────────────────────────
+
+type CallState =
+  | { kind: "idle" }
+  | { kind: "placing" }
+  | { kind: "awaiting_code"; verificationId: string; mockCode: string | null }
+  | { kind: "verifying"; verificationId: string; mockCode: string | null };
+
+function PhoneBody({
+  venue,
+  methods,
+  supabase,
+  signedInEmail,
+  onApproved,
+  onAwaitingAdmin,
 }: {
-  venuePhone: string | null;
-  state: CallState;
-  otpCode: string;
-  setOtpCode: (v: string) => void;
-  error: string | null;
-  onPlaceCall: () => void;
-  onVerify: (e: React.FormEvent<HTMLFormElement>) => void;
-}) {
+  venue: LookupVenue;
+  methods: LookupMethods;
+} & VerificationCallbacks) {
+  const [state, setState] = useState<CallState>({ kind: "idle" });
+  const [otpCode, setOtpCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const phoneDisplay = methods.phone.displayPhone ?? venue.phone ?? "";
+
+  const placeCall = () => {
+    if (state.kind === "placing" || state.kind === "verifying") return;
+    setError(null);
+    setOtpCode("");
+    setState({ kind: "placing" });
+    void (async () => {
+      try {
+        const r = await apiManagerSendsPhoneOtp(
+          supabase,
+          venue.id,
+          signedInEmail,
+        );
+        setState({
+          kind: "awaiting_code",
+          verificationId: r.verificationId,
+          mockCode: r.mockCode,
+        });
+      } catch (err) {
+        setError(errMsg(err, "Could not place call."));
+        setState({ kind: "idle" });
+      }
+    })();
+  };
+
+  const verifyCode = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (state.kind !== "awaiting_code") return;
+    const code = otpCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setError("Code must be 6 digits.");
+      return;
+    }
+    const { verificationId, mockCode } = state;
+    setError(null);
+    setState({ kind: "verifying", verificationId, mockCode });
+    void (async () => {
+      try {
+        const { venueId: vId, awaitingAdmin } = await apiManagerVerifiesPhone(
+          supabase,
+          verificationId,
+          code,
+        );
+        if (awaitingAdmin) onAwaitingAdmin();
+        else onApproved(vId);
+      } catch (err) {
+        setError(errMsg(err, "Could not verify."));
+        setState({ kind: "awaiting_code", verificationId, mockCode });
+      }
+    })();
+  };
+
   if (state.kind === "idle" || state.kind === "placing") {
     const placing = state.kind === "placing";
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted-foreground text-[13px] leading-relaxed">
-          We dial{" "}
+          We&apos;ll dial{" "}
           <span className="text-foreground font-mono font-semibold">
-            {venuePhone ?? "the Google-listed phone"}
+            {phoneDisplay}
           </span>{" "}
-          and read out a 6-digit code. Pick up at the venue and type the code
-          below — all on this page.
+          and read out a 6-digit code. Pick up at the venue and type it in
+          right here.
         </p>
         <button
           type="button"
-          onClick={onPlaceCall}
+          onClick={placeCall}
           disabled={placing}
           className={cn(
             "flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold transition disabled:opacity-50",
@@ -862,55 +796,38 @@ function PhoneSection({
     );
   }
 
-  // awaiting_code or verifying — same layout; the verify button
-  // switches into a spinner while the EF round-trip is in flight.
   const verifying = state.kind === "verifying";
   return (
-    <div className="flex flex-col gap-3">
-      <div className="border-secondary/30 bg-secondary/5 text-secondary flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-relaxed">
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+    <div className="flex flex-col gap-4">
+      <div className="text-muted-foreground flex items-center gap-2 text-[12.5px] leading-snug">
+        <span className="bg-secondary/10 text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+          <Phone className="h-3.5 w-3.5" />
+        </span>
         <p>
-          We called{" "}
+          Called{" "}
           <span className="text-foreground font-mono font-semibold">
-            {venuePhone ?? "the venue"}
-          </span>{" "}
-          and read out a 6-digit code. Pick up at the venue and type it below.
+            {phoneDisplay}
+          </span>
+          . Pick up and type the 6-digit code we read out.
         </p>
       </div>
 
-      {state.mockCode && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] leading-relaxed text-amber-900">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            <span className="font-semibold">Mock mode</span> — Twilio isn&apos;t
-            wired yet, so no real call was placed. Type{" "}
-            <span className="font-mono font-bold tracking-widest">
-              {state.mockCode}
-            </span>{" "}
-            to complete the loop.
-          </p>
-        </div>
-      )}
-
-      <form onSubmit={onVerify} className="flex flex-col gap-3">
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
+      <form onSubmit={verifyCode} className="flex flex-col gap-3">
+        <OtpInput
           value={otpCode}
-          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-          placeholder="123456"
-          autoFocus
+          onChange={setOtpCode}
           disabled={verifying}
-          className="border-border bg-background h-14 w-full rounded-xl border px-4 text-center font-mono text-2xl tracking-[0.5em] outline-none disabled:opacity-60"
+          hasError={!!error}
+          autoFocus
         />
+        {state.mockCode && <MockCodePill code={state.mockCode} />}
         {error && <ErrorBlurb>{error}</ErrorBlurb>}
+
         <button
           type="submit"
           disabled={verifying || otpCode.length !== 6}
           className={cn(
-            "flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
+            "mt-1 flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
             "bg-pink-gradient shadow-glow text-white",
           )}
         >
@@ -930,9 +847,9 @@ function PhoneSection({
 
       <button
         type="button"
-        onClick={onPlaceCall}
+        onClick={placeCall}
         disabled={verifying}
-        className="text-muted-foreground hover:text-foreground mt-1 inline-flex items-center justify-center gap-1.5 self-center text-[12px] font-medium transition disabled:opacity-50"
+        className="text-muted-foreground hover:text-foreground -mt-1 inline-flex items-center justify-center gap-1.5 self-center text-[12px] font-medium transition disabled:opacity-50"
       >
         <Phone className="h-3.5 w-3.5" />
         Didn&apos;t pick up? Re-dial with a fresh code
@@ -941,64 +858,409 @@ function PhoneSection({
   );
 }
 
-function VideoSection({
-  videoUrl,
-  setVideoUrl,
-  pending,
-  error,
-  onSubmit,
+// ── Email OTP body ────────────────────────────────────────────────────
+
+type EmailState =
+  | { kind: "idle" }
+  | { kind: "sending" }
+  | { kind: "awaiting_code"; verificationId: string; mockCode: string | null }
+  | { kind: "verifying"; verificationId: string; mockCode: string | null };
+
+function EmailBody({
+  venue,
+  methods,
+  supabase,
+  signedInEmail,
+  onApproved,
+  onAwaitingAdmin,
 }: {
-  videoUrl: string;
-  setVideoUrl: (v: string) => void;
-  pending: boolean;
-  error: string | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-}) {
+  venue: LookupVenue;
+  methods: LookupMethods;
+} & VerificationCallbacks) {
+  const [state, setState] = useState<EmailState>({ kind: "idle" });
+  const [otpCode, setOtpCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const emailDisplay = methods.email.displayEmail ?? venue.email ?? "";
+
+  const sendEmail = () => {
+    if (state.kind === "sending" || state.kind === "verifying") return;
+    setError(null);
+    setOtpCode("");
+    setState({ kind: "sending" });
+    void (async () => {
+      try {
+        const r = await apiManagerSendsEmailOtp(
+          supabase,
+          venue.id,
+          signedInEmail,
+        );
+        setState({
+          kind: "awaiting_code",
+          verificationId: r.verificationId,
+          mockCode: r.mockCode,
+        });
+      } catch (err) {
+        setError(errMsg(err, "Could not send code."));
+        setState({ kind: "idle" });
+      }
+    })();
+  };
+
+  const verifyCode = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (state.kind !== "awaiting_code") return;
+    const code = otpCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setError("Code must be 6 digits.");
+      return;
+    }
+    const { verificationId, mockCode } = state;
+    setError(null);
+    setState({ kind: "verifying", verificationId, mockCode });
+    void (async () => {
+      try {
+        const { venueId: vId, awaitingAdmin } = await apiManagerVerifiesEmail(
+          supabase,
+          verificationId,
+          code,
+        );
+        if (awaitingAdmin) onAwaitingAdmin();
+        else onApproved(vId);
+      } catch (err) {
+        setError(errMsg(err, "Could not verify."));
+        setState({ kind: "awaiting_code", verificationId, mockCode });
+      }
+    })();
+  };
+
+  if (state.kind === "idle" || state.kind === "sending") {
+    const sending = state.kind === "sending";
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-muted-foreground text-[13px] leading-relaxed">
+          We&apos;ll email a 6-digit code to{" "}
+          <span className="text-foreground font-mono font-semibold break-all">
+            {emailDisplay}
+          </span>{" "}
+          — the address we found on the venue&apos;s own website. Open it and
+          type the code in right here.
+        </p>
+        <button
+          type="button"
+          onClick={sendEmail}
+          disabled={sending}
+          className={cn(
+            "flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold transition disabled:opacity-50",
+            "bg-pink-gradient shadow-glow text-white",
+          )}
+        >
+          {sending ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Sending…
+            </>
+          ) : (
+            <>
+              <Mail className="h-5 w-5" />
+              Email the code
+            </>
+          )}
+        </button>
+        {error && <ErrorBlurb>{error}</ErrorBlurb>}
+      </div>
+    );
+  }
+
+  const verifying = state.kind === "verifying";
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <Field
-        label="Walkthrough video URL"
-        hint="≤3 minutes showing the venue's interior. Loom, Drive, YouTube unlisted — anything public-via-link is fine."
-      >
-        <input
-          type="url"
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          placeholder="https://loom.com/share/..."
-          inputMode="url"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
+    <div className="flex flex-col gap-4">
+      <div className="text-muted-foreground flex items-center gap-2 text-[12.5px] leading-snug">
+        <span className="bg-secondary/10 text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+          <Mail className="h-3.5 w-3.5" />
+        </span>
+        <p>
+          Code sent to{" "}
+          <span className="text-foreground font-mono font-semibold break-all">
+            {emailDisplay}
+          </span>
+          . Check the inbox and type it below.
+        </p>
+      </div>
+
+      <form onSubmit={verifyCode} className="flex flex-col gap-3">
+        <OtpInput
+          value={otpCode}
+          onChange={setOtpCode}
+          disabled={verifying}
+          hasError={!!error}
           autoFocus
-          className={INPUT_CLASS}
         />
-      </Field>
+        {state.mockCode && <MockCodePill code={state.mockCode} />}
+        {error && <ErrorBlurb>{error}</ErrorBlurb>}
+
+        <button
+          type="submit"
+          disabled={verifying || otpCode.length !== 6}
+          className={cn(
+            "mt-1 flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
+            "bg-pink-gradient shadow-glow text-white",
+          )}
+        >
+          {verifying ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verifying…
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="h-4 w-4" />
+              Verify code
+            </>
+          )}
+        </button>
+      </form>
+
       <button
-        type="submit"
-        disabled={pending}
+        type="button"
+        onClick={sendEmail}
+        disabled={verifying}
+        className="text-muted-foreground hover:text-foreground -mt-1 inline-flex items-center justify-center gap-1.5 self-center text-[12px] font-medium transition disabled:opacity-50"
+      >
+        <Mail className="h-3.5 w-3.5" />
+        Didn&apos;t get it? Re-send with a fresh code
+      </button>
+    </div>
+  );
+}
+
+// ── Manual fallback body ──────────────────────────────────────────────
+
+// Always available. Writes a manual_contact row so the admin queue
+// sees the request, then opens the operator's preferred channel
+// (region-adaptive: WhatsApp for LatAm, SMS for US, email always).
+// Does NOT auto-verify.
+
+type ManualState =
+  | { kind: "idle" }
+  | { kind: "submitting" }
+  | { kind: "submitted" };
+
+function ManualBody({
+  venue,
+  methods,
+  supabase,
+  signedInEmail,
+  onManualSubmitted,
+}: {
+  venue: LookupVenue;
+  methods: LookupMethods;
+} & VerificationCallbacks) {
+  const [state, setState] = useState<ManualState>({ kind: "idle" });
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  // Prefilled message for whichever channel the operator opens. Kept
+  // identical across channels so the admin sees the same intent
+  // regardless of how they were reached.
+  const prefilledMessage = useMemo(
+    () =>
+      `Hi Mesita — I'd like to claim "${venue.name}" on Mesita. Venue ID: ${venue.id}.`,
+    [venue.id, venue.name],
+  );
+
+  const { region, whatsapp, sms, email } = methods.manual;
+
+  const submitRequest = async () => {
+    if (state.kind !== "idle") return;
+    setError(null);
+    setState({ kind: "submitting" });
+    try {
+      await apiManagerRequestsManualReview(
+        supabase,
+        venue.id,
+        signedInEmail,
+        note.trim() || undefined,
+      );
+      setState({ kind: "submitted" });
+      onManualSubmitted();
+    } catch (err) {
+      setError(errMsg(err, "Could not submit request."));
+      setState({ kind: "idle" });
+    }
+  };
+
+  if (state.kind === "submitted") {
+    return (
+      <div className="border-secondary/30 bg-secondary/5 flex flex-col gap-3 rounded-2xl border p-4">
+        <div className="text-secondary flex items-center gap-2 text-sm font-semibold">
+          <CheckCircle2 className="h-4 w-4" />
+          Request logged
+        </div>
+        <p className="text-muted-foreground text-[13px] leading-relaxed">
+          A Mesita teammate will reach out at{" "}
+          <span className="text-foreground font-semibold">{signedInEmail}</span>{" "}
+          shortly. In the meantime you can ping us directly — pick the channel
+          that&apos;s easiest:
+        </p>
+        <ContactButtons
+          region={region}
+          whatsapp={whatsapp}
+          sms={sms}
+          email={email}
+          venueName={venue.name}
+          message={prefilledMessage}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-[13px] leading-relaxed">
+        We&apos;ll route your claim to a Mesita teammate who&apos;ll verify in
+        person. Add a quick note (optional) so we know what to ask, then
+        submit.
+      </p>
+
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value.slice(0, 500))}
+        placeholder="Anything that helps us verify — your role, when we can call, etc."
+        rows={3}
+        className="border-border bg-background placeholder:text-muted-foreground/60 min-h-[88px] w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:border-foreground/40"
+      />
+
+      {error && <ErrorBlurb>{error}</ErrorBlurb>}
+
+      <button
+        type="button"
+        onClick={submitRequest}
+        disabled={state.kind === "submitting"}
         className={cn(
-          "flex h-14 items-center justify-center gap-2 rounded-full text-base font-semibold transition disabled:opacity-50",
+          "flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
           "bg-pink-gradient shadow-glow text-white",
         )}
       >
-        {pending ? (
+        {state.kind === "submitting" ? (
           <>
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
             Submitting…
           </>
         ) : (
           <>
-            <Send className="h-5 w-5" />
-            Submit walkthrough
+            <Send className="h-4 w-4" />
+            Submit request
           </>
         )}
       </button>
+
       <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-center text-[12px]">
         <Clock className="h-3.5 w-3.5" />
-        Reviewed by a Mesita admin — usually within 24 hours.
+        A Mesita admin reviews — usually within 24 hours.
       </p>
-      {error && <ErrorBlurb>{error}</ErrorBlurb>}
-    </form>
+
+      <RegionHint region={region} whatsapp={whatsapp} sms={sms} />
+    </div>
+  );
+}
+
+function ContactButtons({
+  region,
+  whatsapp,
+  sms,
+  email,
+  venueName,
+  message,
+}: {
+  region: "mx_latam" | "us" | "other";
+  whatsapp: string | null;
+  sms: string | null;
+  email: string;
+  venueName: string;
+  message: string;
+}) {
+  const subject = `Verify "${venueName}" on Mesita`;
+  const mailto = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+  // Primary channel by region, then email floor. WhatsApp/SMS only
+  // render when ops env vars are set; otherwise users see email-only.
+  const showWhatsapp = region === "mx_latam" && !!whatsapp;
+  const showSms = region === "us" && !!sms;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {showWhatsapp && whatsapp && (
+        <a
+          href={`https://wa.me/${whatsapp.replace(/[^\d]/g, "")}?text=${encodeURIComponent(message)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="bg-whatsapp inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          <MessageCircle className="h-4 w-4" />
+          WhatsApp us
+        </a>
+      )}
+      {showSms && sms && (
+        <a
+          href={`sms:${sms}?body=${encodeURIComponent(message)}`}
+          className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+        >
+          <MessageCircle className="h-4 w-4" />
+          Text us
+        </a>
+      )}
+      <a
+        href={mailto}
+        className="border-border bg-card hover:bg-muted inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
+      >
+        <Mail className="h-4 w-4" />
+        Email {email}
+      </a>
+    </div>
+  );
+}
+
+function RegionHint({
+  region,
+  whatsapp,
+  sms,
+}: {
+  region: "mx_latam" | "us" | "other";
+  whatsapp: string | null;
+  sms: string | null;
+}) {
+  if (region === "mx_latam" && !whatsapp) {
+    return (
+      <p className="text-muted-foreground text-center text-[11px] leading-relaxed">
+        WhatsApp routing coming soon — we&apos;ll reach you by email at{" "}
+        <span className="text-foreground font-semibold">hello@mesita.ai</span>{" "}
+        in the meantime.
+      </p>
+    );
+  }
+  if (region === "us" && !sms) {
+    return (
+      <p className="text-muted-foreground text-center text-[11px] leading-relaxed">
+        SMS routing coming soon — we&apos;ll reach you by email at{" "}
+        <span className="text-foreground font-semibold">hello@mesita.ai</span>{" "}
+        in the meantime.
+      </p>
+    );
+  }
+  return null;
+}
+
+// ── Shared bits ───────────────────────────────────────────────────────
+
+function MockCodePill({ code }: { code: string }) {
+  return (
+    <p className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-amber-200/70 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-800">
+      <AlertTriangle className="h-3 w-3" />
+      Mock mode · type{" "}
+      <span className="font-mono font-bold tracking-[0.18em] text-amber-900">
+        {code}
+      </span>
+    </p>
   );
 }
 
@@ -1006,20 +1268,77 @@ function ErrorBlurb({ children }: { children: React.ReactNode }) {
   return <p className={cn(ERROR_BOX_CLASS, "text-sm")}>{children}</p>;
 }
 
-// ── Shared bits ───────────────────────────────────────────────────────
+// 6-cell OTP input. Native <input> sits invisibly over the cells so
+// autoComplete="one-time-code", paste, and the on-screen numeric
+// keypad all keep working; the visible cells just reflect its value.
+function OtpInput({
+  value,
+  onChange,
+  disabled,
+  hasError,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled: boolean;
+  hasError: boolean;
+  autoFocus?: boolean;
+}) {
+  const cells = Array.from({ length: 6 }, (_, i) => value[i] ?? "");
+  // The "next empty" cell shows the focus ring while typing. Once all
+  // six are filled, no cell is highlighted — the row reads as complete.
+  const focusIndex = value.length < 6 ? value.length : -1;
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        value={value}
+        onChange={(e) =>
+          onChange(e.target.value.replace(/\D/g, "").slice(0, 6))
+        }
+        autoFocus={autoFocus}
+        disabled={disabled}
+        aria-label="6-digit verification code"
+        aria-invalid={hasError}
+        className="absolute inset-0 z-10 w-full cursor-text bg-transparent text-transparent caret-transparent outline-none disabled:cursor-not-allowed"
+      />
+      <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
+        {cells.map((char, i) => {
+          const filled = char !== "";
+          const focused = !disabled && i === focusIndex;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "bg-background flex h-14 items-center justify-center rounded-xl border font-mono text-2xl font-semibold tabular-nums transition",
+                hasError
+                  ? "border-destructive/50"
+                  : focused
+                    ? "border-primary ring-primary/15 ring-2"
+                    : filled
+                      ? "border-foreground/20"
+                      : "border-border",
+                disabled && "opacity-60",
+              )}
+            >
+              {char}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-// Resolves a prediction to one of the four picker statuses. The EF emits
-// `status` directly; the `inMesita` fallback keeps the picker working
-// against older EF deploys (web_listed is the closest match — ownership
-// info isn't available pre-status).
+// Resolves a prediction to one of the four picker statuses.
 function predictionStatus(p: PlacePrediction): PredictionStatus {
   if (p.status) return p.status;
   return p.inMesita ? "web_listed" : "not_in_mesita";
 }
 
-// Per-row badge presentation. Keyed by status so the picker stays in
-// lock-step with the EF, and so a new status added later forces a
-// type-checked update here.
 const PREDICTION_BADGE: Record<
   PredictionStatus,
   {
