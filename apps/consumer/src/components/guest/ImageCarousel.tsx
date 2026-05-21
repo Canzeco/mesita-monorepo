@@ -102,7 +102,7 @@ export function ImageCarousel({
         className={cn(
           "flex h-full w-full",
           noNativeScroll
-            ? "overflow-hidden transition-transform duration-300 ease-out"
+            ? "transition-transform duration-300 ease-out"
             : "scrollbar-hide snap-x snap-mandatory overflow-x-auto",
         )}
         style={
@@ -137,10 +137,8 @@ export function ImageCarousel({
                 fill
                 sizes={sizes}
                 priority={priority && i === 0}
-                // In transform mode every photo sits at flex offset N×100%
-                // inside an overflow:hidden track, so the browser counts
-                // non-active photos as clipped and native lazy loading
-                // never fires. Force eager so paging reveals a photo.
+                // Force eager in transform mode so paging shows the next
+                // photo instantly instead of waiting on a lazy fetch.
                 loading={
                   priority && i === 0
                     ? undefined
