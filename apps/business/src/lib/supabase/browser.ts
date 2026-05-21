@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "./database.types";
 
@@ -14,4 +15,11 @@ export function createBrowserSupabase() {
     );
   }
   return createBrowserClient<Database>(url, publishableKey);
+}
+
+// Hook wrapper — memoizes the client per component instance so renders
+// don't churn a new SSR client every time. Centralises the `useMemo`
+// dance every client form was repeating by hand.
+export function useBrowserSupabase() {
+  return useMemo(() => createBrowserSupabase(), []);
 }

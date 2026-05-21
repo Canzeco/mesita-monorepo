@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -18,7 +18,7 @@ import {
   Video,
 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiEnrichCreateVenue,
   apiPlacesAutocomplete,
@@ -33,10 +33,21 @@ import {
   type LookupVenue,
 } from "@/lib/api/verifications";
 import { Field } from "@/components/shared";
-import { INPUT_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
+import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
+import { cn, errMsg } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 220;
+
+// Rolling status messages cycled into the Generate button while
+// manager-create-unit is running. Each is shown for GENERATE_STAGE_MS so
+// the spinner doesn't feel stuck on a single label.
+const GENERATE_STAGE_MS = 6000;
+const GENERATE_STAGES = [
+  "Fetching Google profile…",
+  "Scanning the venue's website…",
+  "Cross-checking social signals…",
+  "Synthesising the catalog entry…",
+];
 
 // Callbacks the parent provides for each terminal outcome of the
 // verification form. The form is self-contained — it owns method,
@@ -52,7 +63,7 @@ type VerificationCallbacks = {
 
 export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const router = useRouter();
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
 
   // Search/autocomplete state.
   const sessionTokenRef = useRef(newSessionToken());
@@ -141,18 +152,12 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const onGenerate = () => {
     if (!selected || generatePending) return;
     setGenerateError(null);
-    setGenerateStage("Fetching Google profile…");
-    const stages = [
-      "Fetching Google profile…",
-      "Scanning the venue's website…",
-      "Cross-checking social signals…",
-      "Synthesising the catalog entry…",
-    ];
+    setGenerateStage(GENERATE_STAGES[0]);
     let stageStep = 0;
     const stageInterval = window.setInterval(() => {
-      stageStep = Math.min(stageStep + 1, stages.length - 1);
-      setGenerateStage(stages[stageStep]);
-    }, 6000);
+      stageStep = Math.min(stageStep + 1, GENERATE_STAGES.length - 1);
+      setGenerateStage(GENERATE_STAGES[stageStep]);
+    }, GENERATE_STAGE_MS);
 
     startGenerate(async () => {
       try {
@@ -286,9 +291,8 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         query.trim().length >= 2 &&
         predictions.length === 0 && (
           <p className="text-muted-foreground px-1 text-xs leading-relaxed">
-            No matches. Try a different spelling, drop the city
-            qualifier, or paste the venue&apos;s exact Google profile
-            name.
+            No matches. Try a different spelling, drop the city qualifier, or
+            paste the venue&apos;s exact Google profile name.
           </p>
         )}
 
@@ -375,11 +379,7 @@ function NotInMesitaCard({
         own channels and list it as a web listing. After that you can claim
         ownership in the same step.
       </p>
-      {error && (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
-          {error}
-        </p>
-      )}
+      {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
       <button
         type="button"
         onClick={onGenerate}
@@ -449,10 +449,10 @@ function PendingByMeCard({
         </StatusBadge>
         <VenueIdentity venue={venue} />
         <p className="text-muted-foreground text-sm leading-relaxed">
-          We received your OTP and confirmed it&apos;s correct. A Mesita
-          admin is doing a final review and will grant ownership shortly
-          — you&apos;ll see this venue in your dashboard once they
-          approve. No action needed from you.
+          We received your OTP and confirmed it&apos;s correct. A Mesita admin
+          is doing a final review and will grant ownership shortly — you&apos;ll
+          see this venue in your dashboard once they approve. No action needed
+          from you.
         </p>
       </section>
     );
@@ -465,8 +465,8 @@ function PendingByMeCard({
       </StatusBadge>
       <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Re-submit below if you didn&apos;t pick up — the new request
-        replaces the pending one.
+        Re-submit below if you didn&apos;t pick up — the new request replaces
+        the pending one.
       </p>
       <VerificationForm
         venueId={venue.id}
@@ -489,9 +489,8 @@ function PendingByOtherCard({
       </StatusBadge>
       <VenueIdentity venue={venue} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Another operator has a pending claim. Whoever proves ownership
-        first wins — if it&apos;s really your venue, just pick up the
-        phone.
+        Another operator has a pending claim. Whoever proves ownership first
+        wins — if it&apos;s really your venue, just pick up the phone.
       </p>
       <VerificationForm
         venueId={venue.id}
@@ -724,9 +723,8 @@ function VerificationForm({
       />
       {!phoneAvailable && tab === "video" && (
         <p className="text-muted-foreground -mt-1 text-[11px] leading-relaxed">
-          No phone listed on Google for this venue, so phone call
-          verification isn&apos;t available — submit a walkthrough
-          video instead.
+          No phone listed on Google for this venue, so phone call verification
+          isn&apos;t available — submit a walkthrough video instead.
         </p>
       )}
       {tab === "ai_call" ? (
@@ -835,8 +833,8 @@ function PhoneSection({
           <span className="text-foreground font-mono font-semibold">
             {venuePhone ?? "the Google-listed phone"}
           </span>{" "}
-          and read out a 6-digit code. Pick up at the venue and type
-          the code below — all on this page.
+          and read out a 6-digit code. Pick up at the venue and type the code
+          below — all on this page.
         </p>
         <button
           type="button"
@@ -876,17 +874,16 @@ function PhoneSection({
           <span className="text-foreground font-mono font-semibold">
             {venuePhone ?? "the venue"}
           </span>{" "}
-          and read out a 6-digit code. Pick up at the venue and type
-          it below.
+          and read out a 6-digit code. Pick up at the venue and type it below.
         </p>
       </div>
 
       {state.mockCode && (
-        <div className="border-amber-200 bg-amber-50 text-amber-900 flex items-start gap-2 rounded-xl border p-3 text-[12px] leading-relaxed">
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] leading-relaxed text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            <span className="font-semibold">Mock mode</span> — Twilio
-            isn&apos;t wired yet, so no real call was placed. Type{" "}
+            <span className="font-semibold">Mock mode</span> — Twilio isn&apos;t
+            wired yet, so no real call was placed. Type{" "}
             <span className="font-mono font-bold tracking-widest">
               {state.mockCode}
             </span>{" "}
@@ -1006,11 +1003,7 @@ function VideoSection({
 }
 
 function ErrorBlurb({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm">
-      {children}
-    </p>
-  );
+  return <p className={cn(ERROR_BOX_CLASS, "text-sm")}>{children}</p>;
 }
 
 // ── Shared bits ───────────────────────────────────────────────────────
@@ -1120,11 +1113,4 @@ function newSessionToken(): string {
     return crypto.randomUUID();
   }
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-// Unwrap an arbitrary thrown value to a user-facing message, falling
-// back to the call-site default when the throwable isn't an Error
-// (e.g. fetch rejected with a plain object).
-function errMsg(err: unknown, fallback: string): string {
-  return err instanceof Error ? err.message : fallback;
 }

@@ -20,45 +20,41 @@ export const FUNNEL = [
   { stage: "Stories shared", value: 146 },
 ];
 
-export const ANALYTICS_KPIS = [
-  {
-    label: "Profile views",
-    value: "12.4k",
-    delta: "+18%",
-    trend: "up" as const,
-  },
-  {
-    label: "Influenced spend",
-    value: "$84.2k",
-    delta: "+22%",
-    trend: "up" as const,
-  },
-  {
-    label: "Cashback paid",
-    value: "$11.8k",
-    delta: "+14%",
-    trend: "up" as const,
-  },
-  { label: "Gifts shared", value: "146", delta: "+31%", trend: "up" as const },
+export type KpiTrend = "up" | "down";
+
+export type Kpi = {
+  label: string;
+  value: string;
+  delta: string;
+  trend: KpiTrend;
+};
+
+export const ANALYTICS_KPIS: Kpi[] = [
+  { label: "Profile views", value: "12.4k", delta: "+18%", trend: "up" },
+  { label: "Influenced spend", value: "$84.2k", delta: "+22%", trend: "up" },
+  { label: "Cashback paid", value: "$11.8k", delta: "+14%", trend: "up" },
+  { label: "Gifts shared", value: "146", delta: "+31%", trend: "up" },
 ];
 
-export const SECONDARY_METRICS = [
+export const SECONDARY_METRICS: Kpi[] = [
   {
     label: "Average ticket",
     value: "$642",
     delta: "+9% vs last 30d",
-    trend: "up" as const,
+    trend: "up",
   },
-  { label: "Repeat rate", value: "38%", delta: "+6 pts", trend: "up" as const },
-  { label: "ROAS", value: "7.1×", delta: "+0.8×", trend: "up" as const },
+  { label: "Repeat rate", value: "38%", delta: "+6 pts", trend: "up" },
+  { label: "ROAS", value: "7.1×", delta: "+0.8×", trend: "up" },
 ];
 
-export const VERIFIED_STORIES: {
+export type VerifiedStory = {
   handle: string;
   tier: Tier;
   ago: string;
   gradient: string;
-}[] = [
+};
+
+export const VERIFIED_STORIES: VerifiedStory[] = [
   {
     handle: "@valenrose",
     tier: "gold",
@@ -97,7 +93,7 @@ export const VERIFIED_STORIES: {
   },
 ];
 
-export const VALIDATOR_FEED: {
+export type ValidatorFeedItem = {
   id: string;
   name: string;
   role: string;
@@ -106,7 +102,9 @@ export const VALIDATOR_FEED: {
   validated: number;
   flagged: number;
   avatarBg: string;
-}[] = [
+};
+
+export const VALIDATOR_FEED: ValidatorFeedItem[] = [
   {
     id: "vf-carlos",
     name: "Carlos",
@@ -139,13 +137,15 @@ export const VALIDATOR_FEED: {
   },
 ];
 
-export const VALIDATOR_THREAD: {
+export type ValidatorThreadMessage = {
   id: string;
   side: "in" | "out";
   text: string;
   at: string;
   warning?: string;
-}[] = [
+};
+
+export const VALIDATOR_THREAD: ValidatorThreadMessage[] = [
   {
     id: "m1",
     side: "in",
@@ -166,7 +166,16 @@ export const VALIDATOR_THREAD: {
 
 // ── Wallet (wallet/page.tsx) ──────────────────────────────────────────────
 
-export const WALLET = {
+export type WalletSummary = {
+  balance: number;
+  pendingPayout: number;
+  thisMonth: number;
+  lifetime: number;
+  payoutAccount: string;
+  stripeConnected: boolean;
+};
+
+export const WALLET: WalletSummary = {
   balance: 142_300,
   pendingPayout: 38_400,
   thisMonth: 38_400,
@@ -175,10 +184,21 @@ export const WALLET = {
   stripeConnected: true,
 };
 
-export const TRANSACTIONS = [
+export type TransactionKind = "visit" | "payout" | "fee";
+
+export type Transaction = {
+  id: string;
+  kind: TransactionKind;
+  label: string;
+  amount: number;
+  cashback: number;
+  when: string;
+};
+
+export const TRANSACTIONS: Transaction[] = [
   {
     id: "t-1",
-    kind: "visit" as const,
+    kind: "visit",
     label: "Visit · Valentina R.",
     amount: 1840,
     cashback: -276,
@@ -186,7 +206,7 @@ export const TRANSACTIONS = [
   },
   {
     id: "t-2",
-    kind: "visit" as const,
+    kind: "visit",
     label: "Visit · Lucas M.",
     amount: 920,
     cashback: -138,
@@ -194,7 +214,7 @@ export const TRANSACTIONS = [
   },
   {
     id: "t-3",
-    kind: "payout" as const,
+    kind: "payout",
     label: "Payout · BBVA ··· 4421",
     amount: -24_500,
     cashback: 0,
@@ -202,7 +222,7 @@ export const TRANSACTIONS = [
   },
   {
     id: "t-4",
-    kind: "visit" as const,
+    kind: "visit",
     label: "Visit · Renata G.",
     amount: 640,
     cashback: -64,
@@ -210,7 +230,7 @@ export const TRANSACTIONS = [
   },
   {
     id: "t-5",
-    kind: "fee" as const,
+    kind: "fee",
     label: "Mesita commission · May",
     amount: -2_400,
     cashback: 0,
@@ -218,7 +238,7 @@ export const TRANSACTIONS = [
   },
   {
     id: "t-6",
-    kind: "payout" as const,
+    kind: "payout",
     label: "Payout · BBVA ··· 4421",
     amount: -52_000,
     cashback: 0,
@@ -228,12 +248,21 @@ export const TRANSACTIONS = [
 
 // ── Team (team/page.tsx) ──────────────────────────────────────────────────
 
-export const TEAM = [
+export type TeamMember = {
+  id: string;
+  name: string;
+  role: "Owner" | "Manager";
+  access: "full";
+  avatar: string;
+  lastActive: string;
+};
+
+export const TEAM: TeamMember[] = [
   {
     id: "m-1",
     name: "Iván Solís",
     role: "Owner",
-    access: "full" as const,
+    access: "full",
     avatar:
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80&auto=format&fit=crop&crop=faces",
     lastActive: "Now",
@@ -242,14 +271,22 @@ export const TEAM = [
     id: "m-2",
     name: "Marta R.",
     role: "Manager",
-    access: "full" as const,
+    access: "full",
     avatar:
       "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80&auto=format&fit=crop&crop=faces",
     lastActive: "1h ago",
   },
 ];
 
-export const VALIDATORS = [
+export type Validator = {
+  id: string;
+  name: string;
+  role: "Waiter" | "Host";
+  phone: string;
+  lastActive: string;
+};
+
+export const VALIDATORS: Validator[] = [
   {
     id: "w-1",
     name: "Carlos M.",

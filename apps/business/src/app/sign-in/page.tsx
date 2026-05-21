@@ -40,7 +40,8 @@ export default async function ManagerSignInPage({
         chip={
           params.error === "oauth_failed" ? (
             <SignedInChip tone="error">
-              That sign-in didn&apos;t go through. Try again, or use email below.
+              That sign-in didn&apos;t go through. Try again, or use email
+              below.
             </SignedInChip>
           ) : null
         }

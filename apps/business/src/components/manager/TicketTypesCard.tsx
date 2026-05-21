@@ -113,29 +113,37 @@ export function TicketTypesCard({
   );
 }
 
+const MUTED_TONE = "bg-muted text-muted-foreground";
+
+const LAYER_TONE: Record<string, string> = {
+  Reservation: "bg-secondary/15 text-secondary",
+  Story: "bg-pink-gradient/15 text-foreground",
+  "Story-Fallback": MUTED_TONE,
+  Payment: "bg-foreground/10 text-foreground",
+  "Discounted-Payment": "bg-tier-gold/30 text-black",
+  "No transaction": MUTED_TONE,
+};
+
+const LAYER_ICON: Record<string, typeof Calendar> = {
+  Reservation: Calendar,
+  Story: Instagram,
+  "Story-Fallback": Instagram,
+  Payment: CreditCard,
+  "Discounted-Payment": Percent,
+  Cashback: CircleDollarSign,
+};
+
 function LayerChip({ label, isFormal }: { label: string; isFormal: boolean }) {
-  const tone = (() => {
-    if (label === "Reservation") return "bg-secondary/15 text-secondary";
-    if (label === "Story") return "bg-pink-gradient/15 text-foreground";
-    if (label === "Story-Fallback") return "bg-muted text-muted-foreground";
-    if (label === "Payment") return "bg-foreground/10 text-foreground";
-    if (label === "Discounted-Payment") return "bg-tier-gold/30 text-black";
-    if (label === "Cashback")
-      return isFormal
+  // Cashback is the one layer whose tone flips on fiscal type: pink-gradient
+  // when the venue actually pays it out (formal), muted when it's only
+  // shown for context on an informal-discount card.
+  const tone =
+    label === "Cashback"
+      ? isFormal
         ? "bg-pink-gradient text-white"
-        : "bg-muted text-muted-foreground";
-    if (label === "No transaction") return "bg-muted text-muted-foreground";
-    return "bg-muted text-muted-foreground";
-  })();
-  const Icon = (() => {
-    if (label === "Reservation") return Calendar;
-    if (label === "Story") return Instagram;
-    if (label === "Story-Fallback") return Instagram;
-    if (label === "Payment") return CreditCard;
-    if (label === "Discounted-Payment") return Percent;
-    if (label === "Cashback") return CircleDollarSign;
-    return ChevronRight;
-  })();
+        : MUTED_TONE
+      : (LAYER_TONE[label] ?? MUTED_TONE);
+  const Icon = LAYER_ICON[label] ?? ChevronRight;
   return (
     <span
       className={cn(

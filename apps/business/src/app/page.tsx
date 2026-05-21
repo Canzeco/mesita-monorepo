@@ -14,6 +14,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetManagerProfile } from "@/lib/api/manager";
 import { AppHeader } from "@/components/auth/AppHeader";
+import { cn } from "@/lib/utils";
 
 // Root behaviour:
 //
@@ -98,10 +99,10 @@ export default async function RootPage() {
           </em>
         </h1>
         <p className="text-muted-foreground mx-auto mt-5 max-w-[60ch] text-base leading-[1.55] md:text-[17px]">
-          Mesita already lists every venue in your city — auto-built from
-          the open internet. Become a Verified Partner to compete for the
-          guests who actually move the needle, with cashback or instant
-          discounts, priority placement, and one dashboard for all of it.
+          Mesita already lists every venue in your city — auto-built from the
+          open internet. Become a Verified Partner to compete for the guests who
+          actually move the needle, with cashback or instant discounts, priority
+          placement, and one dashboard for all of it.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Link
@@ -124,8 +125,8 @@ export default async function RootPage() {
           </span>
           <span className="opacity-40">·</span>
           <span>
-            <b className="text-foreground font-semibold">$0</b> until it
-            pays off
+            <b className="text-foreground font-semibold">$0</b> until it pays
+            off
           </span>
           <span className="opacity-40">·</span>
           <span>No POS, no hardware, no training</span>
@@ -161,8 +162,8 @@ export default async function RootPage() {
             Simple, two-axis pricing
           </h2>
           <p className="text-muted-foreground mt-2 text-sm">
-            Three plans while we make adoption easy. Your fiscal type
-            decides the mechanic.
+            Three plans while we make adoption easy. Your fiscal type decides
+            the mechanic.
           </p>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -247,10 +248,10 @@ function PriceCard({
 }) {
   return (
     <div
-      className={
-        "bg-card relative rounded-[22px] border p-6 " +
-        (featured ? "border-primary/50 shadow-glow" : "border-border")
-      }
+      className={cn(
+        "bg-card relative rounded-[22px] border p-6",
+        featured ? "border-primary/50 shadow-glow" : "border-border",
+      )}
     >
       {featured && (
         <span className="bg-pink-gradient shadow-glow absolute -top-3 right-5 rounded-full px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] text-white uppercase">
@@ -267,8 +268,7 @@ function PriceCard({
         </small>
       </p>
       <p className="text-muted-foreground mt-1.5 text-[13px]">
-        Mechanic: <b className="text-foreground">{mechanicLabel}</b> ·{" "}
-        {blurb}
+        Mechanic: <b className="text-foreground">{mechanicLabel}</b> · {blurb}
       </p>
     </div>
   );
@@ -293,9 +293,9 @@ function VenuelessHub({ email }: { email: string | null }) {
               Add your first venue
             </h1>
             <p className="text-muted-foreground mt-2 max-w-[44ch] text-sm leading-[1.55]">
-              Mesita lists every venue on the open internet. Claim
-              the one you operate (or create a brand new listing) and
-              your dashboard shows up here.
+              Mesita lists every venue on the open internet. Claim the one you
+              operate (or create a brand new listing) and your dashboard shows
+              up here.
             </p>
           </div>
           <Link
@@ -328,7 +328,10 @@ function VenueHub({
 }) {
   return (
     <div className="bg-background min-h-dvh">
-      <AppHeader email={email} venues={venues.map(({ id, name }) => ({ id, name }))} />
+      <AppHeader
+        email={email}
+        venues={venues.map(({ id, name }) => ({ id, name }))}
+      />
       <div className="mx-auto max-w-3xl px-6 py-10">
         <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
           Your venues

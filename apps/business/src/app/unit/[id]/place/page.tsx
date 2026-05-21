@@ -5,6 +5,7 @@ import { Topbar } from "@/components/manager/Topbar";
 import { PageErrorState } from "@/components/manager/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
+import { errMsg } from "@/lib/utils";
 import { EditVenueForm } from "./EditVenueForm";
 
 export const dynamic = "force-dynamic";
@@ -26,8 +27,7 @@ export default async function ManagerPlacePage({
   try {
     overview = await getUnitOverview(supabase, id, 0);
   } catch (err) {
-    overviewError =
-      err instanceof Error ? err.message : "Could not load your venues.";
+    overviewError = errMsg(err, "Could not load your venues.");
   }
   if (overviewError) {
     return (

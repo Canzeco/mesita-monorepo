@@ -128,13 +128,10 @@ export default async function WalletPage({
                           : "text-muted-foreground",
                       )}
                     >
-                      {t.amount > 0 ? "+" : "−"}MX$
-                      {Math.abs(t.amount).toLocaleString()}
+                      {signedMx(t.amount)}
                     </td>
                     <td className="text-secondary py-2.5 tabular-nums">
-                      {t.cashback === 0
-                        ? "—"
-                        : `${t.cashback > 0 ? "+" : "−"}MX$${Math.abs(t.cashback).toLocaleString()}`}
+                      {t.cashback === 0 ? "—" : signedMx(t.cashback)}
                     </td>
                     <td className="text-muted-foreground py-2.5 text-right">
                       {t.when}
@@ -170,10 +167,20 @@ function TypeBadge({ kind }: { kind: "visit" | "payout" | "fee" }) {
   }[kind];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase ${meta.tone}`}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase",
+        meta.tone,
+      )}
     >
       <meta.Icon className="h-3 w-3" />
       {meta.label}
     </span>
   );
+}
+
+// Mock ledger uses raw MX$ amounts — keep the sign-aware formatter local
+// to wallet for now. When the real Stripe payout EF lands the cents
+// numbers will route through formatCurrency() instead.
+function signedMx(n: number): string {
+  return `${n >= 0 ? "+" : "−"}MX$${Math.abs(n).toLocaleString()}`;
 }

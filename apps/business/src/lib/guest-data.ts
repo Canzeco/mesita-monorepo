@@ -466,10 +466,10 @@ export type SavedItem = {
   reservationStatus?: "pending" | "confirmed";
 };
 
-export function ticketType(
-  steps: StepKey[],
-): "R" | "PC" | "RPC" | "PSC" | "RPSC" {
-  return steps.join("") as "R" | "PC" | "RPC" | "PSC" | "RPSC";
+export type TicketTypeKey = "R" | "PC" | "RPC" | "PSC" | "RPSC";
+
+export function ticketType(steps: StepKey[]): TicketTypeKey {
+  return steps.join("") as TicketTypeKey;
 }
 
 export const RESERVATIONS: SavedItem[] = [
@@ -618,8 +618,7 @@ export const COUPONS: SavedItem[] = [
   },
 ];
 
-
-export const TIERS: {
+export type TierMeta = {
   id: Tier;
   label: string;
   req: string;
@@ -628,7 +627,9 @@ export const TIERS: {
   priceMxn: number;
   cashback: string;
   perk: string;
-}[] = [
+};
+
+export const TIERS: TierMeta[] = [
   // The tier IS the brand — rendered as "Mesita Bronze" / "Mesita Silver"
   // / "Mesita Gold" / "Mesita Diamond" in marketing and subscribe surfaces.
   // The compact `label` here is used inside tight UI (tier badges, table
@@ -666,8 +667,6 @@ export const TIERS: {
     perk: "VIP · private events",
   },
 ];
-
-
 
 export function venueById(id: string): Venue | undefined {
   return VENUES.find((v) => v.id === id);

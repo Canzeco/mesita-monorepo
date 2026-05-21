@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import type { AuthFormState } from "@/app/auth/actions";
+import { Field } from "@/components/shared";
 import {
   ERROR_BOX_CLASS,
   INFO_BOX_CLASS,
@@ -44,10 +45,7 @@ export function EmailAuthForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <label className="block">
-        <span className="text-muted-foreground mb-1.5 block text-xs font-medium">
-          Email
-        </span>
+      <Field label="Email">
         <input
           type="email"
           name="email"
@@ -58,12 +56,9 @@ export function EmailAuthForm({
           className={INPUT_CLASS}
           placeholder="you@example.com"
         />
-      </label>
+      </Field>
 
-      <label className="block">
-        <span className="text-muted-foreground mb-1.5 block text-xs font-medium">
-          Password
-        </span>
+      <Field label="Password">
         <input
           type="password"
           name="password"
@@ -74,10 +69,10 @@ export function EmailAuthForm({
           className={INPUT_CLASS}
           placeholder="••••••••"
         />
-      </label>
+      </Field>
 
       {state?.error && (
-        <p className={`${ERROR_BOX_CLASS} leading-relaxed`}>{state.error}</p>
+        <p className={cn(ERROR_BOX_CLASS, "leading-relaxed")}>{state.error}</p>
       )}
       {state?.info && <p className={INFO_BOX_CLASS}>{state.info}</p>}
 

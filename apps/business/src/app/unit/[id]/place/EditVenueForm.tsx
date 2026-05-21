@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -25,14 +25,14 @@ import {
   Star,
   Mail,
 } from "lucide-react";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiUpdateVenue,
   type MyVenue,
   type UpdateVenueInput,
 } from "@/lib/api/venues";
 import { Field } from "@/components/shared";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { isEmail } from "@/lib/validators";
 import {
   INPUT_CLASS as INPUT,
@@ -58,35 +58,39 @@ const PRICE_OPTIONS = [
   { value: "4", label: "$$$$ · Fine dining" },
 ];
 
-const STATUS_OPTIONS: {
-  value: "active" | "paused" | "archived";
-  label: string;
-}[] = [
+type Status = "active" | "paused" | "archived";
+
+const STATUS_OPTIONS: { value: Status; label: string }[] = [
   { value: "active", label: "Active — visible to guests" },
   { value: "paused", label: "Paused — temporarily hidden" },
   { value: "archived", label: "Archived — closed permanently" },
 ];
 
-type Status = "active" | "paused" | "archived";
+const VALID_STATUSES: Status[] = STATUS_OPTIONS.map((s) => s.value);
 
-type LinksState = {
-  website_url: string;
-  instagram_url: string;
-  tiktok_url: string;
-  facebook_url: string;
-  whatsapp_url: string;
-  opentable_url: string;
-  resy_url: string;
-  uber_eats_url: string;
-  rappi_url: string;
-  x_url: string;
-  youtube_url: string;
-  threads_url: string;
-  reddit_url: string;
-  didi_food_url: string;
-  tripadvisor_url: string;
-  google_maps_url: string;
-};
+// Single source of truth for every link/social field on the venue.
+// Used both as the keys of LinksState (form-side strings) and as the
+// payload keys we sweep through nullableUrl() on save.
+const LINK_KEYS = [
+  "website_url",
+  "instagram_url",
+  "tiktok_url",
+  "facebook_url",
+  "whatsapp_url",
+  "opentable_url",
+  "resy_url",
+  "uber_eats_url",
+  "rappi_url",
+  "x_url",
+  "youtube_url",
+  "threads_url",
+  "reddit_url",
+  "didi_food_url",
+  "tripadvisor_url",
+  "google_maps_url",
+] as const;
+
+type LinksState = { [K in (typeof LINK_KEYS)[number]]: string };
 
 function nullableUrl(v: string): string | null {
   const t = v.trim();
@@ -103,15 +107,14 @@ function nullableUrl(v: string): string | null {
 
 export function EditVenueForm({ venue }: { venue: MyVenue }) {
   const router = useRouter();
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
 
   const [name, setName] = useState(venue.name);
   const [status, setStatus] = useState<Status>(() => {
     // Lead venues haven't been promoted yet — surface them as Active in the
     // form so a Save promotes them; ditto for anything unrecognised so the
     // form never crashes on a status the schema added later than this UI.
-    const valid: Status[] = ["active", "paused", "archived"];
-    return valid.includes(venue.status as Status)
+    return VALID_STATUSES.includes(venue.status as Status)
       ? (venue.status as Status)
       : "active";
   });
@@ -132,24 +135,12 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   const [story, setStory] = useState(venue.story ?? "");
   const [photos, setPhotos] = useState<string[]>(venue.photos ?? []);
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
-  const [links, setLinks] = useState<LinksState>({
-    website_url: venue.website_url ?? "",
-    instagram_url: venue.instagram_url ?? "",
-    tiktok_url: venue.tiktok_url ?? "",
-    facebook_url: venue.facebook_url ?? "",
-    whatsapp_url: venue.whatsapp_url ?? "",
-    opentable_url: venue.opentable_url ?? "",
-    resy_url: venue.resy_url ?? "",
-    uber_eats_url: venue.uber_eats_url ?? "",
-    rappi_url: venue.rappi_url ?? "",
-    x_url: venue.x_url ?? "",
-    youtube_url: venue.youtube_url ?? "",
-    threads_url: venue.threads_url ?? "",
-    reddit_url: venue.reddit_url ?? "",
-    didi_food_url: venue.didi_food_url ?? "",
-    tripadvisor_url: venue.tripadvisor_url ?? "",
-    google_maps_url: venue.google_maps_url ?? "",
-  });
+  const [links, setLinks] = useState<LinksState>(
+    () =>
+      Object.fromEntries(
+        LINK_KEYS.map((k) => [k, venue[k] ?? ""]),
+      ) as LinksState,
+  );
   const setLink = (key: keyof LinksState, value: string) =>
     setLinks((prev) => ({ ...prev, [key]: value }));
   // Email is plain text, not URL-shaped — handled separately so it bypasses
@@ -192,6 +183,13 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       return;
     }
 
+    // Each LINK_KEYS entry maps 1:1 onto an UpdateVenueInput field of the
+    // same name, so the payload pulls every URL through nullableUrl in a
+    // single sweep instead of 16 hand-written lines.
+    const linkPayload = Object.fromEntries(
+      LINK_KEYS.map((k) => [k, nullableUrl(links[k])]),
+    ) as { [K in (typeof LINK_KEYS)[number]]: string | null };
+
     const payload: UpdateVenueInput = {
       id: venue.id,
       name: trimmedName,
@@ -206,22 +204,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       pitch: nullable(pitch),
       story: nullable(story),
       photos,
-      website_url: nullableUrl(links.website_url),
-      instagram_url: nullableUrl(links.instagram_url),
-      tiktok_url: nullableUrl(links.tiktok_url),
-      facebook_url: nullableUrl(links.facebook_url),
-      whatsapp_url: nullableUrl(links.whatsapp_url),
-      opentable_url: nullableUrl(links.opentable_url),
-      resy_url: nullableUrl(links.resy_url),
-      uber_eats_url: nullableUrl(links.uber_eats_url),
-      rappi_url: nullableUrl(links.rappi_url),
-      x_url: nullableUrl(links.x_url),
-      youtube_url: nullableUrl(links.youtube_url),
-      threads_url: nullableUrl(links.threads_url),
-      reddit_url: nullableUrl(links.reddit_url),
-      didi_food_url: nullableUrl(links.didi_food_url),
-      tripadvisor_url: nullableUrl(links.tripadvisor_url),
-      google_maps_url: nullableUrl(links.google_maps_url),
+      ...linkPayload,
       email: trimmedEmail === "" ? null : trimmedEmail,
     };
 
@@ -232,7 +215,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         router.refresh();
         window.setTimeout(() => setSaved(false), SAVED_TOAST_DURATION_MS);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save.");
+        setError(errMsg(err, "Could not save."));
       }
     });
   };

@@ -226,31 +226,22 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 py-3">
-          {NAV.map(({ slug, label, Icon, disabled }) => {
-            if (disabled) {
-              return (
-                <div
-                  key={slug}
-                  aria-disabled
-                  className="text-muted-foreground/50 flex cursor-not-allowed items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium"
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="flex-1">{label}</span>
-                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
-                    Soon
-                  </span>
-                </div>
-              );
-            }
-            const active = currentSlug === slug;
-            return (
+          {NAV.map(({ slug, label, Icon, disabled }) =>
+            disabled ? (
+              <SidebarDisabled
+                key={slug}
+                Icon={Icon}
+                label={label}
+                className="py-2.5"
+              />
+            ) : (
               <Link
                 key={slug}
                 href={navHref(slug)}
                 onClick={closeDrawer}
                 className={cn(
                   "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition",
-                  active
+                  currentSlug === slug
                     ? "bg-secondary/10 text-secondary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
@@ -258,8 +249,8 @@ export function Sidebar({
                 <Icon className="h-4 w-4" />
                 {label}
               </Link>
-            );
-          })}
+            ),
+          )}
         </nav>
 
         <div className="space-y-1 px-3 pt-3 pb-4">
@@ -304,14 +295,22 @@ export function Sidebar({
 function SidebarDisabled({
   Icon,
   label,
+  className,
 }: {
   Icon: React.ComponentType<{ className?: string }>;
   label: string;
+  // Default vertical padding is py-2 (footer items). The main-nav usage
+  // passes py-2.5 so the disabled row lines up with the active Link
+  // beside it.
+  className?: string;
 }) {
   return (
     <div
       aria-disabled
-      className="text-muted-foreground/50 flex cursor-not-allowed items-center gap-3 rounded-2xl px-3 py-2 text-sm font-medium"
+      className={cn(
+        "text-muted-foreground/50 flex cursor-not-allowed items-center gap-3 rounded-2xl px-3 py-2 text-sm font-medium",
+        className,
+      )}
     >
       <Icon className="h-4 w-4" />
       <span className="flex-1">{label}</span>

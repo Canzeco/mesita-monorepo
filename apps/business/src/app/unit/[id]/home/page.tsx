@@ -23,7 +23,7 @@ import { PlacePreview } from "@/components/manager/PlacePreview";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { FiscalBadge } from "@/components/shared";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 
 // /unit/<id>/home — the dashboard root. Empty-state CTA if the operator
 // has no venues yet, otherwise: overview + jump-offs to Place / Promos /
@@ -52,8 +52,7 @@ export default async function ManagerHomePage({
   try {
     overview = await getUnitOverview(supabase, requestedUnit, 0);
   } catch (err) {
-    overviewError =
-      err instanceof Error ? err.message : "Could not load your venues.";
+    overviewError = errMsg(err, "Could not load your venues.");
   }
 
   if (overviewError) {
@@ -188,22 +187,20 @@ function UnitSwitcher({
 }) {
   return (
     <nav className="-mx-1 flex flex-wrap gap-2">
-      {venues.map((v) => {
-        const on = v.id === activeId;
-        return (
-          <Link
-            key={v.id}
-            href={`/unit/${v.id}/home`}
-            className={
-              on
-                ? "bg-foreground text-background rounded-full px-3 py-1.5 text-xs font-semibold"
-                : "border-border bg-card text-muted-foreground hover:text-foreground rounded-full border px-3 py-1.5 text-xs font-semibold transition"
-            }
-          >
-            {v.name}
-          </Link>
-        );
-      })}
+      {venues.map((v) => (
+        <Link
+          key={v.id}
+          href={`/unit/${v.id}/home`}
+          className={cn(
+            "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+            v.id === activeId
+              ? "bg-foreground text-background"
+              : "border-border bg-card text-muted-foreground hover:text-foreground border",
+          )}
+        >
+          {v.name}
+        </Link>
+      ))}
     </nav>
   );
 }
@@ -267,19 +264,17 @@ function WeekSnapshot() {
         </span>
       </header>
       <div className="border-border grid grid-cols-2 divide-x divide-y rounded-2xl border md:grid-cols-4 md:divide-y-0">
-        {stats.map((s) => {
-          return (
-            <div key={s.label} className="px-4 py-4">
-              <p className="text-muted-foreground text-[11px]">{s.label}</p>
-              <p className="font-display mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-                {s.value}
-              </p>
-              <p className="text-secondary mt-0.5 text-[11px] font-semibold">
-                {s.delta}
-              </p>
-            </div>
-          );
-        })}
+        {stats.map((s) => (
+          <div key={s.label} className="px-4 py-4">
+            <p className="text-muted-foreground text-[11px]">{s.label}</p>
+            <p className="font-display mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+              {s.value}
+            </p>
+            <p className="text-secondary mt-0.5 text-[11px] font-semibold">
+              {s.delta}
+            </p>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -315,26 +310,23 @@ function QuickActions({ activeId }: { activeId: string }) {
   ];
   return (
     <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      {tabs.map((t) => {
-        const Icon = t.Icon;
-        return (
-          <Link
-            key={t.href}
-            href={t.href}
-            className="group border-border bg-card hover:border-foreground/30 flex flex-col gap-2 rounded-2xl border p-4 transition hover:shadow-sm"
-          >
-            <span className="bg-muted text-foreground group-hover:bg-foreground group-hover:text-background flex h-8 w-8 items-center justify-center rounded-full transition">
-              <Icon className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="font-display text-base font-semibold tracking-tight">
-                {t.label}
-              </p>
-              <p className="text-muted-foreground mt-1 text-[12px]">{t.sub}</p>
-            </div>
-          </Link>
-        );
-      })}
+      {tabs.map(({ href, label, sub, Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          className="group border-border bg-card hover:border-foreground/30 flex flex-col gap-2 rounded-2xl border p-4 transition hover:shadow-sm"
+        >
+          <span className="bg-muted text-foreground group-hover:bg-foreground group-hover:text-background flex h-8 w-8 items-center justify-center rounded-full transition">
+            <Icon className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="font-display text-base font-semibold tracking-tight">
+              {label}
+            </p>
+            <p className="text-muted-foreground mt-1 text-[12px]">{sub}</p>
+          </div>
+        </Link>
+      ))}
     </section>
   );
 }
@@ -395,36 +387,31 @@ function PlaceCompletenessCard({
         />
       </div>
       <ul className="mt-4 flex flex-col gap-2">
-        {items.map((i) => {
-          const Icon = i.Icon;
-          return (
-            <li key={i.label} className="flex items-center gap-2.5 text-[12px]">
-              <span
-                className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                  i.ok
-                    ? "bg-secondary/15 text-secondary"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                {i.ok ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                ) : (
-                  <Icon className="h-3 w-3" />
-                )}
-              </span>
-              <span
-                className={cn(
-                  i.ok
-                    ? "text-muted-foreground line-through"
-                    : "text-foreground",
-                )}
-              >
-                {i.label}
-              </span>
-            </li>
-          );
-        })}
+        {items.map(({ ok, label, Icon }) => (
+          <li key={label} className="flex items-center gap-2.5 text-[12px]">
+            <span
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                ok
+                  ? "bg-secondary/15 text-secondary"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {ok ? (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              ) : (
+                <Icon className="h-3 w-3" />
+              )}
+            </span>
+            <span
+              className={cn(
+                ok ? "text-muted-foreground line-through" : "text-foreground",
+              )}
+            >
+              {label}
+            </span>
+          </li>
+        ))}
       </ul>
       <Link
         href={`/unit/${unitId}/place`}
@@ -438,13 +425,19 @@ function PlaceCompletenessCard({
 
 // ── Top guests this week ────────────────────────────────────────────────
 
+type TopGuest = {
+  handle: string;
+  tier: "bronze" | "silver" | "gold";
+  visits: number;
+};
+
 function TopGuestsCard() {
-  const guests = [
-    { handle: "@valenrose", tier: "gold" as const, visits: 4 },
-    { handle: "@camivb", tier: "gold" as const, visits: 3 },
-    { handle: "@sofip", tier: "silver" as const, visits: 3 },
-    { handle: "@lucasm", tier: "silver" as const, visits: 2 },
-    { handle: "@anita", tier: "bronze" as const, visits: 2 },
+  const guests: TopGuest[] = [
+    { handle: "@valenrose", tier: "gold", visits: 4 },
+    { handle: "@camivb", tier: "gold", visits: 3 },
+    { handle: "@sofip", tier: "silver", visits: 3 },
+    { handle: "@lucasm", tier: "silver", visits: 2 },
+    { handle: "@anita", tier: "bronze", visits: 2 },
   ];
   return (
     <section className="border-border bg-card rounded-2xl border p-5">
@@ -670,23 +663,18 @@ function RecentActivityCard() {
         </span>
       </header>
       <ul className="divide-border mt-3 flex flex-col divide-y">
-        {events.map((e, i) => {
-          const Icon = e.Icon;
-          return (
-            <li key={i} className="flex items-start gap-3 py-2.5">
-              <span className="bg-muted text-foreground mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
-                <Icon className="h-3.5 w-3.5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{e.title}</p>
-                <p className="text-muted-foreground text-[11px]">{e.detail}</p>
-              </div>
-              <p className="text-muted-foreground shrink-0 text-[11px]">
-                {e.when}
-              </p>
-            </li>
-          );
-        })}
+        {events.map(({ Icon, title, detail, when }, i) => (
+          <li key={i} className="flex items-start gap-3 py-2.5">
+            <span className="bg-muted text-foreground mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+              <Icon className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{title}</p>
+              <p className="text-muted-foreground text-[11px]">{detail}</p>
+            </div>
+            <p className="text-muted-foreground shrink-0 text-[11px]">{when}</p>
+          </li>
+        ))}
       </ul>
     </section>
   );

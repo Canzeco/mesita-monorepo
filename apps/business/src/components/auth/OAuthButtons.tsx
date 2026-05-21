@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 type Provider = "google";
 
 export function OAuthButtons({ next }: { next: string }) {
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
   const [busy, setBusy] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,9 +51,7 @@ export function OAuthButtons({ next }: { next: string }) {
         type="button"
         disabled={busy !== null}
         onClick={() => signIn("google")}
-        className={cn(
-          "border-border bg-background text-foreground hover:bg-muted flex h-12 w-full items-center justify-center gap-2.5 rounded-full border text-sm font-semibold transition disabled:opacity-60",
-        )}
+        className="border-border bg-background text-foreground hover:bg-muted flex h-12 w-full items-center justify-center gap-2.5 rounded-full border text-sm font-semibold transition disabled:opacity-60"
       >
         {busy === "google" ? (
           <Loader2 className="h-4 w-4 animate-spin" />

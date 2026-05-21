@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateManagerProfile } from "@/lib/api/manager";
 import { Field } from "@/components/shared";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import {
   ERROR_BOX_CLASS,
   INPUT_CLASS,
@@ -17,7 +17,7 @@ import {
 // gets mirrored into managers.phone by the EF from auth.user.phone.
 export function ManagerOnboardForm() {
   const router = useRouter();
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
   const [fullName, setFullName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +37,7 @@ export function ManagerOnboardForm() {
         router.push("/add");
         router.refresh();
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Couldn't save. Try again.",
-        );
+        setError(errMsg(err, "Couldn't save. Try again."));
         setPending(false);
       }
     })();

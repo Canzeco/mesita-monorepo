@@ -230,17 +230,21 @@ export async function apiPlacesAutocomplete(
   return predictions;
 }
 
+export type EnrichCreateVenueResponse = {
+  venue: { id: string; slug: string; name: string; status: VenueStatus };
+  enrichment: EnrichmentReport;
+};
+
 export async function apiEnrichCreateVenue(
   client: SupabaseClient,
   placeId: string,
-): Promise<{
-  venue: { id: string; slug: string; name: string; status: VenueStatus };
-  enrichment: EnrichmentReport;
-}> {
-  return invokeEF<{
-    venue: { id: string; slug: string; name: string; status: VenueStatus };
-    enrichment: EnrichmentReport;
-  }>(client, "manager-create-unit", { placeId }, "Couldn't create that venue.");
+): Promise<EnrichCreateVenueResponse> {
+  return invokeEF<EnrichCreateVenueResponse>(
+    client,
+    "manager-create-unit",
+    { placeId },
+    "Couldn't create that venue.",
+  );
 }
 
 export type UpdateVenueInput = {
@@ -278,17 +282,24 @@ export type UpdateVenueInput = {
   email?: string | null;
 };
 
+export type UpdatedVenue = Venue & {
+  phone: string | null;
+  updated_at: string;
+};
+
 export async function apiUpdateVenue(
   client: SupabaseClient,
   input: UpdateVenueInput,
-): Promise<Venue & { phone: string | null; updated_at: string }> {
+): Promise<UpdatedVenue> {
   // Super-admin elevation is now per-user: the EF reads the caller's JWT,
   // checks public.super_admins, and skips venue_members for allowlisted
   // emails. The browser doesn't need to know — supabase-js attaches the
   // JWT automatically.
-  const { venue } = await invokeEF<{
-    venue: Venue & { phone: string | null; updated_at: string };
-  }>(client, "manager-update-unit", input);
+  const { venue } = await invokeEF<{ venue: UpdatedVenue }>(
+    client,
+    "manager-update-unit",
+    input,
+  );
   return venue;
 }
 

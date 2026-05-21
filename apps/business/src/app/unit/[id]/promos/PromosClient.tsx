@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -16,7 +16,7 @@ import {
   Percent,
   Users,
 } from "lucide-react";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue, type VenuePlan } from "@/lib/api/venues";
 import type { Tier } from "@/lib/guest-data";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { TicketTypesCard } from "@/components/manager/TicketTypesCard";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { PLANS, mechanicForPlan } from "@/lib/manager/plans";
 
 // Promos owns three layers of configuration in one page:
@@ -111,7 +112,7 @@ const TIERS: TierMeta[] = [
 
 export function PromosClient({ venue }: { venue: MyVenue }) {
   const router = useRouter();
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
 
   const [plan, setPlan] = useState<VenuePlan>(venue.plan);
   const [pending, startSubmit] = useTransition();
@@ -128,7 +129,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         await apiUpdateVenue(supabase, { id: venue.id, fiscal_type: next });
         router.refresh();
       } catch (err) {
-        setFiscalError(err instanceof Error ? err.message : "Couldn't save.");
+        setFiscalError(errMsg(err, "Couldn't save."));
       }
     });
   };
@@ -151,9 +152,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         setSaved(true);
         router.refresh();
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Couldn't save the plan.",
-        );
+        setError(errMsg(err, "Couldn't save the plan."));
       } finally {
         setPendingPlanId(null);
       }
@@ -188,11 +187,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
           onSwitch={switchFiscal}
         />
 
-        {fiscalError && (
-          <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
-            {fiscalError}
-          </p>
-        )}
+        {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {PLANS.map((p) => {
@@ -617,24 +612,21 @@ function RatePicker({
         </span>
       </p>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {RATE_CHOICES.map((c) => {
-          const on = c === rate;
-          return (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange(c)}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[11px] font-semibold transition",
-                on
-                  ? "bg-pink-gradient text-white shadow-sm"
-                  : "border-border bg-background text-foreground hover:border-foreground/30 border",
-              )}
-            >
-              {c}%
-            </button>
-          );
-        })}
+        {RATE_CHOICES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onChange(c)}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[11px] font-semibold transition",
+              c === rate
+                ? "bg-pink-gradient text-white shadow-sm"
+                : "border-border bg-background text-foreground hover:border-foreground/30 border",
+            )}
+          >
+            {c}%
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -695,24 +687,19 @@ function AudienceStat({
   );
 }
 
+const TIER_TONE: Record<Tier, string> = {
+  bronze: "bg-tier-bronze text-white",
+  silver: "bg-tier-silver text-foreground",
+  gold: "bg-tier-gold text-black",
+  diamond: "bg-tier-diamond text-white",
+};
+
 function TierChip({ tier, label }: { tier: Tier; label: string }) {
-  const tone = (() => {
-    switch (tier) {
-      case "bronze":
-        return "bg-tier-bronze text-white";
-      case "silver":
-        return "bg-tier-silver text-foreground";
-      case "gold":
-        return "bg-tier-gold text-black";
-      case "diamond":
-        return "bg-tier-diamond text-white";
-    }
-  })();
   return (
     <span
       className={cn(
         "inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase shadow-sm",
-        tone,
+        TIER_TONE[tier],
       )}
     >
       {label}

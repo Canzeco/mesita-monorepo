@@ -259,14 +259,27 @@ export async function apiCreateTicket(
   return invokeEF<CreateTicketPayload>(client, "manager-create-ticket", input);
 }
 
+export type MarkPaidTicket = {
+  id: string;
+  status: TicketStatus;
+  paid_at: string | null;
+  cashback_cents: number | null;
+  story_status?: StoryStatus;
+};
+
+export type MarkPaidResult = {
+  ticket: MarkPaidTicket;
+  cashbackCreditedCents: number;
+  cashbackRedeemedCents: number;
+  guestBalanceAfterCents: number | null;
+  alreadyPaid: boolean;
+  awaitingStory: boolean;
+};
+
+// EF response — fields above marked optional get normalised to required
+// defaults before returning so callers don't need to handle undefined.
 type MarkPaidPayload = {
-  ticket: {
-    id: string;
-    status: TicketStatus;
-    paid_at: string | null;
-    cashback_cents: number | null;
-    story_status?: StoryStatus;
-  };
+  ticket: MarkPaidTicket;
   cashbackCreditedCents: number;
   cashbackRedeemedCents?: number;
   guestBalanceAfterCents: number | null;
@@ -277,14 +290,7 @@ type MarkPaidPayload = {
 export async function apiMarkTicketPaid(
   client: SupabaseClient,
   ticketId: string,
-): Promise<{
-  ticket: MarkPaidPayload["ticket"];
-  cashbackCreditedCents: number;
-  cashbackRedeemedCents: number;
-  guestBalanceAfterCents: number | null;
-  alreadyPaid: boolean;
-  awaitingStory: boolean;
-}> {
+): Promise<MarkPaidResult> {
   const data = await invokeEF<MarkPaidPayload>(client, "manager-mark-paid", {
     ticketId,
   });
@@ -298,23 +304,22 @@ export async function apiMarkTicketPaid(
   };
 }
 
-export async function apiLookupGuest(
-  client: SupabaseClient,
-  code: string,
-): Promise<{
+export type GuestLookupResult = {
   id: string;
   code: string;
   full_name: string | null;
   cashback_balance_cents: number;
-}> {
-  const { guest } = await invokeEF<{
-    guest: {
-      id: string;
-      code: string;
-      full_name: string | null;
-      cashback_balance_cents: number;
-    };
-  }>(client, "manager-find-guest", { code });
+};
+
+export async function apiLookupGuest(
+  client: SupabaseClient,
+  code: string,
+): Promise<GuestLookupResult> {
+  const { guest } = await invokeEF<{ guest: GuestLookupResult }>(
+    client,
+    "manager-find-guest",
+    { code },
+  );
   return guest;
 }
 
@@ -326,22 +331,32 @@ export async function apiCancelTicket(
   await invokeEF(client, "manager-cancel-ticket", { ticketId, reason });
 }
 
-export async function apiVerifyStory(
-  client: SupabaseClient,
-  input: { ticketId: string; decision: "approve" | "reject"; reason?: string },
-): Promise<{
+export type VerifyStoryInput = {
+  ticketId: string;
+  decision: "approve" | "reject";
+  reason?: string;
+};
+
+export type VerifyStoryResult = {
   ticket: Ticket;
   cashbackCreditedCents: number;
   cashbackRedeemedCents: number;
   guestBalanceAfterCents: number | null;
-}> {
-  const data = await invokeEF<{
-    ticket: Ticket;
-    cashbackCreditedCents: number;
-    cashbackRedeemedCents: number;
-    guestBalanceAfterCents: number | null;
-    alreadyDecided?: boolean;
-  }>(client, "manager-verify-story", input);
+};
+
+// EF response widens VerifyStoryResult with an idempotency flag we drop
+// before returning — callers don't need it.
+type VerifyStoryPayload = VerifyStoryResult & { alreadyDecided?: boolean };
+
+export async function apiVerifyStory(
+  client: SupabaseClient,
+  input: VerifyStoryInput,
+): Promise<VerifyStoryResult> {
+  const data = await invokeEF<VerifyStoryPayload>(
+    client,
+    "manager-verify-story",
+    input,
+  );
   return {
     ticket: data.ticket,
     cashbackCreditedCents: data.cashbackCreditedCents,
@@ -350,14 +365,19 @@ export async function apiVerifyStory(
   };
 }
 
+export type SubmitStoryInput = { ticketId: string; screenshotUrl: string };
+
+type SubmitStoryPayload = { ticket: Ticket; alreadyVerified?: boolean };
+
 export async function apiSubmitStory(
   client: SupabaseClient,
-  input: { ticketId: string; screenshotUrl: string },
+  input: SubmitStoryInput,
 ): Promise<Ticket> {
-  const { ticket } = await invokeEF<{
-    ticket: Ticket;
-    alreadyVerified?: boolean;
-  }>(client, "guest-submit-story", input);
+  const { ticket } = await invokeEF<SubmitStoryPayload>(
+    client,
+    "guest-submit-story",
+    input,
+  );
   return ticket;
 }
 
@@ -389,6 +409,9 @@ export function workflowSteps(ticket: Ticket): WorkflowStep[] {
   const awaitingStory = ticket.status === "awaiting_story";
   const revealed = ticket.status === "revealed" || ticket.status === "paid";
   const cancelled = ticket.status === "cancelled";
+  // The waiter-side flow has officially started — everything from "arrive"
+  // through "validate-qr" is locked in once any of these are true.
+  const visitDone = revealed || paid || awaitingStory;
   const storyVerified =
     ticket.story_status === "ai_verified" ||
     ticket.story_status === "waiter_verified";
@@ -417,7 +440,7 @@ export function workflowSteps(ticket: Ticket): WorkflowStep[] {
     title: "Arrive & enjoy",
     sub: "Show up and enjoy your visit as usual.",
     forClarity: true,
-    done: revealed || paid || awaitingStory,
+    done: visitDone,
   });
 
   if (requiresStory) {
@@ -434,14 +457,14 @@ export function workflowSteps(ticket: Ticket): WorkflowStep[] {
     title: "Ask for the bill",
     sub: "When you're ready to leave, ask the waiter for your bill.",
     forClarity: true,
-    done: revealed || paid || awaitingStory,
+    done: visitDone,
   });
 
   steps.push({
     id: "show-qr",
     title: "Show your QR to waiter",
     sub: "Open this ticket and show your personal QR code.",
-    done: revealed || paid || awaitingStory,
+    done: visitDone,
   });
 
   steps.push({
@@ -450,7 +473,7 @@ export function workflowSteps(ticket: Ticket): WorkflowStep[] {
     sub: isFormal
       ? "The waiter scans your QR and enters your bill total + tip."
       : "The waiter scans your QR. The discount is revealed and applied to the bill.",
-    done: revealed || paid || awaitingStory,
+    done: visitDone,
   });
 
   if (isFormal) {
@@ -465,7 +488,7 @@ export function workflowSteps(ticket: Ticket): WorkflowStep[] {
       id: "pay-cash",
       title: "Pay the bill in cash",
       sub: "Discount is already applied to the total.",
-      done: revealed || paid || awaitingStory,
+      done: visitDone,
     });
   }
 
@@ -507,17 +530,10 @@ export function workflowSteps(ticket: Ticket): WorkflowStep[] {
     ];
   }
 
-  // Mark the first not-done step as the current one.
-  const out: WorkflowStep[] = [];
-  let currentAssigned = false;
-  for (const s of steps) {
-    out.push({
-      ...s,
-      current: !currentAssigned && !s.done ? true : false,
-    });
-    if (!currentAssigned && !s.done) currentAssigned = true;
-  }
-  return out;
+  // Mark the first not-done step as the current one (findIndex returns
+  // -1 when every step is done, which collapses to no `current` step).
+  const currentIdx = steps.findIndex((s) => !s.done);
+  return steps.map((s, i) => ({ ...s, current: i === currentIdx }));
 }
 
 // ─── Display helpers ─────────────────────────────────────────────────────

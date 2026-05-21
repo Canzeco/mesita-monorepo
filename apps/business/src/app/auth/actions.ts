@@ -111,8 +111,10 @@ export async function authSignUpWithEmail(
   redirect(redirectTo);
 }
 
+// Server-action callers bind a FormData as the last arg even when the
+// action doesn't use it; underscore-prefix marks it as intentionally
+// ignored.
 export async function authSignOut(redirectTo: string, _formData: FormData) {
-  void _formData;
   const supabase = await createServerSupabase();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");

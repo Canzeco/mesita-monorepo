@@ -42,8 +42,8 @@ export default async function CreateUnitPage() {
             Add a venue
           </h1>
           <p className="text-muted-foreground mt-2 max-w-[54ch] text-[14.5px] leading-[1.55]">
-            Type the venue&apos;s name — we pull the profile straight
-            from Google and show its current Mesita status inline.
+            Type the venue&apos;s name — we pull the profile straight from
+            Google and show its current Mesita status inline.
           </p>
         </header>
         <CreateUnitForm signedInEmail={user.email ?? ""} />

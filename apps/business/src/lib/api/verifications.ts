@@ -73,19 +73,25 @@ export type SubmitVerificationResult = {
   mockCode: string | null;
 };
 
+type SubmitVerificationPayload = {
+  verification: {
+    id: string;
+    status: VerificationStatus;
+    decided_via: "auto" | "admin" | null;
+    decided_at: string | null;
+  };
+  mockCode: string | null;
+};
+
 export async function apiSubmitVerification(
   client: SupabaseClient,
   input: SubmitVerificationInput,
 ): Promise<SubmitVerificationResult> {
-  const { verification, mockCode } = await invokeEF<{
-    verification: {
-      id: string;
-      status: VerificationStatus;
-      decided_via: "auto" | "admin" | null;
-      decided_at: string | null;
-    };
-    mockCode: string | null;
-  }>(client, "manager-submit-verification", input);
+  const { verification, mockCode } = await invokeEF<SubmitVerificationPayload>(
+    client,
+    "manager-submit-verification",
+    input,
+  );
   return {
     id: verification.id,
     status: verification.status,

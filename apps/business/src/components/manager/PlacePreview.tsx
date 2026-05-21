@@ -45,25 +45,22 @@ export function PlacePreview({ venue }: { venue: Venue }) {
       </header>
 
       <div className="-mx-1 mb-4 flex flex-wrap gap-2">
-        {TABS.map(({ id, label, Icon }) => {
-          const on = tab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                on
-                  ? "bg-foreground text-background"
-                  : "border-border bg-background text-muted-foreground hover:text-foreground border",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          );
-        })}
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+              tab === id
+                ? "bg-foreground text-background"
+                : "border-border bg-background text-muted-foreground hover:text-foreground border",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="flex justify-center">
@@ -143,6 +140,10 @@ function DetailPreview({ venue }: { venue: Venue }) {
     .filter(Boolean)
     .join(" · ")
     .toLowerCase();
+  const showRate =
+    venue.listing_type === "partner" &&
+    venue.cashback_percent != null &&
+    venue.cashback_percent > 0;
 
   return (
     <PhoneFrame>
@@ -187,36 +188,32 @@ function DetailPreview({ venue }: { venue: Venue }) {
 
           <div className="flex flex-wrap items-center gap-1.5">
             <PartnerBadge listingType={venue.listing_type} size="sm" />
-            {venue.listing_type === "partner" &&
-              venue.cashback_percent != null &&
-              venue.cashback_percent > 0 && (
-                <RatePill
-                  percent={venue.cashback_percent}
-                  mechanic={
-                    venue.fiscal_type === "informal" ? "discount" : "cashback"
-                  }
-                  size="sm"
-                />
-              )}
+            {showRate && (
+              <RatePill
+                percent={venue.cashback_percent!}
+                mechanic={
+                  venue.fiscal_type === "informal" ? "discount" : "cashback"
+                }
+                size="sm"
+              />
+            )}
           </div>
 
-          {venue.listing_type === "partner" &&
-            venue.cashback_percent != null &&
-            venue.cashback_percent > 0 && (
-              <div className="bg-pink-gradient shadow-glow flex items-center justify-between rounded-2xl p-3 text-white">
-                <div>
-                  <p className="text-[9px] font-bold tracking-wider text-white/80 uppercase">
-                    Verified partner
-                  </p>
-                  <p className="font-display mt-0.5 text-base font-semibold">
-                    {venue.cashback_percent}%{" "}
-                    {venue.fiscal_type === "informal" ? "discount" : "cashback"}{" "}
-                    on every visit
-                  </p>
-                </div>
-                <Sparkles className="h-5 w-5 text-white/80" />
+          {showRate && (
+            <div className="bg-pink-gradient shadow-glow flex items-center justify-between rounded-2xl p-3 text-white">
+              <div>
+                <p className="text-[9px] font-bold tracking-wider text-white/80 uppercase">
+                  Verified partner
+                </p>
+                <p className="font-display mt-0.5 text-base font-semibold">
+                  {venue.cashback_percent}%{" "}
+                  {venue.fiscal_type === "informal" ? "discount" : "cashback"}{" "}
+                  on every visit
+                </p>
               </div>
-            )}
+              <Sparkles className="h-5 w-5 text-white/80" />
+            </div>
+          )}
 
           {venue.pitch && (
             <p className="text-foreground text-sm leading-relaxed">

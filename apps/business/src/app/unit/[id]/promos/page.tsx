@@ -4,6 +4,7 @@ import { Topbar } from "@/components/manager/Topbar";
 import { PageErrorState } from "@/components/manager/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
+import { errMsg } from "@/lib/utils";
 import { PromosClient } from "./PromosClient";
 
 // Server shell: loads the active venue (carries fiscal_type + current plan)
@@ -25,8 +26,7 @@ export default async function ManagerPromosPage({
   try {
     overview = await getUnitOverview(supabase, requestedUnit, 0);
   } catch (err) {
-    overviewError =
-      err instanceof Error ? err.message : "Could not load your venues.";
+    overviewError = errMsg(err, "Could not load your venues.");
   }
   if (overviewError) {
     return (

@@ -66,9 +66,7 @@ export default async function ManagerShellLayout({
         isSuperAdmin={isSuperAdmin}
         user={{
           email: user.email ?? null,
-          fullName: isSuperAdmin
-            ? "Super admin"
-            : manager?.full_name ?? null,
+          fullName: isSuperAdmin ? "Super admin" : (manager?.full_name ?? null),
         }}
       />
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
