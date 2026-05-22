@@ -165,235 +165,83 @@ export const VALIDATOR_THREAD: ValidatorThreadMessage[] = [
 ];
 
 // ── Wallet (wallet/page.tsx) ──────────────────────────────────────────────
-//
-// Shape mirrors Stripe Connect Express: amounts in centavos (cents); balance
-// is split into available_cents (withdrawable now) vs pending_cents (held by
-// Mesita platform until story validates or dispute window closes). Each
-// charge is held on Mesita's platform balance via Separate Charges and
-// Transfers, not auto-routed to the venue's Stripe account — which is why a
-// "pending" amount has a release reason and an ETA. Real ledger lives in
-// Postgres; Stripe is the rail.
-
-export type StripeConnectStatus =
-  // Venue has never started Connect onboarding.
-  | "not_connected"
-  // Started Stripe-hosted onboarding but didn't finish.
-  | "onboarding_pending"
-  // Submitted, Stripe is reviewing KYB / bank details.
-  | "verification_pending"
-  // Verified, payouts enabled.
-  | "active"
-  // Active but Stripe has paused payouts (e.g. flagged for review).
-  | "restricted";
 
 export type WalletSummary = {
-  connectStatus: StripeConnectStatus;
-  // All amounts in MXN centavos.
-  availableCents: number;
-  pendingCents: number;
-  // Net of platform fees (Stripe + Mesita) for the current month.
-  thisMonthNetCents: number;
-  lifetimePayoutsCents: number;
-  // Schedule controls how often Mesita auto-releases to the venue's bank.
-  payoutSchedule: "manual" | "daily" | "weekly";
-  payoutDestination: string;
-  // Instant payouts (Stripe Connect Instant Payouts) carry a 1.5% fee and
-  // require an eligible debit card on file. Show as a secondary action only
-  // when this is non-zero.
-  instantAvailableCents: number;
+  balance: number;
+  pendingPayout: number;
+  thisMonth: number;
+  lifetime: number;
+  payoutAccount: string;
+  stripeConnected: boolean;
 };
 
 export const WALLET: WalletSummary = {
-  connectStatus: "active",
-  availableCents: 104_200_00,
-  pendingCents: 38_140_00,
-  thisMonthNetCents: 162_400_00,
-  lifetimePayoutsCents: 1_247_800_00,
-  payoutSchedule: "weekly",
-  payoutDestination: "BBVA · ···4421",
-  instantAvailableCents: 104_200_00,
+  balance: 142_300,
+  pendingPayout: 38_400,
+  thisMonth: 38_400,
+  lifetime: 412_900,
+  payoutAccount: "BBVA · ··· 4421",
+  stripeConnected: true,
 };
 
-// Cashback or venue cut held on Mesita's platform balance until a real-world
-// condition is met. Once met, an internal job promotes the entry from
-// pending → available and triggers the Stripe Transfer to the venue's
-// Express account (or stays parked for closed-loop guest balance).
-export type PendingReleaseReason =
-  // Follower-path Silver/Gold/Diamond guest hasn't posted their IG story
-  // yet, or the waiter hasn't validated the screenshot.
-  | "story_pending"
-  // 7-day chargeback risk window before releasing venue's portion.
-  | "dispute_window"
-  // Stripe Radar flagged the underlying charge for manual review.
-  | "stripe_review";
-
-export type PendingRelease = {
-  id: string;
-  amountCents: number;
-  reason: PendingReleaseReason;
-  releasesIn: string;
-  ticketLabel: string;
-};
-
-export const PENDING_RELEASES: PendingRelease[] = [
-  {
-    id: "pr-1",
-    amountCents: 12_600_00,
-    reason: "story_pending",
-    releasesIn: "when @valentina_r's story validates",
-    ticketLabel: "Valentina R · MX$1,840",
-  },
-  {
-    id: "pr-2",
-    amountCents: 8_400_00,
-    reason: "dispute_window",
-    releasesIn: "in 4 days",
-    ticketLabel: "Lucas M · MX$920",
-  },
-  {
-    id: "pr-3",
-    amountCents: 14_740_00,
-    reason: "story_pending",
-    releasesIn: "when @diegoarq's story validates",
-    ticketLabel: "Diego A · MX$2,400",
-  },
-  {
-    id: "pr-4",
-    amountCents: 2_400_00,
-    reason: "stripe_review",
-    releasesIn: "under Stripe review · ~24h",
-    ticketLabel: "Renata G · MX$640",
-  },
-];
-
-// Stripe Connect transaction taxonomy. `charge` = guest paid a bill;
-// `transfer` = Mesita moved funds from platform → Express account; `payout`
-// = Express account → bank account; `fee` = Mesita's monthly platform fee
-// debited from the venue; `refund` / `adjustment` cover edge cases.
-export type StripeTxnType =
-  | "charge"
-  | "refund"
-  | "transfer"
-  | "payout"
-  | "fee"
-  | "adjustment";
-
-// Mirrors Stripe BalanceTransaction.status semantics, simplified for the
-// manager view. `pending` = still in holdback window. `available` = ready to
-// be transferred out. `in_transit` = payout dispatched, not yet settled at
-// bank. `paid` = settled. `refunded` / `failed` are terminal error states.
-export type StripeTxnStatus =
-  | "pending"
-  | "available"
-  | "in_transit"
-  | "paid"
-  | "refunded"
-  | "failed";
+export type TransactionKind = "visit" | "payout" | "fee";
 
 export type Transaction = {
   id: string;
-  type: StripeTxnType;
+  kind: TransactionKind;
   label: string;
-  // Signed: positive = inflow to venue balance, negative = outflow.
-  grossCents: number;
-  // Always ≤ 0 (Stripe processing fee + Mesita platform fee combined). Zero
-  // for payouts / transfers where no fee applies at this leg.
-  feeCents: number;
-  // Convenience pre-computed as gross + fee.
-  netCents: number;
-  status: StripeTxnStatus;
-  // ch_..., tr_..., po_..., re_... — surfaced for support / reconciliation.
-  stripeObjectId: string;
+  amount: number;
+  cashback: number;
   when: string;
 };
 
 export const TRANSACTIONS: Transaction[] = [
   {
     id: "t-1",
-    type: "charge",
-    label: "Valentina R · 20% cashback",
-    grossCents: 1_840_00,
-    feeCents: -66_24,
-    netCents: 1_773_76,
-    status: "pending",
-    stripeObjectId: "ch_3Qa1H2DtV9HHKsoy0FvX1Xy7",
+    kind: "visit",
+    label: "Visit · Valentina R.",
+    amount: 1840,
+    cashback: -276,
     when: "2h ago",
   },
   {
     id: "t-2",
-    type: "charge",
-    label: "Lucas M · 10% cashback",
-    grossCents: 920_00,
-    feeCents: -36_12,
-    netCents: 883_88,
-    status: "available",
-    stripeObjectId: "ch_3Qa0pADtV9HHKsoy1JKp9Lm2",
+    kind: "visit",
+    label: "Visit · Lucas M.",
+    amount: 920,
+    cashback: -138,
     when: "4h ago",
   },
   {
     id: "t-3",
-    type: "payout",
-    label: "Payout · BBVA ···4421",
-    grossCents: -52_000_00,
-    feeCents: 0,
-    netCents: -52_000_00,
-    status: "paid",
-    stripeObjectId: "po_1Qa0NRDtV9HHKsoy7m1V4Zwq",
+    kind: "payout",
+    label: "Payout · BBVA ··· 4421",
+    amount: -24_500,
+    cashback: 0,
     when: "Yesterday",
   },
   {
     id: "t-4",
-    type: "charge",
-    label: "Renata G · welcome coupon",
-    grossCents: 640_00,
-    feeCents: -26_04,
-    netCents: 613_96,
-    status: "available",
-    stripeObjectId: "ch_3QZyV4DtV9HHKsoy0iLnPj9C",
+    kind: "visit",
+    label: "Visit · Renata G.",
+    amount: 640,
+    cashback: -64,
     when: "Yesterday",
   },
   {
     id: "t-5",
-    type: "refund",
-    label: "Sofía P · partial refund",
-    grossCents: -400_00,
-    feeCents: 14_40,
-    netCents: -385_60,
-    status: "refunded",
-    stripeObjectId: "re_3QZxR9DtV9HHKsoy0t8mKqYn",
-    when: "2 days ago",
-  },
-  {
-    id: "t-6",
-    type: "fee",
-    label: "Mesita platform fee · May",
-    grossCents: -2_400_00,
-    feeCents: 0,
-    netCents: -2_400_00,
-    status: "paid",
-    stripeObjectId: "txn_1QZv8gDtV9HHKsoy0FtbA1nQ",
+    kind: "fee",
+    label: "Mesita commission · May",
+    amount: -2_400,
+    cashback: 0,
     when: "3 days ago",
   },
   {
-    id: "t-7",
-    type: "transfer",
-    label: "Transfer · Mesita platform → Express acct",
-    grossCents: 18_500_00,
-    feeCents: 0,
-    netCents: 18_500_00,
-    status: "paid",
-    stripeObjectId: "tr_1QZuW3DtV9HHKsoy7HSrM8Wb",
-    when: "4 days ago",
-  },
-  {
-    id: "t-8",
-    type: "payout",
-    label: "Payout · BBVA ···4421",
-    grossCents: -48_300_00,
-    feeCents: 0,
-    netCents: -48_300_00,
-    status: "paid",
-    stripeObjectId: "po_1QZsKADtV9HHKsoy3yQp1Rfg",
+    id: "t-6",
+    kind: "payout",
+    label: "Payout · BBVA ··· 4421",
+    amount: -52_000,
+    cashback: 0,
     when: "1 week ago",
   },
 ];
