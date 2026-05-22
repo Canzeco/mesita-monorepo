@@ -645,13 +645,13 @@ function MethodsPicker({
         (methods.phone.available ? (
           <PhoneBody venue={venue} methods={methods} {...callbacks} />
         ) : (
-          <MethodUnavailableBody method="phone" />
+          <MethodUnavailableBody method="phone" methods={methods} />
         ))}
       {method === "email" &&
         (methods.email.available ? (
           <EmailBody venue={venue} methods={methods} {...callbacks} />
         ) : (
-          <MethodUnavailableBody method="email" />
+          <MethodUnavailableBody method="email" methods={methods} />
         ))}
       {method === "manual" && <WhatsAppBody venue={venue} />}
     </div>
@@ -661,9 +661,16 @@ function MethodsPicker({
 // Shown when the operator selects an auto-verify chip (phone or email)
 // that isn't available for this specific venue — e.g. the GMB profile
 // has no public phone, or no Firecrawl-discovered on-domain email.
-// Keeps the chip visible so operators see the full supported set, but
-// makes the missing-data state clear and points to the manual path.
-function MethodUnavailableBody({ method }: { method: "phone" | "email" }) {
+// Keeps the chip visible so operators see the full supported set, and
+// nudges them to the best next action: the other auto-method when it's
+// available (still instant), otherwise the manual Talk-to-us path.
+function MethodUnavailableBody({
+  method,
+  methods,
+}: {
+  method: "phone" | "email";
+  methods: LookupMethods;
+}) {
   const Icon = method === "phone" ? Phone : Mail;
   const title =
     method === "phone" ? "Phone check unavailable" : "Email check unavailable";
@@ -671,6 +678,21 @@ function MethodUnavailableBody({ method }: { method: "phone" | "email" }) {
     method === "phone"
       ? "a public phone number on Google"
       : "a verified email on the venue's website";
+
+  // Pick the best alternative the operator can take right now. We
+  // prefer the other instant auto-method (Phone/Email) when its data
+  // is available for this venue, and only fall back to the manual
+  // path when both auto-methods are out of reach.
+  const alternative =
+    method === "phone" && methods.email.available
+      ? { label: "Email", detail: "the code lands instantly when it clears." }
+      : method === "email" && methods.phone.available
+        ? { label: "Phone", detail: "the code lands instantly when it clears." }
+        : {
+            label: "Talk to us",
+            detail: "we'll verify ownership manually within minutes.",
+          };
+
   return (
     <div className="border-border bg-muted/30 flex items-start gap-3 rounded-2xl border p-4">
       <span className="bg-muted text-muted-foreground mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
@@ -680,8 +702,10 @@ function MethodUnavailableBody({ method }: { method: "phone" | "email" }) {
         <p className="text-foreground text-[13px] font-semibold">{title}</p>
         <p className="text-muted-foreground mt-1 text-[12.5px] leading-relaxed">
           We couldn&apos;t find {what} for this venue. Use{" "}
-          <span className="text-foreground font-medium">Talk to us</span> —
-          we&apos;ll verify ownership manually within minutes.
+          <span className="text-foreground font-medium">
+            {alternative.label}
+          </span>{" "}
+          — {alternative.detail}
         </p>
       </div>
     </div>
@@ -1114,9 +1138,9 @@ function WhatsAppBody({ venue }: { venue: LookupVenue }) {
       </a>
       <a
         href={mailHref}
-        className="border-border bg-card text-foreground hover:bg-muted/50 flex h-12 items-center justify-center gap-2 rounded-full border text-sm font-semibold transition"
+        className="border-border bg-card text-foreground hover:bg-muted/50 flex h-14 items-center justify-center gap-2 rounded-full border text-base font-semibold transition"
       >
-        <Mail className="h-4 w-4" />
+        <Mail className="h-5 w-5" />
         Email {MESITA_OPS_EMAIL}
       </a>
     </div>
