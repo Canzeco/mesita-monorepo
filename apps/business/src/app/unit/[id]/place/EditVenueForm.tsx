@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   X,
@@ -21,42 +22,47 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
-import type { MyVenue } from "@/lib/api/venues";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  apiUpdateVenue,
+  type MyVenue,
+  type UpdateVenueInput,
+  type VenueHours,
+} from "@/lib/api/venues";
 import { Field } from "@/components/shared";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import {
   INPUT_CLASS as INPUT,
   TEXTAREA_CLASS as TEXTAREA,
 } from "@/lib/ui-classes";
 
-// Frontend mock pass for the Place redesign. Every field is driven by the
-// Components Notion database (M-Place-V + Manager-E columns):
-//   - M-Place-V=YES  → component renders on this page
-//   - Manager-E=YES  → component is editable; otherwise read-only
-// Backend wiring (real Edge Function + schema migration) lands in a follow-up.
+// Place page driven by the Notion Components spec:
+//   - M-Place-V=YES → component renders here
+//   - Manager-E=YES → component is editable; otherwise read-only
+// Editable values are persisted through manager-update-unit. Read-only
+// signals (price level, address, Google + Mesita ratings, follower counts)
+// flow in from the venue payload and are not surfaced as inputs.
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-type DayHours = { open: string; close: string; closed?: boolean };
+type DayHours = { open: string; close: string; closed: boolean };
 
-const DAYS: { key: DayKey; label: string }[] = [
-  { key: "mon", label: "Monday" },
-  { key: "tue", label: "Tuesday" },
-  { key: "wed", label: "Wednesday" },
-  { key: "thu", label: "Thursday" },
-  { key: "fri", label: "Friday" },
-  { key: "sat", label: "Saturday" },
-  { key: "sun", label: "Sunday" },
+const DAYS: { key: DayKey; label: string; long: keyof VenueHours }[] = [
+  { key: "mon", label: "Monday", long: "monday" },
+  { key: "tue", label: "Tuesday", long: "tuesday" },
+  { key: "wed", label: "Wednesday", long: "wednesday" },
+  { key: "thu", label: "Thursday", long: "thursday" },
+  { key: "fri", label: "Friday", long: "friday" },
+  { key: "sat", label: "Saturday", long: "saturday" },
+  { key: "sun", label: "Sunday", long: "sunday" },
 ];
 
-type MockVenue = {
+type FormState = {
   name: string;
   category: string;
   description: string;
   hours: Record<DayKey, DayHours>;
   menu_pdf_url: string;
-  price_level: number;
   tags: string[];
-  address: string;
   phone: string;
   whatsapp_url: string;
   whatsapp_pr_urls: string[];
@@ -64,76 +70,12 @@ type MockVenue = {
   website_url: string;
   instagram_url: string;
   instagram_pr_urls: string[];
-  google_business_url: string;
-  google_maps_url: string;
   facebook_url: string;
   tiktok_url: string;
   opentable_url: string;
   tripadvisor_url: string;
   rappi_url: string;
   uber_eats_url: string;
-  google_stars_overall: number;
-  google_review_count: number;
-  google_visitor_count: number;
-  mesita_stars_overall: number;
-  mesita_stars_food: number;
-  mesita_stars_service: number;
-  mesita_stars_ambience: number;
-  mesita_review_count: number;
-  mesita_visitor_count: number;
-  instagram_followers_count: number;
-};
-
-const MOCK_VENUE: MockVenue = {
-  name: "Mochomos San Luis Potosí",
-  category: "mexican",
-  description:
-    "Refined Mexican steakhouse on the Carranza promenade. Carved chandeliers, deep velvets, mezcal flights, and dry-aged cuts on the parrilla.",
-  hours: {
-    mon: { open: "13:00", close: "00:00" },
-    tue: { open: "13:00", close: "00:00" },
-    wed: { open: "13:00", close: "00:00" },
-    thu: { open: "13:00", close: "00:00" },
-    fri: { open: "13:00", close: "02:00" },
-    sat: { open: "13:00", close: "02:00" },
-    sun: { open: "13:00", close: "22:00" },
-  },
-  menu_pdf_url: "https://example.com/mochomos-menu.pdf",
-  price_level: 3,
-  tags: ["elegant", "steakhouse", "tequila", "rooftop"],
-  address:
-    "Av. Venustiano Carranza 100, Tequisquiapan, 78250 San Luis Potosí, SLP",
-  phone: "+52 444 833 5050",
-  whatsapp_url: "https://wa.me/524448335050",
-  whatsapp_pr_urls: [
-    "https://wa.me/524441234567",
-    "https://wa.me/524449876543",
-  ],
-  email: "reservaciones@mochomos.mx",
-  website_url: "https://www.mochomos.com",
-  instagram_url: "https://instagram.com/mochomosslp",
-  instagram_pr_urls: [
-    "https://instagram.com/mochomos.pr1",
-    "https://instagram.com/mochomos.pr2",
-  ],
-  google_business_url: "https://business.google.com/g/mochomos-slp",
-  google_maps_url: "https://maps.app.goo.gl/mochomos-slp",
-  facebook_url: "https://facebook.com/mochomos.slp",
-  tiktok_url: "https://tiktok.com/@mochomos",
-  opentable_url: "https://opentable.com/r/mochomos-slp",
-  tripadvisor_url: "https://tripadvisor.com/Restaurant_Review-mochomos",
-  rappi_url: "https://rappi.com.mx/restaurantes/mochomos",
-  uber_eats_url: "https://ubereats.com/store/mochomos",
-  google_stars_overall: 4.6,
-  google_review_count: 1840,
-  google_visitor_count: 2310,
-  mesita_stars_overall: 4.7,
-  mesita_stars_food: 4.8,
-  mesita_stars_service: 4.5,
-  mesita_stars_ambience: 4.7,
-  mesita_review_count: 64,
-  mesita_visitor_count: 412,
-  instagram_followers_count: 18400,
 };
 
 const PRICE_LABEL: Record<number, string> = {
@@ -143,41 +85,154 @@ const PRICE_LABEL: Record<number, string> = {
   4: "$$$$ · Fine dining",
 };
 
-const SAVED_TOAST_MS = 1800;
+const SAVED_TOAST_MS = 2200;
+const VENUE_NAME_MAX = 120;
+const DESCRIPTION_MAX = 600;
+const TAG_MAX = 40;
 
-export function EditVenueForm({ venue: _venue }: { venue: MyVenue }) {
-  void _venue;
-  const [v, setV] = useState<MockVenue>(MOCK_VENUE);
-  const [saving, setSaving] = useState(false);
+function nullableUrl(v: string): string | null {
+  const t = v.trim();
+  if (t === "") return null;
+  if (/^https:\/\//i.test(t)) return t;
+  if (/^http:\/\//i.test(t)) return t.replace(/^http:/i, "https:");
+  if (/^[a-z0-9.-]+\.[a-z]{2,}/i.test(t)) return `https://${t}`;
+  return t;
+}
+
+function nullable(v: string): string | null {
+  const t = v.trim();
+  return t === "" ? null : t;
+}
+
+function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayHours> {
+  const out = {} as Record<DayKey, DayHours>;
+  for (const d of DAYS) {
+    const ranges = h?.[d.long];
+    const first = ranges && ranges.length > 0 ? ranges[0] : null;
+    out[d.key] = first
+      ? { open: first.open, close: first.close, closed: false }
+      : { open: "", close: "", closed: !first };
+  }
+  return out;
+}
+
+function formHoursToVenue(form: Record<DayKey, DayHours>): VenueHours {
+  const out: VenueHours = {};
+  for (const d of DAYS) {
+    const v = form[d.key];
+    if (v.closed) continue;
+    const open = v.open.trim();
+    const close = v.close.trim();
+    if (!open || !close) continue;
+    out[d.long] = [{ open, close }];
+  }
+  return out;
+}
+
+export function EditVenueForm({ venue }: { venue: MyVenue }) {
+  const router = useRouter();
+  const supabase = useBrowserSupabase();
+
+  const [v, setV] = useState<FormState>(() => ({
+    name: venue.name ?? "",
+    category: venue.category ?? "",
+    description: venue.description ?? "",
+    hours: venueHoursToForm(venue.hours),
+    menu_pdf_url: venue.menu_pdf_url ?? "",
+    tags: venue.tags ?? [],
+    phone: venue.phone ?? "",
+    whatsapp_url: venue.whatsapp_url ?? "",
+    whatsapp_pr_urls: venue.whatsapp_pr_urls ?? [],
+    email: venue.email ?? "",
+    website_url: venue.website_url ?? "",
+    instagram_url: venue.instagram_url ?? "",
+    instagram_pr_urls: venue.instagram_pr_urls ?? [],
+    facebook_url: venue.facebook_url ?? "",
+    tiktok_url: venue.tiktok_url ?? "",
+    opentable_url: venue.opentable_url ?? "",
+    tripadvisor_url: venue.tripadvisor_url ?? "",
+    rappi_url: venue.rappi_url ?? "",
+    uber_eats_url: venue.uber_eats_url ?? "",
+  }));
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const set = <K extends keyof MockVenue>(key: K, value: MockVenue[K]) =>
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setV((prev) => ({ ...prev, [key]: value }));
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSaving(true);
-    window.setTimeout(() => {
-      setSaving(false);
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), SAVED_TOAST_MS);
-    }, 500);
+    setError(null);
+    setSaved(false);
+
+    const trimmedName = v.name.trim();
+    if (!trimmedName) {
+      setError("Name cannot be empty.");
+      return;
+    }
+
+    const payload: UpdateVenueInput = {
+      id: venue.id,
+      name: trimmedName.slice(0, VENUE_NAME_MAX),
+      category: nullable(v.category),
+      description: v.description.trim() === "" ? null : v.description.trim().slice(0, DESCRIPTION_MAX),
+      hours: formHoursToVenue(v.hours),
+      menu_pdf_url: nullableUrl(v.menu_pdf_url),
+      tags: v.tags
+        .map((t) => t.trim().toLowerCase().slice(0, TAG_MAX))
+        .filter(Boolean),
+      phone: nullable(v.phone),
+      whatsapp_url: nullableUrl(v.whatsapp_url),
+      whatsapp_pr_urls: v.whatsapp_pr_urls
+        .map(nullableUrl)
+        .filter((u): u is string => u !== null),
+      email: v.email.trim() === "" ? null : v.email.trim(),
+      website_url: nullableUrl(v.website_url),
+      instagram_url: nullableUrl(v.instagram_url),
+      instagram_pr_urls: v.instagram_pr_urls
+        .map(nullableUrl)
+        .filter((u): u is string => u !== null),
+      facebook_url: nullableUrl(v.facebook_url),
+      tiktok_url: nullableUrl(v.tiktok_url),
+      opentable_url: nullableUrl(v.opentable_url),
+      tripadvisor_url: nullableUrl(v.tripadvisor_url),
+      rappi_url: nullableUrl(v.rappi_url),
+      uber_eats_url: nullableUrl(v.uber_eats_url),
+    };
+
+    startTransition(async () => {
+      try {
+        await apiUpdateVenue(supabase, payload);
+        setSaved(true);
+        router.refresh();
+        window.setTimeout(() => setSaved(false), SAVED_TOAST_MS);
+      } catch (err) {
+        setError(errMsg(err, "Could not save."));
+      }
+    });
   };
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      <BasicsSection v={v} set={set} />
-      <PrimaryChannelsSection v={v} set={set} />
+      <BasicsSection venue={venue} v={v} set={set} />
+      <PrimaryChannelsSection venue={venue} v={v} set={set} />
       <SecondaryChannelsSection v={v} set={set} />
-      <SignalsSection v={v} />
+      <SignalsSection venue={venue} />
+
+      {error && (
+        <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
+          {error}
+        </p>
+      )}
 
       <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-2 flex items-center gap-3 rounded-2xl border p-3 backdrop-blur">
         <p className="text-muted-foreground hidden flex-1 text-xs sm:block">
-          {saved ? "Saved (mock)." : "Mock data — Save is a stub for now."}
+          {saved ? "Saved." : "Changes save when you click Save."}
         </p>
         <button
           type="submit"
-          disabled={saving}
+          disabled={pending}
           className={cn(
             "flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50 sm:flex-none sm:px-6",
             saved
@@ -185,7 +240,7 @@ export function EditVenueForm({ venue: _venue }: { venue: MyVenue }) {
               : "bg-pink-gradient shadow-glow text-white",
           )}
         >
-          {saving ? (
+          {pending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Saving…
@@ -210,11 +265,13 @@ export function EditVenueForm({ venue: _venue }: { venue: MyVenue }) {
 // ── Sections ────────────────────────────────────────────────────────────
 
 function BasicsSection({
+  venue,
   v,
   set,
 }: {
-  v: MockVenue;
-  set: <K extends keyof MockVenue>(key: K, value: MockVenue[K]) => void;
+  venue: MyVenue;
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   return (
     <Section title="Basics">
@@ -222,6 +279,7 @@ function BasicsSection({
         <input
           value={v.name}
           onChange={(e) => set("name", e.target.value)}
+          maxLength={VENUE_NAME_MAX}
           className={INPUT}
         />
       </Field>
@@ -238,6 +296,7 @@ function BasicsSection({
         <textarea
           value={v.description}
           onChange={(e) => set("description", e.target.value)}
+          maxLength={DESCRIPTION_MAX}
           className={TEXTAREA}
         />
       </Field>
@@ -262,19 +321,30 @@ function BasicsSection({
         <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
       </Field>
 
-      <ReadOnly label="Price level" value={PRICE_LABEL[v.price_level] ?? "—"} />
+      <ReadOnly
+        label="Price level"
+        value={
+          venue.price_level != null ? (PRICE_LABEL[venue.price_level] ?? "—") : "—"
+        }
+      />
 
-      <ReadOnly label="Address" value={v.address} icon={<MapPin className="h-4 w-4" />} />
+      <ReadOnly
+        label="Address"
+        value={venue.address ?? ""}
+        icon={<MapPin className="h-4 w-4" />}
+      />
     </Section>
   );
 }
 
 function PrimaryChannelsSection({
+  venue,
   v,
   set,
 }: {
-  v: MockVenue;
-  set: <K extends keyof MockVenue>(key: K, value: MockVenue[K]) => void;
+  venue: MyVenue;
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   return (
     <Section
@@ -345,12 +415,12 @@ function PrimaryChannelsSection({
 
       <ReadOnly
         label="Google Business listing"
-        value={v.google_business_url}
+        value={venue.google_business_url ?? ""}
         icon={<Building2 className="h-4 w-4" />}
       />
       <ReadOnly
         label="Google Maps link"
-        value={v.google_maps_url}
+        value={venue.google_maps_url ?? ""}
         icon={<MapPin className="h-4 w-4" />}
       />
     </Section>
@@ -361,8 +431,8 @@ function SecondaryChannelsSection({
   v,
   set,
 }: {
-  v: MockVenue;
-  set: <K extends keyof MockVenue>(key: K, value: MockVenue[K]) => void;
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   return (
     <Section
@@ -417,26 +487,29 @@ function SecondaryChannelsSection({
   );
 }
 
-function SignalsSection({ v }: { v: MockVenue }) {
-  const stars: { label: string; value: number; sub?: string }[] = [
-    { label: "Google · Overall", value: v.google_stars_overall },
-    { label: "Mesita · Overall", value: v.mesita_stars_overall },
-    { label: "Mesita · Food", value: v.mesita_stars_food },
-    { label: "Mesita · Service", value: v.mesita_stars_service },
-    { label: "Mesita · Ambience", value: v.mesita_stars_ambience },
+function SignalsSection({ venue }: { venue: MyVenue }) {
+  const stars: { label: string; value: number | null }[] = [
+    { label: "Google · Overall", value: venue.google_stars_overall },
+    { label: "Mesita · Overall", value: venue.mesita_stars_overall },
+    { label: "Mesita · Food", value: venue.mesita_stars_food },
+    { label: "Mesita · Service", value: venue.mesita_stars_service },
+    { label: "Mesita · Ambience", value: venue.mesita_stars_ambience },
   ];
   const counts: { label: string; value: string }[] = [
     {
       label: "Google visitors & reviews",
-      value: `${formatCount(v.google_visitor_count)} · ${formatCount(v.google_review_count)} reviews`,
+      value: visitorReview(venue.google_visitor_count, venue.google_review_count),
     },
     {
       label: "Mesita visitors & reviews",
-      value: `${formatCount(v.mesita_visitor_count)} · ${formatCount(v.mesita_review_count)} reviews`,
+      value: visitorReview(venue.mesita_visitor_count, venue.mesita_review_count),
     },
     {
       label: "Instagram followers",
-      value: formatCount(v.instagram_followers_count),
+      value:
+        venue.instagram_followers_count == null
+          ? "—"
+          : formatCount(venue.instagram_followers_count),
     },
   ];
 
@@ -456,7 +529,7 @@ function SignalsSection({ v }: { v: MockVenue }) {
             </p>
             <p className="font-display mt-1 flex items-baseline gap-1 text-xl font-semibold tabular-nums">
               <Star className="text-secondary h-3.5 w-3.5" />
-              {s.value.toFixed(1)}
+              {s.value == null ? "—" : s.value.toFixed(1)}
             </p>
           </div>
         ))}
@@ -628,7 +701,6 @@ function HoursEditor({
     <div className="border-border bg-muted/20 flex flex-col divide-y rounded-xl border">
       {DAYS.map(({ key, label }) => {
         const d = hours[key];
-        const closed = d.closed === true;
         return (
           <div
             key={key}
@@ -637,12 +709,14 @@ function HoursEditor({
             <span className="text-muted-foreground text-xs font-medium">
               {label}
             </span>
-            {closed ? (
+            {d.closed ? (
               <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground text-xs">Closed</span>
                 <button
                   type="button"
-                  onClick={() => setDay(key, { closed: false })}
+                  onClick={() =>
+                    setDay(key, { closed: false, open: "", close: "" })
+                  }
                   className="text-muted-foreground hover:text-foreground text-[11px] font-semibold underline-offset-2 hover:underline"
                 >
                   Set hours
@@ -759,4 +833,11 @@ function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toLocaleString();
+}
+
+function visitorReview(visitors: number | null, reviews: number | null): string {
+  if (visitors == null && reviews == null) return "—";
+  const v = visitors == null ? "—" : formatCount(visitors);
+  const r = reviews == null ? "—" : formatCount(reviews);
+  return `${v} · ${r} reviews`;
 }

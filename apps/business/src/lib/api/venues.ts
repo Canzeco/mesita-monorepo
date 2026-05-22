@@ -19,6 +19,16 @@ export type FiscalType = "formal" | "informal";
 // concierge / enterprise conversation, not a self-serve plan.
 export type VenuePlan = "free" | "formal_pro" | "informal_pro";
 
+// Weekly opening hours — JSONB column on venues. Lowercase English day keys,
+// each holding an array of {open,close} ranges in 24h HH:MM. Closed days omit
+// the key entirely. Multiple ranges per day support split shifts.
+export type VenueHours = Partial<
+  Record<
+    "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday",
+    { open: string; close: string }[]
+  >
+>;
+
 export type Venue = {
   id: string;
   slug: string;
@@ -34,11 +44,17 @@ export type Venue = {
   lng: number | null;
   address: string | null;
   closes_at: string | null;
+  hours: VenueHours | null;
   phone: string | null;
   pitch: string | null;
   story: string | null;
+  description: string | null;
   cashback_percent: number | null;
   photos: string[];
+  menu_pdf_url: string | null;
+  tags: string[];
+  whatsapp_pr_urls: string[];
+  instagram_pr_urls: string[];
   website_url: string | null;
   instagram_url: string | null;
   tiktok_url: string | null;
@@ -55,6 +71,17 @@ export type Venue = {
   didi_food_url: string | null;
   tripadvisor_url: string | null;
   google_maps_url: string | null;
+  google_business_url: string | null;
+  google_stars_overall: number | null;
+  google_review_count: number | null;
+  google_visitor_count: number | null;
+  mesita_stars_overall: number | null;
+  mesita_stars_food: number | null;
+  mesita_stars_service: number | null;
+  mesita_stars_ambience: number | null;
+  mesita_review_count: number | null;
+  mesita_visitor_count: number | null;
+  instagram_followers_count: number | null;
   email: string | null;
   created_at: string;
 };
@@ -252,6 +279,7 @@ export type UpdateVenueInput = {
   plan?: VenuePlan;
   address?: string | null;
   closes_at?: string | null;
+  hours?: VenueHours | null;
   phone?: string | null;
   pitch?: string | null;
   story?: string | null;
@@ -274,6 +302,12 @@ export type UpdateVenueInput = {
   tripadvisor_url?: string | null;
   google_maps_url?: string | null;
   email?: string | null;
+  // Place-redesign editable surface (Manager-E=YES in Notion Components).
+  description?: string | null;
+  menu_pdf_url?: string | null;
+  tags?: string[];
+  whatsapp_pr_urls?: string[];
+  instagram_pr_urls?: string[];
 };
 
 export type UpdatedVenue = Venue & {
