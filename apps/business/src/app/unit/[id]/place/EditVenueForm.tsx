@@ -244,6 +244,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <BasicsSection venue={venue} v={v} set={set} />
+      <ProductSection v={v} set={set} />
       <ChannelsAtAGlance v={v} />
       <PrimaryChannelsSection venue={venue} v={v} set={set} />
       <PrChannelsSection v={v} set={set} />
@@ -338,15 +339,6 @@ function BasicsSection({
         />
       </Field>
 
-      <Field label="Menu PDF" hint="Public link to the latest menu PDF.">
-        <UrlInput
-          icon={<FileText className="h-4 w-4" />}
-          value={v.menu_pdf_url}
-          onChange={(val) => set("menu_pdf_url", val)}
-          placeholder="https://yourplace.com/menu.pdf"
-        />
-      </Field>
-
       <Field label="Tags" hint="Quick descriptors guests search for.">
         <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
       </Field>
@@ -370,6 +362,32 @@ function BasicsSection({
         value={venue.address}
         icon={<MapPin className="h-4 w-4" />}
       />
+    </Section>
+  );
+}
+
+function ProductSection({
+  v,
+  set,
+}: {
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
+  // Lives in its own section so it can grow: today it's just the menu PDF,
+  // tomorrow it's product photos, signature dishes, drink list, etc.
+  return (
+    <Section
+      title="Product"
+      subtitle="What you sell. Just the menu PDF for now — this is where future product surfaces will land."
+    >
+      <Field label="Menu PDF" hint="Public link to the latest menu PDF.">
+        <UrlInput
+          icon={<FileText className="h-4 w-4" />}
+          value={v.menu_pdf_url}
+          onChange={(val) => set("menu_pdf_url", val)}
+          placeholder="https://yourplace.com/menu.pdf"
+        />
+      </Field>
     </Section>
   );
 }
