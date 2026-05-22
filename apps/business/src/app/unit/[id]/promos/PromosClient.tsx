@@ -159,7 +159,11 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     });
   };
 
-  const mechanicLabel = savedMechanic === "Discount" ? "Discount" : "Cashback";
+  // Drive copy off fiscal_type, not the saved plan. On Free the plan
+  // mechanic is "None" — falling back to "Cashback" mislabelled informal
+  // venues whose rates and free-plan banner already say "discount".
+  const mechanicLabel: "Cashback" | "Discount" =
+    venue.fiscal_type === "informal" ? "Discount" : "Cashback";
 
   return (
     <div className="flex flex-col gap-5">
