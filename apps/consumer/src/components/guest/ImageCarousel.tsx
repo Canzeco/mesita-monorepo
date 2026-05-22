@@ -19,6 +19,7 @@ export function ImageCarousel({
   sizes = "(max-width: 768px) 100vw, 420px",
   mutePosition = "bottom-right",
   noNativeScroll = false,
+  disablePaging = false,
 }: {
   photos: string[];
   media?: MediaItem[];
@@ -33,9 +34,18 @@ export function ImageCarousel({
    * native overflow-x scrolling. Required when this carousel sits inside
    * another horizontal-gesture handler (e.g. the SwipeDeck) — otherwise
    * the browser claims the touch for native scroll and the outer swipe
-   * never fires. Side-tap zones still page photos.
+   * never fires.
    */
   noNativeScroll?: boolean;
+  /**
+   * When true, the invisible left/right side-tap paging zones are
+   * suppressed. Required when this carousel sits inside a horizontal
+   * gesture handler (SwipeDeck) — otherwise a near-swipe that doesn't
+   * commit fires the side-tap onClick on pointerup and pages the photo,
+   * which the user reads as "swipe got stopped." The position dots stay
+   * as a visual indicator.
+   */
+  disablePaging?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -195,7 +205,7 @@ export function ImageCarousel({
         </div>
       )}
 
-      {items.length > 1 && (
+      {items.length > 1 && !disablePaging && (
         <>
           <button
             type="button"

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, Heart, Sparkles, Compass } from "lucide-react";
+import { X, Ticket, Heart, Compass, RotateCcw } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/guest/VenueSwipeCardFace";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -44,29 +44,40 @@ function Deck({ venues }: { venues: Venue[] }) {
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
-  const [resetFlash, setResetFlash] = useState(false);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
   const lockedRef = useRef<null | "swipe" | "ignore">(null);
 
-  const v = venues[idx % venues.length];
-  const next = venues[(idx + 1) % venues.length];
+  // Past the last card the deck is exhausted — no silent wrap. Looping
+  // back to the first card with a tiny flash was reading as "the last
+  // card got stuck" because the same card kept reappearing on small
+  // catalogs. An explicit "you're caught up" state with a restart CTA
+  // is clearer.
+  const exhausted = idx >= venues.length;
+  const v = exhausted ? null : venues[idx];
+  const next = idx + 1 < venues.length ? venues[idx + 1] : null;
 
   const advance = () => {
-    setIdx((i) => {
-      const nextIdx = (i + 1) % venues.length;
-      if (nextIdx === 0 && venues.length > 1) setResetFlash(true);
-      return nextIdx;
-    });
+    setIdx((i) => i + 1);
     setDragX(0);
     setExiting(null);
   };
 
+  // Defensive reset whenever the visible card changes. Refs that lingered
+  // across an advance (locked, capture, drag offset) were a plausible
+  // source of "the next card doesn't accept gestures" reports.
   useEffect(() => {
-    if (!resetFlash) return;
-    const t = window.setTimeout(() => setResetFlash(false), 1500);
-    return () => window.clearTimeout(t);
-  }, [resetFlash]);
+    setDragX(0);
+    setDragging(false);
+    lockedRef.current = null;
+  }, [idx]);
+
+  const restart = () => {
+    setIdx(0);
+    setDragX(0);
+    setExiting(null);
+    lockedRef.current = null;
+  };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("[data-no-swipe]")) return;
@@ -83,11 +94,19 @@ function Deck({ venues }: { venues: Venue[] }) {
     const dx = e.clientX - startRef.current.x;
     const dy = e.clientY - startRef.current.y;
     if (lockedRef.current == null) {
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
-        lockedRef.current = Math.abs(dx) > Math.abs(dy) ? "swipe" : "ignore";
-        if (lockedRef.current === "swipe") {
-          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        }
+      const adx = Math.abs(dx);
+      const ady = Math.abs(dy);
+      // Wait for one axis to clearly dominate before locking. The old
+      // "lock on first 6px crossing to whichever is bigger" logic
+      // poisoned natural thumb-arc swipes into "ignore" forever the
+      // moment dy briefly led at the start. Now horizontal locks fast
+      // (low threshold, mild dominance) while vertical only locks on a
+      // clearer, larger commit — so brief jitters don't kill the swipe.
+      if (adx > 8 && adx > ady * 1.1) {
+        lockedRef.current = "swipe";
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } else if (ady > 14 && ady > adx * 1.4) {
+        lockedRef.current = "ignore";
       }
     }
     if (lockedRef.current === "swipe") {
@@ -149,18 +168,14 @@ function Deck({ venues }: { venues: Venue[] }) {
   const skip = () => setExiting("left");
   const save = () => setExiting("right");
 
+  if (exhausted || !v) {
+    return <ExhaustedDeck onRestart={restart} />;
+  }
+
   return (
     <div className="flex h-full flex-col px-3 pt-2 pb-3">
       <div className="relative flex-1">
-        {resetFlash && (
-          <div className="pointer-events-none absolute inset-x-0 top-3 z-50 flex justify-center">
-            <span className="bg-foreground/90 text-background shadow-elev animate-in fade-in slide-in-from-top-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold backdrop-blur duration-300">
-              <Sparkles className="h-3 w-3" />
-              You&apos;ve seen them all — starting over
-            </span>
-          </div>
-        )}
-        {venues.length > 1 && (
+        {next && (
           <div
             key={`back-${next.id}-${idx}`}
             className="pointer-events-none absolute inset-0 transition-[transform,opacity] duration-300 ease-out"
@@ -255,9 +270,34 @@ function Deck({ venues }: { venues: Venue[] }) {
           onClick={save}
           className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold text-white"
         >
-          <Heart className="h-4 w-4" /> Save
+          <Ticket className="h-4 w-4" /> Save or Reserve
         </button>
       </div>
+    </div>
+  );
+}
+
+function ExhaustedDeck({ onRestart }: { onRestart: () => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+      <div className="bg-muted flex h-14 w-14 items-center justify-center rounded-2xl">
+        <Compass className="text-muted-foreground h-6 w-6" />
+      </div>
+      <h2 className="font-display text-2xl font-semibold tracking-tight">
+        You&apos;re caught up
+      </h2>
+      <p className="text-muted-foreground max-w-xs text-sm">
+        You&apos;ve seen every venue in this filter. Check the catalog or map,
+        widen your filters, or start over from the top.
+      </p>
+      <button
+        type="button"
+        onClick={onRestart}
+        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90"
+      >
+        <RotateCcw className="h-4 w-4" />
+        Start over
+      </button>
     </div>
   );
 }

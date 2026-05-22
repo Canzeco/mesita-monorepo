@@ -55,6 +55,7 @@ export function VenueSwipeCardFace({
             priority={priority}
             mutePosition="top-right"
             noNativeScroll
+            disablePaging
           />
         ) : venue.photos[0] ? (
           <VenueBackground venue={venue} />
