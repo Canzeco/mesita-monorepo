@@ -31,7 +31,7 @@ import {
 import { TicketTypesCard } from "@/components/manager/TicketTypesCard";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { PLANS, mechanicForPlan } from "@/lib/manager/plans";
+import { PLANS, mechanicForPlan, visibilityForPlan } from "@/lib/manager/plans";
 
 // Promos owns three layers of configuration in one page:
 //   1. Plan — pick Free / Formal Pro / Informal Pro + fiscal-type toggle.
@@ -287,6 +287,10 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
             {error ?? "Plan saved."}
           </p>
         )}
+
+        {savedMechanic === "None" && (
+          <FreePlanNotice fiscalType={venue.fiscal_type} />
+        )}
       </Section>
 
       <Section
@@ -322,9 +326,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
       <TicketTypesCard isFormal={isFormal} planMechanic={mechanic} />
 
-      {savedMechanic === "None" && (
-        <FreePlanBanner fiscalType={venue.fiscal_type} />
-      )}
+      <VisibilitySection plan={venue.plan} />
 
       {/* ── Segmentation ────────────────────────────────────────────── */}
       <Section
@@ -456,22 +458,118 @@ function PaymentRailLine({ isFormal }: { isFormal: boolean }) {
   );
 }
 
-function FreePlanBanner({ fiscalType }: { fiscalType: "formal" | "informal" }) {
-  // Thin "won't go live until upgrade" banner shown above the segmentation
-  // configurator. The UI underneath stays fully interactive so the manager
-  // can set their rates before subscribing — it just won't be active for
-  // guests yet.
+// Inline "won't go live until upgrade" notice, rendered inside the Plan
+// section (not as a separate card). Rates below stay interactive so the
+// manager can configure before subscribing — they just don't activate
+// for guests yet.
+function FreePlanNotice({ fiscalType }: { fiscalType: "formal" | "informal" }) {
   const mechanic = fiscalType === "formal" ? "cashback" : "discount";
   return (
-    <section className="border-border bg-muted/30 flex items-start gap-3 rounded-2xl border border-dashed p-4">
-      <AlertTriangle className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
-      <p className="text-muted-foreground text-[12px] leading-relaxed">
+    <div className="bg-muted/40 text-muted-foreground flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-[12px] leading-relaxed">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>
         You&apos;re on{" "}
-        <span className="text-foreground font-semibold">Free</span>. Set your
-        rates below — they won&apos;t go live for guests until you upgrade to a{" "}
-        {mechanic}-enabled plan above.
+        <span className="text-foreground font-semibold">Free</span>. Set
+        your rates below — they won&apos;t go live for guests until you
+        upgrade to a {mechanic}-enabled plan above.
       </p>
-    </section>
+    </div>
+  );
+}
+
+// Visibility ladder card. Shows the two plan tiers side-by-side with the
+// current one flagged. Designed to make the upgrade path visceral — a
+// manager glancing at this should immediately understand they're at
+// Minimum and that Priority gets them on more discovery surfaces.
+function VisibilitySection({ plan }: { plan: VenuePlan }) {
+  const current = visibilityForPlan(plan);
+  const onPriority = current === "Priority";
+  return (
+    <Section
+      title="Visibility"
+      subtitle="How much of Mesita's discovery surface you appear on. Driven by your plan — Pro venues land in front of more guests across every channel."
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <VisibilityCard
+          tier="Minimum"
+          isCurrent={current === "Minimum"}
+          tone="bg-muted text-foreground"
+          bullets={[
+            "Auto-listed in the catalog",
+            "Pinned on the map at default zoom",
+            "AI planner mentions you only on direct queries",
+          ]}
+        />
+        <VisibilityCard
+          tier="Priority"
+          isCurrent={current === "Priority"}
+          tone="bg-pink-gradient text-white"
+          featured
+          bullets={[
+            "Boosted to the top of the swipe deck",
+            "First in catalog rows for your category",
+            "AI planner recommends you first",
+            "Map highlight on every zoom",
+          ]}
+        />
+      </div>
+      {!onPriority && (
+        <p className="text-muted-foreground text-[12px] leading-relaxed">
+          You&apos;re showing up at{" "}
+          <span className="text-foreground font-semibold">Minimum</span>.
+          Upgrade to a Pro plan above to land in front of more guests on
+          every Mesita surface.
+        </p>
+      )}
+    </Section>
+  );
+}
+
+function VisibilityCard({
+  tier,
+  isCurrent,
+  tone,
+  bullets,
+  featured,
+}: {
+  tier: "Minimum" | "Priority";
+  isCurrent: boolean;
+  tone: string;
+  bullets: string[];
+  featured?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-border bg-card relative flex flex-col gap-3 rounded-2xl border p-4",
+        isCurrent && "border-foreground/40 shadow-elev",
+        !isCurrent && featured && "shadow-glow",
+        !isCurrent && !featured && "opacity-70",
+      )}
+    >
+      {isCurrent && (
+        <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+          Current
+        </Badge>
+      )}
+      <span
+        className={cn(
+          "inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase",
+          tone,
+          featured && "shadow-sm",
+        )}
+      >
+        {tier}
+      </span>
+      <ul className="flex flex-col gap-1.5 text-[12px]">
+        {bullets.map((b) => (
+          <li key={b} className="flex items-start gap-2 leading-snug">
+            <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
