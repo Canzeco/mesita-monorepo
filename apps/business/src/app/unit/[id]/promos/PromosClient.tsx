@@ -28,7 +28,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TicketTypesCard } from "@/components/manager/TicketTypesCard";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
@@ -122,7 +121,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
-  const [plan, setPlan] = useState<VenuePlan>(venue.plan);
   const [pending, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -143,7 +141,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   };
 
   const isFormal = venue.fiscal_type === "formal";
-  const mechanic = mechanicForPlan(plan);
   const savedMechanic = mechanicForPlan(venue.plan);
   const currentDisplayPlan: DisplayPlanId = displayPlanForVenue(venue.plan);
 
@@ -160,7 +157,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     if (dbPlan === venue.plan) return;
     setError(null);
     setSaved(false);
-    setPlan(dbPlan);
     setPendingPlanId(target);
     startSubmit(async () => {
       try {
@@ -180,7 +176,10 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   // persistence, these become venue.segmentation_{basic,advanced}_enabled
   // backed by a write through apiUpdateVenue.
   const [basicEnabled, setBasicEnabled] = useState(true);
-  const [advancedEnabled, setAdvancedEnabled] = useState(true);
+  // Advanced defaults off — most venues won't touch demographics / community
+  // / geo rules and we don't want a flashy "coming soon" panel to dominate
+  // their first impression. They can flip it on when they're ready.
+  const [advancedEnabled, setAdvancedEnabled] = useState(false);
 
   // Drive copy off fiscal_type, not the saved plan. On Free the plan
   // mechanic is "None" — falling back to "Cashback" mislabelled informal
@@ -308,49 +307,10 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         <PaymentRailLine isFormal={isFormal} />
       </Section>
 
+      {/* ── Basic Promos ──────────────────────────────────────────── */}
       <Section
-        title="How billing works"
-        subtitle="A few things worth knowing before you pick a plan."
-      >
-        <div className="text-muted-foreground grid grid-cols-1 gap-3 text-[13px] leading-relaxed md:grid-cols-3">
-          <p>
-            <span className="text-foreground font-semibold">
-              Per-venue billing.
-            </span>{" "}
-            Multi-unit operators pick a plan per location — different plans
-            per venue are fine. Manager accounts are always free.
-          </p>
-          <p>
-            <span className="text-foreground font-semibold">
-              Why Pro Cashback is 5× Pro Discount.
-            </span>{" "}
-            Cashback venues unlock Mesita&apos;s full stack — maximum
-            visibility on every discovery surface, wallet redemption across
-            partners, and AI story verification before payout. Pro Discount
-            is the entry-level Pro tier with priority placement but no
-            wallet network.
-          </p>
-          <p>
-            <span className="text-foreground font-semibold">
-              Payment rail rule.
-            </span>{" "}
-            Cashback only counts when the guest pays by card through Mesita.
-            At Discount venues the discount applies at the bill — cash or
-            card, either works.
-          </p>
-        </div>
-      </Section>
-
-      <TicketTypesCard isFormal={isFormal} planMechanic={mechanic} />
-
-      <VisibilitySection plan={venue.plan} />
-
-      <ReservationsSection plan={venue.plan} />
-
-      {/* ── Customers (segmentation) ──────────────────────────────── */}
-      <Section
-        title="Customers"
-        subtitle="Buy guests into the door — a Welcome coupon converts first-timers, per-tier rates keep regulars coming back."
+        title="Basic Promos"
+        subtitle="The two levers every Pro venue gets: a Welcome coupon for first-time guests, and per-tier rates for returning ones across Bronze, Silver, Gold, and Diamond."
         enabled={basicEnabled}
         onEnabledChange={setBasicEnabled}
       >
@@ -359,8 +319,8 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       </Section>
 
       <Section
-        title="Advanced customer rules"
-        subtitle="Stack extra dimensions on top of the tier rates — communities, demographics, geography, custom filters. Coming soon."
+        title="Advanced Promos"
+        subtitle="Stack extra dimensions on top of the tier rates — communities, demographics, geography, custom filters. Coming soon; off by default."
         enabled={advancedEnabled}
         onEnabledChange={setAdvancedEnabled}
       >
@@ -634,230 +594,6 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
         )}
       </p>
     </Section>
-  );
-}
-
-// ─── Reservations ─────────────────────────────────────────────────────────
-
-// Same ladder pattern as Visibility — Standard (Free) vs Priority (Pro) —
-// because reservations is its own product line: Mesita's AI agent contacts
-// venues through their existing channel (IG DM, WhatsApp, voice, OpenTable)
-// and sends high-intent guests their way. Pro venues jump the queue.
-function ReservationsSection({ plan }: { plan: VenuePlan }) {
-  // Reservations is a 2-tier product (Standard vs Priority) — both Pro
-  // tiers get Priority routing. The visibility tier doesn't affect this
-  // one, so derive directly off plan === "free".
-  const isFreePlan = plan === "free";
-  return (
-    <Section
-      title="Reservations"
-      subtitle="Mesita's AI agent routes high-intent guests to your existing booking channel — Instagram DM, WhatsApp, voice, OpenTable. Pro venues jump the queue."
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <ReservationCard
-          tier="Standard"
-          isCurrent={isFreePlan}
-          tone="bg-muted text-foreground"
-          bullets={[
-            "AI sends bookings to your existing channel",
-            "Standard routing — guests reach you alongside everyone",
-            "Best-effort response time",
-          ]}
-        />
-        <ReservationCard
-          tier="Priority"
-          isCurrent={!isFreePlan}
-          tone="bg-pink-gradient text-white"
-          featured
-          bullets={[
-            "Priority routing — your queue jumps the line",
-            "Story bonus + AI verification before the booking lands",
-            "Dedicated voice agent for VIPs",
-            "Same booking system, no migration needed",
-          ]}
-        />
-      </div>
-      {isFreePlan && (
-        <p className="text-muted-foreground text-[12px] leading-relaxed">
-          You&apos;re on <span className="text-foreground font-semibold">Standard</span>
-          {" "}routing. Upgrade to a Pro plan above to put your reservations
-          first.
-        </p>
-      )}
-    </Section>
-  );
-}
-
-function ReservationCard({
-  tier,
-  isCurrent,
-  tone,
-  bullets,
-  featured,
-}: {
-  tier: "Standard" | "Priority";
-  isCurrent: boolean;
-  tone: string;
-  bullets: string[];
-  featured?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "border-border bg-card relative flex flex-col gap-3 rounded-2xl border p-4",
-        isCurrent && "border-foreground/40 shadow-elev",
-        !isCurrent && featured && "shadow-glow",
-        !isCurrent && !featured && "opacity-70",
-      )}
-    >
-      {isCurrent && (
-        <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-          Current
-        </Badge>
-      )}
-      <span
-        className={cn(
-          "inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase",
-          tone,
-          featured && "shadow-sm",
-        )}
-      >
-        {tier}
-      </span>
-      <ul className="flex flex-col gap-1.5 text-[12px]">
-        {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-2 leading-snug">
-            <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{b}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-// ─── Visibility ───────────────────────────────────────────────────────────
-
-// Visibility ladder card — three tiers side-by-side so the upgrade path
-// reads as a real climb. Minimum (Free) is muted, Priority (Pro Discount)
-// is the middle rung, Maximum (Pro Cashback) carries the pink-gradient
-// pill + glow so a manager glancing at it understands where the premium
-// tier sits.
-function VisibilitySection({ plan }: { plan: VenuePlan }) {
-  const current = visibilityForPlan(plan);
-  const atMax = current === "Maximum";
-  const upgradeTarget =
-    current === "Minimum" ? "Priority or Maximum" : "Maximum";
-  return (
-    <Section
-      title="Visibility"
-      subtitle="Buy your way onto more discovery surfaces. Each tier puts you in front of more guests across swipe, catalog, map, and the AI planner."
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <VisibilityCard
-          tier="Minimum"
-          planLabel="Free"
-          isCurrent={current === "Minimum"}
-          tone="bg-muted text-foreground"
-          bullets={[
-            "Auto-listed in the catalog",
-            "Pinned on the map at default zoom",
-            "AI planner mentions you only on direct queries",
-          ]}
-        />
-        <VisibilityCard
-          tier="Priority"
-          planLabel="Pro Discount"
-          isCurrent={current === "Priority"}
-          tone="bg-foreground text-background"
-          featured={!atMax}
-          bullets={[
-            "Boosted on the swipe deck",
-            "Top of catalog rows for your category",
-            "Map highlight on first zoom",
-            "AI planner mentions you on related queries",
-          ]}
-        />
-        <VisibilityCard
-          tier="Maximum"
-          planLabel="Pro Cashback"
-          isCurrent={atMax}
-          tone="bg-pink-gradient text-white"
-          premium
-          bullets={[
-            "Front of swipe deck for every relevant guest",
-            "First in every catalog row + Featured rail",
-            "Map highlight on every zoom",
-            "AI planner recommends you first",
-            "Story bonus boost on verified visits",
-          ]}
-        />
-      </div>
-      {!atMax && (
-        <p className="text-muted-foreground text-[12px] leading-relaxed">
-          You&apos;re showing up at{" "}
-          <span className="text-foreground font-semibold">{current}</span>.
-          Upgrade to <span className="text-foreground font-semibold">{upgradeTarget}</span> above to land in front of more guests.
-        </p>
-      )}
-    </Section>
-  );
-}
-
-function VisibilityCard({
-  tier,
-  planLabel,
-  isCurrent,
-  tone,
-  bullets,
-  featured,
-  premium,
-}: {
-  tier: "Minimum" | "Priority" | "Maximum";
-  planLabel: string;
-  isCurrent: boolean;
-  tone: string;
-  bullets: string[];
-  featured?: boolean;
-  premium?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "border-border bg-card relative flex flex-col gap-3 rounded-2xl border p-4",
-        isCurrent && "border-foreground/40 shadow-elev",
-        !isCurrent && premium && "shadow-glow",
-        !isCurrent && !premium && !featured && "opacity-70",
-      )}
-    >
-      {isCurrent && (
-        <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-          Current
-        </Badge>
-      )}
-      <div className="flex items-start justify-between gap-2">
-        <span
-          className={cn(
-            "inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase",
-            tone,
-            premium && "shadow-sm",
-          )}
-        >
-          {tier}
-        </span>
-        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
-          {planLabel}
-        </span>
-      </div>
-      <ul className="flex flex-col gap-1.5 text-[12px]">
-        {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-2 leading-snug">
-            <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{b}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
