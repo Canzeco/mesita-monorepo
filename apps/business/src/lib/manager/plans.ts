@@ -5,18 +5,18 @@ import type { FiscalType } from "@/components/shared";
 //
 // Three subscriptions, one per DB enum value, ordered ascending so the
 // manager reads the picker left-to-right as a ladder:
-//   - "Free without promos"  (plan=free)                          · Minimum  · $0
-//   - "Pro with Discounts"   (plan=informal_pro, fiscal=informal) · Priority · $500
-//   - "Pro with Cashbacks"   (plan=formal_pro,   fiscal=formal)   · Maximum  · $1000
+//   - "Free without promos"  (plan=free)                          · Low    · $0
+//   - "Pro with Discounts"   (plan=informal_pro, fiscal=informal) · Medium · $500
+//   - "Pro with Cashbacks"   (plan=formal_pro,   fiscal=formal)   · High   · $1000
 //
 // Pro with Cashbacks costs 2× Pro with Discounts because it captures the
 // wallet flow — Mesita runs the payment, returns part to the guest's
-// wallet, and the venue lands on Maximum visibility. Pro with Discounts
-// is the lower-commitment tier: same promo tooling, Priority visibility,
-// but Mesita is not in the payment loop.
+// wallet, and the venue lands on High visibility. Pro with Discounts is
+// the lower-commitment tier: same promo tooling, Medium visibility, but
+// Mesita is not in the payment loop.
 
 export type PlanMechanic = "None" | "Cashback" | "Discount";
-export type PlanVisibility = "Minimum" | "Priority" | "Maximum";
+export type PlanVisibility = "Low" | "Medium" | "High";
 
 // Picker id — one per card.
 export type SubscriptionId = "free" | "cashback" | "discount";
@@ -42,7 +42,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     price: "$0",
     cadence: "MX / year",
     tagline: "Listed on Mesita.",
-    visibility: "Minimum",
+    visibility: "Low",
   },
   {
     id: "discount",
@@ -50,7 +50,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     price: "$500",
     cadence: "MX / year",
     tagline: "Guest shows the coupon, you discount the bill.",
-    visibility: "Priority",
+    visibility: "Medium",
     setup: "1 min",
   },
   {
@@ -59,7 +59,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     price: "$1,000",
     cadence: "MX / year",
     tagline: "Card runs through Mesita, returned to the guest's wallet.",
-    visibility: "Maximum",
+    visibility: "High",
     setup: "10 min · connect business",
     featured: true,
   },
@@ -79,9 +79,9 @@ export function mechanicForPlan(p: VenuePlan): PlanMechanic {
 }
 
 export function visibilityForPlan(p: VenuePlan): PlanVisibility {
-  if (p === "free") return "Minimum";
-  if (p === "informal_pro") return "Priority";
-  return "Maximum";
+  if (p === "free") return "Low";
+  if (p === "informal_pro") return "Medium";
+  return "High";
 }
 
 export function subscriptionForVenue(p: VenuePlan): SubscriptionId {

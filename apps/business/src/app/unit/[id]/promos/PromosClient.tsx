@@ -154,12 +154,12 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
 function VisibilityRail({ plan }: { plan: Parameters<typeof visibilityForPlan>[0] }) {
   const current = visibilityForPlan(plan);
-  const levels: { label: PlanVisibility | string; soon?: boolean; real?: PlanVisibility }[] = [
-    { label: "Minimum", real: "Minimum" },
-    { label: "Priority", real: "Priority" },
-    { label: "Maximum", real: "Maximum" },
-    { label: "Featured", soon: true },
-    { label: "Spotlight", soon: true },
+  const levels: { label: string; soon?: boolean; real?: PlanVisibility }[] = [
+    { label: "Low", real: "Low" },
+    { label: "Medium", real: "Medium" },
+    { label: "High", real: "High" },
+    { label: "Extra high", soon: true },
+    { label: "Max", soon: true },
   ];
   const currentIdx = levels.findIndex((l) => l.real === current);
 
