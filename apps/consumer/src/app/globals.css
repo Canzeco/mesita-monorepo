@@ -123,24 +123,54 @@
 }
 
 .dark {
-  --background: oklch(0.18 0.03 10);
+  --background: oklch(0.16 0.025 10);
   --foreground: oklch(0.98 0.005 10);
-  --card: oklch(0.24 0.035 10);
+  --card: oklch(0.22 0.03 10);
   --card-foreground: oklch(0.98 0.005 10);
-  --popover: oklch(0.24 0.035 10);
+  --popover: oklch(0.22 0.03 10);
   --popover-foreground: oklch(0.98 0.005 10);
-  --primary: oklch(0.7 0.24 5);
+  --primary: oklch(0.72 0.23 5);
   --primary-foreground: oklch(0.99 0.005 10);
-  --secondary: oklch(0.62 0.22 5);
+  --secondary: oklch(0.6 0.22 5);
   --secondary-foreground: oklch(0.99 0.005 10);
-  --muted: oklch(0.28 0.025 10);
-  --muted-foreground: oklch(0.7 0.04 10);
-  --accent: oklch(0.4 0.12 355);
+  --muted: oklch(0.26 0.022 10);
+  --muted-foreground: oklch(0.72 0.04 10);
+  --accent: oklch(0.42 0.13 355);
   --accent-foreground: oklch(0.98 0.005 10);
-  --destructive: oklch(0.7 0.19 28);
-  --border: oklch(1 0 0 / 10%);
+  --destructive: oklch(0.68 0.2 28);
+  --destructive-foreground: oklch(0.99 0.005 10);
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.24 5);
+  --ring: oklch(0.72 0.23 5);
+
+  --sidebar: oklch(0.18 0.025 10);
+  --sidebar-foreground: oklch(0.98 0.005 10);
+  --sidebar-primary: oklch(0.72 0.23 5);
+  --sidebar-primary-foreground: oklch(0.99 0.005 10);
+  --sidebar-accent: oklch(0.24 0.03 10);
+  --sidebar-accent-foreground: oklch(0.98 0.005 10);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.72 0.23 5);
+
+  --gradient-hero:
+    radial-gradient(
+      1200px 600px at 20% -10%,
+      oklch(0.55 0.22 5 / 0.35),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 90% 10%,
+      oklch(0.5 0.2 355 / 0.3),
+      transparent 60%
+    ),
+    linear-gradient(180deg, oklch(0.16 0.025 10), oklch(0.12 0.02 5));
+  --gradient-card: linear-gradient(
+    180deg,
+    oklch(0.24 0.03 10 / 0.85),
+    oklch(0.2 0.025 10 / 0.7)
+  );
+  --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.55);
+  --shadow-elev: 0 25px 60px -15px oklch(0 0 0 / 0.55);
 }
 
 @theme inline {

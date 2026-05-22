@@ -67,7 +67,7 @@ export default async function VenueDetailPage({
         <div className="absolute top-3 left-3 z-20">
           <Link
             href="/discover/swipe"
-            className="text-foreground flex h-9 w-9 items-center justify-center rounded-full bg-white/95 backdrop-blur transition hover:bg-white"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-900 backdrop-blur transition hover:bg-white"
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />

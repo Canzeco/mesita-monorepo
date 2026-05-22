@@ -84,7 +84,7 @@ export default async function SubscribePage({
         <section
           className={
             paid === "silver"
-              ? "bg-tier-silver text-foreground rounded-2xl p-5 shadow-sm"
+              ? "bg-tier-silver rounded-2xl p-5 text-zinc-900 shadow-sm"
               : paid === "gold"
                 ? "bg-tier-gold rounded-2xl p-5 text-black shadow-sm"
                 : "bg-tier-diamond shadow-elev rounded-2xl p-5 text-white"

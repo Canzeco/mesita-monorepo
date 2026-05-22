@@ -186,7 +186,7 @@ function InstagramPathBox({ onConnect }: { onConnect: () => void }) {
     <button
       type="button"
       onClick={onConnect}
-      className="flex items-center gap-4 rounded-2xl bg-[linear-gradient(135deg,oklch(0.93_0.05_30),oklch(0.92_0.08_50))] p-4 text-left transition hover:shadow-md"
+      className="border-border bg-card flex items-center gap-4 rounded-2xl border p-4 text-left transition hover:shadow-md"
     >
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white">
         <Instagram className="h-5 w-5" />
@@ -499,7 +499,7 @@ const CATEGORY_STYLE: Record<AchievementCategory, CategoryStyle> = {
   spend: { tone: "bg-tier-gold text-black", Icon: CircleDollarSign },
   cashback: { tone: "bg-pink-gradient text-white", Icon: Sparkles },
   streak: { tone: "bg-[oklch(0.65_0.22_25)] text-white", Icon: Flame },
-  variety: { tone: "bg-tier-silver text-foreground", Icon: MapIcon },
+  variety: { tone: "bg-tier-silver text-zinc-900", Icon: MapIcon },
   community: { tone: "bg-secondary text-white", Icon: GraduationCap },
   story: {
     tone: "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white",

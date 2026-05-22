@@ -47,9 +47,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${inter.variable} ${fraunces.variable} dark h-full antialiased`}
+      style={{ colorScheme: "dark" }}
     >
-      <body className="flex min-h-full flex-col">
+      <body className="bg-background text-foreground flex min-h-full flex-col">
         {children}
         {/* Sonner toaster — surfaces via toast() / toast.success() etc.
             from anywhere in the tree. Tucked at the body root so

@@ -1193,7 +1193,7 @@ export function tierBadgeClass(tier: Tier): string {
     case "bronze":
       return "bg-tier-bronze text-white";
     case "silver":
-      return "bg-tier-silver text-foreground";
+      return "bg-tier-silver text-zinc-900";
     case "gold":
       return "bg-tier-gold text-black";
     case "diamond":

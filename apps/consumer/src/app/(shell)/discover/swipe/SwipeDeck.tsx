@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, Ticket, Heart, Calendar, Sparkles, Compass } from "lucide-react";
+import { X, Heart, Sparkles, Compass } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/guest/VenueSwipeCardFace";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -255,15 +255,7 @@ function Deck({ venues }: { venues: Venue[] }) {
           onClick={save}
           className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold text-white"
         >
-          {v.listing_type === "partner" ? (
-            <>
-              <Ticket className="h-4 w-4" /> Save or reserve
-            </>
-          ) : (
-            <>
-              <Calendar className="h-4 w-4" /> Reserve
-            </>
-          )}
+          <Heart className="h-4 w-4" /> Save
         </button>
       </div>
     </div>

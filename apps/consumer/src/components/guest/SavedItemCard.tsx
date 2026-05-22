@@ -199,7 +199,7 @@ export function SavedItemCard({
                 "flex h-7 w-7 items-center justify-center rounded-full",
                 item.cashbackTone === "gold"
                   ? "bg-white text-black"
-                  : "text-foreground bg-white",
+                  : "bg-white text-zinc-900",
               )}
             >
               <QrCode className="h-3.5 w-3.5" />

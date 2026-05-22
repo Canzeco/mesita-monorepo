@@ -129,7 +129,7 @@ function CardOverlay({ venue, hrefInfo }: { venue: Venue; hrefInfo?: string }) {
             href={hrefInfo}
             data-no-swipe
             aria-label="More info"
-            className="text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 backdrop-blur transition hover:bg-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 text-zinc-900 backdrop-blur transition hover:bg-white"
           >
             <Info className="h-4 w-4" />
           </Link>
@@ -138,7 +138,7 @@ function CardOverlay({ venue, hrefInfo }: { venue: Venue; hrefInfo?: string }) {
 
       <div className="flex flex-wrap items-center gap-2">
         {isNew && (
-          <span className="text-foreground inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] font-bold tracking-wider uppercase shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] font-bold tracking-wider text-zinc-900 uppercase shadow-sm">
             <Star className="h-3 w-3" />
             New
           </span>
