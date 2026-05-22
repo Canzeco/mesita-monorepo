@@ -294,7 +294,7 @@ function Deck({ venues }: { venues: Venue[] }) {
               <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
                 Swipe left to skip
                 <span className="mx-1.5 opacity-50">·</span>
-                right to save
+                right to save or reserve
               </p>
             </div>
           </div>
@@ -305,7 +305,7 @@ function Deck({ venues }: { venues: Venue[] }) {
         <button
           type="button"
           onClick={skip}
-          className="border-border bg-card text-muted-foreground hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
+          className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
         >
           <X className="h-4 w-4" /> Skip
         </button>

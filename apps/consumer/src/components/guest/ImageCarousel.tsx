@@ -226,7 +226,7 @@ export function ImageCarousel({
             <span
               key={i}
               className={cn(
-                "h-1.5 rounded-full bg-white transition-all duration-200",
+                "h-1.5 rounded-full bg-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)] transition-all duration-200",
                 i === idx ? "w-5 opacity-100" : "w-1.5 opacity-60",
               )}
             />
@@ -254,7 +254,7 @@ export function ImageCarousel({
       )}
 
       {items.length > 1 && (
-        <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
+        <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.35)] backdrop-blur">
           {idx + 1} / {items.length}
         </div>
       )}

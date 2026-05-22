@@ -52,7 +52,7 @@ export function BottomNav() {
           );
         })}
       </div>
-      <div className="bg-foreground/30 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
+      <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
     </nav>
   );
 }
