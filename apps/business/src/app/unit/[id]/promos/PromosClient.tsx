@@ -366,36 +366,73 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
 function VisibilityMeter({ plan }: { plan: VenuePlan }) {
   const current = visibilityForPlan(plan);
+  // First three rungs map 1:1 to the plan+mechanic state and are real.
+  // Featured + Spotlight are aspirational tiers — surfaces Mesita can
+  // sell later (editor's pick, AI planner hero, cross-city features,
+  // sponsored event slots) — shown as "Soon" so the ladder reads as
+  // a long climb instead of three steps that top out fast.
   const levels: {
-    label: PlanVisibility;
+    label: string;
     planLabel: string;
     reach: string;
+    realLabel?: PlanVisibility;
+    soon?: boolean;
   }[] = [
-    { label: "Minimum", planLabel: "Free", reach: "Auto-listed only" },
-    { label: "Priority", planLabel: "Pro · Discount", reach: "Boosted reach" },
-    { label: "Maximum", planLabel: "Pro · Cashback", reach: "Top of every surface" },
+    {
+      label: "Minimum",
+      planLabel: "Free",
+      reach: "Auto-listed only",
+      realLabel: "Minimum",
+    },
+    {
+      label: "Priority",
+      planLabel: "Pro · Discount",
+      reach: "Boosted reach",
+      realLabel: "Priority",
+    },
+    {
+      label: "Maximum",
+      planLabel: "Pro · Cashback",
+      reach: "Top of every surface",
+      realLabel: "Maximum",
+    },
+    {
+      label: "Featured",
+      planLabel: "Add-on",
+      reach: "Editor's pick + AI planner hero",
+      soon: true,
+    },
+    {
+      label: "Spotlight",
+      planLabel: "Add-on",
+      reach: "Cross-city hero + newsletter",
+      soon: true,
+    },
   ];
-  const currentIdx = levels.findIndex((l) => l.label === current);
-  const atMax = current === "Maximum";
+  const currentIdx = levels.findIndex((l) => l.realLabel === current);
+  const atTopReal = current === "Maximum";
+  const totalReal = levels.filter((l) => !l.soon).length;
 
   return (
     <Section
       title="Mesita Visibility"
       subtitle="The product you're buying here — how many guests see you across swipe, catalog, map, and the AI planner."
     >
-      {/* Stepper — numbered circles, current carries pink-gradient + glow,
-          connectors fill in as the venue climbs the ladder. */}
-      <div className="flex items-start">
+      {/* Stepper — 5 numbered circles. The first three are real plan
+          tiers; the last two render as "Soon" with no fill. The
+          current step carries the pink-gradient + glow ring. */}
+      <div className="flex items-start overflow-x-auto pb-1">
         {levels.map((l, i) => {
-          const reached = i <= currentIdx;
+          const reached = !l.soon && i <= currentIdx;
           const isCurrent = i === currentIdx;
           const isLast = i === levels.length - 1;
           const nextReached = i < currentIdx;
           return (
-            <div key={l.label} className="flex flex-1 flex-col items-center">
+            <div
+              key={l.label}
+              className="flex min-w-[110px] flex-1 flex-col items-center"
+            >
               <div className="flex w-full items-center">
-                {/* Spacer on left of first circle so the connector lines
-                    don't extend past the first step. */}
                 <div
                   className={cn(
                     "h-0.5 flex-1",
@@ -411,8 +448,11 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
                     "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition",
                     reached
                       ? "bg-pink-gradient text-white"
-                      : "bg-muted text-muted-foreground border-border border",
-                    isCurrent && "shadow-glow ring-foreground/30 ring-2 ring-offset-2",
+                      : l.soon
+                        ? "border-border border border-dashed bg-transparent text-muted-foreground/70"
+                        : "bg-muted text-muted-foreground border-border border",
+                    isCurrent &&
+                      "shadow-glow ring-foreground/30 ring-2 ring-offset-2",
                   )}
                 >
                   {i + 1}
@@ -437,19 +477,29 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
                 <span
                   className={cn(
                     "text-[11px] font-bold tracking-[0.12em] uppercase",
-                    reached ? "text-foreground" : "text-muted-foreground",
+                    reached
+                      ? "text-foreground"
+                      : l.soon
+                        ? "text-muted-foreground/70"
+                        : "text-muted-foreground",
                   )}
                 >
                   {l.label}
                 </span>
-                <span
-                  className={cn(
-                    "text-[9px] font-medium tracking-wider uppercase",
-                    isCurrent ? "text-primary" : "text-muted-foreground/70",
-                  )}
-                >
-                  {l.planLabel}
-                </span>
+                {l.soon ? (
+                  <span className="bg-muted text-muted-foreground mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase">
+                    Soon
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      "text-[9px] font-medium tracking-wider uppercase",
+                      isCurrent ? "text-primary" : "text-muted-foreground/70",
+                    )}
+                  >
+                    {l.planLabel}
+                  </span>
+                )}
                 <span className="text-muted-foreground mt-0.5 text-[10px] leading-tight">
                   {l.reach}
                 </span>
@@ -460,11 +510,14 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
       </div>
 
       <p className="text-muted-foreground border-border bg-muted/30 rounded-xl border px-3 py-2.5 text-[12px] leading-relaxed">
-        {atMax ? (
+        {atTopReal ? (
           <>
             You&apos;re at{" "}
             <span className="text-foreground font-semibold">Maximum</span> —
-            top of every Mesita discovery surface. Nothing higher to buy.
+            top of every Mesita discovery surface that&apos;s shipped today.{" "}
+            <span className="text-foreground font-semibold">Featured</span> and{" "}
+            <span className="text-foreground font-semibold">Spotlight</span>{" "}
+            are coming soon.
           </>
         ) : (
           <>
@@ -472,11 +525,13 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
             <span className="text-foreground font-semibold">
               {currentIdx + 1}
             </span>{" "}
-            of <span className="text-foreground font-semibold">3</span>. Pick{" "}
+            of{" "}
+            <span className="text-foreground font-semibold">{totalReal}</span>{" "}
+            shipped. Pick{" "}
             <span className="text-foreground font-semibold">Pro Cashback</span>{" "}
             below to climb to{" "}
             <span className="text-foreground font-semibold">Maximum</span>{" "}
-            visibility.
+            visibility — Featured + Spotlight unlock later.
           </>
         )}
       </p>
