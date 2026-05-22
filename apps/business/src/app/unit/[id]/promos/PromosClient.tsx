@@ -13,6 +13,7 @@ import {
   Loader2,
   MapPin,
   Percent,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -355,7 +356,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         enabled={advancedEnabled}
         onEnabledChange={handleAdvancedToggle}
       >
-        <AdvancedGrid />
+        <AdvancedComingSoon />
       </Section>
     </div>
   );
@@ -788,88 +789,40 @@ function TierChip({ tier, label }: { tier: Tier; label: string }) {
 
 // ─── Advanced Promos (coming soon) ────────────────────────────────────────
 
-type AdvancedAxisMeta = {
-  id: string;
-  label: string;
-  blurb: string;
-  examples: string[];
-  Icon: typeof Users;
-};
-
-const ADVANCED_AXES: AdvancedAxisMeta[] = [
-  {
-    id: "community",
-    label: "Communities",
-    blurb: "Email-verified schools and orgs — Tec, UDEM, Stanford, ITAM…",
-    examples: ["Tec students only", "Stanford alumni", "ITAM Sundays"],
-    Icon: GraduationCap,
-  },
-  {
-    id: "demo",
-    label: "Sex & age",
-    blurb: "Boost or filter by demographic bands.",
-    examples: ["Women 21–28", "Men 30+", "Any sex 25–35"],
-    Icon: Users,
-  },
-  {
-    id: "geo",
-    label: "Country & city",
-    blurb: "Reach visitors from specific places only.",
-    examples: ["Visitors from CDMX", "Tourists from US / EU", "Locals only"],
-    Icon: MapPin,
-  },
-  {
-    id: "occasion",
-    label: "Date & occasion",
-    blurb: "Time-window boosts for slow nights or events.",
-    examples: ["Mondays only", "Birthday week", "Pride · Día de la Madre"],
-    Icon: Calendar,
-  },
-  {
-    id: "custom",
-    label: "Custom rules",
-    blurb: "Compose AND / OR filters across every axis.",
-    examples: ["Gold + Tec + Female", "Silver + birthday + Monday"],
-    Icon: Filter,
-  },
+// Quiet placeholder while Advanced Promos is still in the oven. Lists
+// the planned axes inline so a manager who flips the toggle on still
+// learns what's coming, without the heavy 5-card preview grid.
+const ADVANCED_AXES: { label: string; Icon: typeof Users }[] = [
+  { label: "Communities", Icon: GraduationCap },
+  { label: "Sex & age", Icon: Users },
+  { label: "Country & city", Icon: MapPin },
+  { label: "Date & occasion", Icon: Calendar },
+  { label: "Custom rules", Icon: Filter },
 ];
 
-function AdvancedGrid() {
+function AdvancedComingSoon() {
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {ADVANCED_AXES.map((a) => (
-        <AdvancedAxisCard key={a.id} axis={a} />
-      ))}
-    </div>
-  );
-}
-
-function AdvancedAxisCard({ axis }: { axis: AdvancedAxisMeta }) {
-  const Icon = axis.Icon;
-  return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-3 opacity-80 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold tracking-wider uppercase">
-          <Icon className="h-3 w-3" />
-          {axis.label}
-        </span>
-        <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-          Soon
-        </span>
-      </div>
-      <p className="text-muted-foreground text-[12px] leading-relaxed">
-        {axis.blurb}
+    <div className="border-border bg-muted/30 flex flex-col items-center gap-3 rounded-2xl border border-dashed p-8 text-center">
+      <span className="bg-pink-gradient shadow-glow inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold tracking-[0.14em] text-white uppercase">
+        <Sparkles className="h-3 w-3" />
+        Coming soon
+      </span>
+      <p className="text-muted-foreground max-w-md text-[12px] leading-relaxed">
+        Stack extra dimensions on top of the tier rates — communities,
+        demographics, geography, date windows, custom AND / OR filters.
+        Landing with the segments table.
       </p>
-      <ul className="flex flex-col gap-1">
-        {axis.examples.map((ex) => (
-          <li
-            key={ex}
-            className="bg-muted/40 text-muted-foreground rounded-md px-2 py-1 text-[11px]"
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {ADVANCED_AXES.map((a) => (
+          <span
+            key={a.label}
+            className="bg-card border-border text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium"
           >
-            {ex}
-          </li>
+            <a.Icon className="h-3 w-3" />
+            {a.label}
+          </span>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
