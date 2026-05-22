@@ -890,11 +890,11 @@ function HoursEditor({
   const reopen = (key: DayKey) =>
     setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
 
-  // Week grid — every day is a column so the 7 days live in one strip
-  // instead of a stack that left half the row blank. Wraps to 4 / 2
-  // columns on smaller breakpoints.
+  // 2-column grid of horizontal day rows. Day label sits left, time
+  // inputs sit on the same line (open → close), closed toggle anchors
+  // the right edge. Single column on mobile so each row stays readable.
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
       {DAYS.map(({ key, label }) => {
         const d = hours[key];
         const isClosed = d.closed;
@@ -902,85 +902,81 @@ function HoursEditor({
           <div
             key={key}
             className={cn(
-              "border-border flex flex-col gap-2 rounded-xl border p-2.5 transition",
+              "border-border flex items-start gap-3 rounded-xl border p-3 transition",
               isClosed ? "bg-muted/30" : "bg-card",
             )}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-                {label}
-              </span>
-              <button
-                type="button"
-                onClick={() => (isClosed ? reopen(key) : markClosed(key))}
-                aria-label={isClosed ? "Set hours" : "Mark closed"}
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase transition",
-                  isClosed
-                    ? "bg-foreground text-background hover:opacity-90"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {isClosed ? "Open" : "Closed"}
-              </button>
+            <span className="text-muted-foreground w-9 shrink-0 pt-1.5 text-[11px] font-bold tracking-[0.14em] uppercase">
+              {label}
+            </span>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              {isClosed ? (
+                <p className="text-muted-foreground py-1.5 text-xs italic">
+                  Closed all day
+                </p>
+              ) : (
+                <>
+                  {d.ranges.map((r, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <input
+                        value={r.open}
+                        onChange={(e) =>
+                          setRange(key, idx, { open: e.target.value })
+                        }
+                        placeholder="13:00"
+                        aria-label={`${label} shift ${idx + 1} opens at`}
+                        className="bg-background border-border h-8 w-20 rounded-md border px-2 text-center text-xs tabular-nums outline-none focus:border-foreground/40"
+                      />
+                      <span className="text-muted-foreground text-xs">→</span>
+                      <input
+                        value={r.close}
+                        onChange={(e) =>
+                          setRange(key, idx, { close: e.target.value })
+                        }
+                        placeholder="00:00"
+                        aria-label={`${label} shift ${idx + 1} closes at`}
+                        className="bg-background border-border h-8 w-20 rounded-md border px-2 text-center text-xs tabular-nums outline-none focus:border-foreground/40"
+                      />
+                      {d.ranges.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeShift(key, idx)}
+                          aria-label="Remove this shift"
+                          className="text-muted-foreground hover:text-destructive flex h-7 w-7 items-center justify-center rounded-full transition"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {d.ranges.length < MAX_SHIFTS_PER_DAY && (
+                    <button
+                      type="button"
+                      onClick={() => addShift(key)}
+                      className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1 text-[11px] font-semibold underline-offset-2 hover:underline"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add second shift
+                    </button>
+                  )}
+                </>
+              )}
             </div>
 
-            {isClosed ? (
-              <p className="text-muted-foreground py-2 text-center text-[11px] italic">
-                Closed
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {d.ranges.map((r, idx) => (
-                  <div
-                    key={idx}
-                    className="border-border/60 bg-muted/20 relative flex flex-col gap-1 rounded-lg border p-1.5"
-                  >
-                    <input
-                      value={r.open}
-                      onChange={(e) =>
-                        setRange(key, idx, { open: e.target.value })
-                      }
-                      placeholder="13:00"
-                      aria-label={`${label} shift ${idx + 1} opens at`}
-                      className="bg-card border-border h-7 w-full rounded-md border px-1.5 text-center text-xs tabular-nums outline-none focus:border-foreground/40"
-                    />
-                    <span className="text-muted-foreground text-center text-[10px]">
-                      ↓
-                    </span>
-                    <input
-                      value={r.close}
-                      onChange={(e) =>
-                        setRange(key, idx, { close: e.target.value })
-                      }
-                      placeholder="00:00"
-                      aria-label={`${label} shift ${idx + 1} closes at`}
-                      className="bg-card border-border h-7 w-full rounded-md border px-1.5 text-center text-xs tabular-nums outline-none focus:border-foreground/40"
-                    />
-                    {d.ranges.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeShift(key, idx)}
-                        aria-label="Remove this shift"
-                        className="text-muted-foreground hover:text-destructive absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background transition"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {d.ranges.length < MAX_SHIFTS_PER_DAY && (
-                  <button
-                    type="button"
-                    onClick={() => addShift(key)}
-                    className="text-muted-foreground hover:text-foreground hover:border-foreground/30 border-border inline-flex items-center justify-center gap-1 rounded-md border border-dashed py-1 text-[10px] font-semibold transition"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Shift
-                  </button>
-                )}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => (isClosed ? reopen(key) : markClosed(key))}
+              aria-label={isClosed ? "Set hours" : "Mark closed"}
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase transition",
+                isClosed
+                  ? "bg-foreground text-background hover:opacity-90"
+                  : "border-border text-muted-foreground hover:text-foreground border",
+              )}
+            >
+              {isClosed ? "Open" : "Closed"}
+            </button>
           </div>
         );
       })}
