@@ -45,7 +45,7 @@ const NAV: NavItem[] = [
     Icon: BarChart3,
     disabled: true,
   },
-  { slug: "wallet", label: "Wallet", Icon: Wallet, disabled: true },
+  { slug: "wallet", label: "Wallet", Icon: Wallet },
   { slug: "team", label: "Team", Icon: Users, disabled: true },
 ];
 
