@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { Info, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { PartnerBadge, RatePill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -27,14 +26,11 @@ const NEW_BADGE_THRESHOLD = Date.now() - NEW_BADGE_WINDOW_MS;
 
 export function VenueSwipeCardFace({
   venue,
-  hrefInfo,
   carousel = false,
   priority = false,
   className,
 }: {
   venue: Venue;
-  /** When set, renders an Info → link to this href on the overlay. */
-  hrefInfo?: string;
   /** True on the front swipe card so guests can browse photos. The back peek
    *  and the preview both use the frozen single-photo background. */
   carousel?: boolean;
@@ -79,7 +75,7 @@ export function VenueSwipeCardFace({
         )}
         aria-hidden={!showOverlay}
       >
-        <CardOverlay venue={venue} hrefInfo={hrefInfo} />
+        <CardOverlay venue={venue} />
       </div>
     </div>
   );
@@ -113,7 +109,7 @@ export function PhotoPlaceholder({ name }: { name: string }) {
   );
 }
 
-function CardOverlay({ venue, hrefInfo }: { venue: Venue; hrefInfo?: string }) {
+function CardOverlay({ venue }: { venue: Venue }) {
   const meta = [
     venue.price_level != null ? "$".repeat(venue.price_level) : null,
     venue.closes_at ? `until ${venue.closes_at}` : null,
@@ -126,31 +122,19 @@ function CardOverlay({ venue, hrefInfo }: { venue: Venue; hrefInfo?: string }) {
 
   return (
     <div className="flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 pt-24 text-white">
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          {(venue.vibe || venue.category) && (
-            <p className="text-[11px] font-medium tracking-[0.18em] text-white/75 uppercase">
-              {[venue.vibe, venue.category]
-                .filter(Boolean)
-                .join(" · ")
-                .toLowerCase()}
-            </p>
-          )}
-          <h2 className="font-display mt-1 text-3xl leading-tight font-semibold tracking-tight drop-shadow-sm">
-            {venue.name}
-          </h2>
-          {meta && <p className="mt-1 text-[12px] text-white/85">{meta}</p>}
-        </div>
-        {hrefInfo && (
-          <Link
-            href={hrefInfo}
-            data-no-swipe
-            aria-label="More info"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 text-zinc-900 backdrop-blur transition hover:bg-white"
-          >
-            <Info className="h-4 w-4" />
-          </Link>
+      <div className="min-w-0">
+        {(venue.vibe || venue.category) && (
+          <p className="text-[11px] font-medium tracking-[0.18em] text-white/75 uppercase">
+            {[venue.vibe, venue.category]
+              .filter(Boolean)
+              .join(" · ")
+              .toLowerCase()}
+          </p>
         )}
+        <h2 className="font-display mt-1 text-3xl leading-tight font-semibold tracking-tight drop-shadow-sm">
+          {venue.name}
+        </h2>
+        {meta && <p className="mt-1 text-[12px] text-white/85">{meta}</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

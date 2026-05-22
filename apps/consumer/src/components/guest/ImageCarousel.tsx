@@ -92,8 +92,10 @@ export function ImageCarousel({
       const dy = Math.abs(e.clientY - start.y);
       const dt = performance.now() - start.t;
       if (dx > 10 || dy > 10 || dt > 300) return;
-      const target = idx + direction;
-      if (target < 0 || target >= items.length) return;
+      // Wrap past either end so a tap on the last image loops to the
+      // first (and a tap on the first goes to the last).
+      const target =
+        ((idx + direction) % items.length + items.length) % items.length;
       e.stopPropagation();
       goTo(target);
     };

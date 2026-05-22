@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, Ticket, Heart, Compass, RotateCcw, Hand } from "lucide-react";
+import { X, Ticket, Heart, Compass, RotateCcw, Hand, Info } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/guest/VenueSwipeCardFace";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -241,7 +241,6 @@ function Deck({ venues }: { venues: Venue[] }) {
         >
           <VenueSwipeCardFace
             venue={v}
-            hrefInfo={`/venues/${v.id}`}
             carousel
             priority
             className="absolute inset-0"
@@ -301,7 +300,7 @@ function Deck({ venues }: { venues: Venue[] }) {
         )}
       </div>
 
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-3 flex items-center gap-2">
         <button
           type="button"
           onClick={skip}
@@ -309,6 +308,13 @@ function Deck({ venues }: { venues: Venue[] }) {
         >
           <X className="h-4 w-4" /> Skip
         </button>
+        <Link
+          href={`/venues/${v.id}`}
+          aria-label="Venue info"
+          className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition"
+        >
+          <Info className="h-4 w-4" />
+        </Link>
         <button
           type="button"
           onClick={save}
