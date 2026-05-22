@@ -54,7 +54,6 @@ export type LookupVenue = {
   phone: string | null;
   email: string | null;
   website_url: string | null;
-  country: string | null;
   photos: string[];
   category: string | null;
   vibe: string | null;
@@ -63,20 +62,13 @@ export type LookupVenue = {
   updated_at: string | null;
 };
 
-export type ManualRegion = "mx_latam" | "us" | "other";
-
-// What the UI needs to decide which method cards to render and how the
-// manual fallback should look. Returned by manager-lookup-venue for
-// every claim-able state.
+// What the UI needs to decide which auto-verify cards to render.
+// Returned by manager-lookup-venue for every claim-able state. The
+// "Talk to us" WhatsApp fallback is rendered unconditionally on the
+// FE and isn't surfaced here.
 export type LookupMethods = {
   phone: { available: boolean; displayPhone: string | null };
   email: { available: boolean; displayEmail: string | null };
-  manual: {
-    region: ManualRegion;
-    whatsapp: string | null;
-    sms: string | null;
-    email: string;
-  };
 };
 
 export type LookupResult =
