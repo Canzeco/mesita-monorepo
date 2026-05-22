@@ -375,18 +375,18 @@ function TimeSection({
       title="Time"
       subtitle="When you're open and the clock you run on."
     >
+      <ReadOnly
+        label="Timezone"
+        value={venue.timezone}
+        icon={<Clock className="h-4 w-4" />}
+      />
+
       <Field label="Days & hours">
         <HoursEditor
           hours={v.hours}
           onChange={(hours) => set("hours", hours)}
         />
       </Field>
-
-      <ReadOnly
-        label="Timezone"
-        value={venue.timezone}
-        icon={<Clock className="h-4 w-4" />}
-      />
     </Section>
   );
 }
