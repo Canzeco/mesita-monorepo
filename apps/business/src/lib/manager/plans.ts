@@ -41,8 +41,8 @@ export const PLANS: PlanRow[] = [
     id: "free",
     label: "Free",
     price: "$0",
-    cadence: "MX / month",
-    priceLabel: "$0 MX / mo",
+    cadence: "MX / year",
+    priceLabel: "$0 MX / yr",
     visibility: "Minimum",
     blurb:
       "Auto-listed from Google Business. Discoverable + accepts AI reservations. No coupons, no dashboard writes.",
@@ -52,13 +52,13 @@ export const PLANS: PlanRow[] = [
     id: "pro",
     label: "Pro",
     price: "$200",
-    cadence: "MX / month",
-    priceLabel: "$200 MX / mo",
+    cadence: "MX / year",
+    priceLabel: "$200 MX / yr",
     // Visibility shown here is the ceiling Pro reaches (Cashback venues).
     // Discount Pros cap at Priority — Promos calls that out separately.
     visibility: "Maximum",
     blurb:
-      "Customer acquisition tools + priority discovery. $200 / month, per venue, cancel anytime. Pick Cashback or Discount in the mechanic box below — Cashback unlocks the Maximum visibility ceiling.",
+      "Customer acquisition tools + priority discovery. $200 / year, per venue, cancel anytime. Pick Cashback or Discount in the mechanic box below — Cashback unlocks the Maximum visibility ceiling.",
     bullets: [
       "Priority placement on swipe, map, catalog, AI planner",
       "Welcome coupon + per-tier rates",
