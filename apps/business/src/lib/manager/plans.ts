@@ -4,14 +4,15 @@ import type { FiscalType } from "@/components/shared";
 // Subscription catalog used by Promos (picker + label lookup).
 //
 // Three subscriptions, one per DB enum value:
-//   - Free      (plan=free)              · Minimum visibility
-//   - Cashback  (plan=formal_pro,   fiscal=formal)   · Maximum visibility
-//   - Discount  (plan=informal_pro, fiscal=informal) · Priority visibility
+//   - "Free without promos"  (plan=free)                          · Minimum  · $0
+//   - "Pro with Discounts"   (plan=informal_pro, fiscal=informal) · Priority · $500
+//   - "Pro with Cashbacks"   (plan=formal_pro,   fiscal=formal)   · Maximum  · $1000
 //
-// Cashback and Discount cost the same; the difference is operational
-// (does the venue settle through Mesita?). Visibility ladders by
-// mechanic — Cashback gets Maximum because Mesita captures the wallet
-// flow, Discount caps at Priority.
+// Pro with Cashbacks costs 2× Pro with Discounts because it captures the
+// wallet flow — Mesita runs the payment, returns part to the guest's
+// wallet, and the venue lands on Maximum visibility. Pro with Discounts
+// is the lower-commitment tier: same promo tooling, Priority visibility,
+// but Mesita is not in the payment loop.
 
 export type PlanMechanic = "None" | "Cashback" | "Discount";
 export type PlanVisibility = "Minimum" | "Priority" | "Maximum";
@@ -26,13 +27,17 @@ export type SubscriptionRow = {
   cadence: string;
   tagline: string;
   visibility: PlanVisibility;
+  // Rough setup time the manager should expect. Discount is just a coupon
+  // workflow (no integration); Cashback requires connecting a business so
+  // Mesita can settle the payment.
+  setup?: string;
   featured?: boolean;
 };
 
 export const SUBSCRIPTIONS: SubscriptionRow[] = [
   {
     id: "free",
-    label: "Free",
+    label: "Free without promos",
     price: "$0",
     cadence: "MX / year",
     tagline: "Listed on Mesita.",
@@ -40,20 +45,22 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
   },
   {
     id: "cashback",
-    label: "Cashback",
-    price: "$500",
+    label: "Pro with Cashbacks",
+    price: "$1,000",
     cadence: "MX / year",
     tagline: "Card runs through Mesita, returned to the guest's wallet.",
     visibility: "Maximum",
+    setup: "10 min · connect business",
     featured: true,
   },
   {
     id: "discount",
-    label: "Discount",
+    label: "Pro with Discounts",
     price: "$500",
     cadence: "MX / year",
     tagline: "Guest shows the coupon, you discount the bill.",
     visibility: "Priority",
+    setup: "1 min",
   },
 ];
 

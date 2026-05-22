@@ -35,7 +35,7 @@ import {
 
 // ─── Rate picker scale ────────────────────────────────────────────────────
 
-const RATE_CHOICES = [5, 10, 20, 50] as const;
+const RATE_CHOICES = [0, 5, 10, 20, 50] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
 // ─── Tier ladder catalog ──────────────────────────────────────────────────
@@ -136,6 +136,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
                 cadence={s.cadence}
                 tagline={s.tagline}
                 visibility={s.visibility}
+                setup={s.setup}
                 featured={!!s.featured}
                 icon={v.icon}
                 iconAccent={v.accent}
@@ -247,6 +248,7 @@ function SubscriptionCard({
   cadence,
   tagline,
   visibility,
+  setup,
   featured,
   icon: Icon,
   iconAccent,
@@ -259,6 +261,7 @@ function SubscriptionCard({
   cadence: string;
   tagline: string;
   visibility: PlanVisibility;
+  setup?: string;
   featured: boolean;
   icon?: LucideIcon;
   iconAccent?: string;
@@ -288,7 +291,7 @@ function SubscriptionCard({
           Recommended
         </Badge>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pr-16">
         {Icon && (
           <span
             className={cn(
@@ -299,7 +302,7 @@ function SubscriptionCard({
             <Icon className="h-3.5 w-3.5" />
           </span>
         )}
-        <span className="font-display text-xl font-semibold tracking-tight">
+        <span className="font-display min-w-0 truncate text-base font-semibold tracking-tight">
           {label}
         </span>
       </div>
@@ -310,9 +313,16 @@ function SubscriptionCard({
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
       </div>
       <p className="text-muted-foreground text-[12px] leading-snug">{tagline}</p>
-      <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
-        {visibility} visibility
-      </p>
+      <div className="mt-auto flex flex-col gap-0.5">
+        <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+          {visibility} visibility
+        </p>
+        {setup && (
+          <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+            {setup} setup
+          </p>
+        )}
+      </div>
       {pending && (
         <Loader2 className="text-muted-foreground absolute right-3 bottom-3 h-4 w-4 animate-spin" />
       )}
