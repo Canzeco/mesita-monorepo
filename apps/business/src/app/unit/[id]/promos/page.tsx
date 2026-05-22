@@ -32,7 +32,6 @@ export default async function ManagerPromosPage({
     return (
       <PageErrorState
         title="Promos"
-        subtitle="Plan, fiscal type, Welcome coupon, per-tier rates"
         heading="Couldn't load the venue"
         message={overviewError}
         retryHref={`/unit/${id}/promos`}
@@ -43,10 +42,7 @@ export default async function ManagerPromosPage({
   if (!overview || overview.venues.length === 0) {
     return (
       <>
-        <Topbar
-          title="Promos"
-          subtitle="Plan, fiscal type, Welcome coupon, per-tier rates"
-        />
+        <Topbar title="Promos" />
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
             <div className="border-border bg-card rounded-2xl border border-dashed p-10 text-center">
@@ -54,18 +50,17 @@ export default async function ManagerPromosPage({
                 <Store className="text-muted-foreground h-5 w-5" />
               </div>
               <h2 className="font-display text-xl font-semibold tracking-tight">
-                No venue to configure yet
+                No venue yet
               </h2>
               <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
-                Create your first venue, then come back here to pick a plan and
-                set your cashback or discount rates.
+                Add a venue to start configuring promos.
               </p>
               <Link
                 href="/add"
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
-                Create your first venue
+                Add venue
               </Link>
             </div>
           </div>
@@ -78,10 +73,7 @@ export default async function ManagerPromosPage({
 
   return (
     <>
-      <Topbar
-        title={active.name}
-        subtitle="Promos — plan, fiscal type, Welcome coupon, and per-tier rates"
-      />
+      <Topbar title={active.name} subtitle="Promos" />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <PromosClient venue={active} />

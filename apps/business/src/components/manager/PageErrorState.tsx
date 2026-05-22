@@ -13,7 +13,7 @@ export function PageErrorState({
   retryHref,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   heading: string;
   message: string;
   retryHref: string;
