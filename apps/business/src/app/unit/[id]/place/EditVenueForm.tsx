@@ -23,6 +23,9 @@ import {
   Loader2,
   Clock,
   Sparkles,
+  ArrowLeft,
+  ArrowRight,
+  ImagePlus,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -73,6 +76,7 @@ type FormState = {
   description: string;
   hours: Record<DayKey, DayShifts>;
   menu_pdf_url: string;
+  photos: string[];
   tags: string[];
   phone: string;
   whatsapp_url: string;
@@ -100,6 +104,7 @@ const SAVED_TOAST_MS = 2200;
 const VENUE_NAME_MAX = 120;
 const DESCRIPTION_MAX = 600;
 const TAG_MAX = 40;
+const MAX_PHOTOS = 30;
 
 const NOT_FOUND_NOTE =
   "We couldn't pull this from the web yet. The enrichment pipeline keeps trying — refresh in a few minutes or reach out to support.";
@@ -164,6 +169,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
     description: venue.description ?? "",
     hours: venueHoursToForm(venue.hours),
     menu_pdf_url: venue.menu_pdf_url ?? "",
+    photos: venue.photos ?? [],
     tags: venue.tags ?? [],
     phone: venue.phone ?? "",
     whatsapp_url: venue.whatsapp_url ?? "",
@@ -207,6 +213,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           : v.description.trim().slice(0, DESCRIPTION_MAX),
       hours: formHoursToVenue(v.hours),
       menu_pdf_url: nullableUrl(v.menu_pdf_url),
+      photos: v.photos.slice(0, MAX_PHOTOS),
       tags: v.tags
         .map((t) => t.trim().toLowerCase().slice(0, TAG_MAX))
         .filter(Boolean),
@@ -244,6 +251,12 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <BasicsSection venue={venue} v={v} set={set} />
+      <MediaSection
+        photos={v.photos}
+        onChange={(photos) => set("photos", photos)}
+        venueName={v.name}
+        onError={setError}
+      />
       <ProductSection v={v} set={set} />
       <ChannelsAtAGlance v={v} />
       <PrimaryChannelsSection venue={venue} v={v} set={set} />
@@ -362,6 +375,138 @@ function BasicsSection({
         value={venue.address}
         icon={<MapPin className="h-4 w-4" />}
       />
+    </Section>
+  );
+}
+
+function MediaSection({
+  photos,
+  onChange,
+  venueName,
+  onError,
+}: {
+  photos: string[];
+  onChange: (next: string[]) => void;
+  venueName: string;
+  onError: (msg: string | null) => void;
+}) {
+  const [draft, setDraft] = useState("");
+
+  const move = (from: number, dir: -1 | 1) => {
+    const to = from + dir;
+    if (to < 0 || to >= photos.length) return;
+    const next = photos.slice();
+    [next[from], next[to]] = [next[to], next[from]];
+    onChange(next);
+  };
+  const remove = (idx: number) => onChange(photos.filter((_, i) => i !== idx));
+  const add = () => {
+    const url = draft.trim();
+    if (!url) return;
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      onError("Photo URL must be a valid https:// link.");
+      return;
+    }
+    if (parsed.protocol !== "https:") {
+      onError("Photo URL must use https:// (Next.js Image refuses http://).");
+      return;
+    }
+    if (photos.includes(url)) {
+      onError("That photo is already in the list.");
+      return;
+    }
+    if (photos.length >= MAX_PHOTOS) {
+      onError(`At most ${MAX_PHOTOS} photos.`);
+      return;
+    }
+    onError(null);
+    onChange([...photos, url]);
+    setDraft("");
+  };
+
+  return (
+    <Section
+      title={`Media (${photos.length})`}
+      subtitle="Reorder, remove, or add. The first photo is the swipe-card cover, the rest cycle through the venue page."
+    >
+      {photos.length === 0 ? (
+        <p className="bg-muted text-muted-foreground rounded-xl px-3 py-3 text-xs">
+          No photos yet. Paste an image URL below — the first one you add
+          becomes the swipe-card cover.
+        </p>
+      ) : (
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {photos.map((src, idx) => (
+            <li
+              key={`${src}-${idx}`}
+              className="group border-border bg-muted relative overflow-hidden rounded-xl border"
+            >
+              <div className="aspect-[4/3] w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={`${venueName || "Venue"} photo ${idx + 1}`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              {idx === 0 && (
+                <span className="bg-foreground text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                  Cover
+                </span>
+              )}
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 transition group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => move(idx, -1)}
+                  aria-label="Move earlier"
+                  disabled={idx === 0}
+                  className="text-foreground flex h-7 w-7 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(idx, 1)}
+                  aria-label="Move later"
+                  disabled={idx === photos.length - 1}
+                  className="text-foreground flex h-7 w-7 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(idx)}
+                  aria-label="Remove photo"
+                  className="bg-destructive ml-auto flex h-7 w-7 items-center justify-center rounded-full text-white transition hover:opacity-90"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <UrlInput
+            icon={<ImagePlus className="h-4 w-4" />}
+            value={draft}
+            onChange={setDraft}
+            placeholder="https://…"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={add}
+          className="border-border bg-card hover:bg-muted inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition"
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </button>
+      </div>
     </Section>
   );
 }
