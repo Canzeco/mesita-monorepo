@@ -456,7 +456,7 @@ function MediaSection({
               key={`${src}-${idx}`}
               className="group border-border bg-muted relative overflow-hidden rounded-xl border"
             >
-              <div className="aspect-[4/3] w-full">
+              <div className="aspect-square w-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={src}
