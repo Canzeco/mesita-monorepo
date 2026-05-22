@@ -46,11 +46,18 @@ type TierMeta = {
   visitRange: string;
   defaultRate: RateChoice;
   onMesita: number;
+  // Cap the highest selectable rate for this tier. The picker hides any
+  // RATE_CHOICES entry strictly greater than this value. Undefined means
+  // "no cap" — all four pills (0/10/20/50) show.
+  //
+  // The cap exists to keep low-loyalty tiers from being offered runaway
+  // discounts; reward intensity should scale with visit count.
+  maxRate?: RateChoice;
 };
 
 const TIERS: TierMeta[] = [
-  { id: "bronze", label: "Bronze", visitRange: "0–2 visits", defaultRate: 10, onMesita: 18_420 },
-  { id: "silver", label: "Silver", visitRange: "3–6 visits", defaultRate: 10, onMesita: 6_240 },
+  { id: "bronze", label: "Bronze", visitRange: "0–2 visits", defaultRate: 10, onMesita: 18_420, maxRate: 10 },
+  { id: "silver", label: "Silver", visitRange: "3–6 visits", defaultRate: 10, onMesita: 6_240, maxRate: 20 },
   { id: "gold", label: "Gold", visitRange: "7–19 visits", defaultRate: 20, onMesita: 1_860 },
   { id: "diamond", label: "Diamond", visitRange: "20+ visits", defaultRate: 30 as RateChoice, onMesita: 184 },
 ];
@@ -329,6 +336,7 @@ function TierRow({ tier, disabled }: { tier: TierMeta; disabled: boolean }) {
       rate={disabled ? 0 : rate}
       onRate={setRate}
       disabled={disabled}
+      maxRate={tier.maxRate}
       audience={tier.onMesita}
       audienceLabel="On Mesita"
     />
@@ -341,6 +349,7 @@ function PromoRow({
   rate,
   onRate,
   disabled,
+  maxRate,
   audience,
   audienceLabel,
 }: {
@@ -349,6 +358,7 @@ function PromoRow({
   rate: RateChoice;
   onRate: (next: RateChoice) => void;
   disabled: boolean;
+  maxRate?: RateChoice;
   audience: number;
   audienceLabel: string;
 }) {
@@ -358,7 +368,7 @@ function PromoRow({
         {chip}
         <span className="text-muted-foreground text-[10px]">{sub}</span>
       </div>
-      <RatePicker rate={rate} onChange={onRate} disabled={disabled} />
+      <RatePicker rate={rate} onChange={onRate} disabled={disabled} maxRate={maxRate} />
       <div className="text-right">
         <p className="font-display text-sm font-bold tabular-nums leading-none">
           {audience.toLocaleString()}
@@ -375,11 +385,16 @@ function RatePicker({
   rate,
   onChange,
   disabled,
+  maxRate,
 }: {
   rate: RateChoice;
   onChange: (next: RateChoice) => void;
   disabled?: boolean;
+  maxRate?: RateChoice;
 }) {
+  const choices = maxRate != null
+    ? RATE_CHOICES.filter((c) => c <= maxRate)
+    : RATE_CHOICES;
   return (
     <div className={cn("flex items-center gap-2", disabled && "opacity-60")}>
       <span className="font-display text-primary text-2xl font-bold tabular-nums leading-none">
@@ -387,7 +402,7 @@ function RatePicker({
         <span className="text-base font-semibold">%</span>
       </span>
       <div className="flex flex-wrap gap-1">
-        {RATE_CHOICES.map((c) => {
+        {choices.map((c) => {
           const showHint = disabled && c !== 0;
           return (
             <div key={c} className="group relative">
