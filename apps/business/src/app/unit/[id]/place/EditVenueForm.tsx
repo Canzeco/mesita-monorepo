@@ -7,11 +7,7 @@ import {
   X,
   Globe,
   Instagram,
-  Facebook,
   MessageCircle,
-  Music2,
-  CalendarCheck,
-  Bike,
   MapPin,
   Star,
   Mail,
@@ -260,8 +256,6 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       <ProductSection v={v} set={set} />
       <ChannelsAtAGlance v={v} />
       <PrimaryChannelsSection venue={venue} v={v} set={set} />
-      <PrChannelsSection v={v} set={set} />
-      <SecondaryChannelsSection v={v} set={set} />
       <SignalsSection venue={venue} />
 
       {error && (
@@ -538,29 +532,21 @@ function ProductSection({
 }
 
 function ChannelsAtAGlance({ v }: { v: FormState }) {
-  // Compact read-only mosaic of every channel the venue advertises. Lets a
-  // manager scan one box to see what's filled in vs. missing, without
-  // hunting through three separate edit sections below.
+  // Compact read-only mosaic of the primary channels. Lets a manager scan
+  // one box to see what's filled in vs. missing.
   const items: { label: string; value: string; icon: React.ReactNode }[] = [
     { label: "Phone", value: v.phone, icon: <PhoneIcon className="h-3.5 w-3.5" /> },
     { label: "WhatsApp", value: v.whatsapp_url, icon: <MessageCircle className="h-3.5 w-3.5" /> },
     { label: "Email", value: v.email, icon: <Mail className="h-3.5 w-3.5" /> },
     { label: "Website", value: v.website_url, icon: <Globe className="h-3.5 w-3.5" /> },
     { label: "Instagram", value: v.instagram_url, icon: <Instagram className="h-3.5 w-3.5" /> },
-    { label: "Facebook", value: v.facebook_url, icon: <Facebook className="h-3.5 w-3.5" /> },
-    { label: "TikTok", value: v.tiktok_url, icon: <Music2 className="h-3.5 w-3.5" /> },
-    { label: "OpenTable", value: v.opentable_url, icon: <CalendarCheck className="h-3.5 w-3.5" /> },
-    { label: "TripAdvisor", value: v.tripadvisor_url, icon: <Star className="h-3.5 w-3.5" /> },
-    { label: "Rappi", value: v.rappi_url, icon: <Bike className="h-3.5 w-3.5" /> },
-    { label: "Uber Eats", value: v.uber_eats_url, icon: <Bike className="h-3.5 w-3.5" /> },
   ];
   const filled = items.filter((i) => i.value.trim() !== "");
   const missing = items.filter((i) => i.value.trim() === "");
-  const prCount = v.whatsapp_pr_urls.filter(Boolean).length + v.instagram_pr_urls.filter(Boolean).length;
   return (
     <Section
       title="Channels at a glance"
-      subtitle={`${filled.length} of ${items.length} channels filled · ${prCount} PR contact${prCount === 1 ? "" : "s"}`}
+      subtitle={`${filled.length} of ${items.length} channels filled`}
     >
       <div className="flex flex-wrap gap-1.5">
         {filled.map((i) => (
@@ -648,104 +634,6 @@ function PrimaryChannelsSection({
         value={venue.google_maps_url}
         icon={<MapPin className="h-4 w-4" />}
       />
-    </Section>
-  );
-}
-
-function PrChannelsSection({
-  v,
-  set,
-}: {
-  v: FormState;
-  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-}) {
-  return (
-    <Section
-      title="PR channels"
-      subtitle="Personal accounts of the PRs who decide who gets in. Mostly bars and clubs — leave blank otherwise."
-    >
-      <Field
-        label="WhatsApp PR number(s)"
-        hint="Add a wa.me link for each PR — the guest deep-links straight into a private chat."
-      >
-        <UrlList
-          icon={<MessageCircle className="h-4 w-4" />}
-          values={v.whatsapp_pr_urls}
-          onChange={(urls) => set("whatsapp_pr_urls", urls)}
-          placeholder="https://wa.me/52…"
-        />
-      </Field>
-      <Field
-        label="Instagram PR username(s)"
-        hint="Personal Instagram handles, not the venue's main account."
-      >
-        <UrlList
-          icon={<Instagram className="h-4 w-4" />}
-          values={v.instagram_pr_urls}
-          onChange={(urls) => set("instagram_pr_urls", urls)}
-          placeholder="https://instagram.com/…"
-        />
-      </Field>
-    </Section>
-  );
-}
-
-function SecondaryChannelsSection({
-  v,
-  set,
-}: {
-  v: FormState;
-  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-}) {
-  return (
-    <Section
-      title="Secondary channels"
-      subtitle="Where guests can deep-link out to reviews, reservations, and delivery."
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <UrlField
-          label="Facebook"
-          icon={<Facebook className="h-4 w-4" />}
-          placeholder="https://facebook.com/yourplace"
-          value={v.facebook_url}
-          onChange={(val) => set("facebook_url", val)}
-        />
-        <UrlField
-          label="TikTok"
-          icon={<Music2 className="h-4 w-4" />}
-          placeholder="https://tiktok.com/@yourplace"
-          value={v.tiktok_url}
-          onChange={(val) => set("tiktok_url", val)}
-        />
-        <UrlField
-          label="OpenTable"
-          icon={<CalendarCheck className="h-4 w-4" />}
-          placeholder="https://opentable.com/r/yourplace"
-          value={v.opentable_url}
-          onChange={(val) => set("opentable_url", val)}
-        />
-        <UrlField
-          label="TripAdvisor"
-          icon={<Star className="h-4 w-4" />}
-          placeholder="https://tripadvisor.com/…"
-          value={v.tripadvisor_url}
-          onChange={(val) => set("tripadvisor_url", val)}
-        />
-        <UrlField
-          label="Rappi"
-          icon={<Bike className="h-4 w-4" />}
-          placeholder="https://rappi.com.mx/…"
-          value={v.rappi_url}
-          onChange={(val) => set("rappi_url", val)}
-        />
-        <UrlField
-          label="Uber Eats"
-          icon={<Bike className="h-4 w-4" />}
-          placeholder="https://ubereats.com/store/…"
-          value={v.uber_eats_url}
-          onChange={(val) => set("uber_eats_url", val)}
-        />
-      </div>
     </Section>
   );
 }
@@ -934,58 +822,6 @@ function UrlInput({
         autoCapitalize="none"
         className="placeholder:text-muted-foreground h-11 w-full bg-transparent text-sm outline-none"
       />
-    </div>
-  );
-}
-
-function UrlList({
-  icon,
-  values,
-  onChange,
-  placeholder,
-}: {
-  icon: React.ReactNode;
-  values: string[];
-  onChange: (v: string[]) => void;
-  placeholder?: string;
-}) {
-  const update = (idx: number, val: string) => {
-    const next = values.slice();
-    next[idx] = val;
-    onChange(next);
-  };
-  const remove = (idx: number) => onChange(values.filter((_, i) => i !== idx));
-  const add = () => onChange([...values, ""]);
-  return (
-    <div className="flex flex-col gap-2">
-      {values.map((val, idx) => (
-        <div key={idx} className="flex items-center gap-2">
-          <div className="flex-1">
-            <UrlInput
-              icon={icon}
-              value={val}
-              onChange={(v) => update(idx, v)}
-              placeholder={placeholder}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => remove(idx)}
-            aria-label="Remove"
-            className="text-muted-foreground hover:text-destructive flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={add}
-        className="border-border bg-card hover:bg-muted text-muted-foreground inline-flex h-9 w-fit items-center gap-1.5 rounded-full border border-dashed px-3 text-xs font-semibold transition"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Add another
-      </button>
     </div>
   );
 }
