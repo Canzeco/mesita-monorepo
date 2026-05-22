@@ -319,11 +319,13 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
           </p>
           <p>
             <span className="text-foreground font-semibold">
-              Why Pro Discount is 5× Pro Cashback.
+              Why Pro Cashback is 5× Pro Discount.
             </span>{" "}
-            Cashback venues feed the Mesita wallet — transaction data and a
-            redemption network on the back-end. Discount venues pay a
-            premium for the same priority placement.
+            Cashback venues unlock Mesita&apos;s full stack — maximum
+            visibility on every discovery surface, wallet redemption across
+            partners, and AI story verification before payout. Pro Discount
+            is the entry-level Pro tier with priority placement but no
+            wallet network.
           </p>
           <p>
             <span className="text-foreground font-semibold">
@@ -596,8 +598,10 @@ function PerformanceSection() {
 // venues through their existing channel (IG DM, WhatsApp, voice, OpenTable)
 // and sends high-intent guests their way. Pro venues jump the queue.
 function ReservationsSection({ plan }: { plan: VenuePlan }) {
-  const current = visibilityForPlan(plan);
-  const onPriority = current === "Priority";
+  // Reservations is a 2-tier product (Standard vs Priority) — both Pro
+  // tiers get Priority routing. The visibility tier doesn't affect this
+  // one, so derive directly off plan === "free".
+  const isFreePlan = plan === "free";
   return (
     <Section
       title="Reservations"
@@ -606,7 +610,7 @@ function ReservationsSection({ plan }: { plan: VenuePlan }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ReservationCard
           tier="Standard"
-          isCurrent={current === "Minimum"}
+          isCurrent={isFreePlan}
           tone="bg-muted text-foreground"
           bullets={[
             "AI sends bookings to your existing channel",
@@ -616,7 +620,7 @@ function ReservationsSection({ plan }: { plan: VenuePlan }) {
         />
         <ReservationCard
           tier="Priority"
-          isCurrent={current === "Priority"}
+          isCurrent={!isFreePlan}
           tone="bg-pink-gradient text-white"
           featured
           bullets={[
@@ -627,7 +631,7 @@ function ReservationsSection({ plan }: { plan: VenuePlan }) {
           ]}
         />
       </div>
-      {!onPriority && (
+      {isFreePlan && (
         <p className="text-muted-foreground text-[12px] leading-relaxed">
           You&apos;re on <span className="text-foreground font-semibold">Standard</span>
           {" "}routing. Upgrade to a Pro plan above to put your reservations
@@ -688,21 +692,25 @@ function ReservationCard({
 
 // ─── Visibility ───────────────────────────────────────────────────────────
 
-// Visibility ladder card. Shows the two plan tiers side-by-side with the
-// current one flagged. Designed to make the upgrade path visceral — a
-// manager glancing at this should immediately understand they're at
-// Minimum and that Priority gets them on more discovery surfaces.
+// Visibility ladder card — three tiers side-by-side so the upgrade path
+// reads as a real climb. Minimum (Free) is muted, Priority (Pro Discount)
+// is the middle rung, Maximum (Pro Cashback) carries the pink-gradient
+// pill + glow so a manager glancing at it understands where the premium
+// tier sits.
 function VisibilitySection({ plan }: { plan: VenuePlan }) {
   const current = visibilityForPlan(plan);
-  const onPriority = current === "Priority";
+  const atMax = current === "Maximum";
+  const upgradeTarget =
+    current === "Minimum" ? "Priority or Maximum" : "Maximum";
   return (
     <Section
       title="Visibility"
-      subtitle="Buy your way onto more discovery surfaces. Higher tier, more guests see you across swipe, catalog, map, and the AI planner."
+      subtitle="Buy your way onto more discovery surfaces. Each tier puts you in front of more guests across swipe, catalog, map, and the AI planner."
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <VisibilityCard
           tier="Minimum"
+          planLabel="Free"
           isCurrent={current === "Minimum"}
           tone="bg-muted text-foreground"
           bullets={[
@@ -713,23 +721,37 @@ function VisibilitySection({ plan }: { plan: VenuePlan }) {
         />
         <VisibilityCard
           tier="Priority"
+          planLabel="Pro Discount"
           isCurrent={current === "Priority"}
-          tone="bg-pink-gradient text-white"
-          featured
+          tone="bg-foreground text-background"
+          featured={!atMax}
           bullets={[
-            "Boosted to the top of the swipe deck",
-            "First in catalog rows for your category",
-            "AI planner recommends you first",
+            "Boosted on the swipe deck",
+            "Top of catalog rows for your category",
+            "Map highlight on first zoom",
+            "AI planner mentions you on related queries",
+          ]}
+        />
+        <VisibilityCard
+          tier="Maximum"
+          planLabel="Pro Cashback"
+          isCurrent={atMax}
+          tone="bg-pink-gradient text-white"
+          premium
+          bullets={[
+            "Front of swipe deck for every relevant guest",
+            "First in every catalog row + Featured rail",
             "Map highlight on every zoom",
+            "AI planner recommends you first",
+            "Story bonus boost on verified visits",
           ]}
         />
       </div>
-      {!onPriority && (
+      {!atMax && (
         <p className="text-muted-foreground text-[12px] leading-relaxed">
           You&apos;re showing up at{" "}
-          <span className="text-foreground font-semibold">Minimum</span>.
-          Upgrade to a Pro plan above to land in front of more guests on
-          every Mesita surface.
+          <span className="text-foreground font-semibold">{current}</span>.
+          Upgrade to <span className="text-foreground font-semibold">{upgradeTarget}</span> above to land in front of more guests.
         </p>
       )}
     </Section>
@@ -738,24 +760,28 @@ function VisibilitySection({ plan }: { plan: VenuePlan }) {
 
 function VisibilityCard({
   tier,
+  planLabel,
   isCurrent,
   tone,
   bullets,
   featured,
+  premium,
 }: {
-  tier: "Minimum" | "Priority";
+  tier: "Minimum" | "Priority" | "Maximum";
+  planLabel: string;
   isCurrent: boolean;
   tone: string;
   bullets: string[];
   featured?: boolean;
+  premium?: boolean;
 }) {
   return (
     <div
       className={cn(
         "border-border bg-card relative flex flex-col gap-3 rounded-2xl border p-4",
         isCurrent && "border-foreground/40 shadow-elev",
-        !isCurrent && featured && "shadow-glow",
-        !isCurrent && !featured && "opacity-70",
+        !isCurrent && premium && "shadow-glow",
+        !isCurrent && !premium && !featured && "opacity-70",
       )}
     >
       {isCurrent && (
@@ -763,15 +789,20 @@ function VisibilityCard({
           Current
         </Badge>
       )}
-      <span
-        className={cn(
-          "inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase",
-          tone,
-          featured && "shadow-sm",
-        )}
-      >
-        {tier}
-      </span>
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className={cn(
+            "inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase",
+            tone,
+            premium && "shadow-sm",
+          )}
+        >
+          {tier}
+        </span>
+        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+          {planLabel}
+        </span>
+      </div>
       <ul className="flex flex-col gap-1.5 text-[12px]">
         {bullets.map((b) => (
           <li key={b} className="flex items-start gap-2 leading-snug">

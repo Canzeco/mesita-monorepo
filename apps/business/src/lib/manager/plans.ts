@@ -3,12 +3,15 @@ import type { VenuePlan } from "@/lib/api/venues";
 // Plan catalog used by Promos (picker + label lookup). Single source of
 // truth for plan copy and the mechanic / visibility derivation.
 //
-// Three plans only: Free + one Pro per fiscal type. The Ultra tier was
-// retired once Mesita's primary revenue stream became guest-side class
-// subscriptions — venue billing is now intentionally simple.
+// Three plans: Free + two Pro tiers differentiated by the reward mechanic
+// the venue runs. Pro Cashback is the premium tier — Mesita captures the
+// transaction through Stripe + the wallet network and pays the venue the
+// strongest visibility on every discovery surface in return. Pro Discount
+// is the entry-level Pro tier — Mesita stays off the payment rail, so the
+// price is lower and the visibility caps at Priority instead of Maximum.
 
 export type PlanMechanic = "None" | "Cashback" | "Discount";
-export type PlanVisibility = "Minimum" | "Priority";
+export type PlanVisibility = "Minimum" | "Priority" | "Maximum";
 
 export type PlanRow = {
   id: VenuePlan;
@@ -39,40 +42,40 @@ export const PLANS: PlanRow[] = [
     bullets: ["Auto-listed", "AI reservations", "No coupon mechanic"],
   },
   {
-    id: "formal_pro",
-    label: "Pro Cashback",
+    id: "informal_pro",
+    label: "Pro Discount",
     price: "$200",
     cadence: "MX / month",
     priceLabel: "$200 MX / mo",
-    mechanic: "Cashback",
-    visibility: "Priority",
-    fiscalScope: "formal",
-    blurb:
-      "Cashback on card payments through Mesita. Priority placement across swipe, map, catalog, AI planner.",
-    bullets: [
-      "Per-tier cashback rates",
-      "Mesita wallet — guests redeem at any partner",
-      "Story bonus & AI verification",
-      "Full Place / Rewards / Wallet / Team dashboard",
-    ],
-    featured: true,
-  },
-  {
-    id: "informal_pro",
-    label: "Pro Discount",
-    price: "$1,000",
-    cadence: "MX / month",
-    priceLabel: "$1,000 MX / mo",
     mechanic: "Discount",
     visibility: "Priority",
     fiscalScope: "informal",
     blurb:
-      "Instant discount on the cash bill. Priority placement. 5× Pro Cashback because Mesita captures no wallet / data.",
+      "Instant discount on the bill. Priority placement on the swipe deck and catalog. Entry-level Pro tier — Mesita stays off the payment rail.",
     bullets: [
       "Per-tier discount rates",
       "Discount revealed at the bill — cash or card",
-      "Story bonus & AI verification",
+      "Priority placement on swipe, map, catalog",
       "Place / Rewards / Team dashboard",
+    ],
+  },
+  {
+    id: "formal_pro",
+    label: "Pro Cashback",
+    price: "$1,000",
+    cadence: "MX / month",
+    priceLabel: "$1,000 MX / mo",
+    mechanic: "Cashback",
+    visibility: "Maximum",
+    fiscalScope: "formal",
+    blurb:
+      "Cashback on card payments through Mesita. Maximum visibility everywhere, full wallet network, AI story verification before payout. 5× Pro Discount because the venue gets Mesita's strongest discovery push.",
+    bullets: [
+      "Maximum visibility on swipe, map, catalog, AI planner",
+      "Per-tier cashback rates",
+      "Mesita wallet — guests redeem at any partner",
+      "Story bonus & AI verification before payout",
+      "Full Place / Rewards / Wallet / Team dashboard",
     ],
     featured: true,
   },
@@ -86,5 +89,6 @@ export function mechanicForPlan(p: VenuePlan): PlanMechanic {
 
 export function visibilityForPlan(p: VenuePlan): PlanVisibility {
   if (p === "free") return "Minimum";
-  return "Priority";
+  if (p === "informal_pro") return "Priority";
+  return "Maximum";
 }
