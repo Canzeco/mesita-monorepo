@@ -35,7 +35,7 @@ import {
 
 // ─── Rate picker scale ────────────────────────────────────────────────────
 
-const RATE_CHOICES = [0, 5, 10, 20, 50] as const;
+const RATE_CHOICES = [0, 10, 20, 50] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
 // ─── Tier ladder catalog ──────────────────────────────────────────────────
@@ -49,7 +49,7 @@ type TierMeta = {
 };
 
 const TIERS: TierMeta[] = [
-  { id: "bronze", label: "Bronze", visitRange: "0–2 visits", defaultRate: 5, onMesita: 18_420 },
+  { id: "bronze", label: "Bronze", visitRange: "0–2 visits", defaultRate: 10, onMesita: 18_420 },
   { id: "silver", label: "Silver", visitRange: "3–6 visits", defaultRate: 10, onMesita: 6_240 },
   { id: "gold", label: "Gold", visitRange: "7–19 visits", defaultRate: 20, onMesita: 1_860 },
   { id: "diamond", label: "Diamond", visitRange: "20+ visits", defaultRate: 30 as RateChoice, onMesita: 184 },
