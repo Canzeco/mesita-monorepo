@@ -76,14 +76,8 @@ export type PlacePrediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
-  // Drives the per-row badge in the picker. Older EF builds emit only
-  // `inMesita`; treat a missing status as not_in_mesita / web_listed
-  // based on that flag (see the resolver in the form component).
-  status?: PredictionStatus;
-  // Legacy. True when the prediction came from Mesita's own catalog.
-  // Kept so a frontend deployed before the status-aware EF still gets a
-  // usable signal; new code should branch on `status`.
-  inMesita?: boolean;
+  // Drives the per-row badge in the picker.
+  status: PredictionStatus;
 };
 
 export type EnrichmentReport = {

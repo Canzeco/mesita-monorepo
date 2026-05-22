@@ -232,8 +232,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         {!selected && predictions.length > 0 && (
           <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-20 mt-2.5 max-h-80 overflow-y-auto rounded-[18px] border p-1.5">
             {predictions.map((p) => {
-              const status = predictionStatus(p);
-              const meta = PREDICTION_BADGE[status];
+              const meta = PREDICTION_BADGE[p.status];
               return (
                 <li key={p.placeId}>
                   <button
@@ -1143,12 +1142,6 @@ function OtpInput({
       </div>
     </div>
   );
-}
-
-// Resolves a prediction to one of the four picker statuses.
-function predictionStatus(p: PlacePrediction): PredictionStatus {
-  if (p.status) return p.status;
-  return p.inMesita ? "web_listed" : "not_in_mesita";
 }
 
 const PREDICTION_BADGE: Record<
