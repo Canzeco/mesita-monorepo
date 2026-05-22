@@ -387,23 +387,32 @@ function RatePicker({
         <span className="text-base font-semibold">%</span>
       </span>
       <div className="flex flex-wrap gap-1">
-        {RATE_CHOICES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => onChange(c)}
-            disabled={disabled}
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
-              c === rate
-                ? "bg-pink-gradient text-white"
-                : "border-border bg-background text-muted-foreground hover:text-foreground border",
-              disabled && "cursor-not-allowed hover:text-muted-foreground",
-            )}
-          >
-            {c}
-          </button>
-        ))}
+        {RATE_CHOICES.map((c) => {
+          const showHint = disabled && c !== 0;
+          return (
+            <div key={c} className="group relative">
+              <button
+                type="button"
+                onClick={() => onChange(c)}
+                disabled={disabled}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
+                  c === rate
+                    ? "bg-pink-gradient text-white"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground border",
+                  disabled && "cursor-not-allowed hover:text-muted-foreground",
+                )}
+              >
+                {c}
+              </button>
+              {showHint && (
+                <span className="pointer-events-none bg-foreground text-background absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 rounded-md px-2 py-1 text-[9px] font-semibold whitespace-nowrap tracking-wider uppercase opacity-0 shadow-elev transition group-hover:opacity-100">
+                  Pick Discounts or Cashbacks
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
