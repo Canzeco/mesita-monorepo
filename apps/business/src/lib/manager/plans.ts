@@ -40,7 +40,7 @@ export const PLANS: PlanRow[] = [
   },
   {
     id: "formal_pro",
-    label: "Formal Pro",
+    label: "Pro Cashback",
     price: "$200",
     cadence: "MX / month",
     priceLabel: "$200 MX / mo",
@@ -59,7 +59,7 @@ export const PLANS: PlanRow[] = [
   },
   {
     id: "informal_pro",
-    label: "Informal Pro",
+    label: "Pro Discount",
     price: "$1,000",
     cadence: "MX / month",
     priceLabel: "$1,000 MX / mo",
@@ -67,7 +67,7 @@ export const PLANS: PlanRow[] = [
     visibility: "Priority",
     fiscalScope: "informal",
     blurb:
-      "Instant discount on the cash bill. Priority placement. 5× formal because Mesita captures no wallet / data.",
+      "Instant discount on the cash bill. Priority placement. 5× Pro Cashback because Mesita captures no wallet / data.",
     bullets: [
       "Per-tier discount rates",
       "Discount revealed at the bill — cash or card",

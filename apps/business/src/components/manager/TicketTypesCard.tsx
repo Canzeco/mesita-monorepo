@@ -55,8 +55,8 @@ export function TicketTypesCard({
 }) {
   const rows = isFormal ? FORMAL_REFERENCE : INFORMAL_REFERENCE;
   const subtitle = isFormal
-    ? "Five formal flows — each builds on None by adding Reservation, Story, or both. Cashback never lands until the story is verified, so failed stories cost the guest the cashback (not the venue)."
-    : "Five informal flows — each builds on None by adding Reservation, Story, or both. The story is verified post-checkout; if it fails, the discount was already applied at the bill. That's the vulnerability flag below.";
+    ? "Five cashback flows — each builds on None by adding Reservation, Story, or both. Cashback never lands until the story is verified, so failed stories cost the guest the cashback (not the venue)."
+    : "Five discount flows — each builds on None by adding Reservation, Story, or both. The story is verified post-checkout; if it fails, the discount was already applied at the bill. That's the vulnerability flag below.";
   return (
     <section className="border-border bg-card rounded-2xl border p-5">
       <header className="mb-3 flex items-start justify-between gap-3">
@@ -69,7 +69,7 @@ export function TicketTypesCard({
           </p>
         </div>
         <span className="bg-foreground/10 text-foreground rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase">
-          {isFormal ? "Formal" : "Informal"}
+          {isFormal ? "Cashback" : "Discount"}
         </span>
       </header>
 

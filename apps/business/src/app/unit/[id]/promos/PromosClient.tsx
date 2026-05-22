@@ -37,7 +37,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { PLANS, mechanicForPlan, visibilityForPlan } from "@/lib/manager/plans";
 
 // Promos owns three layers of configuration in one page:
-//   1. Plan — pick Free / Formal Pro / Informal Pro + fiscal-type toggle.
+//   1. Plan — pick Free / Pro Cashback / Pro Discount + mechanic toggle.
 //   2. Ticket types — the audit-log reference enabled by the plan.
 //   3. Segmentation — Welcome coupon for first-time guests and per-tier
 //      cashback/discount rates for returning ones. Advanced axes
@@ -182,7 +182,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       {/* ── Plan ─────────────────────────────────────────────────────── */}
       <Section
         title="Plan"
-        subtitle="Pick what you're buying. Higher tier unlocks more visibility, priority reservations, and customer-acquisition tools. Cancel anytime."
+        subtitle="Pick what you're buying. Higher tier unlocks more visibility, priority reservations, and customer-acquisition tools. The mechanic is pinned by how you settle payments — Cashback routes through Mesita's wallet, Discount lands at the bill. Cancel anytime."
       >
         <FiscalSegmentedToggle
           current={venue.fiscal_type}
@@ -204,7 +204,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
             const buttonLabel = isCurrent
               ? "Current plan"
               : wrongFiscal
-                ? "Switch fiscal first"
+                ? "Switch mechanic first"
                 : p.id === "free"
                   ? "Use Free"
                   : `Become ${p.label}`;
@@ -319,18 +319,18 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
           </p>
           <p>
             <span className="text-foreground font-semibold">
-              Why Informal is 5× Formal.
+              Why Pro Discount is 5× Pro Cashback.
             </span>{" "}
-            Formal partners feed the Mesita wallet — transaction data and a
-            redemption network on the back-end. Informal pays a premium for
-            the same priority placement.
+            Cashback venues feed the Mesita wallet — transaction data and a
+            redemption network on the back-end. Discount venues pay a
+            premium for the same priority placement.
           </p>
           <p>
             <span className="text-foreground font-semibold">
               Payment rail rule.
             </span>{" "}
             Cashback only counts when the guest pays by card through Mesita.
-            At Informal venues the discount applies at the bill — cash or
+            At Discount venues the discount applies at the bill — cash or
             card, either works.
           </p>
         </div>
@@ -459,14 +459,14 @@ function FiscalSegmentedToggle({
   return (
     <div className="bg-muted inline-flex items-center rounded-full p-0.5">
       <FiscalSegment
-        label="Formal"
+        label="Cashback"
         active={current === "formal"}
         pending={pending}
         onClick={() => onSwitch("formal")}
         tone="bg-pink-gradient text-white"
       />
       <FiscalSegment
-        label="Informal"
+        label="Discount"
         active={current === "informal"}
         pending={pending}
         onClick={() => onSwitch("informal")}
