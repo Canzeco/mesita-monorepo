@@ -323,13 +323,34 @@ function BasicsSection({
         />
       </Field>
 
-      <Field label="Category" hint="One word, e.g. mexican, cafe, sushi.">
-        <input
-          value={v.category}
-          onChange={(e) => set("category", e.target.value)}
-          className={INPUT}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Category" hint="One word, e.g. mexican, cafe, sushi.">
+          <input
+            value={v.category}
+            onChange={(e) => set("category", e.target.value)}
+            className={INPUT}
+          />
+        </Field>
+
+        <Field label="Tags" hint="Quick descriptors guests search for.">
+          <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ReadOnly
+          label="Price level"
+          value={
+            venue.price_level != null ? PRICE_LABEL[venue.price_level] : null
+          }
+          empty="Google doesn't list a price tier for this place."
         />
-      </Field>
+        <ReadOnly
+          label="Address"
+          value={venue.address}
+          icon={<MapPin className="h-4 w-4" />}
+        />
+      </div>
 
       <Field label="Description" hint="What makes this place itself.">
         <textarea
@@ -339,24 +360,6 @@ function BasicsSection({
           className={TEXTAREA}
         />
       </Field>
-
-      <Field label="Tags" hint="Quick descriptors guests search for.">
-        <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
-      </Field>
-
-      <ReadOnly
-        label="Price level"
-        value={
-          venue.price_level != null ? PRICE_LABEL[venue.price_level] : null
-        }
-        empty="Google doesn't list a price tier for this place."
-      />
-
-      <ReadOnly
-        label="Address"
-        value={venue.address}
-        icon={<MapPin className="h-4 w-4" />}
-      />
     </Section>
   );
 }
