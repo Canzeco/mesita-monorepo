@@ -5,3 +5,10 @@ export { RatePill, type Mechanic } from "./RatePill";
 export { FiscalBadge, type FiscalType } from "./FiscalBadge";
 export type { BadgeSize } from "./badge-sizing";
 export { Field } from "./Field";
+export {
+  GoogleLogo,
+  InstagramLogo,
+  MesitaLogo,
+  WhatsAppLogo,
+  FacebookLogo,
+} from "./BrandLogo";

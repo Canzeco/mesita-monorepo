@@ -43,6 +43,7 @@ export type Venue = {
   lat: number | null;
   lng: number | null;
   address: string | null;
+  timezone: string | null;
   closes_at: string | null;
   hours: VenueHours | null;
   phone: string | null;

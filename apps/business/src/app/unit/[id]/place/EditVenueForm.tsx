@@ -21,6 +21,8 @@ import {
   Save,
   Check,
   Loader2,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -29,7 +31,12 @@ import {
   type UpdateVenueInput,
   type VenueHours,
 } from "@/lib/api/venues";
-import { Field } from "@/components/shared";
+import {
+  Field,
+  GoogleLogo,
+  InstagramLogo,
+  MesitaLogo,
+} from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import {
   INPUT_CLASS as INPUT,
@@ -39,28 +46,32 @@ import {
 // Place page driven by the Notion Components spec:
 //   - M-Place-V=YES → component renders here
 //   - Manager-E=YES → component is editable; otherwise read-only
-// Editable values are persisted through manager-update-unit. Read-only
-// signals (price level, address, Google + Mesita ratings, follower counts)
-// flow in from the venue payload and are not surfaced as inputs.
+// Read-only signal & metadata fields fall back to a "not found yet" note
+// when the value is null so the manager understands the enrichment pipeline
+// is still working on it — except Name + Category, which are always
+// manager-authored and therefore never get the note.
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-type DayHours = { open: string; close: string; closed: boolean };
+type HoursRange = { open: string; close: string };
+type DayShifts = { ranges: HoursRange[]; closed: boolean };
 
 const DAYS: { key: DayKey; label: string; long: keyof VenueHours }[] = [
-  { key: "mon", label: "Monday", long: "monday" },
-  { key: "tue", label: "Tuesday", long: "tuesday" },
-  { key: "wed", label: "Wednesday", long: "wednesday" },
-  { key: "thu", label: "Thursday", long: "thursday" },
-  { key: "fri", label: "Friday", long: "friday" },
-  { key: "sat", label: "Saturday", long: "saturday" },
-  { key: "sun", label: "Sunday", long: "sunday" },
+  { key: "mon", label: "Mon", long: "monday" },
+  { key: "tue", label: "Tue", long: "tuesday" },
+  { key: "wed", label: "Wed", long: "wednesday" },
+  { key: "thu", label: "Thu", long: "thursday" },
+  { key: "fri", label: "Fri", long: "friday" },
+  { key: "sat", label: "Sat", long: "saturday" },
+  { key: "sun", label: "Sun", long: "sunday" },
 ];
+
+const MAX_SHIFTS_PER_DAY = 2;
 
 type FormState = {
   name: string;
   category: string;
   description: string;
-  hours: Record<DayKey, DayHours>;
+  hours: Record<DayKey, DayShifts>;
   menu_pdf_url: string;
   tags: string[];
   phone: string;
@@ -90,6 +101,9 @@ const VENUE_NAME_MAX = 120;
 const DESCRIPTION_MAX = 600;
 const TAG_MAX = 40;
 
+const NOT_FOUND_NOTE =
+  "We couldn't pull this from the web yet. The enrichment pipeline keeps trying — refresh in a few minutes or reach out to support.";
+
 function nullableUrl(v: string): string | null {
   const t = v.trim();
   if (t === "") return null;
@@ -104,27 +118,38 @@ function nullable(v: string): string | null {
   return t === "" ? null : t;
 }
 
-function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayHours> {
-  const out = {} as Record<DayKey, DayHours>;
+function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayShifts> {
+  const out = {} as Record<DayKey, DayShifts>;
   for (const d of DAYS) {
-    const ranges = h?.[d.long];
-    const first = ranges && ranges.length > 0 ? ranges[0] : null;
-    out[d.key] = first
-      ? { open: first.open, close: first.close, closed: false }
-      : { open: "", close: "", closed: !first };
+    const ranges = h?.[d.long] ?? null;
+    if (ranges === null) {
+      // No key for the day → treat as unknown (default to a single empty
+      // input rather than "Closed" so the manager isn't surprised).
+      out[d.key] = { ranges: [{ open: "", close: "" }], closed: false };
+    } else if (ranges.length === 0) {
+      out[d.key] = { ranges: [], closed: true };
+    } else {
+      out[d.key] = {
+        ranges: ranges.slice(0, MAX_SHIFTS_PER_DAY).map((r) => ({
+          open: r.open,
+          close: r.close,
+        })),
+        closed: false,
+      };
+    }
   }
   return out;
 }
 
-function formHoursToVenue(form: Record<DayKey, DayHours>): VenueHours {
+function formHoursToVenue(form: Record<DayKey, DayShifts>): VenueHours {
   const out: VenueHours = {};
   for (const d of DAYS) {
     const v = form[d.key];
     if (v.closed) continue;
-    const open = v.open.trim();
-    const close = v.close.trim();
-    if (!open || !close) continue;
-    out[d.long] = [{ open, close }];
+    const clean = v.ranges
+      .map((r) => ({ open: r.open.trim(), close: r.close.trim() }))
+      .filter((r) => r.open && r.close);
+    if (clean.length > 0) out[d.long] = clean;
   }
   return out;
 }
@@ -176,7 +201,10 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       id: venue.id,
       name: trimmedName.slice(0, VENUE_NAME_MAX),
       category: nullable(v.category),
-      description: v.description.trim() === "" ? null : v.description.trim().slice(0, DESCRIPTION_MAX),
+      description:
+        v.description.trim() === ""
+          ? null
+          : v.description.trim().slice(0, DESCRIPTION_MAX),
       hours: formHoursToVenue(v.hours),
       menu_pdf_url: nullableUrl(v.menu_pdf_url),
       tags: v.tags
@@ -216,7 +244,9 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <BasicsSection venue={venue} v={v} set={set} />
+      <ChannelsAtAGlance v={v} />
       <PrimaryChannelsSection venue={venue} v={v} set={set} />
+      <PrChannelsSection v={v} set={set} />
       <SecondaryChannelsSection v={v} set={set} />
       <SignalsSection venue={venue} />
 
@@ -324,15 +354,71 @@ function BasicsSection({
       <ReadOnly
         label="Price level"
         value={
-          venue.price_level != null ? (PRICE_LABEL[venue.price_level] ?? "—") : "—"
+          venue.price_level != null ? PRICE_LABEL[venue.price_level] : null
         }
+        empty="Google doesn't list a price tier for this place."
+      />
+
+      <ReadOnly
+        label="Timezone"
+        value={venue.timezone}
+        icon={<Clock className="h-4 w-4" />}
       />
 
       <ReadOnly
         label="Address"
-        value={venue.address ?? ""}
+        value={venue.address}
         icon={<MapPin className="h-4 w-4" />}
       />
+    </Section>
+  );
+}
+
+function ChannelsAtAGlance({ v }: { v: FormState }) {
+  // Compact read-only mosaic of every channel the venue advertises. Lets a
+  // manager scan one box to see what's filled in vs. missing, without
+  // hunting through three separate edit sections below.
+  const items: { label: string; value: string; icon: React.ReactNode }[] = [
+    { label: "Phone", value: v.phone, icon: <PhoneIcon className="h-3.5 w-3.5" /> },
+    { label: "WhatsApp", value: v.whatsapp_url, icon: <MessageCircle className="h-3.5 w-3.5" /> },
+    { label: "Email", value: v.email, icon: <Mail className="h-3.5 w-3.5" /> },
+    { label: "Website", value: v.website_url, icon: <Globe className="h-3.5 w-3.5" /> },
+    { label: "Instagram", value: v.instagram_url, icon: <Instagram className="h-3.5 w-3.5" /> },
+    { label: "Facebook", value: v.facebook_url, icon: <Facebook className="h-3.5 w-3.5" /> },
+    { label: "TikTok", value: v.tiktok_url, icon: <Music2 className="h-3.5 w-3.5" /> },
+    { label: "OpenTable", value: v.opentable_url, icon: <CalendarCheck className="h-3.5 w-3.5" /> },
+    { label: "TripAdvisor", value: v.tripadvisor_url, icon: <Star className="h-3.5 w-3.5" /> },
+    { label: "Rappi", value: v.rappi_url, icon: <Bike className="h-3.5 w-3.5" /> },
+    { label: "Uber Eats", value: v.uber_eats_url, icon: <Bike className="h-3.5 w-3.5" /> },
+  ];
+  const filled = items.filter((i) => i.value.trim() !== "");
+  const missing = items.filter((i) => i.value.trim() === "");
+  const prCount = v.whatsapp_pr_urls.filter(Boolean).length + v.instagram_pr_urls.filter(Boolean).length;
+  return (
+    <Section
+      title="Channels at a glance"
+      subtitle={`${filled.length} of ${items.length} channels filled · ${prCount} PR contact${prCount === 1 ? "" : "s"}`}
+    >
+      <div className="flex flex-wrap gap-1.5">
+        {filled.map((i) => (
+          <span
+            key={i.label}
+            className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+          >
+            {i.icon}
+            {i.label}
+          </span>
+        ))}
+        {missing.map((i) => (
+          <span
+            key={i.label}
+            className="border-border bg-muted/40 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border border-dashed px-2.5 py-1 text-[11px] font-medium"
+          >
+            {i.icon}
+            {i.label}
+          </span>
+        ))}
+      </div>
     </Section>
   );
 }
@@ -353,14 +439,14 @@ function PrimaryChannelsSection({
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <UrlField
-          label="Phone"
+          label="Phone number"
           icon={<PhoneIcon className="h-4 w-4" />}
           placeholder="+52 444 833 5050"
           value={v.phone}
           onChange={(val) => set("phone", val)}
         />
         <UrlField
-          label="WhatsApp"
+          label="WhatsApp number"
           icon={<MessageCircle className="h-4 w-4" />}
           placeholder="https://wa.me/52…"
           value={v.whatsapp_url}
@@ -389,9 +475,35 @@ function PrimaryChannelsSection({
         />
       </div>
 
+      <ReadOnly
+        label="Google Business listing"
+        value={venue.google_business_url}
+        icon={<Building2 className="h-4 w-4" />}
+      />
+      <ReadOnly
+        label="Google Maps link"
+        value={venue.google_maps_url}
+        icon={<MapPin className="h-4 w-4" />}
+      />
+    </Section>
+  );
+}
+
+function PrChannelsSection({
+  v,
+  set,
+}: {
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
+  return (
+    <Section
+      title="PR channels"
+      subtitle="Personal accounts of the PRs who decide who gets in. Mostly bars and clubs — leave blank otherwise."
+    >
       <Field
         label="WhatsApp PR number(s)"
-        hint="Extra concierge / PR lines guests can reach when they're VIPs."
+        hint="Add a wa.me link for each PR — the guest deep-links straight into a private chat."
       >
         <UrlList
           icon={<MessageCircle className="h-4 w-4" />}
@@ -400,10 +512,9 @@ function PrimaryChannelsSection({
           placeholder="https://wa.me/52…"
         />
       </Field>
-
       <Field
         label="Instagram PR username(s)"
-        hint="Additional Instagram handles for PR / events."
+        hint="Personal Instagram handles, not the venue's main account."
       >
         <UrlList
           icon={<Instagram className="h-4 w-4" />}
@@ -412,17 +523,6 @@ function PrimaryChannelsSection({
           placeholder="https://instagram.com/…"
         />
       </Field>
-
-      <ReadOnly
-        label="Google Business listing"
-        value={venue.google_business_url ?? ""}
-        icon={<Building2 className="h-4 w-4" />}
-      />
-      <ReadOnly
-        label="Google Maps link"
-        value={venue.google_maps_url ?? ""}
-        icon={<MapPin className="h-4 w-4" />}
-      />
     </Section>
   );
 }
@@ -488,28 +588,65 @@ function SecondaryChannelsSection({
 }
 
 function SignalsSection({ venue }: { venue: MyVenue }) {
-  const stars: { label: string; value: number | null }[] = [
-    { label: "Google · Overall", value: venue.google_stars_overall },
-    { label: "Mesita · Overall", value: venue.mesita_stars_overall },
-    { label: "Mesita · Food", value: venue.mesita_stars_food },
-    { label: "Mesita · Service", value: venue.mesita_stars_service },
-    { label: "Mesita · Ambience", value: venue.mesita_stars_ambience },
+  const stars: {
+    label: string;
+    value: number | null;
+    logo: React.ReactNode;
+    accent: string;
+  }[] = [
+    {
+      label: "Google · Overall",
+      value: venue.google_stars_overall,
+      logo: <GoogleLogo size={14} />,
+      accent: "text-foreground",
+    },
+    {
+      label: "Mesita · Overall",
+      value: venue.mesita_stars_overall,
+      logo: <MesitaLogo size={14} />,
+      accent: "text-foreground",
+    },
+    {
+      label: "Mesita · Food",
+      value: venue.mesita_stars_food,
+      logo: <MesitaLogo size={14} />,
+      accent: "text-foreground",
+    },
+    {
+      label: "Mesita · Service",
+      value: venue.mesita_stars_service,
+      logo: <MesitaLogo size={14} />,
+      accent: "text-foreground",
+    },
+    {
+      label: "Mesita · Ambience",
+      value: venue.mesita_stars_ambience,
+      logo: <MesitaLogo size={14} />,
+      accent: "text-foreground",
+    },
   ];
-  const counts: { label: string; value: string }[] = [
+  const counts: {
+    label: string;
+    value: string;
+    logo: React.ReactNode;
+  }[] = [
     {
-      label: "Google visitors & reviews",
+      label: "Google · visitors & reviews",
       value: visitorReview(venue.google_visitor_count, venue.google_review_count),
+      logo: <GoogleLogo size={14} />,
     },
     {
-      label: "Mesita visitors & reviews",
+      label: "Mesita · visitors & reviews",
       value: visitorReview(venue.mesita_visitor_count, venue.mesita_review_count),
+      logo: <MesitaLogo size={14} />,
     },
     {
-      label: "Instagram followers",
+      label: "Instagram · followers",
       value:
         venue.instagram_followers_count == null
           ? "—"
           : formatCount(venue.instagram_followers_count),
+      logo: <InstagramLogo size={14} />,
     },
   ];
 
@@ -524,10 +661,11 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
             key={s.label}
             className="border-border bg-muted/40 flex flex-col rounded-xl border p-3"
           >
-            <p className="text-muted-foreground text-[10px] font-medium tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-medium tracking-[0.12em] uppercase">
+              {s.logo}
               {s.label}
             </p>
-            <p className="font-display mt-1 flex items-baseline gap-1 text-xl font-semibold tabular-nums">
+            <p className={cn("font-display mt-1 flex items-baseline gap-1 text-xl font-semibold tabular-nums", s.accent)}>
               <Star className="text-secondary h-3.5 w-3.5" />
               {s.value == null ? "—" : s.value.toFixed(1)}
             </p>
@@ -540,7 +678,8 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
             key={c.label}
             className="border-border bg-muted/40 rounded-xl border p-3"
           >
-            <p className="text-muted-foreground text-[10px] font-medium tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-medium tracking-[0.12em] uppercase">
+              {c.logo}
               {c.label}
             </p>
             <p className="font-display mt-1 text-base font-semibold tabular-nums">
@@ -692,11 +831,45 @@ function HoursEditor({
   hours,
   onChange,
 }: {
-  hours: Record<DayKey, DayHours>;
-  onChange: (h: Record<DayKey, DayHours>) => void;
+  hours: Record<DayKey, DayShifts>;
+  onChange: (h: Record<DayKey, DayShifts>) => void;
 }) {
-  const setDay = (key: DayKey, patch: Partial<DayHours>) =>
-    onChange({ ...hours, [key]: { ...hours[key], ...patch } });
+  const setDay = (key: DayKey, next: DayShifts) =>
+    onChange({ ...hours, [key]: next });
+
+  const setRange = (
+    key: DayKey,
+    idx: number,
+    patch: Partial<HoursRange>,
+  ) => {
+    const day = hours[key];
+    const ranges = day.ranges.map((r, i) =>
+      i === idx ? { ...r, ...patch } : r,
+    );
+    setDay(key, { ...day, ranges });
+  };
+
+  const addShift = (key: DayKey) => {
+    const day = hours[key];
+    if (day.ranges.length >= MAX_SHIFTS_PER_DAY) return;
+    setDay(key, {
+      closed: false,
+      ranges: [...day.ranges, { open: "", close: "" }],
+    });
+  };
+
+  const removeShift = (key: DayKey, idx: number) => {
+    const day = hours[key];
+    const ranges = day.ranges.filter((_, i) => i !== idx);
+    setDay(key, { ...day, ranges: ranges.length > 0 ? ranges : [{ open: "", close: "" }] });
+  };
+
+  const markClosed = (key: DayKey) =>
+    setDay(key, { closed: true, ranges: [] });
+
+  const reopen = (key: DayKey) =>
+    setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
+
   return (
     <div className="border-border bg-muted/20 flex flex-col divide-y rounded-xl border">
       {DAYS.map(({ key, label }) => {
@@ -704,46 +877,76 @@ function HoursEditor({
         return (
           <div
             key={key}
-            className="grid grid-cols-[100px_1fr] items-center gap-3 px-3 py-2.5"
+            className="grid grid-cols-[60px_1fr] items-start gap-3 px-3 py-2.5"
           >
-            <span className="text-muted-foreground text-xs font-medium">
+            <span className="text-muted-foreground pt-1.5 text-xs font-semibold tracking-wide uppercase">
               {label}
             </span>
             {d.closed ? (
               <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground text-xs">Closed</span>
+                <span className="text-muted-foreground text-xs italic">
+                  Closed all day
+                </span>
                 <button
                   type="button"
-                  onClick={() =>
-                    setDay(key, { closed: false, open: "", close: "" })
-                  }
+                  onClick={() => reopen(key)}
                   className="text-muted-foreground hover:text-foreground text-[11px] font-semibold underline-offset-2 hover:underline"
                 >
                   Set hours
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <input
-                  value={d.open}
-                  onChange={(e) => setDay(key, { open: e.target.value })}
-                  placeholder="13:00"
-                  className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
-                />
-                <span className="text-muted-foreground text-[11px]">→</span>
-                <input
-                  value={d.close}
-                  onChange={(e) => setDay(key, { close: e.target.value })}
-                  placeholder="00:00"
-                  className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setDay(key, { closed: true })}
-                  className="text-muted-foreground hover:text-foreground ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
-                >
-                  Closed
-                </button>
+              <div className="flex flex-col gap-1.5">
+                {d.ranges.map((r, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      value={r.open}
+                      onChange={(e) =>
+                        setRange(key, idx, { open: e.target.value })
+                      }
+                      placeholder="13:00"
+                      className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
+                    />
+                    <span className="text-muted-foreground text-[11px]">→</span>
+                    <input
+                      value={r.close}
+                      onChange={(e) =>
+                        setRange(key, idx, { close: e.target.value })
+                      }
+                      placeholder="00:00"
+                      className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
+                    />
+                    {d.ranges.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeShift(key, idx)}
+                        aria-label="Remove this shift"
+                        className="text-muted-foreground hover:text-destructive flex h-7 w-7 items-center justify-center rounded-full transition"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div className="flex items-center gap-3">
+                  {d.ranges.length < MAX_SHIFTS_PER_DAY && (
+                    <button
+                      type="button"
+                      onClick={() => addShift(key)}
+                      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] font-semibold underline-offset-2 hover:underline"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add second shift
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => markClosed(key)}
+                    className="text-muted-foreground hover:text-foreground ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
+                  >
+                    Mark closed
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -811,19 +1014,39 @@ function ReadOnly({
   label,
   value,
   icon,
+  empty,
 }: {
   label: string;
-  value: string;
+  value: string | null;
   icon?: React.ReactNode;
+  // Override the default "couldn't pull this" note for cases where the
+  // canonical source can legitimately not have the field (e.g. Google
+  // doesn't always assign a price tier).
+  empty?: string;
 }) {
+  const isEmpty = !value || value.trim() === "";
   return (
     <div>
       <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
         {icon && <span className="text-foreground/60">{icon}</span>}
         {label}
       </span>
-      <div className="border-border bg-muted/40 text-muted-foreground rounded-xl border px-3 py-2.5 text-sm break-words">
-        {value || "—"}
+      <div
+        className={cn(
+          "border-border rounded-xl border px-3 py-2.5 text-sm break-words",
+          isEmpty
+            ? "bg-muted/20 text-muted-foreground/80 italic"
+            : "bg-muted/40 text-muted-foreground",
+        )}
+      >
+        {isEmpty ? (
+          <span className="flex items-start gap-2">
+            <Sparkles className="text-muted-foreground/60 mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{empty ?? NOT_FOUND_NOTE}</span>
+          </span>
+        ) : (
+          value
+        )}
       </div>
     </div>
   );
