@@ -887,83 +887,95 @@ function HoursEditor({
   const reopen = (key: DayKey) =>
     setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
 
+  // Week grid — every day is a column so the 7 days live in one strip
+  // instead of a stack that left half the row blank. Wraps to 4 / 2
+  // columns on smaller breakpoints.
   return (
-    <div className="border-border bg-muted/20 flex flex-col divide-y rounded-xl border">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
       {DAYS.map(({ key, label }) => {
         const d = hours[key];
+        const isClosed = d.closed;
         return (
           <div
             key={key}
-            className="grid grid-cols-[60px_1fr] items-start gap-3 px-3 py-2.5"
+            className={cn(
+              "border-border flex flex-col gap-2 rounded-xl border p-2.5 transition",
+              isClosed ? "bg-muted/30" : "bg-card",
+            )}
           >
-            <span className="text-muted-foreground pt-1.5 text-xs font-semibold tracking-wide uppercase">
-              {label}
-            </span>
-            {d.closed ? (
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground text-xs italic">
-                  Closed all day
-                </span>
-                <button
-                  type="button"
-                  onClick={() => reopen(key)}
-                  className="text-muted-foreground hover:text-foreground text-[11px] font-semibold underline-offset-2 hover:underline"
-                >
-                  Set hours
-                </button>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+                {label}
+              </span>
+              <button
+                type="button"
+                onClick={() => (isClosed ? reopen(key) : markClosed(key))}
+                aria-label={isClosed ? "Set hours" : "Mark closed"}
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase transition",
+                  isClosed
+                    ? "bg-foreground text-background hover:opacity-90"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {isClosed ? "Open" : "Closed"}
+              </button>
+            </div>
+
+            {isClosed ? (
+              <p className="text-muted-foreground py-2 text-center text-[11px] italic">
+                Closed
+              </p>
             ) : (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 {d.ranges.map((r, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+                  <div
+                    key={idx}
+                    className="border-border/60 bg-muted/20 relative flex flex-col gap-1 rounded-lg border p-1.5"
+                  >
                     <input
                       value={r.open}
                       onChange={(e) =>
                         setRange(key, idx, { open: e.target.value })
                       }
                       placeholder="13:00"
-                      className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
+                      aria-label={`${label} shift ${idx + 1} opens at`}
+                      className="bg-card border-border h-7 w-full rounded-md border px-1.5 text-center text-xs tabular-nums outline-none focus:border-foreground/40"
                     />
-                    <span className="text-muted-foreground text-[11px]">→</span>
+                    <span className="text-muted-foreground text-center text-[10px]">
+                      ↓
+                    </span>
                     <input
                       value={r.close}
                       onChange={(e) =>
                         setRange(key, idx, { close: e.target.value })
                       }
                       placeholder="00:00"
-                      className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
+                      aria-label={`${label} shift ${idx + 1} closes at`}
+                      className="bg-card border-border h-7 w-full rounded-md border px-1.5 text-center text-xs tabular-nums outline-none focus:border-foreground/40"
                     />
                     {d.ranges.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeShift(key, idx)}
                         aria-label="Remove this shift"
-                        className="text-muted-foreground hover:text-destructive flex h-7 w-7 items-center justify-center rounded-full transition"
+                        className="text-muted-foreground hover:text-destructive absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background transition"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-3 w-3" />
                       </button>
                     )}
                   </div>
                 ))}
-                <div className="flex items-center gap-3">
-                  {d.ranges.length < MAX_SHIFTS_PER_DAY && (
-                    <button
-                      type="button"
-                      onClick={() => addShift(key)}
-                      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] font-semibold underline-offset-2 hover:underline"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Add second shift
-                    </button>
-                  )}
+                {d.ranges.length < MAX_SHIFTS_PER_DAY && (
                   <button
                     type="button"
-                    onClick={() => markClosed(key)}
-                    className="text-muted-foreground hover:text-foreground ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
+                    onClick={() => addShift(key)}
+                    className="text-muted-foreground hover:text-foreground hover:border-foreground/30 border-border inline-flex items-center justify-center gap-1 rounded-md border border-dashed py-1 text-[10px] font-semibold transition"
                   >
-                    Mark closed
+                    <Plus className="h-3 w-3" />
+                    Shift
                   </button>
-                </div>
+                )}
               </div>
             )}
           </div>
