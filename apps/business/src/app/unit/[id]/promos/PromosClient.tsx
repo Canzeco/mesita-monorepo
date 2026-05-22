@@ -212,7 +212,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       {/* 2. Plan */}
       <Section
         title="Plan"
-        subtitle="Free auto-lists you and accepts AI reservations. Pro adds priority discovery, customer-acquisition tools, and the dashboard."
+        subtitle="Both plans put you on Mesita. Pro adds promos, more visibility, and automatic Instagram story verification."
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {PLANS.map((p) => {
@@ -352,7 +352,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       {/* 4. Advanced Promos */}
       <Section
         title="Advanced Promos"
-        subtitle="Stack extra dimensions on top of the tier rates — communities, demographics, geography, custom filters. Coming soon; off by default."
+        subtitle="Run different rates for specific groups of guests — instead of the same rate for every Bronze, Silver, Gold, and Diamond. Coming soon."
         enabled={advancedEnabled}
         onEnabledChange={handleAdvancedToggle}
       >
@@ -827,9 +827,9 @@ function AdvancedComingSoon() {
         Coming soon
       </span>
       <p className="text-muted-foreground max-w-md text-[12px] leading-relaxed">
-        Stack extra dimensions on top of the tier rates — communities,
-        demographics, geography, date windows, custom AND / OR filters.
-        Landing with the segments table.
+        Pick a specific group of guests and give them their own rate.
+        Mix and match across schools, age, city, day of the week, and
+        custom filters — instead of one flat rate per tier.
       </p>
       <div className="flex flex-wrap justify-center gap-1.5">
         {ADVANCED_AXES.map((a) => (

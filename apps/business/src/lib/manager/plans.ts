@@ -45,8 +45,15 @@ export const PLANS: PlanRow[] = [
     priceLabel: "$0 MX / yr",
     visibility: "Minimum",
     blurb:
-      "Auto-listed from Google Business. Discoverable + accepts AI reservations. No coupons, no dashboard writes.",
-    bullets: ["Auto-listed", "AI reservations", "No coupon mechanic"],
+      "Auto-listed on Mesita from your Google Business profile. You appear on the platform, but you can't offer promos and your visibility is lower than Pro.",
+    bullets: [
+      "Appears on the platform",
+      "Auto-listed from Google Business",
+      "Accepts AI reservations",
+      "Lower visibility than Pro",
+      "Cannot offer promos",
+      "No automatic Instagram story verification",
+    ],
   },
   {
     id: "pro",
@@ -54,16 +61,15 @@ export const PLANS: PlanRow[] = [
     price: "$500",
     cadence: "MX / year",
     priceLabel: "$500 MX / yr",
-    // Visibility shown here is the ceiling Pro reaches (Cashback venues).
-    // Discount Pros cap at Priority — Promos calls that out separately.
     visibility: "Maximum",
     blurb:
-      "Customer acquisition tools + priority discovery. $500 / year, per venue, cancel anytime. Pick Cashback or Discount in the mechanic box below — Cashback unlocks the Maximum visibility ceiling.",
+      "Everything Free has, plus the tools to bring guests back. $500 / year, per venue, cancel anytime.",
     bullets: [
-      "Priority placement on swipe, map, catalog, AI planner",
-      "Welcome coupon + per-tier rates",
-      "Story bonus & AI verification",
-      "Full Place / Rewards / Team dashboard",
+      "Appears on the platform",
+      "More visibility than Free",
+      "Can offer promos — Welcome coupon + per-tier rates",
+      "Automatic Instagram story verification",
+      "Accepts AI reservations",
     ],
     featured: true,
   },
