@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, Ticket, Heart, Compass, RotateCcw } from "lucide-react";
+import { X, Ticket, Heart, Compass, RotateCcw, Hand } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/guest/VenueSwipeCardFace";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -10,6 +10,8 @@ import type { Venue } from "@/lib/api/venues";
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
 const MIN_FLICK_DISTANCE = 16;
+const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
+const TUTORIAL_AUTO_DISMISS_MS = 5500;
 
 export function SwipeDeck({
   venues,
@@ -44,9 +46,32 @@ function Deck({ venues }: { venues: Venue[] }) {
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
+  const [showTutorial, setShowTutorial] = useState(false);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
   const lockedRef = useRef<null | "swipe" | "ignore">(null);
+
+  // First-visit gesture hint. Persisted in localStorage so it shows
+  // exactly once per browser. Dismissed on first swipe or after a
+  // short timer — whichever happens first.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(TUTORIAL_STORAGE_KEY)) return;
+    setShowTutorial(true);
+    const t = window.setTimeout(() => {
+      setShowTutorial(false);
+      window.localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
+    }, TUTORIAL_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  const dismissTutorial = () => {
+    if (!showTutorial) return;
+    setShowTutorial(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
+    }
+  };
 
   // Past the last card the deck is exhausted — no silent wrap. Looping
   // back to the first card with a tiny flash was reading as "the last
@@ -87,6 +112,7 @@ function Deck({ venues }: { venues: Venue[] }) {
     lastRef.current = { x: e.clientX, t };
     setDragging(true);
     lockedRef.current = null;
+    dismissTutorial();
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -253,6 +279,24 @@ function Deck({ venues }: { venues: Venue[] }) {
               <X className="h-6 w-6 stroke-[3]" />
               Skip
             </span>
+          </div>
+        )}
+
+        {showTutorial && (
+          <div className="animate-in fade-in pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] duration-500">
+            <div className="flex flex-col items-center gap-5">
+              <div className="animate-swipe-hint">
+                <Hand
+                  className="h-20 w-20 text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
+                  strokeWidth={1.4}
+                />
+              </div>
+              <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
+                Swipe left to skip
+                <span className="mx-1.5 opacity-50">·</span>
+                right to save
+              </p>
+            </div>
           </div>
         )}
       </div>
