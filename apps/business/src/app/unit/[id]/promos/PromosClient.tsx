@@ -35,6 +35,9 @@ import {
   PLANS,
   mechanicForPlan,
   visibilityForPlan,
+  displayPlanForVenue,
+  dbPlanForSelection,
+  type DisplayPlanId,
   type PlanVisibility,
 } from "@/lib/manager/plans";
 
@@ -142,18 +145,26 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   const isFormal = venue.fiscal_type === "formal";
   const mechanic = mechanicForPlan(plan);
   const savedMechanic = mechanicForPlan(venue.plan);
+  const currentDisplayPlan: DisplayPlanId = displayPlanForVenue(venue.plan);
 
-  const [pendingPlanId, setPendingPlanId] = useState<VenuePlan | null>(null);
+  const [pendingPlanId, setPendingPlanId] = useState<DisplayPlanId | null>(
+    null,
+  );
 
-  const selectPlan = (target: VenuePlan) => {
-    if (target === venue.plan || pending) return;
+  // The picker offers Free / Pro (display level). The Pro button writes
+  // formal_pro or informal_pro depending on the venue's current fiscal
+  // type, which is elected in the Mechanic section below.
+  const selectPlan = (target: DisplayPlanId) => {
+    if (target === currentDisplayPlan || pending) return;
+    const dbPlan = dbPlanForSelection(target, venue.fiscal_type);
+    if (dbPlan === venue.plan) return;
     setError(null);
     setSaved(false);
-    setPlan(target);
+    setPlan(dbPlan);
     setPendingPlanId(target);
     startSubmit(async () => {
       try {
-        await apiUpdateVenue(supabase, { id: venue.id, plan: target });
+        await apiUpdateVenue(supabase, { id: venue.id, plan: dbPlan });
         setSaved(true);
         router.refresh();
       } catch (err) {
@@ -184,39 +195,23 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       {/* ── Plan ─────────────────────────────────────────────────────── */}
       <Section
         title="Plan"
-        subtitle="Pick what you're buying. Higher tier unlocks more visibility, priority reservations, and customer-acquisition tools. The mechanic is pinned by how you settle payments — Cashback routes through Mesita's wallet, Discount lands at the bill. Cancel anytime."
+        subtitle="Two modes. Free auto-lists you and accepts AI reservations. Pro adds priority discovery, customer-acquisition tools, and the dashboard. Cancel anytime."
       >
-        <FiscalSegmentedToggle
-          current={venue.fiscal_type}
-          pending={fiscalPending}
-          onSwitch={switchFiscal}
-        />
-
-        {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {PLANS.map((p) => {
-            const isCurrent = p.id === venue.plan;
-            const scope = p.fiscalScope;
-            const wrongFiscal =
-              scope !== "any" &&
-              ((isFormal && scope === "informal") ||
-                (!isFormal && scope === "formal"));
+            const isCurrent = p.id === currentDisplayPlan;
             const isPending = pendingPlanId === p.id;
             const buttonLabel = isCurrent
               ? "Current plan"
-              : wrongFiscal
-                ? "Switch mechanic first"
-                : p.id === "free"
-                  ? "Use Free"
-                  : `Become ${p.label}`;
+              : p.id === "free"
+                ? "Switch to Free"
+                : "Become Pro";
             return (
               <Card
                 key={p.id}
                 className={cn(
                   "relative gap-3 rounded-2xl",
                   p.featured && "border-foreground shadow-elev",
-                  wrongFiscal && !isCurrent && "opacity-60",
                 )}
               >
                 {isCurrent && (
@@ -239,14 +234,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
                       {p.cadence}
                     </span>
                   </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <Badge variant="secondary" className="rounded-full">
-                      {p.mechanic}
-                    </Badge>
-                    <Badge variant="secondary" className="rounded-full">
-                      {p.visibility} visibility
-                    </Badge>
-                  </div>
                   <CardDescription className="text-[13px] leading-relaxed">
                     {p.blurb}
                   </CardDescription>
@@ -268,7 +255,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
                     size="lg"
                     variant={p.featured ? "default" : "outline"}
                     onClick={() => selectPlan(p.id)}
-                    disabled={isCurrent || wrongFiscal || pending}
+                    disabled={isCurrent || pending}
                     className={cn(
                       "rounded-full",
                       p.featured &&
@@ -287,8 +274,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
           })}
         </div>
 
-        <PaymentRailLine isFormal={isFormal} />
-
         {(error || saved) && (
           <p
             className={cn(
@@ -305,6 +290,22 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         {savedMechanic === "None" && (
           <FreePlanNotice fiscalType={venue.fiscal_type} />
         )}
+      </Section>
+
+      {/* ── Mechanic (Cashback vs Discount) ─────────────────────────── */}
+      <Section
+        title="Reward mechanic"
+        subtitle="How you reward returning guests. Cashback routes the reward through Mesita's wallet on card payments — unlocks Maximum visibility. Discount applies straight at the bill, cash or card — caps at Priority visibility. Pro venues only; toggle anytime."
+      >
+        <FiscalSegmentedToggle
+          current={venue.fiscal_type}
+          pending={fiscalPending}
+          onSwitch={switchFiscal}
+        />
+
+        {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
+
+        <PaymentRailLine isFormal={isFormal} />
       </Section>
 
       <Section
