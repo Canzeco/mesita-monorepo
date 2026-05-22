@@ -14,9 +14,6 @@ import {
   Loader2,
   MapPin,
   Percent,
-  Sparkles,
-  Ticket,
-  TrendingUp,
   Users,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -34,7 +31,12 @@ import {
 import { TicketTypesCard } from "@/components/manager/TicketTypesCard";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { PLANS, mechanicForPlan, visibilityForPlan } from "@/lib/manager/plans";
+import {
+  PLANS,
+  mechanicForPlan,
+  visibilityForPlan,
+  type PlanVisibility,
+} from "@/lib/manager/plans";
 
 // Promos owns three layers of configuration in one page:
 //   1. Plan — pick Free / Pro Cashback / Pro Discount + mechanic toggle.
@@ -177,7 +179,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <PerformanceSection />
+      <VisibilityMeter plan={venue.plan} />
 
       {/* ── Plan ─────────────────────────────────────────────────────── */}
       <Section
@@ -550,43 +552,86 @@ function FreePlanNotice({ fiscalType }: { fiscalType: "formal" | "informal" }) {
 
 // ─── Performance ──────────────────────────────────────────────────────────
 
-// Top-of-page KPI band so a manager landing on Promos sees what their plan
-// is currently buying them. Mock numbers for now — the real read flows
-// through manager-get-overview once the analytics tables land. Same
-// approach as the Home page's WeekSnapshot.
-function PerformanceSection() {
-  const stats: {
-    label: string;
-    value: string;
-    delta: string;
-    Icon: typeof TrendingUp;
+// Top-of-page meter that anchors the whole Promos surface around the
+// product the venue actually buys here: visibility on Mesita. Renders a
+// 3-segment bar with the current tier filled (and the higher tiers
+// muted) so the gap to Maximum is visually obvious, with a one-line
+// CTA pointing to the plan that closes that gap.
+function VisibilityMeter({ plan }: { plan: VenuePlan }) {
+  const current = visibilityForPlan(plan);
+  const levels: {
+    label: PlanVisibility;
+    planLabel: string;
   }[] = [
-    { label: "Visits", value: "142", delta: "+18%", Icon: TrendingUp },
-    { label: "Coupons claimed", value: "64", delta: "+9", Icon: Ticket },
-    { label: "Reservations sent", value: "38", delta: "+12", Icon: Calendar },
-    { label: "Influenced spend", value: "MX$48,720", delta: "+MX$6.1K", Icon: Sparkles },
+    { label: "Minimum", planLabel: "Free" },
+    { label: "Priority", planLabel: "Pro Discount" },
+    { label: "Maximum", planLabel: "Pro Cashback" },
   ];
+  const currentIdx = levels.findIndex((l) => l.label === current);
+  const atMax = current === "Maximum";
+  const nextPlanLabel = atMax ? null : levels[levels.length - 1].planLabel;
+
   return (
     <Section
-      title="Performance"
-      subtitle="What your plan is buying you this month, vs. the previous 30 days."
+      title="Visibility on Mesita"
+      subtitle="The product you're buying here — how many guests see you across swipe, catalog, map, and the AI planner."
     >
-      <div className="border-border grid grid-cols-2 divide-x divide-y overflow-hidden rounded-2xl border md:grid-cols-4 md:divide-y-0">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-card px-4 py-4">
-            <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-              <s.Icon className="h-3 w-3" />
-              {s.label}
-            </p>
-            <p className="font-display mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-              {s.value}
-            </p>
-            <p className="text-secondary mt-0.5 text-[11px] font-semibold">
-              {s.delta}
-            </p>
-          </div>
-        ))}
+      <div className="grid grid-cols-3 gap-2">
+        {levels.map((l, i) => {
+          const reached = i <= currentIdx;
+          const isCurrent = i === currentIdx;
+          return (
+            <div key={l.label} className="flex flex-col gap-1.5">
+              <div
+                className={cn(
+                  "h-2.5 rounded-full transition",
+                  reached ? "bg-pink-gradient" : "bg-muted",
+                  isCurrent && "shadow-glow",
+                )}
+              />
+              <div className="flex items-baseline justify-between gap-1">
+                <span
+                  className={cn(
+                    "text-[10px] font-bold tracking-[0.12em] uppercase",
+                    reached ? "text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {l.label}
+                </span>
+                <span
+                  className={cn(
+                    "text-[9px] font-medium tracking-wider uppercase",
+                    isCurrent ? "text-primary" : "text-muted-foreground/70",
+                  )}
+                >
+                  {l.planLabel}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
+      <p className="text-muted-foreground text-[12px] leading-relaxed">
+        {atMax ? (
+          <>
+            You&apos;re at{" "}
+            <span className="text-foreground font-semibold">Maximum</span> —
+            top of every Mesita discovery surface. Nothing higher to buy.
+          </>
+        ) : (
+          <>
+            You&apos;re at{" "}
+            <span className="text-foreground font-semibold">{current}</span>.
+            Pick{" "}
+            <span className="text-foreground font-semibold">
+              {nextPlanLabel}
+            </span>{" "}
+            below for{" "}
+            <span className="text-foreground font-semibold">Maximum</span>{" "}
+            visibility.
+          </>
+        )}
+      </p>
     </Section>
   );
 }
