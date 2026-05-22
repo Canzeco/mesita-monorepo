@@ -319,11 +319,11 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
           </p>
           <p>
             <span className="text-foreground font-semibold">
-              Why Informal is 2× Formal.
+              Why Informal is 5× Formal.
             </span>{" "}
             Formal partners feed the Mesita wallet — transaction data and a
-            redemption network on the back-end. Informal pays more for the
-            same priority placement.
+            redemption network on the back-end. Informal pays a premium for
+            the same priority placement.
           </p>
           <p>
             <span className="text-foreground font-semibold">

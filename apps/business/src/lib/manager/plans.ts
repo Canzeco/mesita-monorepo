@@ -60,14 +60,14 @@ export const PLANS: PlanRow[] = [
   {
     id: "informal_pro",
     label: "Informal Pro",
-    price: "$400",
+    price: "$1,000",
     cadence: "MX / month",
-    priceLabel: "$400 MX / mo",
+    priceLabel: "$1,000 MX / mo",
     mechanic: "Discount",
     visibility: "Priority",
     fiscalScope: "informal",
     blurb:
-      "Instant discount on the cash bill. Priority placement. 2× formal because Mesita captures no wallet / data.",
+      "Instant discount on the cash bill. Priority placement. 5× formal because Mesita captures no wallet / data.",
     bullets: [
       "Per-tier discount rates",
       "Discount revealed at the bill — cash or card",
