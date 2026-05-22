@@ -14,6 +14,9 @@ import {
   Loader2,
   MapPin,
   Percent,
+  Sparkles,
+  Ticket,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -174,10 +177,12 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
   return (
     <div className="flex flex-col gap-5">
+      <PerformanceSection />
+
       {/* ── Plan ─────────────────────────────────────────────────────── */}
       <Section
         title="Plan"
-        subtitle="Three plans, per venue, cancel anytime. The coupon mechanic is pinned by your fiscal type — Formal runs cashback, Informal runs instant discount."
+        subtitle="Pick what you're buying. Higher tier unlocks more visibility, priority reservations, and customer-acquisition tools. Cancel anytime."
       >
         <FiscalSegmentedToggle
           current={venue.fiscal_type}
@@ -335,10 +340,12 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
       <VisibilitySection plan={venue.plan} />
 
-      {/* ── Segmentation ────────────────────────────────────────────── */}
+      <ReservationsSection plan={venue.plan} />
+
+      {/* ── Customers (segmentation) ──────────────────────────────── */}
       <Section
-        title="Basic segmentation"
-        subtitle="Two levers every venue gets: a Welcome coupon for first-time guests and per-tier rates for returning ones."
+        title="Customers"
+        subtitle="Buy guests into the door — a Welcome coupon converts first-timers, per-tier rates keep regulars coming back."
         enabled={basicEnabled}
         onEnabledChange={setBasicEnabled}
       >
@@ -347,8 +354,8 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       </Section>
 
       <Section
-        title="Advanced segmentation"
-        subtitle="Stack extra dimensions on top of the basic tier rates — communities, demographics, geography, custom rules. Coming soon, landing with the segments table."
+        title="Advanced customer rules"
+        subtitle="Stack extra dimensions on top of the tier rates — communities, demographics, geography, custom filters. Coming soon."
         enabled={advancedEnabled}
         onEnabledChange={setAdvancedEnabled}
       >
@@ -539,6 +546,148 @@ function FreePlanNotice({ fiscalType }: { fiscalType: "formal" | "informal" }) {
   );
 }
 
+// ─── Performance ──────────────────────────────────────────────────────────
+
+// Top-of-page KPI band so a manager landing on Promos sees what their plan
+// is currently buying them. Mock numbers for now — the real read flows
+// through manager-get-overview once the analytics tables land. Same
+// approach as the Home page's WeekSnapshot.
+function PerformanceSection() {
+  const stats: {
+    label: string;
+    value: string;
+    delta: string;
+    Icon: typeof TrendingUp;
+  }[] = [
+    { label: "Visits", value: "142", delta: "+18%", Icon: TrendingUp },
+    { label: "Coupons claimed", value: "64", delta: "+9", Icon: Ticket },
+    { label: "Reservations sent", value: "38", delta: "+12", Icon: Calendar },
+    { label: "Influenced spend", value: "MX$48,720", delta: "+MX$6.1K", Icon: Sparkles },
+  ];
+  return (
+    <Section
+      title="Performance"
+      subtitle="What your plan is buying you this month, vs. the previous 30 days."
+    >
+      <div className="border-border grid grid-cols-2 divide-x divide-y overflow-hidden rounded-2xl border md:grid-cols-4 md:divide-y-0">
+        {stats.map((s) => (
+          <div key={s.label} className="bg-card px-4 py-4">
+            <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+              <s.Icon className="h-3 w-3" />
+              {s.label}
+            </p>
+            <p className="font-display mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+              {s.value}
+            </p>
+            <p className="text-secondary mt-0.5 text-[11px] font-semibold">
+              {s.delta}
+            </p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+// ─── Reservations ─────────────────────────────────────────────────────────
+
+// Same ladder pattern as Visibility — Standard (Free) vs Priority (Pro) —
+// because reservations is its own product line: Mesita's AI agent contacts
+// venues through their existing channel (IG DM, WhatsApp, voice, OpenTable)
+// and sends high-intent guests their way. Pro venues jump the queue.
+function ReservationsSection({ plan }: { plan: VenuePlan }) {
+  const current = visibilityForPlan(plan);
+  const onPriority = current === "Priority";
+  return (
+    <Section
+      title="Reservations"
+      subtitle="Mesita's AI agent routes high-intent guests to your existing booking channel — Instagram DM, WhatsApp, voice, OpenTable. Pro venues jump the queue."
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ReservationCard
+          tier="Standard"
+          isCurrent={current === "Minimum"}
+          tone="bg-muted text-foreground"
+          bullets={[
+            "AI sends bookings to your existing channel",
+            "Standard routing — guests reach you alongside everyone",
+            "Best-effort response time",
+          ]}
+        />
+        <ReservationCard
+          tier="Priority"
+          isCurrent={current === "Priority"}
+          tone="bg-pink-gradient text-white"
+          featured
+          bullets={[
+            "Priority routing — your queue jumps the line",
+            "Story bonus + AI verification before the booking lands",
+            "Dedicated voice agent for VIPs",
+            "Same booking system, no migration needed",
+          ]}
+        />
+      </div>
+      {!onPriority && (
+        <p className="text-muted-foreground text-[12px] leading-relaxed">
+          You&apos;re on <span className="text-foreground font-semibold">Standard</span>
+          {" "}routing. Upgrade to a Pro plan above to put your reservations
+          first.
+        </p>
+      )}
+    </Section>
+  );
+}
+
+function ReservationCard({
+  tier,
+  isCurrent,
+  tone,
+  bullets,
+  featured,
+}: {
+  tier: "Standard" | "Priority";
+  isCurrent: boolean;
+  tone: string;
+  bullets: string[];
+  featured?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-border bg-card relative flex flex-col gap-3 rounded-2xl border p-4",
+        isCurrent && "border-foreground/40 shadow-elev",
+        !isCurrent && featured && "shadow-glow",
+        !isCurrent && !featured && "opacity-70",
+      )}
+    >
+      {isCurrent && (
+        <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+          Current
+        </Badge>
+      )}
+      <span
+        className={cn(
+          "inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase",
+          tone,
+          featured && "shadow-sm",
+        )}
+      >
+        {tier}
+      </span>
+      <ul className="flex flex-col gap-1.5 text-[12px]">
+        {bullets.map((b) => (
+          <li key={b} className="flex items-start gap-2 leading-snug">
+            <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ─── Visibility ───────────────────────────────────────────────────────────
+
 // Visibility ladder card. Shows the two plan tiers side-by-side with the
 // current one flagged. Designed to make the upgrade path visceral — a
 // manager glancing at this should immediately understand they're at
@@ -549,7 +698,7 @@ function VisibilitySection({ plan }: { plan: VenuePlan }) {
   return (
     <Section
       title="Visibility"
-      subtitle="How much of Mesita's discovery surface you appear on. Driven by your plan — Pro venues land in front of more guests across every channel."
+      subtitle="Buy your way onto more discovery surfaces. Higher tier, more guests see you across swipe, catalog, map, and the AI planner."
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <VisibilityCard
