@@ -171,15 +171,46 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     });
   };
 
-  // Segmentation toggles default on so a manager landing on the page sees
-  // the full configurator. UI-only state for now — when we wire venue-side
-  // persistence, these become venue.segmentation_{basic,advanced}_enabled
-  // backed by a write through apiUpdateVenue.
-  const [basicEnabled, setBasicEnabled] = useState(true);
-  // Advanced defaults off — most venues won't touch demographics / community
-  // / geo rules and we don't want a flashy "coming soon" panel to dominate
-  // their first impression. They can flip it on when they're ready.
-  const [advancedEnabled, setAdvancedEnabled] = useState(false);
+  // Segmentation toggles hydrate from the venue row so the manager's
+  // choice survives reloads. The DB defaults — basic true, advanced
+  // false — match the original UI-only behaviour, so existing rows
+  // backfill cleanly on migration 0019.
+  const [basicEnabled, setBasicEnabled] = useState(
+    venue.segmentation_basic_enabled,
+  );
+  const [advancedEnabled, setAdvancedEnabled] = useState(
+    venue.segmentation_advanced_enabled,
+  );
+
+  // Optimistic write — flip the local state immediately so the section
+  // collapses without network latency, then persist through
+  // manager-update-unit. On failure surface the error and roll the
+  // toggle back so the UI never lies about the saved state.
+  const writeToggle = (
+    field: "segmentation_basic_enabled" | "segmentation_advanced_enabled",
+    next: boolean,
+    rollback: () => void,
+  ) => {
+    apiUpdateVenue(supabase, { id: venue.id, [field]: next })
+      .then(() => router.refresh())
+      .catch((err) => {
+        rollback();
+        setError(errMsg(err, "Couldn't save the toggle."));
+      });
+  };
+
+  const handleBasicToggle = (next: boolean) => {
+    setBasicEnabled(next);
+    writeToggle("segmentation_basic_enabled", next, () =>
+      setBasicEnabled(!next),
+    );
+  };
+  const handleAdvancedToggle = (next: boolean) => {
+    setAdvancedEnabled(next);
+    writeToggle("segmentation_advanced_enabled", next, () =>
+      setAdvancedEnabled(!next),
+    );
+  };
 
   // Drive copy off fiscal_type, not the saved plan. On Free the plan
   // mechanic is "None" — falling back to "Cashback" mislabelled informal
@@ -312,7 +343,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         title="Basic Promos"
         subtitle="The two levers every Pro venue gets: a Welcome coupon for first-time guests, and per-tier rates for returning ones across Bronze, Silver, Gold, and Diamond."
         enabled={basicEnabled}
-        onEnabledChange={setBasicEnabled}
+        onEnabledChange={handleBasicToggle}
       >
         <FirstTimeSection mechanicLabel={mechanicLabel} />
         <ReturningTierGrid mechanicLabel={mechanicLabel} />
@@ -322,7 +353,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         title="Advanced Promos"
         subtitle="Stack extra dimensions on top of the tier rates — communities, demographics, geography, custom filters. Coming soon; off by default."
         enabled={advancedEnabled}
-        onEnabledChange={setAdvancedEnabled}
+        onEnabledChange={handleAdvancedToggle}
       >
         <AdvancedSegmentationGrid />
       </Section>
@@ -648,7 +679,7 @@ function ReturningTierGrid({
       <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
         Returning visitors · by tier
       </p>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="flex flex-col gap-3">
         {TIERS.map((t) => (
           <TierCard key={t.id} tier={t} mechanicLabel={mechanicLabel} />
         ))}
@@ -657,6 +688,9 @@ function ReturningTierGrid({
   );
 }
 
+// Compact one-row tier card. Left: tier identity. Middle: rate + picker.
+// Right: audience pocket. Stacks vertically below lg so it stays
+// readable on narrower manager viewports.
 function TierCard({
   tier,
   mechanicLabel,
@@ -672,31 +706,86 @@ function TierCard({
   const [rate, setRate] = useState<RateChoice>(initial);
 
   return (
-    <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+    <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4 shadow-sm lg:flex-row lg:items-center lg:gap-6">
+      <div className="flex shrink-0 items-center justify-between gap-3 lg:w-40 lg:flex-col lg:items-start lg:justify-start lg:gap-1">
         <TierChip tier={tier.id} label={tier.label} />
         <span className="text-muted-foreground text-[11px]">
           {tier.visitRange}
         </span>
       </div>
 
-      <RatePicker label={mechanicLabel} rate={rate} onChange={setRate} />
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-display text-primary text-3xl leading-none font-bold tracking-tight">
+            {rate}
+          </span>
+          <span className="font-display text-primary text-base font-semibold">
+            %
+          </span>
+          <span className="text-muted-foreground ml-1 text-[10px] font-medium tracking-[0.14em] uppercase">
+            {mechanicLabel}
+          </span>
+          <span className="text-muted-foreground ml-auto text-[10px]">
+            Est.{" "}
+            <span className="text-secondary font-semibold">
+              +{tier.estPerWeek}/wk
+            </span>
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {RATE_CHOICES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setRate(c)}
+              className={cn(
+                "rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                c === rate
+                  ? "bg-pink-gradient text-white shadow-sm"
+                  : "border-border bg-background text-foreground hover:border-foreground/30 border",
+              )}
+            >
+              {c}%
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <p className="text-muted-foreground text-[11px]">
-        Est.{" "}
-        <span className="text-secondary font-semibold">
-          +{tier.estPerWeek} visits/wk
-        </span>
-      </p>
-
-      <AudienceStat
-        count={tier.onMesita}
-        countLabel="On Mesita"
-        sub={tier.source}
-        handles={tier.handles}
-        overflowHandles={tier.overflowHandles}
-        publicPool={tier.publicPool}
-      />
+      <div className="border-border bg-background flex shrink-0 flex-col gap-1 rounded-xl border p-3 lg:w-64">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="font-display text-base font-bold tabular-nums">
+            {tier.onMesita.toLocaleString()}
+          </p>
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+            On Mesita
+          </p>
+        </div>
+        <p className="text-primary text-[10px] font-medium tracking-[0.14em] uppercase">
+          {tier.source}
+        </p>
+        {tier.publicPool ? (
+          <p className="text-muted-foreground text-[10px]">
+            No social profile shared
+          </p>
+        ) : tier.handles && tier.handles.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {tier.handles.map((h) => (
+              <span
+                key={h}
+                className="bg-muted text-foreground inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+              >
+                <Instagram className="text-muted-foreground h-2.5 w-2.5" />
+                {h}
+              </span>
+            ))}
+            {tier.overflowHandles != null && tier.overflowHandles > 0 && (
+              <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                +{tier.overflowHandles}
+              </span>
+            )}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

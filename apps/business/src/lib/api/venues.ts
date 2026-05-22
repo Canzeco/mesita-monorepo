@@ -83,6 +83,10 @@ export type Venue = {
   mesita_review_count: number | null;
   mesita_visitor_count: number | null;
   instagram_followers_count: number | null;
+  // Promos page section toggles. Persisted so the manager's on/off
+  // choice survives reloads. Defaults: basic=true, advanced=false.
+  segmentation_basic_enabled: boolean;
+  segmentation_advanced_enabled: boolean;
   email: string | null;
   created_at: string;
 };
@@ -326,6 +330,9 @@ export type UpdateVenueInput = {
   tags?: string[];
   whatsapp_pr_urls?: string[];
   instagram_pr_urls?: string[];
+  // Promos page section toggles — persisted so they survive reloads.
+  segmentation_basic_enabled?: boolean;
+  segmentation_advanced_enabled?: boolean;
 };
 
 export type UpdatedVenue = Venue & {
