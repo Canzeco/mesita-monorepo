@@ -310,7 +310,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       {/* 3. Reward Mechanic */}
       <Section
         title="Reward Mechanic"
-        subtitle="How returning guests get rewarded. Cashback unlocks Maximum visibility; Discount caps at Priority. Pro venues only."
+        subtitle="How guests get the reward. Pick the one that matches how your business already settles payments."
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <MechanicCard
@@ -366,48 +366,20 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
 function VisibilityMeter({ plan }: { plan: VenuePlan }) {
   const current = visibilityForPlan(plan);
-  // First three rungs map 1:1 to the plan+mechanic state and are real.
-  // Featured + Spotlight are aspirational tiers — surfaces Mesita can
-  // sell later (editor's pick, AI planner hero, cross-city features,
-  // sponsored event slots) — shown as "Soon" so the ladder reads as
-  // a long climb instead of three steps that top out fast.
+  // The ladder is purely "more visibility" — every step up shows you
+  // to more guests on Mesita. No per-step feature claims; none of the
+  // ranking-engine work that would justify them is shipped yet.
   const levels: {
     label: string;
     planLabel: string;
-    reach: string;
     realLabel?: PlanVisibility;
     soon?: boolean;
   }[] = [
-    {
-      label: "Minimum",
-      planLabel: "Free",
-      reach: "Auto-listed only",
-      realLabel: "Minimum",
-    },
-    {
-      label: "Priority",
-      planLabel: "Pro · Discount",
-      reach: "Boosted reach",
-      realLabel: "Priority",
-    },
-    {
-      label: "Maximum",
-      planLabel: "Pro · Cashback",
-      reach: "Top of every surface",
-      realLabel: "Maximum",
-    },
-    {
-      label: "Featured",
-      planLabel: "Add-on",
-      reach: "Editor's pick + AI planner hero",
-      soon: true,
-    },
-    {
-      label: "Spotlight",
-      planLabel: "Add-on",
-      reach: "Cross-city hero + newsletter",
-      soon: true,
-    },
+    { label: "Minimum", planLabel: "Free", realLabel: "Minimum" },
+    { label: "Priority", planLabel: "Pro · Discount", realLabel: "Priority" },
+    { label: "Maximum", planLabel: "Pro · Cashback", realLabel: "Maximum" },
+    { label: "Featured", planLabel: "Add-on", soon: true },
+    { label: "Spotlight", planLabel: "Add-on", soon: true },
   ];
   const currentIdx = levels.findIndex((l) => l.realLabel === current);
   const atTopReal = current === "Maximum";
@@ -500,9 +472,6 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
                     {l.planLabel}
                   </span>
                 )}
-                <span className="text-muted-foreground mt-0.5 text-[10px] leading-tight">
-                  {l.reach}
-                </span>
               </div>
             </div>
           );
@@ -512,12 +481,9 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
       <p className="text-muted-foreground border-border bg-muted/30 rounded-xl border px-3 py-2.5 text-[12px] leading-relaxed">
         {atTopReal ? (
           <>
-            You&apos;re at{" "}
-            <span className="text-foreground font-semibold">Maximum</span> —
-            top of every Mesita discovery surface that&apos;s shipped today.{" "}
-            <span className="text-foreground font-semibold">Featured</span> and{" "}
-            <span className="text-foreground font-semibold">Spotlight</span>{" "}
-            are coming soon.
+            You&apos;re at the top tier we&apos;ve shipped (
+            <span className="text-foreground font-semibold">Maximum</span>).
+            Two more tiers are on the roadmap.
           </>
         ) : (
           <>
@@ -526,12 +492,8 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
               {currentIdx + 1}
             </span>{" "}
             of{" "}
-            <span className="text-foreground font-semibold">{totalReal}</span>{" "}
-            shipped. Pick{" "}
-            <span className="text-foreground font-semibold">Pro Cashback</span>{" "}
-            below to climb to{" "}
-            <span className="text-foreground font-semibold">Maximum</span>{" "}
-            visibility — Featured + Spotlight unlock later.
+            <span className="text-foreground font-semibold">{totalReal}</span>.
+            Each step up means more guests see you on Mesita.
           </>
         )}
       </p>
@@ -556,22 +518,24 @@ function MechanicCard({
     tone === "cashback"
       ? {
           label: "Cashback",
-          tagline: "Routed through Mesita's wallet on card payments.",
+          tagline:
+            "The guest pays with card, Mesita returns part of the bill to their wallet.",
           bullets: [
-            "Unlocks Maximum visibility",
-            "Wallet redemption across partners",
-            "Story bonus + AI verification before payout",
+            "Ideal for businesses that issue invoices",
+            "Card payment runs through Mesita",
+            "Cashback lands in the guest's wallet, redeemable at any partner",
           ],
           Icon: CreditCard,
           accent: "bg-pink-gradient text-white",
         }
       : {
           label: "Discount",
-          tagline: "Applied straight to the bill, cash or card.",
+          tagline:
+            "The guest shows you the coupon, you apply the discount. Mesita is not in the payment flow.",
           bullets: [
-            "Caps at Priority visibility",
-            "Discount revealed at the bill",
-            "Story verified post-checkout (vulnerability flag)",
+            "Ideal for businesses that don't issue invoices",
+            "Discount applied directly at the bill — cash or card, your call",
+            "Mesita doesn't touch the transaction",
           ],
           Icon: Percent,
           accent: "bg-tier-gold text-black",
