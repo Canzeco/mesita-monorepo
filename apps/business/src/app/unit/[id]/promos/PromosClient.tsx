@@ -3,11 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Check,
   CreditCard,
   Loader2,
   Percent,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
@@ -16,20 +16,19 @@ import { Badge } from "@/components/ui/badge";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
-  PLANS,
+  SUBSCRIPTIONS,
+  subscriptionForVenue,
+  dbStateForSubscription,
   visibilityForPlan,
-  displayPlanForVenue,
-  dbPlanForSelection,
-  type DisplayPlanId,
+  type SubscriptionId,
   type PlanVisibility,
 } from "@/lib/manager/plans";
 
-// Promos — minimal layout. Four blocks stacked top to bottom:
-//   1. Visibility   — slim 5-step rail, no prose
-//   2. Plan         — Free vs Pro, 2 lines per card
-//   3. Mechanic     — Cashback vs Discount, 1 line per card
-//   4. Promos       — Welcome row + 4 tier rows; rate + audience count
-//   5. Advanced     — coming-soon pill
+// Promos — minimal layout. Three blocks stacked top to bottom:
+//   1. Visibility    — slim 5-step rail, no prose
+//   2. Subscription  — Free / Cashback / Discount, one card per DB state
+//   3. Promos        — Welcome row + 4 tier rows; rate + audience count
+//   4. Advanced      — coming-soon pill
 //
 // "OFF" is the neutral label for the rate scale — same wording whether the
 // venue runs cashback or discount.
@@ -56,6 +55,17 @@ const TIERS: TierMeta[] = [
   { id: "diamond", label: "Diamond", visitRange: "20+ visits", defaultRate: 30 as RateChoice, onMesita: 184 },
 ];
 
+// ─── Subscription icons + accents ─────────────────────────────────────────
+
+const SUB_VISUAL: Record<
+  SubscriptionId,
+  { icon?: LucideIcon; accent?: string }
+> = {
+  free: {},
+  cashback: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
+  discount: { icon: Percent, accent: "bg-tier-gold text-black" },
+};
+
 // ─── Client ───────────────────────────────────────────────────────────────
 
 export function PromosClient({ venue }: { venue: MyVenue }) {
@@ -65,38 +75,22 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   const [pending, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const [fiscalPending, startFiscalSave] = useTransition();
-  const [fiscalError, setFiscalError] = useState<string | null>(null);
-  const switchFiscal = (next: "formal" | "informal") => {
-    if (next === venue.fiscal_type || fiscalPending) return;
-    setFiscalError(null);
-    startFiscalSave(async () => {
-      try {
-        await apiUpdateVenue(supabase, { id: venue.id, fiscal_type: next });
-        router.refresh();
-      } catch (err) {
-        setFiscalError(errMsg(err, "Couldn't save."));
-      }
-    });
-  };
+  const currentSub: SubscriptionId = subscriptionForVenue(venue.plan);
+  const [pendingSubId, setPendingSubId] = useState<SubscriptionId | null>(null);
 
-  const currentDisplayPlan: DisplayPlanId = displayPlanForVenue(venue.plan);
-  const [pendingPlanId, setPendingPlanId] = useState<DisplayPlanId | null>(null);
-
-  const selectPlan = (target: DisplayPlanId) => {
-    if (target === currentDisplayPlan || pending) return;
-    const dbPlan = dbPlanForSelection(target, venue.fiscal_type);
-    if (dbPlan === venue.plan) return;
+  const selectSubscription = (target: SubscriptionId) => {
+    if (target === currentSub || pending) return;
     setError(null);
-    setPendingPlanId(target);
+    setPendingSubId(target);
     startSubmit(async () => {
       try {
-        await apiUpdateVenue(supabase, { id: venue.id, plan: dbPlan });
+        const dbState = dbStateForSubscription(target);
+        await apiUpdateVenue(supabase, { id: venue.id, ...dbState });
         router.refresh();
       } catch (err) {
-        setError(errMsg(err, "Couldn't save the plan."));
+        setError(errMsg(err, "Couldn't save the subscription."));
       } finally {
-        setPendingPlanId(null);
+        setPendingSubId(null);
       }
     });
   };
@@ -124,28 +118,30 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     writeToggle("segmentation_advanced_enabled", next, () => setAdvancedEnabled(!next));
   };
 
-  const isFree = venue.plan === "free";
+  const isFree = currentSub === "free";
 
   return (
     <div className="flex flex-col gap-4">
       <VisibilityRail plan={venue.plan} />
 
-      <Section title="Plan">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {PLANS.map((p) => {
-            const isCurrent = p.id === currentDisplayPlan;
-            const isPending = pendingPlanId === p.id;
+      <Section title="Subscription">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {SUBSCRIPTIONS.map((s) => {
+            const v = SUB_VISUAL[s.id];
             return (
-              <PlanCard
-                key={p.id}
-                label={p.label}
-                price={p.price}
-                cadence={p.cadence}
-                tagline={p.id === "free" ? "Listed on Mesita." : "Listed + promos + IG verification."}
-                featured={!!p.featured}
-                isCurrent={isCurrent}
-                pending={isPending}
-                onPick={() => selectPlan(p.id)}
+              <SubscriptionCard
+                key={s.id}
+                label={s.label}
+                price={s.price}
+                cadence={s.cadence}
+                tagline={s.tagline}
+                visibility={s.visibility}
+                featured={!!s.featured}
+                icon={v.icon}
+                iconAccent={v.accent}
+                isCurrent={s.id === currentSub}
+                pending={pendingSubId === s.id}
+                onPick={() => selectSubscription(s.id)}
               />
             );
           })}
@@ -154,27 +150,10 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         {isFree && (
           <p className="text-muted-foreground text-xs">
             On <span className="text-foreground font-semibold">Free</span> your
-            promos save but won&apos;t go live until you upgrade.
+            promos save but won&apos;t go live until you pick Cashback or
+            Discount.
           </p>
         )}
-      </Section>
-
-      <Section title="Reward">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <MechanicCard
-            tone="cashback"
-            isCurrent={venue.fiscal_type === "formal"}
-            pending={fiscalPending}
-            onPick={() => switchFiscal("formal")}
-          />
-          <MechanicCard
-            tone="discount"
-            isCurrent={venue.fiscal_type === "informal"}
-            pending={fiscalPending}
-            onPick={() => switchFiscal("informal")}
-          />
-        </div>
-        {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
       </Section>
 
       <Section
@@ -260,14 +239,17 @@ function VisibilityRail({ plan }: { plan: Parameters<typeof visibilityForPlan>[0
   );
 }
 
-// ─── Plan card ────────────────────────────────────────────────────────────
+// ─── Subscription card ────────────────────────────────────────────────────
 
-function PlanCard({
+function SubscriptionCard({
   label,
   price,
   cadence,
   tagline,
+  visibility,
   featured,
+  icon: Icon,
+  iconAccent,
   isCurrent,
   pending,
   onPick,
@@ -276,7 +258,10 @@ function PlanCard({
   price: string;
   cadence: string;
   tagline: string;
+  visibility: PlanVisibility;
   featured: boolean;
+  icon?: LucideIcon;
+  iconAccent?: string;
   isCurrent: boolean;
   pending: boolean;
   onPick: () => void;
@@ -303,84 +288,33 @@ function PlanCard({
           Recommended
         </Badge>
       )}
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-center gap-2">
+        {Icon && (
+          <span
+            className={cn(
+              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+              iconAccent,
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </span>
+        )}
         <span className="font-display text-xl font-semibold tracking-tight">
           {label}
         </span>
+      </div>
+      <div className="flex items-baseline gap-1.5">
         <span className="font-display text-foreground text-lg font-bold tabular-nums leading-none">
           {price}
         </span>
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
       </div>
       <p className="text-muted-foreground text-[12px] leading-snug">{tagline}</p>
+      <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+        {visibility} visibility
+      </p>
       {pending && (
         <Loader2 className="text-muted-foreground absolute right-3 bottom-3 h-4 w-4 animate-spin" />
-      )}
-    </button>
-  );
-}
-
-// ─── Mechanic card ────────────────────────────────────────────────────────
-
-function MechanicCard({
-  tone,
-  isCurrent,
-  pending,
-  onPick,
-}: {
-  tone: "cashback" | "discount";
-  isCurrent: boolean;
-  pending: boolean;
-  onPick: () => void;
-}) {
-  const meta =
-    tone === "cashback"
-      ? {
-          label: "Cashback",
-          tagline: "Card runs through Mesita. We return part to the guest's wallet.",
-          Icon: CreditCard,
-          accent: "bg-pink-gradient text-white",
-        }
-      : {
-          label: "Discount",
-          tagline: "Guest shows the coupon, you discount the bill. Mesita stays out.",
-          Icon: Percent,
-          accent: "bg-tier-gold text-black",
-        };
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      disabled={isCurrent || pending}
-      className={cn(
-        "border-border bg-card relative flex items-start gap-3 rounded-2xl border p-4 text-left transition disabled:cursor-default",
-        !isCurrent && "hover:border-foreground/30",
-        isCurrent && "border-foreground shadow-elev",
-      )}
-    >
-      <span
-        className={cn(
-          "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-          meta.accent,
-        )}
-      >
-        <meta.Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-base font-semibold tracking-tight">
-            {meta.label}
-          </span>
-          {isCurrent && (
-            <Check className="text-foreground h-3.5 w-3.5" />
-          )}
-        </div>
-        <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
-          {meta.tagline}
-        </p>
-      </div>
-      {pending && !isCurrent && (
-        <Loader2 className="text-muted-foreground h-4 w-4 shrink-0 animate-spin" />
       )}
     </button>
   );
