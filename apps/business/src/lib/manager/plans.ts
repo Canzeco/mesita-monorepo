@@ -4,7 +4,7 @@ import type { FiscalType } from "@/components/shared";
 // Plan catalog used by Promos (picker + label lookup).
 //
 // Two display plans: Free and Pro. Pro is one product at one price
-// ($200 MX / month) regardless of mechanic — the mechanic itself
+// ($500 MX / year) regardless of mechanic — the mechanic itself
 // (Cashback vs Discount) is elected separately, in its own section,
 // because it's a capability axis (does the venue settle through Mesita?)
 // rather than a pricing axis.
@@ -51,14 +51,14 @@ export const PLANS: PlanRow[] = [
   {
     id: "pro",
     label: "Pro",
-    price: "$200",
+    price: "$500",
     cadence: "MX / year",
-    priceLabel: "$200 MX / yr",
+    priceLabel: "$500 MX / yr",
     // Visibility shown here is the ceiling Pro reaches (Cashback venues).
     // Discount Pros cap at Priority — Promos calls that out separately.
     visibility: "Maximum",
     blurb:
-      "Customer acquisition tools + priority discovery. $200 / year, per venue, cancel anytime. Pick Cashback or Discount in the mechanic box below — Cashback unlocks the Maximum visibility ceiling.",
+      "Customer acquisition tools + priority discovery. $500 / year, per venue, cancel anytime. Pick Cashback or Discount in the mechanic box below — Cashback unlocks the Maximum visibility ceiling.",
     bullets: [
       "Priority placement on swipe, map, catalog, AI planner",
       "Welcome coupon + per-tier rates",
