@@ -162,25 +162,12 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   const mechanicLabel = savedMechanic === "Discount" ? "Discount" : "Cashback";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {/* ── Plan ─────────────────────────────────────────────────────── */}
-      <section className="flex flex-col gap-6">
-        <header className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
-              Pricing
-            </p>
-            <h2 className="font-display mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
-              Three plans. Per venue. Cancel anytime.
-            </h2>
-          </div>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            The coupon mechanic is pinned by your fiscal type — Formal partners
-            run cashback, Informal partners run instant discount. Switch fiscal
-            type and the plan list re-narrows.
-          </p>
-        </header>
-
+      <Section
+        title="Plan"
+        subtitle="Three plans, per venue, cancel anytime. The coupon mechanic is pinned by your fiscal type — Formal runs cashback, Informal runs instant discount."
+      >
         <FiscalSegmentedToggle
           current={venue.fiscal_type}
           pending={fiscalPending}
@@ -296,33 +283,38 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
             {error ?? "Plan saved."}
           </p>
         )}
+      </Section>
 
+      <Section
+        title="How billing works"
+        subtitle="A few things worth knowing before you pick a plan."
+      >
         <div className="text-muted-foreground grid grid-cols-1 gap-3 text-[13px] leading-relaxed md:grid-cols-3">
           <p>
             <span className="text-foreground font-semibold">
               Per-venue billing.
             </span>{" "}
-            Multi-unit operators pick a plan per location — different plans per
-            venue are fine. Manager accounts are always free.
+            Multi-unit operators pick a plan per location — different plans
+            per venue are fine. Manager accounts are always free.
           </p>
           <p>
             <span className="text-foreground font-semibold">
               Why Informal is 2× Formal.
             </span>{" "}
             Formal partners feed the Mesita wallet — transaction data and a
-            redemption network on the back-end. Informal pays more for the same
-            priority placement.
+            redemption network on the back-end. Informal pays more for the
+            same priority placement.
           </p>
           <p>
             <span className="text-foreground font-semibold">
               Payment rail rule.
             </span>{" "}
-            Cashback only counts when the guest pays by card through Mesita. At
-            Informal venues the discount applies at the bill — cash or card,
-            either works.
+            Cashback only counts when the guest pays by card through Mesita.
+            At Informal venues the discount applies at the bill — cash or
+            card, either works.
           </p>
         </div>
-      </section>
+      </Section>
 
       <TicketTypesCard isFormal={isFormal} planMechanic={mechanic} />
 
@@ -331,23 +323,50 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       )}
 
       {/* ── Segmentation ────────────────────────────────────────────── */}
-      <SegmentationGroup
-        kind="basic"
+      <Section
         title="Basic segmentation"
-        blurb="Two levers every venue gets: a Welcome coupon for first-time guests and per-tier rates for returning ones."
+        subtitle="Two levers every venue gets: a Welcome coupon for first-time guests and per-tier rates for returning ones."
       >
         <FirstTimeSection mechanicLabel={mechanicLabel} />
         <ReturningTierGrid mechanicLabel={mechanicLabel} />
-      </SegmentationGroup>
+      </Section>
 
-      <SegmentationGroup
-        kind="advanced"
+      <Section
         title="Advanced segmentation"
-        blurb="Stack extra dimensions on top of the basic tier rates — communities, demographics, geography, custom rules. All landing with the segments table."
+        subtitle="Stack extra dimensions on top of the basic tier rates — communities, demographics, geography, custom rules. Coming soon, landing with the segments table."
       >
         <AdvancedSegmentationGrid />
-      </SegmentationGroup>
+      </Section>
     </div>
+  );
+}
+
+// ─── Section card ─────────────────────────────────────────────────────────
+// Matches the Place page's Section so the two surfaces feel like one app.
+
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-5">
+      <div>
+        <h3 className="font-display text-lg font-semibold tracking-tight">
+          {title}
+        </h3>
+        {subtitle && (
+          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -453,39 +472,6 @@ function FreePlanBanner({ fiscalType }: { fiscalType: "formal" | "informal" }) {
 }
 
 // ─── Segmentation ─────────────────────────────────────────────────────────
-
-function SegmentationGroup({
-  kind,
-  title,
-  blurb,
-  children,
-}: {
-  kind: "basic" | "advanced";
-  title: string;
-  blurb: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-3">
-      <header className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
-        <div className="flex items-center gap-2">
-          <h2 className="font-display text-lg font-semibold tracking-tight">
-            {title}
-          </h2>
-          {kind === "advanced" && (
-            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-              Coming soon
-            </span>
-          )}
-        </div>
-        <p className="text-muted-foreground max-w-xl text-[12px] leading-relaxed">
-          {blurb}
-        </p>
-      </header>
-      <div className="flex flex-col gap-4">{children}</div>
-    </section>
-  );
-}
 
 function FirstTimeSection({
   mechanicLabel,
