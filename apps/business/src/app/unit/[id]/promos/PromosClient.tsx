@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Calendar,
-  Check,
   CheckCircle2,
   CreditCard,
   Filter,
@@ -32,7 +31,6 @@ import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
   PLANS,
-  mechanicForPlan,
   visibilityForPlan,
   displayPlanForVenue,
   dbPlanForSelection,
@@ -40,12 +38,16 @@ import {
   type PlanVisibility,
 } from "@/lib/manager/plans";
 
-// Promos owns three layers of configuration in one page:
-//   1. Plan — pick Free / Pro Cashback / Pro Discount + mechanic toggle.
-//   2. Ticket types — the audit-log reference enabled by the plan.
-//   3. Segmentation — Welcome coupon for first-time guests and per-tier
-//      cashback/discount rates for returning ones. Advanced axes
-//      (communities, demographics, geography, custom rules) land later.
+// Promos. Four sections, top to bottom:
+//   1. Mesita Visibility       — meter + upgrade pitch
+//   2. Plan & Reward Mechanic  — pick Free/Pro + pick Cashback/Discount
+//   3. Basic Promos            — Welcome offer + per-tier rates
+//   4. Advanced Promos         — extra segmentation axes (coming soon)
+//
+// The rate-picker label reads "OFF" everywhere — it's the neutral word
+// for both mechanics (a 20% reward off the bill, however it lands), so
+// the same numeric scale works whether the venue runs cashback or
+// discount.
 
 // ─── Rate picker scale ────────────────────────────────────────────────────
 
@@ -140,17 +142,13 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     });
   };
 
-  const isFormal = venue.fiscal_type === "formal";
-  const savedMechanic = mechanicForPlan(venue.plan);
+  const isFree = venue.plan === "free";
   const currentDisplayPlan: DisplayPlanId = displayPlanForVenue(venue.plan);
 
   const [pendingPlanId, setPendingPlanId] = useState<DisplayPlanId | null>(
     null,
   );
 
-  // The picker offers Free / Pro (display level). The Pro button writes
-  // formal_pro or informal_pro depending on the venue's current fiscal
-  // type, which is elected in the Mechanic section below.
   const selectPlan = (target: DisplayPlanId) => {
     if (target === currentDisplayPlan || pending) return;
     const dbPlan = dbPlanForSelection(target, venue.fiscal_type);
@@ -171,21 +169,15 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     });
   };
 
-  // Segmentation toggles hydrate from the venue row so the manager's
-  // choice survives reloads. The DB defaults — basic true, advanced
-  // false — match the original UI-only behaviour, so existing rows
-  // backfill cleanly on migration 0019.
+  // Persisted Promos section toggles. Optimistic write — local state
+  // flips immediately, then `apiUpdateVenue` persists in the background.
+  // On failure the toggle rolls back and the error banner surfaces it.
   const [basicEnabled, setBasicEnabled] = useState(
     venue.segmentation_basic_enabled,
   );
   const [advancedEnabled, setAdvancedEnabled] = useState(
     venue.segmentation_advanced_enabled,
   );
-
-  // Optimistic write — flip the local state immediately so the section
-  // collapses without network latency, then persist through
-  // manager-update-unit. On failure surface the error and roll the
-  // toggle back so the UI never lies about the saved state.
   const writeToggle = (
     field: "segmentation_basic_enabled" | "segmentation_advanced_enabled",
     next: boolean,
@@ -198,7 +190,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         setError(errMsg(err, "Couldn't save the toggle."));
       });
   };
-
   const handleBasicToggle = (next: boolean) => {
     setBasicEnabled(next);
     writeToggle("segmentation_basic_enabled", next, () =>
@@ -212,96 +203,115 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     );
   };
 
-  // Drive copy off fiscal_type, not the saved plan. On Free the plan
-  // mechanic is "None" — falling back to "Cashback" mislabelled informal
-  // venues whose rates and free-plan banner already say "discount".
-  const mechanicLabel: "Cashback" | "Discount" =
-    venue.fiscal_type === "informal" ? "Discount" : "Cashback";
-
   return (
     <div className="flex flex-col gap-5">
+      {/* 1. Mesita Visibility */}
       <VisibilityMeter plan={venue.plan} />
 
-      {/* ── Plan ─────────────────────────────────────────────────────── */}
+      {/* 2. Plan & Reward Mechanic */}
       <Section
-        title="Plan"
-        subtitle="Two modes. Free auto-lists you and accepts AI reservations. Pro adds priority discovery, customer-acquisition tools, and the dashboard. Cancel anytime."
+        title="Plan & Reward Mechanic"
+        subtitle="Two products in one box. Pick a plan (Free or Pro) on the left, and the reward you give returning guests (Cashback or Discount) on the right."
       >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {PLANS.map((p) => {
-            const isCurrent = p.id === currentDisplayPlan;
-            const isPending = pendingPlanId === p.id;
-            const buttonLabel = isCurrent
-              ? "Current plan"
-              : p.id === "free"
-                ? "Switch to Free"
-                : "Become Pro";
-            return (
-              <Card
-                key={p.id}
-                className={cn(
-                  "relative gap-3 rounded-2xl",
-                  p.featured && "border-foreground shadow-elev",
-                )}
-              >
-                {isCurrent && (
-                  <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                    Current
-                  </Badge>
-                )}
-                {!isCurrent && p.featured && (
-                  <Badge className="bg-pink-gradient shadow-glow absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
-                    Featured
-                  </Badge>
-                )}
-                <CardHeader>
-                  <CardTitle className="font-display text-2xl font-semibold tracking-tight">
-                    {p.label}
-                  </CardTitle>
-                  <p className="font-display text-4xl font-bold tabular-nums">
-                    {p.price}
-                    <span className="text-muted-foreground ml-1 text-sm font-normal">
-                      {p.cadence}
-                    </span>
-                  </p>
-                  <CardDescription className="text-[13px] leading-relaxed">
-                    {p.blurb}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-4">
-                  <ul className="flex flex-1 flex-col gap-1.5 text-[12px]">
-                    {p.bullets.map((b) => (
-                      <li
-                        key={b}
-                        className="flex items-start gap-2 leading-snug"
-                      >
-                        <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant={p.featured ? "default" : "outline"}
-                    onClick={() => selectPlan(p.id)}
-                    disabled={isCurrent || pending}
-                    className={cn(
-                      "rounded-full",
-                      p.featured &&
-                        !isCurrent &&
-                        "bg-pink-gradient shadow-glow text-white hover:opacity-90",
-                    )}
-                  >
-                    {isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : null}
-                    {buttonLabel}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="flex flex-col gap-3">
+            <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+              Plan
+            </p>
+            {PLANS.map((p) => {
+              const isCurrent = p.id === currentDisplayPlan;
+              const isPending = pendingPlanId === p.id;
+              const buttonLabel = isCurrent
+                ? "Current"
+                : p.id === "free"
+                  ? "Switch to Free"
+                  : "Become Pro";
+              return (
+                <Card
+                  key={p.id}
+                  className={cn(
+                    "relative rounded-2xl",
+                    p.featured && "border-foreground shadow-elev",
+                  )}
+                >
+                  {isCurrent && (
+                    <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                      Current
+                    </Badge>
+                  )}
+                  {!isCurrent && p.featured && (
+                    <Badge className="bg-pink-gradient shadow-glow absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+                      Featured
+                    </Badge>
+                  )}
+                  <CardHeader className="gap-1.5">
+                    <CardTitle className="font-display text-xl font-semibold tracking-tight">
+                      {p.label}
+                    </CardTitle>
+                    <p className="font-display text-2xl font-bold tabular-nums leading-none">
+                      {p.price}
+                      <span className="text-muted-foreground ml-1 text-xs font-normal">
+                        {p.cadence}
+                      </span>
+                    </p>
+                    <CardDescription className="text-[12px] leading-relaxed">
+                      {p.blurb}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-3">
+                    <ul className="flex flex-col gap-1 text-[12px]">
+                      {p.bullets.map((b) => (
+                        <li
+                          key={b}
+                          className="flex items-start gap-2 leading-snug"
+                        >
+                          <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={p.featured ? "default" : "outline"}
+                      onClick={() => selectPlan(p.id)}
+                      disabled={isCurrent || pending}
+                      className={cn(
+                        "rounded-full",
+                        p.featured &&
+                          !isCurrent &&
+                          "bg-pink-gradient shadow-glow text-white hover:opacity-90",
+                      )}
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : null}
+                      {buttonLabel}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+              Reward mechanic
+            </p>
+            <MechanicCard
+              tone="cashback"
+              isCurrent={venue.fiscal_type === "formal"}
+              pending={fiscalPending}
+              onPick={() => switchFiscal("formal")}
+            />
+            <MechanicCard
+              tone="discount"
+              isCurrent={venue.fiscal_type === "informal"}
+              pending={fiscalPending}
+              onPick={() => switchFiscal("informal")}
+            />
+            {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
+          </div>
         </div>
 
         {(error || saved) && (
@@ -313,260 +323,62 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
                 : "bg-secondary/10 text-secondary",
             )}
           >
-            {error ?? "Plan saved."}
+            {error ?? "Saved."}
           </p>
         )}
 
-        {savedMechanic === "None" && (
-          <FreePlanNotice fiscalType={venue.fiscal_type} />
-        )}
+        {isFree && <FreePlanNotice fiscalType={venue.fiscal_type} />}
       </Section>
 
-      {/* ── Mechanic (Cashback vs Discount) ─────────────────────────── */}
-      <Section
-        title="Reward mechanic"
-        subtitle="How you reward returning guests. Cashback routes the reward through Mesita's wallet on card payments — unlocks Maximum visibility. Discount applies straight at the bill, cash or card — caps at Priority visibility. Pro venues only; toggle anytime."
-      >
-        <FiscalSegmentedToggle
-          current={venue.fiscal_type}
-          pending={fiscalPending}
-          onSwitch={switchFiscal}
-        />
-
-        {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
-
-        <PaymentRailLine isFormal={isFormal} />
-      </Section>
-
-      {/* ── Basic Promos ──────────────────────────────────────────── */}
+      {/* 3. Basic Promos */}
       <Section
         title="Basic Promos"
-        subtitle="The two levers every Pro venue gets: a Welcome coupon for first-time guests, and per-tier rates for returning ones across Bronze, Silver, Gold, and Diamond."
+        subtitle="The two levers every Pro venue gets: a Welcome offer for first-time guests, and per-tier rates for returning ones across Bronze, Silver, Gold, and Diamond."
         enabled={basicEnabled}
         onEnabledChange={handleBasicToggle}
       >
-        <FirstTimeSection mechanicLabel={mechanicLabel} />
-        <ReturningTierGrid mechanicLabel={mechanicLabel} />
+        <WelcomeCard />
+        <div className="flex flex-col gap-2">
+          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+            Returning visitors · by tier
+          </p>
+          <div className="flex flex-col gap-2">
+            {TIERS.map((t) => (
+              <TierRow key={t.id} tier={t} />
+            ))}
+          </div>
+        </div>
       </Section>
 
+      {/* 4. Advanced Promos */}
       <Section
         title="Advanced Promos"
         subtitle="Stack extra dimensions on top of the tier rates — communities, demographics, geography, custom filters. Coming soon; off by default."
         enabled={advancedEnabled}
         onEnabledChange={handleAdvancedToggle}
       >
-        <AdvancedSegmentationGrid />
+        <AdvancedGrid />
       </Section>
     </div>
   );
 }
 
-// ─── Section card ─────────────────────────────────────────────────────────
-// Matches the Place page's Section so the two surfaces feel like one app.
+// ─── Mesita Visibility meter ──────────────────────────────────────────────
 
-function Section({
-  title,
-  subtitle,
-  enabled,
-  onEnabledChange,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  // Pass `enabled` + `onEnabledChange` to render an on/off switch next to
-  // the title. When enabled is false the body collapses — the section
-  // header itself stays visible so the toggle remains discoverable.
-  enabled?: boolean;
-  onEnabledChange?: (next: boolean) => void;
-  children: React.ReactNode;
-}) {
-  const hasToggle = onEnabledChange !== undefined;
-  const showChildren = !hasToggle || enabled !== false;
-  return (
-    <section className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg font-semibold tracking-tight">
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-              {subtitle}
-            </p>
-          )}
-        </div>
-        {hasToggle && (
-          <Switch
-            checked={enabled ?? false}
-            onCheckedChange={onEnabledChange}
-            label={`Enable ${title.toLowerCase()}`}
-          />
-        )}
-      </div>
-      {showChildren && children}
-    </section>
-  );
-}
-
-// iOS-style toggle pill. ARIA role=switch so screen readers announce
-// "Enable basic segmentation, on". Brand pink when on, muted when off.
-function Switch({
-  checked,
-  onCheckedChange,
-  label,
-}: {
-  checked: boolean;
-  onCheckedChange: (next: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onCheckedChange(!checked)}
-      className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors",
-        checked ? "bg-pink-gradient shadow-glow" : "bg-muted",
-      )}
-    >
-      <span
-        className={cn(
-          "inline-block h-4 w-4 transform rounded-full bg-white shadow transition",
-          checked ? "translate-x-6" : "translate-x-1",
-        )}
-      />
-    </button>
-  );
-}
-
-// ─── Fiscal toggle + payment-rail caption ────────────────────────────────
-
-function FiscalSegmentedToggle({
-  current,
-  pending,
-  onSwitch,
-}: {
-  current: "formal" | "informal";
-  pending: boolean;
-  onSwitch: (next: "formal" | "informal") => void;
-}) {
-  return (
-    <div className="bg-muted inline-flex items-center rounded-full p-0.5">
-      <FiscalSegment
-        label="Cashback"
-        active={current === "formal"}
-        pending={pending}
-        onClick={() => onSwitch("formal")}
-        tone="bg-pink-gradient text-white"
-      />
-      <FiscalSegment
-        label="Discount"
-        active={current === "informal"}
-        pending={pending}
-        onClick={() => onSwitch("informal")}
-        tone="bg-tier-gold text-black"
-      />
-    </div>
-  );
-}
-
-function FiscalSegment({
-  label,
-  active,
-  pending,
-  onClick,
-  tone,
-}: {
-  label: string;
-  active: boolean;
-  pending: boolean;
-  onClick: () => void;
-  tone: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={active || pending}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wider uppercase transition disabled:cursor-default",
-        active ? tone : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {active && pending ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : active ? (
-        <Check className="h-3 w-3" />
-      ) : null}
-      {label}
-    </button>
-  );
-}
-
-function PaymentRailLine({ isFormal }: { isFormal: boolean }) {
-  return (
-    <p className="text-muted-foreground flex items-start gap-2 text-[12px] leading-relaxed">
-      {isFormal ? (
-        <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      ) : (
-        <Percent className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      )}
-      <span>
-        <span className="text-foreground font-semibold">Payment rail:</span>{" "}
-        {isFormal
-          ? "Cashback only counts when the guest pays by card through Mesita. Cash at the table = no cashback."
-          : "Discount is applied directly to the bill — cash or card. Mesita stays out of the payment flow."}
-      </span>
-    </p>
-  );
-}
-
-// Inline "won't go live until upgrade" notice, rendered inside the Plan
-// section (not as a separate card). Rates below stay interactive so the
-// manager can configure before subscribing — they just don't activate
-// for guests yet.
-function FreePlanNotice({ fiscalType }: { fiscalType: "formal" | "informal" }) {
-  const mechanic = fiscalType === "formal" ? "cashback" : "discount";
-  return (
-    <div className="bg-muted/40 text-muted-foreground flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-[12px] leading-relaxed">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-      <p>
-        You&apos;re on{" "}
-        <span className="text-foreground font-semibold">Free</span>. Set
-        your rates below — they won&apos;t go live for guests until you
-        upgrade to a {mechanic}-enabled plan above.
-      </p>
-    </div>
-  );
-}
-
-// ─── Performance ──────────────────────────────────────────────────────────
-
-// Top-of-page meter that anchors the whole Promos surface around the
-// product the venue actually buys here: visibility on Mesita. Renders a
-// 3-segment bar with the current tier filled (and the higher tiers
-// muted) so the gap to Maximum is visually obvious, with a one-line
-// CTA pointing to the plan that closes that gap.
 function VisibilityMeter({ plan }: { plan: VenuePlan }) {
   const current = visibilityForPlan(plan);
-  const levels: {
-    label: PlanVisibility;
-    planLabel: string;
-  }[] = [
+  const levels: { label: PlanVisibility; planLabel: string }[] = [
     { label: "Minimum", planLabel: "Free" },
-    { label: "Priority", planLabel: "Pro Discount" },
-    { label: "Maximum", planLabel: "Pro Cashback" },
+    { label: "Priority", planLabel: "Pro · Discount" },
+    { label: "Maximum", planLabel: "Pro · Cashback" },
   ];
   const currentIdx = levels.findIndex((l) => l.label === current);
   const atMax = current === "Maximum";
-  const nextPlanLabel = atMax ? null : levels[levels.length - 1].planLabel;
 
   return (
     <Section
-      title="Visibility on Mesita"
-      subtitle="The product you're buying here — how many guests see you across swipe, catalog, map, and the AI planner."
+      title="Mesita Visibility"
+      subtitle="The product you're buying here — how many guests see you across swipe, catalog, map, and the AI planner. Climb the ladder by going Pro."
     >
       <div className="grid grid-cols-3 gap-2">
         {levels.map((l, i) => {
@@ -615,12 +427,10 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
             You&apos;re at{" "}
             <span className="text-foreground font-semibold">{current}</span>.
             Pick{" "}
-            <span className="text-foreground font-semibold">
-              {nextPlanLabel}
-            </span>{" "}
-            below for{" "}
-            <span className="text-foreground font-semibold">Maximum</span>{" "}
-            visibility.
+            <span className="text-foreground font-semibold">Pro Cashback</span>
+            {" "}below for{" "}
+            <span className="text-foreground font-semibold">Maximum</span>
+            {" "}visibility.
           </>
         )}
       </p>
@@ -628,198 +438,221 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
   );
 }
 
-// ─── Segmentation ─────────────────────────────────────────────────────────
+// ─── Plan & Mechanic helpers ──────────────────────────────────────────────
 
-function FirstTimeSection({
-  mechanicLabel,
+function MechanicCard({
+  tone,
+  isCurrent,
+  pending,
+  onPick,
 }: {
-  mechanicLabel: "Cashback" | "Discount";
+  tone: "cashback" | "discount";
+  isCurrent: boolean;
+  pending: boolean;
+  onPick: () => void;
 }) {
+  const meta =
+    tone === "cashback"
+      ? {
+          label: "Cashback",
+          tagline: "Routed through Mesita's wallet on card payments.",
+          bullets: [
+            "Unlocks Maximum visibility",
+            "Wallet redemption across partners",
+            "Story bonus + AI verification before payout",
+          ],
+          Icon: CreditCard,
+          accent: "bg-pink-gradient text-white",
+        }
+      : {
+          label: "Discount",
+          tagline: "Applied straight to the bill, cash or card.",
+          bullets: [
+            "Caps at Priority visibility",
+            "Discount revealed at the bill",
+            "Story verified post-checkout (vulnerability flag)",
+          ],
+          Icon: Percent,
+          accent: "bg-tier-gold text-black",
+        };
+  return (
+    <Card
+      className={cn(
+        "relative rounded-2xl",
+        isCurrent && "border-foreground shadow-elev",
+      )}
+    >
+      {isCurrent && (
+        <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+          Selected
+        </Badge>
+      )}
+      <CardHeader className="gap-1.5">
+        <CardTitle className="font-display flex items-center gap-2 text-xl font-semibold tracking-tight">
+          <span
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-full",
+              meta.accent,
+            )}
+          >
+            <meta.Icon className="h-3.5 w-3.5" />
+          </span>
+          {meta.label}
+        </CardTitle>
+        <CardDescription className="text-[12px] leading-relaxed">
+          {meta.tagline}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-1 text-[12px]">
+          {meta.bullets.map((b) => (
+            <li key={b} className="flex items-start gap-2 leading-snug">
+              <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
+        <Button
+          type="button"
+          size="sm"
+          variant={isCurrent ? "default" : "outline"}
+          onClick={onPick}
+          disabled={isCurrent || pending}
+          className={cn(
+            "rounded-full",
+            isCurrent &&
+              "bg-foreground text-background hover:bg-foreground/90",
+          )}
+        >
+          {pending && !isCurrent ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          {isCurrent ? "Selected" : `Switch to ${meta.label}`}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FreePlanNotice({ fiscalType }: { fiscalType: "formal" | "informal" }) {
+  const mechanic = fiscalType === "formal" ? "cashback" : "discount";
+  return (
+    <div className="bg-muted/40 text-muted-foreground flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-[12px] leading-relaxed">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>
+        You&apos;re on{" "}
+        <span className="text-foreground font-semibold">Free</span>. Set your
+        Basic Promos below — they won&apos;t go live for guests until you
+        upgrade to a {mechanic}-enabled Pro plan above.
+      </p>
+    </div>
+  );
+}
+
+// ─── Basic Promos: Welcome + tier rows ────────────────────────────────────
+
+function WelcomeCard() {
   const [rate, setRate] = useState<RateChoice>(20);
   return (
-    <section className="flex flex-col gap-2">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+    <div className="flex flex-col gap-2">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
         First-time visitors
       </p>
-      <div className="bg-primary/5 ring-primary/15 rounded-2xl p-5 ring-1">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+      <div className="bg-primary/5 ring-primary/15 flex flex-col gap-4 rounded-2xl p-4 ring-1 lg:flex-row lg:items-center">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-3">
             <span className="bg-welcome-gradient inline-flex rounded-full px-3 py-1 text-[10px] font-bold tracking-wider text-white uppercase shadow-sm">
               Welcome
             </span>
-            <p className="text-foreground mt-2 text-sm">
-              One-time {mechanicLabel.toLowerCase()} to convert a new guest into
-              a regular.
-            </p>
+            <span className="text-muted-foreground text-[10px] tracking-wider uppercase">
+              First visit only
+            </span>
           </div>
-          <span className="text-muted-foreground text-[11px]">
-            First visit only
-          </span>
+          <p className="text-foreground mt-2 text-sm">
+            One-time offer to convert a new guest into a regular.
+          </p>
         </div>
-
-        <RatePicker label={mechanicLabel} rate={rate} onChange={setRate} />
-
-        <AudienceStat
+        <div className="lg:w-72">
+          <RatePicker rate={rate} onChange={setRate} />
+        </div>
+        <AudienceMini
           count={12_480}
-          countLabel="Guests nearby · never visited"
+          countLabel="Nearby · never visited"
           sub="Identity revealed after first visit."
         />
       </div>
-    </section>
+    </div>
   );
 }
 
-function ReturningTierGrid({
-  mechanicLabel,
-}: {
-  mechanicLabel: "Cashback" | "Discount";
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
-        Returning visitors · by tier
-      </p>
-      <div className="flex flex-col gap-3">
-        {TIERS.map((t) => (
-          <TierCard key={t.id} tier={t} mechanicLabel={mechanicLabel} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// Compact one-row tier card. Left: tier identity. Middle: rate + picker.
-// Right: audience pocket. Stacks vertically below lg so it stays
-// readable on narrower manager viewports.
-function TierCard({
-  tier,
-  mechanicLabel,
-}: {
-  tier: TierMeta;
-  mechanicLabel: "Cashback" | "Discount";
-}) {
-  // Diamond's default (30) isn't in the 4-rate scale, so snap to the next
-  // scale value when seeding state.
+function TierRow({ tier }: { tier: TierMeta }) {
+  // Diamond's default (30) isn't in the 4-rate scale — snap to next valid.
   const initial: RateChoice = (RATE_CHOICES.find(
     (r) => r >= tier.defaultRate,
   ) ?? 50) as RateChoice;
   const [rate, setRate] = useState<RateChoice>(initial);
-
   return (
-    <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4 shadow-sm lg:flex-row lg:items-center lg:gap-6">
-      <div className="flex shrink-0 items-center justify-between gap-3 lg:w-40 lg:flex-col lg:items-start lg:justify-start lg:gap-1">
+    <div className="border-border bg-card grid grid-cols-1 gap-3 rounded-2xl border p-3 lg:grid-cols-[160px_minmax(0,1fr)_220px] lg:items-center lg:gap-4">
+      {/* Tier + visit range */}
+      <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-start lg:gap-1">
         <TierChip tier={tier.id} label={tier.label} />
         <span className="text-muted-foreground text-[11px]">
           {tier.visitRange}
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-display text-primary text-3xl leading-none font-bold tracking-tight">
-            {rate}
+      {/* Rate picker + estimate */}
+      <div className="flex flex-col gap-1.5">
+        <RatePicker rate={rate} onChange={setRate} />
+        <p className="text-muted-foreground text-[10px]">
+          Est.{" "}
+          <span className="text-secondary font-semibold">
+            +{tier.estPerWeek} visits/wk
           </span>
-          <span className="font-display text-primary text-base font-semibold">
-            %
-          </span>
-          <span className="text-muted-foreground ml-1 text-[10px] font-medium tracking-[0.14em] uppercase">
-            {mechanicLabel}
-          </span>
-          <span className="text-muted-foreground ml-auto text-[10px]">
-            Est.{" "}
-            <span className="text-secondary font-semibold">
-              +{tier.estPerWeek}/wk
-            </span>
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {RATE_CHOICES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setRate(c)}
-              className={cn(
-                "rounded-full px-3 py-1 text-[11px] font-semibold transition",
-                c === rate
-                  ? "bg-pink-gradient text-white shadow-sm"
-                  : "border-border bg-background text-foreground hover:border-foreground/30 border",
-              )}
-            >
-              {c}%
-            </button>
-          ))}
-        </div>
+        </p>
       </div>
 
-      <div className="border-border bg-background flex shrink-0 flex-col gap-1 rounded-xl border p-3 lg:w-64">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="font-display text-base font-bold tabular-nums">
-            {tier.onMesita.toLocaleString()}
-          </p>
-          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
-            On Mesita
-          </p>
-        </div>
-        <p className="text-primary text-[10px] font-medium tracking-[0.14em] uppercase">
-          {tier.source}
-        </p>
-        {tier.publicPool ? (
-          <p className="text-muted-foreground text-[10px]">
-            No social profile shared
-          </p>
-        ) : tier.handles && tier.handles.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {tier.handles.map((h) => (
-              <span
-                key={h}
-                className="bg-muted text-foreground inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-              >
-                <Instagram className="text-muted-foreground h-2.5 w-2.5" />
-                {h}
-              </span>
-            ))}
-            {tier.overflowHandles != null && tier.overflowHandles > 0 && (
-              <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
-                +{tier.overflowHandles}
-              </span>
-            )}
-          </div>
-        ) : null}
-      </div>
+      {/* Audience */}
+      <AudienceMini
+        count={tier.onMesita}
+        countLabel="On Mesita"
+        sub={tier.source}
+        handles={tier.handles}
+        overflowHandles={tier.overflowHandles}
+        publicPool={tier.publicPool}
+      />
     </div>
   );
 }
 
 function RatePicker({
-  label,
   rate,
   onChange,
 }: {
-  label: "Cashback" | "Discount";
   rate: RateChoice;
   onChange: (next: RateChoice) => void;
 }) {
   return (
-    <div>
-      <p className="flex items-baseline gap-1.5">
-        <span className="font-display text-primary text-5xl leading-none font-bold tracking-tight">
+    <div className="flex items-baseline gap-2">
+      <p className="flex items-baseline gap-0.5">
+        <span className="font-display text-primary text-3xl leading-none font-bold tracking-tight tabular-nums">
           {rate}
         </span>
-        <span className="font-display text-primary text-xl font-semibold">
+        <span className="font-display text-primary text-lg font-semibold">
           %
         </span>
-        <span className="text-muted-foreground ml-1 text-[11px] font-medium tracking-[0.14em] uppercase">
-          {label}
+        <span className="text-muted-foreground ml-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">
+          off
         </span>
       </p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1">
         {RATE_CHOICES.map((c) => (
           <button
             key={c}
             type="button"
             onClick={() => onChange(c)}
             className={cn(
-              "rounded-full px-3 py-1.5 text-[11px] font-semibold transition",
+              "rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
               c === rate
                 ? "bg-pink-gradient text-white shadow-sm"
                 : "border-border bg-background text-foreground hover:border-foreground/30 border",
@@ -833,7 +666,7 @@ function RatePicker({
   );
 }
 
-function AudienceStat({
+function AudienceMini({
   count,
   countLabel,
   sub,
@@ -849,36 +682,36 @@ function AudienceStat({
   publicPool?: boolean;
 }) {
   return (
-    <div className="border-border bg-background rounded-xl border p-3">
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-display text-lg font-bold tabular-nums">
+    <div className="border-border bg-background flex flex-col gap-1 rounded-xl border p-2.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="font-display text-base font-bold tabular-nums leading-none">
           {count.toLocaleString()}
         </p>
-        <p className="text-muted-foreground max-w-[55%] text-right text-[10px] font-medium tracking-[0.14em] uppercase">
+        <p className="text-muted-foreground text-[9px] font-medium tracking-[0.14em] uppercase">
           {countLabel}
         </p>
       </div>
-      <p className="text-primary mt-0.5 text-[10px] font-medium tracking-[0.14em] uppercase">
+      <p className="text-primary text-[9px] font-medium tracking-[0.14em] uppercase">
         {sub}
       </p>
       {publicPool && (
-        <p className="text-muted-foreground mt-1 text-[10px]">
+        <p className="text-muted-foreground text-[9px]">
           No social profile shared
         </p>
       )}
       {handles && handles.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-0.5 flex flex-wrap gap-1">
           {handles.map((h) => (
             <span
               key={h}
-              className="bg-muted text-foreground inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+              className="bg-muted text-foreground inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium"
             >
               <Instagram className="text-muted-foreground h-2.5 w-2.5" />
               {h}
             </span>
           ))}
           {overflowHandles != null && overflowHandles > 0 && (
-            <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+            <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold">
               +{overflowHandles}
             </span>
           )}
@@ -908,7 +741,7 @@ function TierChip({ tier, label }: { tier: Tier; label: string }) {
   );
 }
 
-// ─── Advanced segmentation (coming soon) ──────────────────────────────────
+// ─── Advanced Promos (coming soon) ────────────────────────────────────────
 
 type AdvancedAxisMeta = {
   id: string;
@@ -956,9 +789,9 @@ const ADVANCED_AXES: AdvancedAxisMeta[] = [
   },
 ];
 
-function AdvancedSegmentationGrid() {
+function AdvancedGrid() {
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {ADVANCED_AXES.map((a) => (
         <AdvancedAxisCard key={a.id} axis={a} />
       ))}
@@ -969,7 +802,7 @@ function AdvancedSegmentationGrid() {
 function AdvancedAxisCard({ axis }: { axis: AdvancedAxisMeta }) {
   const Icon = axis.Icon;
   return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-4 opacity-80 shadow-sm">
+    <div className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-3 opacity-80 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <span className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold tracking-wider uppercase">
           <Icon className="h-3 w-3" />
@@ -982,7 +815,7 @@ function AdvancedAxisCard({ axis }: { axis: AdvancedAxisMeta }) {
       <p className="text-muted-foreground text-[12px] leading-relaxed">
         {axis.blurb}
       </p>
-      <ul className="mt-1 flex flex-col gap-1">
+      <ul className="flex flex-col gap-1">
         {axis.examples.map((ex) => (
           <li
             key={ex}
@@ -993,5 +826,79 @@ function AdvancedAxisCard({ axis }: { axis: AdvancedAxisMeta }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+// ─── Section card + toggle switch ─────────────────────────────────────────
+
+function Section({
+  title,
+  subtitle,
+  enabled,
+  onEnabledChange,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  enabled?: boolean;
+  onEnabledChange?: (next: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const hasToggle = onEnabledChange !== undefined;
+  const showChildren = !hasToggle || enabled !== false;
+  return (
+    <section className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display text-lg font-semibold tracking-tight">
+            {title}
+          </h3>
+          {subtitle && (
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {hasToggle && (
+          <Switch
+            checked={enabled ?? false}
+            onCheckedChange={onEnabledChange}
+            label={`Enable ${title.toLowerCase()}`}
+          />
+        )}
+      </div>
+      {showChildren && children}
+    </section>
+  );
+}
+
+function Switch({
+  checked,
+  onCheckedChange,
+  label,
+}: {
+  checked: boolean;
+  onCheckedChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors",
+        checked ? "bg-pink-gradient shadow-glow" : "bg-muted",
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-4 w-4 transform rounded-full bg-white shadow transition",
+          checked ? "translate-x-6" : "translate-x-1",
+        )}
+      />
+    </button>
   );
 }
