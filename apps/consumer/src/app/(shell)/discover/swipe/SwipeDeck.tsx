@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, Ticket, Heart, Compass, RotateCcw, Hand, Info } from "lucide-react";
+import {
+  X,
+  Ticket,
+  Heart,
+  Compass,
+  RotateCcw,
+  Hand,
+  Store,
+} from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/guest/VenueSwipeCardFace";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -310,10 +318,11 @@ function Deck({ venues }: { venues: Venue[] }) {
         </button>
         <Link
           href={`/venues/${v.id}`}
-          aria-label="Venue info"
-          className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition"
+          aria-label="About this place"
+          className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 text-sm font-medium transition"
         >
-          <Info className="h-4 w-4" />
+          <Store className="h-4 w-4" />
+          Place
         </Link>
         <button
           type="button"
