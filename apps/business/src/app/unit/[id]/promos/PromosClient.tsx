@@ -208,110 +208,86 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       {/* 1. Mesita Visibility */}
       <VisibilityMeter plan={venue.plan} />
 
-      {/* 2. Plan & Reward Mechanic */}
+      {/* 2. Plan */}
       <Section
-        title="Plan & Reward Mechanic"
-        subtitle="Two products in one box. Pick a plan (Free or Pro) on the left, and the reward you give returning guests (Cashback or Discount) on the right."
+        title="Plan"
+        subtitle="Free auto-lists you and accepts AI reservations. Pro adds priority discovery, customer-acquisition tools, and the dashboard."
       >
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="flex flex-col gap-3">
-            <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-              Plan
-            </p>
-            {PLANS.map((p) => {
-              const isCurrent = p.id === currentDisplayPlan;
-              const isPending = pendingPlanId === p.id;
-              const buttonLabel = isCurrent
-                ? "Current"
-                : p.id === "free"
-                  ? "Switch to Free"
-                  : "Become Pro";
-              return (
-                <Card
-                  key={p.id}
-                  className={cn(
-                    "relative rounded-2xl",
-                    p.featured && "border-foreground shadow-elev",
-                  )}
-                >
-                  {isCurrent && (
-                    <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                      Current
-                    </Badge>
-                  )}
-                  {!isCurrent && p.featured && (
-                    <Badge className="bg-pink-gradient shadow-glow absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
-                      Featured
-                    </Badge>
-                  )}
-                  <CardHeader className="gap-1.5">
-                    <CardTitle className="font-display text-xl font-semibold tracking-tight">
-                      {p.label}
-                    </CardTitle>
-                    <p className="font-display text-2xl font-bold tabular-nums leading-none">
-                      {p.price}
-                      <span className="text-muted-foreground ml-1 text-xs font-normal">
-                        {p.cadence}
-                      </span>
-                    </p>
-                    <CardDescription className="text-[12px] leading-relaxed">
-                      {p.blurb}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-3">
-                    <ul className="flex flex-col gap-1 text-[12px]">
-                      {p.bullets.map((b) => (
-                        <li
-                          key={b}
-                          className="flex items-start gap-2 leading-snug"
-                        >
-                          <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-                          <span>{b}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={p.featured ? "default" : "outline"}
-                      onClick={() => selectPlan(p.id)}
-                      disabled={isCurrent || pending}
-                      className={cn(
-                        "rounded-full",
-                        p.featured &&
-                          !isCurrent &&
-                          "bg-pink-gradient shadow-glow text-white hover:opacity-90",
-                      )}
-                    >
-                      {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : null}
-                      {buttonLabel}
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-              Reward mechanic
-            </p>
-            <MechanicCard
-              tone="cashback"
-              isCurrent={venue.fiscal_type === "formal"}
-              pending={fiscalPending}
-              onPick={() => switchFiscal("formal")}
-            />
-            <MechanicCard
-              tone="discount"
-              isCurrent={venue.fiscal_type === "informal"}
-              pending={fiscalPending}
-              onPick={() => switchFiscal("informal")}
-            />
-            {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
-          </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {PLANS.map((p) => {
+            const isCurrent = p.id === currentDisplayPlan;
+            const isPending = pendingPlanId === p.id;
+            const buttonLabel = isCurrent
+              ? "Current"
+              : p.id === "free"
+                ? "Switch to Free"
+                : "Become Pro";
+            return (
+              <Card
+                key={p.id}
+                className={cn(
+                  "relative rounded-2xl",
+                  p.featured && "border-foreground shadow-elev",
+                )}
+              >
+                {isCurrent && (
+                  <Badge className="bg-secondary text-secondary-foreground absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                    Current
+                  </Badge>
+                )}
+                {!isCurrent && p.featured && (
+                  <Badge className="bg-pink-gradient shadow-glow absolute -top-2.5 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+                    Featured
+                  </Badge>
+                )}
+                <CardHeader className="gap-1.5">
+                  <CardTitle className="font-display text-xl font-semibold tracking-tight">
+                    {p.label}
+                  </CardTitle>
+                  <p className="font-display text-2xl font-bold tabular-nums leading-none">
+                    {p.price}
+                    <span className="text-muted-foreground ml-1 text-xs font-normal">
+                      {p.cadence}
+                    </span>
+                  </p>
+                  <CardDescription className="text-[12px] leading-relaxed">
+                    {p.blurb}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <ul className="flex flex-col gap-1 text-[12px]">
+                    {p.bullets.map((b) => (
+                      <li
+                        key={b}
+                        className="flex items-start gap-2 leading-snug"
+                      >
+                        <CheckCircle2 className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={p.featured ? "default" : "outline"}
+                    onClick={() => selectPlan(p.id)}
+                    disabled={isCurrent || pending}
+                    className={cn(
+                      "rounded-full",
+                      p.featured &&
+                        !isCurrent &&
+                        "bg-pink-gradient shadow-glow text-white hover:opacity-90",
+                    )}
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    {buttonLabel}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {(error || saved) && (
@@ -328,6 +304,28 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         )}
 
         {isFree && <FreePlanNotice fiscalType={venue.fiscal_type} />}
+      </Section>
+
+      {/* 3. Reward Mechanic */}
+      <Section
+        title="Reward Mechanic"
+        subtitle="How returning guests get rewarded. Cashback unlocks Maximum visibility; Discount caps at Priority. Pro venues only."
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <MechanicCard
+            tone="cashback"
+            isCurrent={venue.fiscal_type === "formal"}
+            pending={fiscalPending}
+            onPick={() => switchFiscal("formal")}
+          />
+          <MechanicCard
+            tone="discount"
+            isCurrent={venue.fiscal_type === "informal"}
+            pending={fiscalPending}
+            onPick={() => switchFiscal("informal")}
+          />
+        </div>
+        {fiscalError && <p className={ERROR_BOX_CLASS}>{fiscalError}</p>}
       </Section>
 
       {/* 3. Basic Promos */}
@@ -367,10 +365,14 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
 function VisibilityMeter({ plan }: { plan: VenuePlan }) {
   const current = visibilityForPlan(plan);
-  const levels: { label: PlanVisibility; planLabel: string }[] = [
-    { label: "Minimum", planLabel: "Free" },
-    { label: "Priority", planLabel: "Pro · Discount" },
-    { label: "Maximum", planLabel: "Pro · Cashback" },
+  const levels: {
+    label: PlanVisibility;
+    planLabel: string;
+    reach: string;
+  }[] = [
+    { label: "Minimum", planLabel: "Free", reach: "Auto-listed only" },
+    { label: "Priority", planLabel: "Pro · Discount", reach: "Boosted reach" },
+    { label: "Maximum", planLabel: "Pro · Cashback", reach: "Top of every surface" },
   ];
   const currentIdx = levels.findIndex((l) => l.label === current);
   const atMax = current === "Maximum";
@@ -378,25 +380,62 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
   return (
     <Section
       title="Mesita Visibility"
-      subtitle="The product you're buying here — how many guests see you across swipe, catalog, map, and the AI planner. Climb the ladder by going Pro."
+      subtitle="The product you're buying here — how many guests see you across swipe, catalog, map, and the AI planner."
     >
-      <div className="grid grid-cols-3 gap-2">
+      {/* Stepper — numbered circles, current carries pink-gradient + glow,
+          connectors fill in as the venue climbs the ladder. */}
+      <div className="flex items-start">
         {levels.map((l, i) => {
           const reached = i <= currentIdx;
           const isCurrent = i === currentIdx;
+          const isLast = i === levels.length - 1;
+          const nextReached = i < currentIdx;
           return (
-            <div key={l.label} className="flex flex-col gap-1.5">
-              <div
-                className={cn(
-                  "h-2.5 rounded-full transition",
-                  reached ? "bg-pink-gradient" : "bg-muted",
-                  isCurrent && "shadow-glow",
-                )}
-              />
-              <div className="flex items-baseline justify-between gap-1">
+            <div key={l.label} className="flex flex-1 flex-col items-center">
+              <div className="flex w-full items-center">
+                {/* Spacer on left of first circle so the connector lines
+                    don't extend past the first step. */}
+                <div
+                  className={cn(
+                    "h-0.5 flex-1",
+                    i === 0
+                      ? "bg-transparent"
+                      : i <= currentIdx
+                        ? "bg-pink-gradient"
+                        : "bg-muted",
+                  )}
+                />
+                <div
+                  className={cn(
+                    "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition",
+                    reached
+                      ? "bg-pink-gradient text-white"
+                      : "bg-muted text-muted-foreground border-border border",
+                    isCurrent && "shadow-glow ring-foreground/30 ring-2 ring-offset-2",
+                  )}
+                >
+                  {i + 1}
+                  {isCurrent && (
+                    <span className="text-primary absolute -bottom-5 text-[9px] font-bold tracking-wider uppercase">
+                      You
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    "h-0.5 flex-1",
+                    isLast
+                      ? "bg-transparent"
+                      : nextReached
+                        ? "bg-pink-gradient"
+                        : "bg-muted",
+                  )}
+                />
+              </div>
+              <div className="mt-4 flex flex-col items-center text-center">
                 <span
                   className={cn(
-                    "text-[10px] font-bold tracking-[0.12em] uppercase",
+                    "text-[11px] font-bold tracking-[0.12em] uppercase",
                     reached ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
@@ -410,12 +449,16 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
                 >
                   {l.planLabel}
                 </span>
+                <span className="text-muted-foreground mt-0.5 text-[10px] leading-tight">
+                  {l.reach}
+                </span>
               </div>
             </div>
           );
         })}
       </div>
-      <p className="text-muted-foreground text-[12px] leading-relaxed">
+
+      <p className="text-muted-foreground border-border bg-muted/30 rounded-xl border px-3 py-2.5 text-[12px] leading-relaxed">
         {atMax ? (
           <>
             You&apos;re at{" "}
@@ -424,13 +467,15 @@ function VisibilityMeter({ plan }: { plan: VenuePlan }) {
           </>
         ) : (
           <>
-            You&apos;re at{" "}
-            <span className="text-foreground font-semibold">{current}</span>.
-            Pick{" "}
-            <span className="text-foreground font-semibold">Pro Cashback</span>
-            {" "}below for{" "}
-            <span className="text-foreground font-semibold">Maximum</span>
-            {" "}visibility.
+            You&apos;re at step{" "}
+            <span className="text-foreground font-semibold">
+              {currentIdx + 1}
+            </span>{" "}
+            of <span className="text-foreground font-semibold">3</span>. Pick{" "}
+            <span className="text-foreground font-semibold">Pro Cashback</span>{" "}
+            below to climb to{" "}
+            <span className="text-foreground font-semibold">Maximum</span>{" "}
+            visibility.
           </>
         )}
       </p>
