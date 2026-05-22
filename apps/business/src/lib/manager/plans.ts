@@ -3,7 +3,8 @@ import type { FiscalType } from "@/components/shared";
 
 // Subscription catalog used by Promos (picker + label lookup).
 //
-// Three subscriptions, one per DB enum value:
+// Three subscriptions, one per DB enum value, ordered ascending so the
+// manager reads the picker left-to-right as a ladder:
 //   - "Free without promos"  (plan=free)                          · Minimum  · $0
 //   - "Pro with Discounts"   (plan=informal_pro, fiscal=informal) · Priority · $500
 //   - "Pro with Cashbacks"   (plan=formal_pro,   fiscal=formal)   · Maximum  · $1000
@@ -44,6 +45,15 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     visibility: "Minimum",
   },
   {
+    id: "discount",
+    label: "Pro with Discounts",
+    price: "$500",
+    cadence: "MX / year",
+    tagline: "Guest shows the coupon, you discount the bill.",
+    visibility: "Priority",
+    setup: "1 min",
+  },
+  {
     id: "cashback",
     label: "Pro with Cashbacks",
     price: "$1,000",
@@ -52,15 +62,6 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     visibility: "Maximum",
     setup: "10 min · connect business",
     featured: true,
-  },
-  {
-    id: "discount",
-    label: "Pro with Discounts",
-    price: "$500",
-    cadence: "MX / year",
-    tagline: "Guest shows the coupon, you discount the bill.",
-    visibility: "Priority",
-    setup: "1 min",
   },
 ];
 
