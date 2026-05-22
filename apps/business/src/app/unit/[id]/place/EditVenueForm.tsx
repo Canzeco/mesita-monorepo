@@ -102,8 +102,7 @@ const DESCRIPTION_MAX = 600;
 const TAG_MAX = 40;
 const MAX_PHOTOS = 30;
 
-const NOT_FOUND_NOTE =
-  "We couldn't pull this from the web yet. The enrichment pipeline keeps trying — refresh in a few minutes or reach out to support.";
+const NOT_FOUND_NOTE = "Not found yet — pipeline still searching.";
 
 function nullableUrl(v: string): string | null {
   const t = v.trim();
@@ -245,7 +244,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   };
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <BasicsSection venue={venue} v={v} set={set} />
       <TimeSection venue={venue} v={v} set={set} />
       <MediaSection
@@ -255,8 +254,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         onError={setError}
       />
       <ProductSection v={v} set={set} />
-      <ChannelsAtAGlance v={v} />
-      <PrimaryChannelsSection venue={venue} v={v} set={set} />
+      <ChannelsSection venue={venue} v={v} set={set} />
       <SignalsSection venue={venue} />
 
       {error && (
@@ -265,10 +263,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         </p>
       )}
 
-      <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-2 flex items-center gap-3 rounded-2xl border p-3 backdrop-blur">
-        <p className="text-muted-foreground hidden flex-1 text-xs sm:block">
-          {saved ? "Saved." : "Changes save when you click Save."}
-        </p>
+      <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-2 flex items-center justify-end gap-3 rounded-2xl border p-3 backdrop-blur">
         <button
           type="submit"
           disabled={pending}
@@ -292,7 +287,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Save changes
+              Save
             </>
           )}
         </button>
@@ -324,15 +319,16 @@ function BasicsSection({
       </Field>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Category" hint="One word, e.g. mexican, cafe, sushi.">
+        <Field label="Category">
           <input
             value={v.category}
             onChange={(e) => set("category", e.target.value)}
+            placeholder="e.g. cafe, mexican, sushi"
             className={INPUT}
           />
         </Field>
 
-        <Field label="Tags" hint="Quick descriptors guests search for.">
+        <Field label="Tags">
           <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
         </Field>
       </div>
@@ -343,7 +339,7 @@ function BasicsSection({
           value={
             venue.price_level != null ? PRICE_LABEL[venue.price_level] : null
           }
-          empty="Google doesn't list a price tier for this place."
+          empty="Not listed on Google."
         />
         <ReadOnly
           label="Address"
@@ -352,7 +348,7 @@ function BasicsSection({
         />
       </div>
 
-      <Field label="Description" hint="What makes this place itself.">
+      <Field label="Description">
         <textarea
           value={v.description}
           onChange={(e) => set("description", e.target.value)}
@@ -374,22 +370,17 @@ function TimeSection({
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   return (
-    <Section
-      title="Time"
-      subtitle="When you're open and the clock you run on."
-    >
+    <Section title="Hours">
       <ReadOnly
         label="Timezone"
         value={venue.timezone}
         icon={<Clock className="h-4 w-4" />}
       />
 
-      <Field label="Days & hours">
-        <HoursEditor
-          hours={v.hours}
-          onChange={(hours) => set("hours", hours)}
-        />
-      </Field>
+      <HoursEditor
+        hours={v.hours}
+        onChange={(hours) => set("hours", hours)}
+      />
     </Section>
   );
 }
@@ -444,13 +435,16 @@ function MediaSection({
 
   return (
     <Section
-      title={`Media (${photos.length})`}
-      subtitle="Reorder, remove, or add. The first photo is the swipe-card cover, the rest cycle through the venue page."
+      title="Photos"
+      badge={
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+          {photos.length} / {MAX_PHOTOS}
+        </span>
+      }
     >
       {photos.length === 0 ? (
         <p className="bg-muted text-muted-foreground rounded-xl px-3 py-3 text-xs">
-          No photos yet. Paste an image URL below — the first one you add
-          becomes the swipe-card cover.
+          No photos yet.
         </p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -536,11 +530,8 @@ function ProductSection({
   // Lives in its own section so it can grow: today it's just the menu PDF,
   // tomorrow it's product photos, signature dishes, drink list, etc.
   return (
-    <Section
-      title="Product"
-      subtitle="What you sell. Just the menu PDF for now — this is where future product surfaces will land."
-    >
-      <Field label="Menu PDF" hint="Public link to the latest menu PDF.">
+    <Section title="Menu">
+      <Field label="PDF link">
         <UrlInput
           icon={<FileText className="h-4 w-4" />}
           value={v.menu_pdf_url}
@@ -552,48 +543,7 @@ function ProductSection({
   );
 }
 
-function ChannelsAtAGlance({ v }: { v: FormState }) {
-  // Compact read-only mosaic of the primary channels. Lets a manager scan
-  // one box to see what's filled in vs. missing.
-  const items: { label: string; value: string; icon: React.ReactNode }[] = [
-    { label: "Phone", value: v.phone, icon: <PhoneIcon className="h-3.5 w-3.5" /> },
-    { label: "WhatsApp", value: v.whatsapp_url, icon: <MessageCircle className="h-3.5 w-3.5" /> },
-    { label: "Email", value: v.email, icon: <Mail className="h-3.5 w-3.5" /> },
-    { label: "Website", value: v.website_url, icon: <Globe className="h-3.5 w-3.5" /> },
-    { label: "Instagram", value: v.instagram_url, icon: <Instagram className="h-3.5 w-3.5" /> },
-  ];
-  const filled = items.filter((i) => i.value.trim() !== "");
-  const missing = items.filter((i) => i.value.trim() === "");
-  return (
-    <Section
-      title="Channels at a glance"
-      subtitle={`${filled.length} of ${items.length} channels filled`}
-    >
-      <div className="flex flex-wrap gap-1.5">
-        {filled.map((i) => (
-          <span
-            key={i.label}
-            className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-          >
-            {i.icon}
-            {i.label}
-          </span>
-        ))}
-        {missing.map((i) => (
-          <span
-            key={i.label}
-            className="border-border bg-muted/40 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border border-dashed px-2.5 py-1 text-[11px] font-medium"
-          >
-            {i.icon}
-            {i.label}
-          </span>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function PrimaryChannelsSection({
+function ChannelsSection({
   venue,
   v,
   set,
@@ -602,21 +552,33 @@ function PrimaryChannelsSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
+  const fields = [
+    v.phone,
+    v.whatsapp_url,
+    v.email,
+    v.website_url,
+    v.instagram_url,
+  ];
+  const filled = fields.filter((f) => f.trim() !== "").length;
   return (
     <Section
-      title="Primary channels"
-      subtitle="The channels guests use to reach you directly."
+      title="Channels"
+      badge={
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+          {filled} / {fields.length}
+        </span>
+      }
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <UrlField
-          label="Phone number"
+          label="Phone"
           icon={<PhoneIcon className="h-4 w-4" />}
           placeholder="+52 444 833 5050"
           value={v.phone}
           onChange={(val) => set("phone", val)}
         />
         <UrlField
-          label="WhatsApp number"
+          label="WhatsApp"
           icon={<MessageCircle className="h-4 w-4" />}
           placeholder="https://wa.me/52…"
           value={v.whatsapp_url}
@@ -645,16 +607,18 @@ function PrimaryChannelsSection({
         />
       </div>
 
-      <ReadOnly
-        label="Google Business listing"
-        value={venue.google_business_url}
-        icon={<Building2 className="h-4 w-4" />}
-      />
-      <ReadOnly
-        label="Google Maps link"
-        value={venue.google_maps_url}
-        icon={<MapPin className="h-4 w-4" />}
-      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ReadOnly
+          label="Google Business"
+          value={venue.google_business_url}
+          icon={<Building2 className="h-4 w-4" />}
+        />
+        <ReadOnly
+          label="Google Maps"
+          value={venue.google_maps_url}
+          icon={<MapPin className="h-4 w-4" />}
+        />
+      </div>
     </Section>
   );
 }
@@ -664,38 +628,12 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
     label: string;
     value: number | null;
     logo: React.ReactNode;
-    accent: string;
   }[] = [
-    {
-      label: "Google · Overall",
-      value: venue.google_stars_overall,
-      logo: <GoogleLogo size={14} />,
-      accent: "text-foreground",
-    },
-    {
-      label: "Mesita · Overall",
-      value: venue.mesita_stars_overall,
-      logo: <MesitaLogo size={14} />,
-      accent: "text-foreground",
-    },
-    {
-      label: "Mesita · Food",
-      value: venue.mesita_stars_food,
-      logo: <MesitaLogo size={14} />,
-      accent: "text-foreground",
-    },
-    {
-      label: "Mesita · Service",
-      value: venue.mesita_stars_service,
-      logo: <MesitaLogo size={14} />,
-      accent: "text-foreground",
-    },
-    {
-      label: "Mesita · Ambience",
-      value: venue.mesita_stars_ambience,
-      logo: <MesitaLogo size={14} />,
-      accent: "text-foreground",
-    },
+    { label: "Google", value: venue.google_stars_overall, logo: <GoogleLogo size={12} /> },
+    { label: "Overall", value: venue.mesita_stars_overall, logo: <MesitaLogo size={12} /> },
+    { label: "Food", value: venue.mesita_stars_food, logo: <MesitaLogo size={12} /> },
+    { label: "Service", value: venue.mesita_stars_service, logo: <MesitaLogo size={12} /> },
+    { label: "Ambience", value: venue.mesita_stars_ambience, logo: <MesitaLogo size={12} /> },
   ];
   const counts: {
     label: string;
@@ -703,58 +641,62 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
     logo: React.ReactNode;
   }[] = [
     {
-      label: "Google · visitors & reviews",
+      label: "Google",
       value: visitorReview(venue.google_visitor_count, venue.google_review_count),
-      logo: <GoogleLogo size={14} />,
+      logo: <GoogleLogo size={12} />,
     },
     {
-      label: "Mesita · visitors & reviews",
+      label: "Mesita",
       value: visitorReview(venue.mesita_visitor_count, venue.mesita_review_count),
-      logo: <MesitaLogo size={14} />,
+      logo: <MesitaLogo size={12} />,
     },
     {
-      label: "Instagram · followers",
+      label: "Instagram",
       value:
         venue.instagram_followers_count == null
           ? "—"
           : formatCount(venue.instagram_followers_count),
-      logo: <InstagramLogo size={14} />,
+      logo: <InstagramLogo size={12} />,
     },
   ];
 
   return (
     <Section
       title="Signals"
-      subtitle="Computed from third-party sources and Mesita guest behaviour. Read-only."
+      badge={
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+          Read-only
+        </span>
+      }
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {stars.map((s) => (
           <div
             key={s.label}
-            className="border-border bg-muted/40 flex flex-col rounded-xl border p-3"
+            className="border-border bg-muted/40 flex flex-col rounded-xl border p-2.5"
           >
-            <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-medium tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground flex items-center gap-1 text-[10px] font-semibold tracking-[0.12em] uppercase">
               {s.logo}
               {s.label}
             </p>
-            <p className={cn("font-display mt-1 flex items-baseline gap-1 text-xl font-semibold tabular-nums", s.accent)}>
-              <Star className="text-secondary h-3.5 w-3.5" />
+            <p className="font-display mt-1 flex items-baseline gap-1 text-lg font-semibold tabular-nums">
+              <Star className="text-secondary h-3 w-3" />
               {s.value == null ? "—" : s.value.toFixed(1)}
             </p>
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {counts.map((c) => (
           <div
             key={c.label}
-            className="border-border bg-muted/40 rounded-xl border p-3"
+            className="border-border bg-muted/40 rounded-xl border p-2.5"
           >
-            <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-medium tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground flex items-center gap-1 text-[10px] font-semibold tracking-[0.12em] uppercase">
               {c.logo}
               {c.label}
             </p>
-            <p className="font-display mt-1 text-base font-semibold tabular-nums">
+            <p className="font-display mt-1 text-sm font-semibold tabular-nums">
               {c.value}
             </p>
           </div>
@@ -768,22 +710,20 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
 
 function Section({
   title,
-  subtitle,
+  badge,
   children,
 }: {
   title: string;
-  subtitle?: string;
+  badge?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-5">
-      <div>
-        <h3 className="font-display text-lg font-semibold tracking-tight">
+    <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-display text-sm font-semibold tracking-tight">
           {title}
         </h3>
-        {subtitle && (
-          <p className="text-muted-foreground mt-0.5 text-xs">{subtitle}</p>
-        )}
+        {badge}
       </div>
       {children}
     </section>

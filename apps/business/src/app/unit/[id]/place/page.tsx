@@ -33,7 +33,6 @@ export default async function ManagerPlacePage({
     return (
       <PageErrorState
         title="Place"
-        subtitle="Edit the venue this unit is for."
         heading="Couldn't load your place"
         message={overviewError}
         retryHref={`/unit/${id}/place`}
@@ -44,7 +43,7 @@ export default async function ManagerPlacePage({
   if (!overview || overview.venues.length === 0) {
     return (
       <>
-        <Topbar title="Place" subtitle="Edit the venue this unit is for." />
+        <Topbar title="Place" />
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
             <div className="border-border bg-card rounded-2xl border border-dashed p-10 text-center">
@@ -52,17 +51,17 @@ export default async function ManagerPlacePage({
                 <Store className="text-muted-foreground h-5 w-5" />
               </div>
               <h2 className="font-display text-xl font-semibold tracking-tight">
-                No venue to edit yet
+                No venue yet
               </h2>
               <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
-                Create your first venue, then come back here to fine-tune it.
+                Add a venue to start editing it.
               </p>
               <Link
                 href="/add"
                 className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
-                Create your first venue
+                Add venue
               </Link>
             </div>
           </div>
@@ -75,10 +74,7 @@ export default async function ManagerPlacePage({
 
   return (
     <>
-      <Topbar
-        title={active.name}
-        subtitle="Place — basics, channels, and signals at a glance."
-      />
+      <Topbar title={active.name} subtitle="Place" />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <EditVenueForm venue={active} />
