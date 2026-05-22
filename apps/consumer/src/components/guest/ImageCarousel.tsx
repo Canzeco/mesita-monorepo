@@ -19,7 +19,7 @@ export function ImageCarousel({
   sizes = "(max-width: 768px) 100vw, 420px",
   mutePosition = "bottom-right",
   noNativeScroll = false,
-  disablePaging = false,
+  onIdxChange,
 }: {
   photos: string[];
   media?: MediaItem[];
@@ -38,14 +38,10 @@ export function ImageCarousel({
    */
   noNativeScroll?: boolean;
   /**
-   * When true, the invisible left/right side-tap paging zones are
-   * suppressed. Required when this carousel sits inside a horizontal
-   * gesture handler (SwipeDeck) — otherwise a near-swipe that doesn't
-   * commit fires the side-tap onClick on pointerup and pages the photo,
-   * which the user reads as "swipe got stopped." The position dots stay
-   * as a visual indicator.
+   * Called whenever the active slide changes. Lets a parent react to
+   * carousel position (e.g. fade out an overlay past the first photo).
    */
-  disablePaging?: boolean;
+  onIdxChange?: (idx: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -59,6 +55,13 @@ export function ImageCarousel({
 
   const hasVideo = items.some((m) => m.type === "video");
 
+  // Surface idx changes upward so a parent (e.g. VenueSwipeCardFace) can
+  // react to the active photo — used to hide the info overlay past the
+  // first slide.
+  useEffect(() => {
+    onIdxChange?.(idx);
+  }, [idx, onIdxChange]);
+
   const goTo = (i: number) => {
     if (noNativeScroll) {
       setIdx(i);
@@ -68,6 +71,32 @@ export function ImageCarousel({
     if (!el) return;
     el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
   };
+
+  // Tap-vs-drag detection for the invisible side-tap paging zones. The
+  // earlier onClick-based approach fired on near-swipes that hadn't
+  // committed (the browser's click-suppression-on-drag heuristic is
+  // unreliable on mobile), so a small horizontal flick stopped the
+  // parent swipe AND paged the photo. Now we time the gesture and only
+  // page when the pointer barely moved within a short window — every
+  // real swipe falls through to the parent SwipeDeck untouched.
+  const tapRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const handleZoneDown = (e: React.PointerEvent) => {
+    tapRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+  };
+  const handleZoneUp =
+    (direction: -1 | 1) => (e: React.PointerEvent<HTMLDivElement>) => {
+      const start = tapRef.current;
+      tapRef.current = null;
+      if (!start) return;
+      const dx = Math.abs(e.clientX - start.x);
+      const dy = Math.abs(e.clientY - start.y);
+      const dt = performance.now() - start.t;
+      if (dx > 10 || dy > 10 || dt > 300) return;
+      const target = idx + direction;
+      if (target < 0 || target >= items.length) return;
+      e.stopPropagation();
+      goTo(target);
+    };
 
   const toggleMute = () => {
     const next = !muted;
@@ -205,27 +234,21 @@ export function ImageCarousel({
         </div>
       )}
 
-      {items.length > 1 && !disablePaging && (
+      {items.length > 1 && (
         <>
-          <button
-            type="button"
-            aria-label="Previous"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (idx > 0) goTo(idx - 1);
-            }}
-            className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-default opacity-0"
+          <div
+            role="button"
+            aria-label="Previous photo"
+            onPointerDown={handleZoneDown}
+            onPointerUp={handleZoneUp(-1)}
+            className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-default"
           />
-          <button
-            type="button"
-            aria-label="Next"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (idx < items.length - 1) goTo(idx + 1);
-            }}
-            className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-default opacity-0"
+          <div
+            role="button"
+            aria-label="Next photo"
+            onPointerDown={handleZoneDown}
+            onPointerUp={handleZoneUp(1)}
+            className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-default"
           />
         </>
       )}

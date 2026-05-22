@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Info, Star } from "lucide-react";
@@ -38,6 +41,11 @@ export function VenueSwipeCardFace({
   priority?: boolean;
   className?: string;
 }) {
+  // Track the active photo so the info overlay only renders on photo 1 —
+  // photos 2..N are pure imagery (the venue's gallery), per spec.
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const showOverlay = !carousel || photoIdx === 0;
+
   return (
     <div
       className={cn(
@@ -55,7 +63,7 @@ export function VenueSwipeCardFace({
             priority={priority}
             mutePosition="top-right"
             noNativeScroll
-            disablePaging
+            onIdxChange={setPhotoIdx}
           />
         ) : venue.photos[0] ? (
           <VenueBackground venue={venue} />
@@ -64,7 +72,15 @@ export function VenueSwipeCardFace({
         )}
       </div>
 
-      <CardOverlay venue={venue} hrefInfo={hrefInfo} />
+      <div
+        className={cn(
+          "absolute inset-x-0 bottom-0 z-20 transition-opacity duration-200 ease-out",
+          showOverlay ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden={!showOverlay}
+      >
+        <CardOverlay venue={venue} hrefInfo={hrefInfo} />
+      </div>
     </div>
   );
 }
@@ -109,7 +125,7 @@ function CardOverlay({ venue, hrefInfo }: { venue: Venue; hrefInfo?: string }) {
     !!venue.created_at && Date.parse(venue.created_at) > NEW_BADGE_THRESHOLD;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 pt-24 text-white">
+    <div className="flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 pt-24 text-white">
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           {(venue.vibe || venue.category) && (
