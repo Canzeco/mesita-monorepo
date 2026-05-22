@@ -159,6 +159,13 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
     });
   };
 
+  // Segmentation toggles default on so a manager landing on the page sees
+  // the full configurator. UI-only state for now — when we wire venue-side
+  // persistence, these become venue.segmentation_{basic,advanced}_enabled
+  // backed by a write through apiUpdateVenue.
+  const [basicEnabled, setBasicEnabled] = useState(true);
+  const [advancedEnabled, setAdvancedEnabled] = useState(true);
+
   // Drive copy off fiscal_type, not the saved plan. On Free the plan
   // mechanic is "None" — falling back to "Cashback" mislabelled informal
   // venues whose rates and free-plan banner already say "discount".
@@ -332,6 +339,8 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       <Section
         title="Basic segmentation"
         subtitle="Two levers every venue gets: a Welcome coupon for first-time guests and per-tier rates for returning ones."
+        enabled={basicEnabled}
+        onEnabledChange={setBasicEnabled}
       >
         <FirstTimeSection mechanicLabel={mechanicLabel} />
         <ReturningTierGrid mechanicLabel={mechanicLabel} />
@@ -340,6 +349,8 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       <Section
         title="Advanced segmentation"
         subtitle="Stack extra dimensions on top of the basic tier rates — communities, demographics, geography, custom rules. Coming soon, landing with the segments table."
+        enabled={advancedEnabled}
+        onEnabledChange={setAdvancedEnabled}
       >
         <AdvancedSegmentationGrid />
       </Section>
@@ -353,26 +364,77 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 function Section({
   title,
   subtitle,
+  enabled,
+  onEnabledChange,
   children,
 }: {
   title: string;
   subtitle?: string;
+  // Pass `enabled` + `onEnabledChange` to render an on/off switch next to
+  // the title. When enabled is false the body collapses — the section
+  // header itself stays visible so the toggle remains discoverable.
+  enabled?: boolean;
+  onEnabledChange?: (next: boolean) => void;
   children: React.ReactNode;
 }) {
+  const hasToggle = onEnabledChange !== undefined;
+  const showChildren = !hasToggle || enabled !== false;
   return (
     <section className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-5">
-      <div>
-        <h3 className="font-display text-lg font-semibold tracking-tight">
-          {title}
-        </h3>
-        {subtitle && (
-          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            {subtitle}
-          </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display text-lg font-semibold tracking-tight">
+            {title}
+          </h3>
+          {subtitle && (
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {hasToggle && (
+          <Switch
+            checked={enabled ?? false}
+            onCheckedChange={onEnabledChange}
+            label={`Enable ${title.toLowerCase()}`}
+          />
         )}
       </div>
-      {children}
+      {showChildren && children}
     </section>
+  );
+}
+
+// iOS-style toggle pill. ARIA role=switch so screen readers announce
+// "Enable basic segmentation, on". Brand pink when on, muted when off.
+function Switch({
+  checked,
+  onCheckedChange,
+  label,
+}: {
+  checked: boolean;
+  onCheckedChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors",
+        checked ? "bg-pink-gradient shadow-glow" : "bg-muted",
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-4 w-4 transform rounded-full bg-white shadow transition",
+          checked ? "translate-x-6" : "translate-x-1",
+        )}
+      />
+    </button>
   );
 }
 
