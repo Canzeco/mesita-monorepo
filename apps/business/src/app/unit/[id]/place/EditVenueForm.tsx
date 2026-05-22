@@ -247,6 +247,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <BasicsSection venue={venue} v={v} set={set} />
+      <TimeSection venue={venue} v={v} set={set} />
       <MediaSection
         photos={v.photos}
         onChange={(photos) => set("photos", photos)}
@@ -339,13 +340,6 @@ function BasicsSection({
         />
       </Field>
 
-      <Field label="Days & hours">
-        <HoursEditor
-          hours={v.hours}
-          onChange={(hours) => set("hours", hours)}
-        />
-      </Field>
-
       <Field label="Tags" hint="Quick descriptors guests search for.">
         <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
       </Field>
@@ -359,15 +353,39 @@ function BasicsSection({
       />
 
       <ReadOnly
-        label="Timezone"
-        value={venue.timezone}
-        icon={<Clock className="h-4 w-4" />}
-      />
-
-      <ReadOnly
         label="Address"
         value={venue.address}
         icon={<MapPin className="h-4 w-4" />}
+      />
+    </Section>
+  );
+}
+
+function TimeSection({
+  venue,
+  v,
+  set,
+}: {
+  venue: MyVenue;
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
+  return (
+    <Section
+      title="Time"
+      subtitle="When you're open and the clock you run on."
+    >
+      <Field label="Days & hours">
+        <HoursEditor
+          hours={v.hours}
+          onChange={(hours) => set("hours", hours)}
+        />
+      </Field>
+
+      <ReadOnly
+        label="Timezone"
+        value={venue.timezone}
+        icon={<Clock className="h-4 w-4" />}
       />
     </Section>
   );
