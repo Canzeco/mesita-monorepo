@@ -1,629 +1,183 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
-  Loader2,
-  Save,
-  Sparkles,
-  Globe,
+  Plus,
   X,
-  PlusCircle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
+  Globe,
   Instagram,
   Facebook,
   MessageCircle,
   Music2,
   CalendarCheck,
   Bike,
-  Twitter,
-  Youtube,
-  AtSign,
   MapPin,
   Star,
   Mail,
+  Phone as PhoneIcon,
+  FileText,
+  Building2,
+  Save,
+  Check,
+  Loader2,
 } from "lucide-react";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
-import {
-  apiUpdateVenue,
-  type MyVenue,
-  type UpdateVenueInput,
-} from "@/lib/api/venues";
+import type { MyVenue } from "@/lib/api/venues";
 import { Field } from "@/components/shared";
-import { cn, errMsg } from "@/lib/utils";
-import { isEmail } from "@/lib/validators";
+import { cn } from "@/lib/utils";
 import {
   INPUT_CLASS as INPUT,
   TEXTAREA_CLASS as TEXTAREA,
 } from "@/lib/ui-classes";
 
-// Schema char limits — kept in lock-step with the venues table CHECK
-// constraints. Update both sides if these change.
-const VENUE_NAME_MAX = 120;
-const VENUE_TAG_MAX = 80;
-const VENUE_ADDRESS_MAX = 300;
-const VENUE_CLOSES_AT_MAX = 5;
-const VENUE_PITCH_MAX = 200;
-const VENUE_STORY_MAX = 1500;
+// Frontend mock pass for the Place redesign. Every field is driven by the
+// Components Notion database (M-Place-V + Manager-E columns):
+//   - M-Place-V=YES  → component renders on this page
+//   - Manager-E=YES  → component is editable; otherwise read-only
+// Backend wiring (real Edge Function + schema migration) lands in a follow-up.
 
-const SAVED_TOAST_DURATION_MS = 2200;
+type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+type DayHours = { open: string; close: string; closed?: boolean };
 
-const PRICE_OPTIONS = [
-  { value: "", label: "—" },
-  { value: "1", label: "$ · Budget" },
-  { value: "2", label: "$$ · Casual" },
-  { value: "3", label: "$$$ · Upscale" },
-  { value: "4", label: "$$$$ · Fine dining" },
+const DAYS: { key: DayKey; label: string }[] = [
+  { key: "mon", label: "Monday" },
+  { key: "tue", label: "Tuesday" },
+  { key: "wed", label: "Wednesday" },
+  { key: "thu", label: "Thursday" },
+  { key: "fri", label: "Friday" },
+  { key: "sat", label: "Saturday" },
+  { key: "sun", label: "Sunday" },
 ];
 
-type Status = "active" | "paused" | "archived";
+type MockVenue = {
+  name: string;
+  category: string;
+  description: string;
+  hours: Record<DayKey, DayHours>;
+  menu_pdf_url: string;
+  price_level: number;
+  tags: string[];
+  address: string;
+  phone: string;
+  whatsapp_url: string;
+  whatsapp_pr_urls: string[];
+  email: string;
+  website_url: string;
+  instagram_url: string;
+  instagram_pr_urls: string[];
+  google_business_url: string;
+  google_maps_url: string;
+  facebook_url: string;
+  tiktok_url: string;
+  opentable_url: string;
+  tripadvisor_url: string;
+  rappi_url: string;
+  uber_eats_url: string;
+  google_stars_overall: number;
+  google_review_count: number;
+  google_visitor_count: number;
+  mesita_stars_overall: number;
+  mesita_stars_food: number;
+  mesita_stars_service: number;
+  mesita_stars_ambience: number;
+  mesita_review_count: number;
+  mesita_visitor_count: number;
+  instagram_followers_count: number;
+};
 
-const STATUS_OPTIONS: { value: Status; label: string }[] = [
-  { value: "active", label: "Active — visible to guests" },
-  { value: "paused", label: "Paused — temporarily hidden" },
-  { value: "archived", label: "Archived — closed permanently" },
-];
+const MOCK_VENUE: MockVenue = {
+  name: "Mochomos San Luis Potosí",
+  category: "mexican",
+  description:
+    "Refined Mexican steakhouse on the Carranza promenade. Carved chandeliers, deep velvets, mezcal flights, and dry-aged cuts on the parrilla.",
+  hours: {
+    mon: { open: "13:00", close: "00:00" },
+    tue: { open: "13:00", close: "00:00" },
+    wed: { open: "13:00", close: "00:00" },
+    thu: { open: "13:00", close: "00:00" },
+    fri: { open: "13:00", close: "02:00" },
+    sat: { open: "13:00", close: "02:00" },
+    sun: { open: "13:00", close: "22:00" },
+  },
+  menu_pdf_url: "https://example.com/mochomos-menu.pdf",
+  price_level: 3,
+  tags: ["elegant", "steakhouse", "tequila", "rooftop"],
+  address:
+    "Av. Venustiano Carranza 100, Tequisquiapan, 78250 San Luis Potosí, SLP",
+  phone: "+52 444 833 5050",
+  whatsapp_url: "https://wa.me/524448335050",
+  whatsapp_pr_urls: [
+    "https://wa.me/524441234567",
+    "https://wa.me/524449876543",
+  ],
+  email: "reservaciones@mochomos.mx",
+  website_url: "https://www.mochomos.com",
+  instagram_url: "https://instagram.com/mochomosslp",
+  instagram_pr_urls: [
+    "https://instagram.com/mochomos.pr1",
+    "https://instagram.com/mochomos.pr2",
+  ],
+  google_business_url: "https://business.google.com/g/mochomos-slp",
+  google_maps_url: "https://maps.app.goo.gl/mochomos-slp",
+  facebook_url: "https://facebook.com/mochomos.slp",
+  tiktok_url: "https://tiktok.com/@mochomos",
+  opentable_url: "https://opentable.com/r/mochomos-slp",
+  tripadvisor_url: "https://tripadvisor.com/Restaurant_Review-mochomos",
+  rappi_url: "https://rappi.com.mx/restaurantes/mochomos",
+  uber_eats_url: "https://ubereats.com/store/mochomos",
+  google_stars_overall: 4.6,
+  google_review_count: 1840,
+  google_visitor_count: 2310,
+  mesita_stars_overall: 4.7,
+  mesita_stars_food: 4.8,
+  mesita_stars_service: 4.5,
+  mesita_stars_ambience: 4.7,
+  mesita_review_count: 64,
+  mesita_visitor_count: 412,
+  instagram_followers_count: 18400,
+};
 
-const VALID_STATUSES: Status[] = STATUS_OPTIONS.map((s) => s.value);
+const PRICE_LABEL: Record<number, string> = {
+  1: "$ · Budget",
+  2: "$$ · Casual",
+  3: "$$$ · Upscale",
+  4: "$$$$ · Fine dining",
+};
 
-// Single source of truth for every link/social field on the venue.
-// Used both as the keys of LinksState (form-side strings) and as the
-// payload keys we sweep through nullableUrl() on save.
-const LINK_KEYS = [
-  "website_url",
-  "instagram_url",
-  "tiktok_url",
-  "facebook_url",
-  "whatsapp_url",
-  "opentable_url",
-  "resy_url",
-  "uber_eats_url",
-  "rappi_url",
-  "x_url",
-  "youtube_url",
-  "threads_url",
-  "reddit_url",
-  "didi_food_url",
-  "tripadvisor_url",
-  "google_maps_url",
-] as const;
+const SAVED_TOAST_MS = 1800;
 
-type LinksState = { [K in (typeof LINK_KEYS)[number]]: string };
-
-function nullableUrl(v: string): string | null {
-  const t = v.trim();
-  if (t === "") return null;
-  // Auto-upgrade to https so the server-side validator (which requires
-  // https://) doesn't reject perfectly reasonable input. Covers:
-  //   - "instagram.com/foo"→  "https://instagram.com/foo"
-  //   - "http://yourplace.mx" → "https://yourplace.mx"
-  if (/^https:\/\//i.test(t)) return t;
-  if (/^http:\/\//i.test(t)) return t.replace(/^http:/i, "https:");
-  if (/^[a-z0-9.-]+\.[a-z]{2,}/i.test(t)) return `https://${t}`;
-  return t;
-}
-
-export function EditVenueForm({ venue }: { venue: MyVenue }) {
-  const router = useRouter();
-  const supabase = useBrowserSupabase();
-
-  const [name, setName] = useState(venue.name);
-  const [status, setStatus] = useState<Status>(() => {
-    // Lead venues haven't been promoted yet — surface them as Active in the
-    // form so a Save promotes them; ditto for anything unrecognised so the
-    // form never crashes on a status the schema added later than this UI.
-    return VALID_STATUSES.includes(venue.status as Status)
-      ? (venue.status as Status)
-      : "active";
-  });
-  const [category, setCategory] = useState(venue.category ?? "");
-  const [vibe, setVibe] = useState(venue.vibe ?? "");
-  const [priceLevel, setPriceLevel] = useState(
-    venue.price_level == null ? "" : String(venue.price_level),
-  );
-  const [address, setAddress] = useState(venue.address ?? "");
-  const [closesAt, setClosesAt] = useState(venue.closes_at ?? "");
-  const [phone, setPhone] = useState(venue.phone ?? "");
-  // cashback_percent moved to Promos (per-tier rates land there). We still
-  // keep it in the Place submit payload so saving Place doesn't clobber the
-  // rate — read it straight from the persisted venue.
-  const cashbackPercent =
-    venue.cashback_percent == null ? "" : String(venue.cashback_percent);
-  const [pitch, setPitch] = useState(venue.pitch ?? "");
-  const [story, setStory] = useState(venue.story ?? "");
-  const [photos, setPhotos] = useState<string[]>(venue.photos ?? []);
-  const [newPhotoUrl, setNewPhotoUrl] = useState("");
-  const [links, setLinks] = useState<LinksState>(
-    () =>
-      Object.fromEntries(
-        LINK_KEYS.map((k) => [k, venue[k] ?? ""]),
-      ) as LinksState,
-  );
-  const setLink = (key: keyof LinksState, value: string) =>
-    setLinks((prev) => ({ ...prev, [key]: value }));
-  // Email is plain text, not URL-shaped — handled separately so it bypasses
-  // the auto-https upgrade in nullableUrl().
-  const [email, setEmail] = useState(venue.email ?? "");
-
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+export function EditVenueForm({ venue: _venue }: { venue: MyVenue }) {
+  void _venue;
+  const [v, setV] = useState<MockVenue>(MOCK_VENUE);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const set = <K extends keyof MockVenue>(key: K, value: MockVenue[K]) =>
+    setV((prev) => ({ ...prev, [key]: value }));
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
-    setSaved(false);
-
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setError("Name cannot be empty.");
-      return;
-    }
-
-    const priceNum = priceLevel === "" ? null : Number(priceLevel);
-    const cashbackNum = cashbackPercent === "" ? null : Number(cashbackPercent);
-    if (
-      cashbackNum != null &&
-      (!Number.isFinite(cashbackNum) || cashbackNum < 0 || cashbackNum > 100)
-    ) {
-      setError("Cashback must be between 0 and 100.");
-      return;
-    }
-    const closesAtTrim = closesAt.trim();
-    if (closesAtTrim && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(closesAtTrim)) {
-      setError("Closing time must be 24h HH:MM (e.g. 02:00).");
-      return;
-    }
-
-    const trimmedEmail = email.trim();
-    if (trimmedEmail && !isEmail(trimmedEmail)) {
-      setError("Email must look like name@domain.tld.");
-      return;
-    }
-
-    // Each LINK_KEYS entry maps 1:1 onto an UpdateVenueInput field of the
-    // same name, so the payload pulls every URL through nullableUrl in a
-    // single sweep instead of 16 hand-written lines.
-    const linkPayload = Object.fromEntries(
-      LINK_KEYS.map((k) => [k, nullableUrl(links[k])]),
-    ) as { [K in (typeof LINK_KEYS)[number]]: string | null };
-
-    const payload: UpdateVenueInput = {
-      id: venue.id,
-      name: trimmedName,
-      status,
-      category: nullable(category),
-      vibe: nullable(vibe),
-      price_level: priceNum,
-      address: nullable(address),
-      closes_at: nullable(closesAt),
-      phone: nullable(phone),
-      cashback_percent: cashbackNum,
-      pitch: nullable(pitch),
-      story: nullable(story),
-      photos,
-      ...linkPayload,
-      email: trimmedEmail === "" ? null : trimmedEmail,
-    };
-
-    startTransition(async () => {
-      try {
-        await apiUpdateVenue(supabase, payload);
-        setSaved(true);
-        router.refresh();
-        window.setTimeout(() => setSaved(false), SAVED_TOAST_DURATION_MS);
-      } catch (err) {
-        setError(errMsg(err, "Could not save."));
-      }
-    });
-  };
-
-  const movePhoto = (from: number, dir: -1 | 1) => {
-    const to = from + dir;
-    if (to < 0 || to >= photos.length) return;
-    const next = photos.slice();
-    [next[from], next[to]] = [next[to], next[from]];
-    setPhotos(next);
-  };
-  const removePhoto = (idx: number) => {
-    setPhotos(photos.filter((_, i) => i !== idx));
-  };
-  const addPhoto = () => {
-    const url = newPhotoUrl.trim();
-    if (!url) return;
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      setError("Photo URL must be a valid https:// link.");
-      return;
-    }
-    if (parsed.protocol !== "https:") {
-      setError("Photo URL must use https:// (Next.js Image refuses http://).");
-      return;
-    }
-    if (photos.includes(url)) {
-      setError("That photo is already in the list.");
-      return;
-    }
-    setError(null);
-    setPhotos([...photos, url]);
-    setNewPhotoUrl("");
+    setSaving(true);
+    window.setTimeout(() => {
+      setSaving(false);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), SAVED_TOAST_MS);
+    }, 500);
   };
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      <Section title="The basics">
-        <Field label="Venue name" required>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={VENUE_NAME_MAX}
-            className={INPUT}
-            required
-          />
-        </Field>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Status">
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as Status)}
-              className={INPUT}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Price level">
-            <select
-              value={priceLevel}
-              onChange={(e) => setPriceLevel(e.target.value)}
-              className={INPUT}
-            >
-              {PRICE_OPTIONS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field
-            label="Category"
-            hint="One word, e.g. mediterranean, mexican, cafe."
-          >
-            <input
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              maxLength={VENUE_TAG_MAX}
-              className={INPUT}
-            />
-          </Field>
-          <Field label="Vibe" hint="One word, e.g. rooftop, cozy, romantic.">
-            <input
-              value={vibe}
-              onChange={(e) => setVibe(e.target.value)}
-              maxLength={VENUE_TAG_MAX}
-              className={INPUT}
-            />
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Address & hours">
-        <Field label="Address">
-          <input
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            maxLength={VENUE_ADDRESS_MAX}
-            className={INPUT}
-          />
-        </Field>
-        <Field label="Closes at" hint="24h format, e.g. 02:00.">
-          <input
-            value={closesAt}
-            onChange={(e) => setClosesAt(e.target.value)}
-            maxLength={VENUE_CLOSES_AT_MAX}
-            className={INPUT}
-          />
-        </Field>
-      </Section>
-
-      <Section title="Story">
-        <Field
-          label="One-line pitch"
-          hint="Shows on the swipe card. Max 200 chars."
-        >
-          <input
-            value={pitch}
-            onChange={(e) => setPitch(e.target.value)}
-            maxLength={VENUE_PITCH_MAX}
-            className={INPUT}
-          />
-        </Field>
-        <Field
-          label="Full story"
-          hint="Shows on the venue page. Max 1500 chars."
-        >
-          <textarea
-            value={story}
-            onChange={(e) => setStory(e.target.value)}
-            maxLength={VENUE_STORY_MAX}
-            className={TEXTAREA}
-          />
-        </Field>
-      </Section>
-
-      <Section
-        title="Channels"
-        subtitle="Every link a guest can deep-link to from your venue page — socials, reviews, reservations, delivery. One box, leave blank what you don't have."
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <UrlField
-            label="Website"
-            icon={<Globe className="h-4 w-4" />}
-            placeholder="https://yourplace.com"
-            value={links.website_url}
-            onChange={(v) => setLink("website_url", v)}
-          />
-          <UrlField
-            label="WhatsApp"
-            icon={<MessageCircle className="h-4 w-4" />}
-            placeholder="https://wa.me/52..."
-            value={links.whatsapp_url}
-            onChange={(v) => setLink("whatsapp_url", v)}
-          />
-          <UrlField
-            label="Instagram"
-            icon={<Instagram className="h-4 w-4" />}
-            placeholder="https://instagram.com/yourplace"
-            value={links.instagram_url}
-            onChange={(v) => setLink("instagram_url", v)}
-          />
-          <UrlField
-            label="TikTok"
-            icon={<Music2 className="h-4 w-4" />}
-            placeholder="https://tiktok.com/@yourplace"
-            value={links.tiktok_url}
-            onChange={(v) => setLink("tiktok_url", v)}
-          />
-          <UrlField
-            label="Facebook"
-            icon={<Facebook className="h-4 w-4" />}
-            placeholder="https://facebook.com/yourplace"
-            value={links.facebook_url}
-            onChange={(v) => setLink("facebook_url", v)}
-          />
-          <UrlField
-            label="X (Twitter)"
-            icon={<Twitter className="h-4 w-4" />}
-            placeholder="https://x.com/yourplace"
-            value={links.x_url}
-            onChange={(v) => setLink("x_url", v)}
-          />
-          <UrlField
-            label="YouTube"
-            icon={<Youtube className="h-4 w-4" />}
-            placeholder="https://youtube.com/@yourplace"
-            value={links.youtube_url}
-            onChange={(v) => setLink("youtube_url", v)}
-          />
-          <UrlField
-            label="Threads"
-            icon={<AtSign className="h-4 w-4" />}
-            placeholder="https://threads.net/@yourplace"
-            value={links.threads_url}
-            onChange={(v) => setLink("threads_url", v)}
-          />
-          <UrlField
-            label="Reddit"
-            icon={<MessageCircle className="h-4 w-4" />}
-            placeholder="https://reddit.com/r/yourplace"
-            value={links.reddit_url}
-            onChange={(v) => setLink("reddit_url", v)}
-          />
-          <UrlField
-            label="Google Maps"
-            icon={<MapPin className="h-4 w-4" />}
-            placeholder="https://maps.app.goo.gl/..."
-            value={links.google_maps_url}
-            onChange={(v) => setLink("google_maps_url", v)}
-          />
-          <UrlField
-            label="TripAdvisor"
-            icon={<Star className="h-4 w-4" />}
-            placeholder="https://tripadvisor.com/Restaurant_Review-..."
-            value={links.tripadvisor_url}
-            onChange={(v) => setLink("tripadvisor_url", v)}
-          />
-          <UrlField
-            label="OpenTable"
-            icon={<CalendarCheck className="h-4 w-4" />}
-            placeholder="https://opentable.com/r/yourplace"
-            value={links.opentable_url}
-            onChange={(v) => setLink("opentable_url", v)}
-          />
-          <UrlField
-            label="Resy"
-            icon={<CalendarCheck className="h-4 w-4" />}
-            placeholder="https://resy.com/cities/.../yourplace"
-            value={links.resy_url}
-            onChange={(v) => setLink("resy_url", v)}
-          />
-          <UrlField
-            label="Uber Eats"
-            icon={<Bike className="h-4 w-4" />}
-            placeholder="https://ubereats.com/store/..."
-            value={links.uber_eats_url}
-            onChange={(v) => setLink("uber_eats_url", v)}
-          />
-          <UrlField
-            label="Rappi"
-            icon={<Bike className="h-4 w-4" />}
-            placeholder="https://www.rappi.com.mx/restaurantes/..."
-            value={links.rappi_url}
-            onChange={(v) => setLink("rappi_url", v)}
-          />
-          <UrlField
-            label="DiDi Food"
-            icon={<Bike className="h-4 w-4" />}
-            placeholder="https://didifood.mx/restaurantes/..."
-            value={links.didi_food_url}
-            onChange={(v) => setLink("didi_food_url", v)}
-          />
-        </div>
-      </Section>
-
-      <Section
-        title="Direct contact"
-        subtitle="Email + phone guests can reach. Pulled from your homepage where possible — overwrite if you'd rather route somewhere else."
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Email">
-            <div className="border-border bg-card flex items-center gap-2 rounded-xl border px-3">
-              <Mail className="text-muted-foreground h-4 w-4 shrink-0" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="hola@yourplace.com"
-                inputMode="email"
-                autoCapitalize="none"
-                spellCheck={false}
-                className="placeholder:text-muted-foreground h-11 w-full bg-transparent text-sm outline-none"
-              />
-            </div>
-          </Field>
-          <Field label="Phone">
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+52 55 1234 5678"
-              inputMode="tel"
-              className={INPUT}
-            />
-          </Field>
-        </div>
-      </Section>
-
-      <Section
-        title={`Photos (${photos.length})`}
-        subtitle="Reorder, remove, or add — the first photo is the swipe-card cover."
-      >
-        {photos.length === 0 ? (
-          <p className="bg-muted text-muted-foreground rounded-xl px-3 py-3 text-xs">
-            No photos yet. Paste an image URL below.
-          </p>
-        ) : (
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {photos.map((src, idx) => (
-              <li
-                key={`${src}-${idx}`}
-                className="group border-border bg-muted relative overflow-hidden rounded-xl border"
-              >
-                <div className="aspect-[4/3] w-full">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt={`${name || "Venue"} photo ${idx + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                {idx === 0 && (
-                  <span className="bg-foreground text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                    Cover
-                  </span>
-                )}
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 transition group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={() => movePhoto(idx, -1)}
-                    aria-label="Move left"
-                    disabled={idx === 0}
-                    className="text-foreground flex h-7 w-7 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => movePhoto(idx, 1)}
-                    aria-label="Move right"
-                    disabled={idx === photos.length - 1}
-                    className="text-foreground flex h-7 w-7 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
-                  >
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(idx)}
-                    aria-label="Remove photo"
-                    className="bg-destructive ml-auto flex h-7 w-7 items-center justify-center rounded-full text-white transition hover:opacity-90"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex items-center gap-2">
-          <input
-            value={newPhotoUrl}
-            onChange={(e) => setNewPhotoUrl(e.target.value)}
-            placeholder="https://…"
-            type="url"
-            className={INPUT}
-          />
-          <button
-            type="button"
-            onClick={addPhoto}
-            className="border-border bg-card hover:bg-muted inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition"
-          >
-            <PlusCircle className="h-4 w-4" />
-            Add
-          </button>
-        </div>
-      </Section>
-
-      <Section title="Listing">
-        <div className="border-border bg-card flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm">
-          {venue.listing_type === "partner" ? (
-            <>
-              <Sparkles className="text-secondary h-4 w-4" />
-              <span className="font-medium">Verified partner</span>
-            </>
-          ) : (
-            <>
-              <Globe className="text-muted-foreground h-4 w-4" />
-              <span className="font-medium">Web listing</span>
-            </>
-          )}
-          <span className="text-muted-foreground ml-auto text-xs">
-            Contact support to change listing type
-          </span>
-        </div>
-      </Section>
-
-      {error && (
-        <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
-          {error}
-        </p>
-      )}
+      <BasicsSection v={v} set={set} />
+      <PrimaryChannelsSection v={v} set={set} />
+      <SecondaryChannelsSection v={v} set={set} />
+      <SignalsSection v={v} />
 
       <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-2 flex items-center gap-3 rounded-2xl border p-3 backdrop-blur">
         <p className="text-muted-foreground hidden flex-1 text-xs sm:block">
-          {saved ? "Saved." : "Changes save when you click Save."}
+          {saved ? "Saved (mock)." : "Mock data — Save is a stub for now."}
         </p>
         <button
           type="submit"
-          disabled={pending}
+          disabled={saving}
           className={cn(
             "flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50 sm:flex-none sm:px-6",
             saved
@@ -631,7 +185,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
               : "bg-pink-gradient shadow-glow text-white",
           )}
         >
-          {pending ? (
+          {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Saving…
@@ -652,6 +206,281 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
     </form>
   );
 }
+
+// ── Sections ────────────────────────────────────────────────────────────
+
+function BasicsSection({
+  v,
+  set,
+}: {
+  v: MockVenue;
+  set: <K extends keyof MockVenue>(key: K, value: MockVenue[K]) => void;
+}) {
+  return (
+    <Section title="Basics">
+      <Field label="Name" required>
+        <input
+          value={v.name}
+          onChange={(e) => set("name", e.target.value)}
+          className={INPUT}
+        />
+      </Field>
+
+      <Field label="Category" hint="One word, e.g. mexican, cafe, sushi.">
+        <input
+          value={v.category}
+          onChange={(e) => set("category", e.target.value)}
+          className={INPUT}
+        />
+      </Field>
+
+      <Field label="Description" hint="What makes this place itself.">
+        <textarea
+          value={v.description}
+          onChange={(e) => set("description", e.target.value)}
+          className={TEXTAREA}
+        />
+      </Field>
+
+      <Field label="Days & hours">
+        <HoursEditor
+          hours={v.hours}
+          onChange={(hours) => set("hours", hours)}
+        />
+      </Field>
+
+      <Field label="Menu PDF" hint="Public link to the latest menu PDF.">
+        <UrlInput
+          icon={<FileText className="h-4 w-4" />}
+          value={v.menu_pdf_url}
+          onChange={(val) => set("menu_pdf_url", val)}
+          placeholder="https://yourplace.com/menu.pdf"
+        />
+      </Field>
+
+      <Field label="Tags" hint="Quick descriptors guests search for.">
+        <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
+      </Field>
+
+      <ReadOnly label="Price level" value={PRICE_LABEL[v.price_level] ?? "—"} />
+
+      <ReadOnly label="Address" value={v.address} icon={<MapPin className="h-4 w-4" />} />
+    </Section>
+  );
+}
+
+function PrimaryChannelsSection({
+  v,
+  set,
+}: {
+  v: MockVenue;
+  set: <K extends keyof MockVenue>(key: K, value: MockVenue[K]) => void;
+}) {
+  return (
+    <Section
+      title="Primary channels"
+      subtitle="The channels guests use to reach you directly."
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <UrlField
+          label="Phone"
+          icon={<PhoneIcon className="h-4 w-4" />}
+          placeholder="+52 444 833 5050"
+          value={v.phone}
+          onChange={(val) => set("phone", val)}
+        />
+        <UrlField
+          label="WhatsApp"
+          icon={<MessageCircle className="h-4 w-4" />}
+          placeholder="https://wa.me/52…"
+          value={v.whatsapp_url}
+          onChange={(val) => set("whatsapp_url", val)}
+        />
+        <UrlField
+          label="Email"
+          icon={<Mail className="h-4 w-4" />}
+          placeholder="hola@yourplace.com"
+          value={v.email}
+          onChange={(val) => set("email", val)}
+        />
+        <UrlField
+          label="Website"
+          icon={<Globe className="h-4 w-4" />}
+          placeholder="https://yourplace.com"
+          value={v.website_url}
+          onChange={(val) => set("website_url", val)}
+        />
+        <UrlField
+          label="Instagram"
+          icon={<Instagram className="h-4 w-4" />}
+          placeholder="https://instagram.com/yourplace"
+          value={v.instagram_url}
+          onChange={(val) => set("instagram_url", val)}
+        />
+      </div>
+
+      <Field
+        label="WhatsApp PR number(s)"
+        hint="Extra concierge / PR lines guests can reach when they're VIPs."
+      >
+        <UrlList
+          icon={<MessageCircle className="h-4 w-4" />}
+          values={v.whatsapp_pr_urls}
+          onChange={(urls) => set("whatsapp_pr_urls", urls)}
+          placeholder="https://wa.me/52…"
+        />
+      </Field>
+
+      <Field
+        label="Instagram PR username(s)"
+        hint="Additional Instagram handles for PR / events."
+      >
+        <UrlList
+          icon={<Instagram className="h-4 w-4" />}
+          values={v.instagram_pr_urls}
+          onChange={(urls) => set("instagram_pr_urls", urls)}
+          placeholder="https://instagram.com/…"
+        />
+      </Field>
+
+      <ReadOnly
+        label="Google Business listing"
+        value={v.google_business_url}
+        icon={<Building2 className="h-4 w-4" />}
+      />
+      <ReadOnly
+        label="Google Maps link"
+        value={v.google_maps_url}
+        icon={<MapPin className="h-4 w-4" />}
+      />
+    </Section>
+  );
+}
+
+function SecondaryChannelsSection({
+  v,
+  set,
+}: {
+  v: MockVenue;
+  set: <K extends keyof MockVenue>(key: K, value: MockVenue[K]) => void;
+}) {
+  return (
+    <Section
+      title="Secondary channels"
+      subtitle="Where guests can deep-link out to reviews, reservations, and delivery."
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <UrlField
+          label="Facebook"
+          icon={<Facebook className="h-4 w-4" />}
+          placeholder="https://facebook.com/yourplace"
+          value={v.facebook_url}
+          onChange={(val) => set("facebook_url", val)}
+        />
+        <UrlField
+          label="TikTok"
+          icon={<Music2 className="h-4 w-4" />}
+          placeholder="https://tiktok.com/@yourplace"
+          value={v.tiktok_url}
+          onChange={(val) => set("tiktok_url", val)}
+        />
+        <UrlField
+          label="OpenTable"
+          icon={<CalendarCheck className="h-4 w-4" />}
+          placeholder="https://opentable.com/r/yourplace"
+          value={v.opentable_url}
+          onChange={(val) => set("opentable_url", val)}
+        />
+        <UrlField
+          label="TripAdvisor"
+          icon={<Star className="h-4 w-4" />}
+          placeholder="https://tripadvisor.com/…"
+          value={v.tripadvisor_url}
+          onChange={(val) => set("tripadvisor_url", val)}
+        />
+        <UrlField
+          label="Rappi"
+          icon={<Bike className="h-4 w-4" />}
+          placeholder="https://rappi.com.mx/…"
+          value={v.rappi_url}
+          onChange={(val) => set("rappi_url", val)}
+        />
+        <UrlField
+          label="Uber Eats"
+          icon={<Bike className="h-4 w-4" />}
+          placeholder="https://ubereats.com/store/…"
+          value={v.uber_eats_url}
+          onChange={(val) => set("uber_eats_url", val)}
+        />
+      </div>
+    </Section>
+  );
+}
+
+function SignalsSection({ v }: { v: MockVenue }) {
+  const stars: { label: string; value: number; sub?: string }[] = [
+    { label: "Google · Overall", value: v.google_stars_overall },
+    { label: "Mesita · Overall", value: v.mesita_stars_overall },
+    { label: "Mesita · Food", value: v.mesita_stars_food },
+    { label: "Mesita · Service", value: v.mesita_stars_service },
+    { label: "Mesita · Ambience", value: v.mesita_stars_ambience },
+  ];
+  const counts: { label: string; value: string }[] = [
+    {
+      label: "Google visitors & reviews",
+      value: `${formatCount(v.google_visitor_count)} · ${formatCount(v.google_review_count)} reviews`,
+    },
+    {
+      label: "Mesita visitors & reviews",
+      value: `${formatCount(v.mesita_visitor_count)} · ${formatCount(v.mesita_review_count)} reviews`,
+    },
+    {
+      label: "Instagram followers",
+      value: formatCount(v.instagram_followers_count),
+    },
+  ];
+
+  return (
+    <Section
+      title="Signals"
+      subtitle="Computed from third-party sources and Mesita guest behaviour. Read-only."
+    >
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {stars.map((s) => (
+          <div
+            key={s.label}
+            className="border-border bg-muted/40 flex flex-col rounded-xl border p-3"
+          >
+            <p className="text-muted-foreground text-[10px] font-medium tracking-[0.12em] uppercase">
+              {s.label}
+            </p>
+            <p className="font-display mt-1 flex items-baseline gap-1 text-xl font-semibold tabular-nums">
+              <Star className="text-secondary h-3.5 w-3.5" />
+              {s.value.toFixed(1)}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {counts.map((c) => (
+          <div
+            key={c.label}
+            className="border-border bg-muted/40 rounded-xl border p-3"
+          >
+            <p className="text-muted-foreground text-[10px] font-medium tracking-[0.12em] uppercase">
+              {c.label}
+            </p>
+            <p className="font-display mt-1 text-base font-semibold tabular-nums">
+              {c.value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+// ── Primitives ──────────────────────────────────────────────────────────
 
 function Section({
   title,
@@ -677,11 +506,6 @@ function Section({
   );
 }
 
-function nullable(v: string): string | null {
-  const t = v.trim();
-  return t === "" ? null : t;
-}
-
 function UrlField({
   label,
   icon,
@@ -702,15 +526,237 @@ function UrlField({
         {label}
       </span>
       <input
-        type="url"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        inputMode="url"
-        autoCapitalize="none"
         spellCheck={false}
+        autoCapitalize="none"
         className={INPUT}
       />
     </label>
   );
+}
+
+function UrlInput({
+  icon,
+  value,
+  onChange,
+  placeholder,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="border-border bg-card flex items-center gap-2 rounded-xl border px-3">
+      <span className="text-muted-foreground">{icon}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        spellCheck={false}
+        autoCapitalize="none"
+        className="placeholder:text-muted-foreground h-11 w-full bg-transparent text-sm outline-none"
+      />
+    </div>
+  );
+}
+
+function UrlList({
+  icon,
+  values,
+  onChange,
+  placeholder,
+}: {
+  icon: React.ReactNode;
+  values: string[];
+  onChange: (v: string[]) => void;
+  placeholder?: string;
+}) {
+  const update = (idx: number, val: string) => {
+    const next = values.slice();
+    next[idx] = val;
+    onChange(next);
+  };
+  const remove = (idx: number) => onChange(values.filter((_, i) => i !== idx));
+  const add = () => onChange([...values, ""]);
+  return (
+    <div className="flex flex-col gap-2">
+      {values.map((val, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <div className="flex-1">
+            <UrlInput
+              icon={icon}
+              value={val}
+              onChange={(v) => update(idx, v)}
+              placeholder={placeholder}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => remove(idx)}
+            aria-label="Remove"
+            className="text-muted-foreground hover:text-destructive flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="border-border bg-card hover:bg-muted text-muted-foreground inline-flex h-9 w-fit items-center gap-1.5 rounded-full border border-dashed px-3 text-xs font-semibold transition"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add another
+      </button>
+    </div>
+  );
+}
+
+function HoursEditor({
+  hours,
+  onChange,
+}: {
+  hours: Record<DayKey, DayHours>;
+  onChange: (h: Record<DayKey, DayHours>) => void;
+}) {
+  const setDay = (key: DayKey, patch: Partial<DayHours>) =>
+    onChange({ ...hours, [key]: { ...hours[key], ...patch } });
+  return (
+    <div className="border-border bg-muted/20 flex flex-col divide-y rounded-xl border">
+      {DAYS.map(({ key, label }) => {
+        const d = hours[key];
+        const closed = d.closed === true;
+        return (
+          <div
+            key={key}
+            className="grid grid-cols-[100px_1fr] items-center gap-3 px-3 py-2.5"
+          >
+            <span className="text-muted-foreground text-xs font-medium">
+              {label}
+            </span>
+            {closed ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground text-xs">Closed</span>
+                <button
+                  type="button"
+                  onClick={() => setDay(key, { closed: false })}
+                  className="text-muted-foreground hover:text-foreground text-[11px] font-semibold underline-offset-2 hover:underline"
+                >
+                  Set hours
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  value={d.open}
+                  onChange={(e) => setDay(key, { open: e.target.value })}
+                  placeholder="13:00"
+                  className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
+                />
+                <span className="text-muted-foreground text-[11px]">→</span>
+                <input
+                  value={d.close}
+                  onChange={(e) => setDay(key, { close: e.target.value })}
+                  placeholder="00:00"
+                  className="border-border bg-card h-8 w-20 rounded-lg border px-2 text-xs tabular-nums outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setDay(key, { closed: true })}
+                  className="text-muted-foreground hover:text-foreground ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
+                >
+                  Closed
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TagsEditor({
+  tags,
+  onChange,
+}: {
+  tags: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const t = draft.trim().toLowerCase();
+    if (!t) return;
+    if (tags.includes(t)) {
+      setDraft("");
+      return;
+    }
+    onChange([...tags, t]);
+    setDraft("");
+  };
+  const remove = (t: string) => onChange(tags.filter((x) => x !== t));
+  return (
+    <div className="border-border bg-card flex flex-wrap items-center gap-2 rounded-xl border p-2">
+      {tags.map((t) => (
+        <span
+          key={t}
+          className="bg-muted inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium"
+        >
+          {t}
+          <button
+            type="button"
+            onClick={() => remove(t)}
+            aria-label={`Remove ${t}`}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            add();
+          }
+        }}
+        onBlur={add}
+        placeholder={tags.length === 0 ? "Add tag and press enter" : "Add another"}
+        className="placeholder:text-muted-foreground min-w-[100px] flex-1 bg-transparent px-1 text-sm outline-none"
+      />
+    </div>
+  );
+}
+
+function ReadOnly({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+        {icon && <span className="text-foreground/60">{icon}</span>}
+        {label}
+      </span>
+      <div className="border-border bg-muted/40 text-muted-foreground rounded-xl border px-3 py-2.5 text-sm break-words">
+        {value || "—"}
+      </div>
+    </div>
+  );
+}
+
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
 }
