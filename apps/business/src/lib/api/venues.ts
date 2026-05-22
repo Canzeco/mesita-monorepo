@@ -110,7 +110,24 @@ export type PlacePrediction = {
 
 export type EnrichmentReport = {
   google: boolean;
+  /** Number of photos actually persisted on the venue after the
+   *  gpt-4o-mini vision rank. The EF sources up to MAX_PHOTOS (20)
+   *  candidates and keeps only the top MAX_PHOTOS_TO_KEEP (10) after
+   *  scoring for Mesita-fit (vibe / sharpness / evergreen). The
+   *  dropped candidates are discarded — never written. */
   photoCount: number;
+  /** Raw candidate-pool size before the vision rank. Lets the admin
+   *  UI tell the difference between "we only found 3 photos for this
+   *  venue" and "we found 20 and the ranker kept the best 10". */
+  photoCandidates?: number;
+  /** True when gpt-4o-mini vision successfully scored the candidate
+   *  pool. False = ranking fell back to source-priority order (CSE >
+   *  Firecrawl > Places) and still capped at MAX_PHOTOS_TO_KEEP. */
+  photoRanked?: boolean;
+  /** Short reason when photoRanked is false: no_openai_key,
+   *  openai_http_<status>, parse:<msg>, exception:<msg>. Useful for
+   *  ops triage; never surfaced to managers. */
+  photoRankError?: string | null;
   firecrawl: boolean;
   perplexity: boolean;
   openai: boolean;
