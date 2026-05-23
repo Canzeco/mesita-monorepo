@@ -13,7 +13,10 @@ import {
   Mail,
   Phone as PhoneIcon,
   FileText,
-  Building2,
+  Facebook,
+  Music2,
+  ShoppingBag,
+  UtensilsCrossed,
   Save,
   Check,
   Loader2,
@@ -257,7 +260,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         onError={setError}
       />
       <ProductSection v={v} set={set} />
-      <ChannelsSection venue={venue} v={v} set={set} />
+      <ChannelsSection v={v} set={set} />
       <SignalsSection venue={venue} />
 
       {error && (
@@ -344,6 +347,15 @@ function BasicsSection({
           icon={<MapPin className="h-4 w-4" />}
         />
       </div>
+
+      {/* Notion classifies Google Maps Link as Category=Location (single
+          field). Folded into Basics here so the address + map link sit
+          together rather than living in a one-field section of their own. */}
+      <ReadOnly
+        label="Google Maps"
+        value={venue.google_maps_url}
+        icon={<Globe className="h-4 w-4" />}
+      />
     </Section>
   );
 }
@@ -559,80 +571,132 @@ function ProductSection({
 }
 
 function ChannelsSection({
-  venue,
   v,
   set,
 }: {
-  venue: MyVenue;
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  const fields = [
+  // Header counter tracks just the Primary fields — that's the row of
+  // canonical contact channels we care about for "completeness." PR and
+  // Secondary are optional add-ons, not gating signals.
+  const primaryFields = [
     v.phone,
     v.whatsapp_url,
     v.email,
     v.website_url,
     v.instagram_url,
   ];
-  const filled = fields.filter((f) => f.trim() !== "").length;
+  const filled = primaryFields.filter((f) => f.trim() !== "").length;
   return (
     <Section
       title="Channels"
       right={
         <span className={TINY_LABEL_CLASS}>
-          {filled} / {fields.length}
+          {filled} / {primaryFields.length}
         </span>
       }
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <UrlField
-          label="Phone"
-          icon={<PhoneIcon className="h-4 w-4" />}
-          placeholder="+52 444 833 5050"
-          value={v.phone}
-          onChange={(val) => set("phone", val)}
-        />
-        <UrlField
-          label="WhatsApp"
-          icon={<MessageCircle className="h-4 w-4" />}
-          placeholder="https://wa.me/52…"
-          value={v.whatsapp_url}
-          onChange={(val) => set("whatsapp_url", val)}
-        />
-        <UrlField
-          label="Email"
-          icon={<Mail className="h-4 w-4" />}
-          placeholder="hola@yourplace.com"
-          value={v.email}
-          onChange={(val) => set("email", val)}
-        />
-        <UrlField
-          label="Website"
-          icon={<Globe className="h-4 w-4" />}
-          placeholder="https://yourplace.com"
-          value={v.website_url}
-          onChange={(val) => set("website_url", val)}
-        />
-        <UrlField
-          label="Instagram"
-          icon={<Instagram className="h-4 w-4" />}
-          placeholder="https://instagram.com/yourplace"
-          value={v.instagram_url}
-          onChange={(val) => set("instagram_url", val)}
-        />
+      {/* Primary — direct contact endpoints. Notion category: Primary
+          Channels. */}
+      <div className="flex flex-col gap-2">
+        <p className={TINY_LABEL_CLASS}>Primary</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlField
+            label="Phone"
+            icon={<PhoneIcon className="h-4 w-4" />}
+            placeholder="+52 444 833 5050"
+            value={v.phone}
+            onChange={(val) => set("phone", val)}
+          />
+          <UrlField
+            label="WhatsApp"
+            icon={<MessageCircle className="h-4 w-4" />}
+            placeholder="https://wa.me/52…"
+            value={v.whatsapp_url}
+            onChange={(val) => set("whatsapp_url", val)}
+          />
+          <UrlField
+            label="Email"
+            icon={<Mail className="h-4 w-4" />}
+            placeholder="hola@yourplace.com"
+            value={v.email}
+            onChange={(val) => set("email", val)}
+          />
+          <UrlField
+            label="Website"
+            icon={<Globe className="h-4 w-4" />}
+            placeholder="https://yourplace.com"
+            value={v.website_url}
+            onChange={(val) => set("website_url", val)}
+          />
+          <UrlField
+            label="Instagram"
+            icon={<Instagram className="h-4 w-4" />}
+            placeholder="https://instagram.com/yourplace"
+            value={v.instagram_url}
+            onChange={(val) => set("instagram_url", val)}
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <ReadOnly
-          label="Google Business"
-          value={venue.google_business_url}
-          icon={<Building2 className="h-4 w-4" />}
-        />
-        <ReadOnly
-          label="Google Maps"
-          value={venue.google_maps_url}
-          icon={<MapPin className="h-4 w-4" />}
-        />
+      {/* PR — promoter / influencer endpoints. Each field accepts a list
+          because a venue often has several PR contacts. Notion category:
+          PR Channels. */}
+      <div className="flex flex-col gap-2">
+        <p className={TINY_LABEL_CLASS}>PR</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlListField
+            label="WhatsApp PR numbers"
+            icon={<MessageCircle className="h-4 w-4" />}
+            values={v.whatsapp_pr_urls}
+            onChange={(next) => set("whatsapp_pr_urls", next)}
+            placeholder="https://wa.me/52…"
+          />
+          <UrlListField
+            label="Instagram PR usernames"
+            icon={<Instagram className="h-4 w-4" />}
+            values={v.instagram_pr_urls}
+            onChange={(next) => set("instagram_pr_urls", next)}
+            placeholder="https://instagram.com/…"
+          />
+        </div>
+      </div>
+
+      {/* Secondary — discovery / cross-platform presence. Notion category:
+          Secundary Channels. */}
+      <div className="flex flex-col gap-2">
+        <p className={TINY_LABEL_CLASS}>Secondary</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlField
+            label="Facebook"
+            icon={<Facebook className="h-4 w-4" />}
+            placeholder="https://facebook.com/yourplace"
+            value={v.facebook_url}
+            onChange={(val) => set("facebook_url", val)}
+          />
+          <UrlField
+            label="TikTok"
+            icon={<Music2 className="h-4 w-4" />}
+            placeholder="https://tiktok.com/@yourplace"
+            value={v.tiktok_url}
+            onChange={(val) => set("tiktok_url", val)}
+          />
+          <UrlField
+            label="Rappi"
+            icon={<ShoppingBag className="h-4 w-4" />}
+            placeholder="https://www.rappi.com/restaurants/…"
+            value={v.rappi_url}
+            onChange={(val) => set("rappi_url", val)}
+          />
+          <UrlField
+            label="Uber Eats"
+            icon={<UtensilsCrossed className="h-4 w-4" />}
+            placeholder="https://www.ubereats.com/store/…"
+            value={v.uber_eats_url}
+            onChange={(val) => set("uber_eats_url", val)}
+          />
+        </div>
       </div>
     </Section>
   );
@@ -941,6 +1005,96 @@ function HoursEditor({
         );
       })}
     </div>
+  );
+}
+
+function UrlListField({
+  label,
+  icon,
+  values,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+}) {
+  // Chip-list editor for the PR Channels fields (whatsapp_pr_urls,
+  // instagram_pr_urls). Reads the same flow as TagsEditor: draft input
+  // appends on Enter / Add click, each committed value renders as a
+  // removable row above the input.
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const next = draft.trim();
+    if (!next) return;
+    if (values.includes(next)) {
+      setDraft("");
+      return;
+    }
+    onChange([...values, next]);
+    setDraft("");
+  };
+  const remove = (idx: number) =>
+    onChange(values.filter((_, i) => i !== idx));
+  return (
+    <label className="block">
+      <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+        <span className="text-foreground/70">{icon}</span>
+        {label}
+      </span>
+      <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-2">
+        {values.length > 0 && (
+          <ul className="flex flex-col gap-1.5">
+            {values.map((val, idx) => (
+              <li
+                key={`${val}-${idx}`}
+                className="bg-muted flex items-center gap-2 rounded-lg px-2.5 py-1.5"
+              >
+                <span className="flex-1 truncate font-mono text-[12px]">
+                  {val}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => remove(idx)}
+                  aria-label={`Remove ${val}`}
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex items-center gap-2">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                add();
+              }
+            }}
+            onBlur={add}
+            placeholder={placeholder ?? "https://…"}
+            spellCheck={false}
+            autoCapitalize="none"
+            className="placeholder:text-muted-foreground min-w-[100px] flex-1 bg-transparent px-1 text-sm outline-none"
+          />
+          <button
+            type="button"
+            onClick={add}
+            disabled={!draft.trim()}
+            className="bg-foreground text-background flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        </div>
+      </div>
+    </label>
   );
 }
 
