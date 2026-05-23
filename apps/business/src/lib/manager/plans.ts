@@ -33,6 +33,12 @@ export type SubscriptionRow = {
   // Mesita can settle the payment.
   setup?: string;
   featured?: boolean;
+  // Locks the card in the picker — renders as "Coming soon" and rejects
+  // selection. Used while the payment/settlement plumbing for a tier is
+  // not live yet (cashback at the moment — Mesita-in-the-loop card flow
+  // is still on the roadmap). Mutually exclusive with `featured`; when
+  // both are set, comingSoon wins in the UI.
+  comingSoon?: boolean;
 };
 
 export const SUBSCRIPTIONS: SubscriptionRow[] = [
@@ -62,6 +68,11 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     visibility: "High",
     setup: "10 min · connect business",
     featured: true,
+    // Locked until the Mesita-in-the-loop payment + wallet settlement
+    // path ships. The card still renders (preserves the visibility
+    // ladder + aspirational pink hint) but can't be selected — picker
+    // surfaces a "Coming soon" badge in place of "Recommended".
+    comingSoon: true,
   },
 ];
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   CreditCard,
   Loader2,
+  Lock,
   Percent,
   Sparkles,
   type LucideIcon,
@@ -87,6 +88,11 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
   const selectSubscription = (target: SubscriptionId) => {
     if (target === currentSub || pending) return;
+    // Locked tiers (e.g. cashback while the payment loop is being built)
+    // render disabled in the picker, but guard here too so a stray click
+    // from a stale render can't bypass it.
+    const row = SUBSCRIPTIONS.find((s) => s.id === target);
+    if (row?.comingSoon) return;
     setError(null);
     setPendingSubId(target);
     startSubmit(async () => {
@@ -122,6 +128,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
                 visibility={s.visibility}
                 setup={s.setup}
                 featured={!!s.featured}
+                comingSoon={!!s.comingSoon}
                 icon={v.icon}
                 iconAccent={v.accent}
                 isCurrent={s.id === currentSub}
@@ -225,6 +232,7 @@ function SubscriptionCard({
   visibility,
   setup,
   featured,
+  comingSoon,
   icon: Icon,
   iconAccent,
   isCurrent,
@@ -238,22 +246,30 @@ function SubscriptionCard({
   visibility: PlanVisibility;
   setup?: string;
   featured: boolean;
+  comingSoon: boolean;
   icon?: LucideIcon;
   iconAccent?: string;
   isCurrent: boolean;
   pending: boolean;
   onPick: () => void;
 }) {
+  // Locked tiers stay visible (so the visibility ladder still makes
+  // sense), but the button can't fire and the badge tells the manager
+  // why. We keep the soft pink wash from `featured` so the card still
+  // reads as the aspirational top of the ladder.
   return (
     <button
       type="button"
       onClick={onPick}
-      disabled={isCurrent || pending}
+      disabled={isCurrent || pending || comingSoon}
+      aria-disabled={comingSoon || undefined}
+      title={comingSoon ? "Coming soon" : undefined}
       className={cn(
         "border-border bg-card relative flex flex-col gap-2 rounded-2xl border p-4 text-left transition disabled:cursor-default",
-        !isCurrent && "hover:border-foreground/30",
+        !isCurrent && !comingSoon && "hover:border-foreground/30",
         isCurrent && "border-foreground shadow-elev",
         featured && !isCurrent && "bg-pink-gradient/[0.04]",
+        comingSoon && "cursor-not-allowed",
       )}
     >
       {isCurrent && (
@@ -261,12 +277,23 @@ function SubscriptionCard({
           Current
         </Badge>
       )}
-      {!isCurrent && featured && (
+      {!isCurrent && comingSoon && (
+        <Badge className="bg-muted text-muted-foreground border-border absolute top-3 right-3 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+          <Lock className="h-2.5 w-2.5" />
+          Coming soon
+        </Badge>
+      )}
+      {!isCurrent && !comingSoon && featured && (
         <Badge className="bg-pink-gradient absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider text-white uppercase">
           Recommended
         </Badge>
       )}
-      <div className="flex items-center gap-2 pr-16">
+      <div
+        className={cn(
+          "flex items-center gap-2 pr-16",
+          comingSoon && "opacity-70",
+        )}
+      >
         {Icon && (
           <span
             className={cn(
@@ -281,20 +308,42 @@ function SubscriptionCard({
           {label}
         </span>
       </div>
-      <div className="flex items-baseline gap-1.5">
+      <div
+        className={cn(
+          "flex items-baseline gap-1.5",
+          comingSoon && "opacity-70",
+        )}
+      >
         <span className="font-display text-foreground text-lg font-bold tabular-nums leading-none">
           {price}
         </span>
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
       </div>
-      <p className="text-muted-foreground text-[12px] leading-snug">{tagline}</p>
+      <p
+        className={cn(
+          "text-muted-foreground text-[12px] leading-snug",
+          comingSoon && "opacity-70",
+        )}
+      >
+        {tagline}
+      </p>
       <div className="mt-auto flex flex-col gap-0.5">
-        <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+        <p
+          className={cn(
+            "text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase",
+            comingSoon && "opacity-70",
+          )}
+        >
           {visibility} visibility
         </p>
-        {setup && (
+        {setup && !comingSoon && (
           <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
             {setup} setup
+          </p>
+        )}
+        {comingSoon && (
+          <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+            Available soon
           </p>
         )}
       </div>
