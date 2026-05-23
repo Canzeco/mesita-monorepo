@@ -555,6 +555,8 @@ function VenueMapEmbed({
   );
 }
 
+type PreviewView = "swipe" | "catalog";
+
 function PreviewSection({
   venue,
   v,
@@ -562,71 +564,171 @@ function PreviewSection({
   venue: MyVenue;
   v: FormState;
 }) {
-  // Static guest-side preview of the venue card. Mirrors the dark
-  // theme the guest app uses (per the theme-strategy memory) so the
-  // manager sees what their place will actually look like on the
-  // other side. Pulls the working form state for name/category/
-  // description so the preview reacts as the manager types.
-  const cover = v.photos[0] ?? null;
-  const description = (v.description || venue.description || "").trim();
-  const stars = venue.mesita_stars_overall ?? venue.google_stars_overall;
+  // Mirrors the two card surfaces the guest app actually renders for a
+  // place: `VenueSwipeCardFace` (full-bleed photo card with overlay) on
+  // /discover/swipe and `VenueCatalogCard` (4:3 photo + row of meta) on
+  // /discover/catalog. Both repos define those components but they
+  // can't be cross-imported, and the manager's MyVenue shape differs
+  // slightly from the guest's Venue (no closes_at, listing_type,
+  // cashback_percent here). So this section reproduces the visuals in
+  // place, pulling live `v` state so the preview reacts as the manager
+  // types in Basics.
+  //
+  // Both views render in hard-coded dark zinc colors instead of the
+  // manager's tokens (bg-card etc.) so they look like the guest's
+  // actual dark theme even though we're inside the light manager UI.
+  // Per the theme-strategy memory: guest is dark, manager is light,
+  // and we don't unify — so previews bring their own dark.
+  const [view, setView] = useState<PreviewView>("swipe");
   return (
-    <Section title="Preview" right={<span className={TINY_LABEL_CLASS}>Guest view</span>}>
-      <div className="bg-foreground text-background flex flex-col overflow-hidden rounded-2xl">
-        <div className="bg-muted/40 relative aspect-[4/3] w-full">
-          {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={cover}
-              alt={v.name || venue.name || "Cover"}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="text-muted-foreground/60 flex h-full w-full items-center justify-center text-[11px] italic">
-              Add a photo in Media — the cover renders here.
-            </div>
-          )}
-          {venue.price_level != null && (
-            <span className="absolute right-3 bottom-3 inline-flex items-center rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-white backdrop-blur-sm">
-              {"$".repeat(venue.price_level)}
-            </span>
-          )}
+    <Section
+      title="Preview"
+      right={
+        <div className="bg-muted inline-flex items-center rounded-full p-0.5 text-[11px] font-semibold">
+          <PreviewTab
+            active={view === "swipe"}
+            onClick={() => setView("swipe")}
+          >
+            Swipe
+          </PreviewTab>
+          <PreviewTab
+            active={view === "catalog"}
+            onClick={() => setView("catalog")}
+          >
+            Catalog
+          </PreviewTab>
         </div>
-        <div className="flex flex-col gap-2 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <h4 className="font-display truncate text-base font-semibold">
-              {v.name || venue.name || "Venue name"}
-            </h4>
-            {stars != null && (
-              <span className="text-secondary inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold tabular-nums">
-                <Star className="h-3 w-3 fill-current" />
-                {stars.toFixed(1)}
-              </span>
-            )}
-          </div>
-          <p className="text-background/70 text-[11px] tracking-wider uppercase">
-            {v.category || venue.category || "Category"}
-          </p>
-          {description && (
-            <p className="text-background/80 line-clamp-3 text-[12px] leading-snug">
-              {description}
-            </p>
-          )}
-          {v.tags.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {v.tags.slice(0, 6).map((t) => (
-                <span
-                  key={t}
-                  className="bg-background/15 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+      }
+    >
+      <div className="bg-zinc-950 -mx-1 -mb-1 rounded-xl p-3">
+        {view === "swipe" ? (
+          <PreviewSwipeCard venue={venue} v={v} />
+        ) : (
+          <PreviewCatalogCard venue={venue} v={v} />
+        )}
       </div>
     </Section>
+  );
+}
+
+function PreviewTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full px-3 py-1 transition",
+        active
+          ? "bg-foreground text-background"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PreviewSwipeCard({
+  venue,
+  v,
+}: {
+  venue: MyVenue;
+  v: FormState;
+}) {
+  // Compact mirror of VenueSwipeCardFace in the guest repo: full-bleed
+  // cover, bottom overlay with category + name + price meta. No drag
+  // logic — just the visual face.
+  const cover = v.photos[0] ?? null;
+  const name = v.name || venue.name || "Venue name";
+  const category = (v.category || venue.category || "").toLowerCase();
+  const price =
+    venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  return (
+    <div className="relative mx-auto aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-xl">
+      {cover ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={cover}
+          alt={name}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/70">
+          <span className="font-display text-7xl font-bold tracking-tight">
+            {name.trim().slice(0, 1).toUpperCase() || "·"}
+          </span>
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4 pt-20 text-white">
+        {category && (
+          <p className="text-[10px] font-medium tracking-[0.18em] text-white/75 uppercase">
+            {category}
+          </p>
+        )}
+        <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight drop-shadow-sm">
+          {name}
+        </h2>
+        {price && (
+          <p className="text-[11px] font-medium text-white/85">{price}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PreviewCatalogCard({
+  venue,
+  v,
+}: {
+  venue: MyVenue;
+  v: FormState;
+}) {
+  // Compact mirror of VenueCatalogCard in the guest repo: 4:3 photo,
+  // then a name + category + price meta block underneath. Constrained
+  // width so the proportions read like a row in a 2-col catalog list.
+  const cover = v.photos[0] ?? null;
+  const name = v.name || venue.name || "Venue name";
+  const category = (v.category || venue.category || "").toLowerCase();
+  const price =
+    venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  return (
+    <div className="mx-auto w-full max-w-[260px] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 text-white shadow-md">
+      <div className="relative aspect-[4/3] w-full bg-zinc-800">
+        {cover ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cover}
+            alt={name}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/70">
+            <span className="font-display text-4xl font-bold tracking-tight">
+              {name.trim().slice(0, 1).toUpperCase() || "·"}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-1 p-3">
+        <h3 className="font-display text-base leading-tight font-semibold tracking-tight">
+          {name}
+        </h3>
+        {category && (
+          <p className="truncate text-[11px] text-zinc-400">{category}</p>
+        )}
+        {price && (
+          <p className="text-[11px] font-medium text-zinc-500">{price}</p>
+        )}
+      </div>
+    </div>
   );
 }
 
