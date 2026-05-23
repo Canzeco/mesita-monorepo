@@ -130,12 +130,21 @@ export function TeamClient({
       "Couldn't create that waiter invite.",
     );
 
-  const handleChangeRole = (memberId: string, role: ManagerRole) =>
-    runAction(
+  const handleChangeRole = (
+    memberId: string,
+    role: ManagerRole,
+    currentRole: ManagerRole,
+    name: string,
+  ) => {
+    if (role === currentRole) return;
+    const message = `Change ${name}'s role from ${ROLE_LABEL[currentRole]} to ${ROLE_LABEL[role]}?`;
+    if (!window.confirm(message)) return;
+    return runAction(
       `role-${memberId}`,
       () => apiUpdateMemberRole(supabase, { memberId, role }),
       "Couldn't change that role.",
     );
+  };
 
   const handleRemoveManager = (
     memberId: string,
@@ -162,8 +171,10 @@ export function TeamClient({
     );
   };
 
-  const handleTestPing = (channel: "whatsapp" | "sms", phone: string) =>
-    runAction(
+  const handleTestPing = (channel: "whatsapp" | "sms", phone: string) => {
+    const label = channel === "whatsapp" ? "WhatsApp" : "SMS";
+    if (!window.confirm(`Send a test ${label} message to ${phone}?`)) return;
+    return runAction(
       `ping-${phone}`,
       async () => {
         const res = await apiTestWaiterChannel(supabase, { venueId, channel, phone });
@@ -175,6 +186,7 @@ export function TeamClient({
       },
       "Couldn't send a test ping.",
     );
+  };
 
   const loading = snapshot == null && error == null;
 
@@ -254,7 +266,14 @@ export function TeamClient({
                     busy === `role-${m.memberId}` ||
                     m.userId === currentUserId
                   }
-                  onChange={(r) => handleChangeRole(m.memberId, r)}
+                  onChange={(r) =>
+                    handleChangeRole(
+                      m.memberId,
+                      r,
+                      (m.role as ManagerRole) ?? "manager",
+                      m.fullName ?? m.email ?? "this manager",
+                    )
+                  }
                 />
                 <RemoveButton
                   busy={busy === `remove-${m.memberId}`}
