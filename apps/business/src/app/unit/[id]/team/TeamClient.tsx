@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Check,
   Copy,
@@ -53,12 +53,17 @@ type InviteOpen = null | "manager" | "waiter";
 export function TeamClient({
   venueId,
   currentUserId,
+  initialSnapshot,
 }: {
   venueId: string;
   currentUserId: string;
+  initialSnapshot: TeamSnapshot;
 }) {
   const supabase = useBrowserSupabase();
-  const [snapshot, setSnapshot] = useState<TeamSnapshot | null>(null);
+  // Seeded from the server fetch in page.tsx — no client-side initial
+  // load, no second loading indicator. refresh() still runs after every
+  // mutating handler to keep the list in sync.
+  const [snapshot, setSnapshot] = useState<TeamSnapshot>(initialSnapshot);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState<InviteOpen>(null);
@@ -75,21 +80,8 @@ export function TeamClient({
     }
   }, [supabase, venueId]);
 
-  // Initial load — fetch-on-mount fires the same refresh() that every
-  // mutating handler uses.
-  useEffect(() => {
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refresh().then((next) => {
-      if (cancelled || !next) return;
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
-
   const isOwner =
-    snapshot?.myRole === "owner" || snapshot?.myRole === "super_admin";
+    snapshot.myRole === "owner" || snapshot.myRole === "super_admin";
 
   // Wrap any mutating action in the shared busy/error/refresh frame.
   async function runAction(
@@ -200,20 +192,6 @@ export function TeamClient({
       "Couldn't send a test ping.",
     );
   };
-
-  const loading = snapshot == null && error == null;
-
-  if (loading) {
-    return (
-      <div className="text-muted-foreground flex items-center gap-2 py-12 text-sm">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading team…
-      </div>
-    );
-  }
-
-  if (!snapshot) {
-    return error ? <div className={ERROR_BOX_CLASS}>{error}</div> : null;
-  }
 
   return (
     <div className="flex flex-col gap-6">
