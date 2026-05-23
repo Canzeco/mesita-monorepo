@@ -248,6 +248,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <BasicsSection venue={venue} v={v} set={set} />
+      <DetailsSection v={v} set={set} />
       <TimeSection venue={venue} v={v} set={set} />
       <MediaSection
         photos={v.photos}
@@ -343,7 +344,24 @@ function BasicsSection({
           icon={<MapPin className="h-4 w-4" />}
         />
       </div>
+    </Section>
+  );
+}
 
+function DetailsSection({
+  v,
+  set,
+}: {
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
+  // Per Notion's Components spec, Description + Tags both live in
+  // Category=Details with Manager-E=YES. Grouping them in their own
+  // editable section keeps Basics minimal (Name / Category / Price /
+  // Address) while still exposing the descriptive copy the manager
+  // needs to write.
+  return (
+    <Section title="Details">
       <Field label="Description">
         <textarea
           value={v.description}
@@ -351,6 +369,10 @@ function BasicsSection({
           maxLength={DESCRIPTION_MAX}
           className={TEXTAREA}
         />
+      </Field>
+
+      <Field label="Tags">
+        <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
       </Field>
     </Section>
   );
@@ -918,6 +940,62 @@ function HoursEditor({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function TagsEditor({
+  tags,
+  onChange,
+}: {
+  tags: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const t = draft.trim().toLowerCase();
+    if (!t) return;
+    if (tags.includes(t)) {
+      setDraft("");
+      return;
+    }
+    onChange([...tags, t]);
+    setDraft("");
+  };
+  const remove = (t: string) => onChange(tags.filter((x) => x !== t));
+  return (
+    <div className="border-border bg-card flex flex-wrap items-center gap-2 rounded-xl border p-2">
+      {tags.map((t) => (
+        <span
+          key={t}
+          className="bg-muted inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium"
+        >
+          {t}
+          <button
+            type="button"
+            onClick={() => remove(t)}
+            aria-label={`Remove ${t}`}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            add();
+          }
+        }}
+        onBlur={add}
+        placeholder={
+          tags.length === 0 ? "Add tag and press enter" : "Add another"
+        }
+        className="placeholder:text-muted-foreground min-w-[100px] flex-1 bg-transparent px-1 text-sm outline-none"
+      />
     </div>
   );
 }
