@@ -98,19 +98,19 @@ export type ReservationStatus =
 
 export type FiscalType = "formal" | "informal";
 
-export const FORMAL_KINDS: ReadonlySet<TicketKind> = new Set([
+const FORMAL_KINDS: ReadonlySet<TicketKind> = new Set([
   "p_c",
   "s_p_sf_c",
   "r_p_c",
   "r_s_p_sf_c",
 ]);
-export const STORY_KINDS: ReadonlySet<TicketKind> = new Set([
+const STORY_KINDS: ReadonlySet<TicketKind> = new Set([
   "s_p_sf_c",
   "r_s_p_sf_c",
   "s_dp_sf",
   "r_s_dp_sf",
 ]);
-export const RESERVATION_KINDS: ReadonlySet<TicketKind> = new Set([
+const RESERVATION_KINDS: ReadonlySet<TicketKind> = new Set([
   "r_p_c",
   "r_s_p_sf_c",
   "r_dp",
