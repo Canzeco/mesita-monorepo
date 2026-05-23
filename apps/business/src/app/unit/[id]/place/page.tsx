@@ -46,7 +46,7 @@ export default async function ManagerPlacePage({
       <>
         <Topbar title="Place" />
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
+          <div className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
             <EmptyState
               icon={<Store className="text-muted-foreground h-5 w-5" />}
               title="No venue yet"
@@ -73,7 +73,7 @@ export default async function ManagerPlacePage({
     <>
       <Topbar title={active.name} subtitle="Place" />
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
+        <div className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <EditVenueForm venue={active} />
         </div>
       </div>
