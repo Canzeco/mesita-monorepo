@@ -8,7 +8,6 @@ import {
   Loader2,
   Mail,
   MessageCircle,
-  Phone,
   Plus,
   Send,
   Trash2,
@@ -18,6 +17,7 @@ import {
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
+import { PhonePicker } from "@/components/ui/phone-picker";
 import {
   apiInviteManager,
   apiInviteWaiter,
@@ -587,17 +587,12 @@ function WaiterInviteForm({
             </button>
           ))}
         </div>
-        <div className="relative flex-1">
-          <Phone className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
-          <input
-            type="tel"
-            inputMode="tel"
-            placeholder="+52 33 1234 5678 (optional)"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="border-border bg-background focus:border-foreground/40 w-full rounded-full border py-2 pr-3 pl-8 font-mono text-[13px] outline-none"
-          />
-        </div>
+        <PhonePicker
+          value={phone}
+          onChange={setPhone}
+          placeholder="33 1234 5678 (optional)"
+          className="flex-1"
+        />
         <div className="flex items-center gap-2">
           <button
             type="submit"
