@@ -448,26 +448,28 @@ function TimeSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
+  // Compact density: previously the section stacked a full ReadOnly card
+  // for Timezone, a fully bordered HoursEditor card, and another full
+  // ReadOnly card for Popular times — three nested cards inside the
+  // section card. Now: timezone collapses to a one-line muted caption,
+  // HoursEditor drops its own card chrome (just hairlines between days),
+  // Popular times collapses to a one-line italic caption.
   return (
-    <Section title="Time" right={<span className={TINY_LABEL_CLASS}>UTC-aware</span>}>
-      <ReadOnly
-        label="Timezone"
-        value={venue.timezone}
-        icon={<Clock className="h-4 w-4" />}
-      />
+    <Section title="Time">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+        <Clock className="h-3.5 w-3.5" />
+        <span>{venue.timezone ?? "Timezone — not found yet."}</span>
+      </p>
 
       <HoursEditor hours={v.hours} onChange={(hours) => set("hours", hours)} />
 
-      {/* Popular Times is in Notion as M-Place-V=NO right now — Google
-          doesn't expose it via the Places API, so we'd need an external
-          scraper (Outscraper or similar) before this turns into real
-          data. Surfaced here as a "soon" placeholder so the manager
-          knows it's on the roadmap. */}
-      <ReadOnly
-        label="Popular times"
-        value={null}
-        empty="Pulling busiest hours from your Google profile — coming soon."
-      />
+      {/* Popular Times is M-Place-V=NO in Notion right now — Google's
+          Places API doesn't expose it, so we'd need a third-party
+          scraper before this turns into real data. */}
+      <p className="text-muted-foreground/80 flex items-center gap-1.5 text-[11px] italic">
+        <Sparkles className="h-3.5 w-3.5 shrink-0" />
+        <span>Popular times — coming soon from your Google profile.</span>
+      </p>
     </Section>
   );
 }
@@ -970,13 +972,14 @@ function HoursEditor({
   const reopen = (key: DayKey) =>
     setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
 
-  // Single column of horizontal day rows wrapped in one bordered card with
-  // hairline separators between days. Each row is a single line:
+  // Compact density: no outer card chrome (the parent Section already
+  // provides it). Hairline `divide-y` separates days. Each row is a
+  // single line:
   //   [DAY]  [shift 1]  [· shift 2 ×]?  [+ shift]?            [Close/Reopen]
   // Closed days collapse to italic "Closed" text, dim the row background,
   // and swap the right-edge button to the filled "Reopen" action.
   return (
-    <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-xl border">
+    <div className="divide-border/60 -mx-1 divide-y">
       {DAYS.map(({ key, label }) => {
         const d = hours[key];
         const isClosed = d.closed;
@@ -984,24 +987,24 @@ function HoursEditor({
           <div
             key={key}
             className={cn(
-              "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2 transition",
-              isClosed && "bg-muted/30",
+              "flex flex-wrap items-center gap-x-2 gap-y-1 px-1 py-1.5 transition",
+              isClosed && "bg-muted/30 rounded-md",
             )}
           >
-            <span className="text-muted-foreground w-9 shrink-0 text-[11px] font-bold tracking-[0.14em] uppercase">
+            <span className="text-muted-foreground w-7 shrink-0 text-[10px] font-bold tracking-[0.14em] uppercase">
               {label}
             </span>
 
             {isClosed ? (
-              <span className="text-muted-foreground/80 flex-1 text-xs italic">
+              <span className="text-muted-foreground/80 flex-1 text-[11px] italic">
                 Closed all day
               </span>
             ) : (
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
                 {d.ranges.map((r, idx) => (
                   <div key={idx} className="flex items-center gap-1">
                     {idx > 0 && (
-                      <span className="text-muted-foreground/50 mr-0.5 text-xs select-none">
+                      <span className="text-muted-foreground/50 mr-0.5 text-[10px] select-none">
                         ·
                       </span>
                     )}
@@ -1012,7 +1015,7 @@ function HoursEditor({
                       }
                       placeholder="13:00"
                       aria-label={`${label} shift ${idx + 1} opens at`}
-                      className="bg-background border-border focus:border-foreground/40 h-8 w-[64px] rounded-md border px-1.5 text-center text-xs tabular-nums outline-none"
+                      className="bg-background border-border focus:border-foreground/40 h-6 w-[50px] rounded-md border px-1 text-center text-[11px] tabular-nums outline-none"
                     />
                     <span className="text-muted-foreground/70 text-[10px]">
                       →
@@ -1024,16 +1027,16 @@ function HoursEditor({
                       }
                       placeholder="00:00"
                       aria-label={`${label} shift ${idx + 1} closes at`}
-                      className="bg-background border-border focus:border-foreground/40 h-8 w-[64px] rounded-md border px-1.5 text-center text-xs tabular-nums outline-none"
+                      className="bg-background border-border focus:border-foreground/40 h-6 w-[50px] rounded-md border px-1 text-center text-[11px] tabular-nums outline-none"
                     />
                     {d.ranges.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeShift(key, idx)}
                         aria-label="Remove this shift"
-                        className="text-muted-foreground/70 hover:text-destructive ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                        className="text-muted-foreground/70 hover:text-destructive ml-0.5 flex h-4 w-4 items-center justify-center rounded-full transition"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-2.5 w-2.5" />
                       </button>
                     )}
                   </div>
@@ -1042,9 +1045,9 @@ function HoursEditor({
                   <button
                     type="button"
                     onClick={() => addShift(key)}
-                    className="text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium"
+                    className="text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-0.5 text-[10px] font-medium"
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className="h-2.5 w-2.5" />
                     shift
                   </button>
                 )}
@@ -1056,7 +1059,7 @@ function HoursEditor({
               onClick={() => (isClosed ? reopen(key) : markClosed(key))}
               aria-label={isClosed ? "Reopen this day" : "Mark this day closed"}
               className={cn(
-                "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase transition",
+                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase transition",
                 isClosed
                   ? "bg-foreground text-background hover:opacity-90"
                   : "text-muted-foreground/70 hover:text-foreground",
