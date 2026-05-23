@@ -477,8 +477,8 @@ function PriceLevelDisplay({ level }: { level: number | null }) {
                     className={cn(
                       "h-4 w-4",
                       i <= level
-                        ? "text-foreground"
-                        : "text-muted-foreground/25",
+                        ? "text-foreground/55"
+                        : "text-muted-foreground/20",
                     )}
                   />
                 ),
@@ -652,7 +652,7 @@ function PreviewSwipeCard({
   const price =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   return (
-    <div className="relative mx-auto aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-xl">
+    <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-xl">
       {cover ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -701,7 +701,7 @@ function PreviewCatalogCard({
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   return (
     <div className="mx-auto w-full max-w-[260px] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 text-white shadow-md">
-      <div className="relative aspect-[4/3] w-full bg-zinc-800">
+      <div className="relative aspect-square w-full bg-zinc-800">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -745,8 +745,10 @@ function TimeSection({
   // Section already provides it), so the days render as hairline-
   // separated rows. Timezone is a proper key+value readonly card so it
   // matches Address / Google Maps in Location and reads as a real
-  // field, not floating caption. Popular times stays a one-line
-  // coming-soon hint because it's not data yet — it's a roadmap note.
+  // field, not floating caption. Popular Times is on the roadmap (it's
+  // M-Place-V=NO in Notion and the Google Places API doesn't expose
+  // it) — surfacing it as a stub here was adding noise, so we drop it
+  // until the scraper pipeline lands real data.
   return (
     <Section title="Time">
       <ReadOnly
@@ -756,14 +758,6 @@ function TimeSection({
       />
 
       <HoursEditor hours={v.hours} onChange={(hours) => set("hours", hours)} />
-
-      {/* Popular Times is M-Place-V=NO in Notion right now — Google's
-          Places API doesn't expose it, so we'd need a third-party
-          scraper before this turns into real data. */}
-      <p className="text-muted-foreground/80 flex items-center gap-1.5 text-[11px] italic">
-        <Sparkles className="h-3.5 w-3.5 shrink-0" />
-        <span>Popular times — coming soon from your Google profile.</span>
-      </p>
     </Section>
   );
 }
@@ -1343,7 +1337,7 @@ function HoursEditor({
   // Closed days collapse to italic "Closed" text, dim the row background,
   // and swap the right-edge button to the filled "Reopen" action.
   return (
-    <div className="divide-border/60 -mx-1 divide-y">
+    <div className="divide-border/60 divide-y">
       {DAYS.map(({ key, label }) => {
         const d = hours[key];
         const isClosed = d.closed;
@@ -1351,24 +1345,24 @@ function HoursEditor({
           <div
             key={key}
             className={cn(
-              "flex flex-wrap items-center gap-x-2 gap-y-1 px-1 py-1.5 transition",
+              "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-2.5 transition",
               isClosed && "bg-muted/30 rounded-md",
             )}
           >
-            <span className="text-muted-foreground w-7 shrink-0 text-[10px] font-bold tracking-[0.14em] uppercase">
+            <span className="text-muted-foreground w-10 shrink-0 text-[11px] font-bold tracking-[0.14em] uppercase">
               {label}
             </span>
 
             {isClosed ? (
-              <span className="text-muted-foreground/80 flex-1 text-[11px] italic">
+              <span className="text-muted-foreground/80 flex-1 text-[12px] italic">
                 Closed all day
               </span>
             ) : (
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
                 {d.ranges.map((r, idx) => (
-                  <div key={idx} className="flex items-center gap-1">
+                  <div key={idx} className="flex items-center gap-1.5">
                     {idx > 0 && (
-                      <span className="text-muted-foreground/50 mr-0.5 text-[10px] select-none">
+                      <span className="text-muted-foreground/50 mr-0.5 text-[11px] select-none">
                         ·
                       </span>
                     )}
@@ -1379,9 +1373,9 @@ function HoursEditor({
                       }
                       placeholder="13:00"
                       aria-label={`${label} shift ${idx + 1} opens at`}
-                      className="bg-background border-border focus:border-foreground/40 h-6 w-[50px] rounded-md border px-1 text-center text-[11px] tabular-nums outline-none"
+                      className="bg-background border-border focus:border-foreground/40 h-8 w-[68px] rounded-md border px-1.5 text-center text-[12px] tabular-nums outline-none"
                     />
-                    <span className="text-muted-foreground/70 text-[10px]">
+                    <span className="text-muted-foreground/70 text-[11px]">
                       →
                     </span>
                     <input
@@ -1391,16 +1385,16 @@ function HoursEditor({
                       }
                       placeholder="00:00"
                       aria-label={`${label} shift ${idx + 1} closes at`}
-                      className="bg-background border-border focus:border-foreground/40 h-6 w-[50px] rounded-md border px-1 text-center text-[11px] tabular-nums outline-none"
+                      className="bg-background border-border focus:border-foreground/40 h-8 w-[68px] rounded-md border px-1.5 text-center text-[12px] tabular-nums outline-none"
                     />
                     {d.ranges.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeShift(key, idx)}
                         aria-label="Remove this shift"
-                        className="text-muted-foreground/70 hover:text-destructive ml-0.5 flex h-4 w-4 items-center justify-center rounded-full transition"
+                        className="text-muted-foreground/70 hover:text-destructive ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
                       >
-                        <X className="h-2.5 w-2.5" />
+                        <X className="h-3 w-3" />
                       </button>
                     )}
                   </div>
@@ -1409,9 +1403,9 @@ function HoursEditor({
                   <button
                     type="button"
                     onClick={() => addShift(key)}
-                    className="text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-0.5 text-[10px] font-medium"
+                    className="text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium"
                   >
-                    <Plus className="h-2.5 w-2.5" />
+                    <Plus className="h-3 w-3" />
                     shift
                   </button>
                 )}
@@ -1423,7 +1417,7 @@ function HoursEditor({
               onClick={() => (isClosed ? reopen(key) : markClosed(key))}
               aria-label={isClosed ? "Reopen this day" : "Mark this day closed"}
               className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase transition",
+                "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase transition",
                 isClosed
                   ? "bg-foreground text-background hover:opacity-90"
                   : "text-muted-foreground/70 hover:text-foreground",
