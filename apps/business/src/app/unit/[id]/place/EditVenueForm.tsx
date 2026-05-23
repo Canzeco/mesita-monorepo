@@ -353,7 +353,10 @@ function LocationSection({ venue }: { venue: MyVenue }) {
   // where the venue physically is. Grouping them in a dedicated section
   // keeps Basics about identity (name / category / price) and gives the
   // map link its own row instead of fighting for attention next to a
-  // long street address.
+  // long street address. When we have coordinates from the enrichment
+  // pipeline, render a live Google Maps embed below so the manager can
+  // eyeball the pin without leaving the page.
+  const hasCoords = venue.lat != null && venue.lng != null;
   return (
     <Section title="Location">
       <ReadOnly
@@ -366,7 +369,43 @@ function LocationSection({ venue }: { venue: MyVenue }) {
         value={venue.google_maps_url}
         icon={<Globe className="h-4 w-4" />}
       />
+      {hasCoords && (
+        <VenueMapEmbed
+          lat={venue.lat as number}
+          lng={venue.lng as number}
+          name={venue.name}
+        />
+      )}
     </Section>
+  );
+}
+
+function VenueMapEmbed({
+  lat,
+  lng,
+  name,
+}: {
+  lat: number;
+  lng: number;
+  name: string | null;
+}) {
+  // The `output=embed` form on maps.google.com renders a full Google
+  // Maps iframe without an API key. It's not on the official Embed API
+  // surface (which would require NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY +
+  // billing setup), but it's been stable for years and is the standard
+  // approach for "show a map preview, no auth." Swap to the keyed
+  // /maps/embed/v1/place endpoint once we wire up the env var.
+  const src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+  return (
+    <div className="border-border bg-card overflow-hidden rounded-xl border">
+      <iframe
+        src={src}
+        title={`Map of ${name ?? "this venue"}`}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        className="block h-[280px] w-full border-0"
+      />
+    </div>
   );
 }
 
