@@ -17,6 +17,21 @@ import { errMsg } from "@/lib/utils";
 
 type Status = "claiming" | "needs_signin" | "success" | "error";
 
+function initialFromParams(
+  token: string | null,
+  kind: string | null,
+): { status: Status; message: string } {
+  if (!token) return { status: "error", message: "Missing invite token." };
+  if (kind === "waiter") {
+    return {
+      status: "error",
+      message:
+        "This invite is for a waiter — open it in WhatsApp on the validator's phone.",
+    };
+  }
+  return { status: "claiming", message: "" };
+}
+
 export function AcceptInviteClient() {
   const supabase = useBrowserSupabase();
   const params = useSearchParams();
@@ -24,31 +39,19 @@ export function AcceptInviteClient() {
   const token = params.get("token");
   const kind = params.get("kind"); // "waiter" → wrong app
 
-  const [status, setStatus] = useState<Status>("claiming");
-  const [message, setMessage] = useState<string>("");
+  const initial = initialFromParams(token, kind);
+  const [status, setStatus] = useState<Status>(initial.status);
+  const [message, setMessage] = useState<string>(initial.message);
   const [venueId, setVenueId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setMessage("Missing invite token.");
-      return;
-    }
-    if (kind === "waiter") {
-      setStatus("error");
-      setMessage(
-        "This invite is for a waiter — open it in WhatsApp on the validator's phone.",
-      );
-      return;
-    }
+    if (!token || kind === "waiter") return; // static error already rendered
 
     let cancelled = false;
     (async () => {
-      // Ensure a session exists. The Supabase invite link normally
-      // populates one on this very page; we double-check.
       const { data } = await supabase.auth.getUser();
+      if (cancelled) return;
       if (!data.user) {
-        if (cancelled) return;
         setStatus("needs_signin");
         return;
       }

@@ -106,14 +106,16 @@ export function PhonePicker({
   const [filter, setFilter] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Re-sync if the outer value changes externally (controlled reset
-  // after a successful submit, or hydration with a pre-filled number).
+  // Re-sync local picker state when the outer controlled `value`
+  // changes (controlled reset after a successful submit, or hydration
+  // with a pre-filled number).
   //
   // Empty `value` deliberately does NOT reset the selected country —
   // otherwise picking a flag before typing snaps you back to the
-  // default, which is exactly the bug that bit us first time around.
+  // default, which is the exact bug that bit us first time around.
   useEffect(() => {
     if (!value) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (national !== "") setNational("");
       return;
     }

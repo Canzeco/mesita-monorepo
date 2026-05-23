@@ -68,8 +68,11 @@ export function TeamClient({
     }
   }, [supabase, venueId]);
 
+  // Initial load — fetch-on-mount fires the same refresh() that every
+  // mutating handler uses.
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh().then((next) => {
       if (cancelled || !next) return;
     });
