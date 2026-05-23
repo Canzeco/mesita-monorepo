@@ -320,20 +320,14 @@ function BasicsSection({
         />
       </Field>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Category">
-          <input
-            value={v.category}
-            onChange={(e) => set("category", e.target.value)}
-            placeholder="e.g. cafe, mexican, sushi"
-            className={INPUT}
-          />
-        </Field>
-
-        <Field label="Tags">
-          <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
-        </Field>
-      </div>
+      <Field label="Category">
+        <input
+          value={v.category}
+          onChange={(e) => set("category", e.target.value)}
+          placeholder="e.g. cafe, mexican, sushi"
+          className={INPUT}
+        />
+      </Field>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ReadOnly
@@ -924,62 +918,6 @@ function HoursEditor({
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function TagsEditor({
-  tags,
-  onChange,
-}: {
-  tags: string[];
-  onChange: (next: string[]) => void;
-}) {
-  const [draft, setDraft] = useState("");
-  const add = () => {
-    const t = draft.trim().toLowerCase();
-    if (!t) return;
-    if (tags.includes(t)) {
-      setDraft("");
-      return;
-    }
-    onChange([...tags, t]);
-    setDraft("");
-  };
-  const remove = (t: string) => onChange(tags.filter((x) => x !== t));
-  return (
-    <div className="border-border bg-card flex flex-wrap items-center gap-2 rounded-xl border p-2">
-      {tags.map((t) => (
-        <span
-          key={t}
-          className="bg-muted inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium"
-        >
-          {t}
-          <button
-            type="button"
-            onClick={() => remove(t)}
-            aria-label={`Remove ${t}`}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </span>
-      ))}
-      <input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
-            add();
-          }
-        }}
-        onBlur={add}
-        placeholder={
-          tags.length === 0 ? "Add tag and press enter" : "Add another"
-        }
-        className="placeholder:text-muted-foreground min-w-[100px] flex-1 bg-transparent px-1 text-sm outline-none"
-      />
     </div>
   );
 }
