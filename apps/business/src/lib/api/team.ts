@@ -41,7 +41,13 @@ export type PendingWaiterInvite = {
   expiresAt: string;
 };
 
+// `super_admin` is a synthetic role for users in public.super_admins
+// who aren't in venue_members for this venue; the EF still grants them
+// owner-level UI affordances.
+export type CallerRole = ManagerRole | "staff" | "super_admin";
+
 export type TeamSnapshot = {
+  myRole: CallerRole | null;
   managers: TeamManager[];
   waiters: TeamWaiter[];
   pendingManagerInvites: PendingManagerInvite[];

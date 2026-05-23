@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Check,
   Copy,
@@ -52,7 +52,6 @@ export function TeamClient({
 }) {
   const supabase = useBrowserSupabase();
   const [snapshot, setSnapshot] = useState<TeamSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState<InviteOpen>(null);
@@ -62,125 +61,119 @@ export function TeamClient({
       const next = await apiListTeam(supabase, venueId);
       setSnapshot(next);
       setError(null);
+      return next;
     } catch (err) {
       setError(errMsg(err, "Couldn't load the team."));
+      return null;
     }
   }, [supabase, venueId]);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const next = await apiListTeam(supabase, venueId);
-        if (!cancelled) setSnapshot(next);
-      } catch (err) {
-        if (!cancelled) setError(errMsg(err, "Couldn't load the team."));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, venueId]);
+    void refresh().then((next) => {
+      if (cancelled || !next) return;
+    });
+    return () => { cancelled = true; };
+  }, [refresh]);
 
-  const myRole = useMemo<ManagerRole | null>(() => {
-    const me = snapshot?.managers.find((m) => m.userId === currentUserId);
-    if (!me) return null;
-    return (ROLE_CHOICES as string[]).includes(me.role)
-      ? (me.role as ManagerRole)
-      : null;
-  }, [snapshot, currentUserId]);
-  const isOwner = myRole === "owner";
+  const isOwner =
+    snapshot?.myRole === "owner" || snapshot?.myRole === "super_admin";
 
-  const handleInviteManager = async (email: string, role: ManagerRole) => {
-    setBusy("invite-manager");
+  // Wrap any mutating action in the shared busy/error/refresh frame.
+  async function runAction(
+    key: string,
+    fn: () => Promise<unknown>,
+    failureMessage: string,
+  ) {
+    setBusy(key);
     setError(null);
     try {
-      await apiInviteManager(supabase, {
-        venueId,
-        email,
-        role,
-        redirectBase: window.location.origin,
-      });
+      await fn();
       await refresh();
-      setInviteOpen(null);
     } catch (err) {
-      setError(errMsg(err, "Couldn't send that invite."));
+      setError(errMsg(err, failureMessage));
     } finally {
       setBusy(null);
     }
-  };
+  }
 
-  const handleInviteWaiter = async (
-    channel: "whatsapp" | "sms",
-    phone: string,
+  const handleInviteManager = (email: string, role: ManagerRole) =>
+    runAction(
+      "invite-manager",
+      async () => {
+        await apiInviteManager(supabase, {
+          venueId,
+          email,
+          role,
+          redirectBase: window.location.origin,
+        });
+        setInviteOpen(null);
+      },
+      "Couldn't send that invite.",
+    );
+
+  const handleInviteWaiter = (channel: "whatsapp" | "sms", phone: string) =>
+    runAction(
+      "invite-waiter",
+      async () => {
+        await apiInviteWaiter(supabase, {
+          venueId,
+          channel,
+          phone: phone || undefined,
+          redirectBase: window.location.origin,
+        });
+        setInviteOpen(null);
+      },
+      "Couldn't create that waiter invite.",
+    );
+
+  const handleChangeRole = (memberId: string, role: ManagerRole) =>
+    runAction(
+      `role-${memberId}`,
+      () => apiUpdateMemberRole(supabase, { memberId, role }),
+      "Couldn't change that role.",
+    );
+
+  const handleRemoveManager = (
+    memberId: string,
+    name: string,
+    isSelf: boolean,
   ) => {
-    setBusy("invite-waiter");
-    setError(null);
-    try {
-      await apiInviteWaiter(supabase, {
-        venueId,
-        channel,
-        phone: phone || undefined,
-        redirectBase: window.location.origin,
-      });
-      await refresh();
-      setInviteOpen(null);
-    } catch (err) {
-      setError(errMsg(err, "Couldn't create that waiter invite."));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleChangeRole = async (memberId: string, role: ManagerRole) => {
-    setBusy(`role-${memberId}`);
-    setError(null);
-    try {
-      await apiUpdateMemberRole(supabase, { memberId, role });
-      await refresh();
-    } catch (err) {
-      setError(errMsg(err, "Couldn't change that role."));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleRemove = async (id: string, kind: RemoveKind, confirm: string) => {
+    const confirm = isSelf
+      ? "Leave this venue?"
+      : `Remove ${name} from this venue?`;
     if (!window.confirm(confirm)) return;
-    setBusy(`remove-${id}`);
-    setError(null);
-    try {
-      await apiRemoveMember(supabase, { id, kind });
-      await refresh();
-    } catch (err) {
-      setError(errMsg(err, "Couldn't remove that entry."));
-    } finally {
-      setBusy(null);
-    }
+    return runAction(
+      `remove-${memberId}`,
+      () => apiRemoveMember(supabase, { id: memberId, kind: "manager" }),
+      "Couldn't remove that member.",
+    );
   };
 
-  const handleTestPing = async (
-    channel: "whatsapp" | "sms",
-    phone: string,
-  ) => {
-    setBusy(`ping-${phone}`);
-    setError(null);
-    try {
-      const res = await apiTestWaiterChannel(supabase, { venueId, channel, phone });
-      window.alert(
-        res.mock
-          ? `Test ping queued — ${res.note}`
-          : `Test ${res.channel} sent to ${res.to}.`,
-      );
-    } catch (err) {
-      setError(errMsg(err, "Couldn't send a test ping."));
-    } finally {
-      setBusy(null);
-    }
+  const handleRemove = (id: string, kind: RemoveKind, confirmText: string) => {
+    if (!window.confirm(confirmText)) return;
+    return runAction(
+      `remove-${id}`,
+      () => apiRemoveMember(supabase, { id, kind }),
+      "Couldn't remove that entry.",
+    );
   };
+
+  const handleTestPing = (channel: "whatsapp" | "sms", phone: string) =>
+    runAction(
+      `ping-${phone}`,
+      async () => {
+        const res = await apiTestWaiterChannel(supabase, { venueId, channel, phone });
+        window.alert(
+          res.mock
+            ? `Test ping queued — ${res.note}`
+            : `Test ${res.channel} sent to ${res.to}.`,
+        );
+      },
+      "Couldn't send a test ping.",
+    );
+
+  const loading = snapshot == null && error == null;
 
   if (loading) {
     return (
@@ -269,12 +262,10 @@ export function TeamClient({
                       : `Remove ${m.fullName ?? m.email}`
                   }
                   onClick={() =>
-                    handleRemove(
+                    handleRemoveManager(
                       m.memberId,
-                      "manager",
-                      m.userId === currentUserId
-                        ? "Leave this venue?"
-                        : `Remove ${m.fullName ?? m.email} from this venue?`,
+                      m.fullName ?? m.email ?? "this manager",
+                      m.userId === currentUserId,
                     )
                   }
                 />
