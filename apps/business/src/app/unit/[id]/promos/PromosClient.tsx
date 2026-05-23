@@ -7,7 +7,6 @@ import {
   Loader2,
   Lock,
   Percent,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -30,7 +29,6 @@ import {
 //   1. Visibility    — slim 5-step rail, no prose
 //   2. Subscription  — Free / Cashback / Discount, one card per DB state
 //   3. Promos        — Welcome row + 4 tier rows; rate + audience count
-//   4. Advanced      — coming-soon pill
 //
 // "OFF" is the neutral label for the rate scale — same wording whether the
 // venue runs cashback or discount.
@@ -181,10 +179,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
             <TierRow key={t.id} tier={t} disabled={isFree} />
           ))}
         </div>
-      </Section>
-
-      <Section title="Advanced">
-        <AdvancedComingSoon />
       </Section>
     </div>
   );
@@ -540,15 +534,3 @@ function TierChip({ tier, label }: { tier: Tier; label: string }) {
   );
 }
 
-// ─── Advanced (coming soon) ───────────────────────────────────────────────
-
-function AdvancedComingSoon() {
-  return (
-    <div className="border-border bg-muted/30 flex items-center justify-center gap-2 rounded-xl border border-dashed p-5">
-      <Sparkles className="text-muted-foreground h-3.5 w-3.5" />
-      <span className="text-muted-foreground text-[12px]">
-        Custom rates per group — coming soon.
-      </span>
-    </div>
-  );
-}
