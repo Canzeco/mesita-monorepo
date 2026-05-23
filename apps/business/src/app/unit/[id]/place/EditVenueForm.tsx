@@ -324,10 +324,10 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           page is clean. Sticky to the bottom of the scroll viewport so
           it follows the manager as they edit further down. */}
       {(isDirty || pending || saved) && (
-        <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-1 flex items-center justify-between gap-3 rounded-2xl border px-4 py-2.5 backdrop-blur">
+        <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-2 flex items-center justify-between gap-4 rounded-2xl border px-5 py-3.5 backdrop-blur">
           <p
             className={cn(
-              "text-[12px] font-medium",
+              "text-sm font-medium",
               pending
                 ? "text-muted-foreground"
                 : saved
@@ -341,12 +341,12 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
                 ? "All changes saved."
                 : "You have unsaved changes."}
           </p>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleDiscard}
               disabled={pending || !isDirty}
-              className="text-muted-foreground hover:text-foreground inline-flex h-8 items-center rounded-full px-3 text-[12px] font-semibold transition disabled:opacity-40"
+              className="text-muted-foreground hover:text-foreground inline-flex h-10 items-center rounded-full px-4 text-[13px] font-semibold transition disabled:opacity-40"
             >
               Discard
             </button>
@@ -354,7 +354,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
               type="submit"
               disabled={pending || !isDirty}
               className={cn(
-                "inline-flex h-8 items-center gap-1.5 rounded-full px-4 text-[12px] font-semibold transition disabled:opacity-60",
+                "inline-flex h-10 items-center gap-2 rounded-full px-5 text-[13px] font-semibold transition disabled:opacity-60",
                 saved
                   ? "bg-secondary text-white"
                   : "bg-foreground text-background hover:opacity-90",
@@ -362,17 +362,17 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
             >
               {pending ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Saving…
                 </>
               ) : saved ? (
                 <>
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-4 w-4" />
                   Saved
                 </>
               ) : (
                 <>
-                  <Save className="h-3.5 w-3.5" />
+                  <Save className="h-4 w-4" />
                   Save changes
                 </>
               )}
