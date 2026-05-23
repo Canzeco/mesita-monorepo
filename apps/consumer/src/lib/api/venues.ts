@@ -15,8 +15,14 @@ import { invokeEF } from "./_invoke";
 type VenueListingType = "partner" | "web";
 type VenueStatus = "lead" | "active" | "paused" | "archived";
 type FiscalType = "formal" | "informal";
-// Three-plan venue catalog: Free (default) + one Pro plan per fiscal type.
-type VenuePlan = "free" | "formal_pro" | "informal_pro";
+// Five-plan venue catalog: Free (default) + Pro and Ultra at each fiscal
+// type. The mechanic (cashback vs discount) is fixed by fiscal_type.
+type VenuePlan =
+  | "free"
+  | "formal_pro"
+  | "formal_ultra"
+  | "informal_pro"
+  | "informal_ultra";
 
 export type Venue = {
   id: string;
