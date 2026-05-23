@@ -16,7 +16,14 @@ import {
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
-import { ERROR_BOX_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
+import {
+  ERROR_BOX_CLASS,
+  ICON_BUTTON_CLASS,
+  INFO_BOX_CLASS,
+  PILL_BUTTON_CLASS,
+  TINY_LABEL_CLASS,
+} from "@/lib/ui-classes";
+import { EmptyState, Section } from "@/components/shared";
 import { PhonePicker } from "@/components/ui/phone-picker";
 import {
   apiInviteManager,
@@ -76,7 +83,9 @@ export function TeamClient({
     void refresh().then((next) => {
       if (cancelled || !next) return;
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   const isOwner =
@@ -151,10 +160,10 @@ export function TeamClient({
     name: string,
     isSelf: boolean,
   ) => {
-    const confirm = isSelf
+    const message = isSelf
       ? "Leave this venue?"
       : `Remove ${name} from this venue?`;
-    if (!window.confirm(confirm)) return;
+    if (!window.confirm(message)) return;
     return runAction(
       `remove-${memberId}`,
       () => apiRemoveMember(supabase, { id: memberId, kind: "manager" }),
@@ -177,7 +186,11 @@ export function TeamClient({
     return runAction(
       `ping-${phone}`,
       async () => {
-        const res = await apiTestWaiterChannel(supabase, { venueId, channel, phone });
+        const res = await apiTestWaiterChannel(supabase, {
+          venueId,
+          channel,
+          phone,
+        });
         window.alert(
           res.mock
             ? `Test ping queued — ${res.note}`
@@ -207,15 +220,11 @@ export function TeamClient({
       {error && <div className={ERROR_BOX_CLASS}>{error}</div>}
 
       {/* ── Managers ─────────────────────────────────────────────── */}
-      <section className="border-border bg-card rounded-2xl border">
-        <header className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
-          <div>
-            <p className="font-display text-base font-semibold">Managers</p>
-            <p className="text-muted-foreground mt-0.5 text-[12px]">
-              Sign in with email. Owners can invite or remove anyone.
-            </p>
-          </div>
-          {isOwner && (
+      <Section
+        title="Managers"
+        description="Sign in with email. Owners can invite or remove anyone."
+        right={
+          isOwner && (
             <InviteButton
               label="Invite manager"
               open={inviteOpen === "manager"}
@@ -223,25 +232,22 @@ export function TeamClient({
                 setInviteOpen(inviteOpen === "manager" ? null : "manager")
               }
             />
-          )}
-        </header>
-
+          )
+        }
+      >
         {inviteOpen === "manager" && (
           <ManagerInviteForm
             busy={busy === "invite-manager"}
-            onCancel={() => setInviteOpen(null)}
             onSubmit={handleInviteManager}
           />
         )}
 
-        <ul className="divide-y divide-border/60">
-          {snapshot.managers.length === 0 ? (
-            <li className="text-muted-foreground px-5 py-6 text-sm">
-              No managers yet.
-            </li>
-          ) : (
-            snapshot.managers.map((m) => (
-              <li key={m.memberId} className="flex items-center gap-3 px-5 py-3">
+        {snapshot.managers.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No managers yet.</p>
+        ) : (
+          <ul className="divide-border/60 divide-y">
+            {snapshot.managers.map((m) => (
+              <li key={m.memberId} className="flex items-center gap-3 py-2.5">
                 <Avatar
                   initial={initialOf(m.fullName, m.email)}
                   tint="bg-pink-gradient"
@@ -292,60 +298,43 @@ export function TeamClient({
                   }
                 />
               </li>
-            ))
-          )}
-        </ul>
+            ))}
+          </ul>
+        )}
 
         {snapshot.pendingManagerInvites.length > 0 && (
-          <div className="border-t border-border/60 px-5 py-3">
-            <p className="text-muted-foreground mb-2 text-[10px] font-medium tracking-[0.18em] uppercase">
-              Pending invites
-            </p>
-            <ul className="flex flex-col gap-2">
-              {snapshot.pendingManagerInvites.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2"
-                >
-                  <Mail className="text-muted-foreground h-4 w-4 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-semibold">
-                      {inv.email}
-                    </p>
-                    <p className="text-muted-foreground text-[11px]">
-                      Invited as {ROLE_LABEL[(inv.role as ManagerRole) ?? "manager"]} ·
-                      {" "}expires {formatRelative(inv.expiresAt)}
-                    </p>
-                  </div>
-                  <CopyButton
-                    text={buildAcceptUrl(inv.token)}
-                    label="Copy invite link"
+          <PendingGroup>
+            {snapshot.pendingManagerInvites.map((inv) => (
+              <PendingRow
+                key={inv.id}
+                icon={<Mail className="text-muted-foreground h-3.5 w-3.5" />}
+                title={inv.email}
+                subtitle={`Invited as ${ROLE_LABEL[(inv.role as ManagerRole) ?? "manager"]} · expires ${formatRelative(inv.expiresAt)}`}
+              >
+                <CopyButton
+                  text={buildAcceptUrl(inv.token)}
+                  label="Copy invite link"
+                />
+                {isOwner && (
+                  <RemoveButton
+                    busy={busy === `remove-${inv.id}`}
+                    label="Revoke invite"
+                    onClick={() =>
+                      handleRemove(inv.id, "mgrInvite", "Revoke this invite?")
+                    }
                   />
-                  {isOwner && (
-                    <RemoveButton
-                      busy={busy === `remove-${inv.id}`}
-                      label="Revoke invite"
-                      onClick={() =>
-                        handleRemove(inv.id, "mgrInvite", "Revoke this invite?")
-                      }
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+                )}
+              </PendingRow>
+            ))}
+          </PendingGroup>
         )}
-      </section>
+      </Section>
 
       {/* ── Waiters ──────────────────────────────────────────────── */}
-      <section className="border-border bg-card rounded-2xl border">
-        <header className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
-          <div>
-            <p className="font-display text-base font-semibold">Waiters</p>
-            <p className="text-muted-foreground mt-0.5 text-[12px]">
-              Validate guest tickets from their own phone via WhatsApp or SMS.
-            </p>
-          </div>
+      <Section
+        title="Waiters"
+        description="Validate guest tickets from their own phone via WhatsApp or SMS."
+        right={
           <InviteButton
             label="Invite waiter"
             open={inviteOpen === "waiter"}
@@ -353,26 +342,32 @@ export function TeamClient({
               setInviteOpen(inviteOpen === "waiter" ? null : "waiter")
             }
           />
-        </header>
-
+        }
+      >
         {inviteOpen === "waiter" && (
           <WaiterInviteForm
             busy={busy === "invite-waiter"}
-            onCancel={() => setInviteOpen(null)}
             onSubmit={handleInviteWaiter}
           />
         )}
 
-        <ul className="divide-y divide-border/60">
-          {snapshot.waiters.length === 0 ? (
-            <li className="text-muted-foreground px-5 py-6 text-sm">
-              No waiters yet.
-            </li>
-          ) : (
-            snapshot.waiters.map((w) => (
+        {snapshot.waiters.length === 0 &&
+        snapshot.pendingWaiterInvites.length === 0 &&
+        inviteOpen !== "waiter" ? (
+          <EmptyState
+            icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
+            title="No waiters yet"
+            description="Invite your floor staff so they can validate tickets from their own phone."
+            className="border-none bg-transparent p-6"
+          />
+        ) : snapshot.waiters.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No waiters yet.</p>
+        ) : (
+          <ul className="divide-border/60 divide-y">
+            {snapshot.waiters.map((w) => (
               <li
                 key={`${w.userId}:${venueId}`}
-                className="flex items-center gap-3 px-5 py-3"
+                className="flex items-center gap-3 py-2.5"
               >
                 <Avatar
                   initial={(w.phone ?? "?").slice(-2)}
@@ -406,54 +401,42 @@ export function TeamClient({
                   />
                 )}
               </li>
-            ))
-          )}
-        </ul>
+            ))}
+          </ul>
+        )}
 
         {snapshot.pendingWaiterInvites.length > 0 && (
-          <div className="border-t border-border/60 px-5 py-3">
-            <p className="text-muted-foreground mb-2 text-[10px] font-medium tracking-[0.18em] uppercase">
-              Pending invites
-            </p>
-            <ul className="flex flex-col gap-2">
-              {snapshot.pendingWaiterInvites.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2"
-                >
-                  <ChannelIcon channel={inv.channel} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-mono text-[12px] font-semibold">
-                      {inv.phone ?? "Link only (no phone)"}
-                    </p>
-                    <p className="text-muted-foreground text-[11px]">
-                      via {inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} ·
-                      {" "}expires {formatRelative(inv.expiresAt)}
-                    </p>
-                  </div>
-                  <CopyButton
-                    text={buildAcceptUrl(inv.token, "waiter")}
-                    label="Copy invite link"
+          <PendingGroup>
+            {snapshot.pendingWaiterInvites.map((inv) => (
+              <PendingRow
+                key={inv.id}
+                icon={<ChannelIcon channel={inv.channel} />}
+                title={inv.phone ?? "Link only (no phone)"}
+                titleClassName="font-mono"
+                subtitle={`via ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · expires ${formatRelative(inv.expiresAt)}`}
+              >
+                <CopyButton
+                  text={buildAcceptUrl(inv.token, "waiter")}
+                  label="Copy invite link"
+                />
+                {inv.phone && (
+                  <PingButton
+                    busy={busy === `ping-${inv.phone}`}
+                    onClick={() => handleTestPing(inv.channel, inv.phone!)}
                   />
-                  {inv.phone && (
-                    <PingButton
-                      busy={busy === `ping-${inv.phone}`}
-                      onClick={() => handleTestPing(inv.channel, inv.phone!)}
-                    />
-                  )}
-                  <RemoveButton
-                    busy={busy === `remove-${inv.id}`}
-                    label="Revoke invite"
-                    onClick={() =>
-                      handleRemove(inv.id, "waiterInvite", "Revoke this invite?")
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
+                )}
+                <RemoveButton
+                  busy={busy === `remove-${inv.id}`}
+                  label="Revoke invite"
+                  onClick={() =>
+                    handleRemove(inv.id, "waiterInvite", "Revoke this invite?")
+                  }
+                />
+              </PendingRow>
+            ))}
+          </PendingGroup>
         )}
-      </section>
+      </Section>
 
       <p className={cn(INFO_BOX_CLASS, "text-center")}>
         WhatsApp / SMS delivery is mocked until Twilio is wired up — invites
@@ -475,24 +458,58 @@ function InviteButton({
   label: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90"
-    >
+    <button type="button" onClick={onClick} className={PILL_BUTTON_CLASS}>
       {open ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
       {open ? "Cancel" : label}
     </button>
   );
 }
 
+// Pending-invites group — eyebrow label + stack of subdued tile rows.
+// Used identically by both Managers and Waiters sections.
+function PendingGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-border/60 flex flex-col gap-2 border-t pt-3">
+      <p className={TINY_LABEL_CLASS}>Pending invites</p>
+      <ul className="flex flex-col gap-2">{children}</ul>
+    </div>
+  );
+}
+
+function PendingRow({
+  icon,
+  title,
+  subtitle,
+  titleClassName,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  titleClassName?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="bg-muted/40 flex items-center gap-3 rounded-xl px-3 py-2">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className={cn("truncate text-[12px] font-semibold", titleClassName)}>
+          {title}
+        </p>
+        <p className="text-muted-foreground text-[11px]">{subtitle}</p>
+      </div>
+      {children}
+    </li>
+  );
+}
+
 function ManagerInviteForm({
   busy,
-  onCancel,
   onSubmit,
 }: {
   busy: boolean;
-  onCancel: () => void;
   onSubmit: (email: string, role: ManagerRole) => void | Promise<void>;
 }) {
   const [email, setEmail] = useState("");
@@ -500,7 +517,7 @@ function ManagerInviteForm({
 
   return (
     <form
-      className="border-b border-border/60 bg-muted/30 px-5 py-4"
+      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
       onSubmit={(e) => {
         e.preventDefault();
         const trimmed = email.trim();
@@ -508,62 +525,50 @@ function ManagerInviteForm({
         onSubmit(trimmed, role);
       }}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Mail className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
-          <input
-            type="email"
-            required
-            autoFocus
-            placeholder="name@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border-border bg-background focus:border-foreground/40 w-full rounded-full border py-2 pr-3 pl-8 text-[13px] outline-none"
-          />
-        </div>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as ManagerRole)}
-          className="border-border bg-background w-full rounded-full border px-3 py-2 text-[13px] outline-none sm:w-auto"
-        >
-          {ROLE_CHOICES.map((r) => (
-            <option key={r} value={r}>
-              {ROLE_LABEL[r]}
-            </option>
-          ))}
-        </select>
-        <div className="flex items-center gap-2">
-          <button
-            type="submit"
-            disabled={busy || email.trim().length === 0}
-            className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
-          >
-            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-            Send invite
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-muted-foreground hover:text-foreground text-[12px]"
-          >
-            Cancel
-          </button>
-        </div>
+      <div className="relative flex-1">
+        <Mail className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
+        <input
+          type="email"
+          required
+          autoFocus
+          placeholder="name@company.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border-border bg-background focus:border-foreground/40 w-full rounded-full border py-2 pr-3 pl-8 text-[13px] outline-none"
+        />
       </div>
-      <p className="text-muted-foreground mt-2 text-[11px]">
-        We&apos;ll email them a link to set their password and join this venue.
-      </p>
+      <select
+        value={role}
+        onChange={(e) => setRole(e.target.value as ManagerRole)}
+        className="border-border bg-background w-full rounded-full border px-3 py-2 text-[13px] outline-none sm:w-auto"
+      >
+        {ROLE_CHOICES.map((r) => (
+          <option key={r} value={r}>
+            {ROLE_LABEL[r]}
+          </option>
+        ))}
+      </select>
+      <button
+        type="submit"
+        disabled={busy || email.trim().length === 0}
+        className={cn(PILL_BUTTON_CLASS, "px-4 py-2 disabled:opacity-50")}
+      >
+        {busy ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Send className="h-3 w-3" />
+        )}
+        Send invite
+      </button>
     </form>
   );
 }
 
 function WaiterInviteForm({
   busy,
-  onCancel,
   onSubmit,
 }: {
   busy: boolean;
-  onCancel: () => void;
   onSubmit: (
     channel: "whatsapp" | "sms",
     phone: string,
@@ -574,7 +579,7 @@ function WaiterInviteForm({
 
   return (
     <form
-      className="border-b border-border/60 bg-muted/30 px-5 py-4"
+      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit(channel, phone.trim());
@@ -606,25 +611,20 @@ function WaiterInviteForm({
           placeholder="33 1234 5678 (optional)"
           className="flex-1"
         />
-        <div className="flex items-center gap-2">
-          <button
-            type="submit"
-            disabled={busy}
-            className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
-          >
-            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-            Create invite
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-muted-foreground hover:text-foreground text-[12px]"
-          >
-            Cancel
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className={cn(PILL_BUTTON_CLASS, "px-4 py-2 disabled:opacity-50")}
+        >
+          {busy ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Send className="h-3 w-3" />
+          )}
+          Create invite
+        </button>
       </div>
-      <p className="text-muted-foreground mt-2 text-[11px]">
+      <p className="text-muted-foreground text-[11px]">
         Phone is optional. With it, the invite is bound so only that number can
         claim. Without it, anyone with the link can join as waiter.
       </p>
@@ -676,7 +676,10 @@ function RemoveButton({
       disabled={busy}
       aria-label={label}
       title={label}
-      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-50"
+      className={cn(
+        ICON_BUTTON_CLASS,
+        "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive border-transparent bg-transparent",
+      )}
     >
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -695,7 +698,7 @@ function PingButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
       disabled={busy}
       aria-label="Send test ping"
       title="Send test ping"
-      className="border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border disabled:opacity-50"
+      className={ICON_BUTTON_CLASS}
     >
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -722,9 +725,13 @@ function CopyButton({ text, label }: { text: string; label: string }) {
           /* swallow */
         }
       }}
-      className="border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border"
+      className={ICON_BUTTON_CLASS}
     >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
     </button>
   );
 }

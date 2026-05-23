@@ -35,11 +35,13 @@ import {
   GoogleLogo,
   InstagramLogo,
   MesitaLogo,
+  Section,
 } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import {
   INPUT_CLASS as INPUT,
   TEXTAREA_CLASS as TEXTAREA,
+  TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
 
 // Place page driven by the Notion Components spec:
@@ -377,10 +379,7 @@ function TimeSection({
         icon={<Clock className="h-4 w-4" />}
       />
 
-      <HoursEditor
-        hours={v.hours}
-        onChange={(hours) => set("hours", hours)}
-      />
+      <HoursEditor hours={v.hours} onChange={(hours) => set("hours", hours)} />
     </Section>
   );
 }
@@ -436,8 +435,8 @@ function MediaSection({
   return (
     <Section
       title="Photos"
-      badge={
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+      right={
+        <span className={TINY_LABEL_CLASS}>
           {photos.length} / {MAX_PHOTOS}
         </span>
       }
@@ -563,8 +562,8 @@ function ChannelsSection({
   return (
     <Section
       title="Channels"
-      badge={
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+      right={
+        <span className={TINY_LABEL_CLASS}>
           {filled} / {fields.length}
         </span>
       }
@@ -629,11 +628,31 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
     value: number | null;
     logo: React.ReactNode;
   }[] = [
-    { label: "Google", value: venue.google_stars_overall, logo: <GoogleLogo size={12} /> },
-    { label: "Overall", value: venue.mesita_stars_overall, logo: <MesitaLogo size={12} /> },
-    { label: "Food", value: venue.mesita_stars_food, logo: <MesitaLogo size={12} /> },
-    { label: "Service", value: venue.mesita_stars_service, logo: <MesitaLogo size={12} /> },
-    { label: "Ambience", value: venue.mesita_stars_ambience, logo: <MesitaLogo size={12} /> },
+    {
+      label: "Google",
+      value: venue.google_stars_overall,
+      logo: <GoogleLogo size={12} />,
+    },
+    {
+      label: "Overall",
+      value: venue.mesita_stars_overall,
+      logo: <MesitaLogo size={12} />,
+    },
+    {
+      label: "Food",
+      value: venue.mesita_stars_food,
+      logo: <MesitaLogo size={12} />,
+    },
+    {
+      label: "Service",
+      value: venue.mesita_stars_service,
+      logo: <MesitaLogo size={12} />,
+    },
+    {
+      label: "Ambience",
+      value: venue.mesita_stars_ambience,
+      logo: <MesitaLogo size={12} />,
+    },
   ];
   const counts: {
     label: string;
@@ -642,12 +661,18 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
   }[] = [
     {
       label: "Google",
-      value: visitorReview(venue.google_visitor_count, venue.google_review_count),
+      value: visitorReview(
+        venue.google_visitor_count,
+        venue.google_review_count,
+      ),
       logo: <GoogleLogo size={12} />,
     },
     {
       label: "Mesita",
-      value: visitorReview(venue.mesita_visitor_count, venue.mesita_review_count),
+      value: visitorReview(
+        venue.mesita_visitor_count,
+        venue.mesita_review_count,
+      ),
       logo: <MesitaLogo size={12} />,
     },
     {
@@ -663,11 +688,7 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
   return (
     <Section
       title="Signals"
-      badge={
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-          Read-only
-        </span>
-      }
+      right={<span className={TINY_LABEL_CLASS}>Read-only</span>}
     >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {stars.map((s) => (
@@ -675,7 +696,7 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
             key={s.label}
             className="border-border bg-muted/40 flex flex-col rounded-xl border p-2.5"
           >
-            <p className="text-muted-foreground flex items-center gap-1 text-[10px] font-semibold tracking-[0.12em] uppercase">
+            <p className={cn(TINY_LABEL_CLASS, "flex items-center gap-1")}>
               {s.logo}
               {s.label}
             </p>
@@ -692,7 +713,7 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
             key={c.label}
             className="border-border bg-muted/40 rounded-xl border p-2.5"
           >
-            <p className="text-muted-foreground flex items-center gap-1 text-[10px] font-semibold tracking-[0.12em] uppercase">
+            <p className={cn(TINY_LABEL_CLASS, "flex items-center gap-1")}>
               {c.logo}
               {c.label}
             </p>
@@ -707,28 +728,6 @@ function SignalsSection({ venue }: { venue: MyVenue }) {
 }
 
 // ── Primitives ──────────────────────────────────────────────────────────
-
-function Section({
-  title,
-  badge,
-  children,
-}: {
-  title: string;
-  badge?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-display text-sm font-semibold tracking-tight">
-          {title}
-        </h3>
-        {badge}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function UrlField({
   label,
@@ -797,11 +796,7 @@ function HoursEditor({
   const setDay = (key: DayKey, next: DayShifts) =>
     onChange({ ...hours, [key]: next });
 
-  const setRange = (
-    key: DayKey,
-    idx: number,
-    patch: Partial<HoursRange>,
-  ) => {
+  const setRange = (key: DayKey, idx: number, patch: Partial<HoursRange>) => {
     const day = hours[key];
     const ranges = day.ranges.map((r, i) =>
       i === idx ? { ...r, ...patch } : r,
@@ -821,11 +816,13 @@ function HoursEditor({
   const removeShift = (key: DayKey, idx: number) => {
     const day = hours[key];
     const ranges = day.ranges.filter((_, i) => i !== idx);
-    setDay(key, { ...day, ranges: ranges.length > 0 ? ranges : [{ open: "", close: "" }] });
+    setDay(key, {
+      ...day,
+      ranges: ranges.length > 0 ? ranges : [{ open: "", close: "" }],
+    });
   };
 
-  const markClosed = (key: DayKey) =>
-    setDay(key, { closed: true, ranges: [] });
+  const markClosed = (key: DayKey) => setDay(key, { closed: true, ranges: [] });
 
   const reopen = (key: DayKey) =>
     setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
@@ -978,7 +975,9 @@ function TagsEditor({
           }
         }}
         onBlur={add}
-        placeholder={tags.length === 0 ? "Add tag and press enter" : "Add another"}
+        placeholder={
+          tags.length === 0 ? "Add tag and press enter" : "Add another"
+        }
         className="placeholder:text-muted-foreground min-w-[100px] flex-1 bg-transparent px-1 text-sm outline-none"
       />
     </div>
@@ -1033,7 +1032,10 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
-function visitorReview(visitors: number | null, reviews: number | null): string {
+function visitorReview(
+  visitors: number | null,
+  reviews: number | null,
+): string {
   if (visitors == null && reviews == null) return "—";
   const v = visitors == null ? "—" : formatCount(visitors);
   const r = reviews == null ? "—" : formatCount(reviews);

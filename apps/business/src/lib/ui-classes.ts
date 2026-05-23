@@ -29,3 +29,25 @@ export const INFO_BOX_CLASS =
 // pill-shaped, dark-foreground fill. Use cn() to merge in `flex-1`, etc.
 export const PRIMARY_BUTTON_CLASS =
   "flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background transition disabled:opacity-60";
+
+// Tiny uppercase eyebrow label — used for section eyebrows ("PENDING
+// INVITES"), "Read-only" badges, stat tile captions, etc. Single source
+// so size + tracking stay aligned across the manager console.
+export const TINY_LABEL_CLASS =
+  "text-muted-foreground text-[10px] font-semibold uppercase tracking-[0.14em]";
+
+// Numeric display used for stat figures (audience counts, balance, etc.).
+// Pairs naturally with a smaller cadence/suffix sibling.
+export const NUMBER_CLASS = "font-display tabular-nums leading-none font-bold";
+
+// Small pill action button — the canonical header CTA ("Invite manager",
+// "Add waiter", etc.). Dark fill, 12px text, pill-shaped. For a
+// full-width form submit use PRIMARY_BUTTON_CLASS instead.
+export const PILL_BUTTON_CLASS =
+  "bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90 disabled:opacity-60";
+
+// Compact icon button (32px circle) — for trash / send / copy actions on
+// list rows. Border ring + subtle hover so it doesn't compete with the
+// row content. Pair with `aria-label` and `title` for accessibility.
+export const ICON_BUTTON_CLASS =
+  "border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border transition disabled:opacity-50";

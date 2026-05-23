@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus, Store } from "lucide-react";
 import { Topbar } from "@/components/manager/Topbar";
 import { PageErrorState } from "@/components/manager/PageErrorState";
+import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { errMsg } from "@/lib/utils";
@@ -44,25 +45,21 @@ export default async function ManagerPromosPage({
       <>
         <Topbar title="Promos" />
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
-            <div className="border-border bg-card rounded-2xl border border-dashed p-10 text-center">
-              <div className="bg-muted mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
-                <Store className="text-muted-foreground h-5 w-5" />
-              </div>
-              <h2 className="font-display text-xl font-semibold tracking-tight">
-                No venue yet
-              </h2>
-              <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
-                Add a venue to start configuring promos.
-              </p>
-              <Link
-                href="/add"
-                className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
-              >
-                <Plus className="h-4 w-4" />
-                Add venue
-              </Link>
-            </div>
+          <div className="mx-auto max-w-3xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
+            <EmptyState
+              icon={<Store className="text-muted-foreground h-5 w-5" />}
+              title="No venue yet"
+              description="Add a venue to start configuring promos."
+              action={
+                <Link
+                  href="/add"
+                  className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add venue
+                </Link>
+              }
+            />
           </div>
         </div>
       </>

@@ -14,8 +14,9 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
 import type { Tier } from "@/lib/guest-data";
 import { Badge } from "@/components/ui/badge";
+import { Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import {
   SUBSCRIPTIONS,
   subscriptionForVenue,
@@ -57,10 +58,36 @@ type TierMeta = {
 };
 
 const TIERS: TierMeta[] = [
-  { id: "bronze", label: "Bronze", visitRange: "0–2 visits", defaultRate: 10, onMesita: 18_420, maxRate: 10 },
-  { id: "silver", label: "Silver", visitRange: "3–6 visits", defaultRate: 10, onMesita: 6_240, maxRate: 20 },
-  { id: "gold", label: "Gold", visitRange: "7–19 visits", defaultRate: 20, onMesita: 1_860 },
-  { id: "diamond", label: "Diamond", visitRange: "20+ visits", defaultRate: 30 as RateChoice, onMesita: 184 },
+  {
+    id: "bronze",
+    label: "Bronze",
+    visitRange: "0–2 visits",
+    defaultRate: 10,
+    onMesita: 18_420,
+    maxRate: 10,
+  },
+  {
+    id: "silver",
+    label: "Silver",
+    visitRange: "3–6 visits",
+    defaultRate: 10,
+    onMesita: 6_240,
+    maxRate: 20,
+  },
+  {
+    id: "gold",
+    label: "Gold",
+    visitRange: "7–19 visits",
+    defaultRate: 20,
+    onMesita: 1_860,
+  },
+  {
+    id: "diamond",
+    label: "Diamond",
+    visitRange: "20+ visits",
+    defaultRate: 30 as RateChoice,
+    onMesita: 184,
+  },
 ];
 
 // ─── Subscription icons + accents ─────────────────────────────────────────
@@ -165,7 +192,11 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
 // ─── Visibility rail ──────────────────────────────────────────────────────
 
-function VisibilityRail({ plan }: { plan: Parameters<typeof visibilityForPlan>[0] }) {
+function VisibilityRail({
+  plan,
+}: {
+  plan: Parameters<typeof visibilityForPlan>[0];
+}) {
   const current = visibilityForPlan(plan);
   const levels: { label: string; soon?: boolean; real?: PlanVisibility }[] = [
     { label: "Low", real: "Low" },
@@ -182,16 +213,17 @@ function VisibilityRail({ plan }: { plan: Parameters<typeof visibilityForPlan>[0
         <h3 className="font-display text-sm font-semibold tracking-tight">
           Visibility
         </h3>
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-          {current}
-        </span>
+        <span className={TINY_LABEL_CLASS}>{current}</span>
       </div>
       <div className="flex items-center gap-1.5">
         {levels.map((l, i) => {
           const reached = !l.soon && i <= currentIdx;
           const isCurrent = i === currentIdx;
           return (
-            <div key={l.label} className="flex flex-1 flex-col items-center gap-1.5">
+            <div
+              key={l.label}
+              className="flex flex-1 flex-col items-center gap-1.5"
+            >
               <div
                 className={cn(
                   "h-1.5 w-full rounded-full",
@@ -314,7 +346,7 @@ function SubscriptionCard({
           comingSoon && "opacity-70",
         )}
       >
-        <span className="font-display text-foreground text-lg font-bold tabular-nums leading-none">
+        <span className="font-display text-foreground text-lg leading-none font-bold tabular-nums">
           {price}
         </span>
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
@@ -376,7 +408,9 @@ function WelcomeRow({ disabled }: { disabled: boolean }) {
 }
 
 function TierRow({ tier, disabled }: { tier: TierMeta; disabled: boolean }) {
-  const initial: RateChoice = (RATE_CHOICES.find((r) => r >= tier.defaultRate) ?? 50) as RateChoice;
+  const initial: RateChoice = (RATE_CHOICES.find(
+    (r) => r >= tier.defaultRate,
+  ) ?? 50) as RateChoice;
   const [rate, setRate] = useState<RateChoice>(initial);
   return (
     <PromoRow
@@ -417,9 +451,14 @@ function PromoRow({
         {chip}
         <span className="text-muted-foreground text-[10px]">{sub}</span>
       </div>
-      <RatePicker rate={rate} onChange={onRate} disabled={disabled} maxRate={maxRate} />
+      <RatePicker
+        rate={rate}
+        onChange={onRate}
+        disabled={disabled}
+        maxRate={maxRate}
+      />
       <div className="text-right">
-        <p className="font-display text-sm font-bold tabular-nums leading-none">
+        <p className="font-display text-sm leading-none font-bold tabular-nums">
           {audience.toLocaleString()}
         </p>
         <p className="text-muted-foreground mt-0.5 text-[9px] font-medium tracking-[0.12em] uppercase">
@@ -441,12 +480,11 @@ function RatePicker({
   disabled?: boolean;
   maxRate?: RateChoice;
 }) {
-  const choices = maxRate != null
-    ? RATE_CHOICES.filter((c) => c <= maxRate)
-    : RATE_CHOICES;
+  const choices =
+    maxRate != null ? RATE_CHOICES.filter((c) => c <= maxRate) : RATE_CHOICES;
   return (
     <div className={cn("flex items-center gap-2", disabled && "opacity-60")}>
-      <span className="font-display text-primary text-2xl font-bold tabular-nums leading-none">
+      <span className="font-display text-primary text-2xl leading-none font-bold tabular-nums">
         {rate}
         <span className="text-base font-semibold">%</span>
       </span>
@@ -464,13 +502,13 @@ function RatePicker({
                   c === rate
                     ? "bg-pink-gradient text-white"
                     : "border-border bg-background text-muted-foreground hover:text-foreground border",
-                  disabled && "cursor-not-allowed hover:text-muted-foreground",
+                  disabled && "hover:text-muted-foreground cursor-not-allowed",
                 )}
               >
                 {c}
               </button>
               {showHint && (
-                <span className="pointer-events-none bg-foreground text-background absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 rounded-md px-2 py-1 text-[9px] font-semibold whitespace-nowrap tracking-wider uppercase opacity-0 shadow-elev transition group-hover:opacity-100">
+                <span className="bg-foreground text-background shadow-elev pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 rounded-md px-2 py-1 text-[9px] font-semibold tracking-wider whitespace-nowrap uppercase opacity-0 transition group-hover:opacity-100">
                   Pick Discounts or Cashbacks
                 </span>
               )}
@@ -512,24 +550,5 @@ function AdvancedComingSoon() {
         Custom rates per group — coming soon.
       </span>
     </div>
-  );
-}
-
-// ─── Section card ─────────────────────────────────────────────────────────
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-      <h3 className="font-display text-sm font-semibold tracking-tight">
-        {title}
-      </h3>
-      {children}
-    </section>
   );
 }

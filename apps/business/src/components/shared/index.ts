@@ -5,6 +5,8 @@ export { RatePill, type Mechanic } from "./RatePill";
 export { FiscalBadge, type FiscalType } from "./FiscalBadge";
 export type { BadgeSize } from "./badge-sizing";
 export { Field } from "./Field";
+export { Section } from "./Section";
+export { EmptyState } from "./EmptyState";
 export {
   GoogleLogo,
   InstagramLogo,
