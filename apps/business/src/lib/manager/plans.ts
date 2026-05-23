@@ -3,23 +3,33 @@ import type { FiscalType } from "@/components/shared";
 
 // Subscription catalog used by Promos (picker + label lookup).
 //
-// Three subscriptions, one per DB enum value, ordered ascending so the
-// manager reads the picker left-to-right as a ladder:
-//   - "Free without promos"  (plan=free)                          · Low    · $0
-//   - "Pro with Discounts"   (plan=informal_pro, fiscal=informal) · Medium · $500
-//   - "Pro with Cashbacks"   (plan=formal_pro,   fiscal=formal)   · High   · $1000
+// Five subscriptions, one per DB enum value, ordered ascending so the
+// manager reads the picker left-to-right as a visibility ladder:
+//   - "Free without promos"  (plan=free)                            · Low        · $0
+//   - "Pro with Discounts"   (plan=informal_pro,   fiscal=informal) · Medium     · $500
+//   - "Pro with Cashbacks"   (plan=formal_pro,     fiscal=formal)   · High       · $1,000
+//   - "Ultra with Discounts" (plan=informal_ultra, fiscal=informal) · Extra high · $1,500
+//   - "Ultra with Cashbacks" (plan=formal_ultra,   fiscal=formal)   · Max        · $3,000
 //
-// Pro with Cashbacks costs 2× Pro with Discounts because it captures the
-// wallet flow — Mesita runs the payment, returns part to the guest's
-// wallet, and the venue lands on High visibility. Pro with Discounts is
-// the lower-commitment tier: same promo tooling, Medium visibility, but
-// Mesita is not in the payment loop.
+// Mechanic is pinned by fiscal_type — Formal venues issue cashback through
+// the wallet, Informal venues apply discounts at the bill. Pro vs Ultra
+// only changes price and visibility tier; the workflow the manager sees
+// for promos is identical inside a mechanic.
+//
+// Cashback tiers stay locked ("Coming soon") until the Mesita-in-the-loop
+// payment + wallet settlement path ships. The cards still render so the
+// ladder reads end-to-end, but the picker rejects selection.
 
 export type PlanMechanic = "None" | "Cashback" | "Discount";
-export type PlanVisibility = "Low" | "Medium" | "High";
+export type PlanVisibility = "Low" | "Medium" | "High" | "Extra high" | "Max";
 
 // Picker id — one per card.
-export type SubscriptionId = "free" | "cashback" | "discount";
+export type SubscriptionId =
+  | "free"
+  | "pro_discount"
+  | "pro_cashback"
+  | "ultra_discount"
+  | "ultra_cashback";
 
 export type SubscriptionRow = {
   id: SubscriptionId;
@@ -35,9 +45,9 @@ export type SubscriptionRow = {
   featured?: boolean;
   // Locks the card in the picker — renders as "Coming soon" and rejects
   // selection. Used while the payment/settlement plumbing for a tier is
-  // not live yet (cashback at the moment — Mesita-in-the-loop card flow
-  // is still on the roadmap). Mutually exclusive with `featured`; when
-  // both are set, comingSoon wins in the UI.
+  // not live yet (both cashback tiers at the moment — Mesita-in-the-loop
+  // card flow is still on the roadmap). Mutually exclusive with `featured`
+  // in the visual sense: when both are set, comingSoon wins in the UI.
   comingSoon?: boolean;
 };
 
@@ -51,7 +61,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     visibility: "Low",
   },
   {
-    id: "discount",
+    id: "pro_discount",
     label: "Pro with Discounts",
     price: "$500",
     cadence: "MX / year",
@@ -60,18 +70,36 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     setup: "1 min",
   },
   {
-    id: "cashback",
+    id: "pro_cashback",
     label: "Pro with Cashbacks",
     price: "$1,000",
     cadence: "MX / year",
     tagline: "Card runs through Mesita, returned to the guest's wallet.",
     visibility: "High",
     setup: "10 min · connect business",
+    // Locked until the Mesita-in-the-loop payment + wallet settlement path
+    // ships. See header comment.
+    comingSoon: true,
+  },
+  {
+    id: "ultra_discount",
+    label: "Ultra with Discounts",
+    price: "$1,500",
+    cadence: "MX / year",
+    tagline: "Same coupon flow, top-of-ladder visibility.",
+    visibility: "Extra high",
+    setup: "1 min",
+  },
+  {
+    id: "ultra_cashback",
+    label: "Ultra with Cashbacks",
+    price: "$3,000",
+    cadence: "MX / year",
+    tagline: "Wallet flow with maximum visibility — Mesita's flagship tier.",
+    visibility: "Max",
+    setup: "10 min · connect business",
     featured: true,
-    // Locked until the Mesita-in-the-loop payment + wallet settlement
-    // path ships. The card still renders (preserves the visibility
-    // ladder + aspirational pink hint) but can't be selected — picker
-    // surfaces a "Coming soon" badge in place of "Recommended".
+    // Locked alongside Pro Cashback until the wallet/settlement path ships.
     comingSoon: true,
   },
 ];
@@ -85,20 +113,24 @@ export function mechanicForFiscal(fiscal: FiscalType): "Cashback" | "Discount" {
 
 export function mechanicForPlan(p: VenuePlan): PlanMechanic {
   if (p === "free") return "None";
-  if (p === "formal_pro") return "Cashback";
+  if (p === "formal_pro" || p === "formal_ultra") return "Cashback";
   return "Discount";
 }
 
 export function visibilityForPlan(p: VenuePlan): PlanVisibility {
   if (p === "free") return "Low";
   if (p === "informal_pro") return "Medium";
-  return "High";
+  if (p === "formal_pro") return "High";
+  if (p === "informal_ultra") return "Extra high";
+  return "Max"; // formal_ultra
 }
 
 export function subscriptionForVenue(p: VenuePlan): SubscriptionId {
   if (p === "free") return "free";
-  if (p === "formal_pro") return "cashback";
-  return "discount";
+  if (p === "informal_pro") return "pro_discount";
+  if (p === "formal_pro") return "pro_cashback";
+  if (p === "informal_ultra") return "ultra_discount";
+  return "ultra_cashback"; // formal_ultra
 }
 
 // Atomic write payload for the picker — one card click sets both plan
@@ -107,6 +139,11 @@ export function dbStateForSubscription(
   sub: SubscriptionId,
 ): { plan: VenuePlan; fiscal_type?: FiscalType } {
   if (sub === "free") return { plan: "free" };
-  if (sub === "cashback") return { plan: "formal_pro", fiscal_type: "formal" };
-  return { plan: "informal_pro", fiscal_type: "informal" };
+  if (sub === "pro_discount")
+    return { plan: "informal_pro", fiscal_type: "informal" };
+  if (sub === "pro_cashback")
+    return { plan: "formal_pro", fiscal_type: "formal" };
+  if (sub === "ultra_discount")
+    return { plan: "informal_ultra", fiscal_type: "informal" };
+  return { plan: "formal_ultra", fiscal_type: "formal" }; // ultra_cashback
 }

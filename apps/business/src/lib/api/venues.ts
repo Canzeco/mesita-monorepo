@@ -13,11 +13,16 @@ export type VenueListingType = "partner" | "web";
 export type VenueStatus = "lead" | "active" | "paused" | "archived";
 
 export type FiscalType = "formal" | "informal";
-// Three-plan venue catalog: Free (default) + one Pro plan per fiscal type.
-// The Ultra tier was retired once the primary revenue stream moved to the
-// guest side (Mesita class subscriptions). Anything beyond Pro is now a
-// concierge / enterprise conversation, not a self-serve plan.
-export type VenuePlan = "free" | "formal_pro" | "informal_pro";
+// Five-plan venue catalog: Free (default) + Pro and Ultra at each fiscal
+// type. The mechanic (cashback vs discount) is fixed by fiscal_type — Pro
+// and Ultra differ only in price and visibility. See lib/manager/plans.ts
+// for the picker catalog and visibility/mechanic mappings.
+export type VenuePlan =
+  | "free"
+  | "formal_pro"
+  | "formal_ultra"
+  | "informal_pro"
+  | "informal_ultra";
 
 // Weekly opening hours — JSONB column on venues. Lowercase English day keys,
 // each holding an array of {open,close} ranges in 24h HH:MM. Closed days omit

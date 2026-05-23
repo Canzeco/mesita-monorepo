@@ -26,8 +26,8 @@ import {
 } from "@/lib/manager/plans";
 
 // Promos — minimal layout. Three blocks stacked top to bottom:
-//   1. Visibility    — slim 5-step rail, no prose
-//   2. Subscription  — Free / Cashback / Discount, one card per DB state
+//   1. Visibility    — slim 5-step rail (Low → Max), no prose
+//   2. Subscription  — Free + Pro/Ultra × Discount/Cashback, one card per DB state
 //   3. Promos        — Welcome row + 4 tier rows; rate + audience count
 //
 // "OFF" is the neutral label for the rate scale — same wording whether the
@@ -90,13 +90,18 @@ const TIERS: TierMeta[] = [
 
 // ─── Subscription icons + accents ─────────────────────────────────────────
 
+// Mechanic icon + accent — Discount tiers get the gold percent badge,
+// Cashback tiers get the pink-gradient card badge. Pro vs Ultra is
+// communicated through price/visibility on the card, not a separate icon.
 const SUB_VISUAL: Record<
   SubscriptionId,
   { icon?: LucideIcon; accent?: string }
 > = {
   free: {},
-  cashback: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
-  discount: { icon: Percent, accent: "bg-tier-gold text-black" },
+  pro_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
+  pro_cashback: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
+  ultra_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
+  ultra_cashback: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
 };
 
 // ─── Client ───────────────────────────────────────────────────────────────
@@ -140,7 +145,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       <VisibilityRail plan={venue.plan} />
 
       <Section title="Subscription">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {SUBSCRIPTIONS.map((s) => {
             const v = SUB_VISUAL[s.id];
             return (
@@ -192,12 +197,12 @@ function VisibilityRail({
   plan: Parameters<typeof visibilityForPlan>[0];
 }) {
   const current = visibilityForPlan(plan);
-  const levels: { label: string; soon?: boolean; real?: PlanVisibility }[] = [
+  const levels: { label: string; real: PlanVisibility }[] = [
     { label: "Low", real: "Low" },
     { label: "Medium", real: "Medium" },
     { label: "High", real: "High" },
-    { label: "Extra high", soon: true },
-    { label: "Max", soon: true },
+    { label: "Extra high", real: "Extra high" },
+    { label: "Max", real: "Max" },
   ];
   const currentIdx = levels.findIndex((l) => l.real === current);
 
@@ -211,7 +216,7 @@ function VisibilityRail({
       </div>
       <div className="flex items-center gap-1.5">
         {levels.map((l, i) => {
-          const reached = !l.soon && i <= currentIdx;
+          const reached = i <= currentIdx;
           const isCurrent = i === currentIdx;
           return (
             <div
@@ -221,21 +226,13 @@ function VisibilityRail({
               <div
                 className={cn(
                   "h-1.5 w-full rounded-full",
-                  reached
-                    ? "bg-pink-gradient"
-                    : l.soon
-                      ? "bg-muted/60"
-                      : "bg-muted",
+                  reached ? "bg-pink-gradient" : "bg-muted",
                 )}
               />
               <span
                 className={cn(
                   "text-[9px] font-semibold tracking-wider uppercase",
-                  isCurrent
-                    ? "text-foreground"
-                    : l.soon
-                      ? "text-muted-foreground/50"
-                      : "text-muted-foreground",
+                  isCurrent ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {l.label}
