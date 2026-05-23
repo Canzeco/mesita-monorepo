@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -108,6 +108,20 @@ const TAG_MAX = 40;
 const MAX_PHOTOS = 30;
 
 const NOT_FOUND_NOTE = "Not found yet — pipeline still searching.";
+
+// Drives the sticky PlaceNav above the form. Order MUST mirror the
+// JSX order below (Basics → Media → Location → Time → Product → Signals
+// → Details) and each `id` MUST match the `<div id="…">` anchor wrapped
+// around each section.
+const PLACE_SECTIONS = [
+  { id: "basics", label: "Basics" },
+  { id: "media", label: "Media" },
+  { id: "location", label: "Location" },
+  { id: "time", label: "Time" },
+  { id: "product", label: "Product" },
+  { id: "signals", label: "Signals" },
+  { id: "details", label: "Details" },
+] as const;
 
 function nullableUrl(v: string): string | null {
   const t = v.trim();
@@ -253,19 +267,39 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       {/* Section order per the current Notion-driven design pass:
           Basics → Media → Location → Time → Product → Signals → Details.
           ChannelsSection (primary/PR/secondary) is still scoped out —
-          its `_` prefix keeps the helper defined for an easy re-enable. */}
-      <BasicsSection venue={venue} v={v} set={set} />
-      <MediaSection
-        photos={v.photos}
-        onChange={(photos) => set("photos", photos)}
-        venueName={v.name}
-        onError={setError}
-      />
-      <LocationSection venue={venue} />
-      <TimeSection venue={venue} v={v} set={set} />
-      <ProductSection v={v} set={set} />
-      <SignalsSection venue={venue} />
-      <DetailsSection v={v} set={set} />
+          its `_` prefix keeps the helper defined for an easy re-enable.
+
+          Each section is wrapped in a `<div id="…" scroll-mt-16>` so the
+          sticky PlaceNav at the top can jump to it. `scroll-mt-16`
+          (64px) clears the nav's height when the browser scrolls the
+          anchor into view. */}
+      <PlaceNav />
+      <div id="basics" className="scroll-mt-16">
+        <BasicsSection venue={venue} v={v} set={set} />
+      </div>
+      <div id="media" className="scroll-mt-16">
+        <MediaSection
+          photos={v.photos}
+          onChange={(photos) => set("photos", photos)}
+          venueName={v.name}
+          onError={setError}
+        />
+      </div>
+      <div id="location" className="scroll-mt-16">
+        <LocationSection venue={venue} />
+      </div>
+      <div id="time" className="scroll-mt-16">
+        <TimeSection venue={venue} v={v} set={set} />
+      </div>
+      <div id="product" className="scroll-mt-16">
+        <ProductSection v={v} set={set} />
+      </div>
+      <div id="signals" className="scroll-mt-16">
+        <SignalsSection venue={venue} />
+      </div>
+      <div id="details" className="scroll-mt-16">
+        <DetailsSection v={v} set={set} />
+      </div>
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
@@ -307,6 +341,63 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 }
 
 // ── Sections ────────────────────────────────────────────────────────────
+
+function PlaceNav() {
+  // Sticky chip nav above the form. Click jumps to the section anchor;
+  // active pill tracks which section is currently at the top of the
+  // scroll viewport.
+  //
+  // Scroll listener uses capture so it catches scroll events from the
+  // inner `<div className="flex-1 overflow-y-auto">` in page.tsx — not
+  // just the window. `getBoundingClientRect().top` gives each anchor's
+  // position relative to viewport, which works regardless of which
+  // ancestor is actually doing the scrolling.
+  const [activeId, setActiveId] = useState<string>(PLACE_SECTIONS[0].id);
+
+  useEffect(() => {
+    // px buffer below the nav for "this is the section in view"
+    const ACTIVE_OFFSET = 96;
+    const onScroll = () => {
+      let current: string = PLACE_SECTIONS[0].id;
+      for (const s of PLACE_SECTIONS) {
+        const el = document.getElementById(s.id);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top;
+        if (top <= ACTIVE_OFFSET) current = s.id;
+      }
+      setActiveId(current);
+    };
+    window.addEventListener("scroll", onScroll, true);
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, []);
+
+  const scrollTo = (id: string) => {
+    document
+      .getElementById(id)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <nav className="border-border/60 bg-background/95 sticky top-0 z-20 -mx-4 flex gap-1 overflow-x-auto border-b px-4 py-2 backdrop-blur md:-mx-8 md:px-8">
+      {PLACE_SECTIONS.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          onClick={() => scrollTo(s.id)}
+          className={cn(
+            "shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold transition",
+            activeId === s.id
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          {s.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
 
 function BasicsSection({
   venue,
