@@ -174,11 +174,8 @@ function formHoursToVenue(form: Record<DayKey, DayShifts>): VenueHours {
   return out;
 }
 
-export function EditVenueForm({ venue }: { venue: MyVenue }) {
-  const router = useRouter();
-  const supabase = useBrowserSupabase();
-
-  const [v, setV] = useState<FormState>(() => ({
+function venueToFormState(venue: MyVenue): FormState {
+  return {
     name: venue.name ?? "",
     category: venue.category ?? "",
     description: venue.description ?? "",
@@ -199,13 +196,35 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
     tripadvisor_url: venue.tripadvisor_url ?? "",
     rappi_url: venue.rappi_url ?? "",
     uber_eats_url: venue.uber_eats_url ?? "",
-  }));
+  };
+}
+
+export function EditVenueForm({ venue }: { venue: MyVenue }) {
+  const router = useRouter();
+  const supabase = useBrowserSupabase();
+
+  const [v, setV] = useState<FormState>(() => venueToFormState(venue));
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Dirty when the user has touched any field since the last save (or
+  // since Discard reset). Drives whether the SaveBar shows at all —
+  // when clean, the form has no save chrome cluttering the page.
+  const [isDirty, setIsDirty] = useState(false);
 
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setV((prev) => ({ ...prev, [key]: value }));
+    setIsDirty(true);
+  };
+
+  const handleDiscard = () => {
+    if (!isDirty) return;
+    if (!window.confirm("Discard your unsaved changes?")) return;
+    setV(venueToFormState(venue));
+    setIsDirty(false);
+    setError(null);
+    setSaved(false);
+  };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -255,6 +274,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       try {
         await apiUpdateVenue(supabase, payload);
         setSaved(true);
+        setIsDirty(false);
         router.refresh();
         window.setTimeout(() => setSaved(false), SAVED_TOAST_MS);
       } catch (err) {
@@ -298,39 +318,68 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         </p>
       )}
 
-      {/* Compact save chip — only takes the width it needs and lives in
-          the bottom-right corner of the scroll viewport rather than
-          spanning the whole form. Keeps the manager surface uncluttered
-          when nothing's been edited. */}
-      <div className="pointer-events-none sticky bottom-3 z-10 mt-1 flex justify-end">
-        <button
-          type="submit"
-          disabled={pending}
-          className={cn(
-            "pointer-events-auto inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[12px] font-semibold shadow-md transition disabled:opacity-60",
-            saved
-              ? "bg-secondary text-white"
-              : "bg-foreground text-background hover:opacity-90",
-          )}
-        >
-          {pending ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Saving…
-            </>
-          ) : saved ? (
-            <>
-              <Check className="h-3.5 w-3.5" />
-              Saved
-            </>
-          ) : (
-            <>
-              <Save className="h-3.5 w-3.5" />
-              Save
-            </>
-          )}
-        </button>
-      </div>
+      {/* Dirty-state save bar — Vercel / GitHub settings pattern.
+          Renders only when the form has unsaved changes (or is in the
+          middle of saving / just-saved). Stays out of the way when the
+          page is clean. Sticky to the bottom of the scroll viewport so
+          it follows the manager as they edit further down. */}
+      {(isDirty || pending || saved) && (
+        <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-1 flex items-center justify-between gap-3 rounded-2xl border px-4 py-2.5 backdrop-blur">
+          <p
+            className={cn(
+              "text-[12px] font-medium",
+              pending
+                ? "text-muted-foreground"
+                : saved
+                  ? "text-secondary"
+                  : "text-foreground",
+            )}
+          >
+            {pending
+              ? "Saving your changes…"
+              : saved
+                ? "All changes saved."
+                : "You have unsaved changes."}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleDiscard}
+              disabled={pending || !isDirty}
+              className="text-muted-foreground hover:text-foreground inline-flex h-8 items-center rounded-full px-3 text-[12px] font-semibold transition disabled:opacity-40"
+            >
+              Discard
+            </button>
+            <button
+              type="submit"
+              disabled={pending || !isDirty}
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-full px-4 text-[12px] font-semibold transition disabled:opacity-60",
+                saved
+                  ? "bg-secondary text-white"
+                  : "bg-foreground text-background hover:opacity-90",
+              )}
+            >
+              {pending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Saving…
+                </>
+              ) : saved ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  Saved
+                </>
+              ) : (
+                <>
+                  <Save className="h-3.5 w-3.5" />
+                  Save changes
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
