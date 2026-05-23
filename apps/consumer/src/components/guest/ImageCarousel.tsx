@@ -97,6 +97,10 @@ export function ImageCarousel({
       const target =
         ((idx + direction) % items.length + items.length) % items.length;
       e.stopPropagation();
+      // goTo reads ref.current — only invoked inside this pointerup
+      // handler, never during render. The rule can't see that through
+      // the curried handleZoneUp.
+      // eslint-disable-next-line react-hooks/refs
       goTo(target);
     };
 

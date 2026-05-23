@@ -65,6 +65,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.localStorage.getItem(TUTORIAL_STORAGE_KEY)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowTutorial(true);
     const t = window.setTimeout(() => {
       setShowTutorial(false);
@@ -100,6 +101,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   // across an advance (locked, capture, drag offset) were a plausible
   // source of "the next card doesn't accept gestures" reports.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDragX(0);
     setDragging(false);
     lockedRef.current = null;
@@ -186,7 +188,6 @@ function Deck({ venues }: { venues: Venue[] }) {
     if (!exiting) return;
     const t = window.setTimeout(advance, 260);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exiting]);
 
   const exitOffset = exiting === "right" ? 600 : exiting === "left" ? -600 : 0;
