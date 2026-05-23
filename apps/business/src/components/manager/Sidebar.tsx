@@ -8,7 +8,6 @@ import {
   Store,
   Gift,
   BarChart3,
-  Wallet,
   Users,
   ChevronDown,
   Check,
@@ -29,13 +28,15 @@ type NavItem = {
   slug: string;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
-  disabled?: boolean;
+  // Navigable but still marked Soon — the page renders a preview banner
+  // while real data is wired up.
+  comingSoon?: boolean;
 };
 
 const NAV: NavItem[] = [
-  // Home is the dashboard root; Place / Promos / Validator are the deep
-  // work surfaces. Promos owns the plan picker, fiscal toggle, Welcome
-  // coupon, and per-tier cashback/discount rates in one place.
+  // Home is the dashboard root; Place / Promos / Performance / Team are
+  // the deep work surfaces. Performance keeps the Soon badge because its
+  // KPIs are still mocked.
   { slug: "home", label: "Home", Icon: LayoutDashboard },
   { slug: "place", label: "Place", Icon: Store },
   { slug: "promos", label: "Promos", Icon: Gift },
@@ -43,10 +44,9 @@ const NAV: NavItem[] = [
     slug: "performance",
     label: "Performance",
     Icon: BarChart3,
-    disabled: true,
+    comingSoon: true,
   },
-  { slug: "wallet", label: "Wallet", Icon: Wallet },
-  { slug: "team", label: "Team", Icon: Users, disabled: true },
+  { slug: "team", label: "Team", Icon: Users },
 ];
 
 // Parse "/unit/<id>/<rest>" → { id, rest }.
@@ -226,31 +226,27 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 py-3">
-          {NAV.map(({ slug, label, Icon, disabled }) =>
-            disabled ? (
-              <SidebarDisabled
-                key={slug}
-                Icon={Icon}
-                label={label}
-                className="py-2.5"
-              />
-            ) : (
-              <Link
-                key={slug}
-                href={navHref(slug)}
-                onClick={closeDrawer}
-                className={cn(
-                  "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition",
-                  currentSlug === slug
-                    ? "bg-secondary/10 text-secondary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            ),
-          )}
+          {NAV.map(({ slug, label, Icon, comingSoon }) => (
+            <Link
+              key={slug}
+              href={navHref(slug)}
+              onClick={closeDrawer}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition",
+                currentSlug === slug
+                  ? "bg-secondary/10 text-secondary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              <span className="flex-1">{label}</span>
+              {comingSoon && (
+                <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
+                  Soon
+                </span>
+              )}
+            </Link>
+          ))}
         </nav>
 
         <div className="space-y-1 px-3 pt-3 pb-4">
