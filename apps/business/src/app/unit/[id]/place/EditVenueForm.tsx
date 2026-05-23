@@ -250,12 +250,10 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {/* Section order matches the current Notion-driven design pass:
-          Basics → Media → Location → Time → Product → Signals.
-          DetailsSection (description + tags) and ChannelsSection
-          (primary/PR/secondary) are scoped out for now per Pato's
-          direction — leave the helpers defined so we can bring them
-          back without rewriting. */}
+      {/* Section order per the current Notion-driven design pass:
+          Basics → Media → Location → Time → Product → Signals → Details.
+          ChannelsSection (primary/PR/secondary) is still scoped out —
+          its `_` prefix keeps the helper defined for an easy re-enable. */}
       <BasicsSection venue={venue} v={v} set={set} />
       <MediaSection
         photos={v.photos}
@@ -267,6 +265,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       <TimeSection venue={venue} v={v} set={set} />
       <ProductSection v={v} set={set} />
       <SignalsSection venue={venue} />
+      <DetailsSection v={v} set={set} />
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
@@ -371,10 +370,7 @@ function LocationSection({ venue }: { venue: MyVenue }) {
   );
 }
 
-// Prefixed with `_` to satisfy the project's `no-unused-vars` rule while
-// the section is intentionally not rendered. Bring it back in the form
-// JSX without renaming when Details returns to scope.
-function _DetailsSection({
+function DetailsSection({
   v,
   set,
 }: {
@@ -382,10 +378,10 @@ function _DetailsSection({
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   // Per Notion's Components spec, Description + Tags both live in
-  // Category=Details with Manager-E=YES. Grouping them in their own
-  // editable section keeps Basics minimal (Name / Category / Price /
-  // Address) while still exposing the descriptive copy the manager
-  // needs to write.
+  // Category=Details with Manager-E=YES. Rendered at the bottom of the
+  // Place form per the current design pass so the structural sections
+  // (Basics, Location, Time, Product) read first and the descriptive
+  // copy + taxonomy live closer to the save action.
   return (
     <Section title="Details">
       <Field label="Description">
