@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -265,19 +265,24 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {/* 2-column grid for the structural sections — Basics next to
-          Location, Time next to Product. Media, Signals, and Details
-          span the full width because their internal content (photo
-          grid, stat tiles, description textarea) reads better at the
-          wider measure. Mobile collapses everything to a single column.
+      {/* 2-column grid:
+            Row 1: Basics      | Preview
+            Row 2: Location    | Time
+            Row 3: Product     | Signals
+            Row 4: Media (full width — photo grid wants the whole row)
 
-          ChannelsSection (primary/PR/secondary) is still scoped out —
-          its `_` prefix keeps the helper defined for an easy re-enable. */}
+          Description + Tags now live inside Basics (no separate
+          Details section). ChannelsSection (primary/PR/secondary)
+          is still scoped out — its `_` prefix keeps the helper
+          defined for an easy re-enable. Mobile collapses every row
+          to single column. */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <BasicsSection venue={venue} v={v} set={set} />
+        <PreviewSection venue={venue} v={v} />
         <LocationSection venue={venue} />
         <TimeSection venue={venue} v={v} set={set} />
         <ProductSection v={v} set={set} />
+        <SignalsSection venue={venue} />
       </div>
 
       <MediaSection
@@ -286,8 +291,6 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         venueName={v.name}
         onError={setError}
       />
-      <SignalsSection venue={venue} />
-      <DetailsSection v={v} set={set} />
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
@@ -343,6 +346,11 @@ function BasicsSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
+  // Five-field identity block: Name, Category, Price level, Tags,
+  // Description. Description + Tags used to live in their own Details
+  // section but the grid layout looks tighter when they're folded into
+  // Basics, which leaves Preview free to sit next to it in the first
+  // row of the 2-col grid.
   return (
     <Section title="Basics">
       <Field label="Name" required>
@@ -364,6 +372,20 @@ function BasicsSection({
       </Field>
 
       <PriceLevelDisplay level={venue.price_level} />
+
+      <Field label="Tags">
+        <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
+      </Field>
+
+      <Field label="Description">
+        <textarea
+          value={v.description}
+          onChange={(e) => set("description", e.target.value)}
+          maxLength={DESCRIPTION_MAX}
+          placeholder={DESCRIPTION_PLACEHOLDER}
+          className={TEXTAREA}
+        />
+      </Field>
     </Section>
   );
 }
@@ -484,33 +506,77 @@ function VenueMapEmbed({
   );
 }
 
-function DetailsSection({
+function PreviewSection({
+  venue,
   v,
-  set,
 }: {
+  venue: MyVenue;
   v: FormState;
-  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  // Per Notion's Components spec, Description + Tags both live in
-  // Category=Details with Manager-E=YES. Rendered at the bottom of the
-  // Place form per the current design pass so the structural sections
-  // (Basics, Location, Time, Product) read first and the descriptive
-  // copy + taxonomy live closer to the save action.
+  // Static guest-side preview of the venue card. Mirrors the dark
+  // theme the guest app uses (per the theme-strategy memory) so the
+  // manager sees what their place will actually look like on the
+  // other side. Pulls the working form state for name/category/
+  // description so the preview reacts as the manager types.
+  const cover = v.photos[0] ?? null;
+  const description = (v.description || venue.description || "").trim();
+  const stars = venue.mesita_stars_overall ?? venue.google_stars_overall;
   return (
-    <Section title="Details">
-      <Field label="Description">
-        <textarea
-          value={v.description}
-          onChange={(e) => set("description", e.target.value)}
-          maxLength={DESCRIPTION_MAX}
-          placeholder={DESCRIPTION_PLACEHOLDER}
-          className={TEXTAREA}
-        />
-      </Field>
-
-      <Field label="Tags">
-        <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
-      </Field>
+    <Section title="Preview" right={<span className={TINY_LABEL_CLASS}>Guest view</span>}>
+      <div className="bg-foreground text-background flex flex-col overflow-hidden rounded-2xl">
+        <div className="bg-muted/40 relative aspect-[4/3] w-full">
+          {cover ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cover}
+              alt={v.name || venue.name || "Cover"}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="text-muted-foreground/60 flex h-full w-full items-center justify-center text-[11px] italic">
+              Add a photo in Media — the cover renders here.
+            </div>
+          )}
+          {venue.price_level != null && (
+            <span className="absolute right-3 bottom-3 inline-flex items-center rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-white backdrop-blur-sm">
+              {"$".repeat(venue.price_level)}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <h4 className="font-display truncate text-base font-semibold">
+              {v.name || venue.name || "Venue name"}
+            </h4>
+            {stars != null && (
+              <span className="text-secondary inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold tabular-nums">
+                <Star className="h-3 w-3 fill-current" />
+                {stars.toFixed(1)}
+              </span>
+            )}
+          </div>
+          <p className="text-background/70 text-[11px] tracking-wider uppercase">
+            {v.category || venue.category || "Category"}
+          </p>
+          {description && (
+            <p className="text-background/80 line-clamp-3 text-[12px] leading-snug">
+              {description}
+            </p>
+          )}
+          {v.tags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {v.tags.slice(0, 6).map((t) => (
+                <span
+                  key={t}
+                  className="bg-background/15 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </Section>
   );
 }
@@ -562,6 +628,11 @@ function MediaSection({
   onError: (msg: string | null) => void;
 }) {
   const [draft, setDraft] = useState("");
+  // Index of the photo currently shown in the lightbox, or null if
+  // closed. Tiny thumbnails get the user a dense overview; clicking
+  // pops the full-resolution image in a modal so they can actually
+  // see the thing.
+  const [zoomIdx, setZoomIdx] = useState<number | null>(null);
 
   const move = (from: number, dir: -1 | 1) => {
     const to = from + dir;
@@ -612,51 +683,56 @@ function MediaSection({
           No photos yet.
         </p>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
           {photos.map((src, idx) => (
             <li
               key={`${src}-${idx}`}
-              className="group border-border bg-muted relative overflow-hidden rounded-xl border"
+              className="group border-border bg-muted relative overflow-hidden rounded-lg border"
             >
-              <div className="aspect-square w-full">
+              <button
+                type="button"
+                onClick={() => setZoomIdx(idx)}
+                aria-label={`Open ${venueName || "venue"} photo ${idx + 1}`}
+                className="block aspect-square w-full"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={src}
                   alt={`${venueName || "Venue"} photo ${idx + 1}`}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition group-hover:scale-105"
                 />
-              </div>
+              </button>
               {idx === 0 && (
-                <span className="bg-foreground text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                <span className="bg-foreground text-background pointer-events-none absolute top-1 left-1 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase">
                   Cover
                 </span>
               )}
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 transition group-hover:opacity-100">
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-0.5 bg-gradient-to-t from-black/80 to-transparent p-1 opacity-0 transition group-hover:opacity-100">
                 <button
                   type="button"
                   onClick={() => move(idx, -1)}
                   aria-label="Move earlier"
                   disabled={idx === 0}
-                  className="text-foreground flex h-7 w-7 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
+                  className="text-foreground flex h-5 w-5 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <ArrowLeft className="h-2.5 w-2.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => move(idx, 1)}
                   aria-label="Move later"
                   disabled={idx === photos.length - 1}
-                  className="text-foreground flex h-7 w-7 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
+                  className="text-foreground flex h-5 w-5 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:opacity-40"
                 >
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  <ArrowRight className="h-2.5 w-2.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => remove(idx)}
                   aria-label="Remove photo"
-                  className="bg-destructive ml-auto flex h-7 w-7 items-center justify-center rounded-full text-white transition hover:opacity-90"
+                  className="bg-destructive ml-auto flex h-5 w-5 items-center justify-center rounded-full text-white transition hover:opacity-90"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </div>
             </li>
@@ -681,7 +757,67 @@ function MediaSection({
           Add
         </button>
       </div>
+
+      {zoomIdx != null && photos[zoomIdx] && (
+        <PhotoLightbox
+          src={photos[zoomIdx]}
+          alt={`${venueName || "Venue"} photo ${zoomIdx + 1}`}
+          onClose={() => setZoomIdx(null)}
+        />
+      )}
     </Section>
+  );
+}
+
+function PhotoLightbox({
+  src,
+  alt,
+  onClose,
+}: {
+  src: string;
+  alt: string;
+  onClose: () => void;
+}) {
+  // Minimal full-screen image preview. Click backdrop or hit Escape to
+  // close. Doesn't pull in a heavy modal library — for read-only image
+  // zoom this is all the affordance the manager needs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Photo preview"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6 backdrop-blur"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-full max-w-full rounded-xl object-contain shadow-2xl"
+      />
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close preview"
+        className="text-foreground absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 transition hover:bg-white"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
 
