@@ -250,17 +250,22 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      {/* Section order matches the current Notion-driven design pass:
+          Basics → Media → Location → Time → Product → Signals.
+          DetailsSection (description + tags) and ChannelsSection
+          (primary/PR/secondary) are scoped out for now per Pato's
+          direction — leave the helpers defined so we can bring them
+          back without rewriting. */}
       <BasicsSection venue={venue} v={v} set={set} />
-      <DetailsSection v={v} set={set} />
-      <TimeSection venue={venue} v={v} set={set} />
       <MediaSection
         photos={v.photos}
         onChange={(photos) => set("photos", photos)}
         venueName={v.name}
         onError={setError}
       />
+      <LocationSection venue={venue} />
+      <TimeSection venue={venue} v={v} set={set} />
       <ProductSection v={v} set={set} />
-      <ChannelsSection v={v} set={set} />
       <SignalsSection venue={venue} />
 
       {error && (
@@ -333,24 +338,30 @@ function BasicsSection({
         />
       </Field>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <ReadOnly
-          label="Price level"
-          value={
-            venue.price_level != null ? PRICE_LABEL[venue.price_level] : null
-          }
-          empty="Not listed on Google."
-        />
-        <ReadOnly
-          label="Address"
-          value={venue.address}
-          icon={<MapPin className="h-4 w-4" />}
-        />
-      </div>
+      <ReadOnly
+        label="Price level"
+        value={
+          venue.price_level != null ? PRICE_LABEL[venue.price_level] : null
+        }
+        empty="Not listed on Google."
+      />
+    </Section>
+  );
+}
 
-      {/* Notion classifies Google Maps Link as Category=Location (single
-          field). Folded into Basics here so the address + map link sit
-          together rather than living in a one-field section of their own. */}
+function LocationSection({ venue }: { venue: MyVenue }) {
+  // Notion: Address (Basics) + Google Maps Link (Location) both inform
+  // where the venue physically is. Grouping them in a dedicated section
+  // keeps Basics about identity (name / category / price) and gives the
+  // map link its own row instead of fighting for attention next to a
+  // long street address.
+  return (
+    <Section title="Location">
+      <ReadOnly
+        label="Address"
+        value={venue.address}
+        icon={<MapPin className="h-4 w-4" />}
+      />
       <ReadOnly
         label="Google Maps"
         value={venue.google_maps_url}
@@ -360,7 +371,10 @@ function BasicsSection({
   );
 }
 
-function DetailsSection({
+// Prefixed with `_` to satisfy the project's `no-unused-vars` rule while
+// the section is intentionally not rendered. Bring it back in the form
+// JSX without renaming when Details returns to scope.
+function _DetailsSection({
   v,
   set,
 }: {
@@ -400,7 +414,7 @@ function TimeSection({
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   return (
-    <Section title="Hours">
+    <Section title="Time" right={<span className={TINY_LABEL_CLASS}>UTC-aware</span>}>
       <ReadOnly
         label="Timezone"
         value={venue.timezone}
@@ -408,6 +422,17 @@ function TimeSection({
       />
 
       <HoursEditor hours={v.hours} onChange={(hours) => set("hours", hours)} />
+
+      {/* Popular Times is in Notion as M-Place-V=NO right now — Google
+          doesn't expose it via the Places API, so we'd need an external
+          scraper (Outscraper or similar) before this turns into real
+          data. Surfaced here as a "soon" placeholder so the manager
+          knows it's on the roadmap. */}
+      <ReadOnly
+        label="Popular times"
+        value={null}
+        empty="Pulling busiest hours from your Google profile — coming soon."
+      />
     </Section>
   );
 }
@@ -462,7 +487,7 @@ function MediaSection({
 
   return (
     <Section
-      title="Photos"
+      title="Media"
       right={
         <span className={TINY_LABEL_CLASS}>
           {photos.length} / {MAX_PHOTOS}
@@ -557,8 +582,8 @@ function ProductSection({
   // Lives in its own section so it can grow: today it's just the menu PDF,
   // tomorrow it's product photos, signature dishes, drink list, etc.
   return (
-    <Section title="Menu">
-      <Field label="PDF link">
+    <Section title="Product">
+      <Field label="Menu PDF link">
         <UrlInput
           icon={<FileText className="h-4 w-4" />}
           value={v.menu_pdf_url}
@@ -570,7 +595,10 @@ function ProductSection({
   );
 }
 
-function ChannelsSection({
+// Prefixed with `_` to satisfy the project's `no-unused-vars` rule while
+// the section is intentionally not rendered. Bring it back in the form
+// JSX without renaming when Channels returns to scope.
+function _ChannelsSection({
   v,
   set,
 }: {
