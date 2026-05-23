@@ -106,9 +106,17 @@ export function PhonePicker({
   const [filter, setFilter] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Re-sync if the outer value resets externally (e.g. successful submit
-  // clearing the field).
+  // Re-sync if the outer value changes externally (controlled reset
+  // after a successful submit, or hydration with a pre-filled number).
+  //
+  // Empty `value` deliberately does NOT reset the selected country —
+  // otherwise picking a flag before typing snaps you back to the
+  // default, which is exactly the bug that bit us first time around.
   useEffect(() => {
+    if (!value) {
+      if (national !== "") setNational("");
+      return;
+    }
     if (value === country.dial + national) return;
     const next = countryFromValue(value);
     setCountry(next.country);
@@ -140,6 +148,7 @@ export function PhonePicker({
       )}
     >
       <DropdownMenu
+        modal={false}
         onOpenChange={(open) => {
           if (!open) setFilter("");
         }}
