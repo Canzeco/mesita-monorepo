@@ -17,6 +17,7 @@ import {
   Music2,
   ShoppingBag,
   UtensilsCrossed,
+  DollarSign,
   Save,
   Check,
   Loader2,
@@ -94,11 +95,15 @@ type FormState = {
   uber_eats_url: string;
 };
 
-const PRICE_LABEL: Record<number, string> = {
-  1: "$ · Budget",
-  2: "$$ · Casual",
-  3: "$$$ · Upscale",
-  4: "$$$$ · Fine dining",
+// Tier names only — the `$` count now renders as a row of DollarSign
+// icons in the BasicsSection so the price reads visually instead of
+// stringly. `PRICE_LEVEL_MAX` is the full count (4 icons total).
+const PRICE_LEVEL_MAX = 4;
+const PRICE_TIER_LABEL: Record<number, string> = {
+  1: "Budget",
+  2: "Casual",
+  3: "Upscale",
+  4: "Fine dining",
 };
 
 const SAVED_TOAST_MS = 2200;
@@ -267,9 +272,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           wider measure. Mobile collapses everything to a single column.
 
           ChannelsSection (primary/PR/secondary) is still scoped out —
-          its `_` prefix keeps the helper defined for an easy re-enable.
-          PlaceNav helper is also kept around (also `_`-prefixed) in
-          case we bring back top-level section jumps. */}
+          its `_` prefix keeps the helper defined for an easy re-enable. */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <BasicsSection venue={venue} v={v} set={set} />
         <LocationSection venue={venue} />
@@ -360,14 +363,63 @@ function BasicsSection({
         />
       </Field>
 
-      <ReadOnly
-        label="Price level"
-        value={
-          venue.price_level != null ? PRICE_LABEL[venue.price_level] : null
-        }
-        empty="Not listed on Google."
-      />
+      <PriceLevelDisplay level={venue.price_level} />
     </Section>
+  );
+}
+
+function PriceLevelDisplay({ level }: { level: number | null }) {
+  // Renders the Google price tier as a row of `$` icons (1-PRICE_LEVEL_MAX
+  // filled, the rest dimmed) plus the tier name. Visually parses faster
+  // than the old "$$ · Casual" string and gives the field a real shape
+  // among the rest of the readonly cards.
+  const isEmpty = level == null;
+  return (
+    <div>
+      <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+        <DollarSign className="text-foreground/60 h-4 w-4" />
+        Price level
+      </span>
+      <div
+        className={cn(
+          "border-border flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm break-words",
+          isEmpty
+            ? "bg-muted/20 text-muted-foreground/80 italic"
+            : "bg-muted/40 text-muted-foreground",
+        )}
+      >
+        {isEmpty ? (
+          <span className="flex items-start gap-2">
+            <Sparkles className="text-muted-foreground/60 mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>Not listed on Google.</span>
+          </span>
+        ) : (
+          <>
+            <div
+              className="flex items-center gap-0.5"
+              aria-label={`Price level ${level} of ${PRICE_LEVEL_MAX}`}
+            >
+              {Array.from({ length: PRICE_LEVEL_MAX }, (_, i) => i + 1).map(
+                (i) => (
+                  <DollarSign
+                    key={i}
+                    className={cn(
+                      "h-4 w-4",
+                      i <= level
+                        ? "text-foreground"
+                        : "text-muted-foreground/25",
+                    )}
+                  />
+                ),
+              )}
+            </div>
+            <span className="text-muted-foreground/80 text-[12px]">
+              {PRICE_TIER_LABEL[level] ?? "—"}
+            </span>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

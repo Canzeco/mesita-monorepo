@@ -44,7 +44,7 @@ export default async function ManagerPlacePage({
   if (!overview || overview.venues.length === 0) {
     return (
       <>
-        <Topbar title="Place" />
+        <Topbar title="Place" innerClassName="mx-auto w-full max-w-6xl" />
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
             <EmptyState
@@ -71,7 +71,11 @@ export default async function ManagerPlacePage({
 
   return (
     <>
-      <Topbar title={active.name} subtitle="Place" />
+      <Topbar
+        title={active.name}
+        subtitle="Place"
+        innerClassName="mx-auto w-full max-w-6xl"
+      />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <EditVenueForm venue={active} />
