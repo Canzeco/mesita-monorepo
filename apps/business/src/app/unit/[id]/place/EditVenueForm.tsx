@@ -542,13 +542,17 @@ function VenueMapEmbed({
   // /maps/embed/v1/place endpoint once we wire up the env var.
   const src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
   return (
-    <div className="border-border bg-card relative overflow-hidden rounded-xl border">
+    // Grow to fill the Location card so the map matches the height of
+    // whatever's paired with it in the grid row (typically Time, which
+    // is 7 day rows tall). `min-h-[280px]` floors it so on short rows
+    // (everything closed) the embed still has presence.
+    <div className="border-border bg-card relative min-h-[280px] flex-1 overflow-hidden rounded-xl border">
       <iframe
         src={src}
         title={`Map of ${name ?? "this venue"}`}
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
-        className="block h-[280px] w-full border-0"
+        className="block h-full w-full border-0"
       />
       {mapsUrl && (
         <OpenInGoogleMaps href={mapsUrl} variant="overlay" />
