@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   UtensilsCrossed,
   DollarSign,
+  ExternalLink,
   Save,
   Check,
   Loader2,
@@ -495,13 +496,11 @@ function PriceLevelDisplay({ level }: { level: number | null }) {
 }
 
 function LocationSection({ venue }: { venue: MyVenue }) {
-  // Notion: Address (Basics) + Google Maps Link (Location) both inform
-  // where the venue physically is. Grouping them in a dedicated section
-  // keeps Basics about identity (name / category / price) and gives the
-  // map link its own row instead of fighting for attention next to a
-  // long street address. When we have coordinates from the enrichment
-  // pipeline, render a live Google Maps embed below so the manager can
-  // eyeball the pin without leaving the page.
+  // Address + map preview + a real "Open in Google Maps" button
+  // (overlay on the map when coordinates exist; standalone otherwise).
+  // The raw Google Maps URL used to render as a readonly card with the
+  // full cid=... query string visible — ugly on the page and unhelpful
+  // to the manager. The button replaces that affordance.
   const hasCoords = venue.lat != null && venue.lng != null;
   return (
     <Section title="Location">
@@ -510,18 +509,16 @@ function LocationSection({ venue }: { venue: MyVenue }) {
         value={venue.address}
         icon={<MapPin className="h-4 w-4" />}
       />
-      <ReadOnly
-        label="Google Maps"
-        value={venue.google_maps_url}
-        icon={<Globe className="h-4 w-4" />}
-      />
-      {hasCoords && (
+      {hasCoords ? (
         <VenueMapEmbed
           lat={venue.lat as number}
           lng={venue.lng as number}
           name={venue.name}
+          mapsUrl={venue.google_maps_url}
         />
-      )}
+      ) : venue.google_maps_url ? (
+        <OpenInGoogleMaps href={venue.google_maps_url} variant="block" />
+      ) : null}
     </Section>
   );
 }
@@ -530,10 +527,12 @@ function VenueMapEmbed({
   lat,
   lng,
   name,
+  mapsUrl,
 }: {
   lat: number;
   lng: number;
   name: string | null;
+  mapsUrl: string | null;
 }) {
   // The `output=embed` form on maps.google.com renders a full Google
   // Maps iframe without an API key. It's not on the official Embed API
@@ -543,7 +542,7 @@ function VenueMapEmbed({
   // /maps/embed/v1/place endpoint once we wire up the env var.
   const src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
   return (
-    <div className="border-border bg-card overflow-hidden rounded-xl border">
+    <div className="border-border bg-card relative overflow-hidden rounded-xl border">
       <iframe
         src={src}
         title={`Map of ${name ?? "this venue"}`}
@@ -551,7 +550,39 @@ function VenueMapEmbed({
         referrerPolicy="no-referrer-when-downgrade"
         className="block h-[280px] w-full border-0"
       />
+      {mapsUrl && (
+        <OpenInGoogleMaps href={mapsUrl} variant="overlay" />
+      )}
     </div>
+  );
+}
+
+function OpenInGoogleMaps({
+  href,
+  variant,
+}: {
+  href: string;
+  /** `overlay` floats top-right on the embed; `block` is a standalone
+   *  pill button used when no embed is rendered. */
+  variant: "overlay" | "block";
+}) {
+  const base =
+    "inline-flex items-center gap-1.5 rounded-full font-semibold transition";
+  const skin =
+    variant === "overlay"
+      ? "bg-foreground/90 text-background hover:bg-foreground absolute top-3 right-3 z-10 h-9 px-3.5 text-[12px] shadow-md backdrop-blur"
+      : "bg-foreground text-background hover:opacity-90 self-start h-10 px-4 text-[13px]";
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Open in Google Maps"
+      className={cn(base, skin)}
+    >
+      <ExternalLink className="h-3.5 w-3.5" />
+      Open in Google Maps
+    </a>
   );
 }
 
