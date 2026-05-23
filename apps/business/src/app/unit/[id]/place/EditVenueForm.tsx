@@ -639,18 +639,19 @@ function TimeSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  // Compact density: previously the section stacked a full ReadOnly card
-  // for Timezone, a fully bordered HoursEditor card, and another full
-  // ReadOnly card for Popular times — three nested cards inside the
-  // section card. Now: timezone collapses to a one-line muted caption,
-  // HoursEditor drops its own card chrome (just hairlines between days),
-  // Popular times collapses to a one-line italic caption.
+  // Density notes: HoursEditor drops its own card chrome (the parent
+  // Section already provides it), so the days render as hairline-
+  // separated rows. Timezone is a proper key+value readonly card so it
+  // matches Address / Google Maps in Location and reads as a real
+  // field, not floating caption. Popular times stays a one-line
+  // coming-soon hint because it's not data yet — it's a roadmap note.
   return (
     <Section title="Time">
-      <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-        <Clock className="h-3.5 w-3.5" />
-        <span>{venue.timezone ?? "Timezone — not found yet."}</span>
-      </p>
+      <ReadOnly
+        label="Timezone"
+        value={venue.timezone}
+        icon={<Clock className="h-4 w-4" />}
+      />
 
       <HoursEditor hours={v.hours} onChange={(hours) => set("hours", hours)} />
 
