@@ -14,7 +14,7 @@ export default async function MapPage() {
     fetchError = err instanceof Error ? err.message : "Couldn't load venues.";
   }
 
-  const mapKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
+  const mapKey = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
   // Only ship venues that have coordinates (lat + lng both non-null).
   const located = venues.filter(
     (v) => typeof v.lat === "number" && typeof v.lng === "number",

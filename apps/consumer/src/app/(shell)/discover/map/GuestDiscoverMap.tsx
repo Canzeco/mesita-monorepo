@@ -109,7 +109,7 @@ export function GuestDiscoverMap({
             <>
               Set{" "}
               <code className="bg-muted rounded px-1 text-[11px]">
-                NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY
+                NEXT_PUBLIC_GMP_KEY
               </code>{" "}
               in your environment (Vercel project → Settings → Environment
               Variables) with a Google Maps JavaScript API key restricted to
