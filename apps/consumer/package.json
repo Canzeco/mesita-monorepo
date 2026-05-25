@@ -1,5 +1,5 @@
 {
-  "name": "mesita-web-guest",
+  "name": "mesita-web-consumer",
   "version": "0.1.0",
   "private": true,
   "scripts": {
