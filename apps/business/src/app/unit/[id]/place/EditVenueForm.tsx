@@ -590,7 +590,7 @@ function VenueMapEmbed({
 }) {
   // The `output=embed` form on maps.google.com renders a full Google
   // Maps iframe without an API key. It's not on the official Embed API
-  // surface (which would require NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY +
+  // surface (which would require NEXT_PUBLIC_GMP_EMBED_KEY +
   // billing setup), but it's been stable for years and is the standard
   // approach for "show a map preview, no auth." Swap to the keyed
   // /maps/embed/v1/place endpoint once we wire up the env var.
