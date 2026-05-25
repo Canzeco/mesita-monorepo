@@ -95,7 +95,7 @@ export function ImageCarousel({
       // Wrap past either end so a tap on the last image loops to the
       // first (and a tap on the first goes to the last).
       const target =
-        ((idx + direction) % items.length + items.length) % items.length;
+        (((idx + direction) % items.length) + items.length) % items.length;
       e.stopPropagation();
       // goTo reads ref.current — only invoked inside this pointerup
       // handler, never during render. The rule can't see that through
