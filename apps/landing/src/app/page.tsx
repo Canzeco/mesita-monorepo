@@ -16,9 +16,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-// Subdomain URLs — landing lives on mesita.ai, guest + manager are
+// Subdomain URLs — landing lives on mesita.ai, consumer + manager are
 // separate apps. Keep absolute so links work from any environment.
-const GUEST_URL = "https://guest.mesita.ai";
+const CONSUMER_URL = "https://consumer.mesita.ai";
 // Manager auth lives at the subdomain root — `?mode=signup` lands the
 // AuthTabs control on the Create account variant. Bare URL renders the
 // default Sign in mode.
@@ -33,7 +33,7 @@ const MANAGER_SIGNIN_URL = "https://manager.mesita.ai/";
 //
 //   1. <Nav />             Top menu bar
 //   2. <Hero />            Headline + download CTAs + product shot
-//   3. <ForGuests />       Solutions for guests (3 cards)
+//   3. <ForConsumers />       Solutions for consumers (3 cards)
 //   4. <ForVenues />       Solutions for venues (5 cards)
 //   5. <FAQ />             Six essentials, expandable
 //   6. <Footer />          © Mesita 2026 etc.
@@ -47,7 +47,7 @@ export default function Home() {
     <main className="bg-background min-h-screen">
       <Nav />
       <Hero />
-      <ForGuests />
+      <ForConsumers />
       <ForVenues />
       <FAQ />
       <Footer />
@@ -72,8 +72,8 @@ function Nav() {
           <span className="text-primary">.</span>
         </Link>
         <nav className="text-muted-foreground hidden items-center gap-7 text-sm md:flex">
-          <a href="#guests" className="hover:text-foreground transition">
-            Guests
+          <a href="#consumers" className="hover:text-foreground transition">
+            Consumers
           </a>
           <a href="#venues" className="hover:text-foreground transition">
             Venues
@@ -89,7 +89,7 @@ function Nav() {
             variant="outline"
             className="hidden rounded-full sm:inline-flex"
           >
-            <Link href={GUEST_URL}>Open Mesita</Link>
+            <Link href={CONSUMER_URL}>Open Mesita</Link>
           </Button>
           <Button asChild size="sm" className="rounded-full">
             <Link href={MANAGER_SIGNUP_URL}>
@@ -122,19 +122,19 @@ function Hero() {
 
         <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed md:text-xl">
           Every bar, café, restaurant, and club in your city — recommended,
-          AI-booked, and rewarded in one app. Some guests are part of the
+          AI-booked, and rewarded in one app. Some consumers are part of the
           product; everyone benefits.
         </p>
 
-        {/* Two-path CTA: symmetric buttons for guests and venues. Same
+        {/* Two-path CTA: symmetric buttons for consumers and venues. Same
             shape, size, hover; the only difference is the color treatment
             so the eye can still tell them apart at a glance. Both routes
             already live on production subdomains. */}
         <div className="mt-2 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
           <PathButton
-            href={GUEST_URL}
+            href={CONSUMER_URL}
             Icon={UserCircle}
-            eyebrow="I'm a guest"
+            eyebrow="I'm a consumer"
             label="Open Mesita"
             variant="primary"
           />
@@ -148,8 +148,8 @@ function Hero() {
         </div>
 
         <p className="text-muted-foreground text-xs">
-          Free for guests · Set up your venue in 10 minutes · Cashback on every
-          visit
+          Free for consumers · Set up your venue in 10 minutes · Cashback on
+          every visit
         </p>
 
         <figure className="border-border shadow-elev mt-8 w-full overflow-hidden rounded-3xl border md:mt-12">
@@ -202,9 +202,9 @@ function PathButton({
   );
 }
 
-// ─── 3. Solutions for Guests ─────────────────────────────────────────────
+// ─── 3. Solutions for Consumers ─────────────────────────────────────────────
 
-function ForGuests() {
+function ForConsumers() {
   const items: {
     title: string;
     body: string;
@@ -212,7 +212,7 @@ function ForGuests() {
   }[] = [
     {
       title: "Experience intelligence",
-      body: "The most complete catalog in your city — ratings, prices, vibes, photos, and where Bronze, Silver, Gold, and Diamond guests are going right now. Swipe, map, catalog, or just ask the AI.",
+      body: "The most complete catalog in your city — ratings, prices, vibes, photos, and where Bronze, Silver, Gold, and Diamond consumers are going right now. Swipe, map, catalog, or just ask the AI.",
       Icon: Compass,
     },
     {
@@ -227,12 +227,12 @@ function ForGuests() {
     },
   ];
   return (
-    <section id="guests" className="border-border border-b">
+    <section id="consumers" className="border-border border-b">
       <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
         <header className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
-              For guests
+              For consumers
             </p>
             <h2 className="font-display mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
               Three things only Mesita gives you.
@@ -275,7 +275,7 @@ function ForGuests() {
             size="lg"
             className="bg-pink-gradient shadow-glow rounded-full text-white hover:opacity-90"
           >
-            <Link href={GUEST_URL}>
+            <Link href={CONSUMER_URL}>
               Open Mesita
               <ArrowRight />
             </Link>
@@ -301,7 +301,7 @@ function ForVenues() {
     },
     {
       title: "Win the magnetic & rich customers",
-      body: "Set cashback (or discount) rates per tier — Bronze, Silver, Gold, Diamond. Reward the guests who actually fill the room and post it to thousands; pay base rates to walk-ins.",
+      body: "Set cashback (or discount) rates per tier — Bronze, Silver, Gold, Diamond. Reward the consumers who actually fill the room and post it to thousands; pay base rates to walk-ins.",
       Icon: Sparkles,
     },
     {
@@ -329,13 +329,13 @@ function ForVenues() {
               For venues
             </p>
             <h2 className="font-display mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
-              Fill the venue with the guests who move the needle.
+              Fill the venue with the consumers who move the needle.
             </h2>
           </div>
           <p className="text-muted-foreground max-w-sm text-sm">
-            Compete for guests with social presence, not for everyone equally.
-            Configure rates by tier, receive organic IG stories, and measure
-            every attributed peso.
+            Compete for consumers with social presence, not for everyone
+            equally. Configure rates by tier, receive organic IG stories, and
+            measure every attributed peso.
           </p>
         </header>
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -386,27 +386,27 @@ function FAQ() {
   const items: { q: string; a: string }[] = [
     {
       q: "Why do Formal venues run cashback and Informal venues run discount?",
-      a: "It comes down to whether you invoice. If you do, cashback works clean: the guest pays full price by card, you book it as marketing spend, and the % comes back to their Mesita wallet for a future visit. If you don't invoice, asking the guest to pay full price first (so you can invoice + charge 16% VAT) so they can recover 10% later loses them money. So instead the discount is revealed at the bill and applied to the cash total directly — no invoice, no IVA, the guest just pays less today.",
+      a: "It comes down to whether you invoice. If you do, cashback works clean: the consumer pays full price by card, you book it as marketing spend, and the % comes back to their Mesita wallet for a future visit. If you don't invoice, asking the consumer to pay full price first (so you can invoice + charge 16% VAT) so they can recover 10% later loses them money. So instead the discount is revealed at the bill and applied to the cash total directly — no invoice, no IVA, the consumer just pays less today.",
     },
     {
       q: "Why does Informal Pro cost 2× Formal Pro?",
-      a: "Formal partners participate in the Mesita wallet. Every peso of cashback issued lives on as a balance the guest can redeem at any other Formal partner — so the network compounds, and traffic flows between Formal venues that you'd never see in a vacuum. Informal partners offer a standalone discount that doesn't pool across the network the same way. Same priority placement, no shared wallet pull — so Informal pays more for the same surface coverage.",
+      a: "Formal partners participate in the Mesita wallet. Every peso of cashback issued lives on as a balance the consumer can redeem at any other Formal partner — so the network compounds, and traffic flows between Formal venues that you'd never see in a vacuum. Informal partners offer a standalone discount that doesn't pool across the network the same way. Same priority placement, no shared wallet pull — so Informal pays more for the same surface coverage.",
     },
     {
       q: "What's the difference between a Verified Partner and a Web-Listed venue?",
       a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at manager.mesita.app and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Wallet / Team dashboard.",
     },
     {
-      q: "How does a guest reach Silver, Gold, or Diamond?",
+      q: "How does a consumer reach Silver, Gold, or Diamond?",
       a: "Two paths. The free path is Instagram followers — 1K / 5K / 20K maps to Silver / Gold / Diamond. The paid path is a Mesita subscription that grants the tier upfront: $200 MXN / month for Silver, $500 for Gold, $1,000 for Diamond. There's also a manual appeal path for models, chefs, press, founders, and other local elites.",
     },
     {
       q: "What's the Instagram story step about?",
-      a: "Guests whose Silver / Gold / Diamond class came from follower count have to post an IG story tagging the venue to claim their coupon. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. At Formal venues, no story = no cashback (held back until verified). At Informal venues, the discount applies at the bill before verification — that's the only mechanical risk.",
+      a: "Consumers whose Silver / Gold / Diamond class came from follower count have to post an IG story tagging the venue to claim their coupon. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. At Formal venues, no story = no cashback (held back until verified). At Informal venues, the discount applies at the bill before verification — that's the only mechanical risk.",
     },
     {
       q: "Do I need hardware or POS integration?",
-      a: "No. Setup is ~10 minutes from manager.mesita.app. Your waiters scan the guest's QR from their own phone (WhatsApp bot or web tool), enter the bill, and Mesita does the rest. No POS, no app to install for staff, no new device at the host stand.",
+      a: "No. Setup is ~10 minutes from manager.mesita.app. Your waiters scan the consumer's QR from their own phone (WhatsApp bot or web tool), enter the bill, and Mesita does the rest. No POS, no app to install for staff, no new device at the host stand.",
     },
   ];
   return (
@@ -461,8 +461,8 @@ function Footer() {
           © Mesita · {year} · Smart hospitality since 2026 · Made in Monterrey
         </p>
         <nav className="text-muted-foreground flex flex-wrap items-center gap-4 text-[12px]">
-          <a href="#guests" className="hover:text-foreground transition">
-            For guests
+          <a href="#consumers" className="hover:text-foreground transition">
+            For consumers
           </a>
           <a href="#venues" className="hover:text-foreground transition">
             For venues
