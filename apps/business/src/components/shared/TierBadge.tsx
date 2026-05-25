@@ -6,9 +6,8 @@ import {
   BADGE_ICON_CLASS,
   type BadgeSize,
 } from "./badge-sizing";
-import type { Tier } from "@/lib/guest-data";
 
-export type { Tier };
+export type Tier = "bronze" | "silver" | "gold" | "diamond";
 
 const TIER_STYLE: Record<Tier, { tone: string; Icon: typeof Crown }> = {
   bronze: { tone: "bg-tier-bronze/90 text-white", Icon: Medal },

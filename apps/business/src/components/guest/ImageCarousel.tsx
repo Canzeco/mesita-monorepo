@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type MediaItem =
+type MediaItem =
   | { type: "image"; src: string }
   | { type: "video"; src: string; poster?: string };
 
@@ -19,6 +19,7 @@ export function ImageCarousel({
   sizes = "(max-width: 768px) 100vw, 420px",
   mutePosition = "bottom-right",
   noNativeScroll = false,
+  onIdxChange,
 }: {
   photos: string[];
   media?: MediaItem[];
@@ -33,9 +34,14 @@ export function ImageCarousel({
    * native overflow-x scrolling. Required when this carousel sits inside
    * another horizontal-gesture handler (e.g. the SwipeDeck) — otherwise
    * the browser claims the touch for native scroll and the outer swipe
-   * never fires. Side-tap zones still page photos.
+   * never fires.
    */
   noNativeScroll?: boolean;
+  /**
+   * Called whenever the active slide changes. Lets a parent react to
+   * carousel position (e.g. fade out an overlay past the first photo).
+   */
+  onIdxChange?: (idx: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -49,6 +55,13 @@ export function ImageCarousel({
 
   const hasVideo = items.some((m) => m.type === "video");
 
+  // Surface idx changes upward so a parent (e.g. VenueSwipeCardFace) can
+  // react to the active photo — used to hide the info overlay past the
+  // first slide.
+  useEffect(() => {
+    onIdxChange?.(idx);
+  }, [idx, onIdxChange]);
+
   const goTo = (i: number) => {
     if (noNativeScroll) {
       setIdx(i);
@@ -58,6 +71,38 @@ export function ImageCarousel({
     if (!el) return;
     el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
   };
+
+  // Tap-vs-drag detection for the invisible side-tap paging zones. The
+  // earlier onClick-based approach fired on near-swipes that hadn't
+  // committed (the browser's click-suppression-on-drag heuristic is
+  // unreliable on mobile), so a small horizontal flick stopped the
+  // parent swipe AND paged the photo. Now we time the gesture and only
+  // page when the pointer barely moved within a short window — every
+  // real swipe falls through to the parent SwipeDeck untouched.
+  const tapRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const handleZoneDown = (e: React.PointerEvent) => {
+    tapRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+  };
+  const handleZoneUp =
+    (direction: -1 | 1) => (e: React.PointerEvent<HTMLDivElement>) => {
+      const start = tapRef.current;
+      tapRef.current = null;
+      if (!start) return;
+      const dx = Math.abs(e.clientX - start.x);
+      const dy = Math.abs(e.clientY - start.y);
+      const dt = performance.now() - start.t;
+      if (dx > 10 || dy > 10 || dt > 300) return;
+      // Wrap past either end so a tap on the last image loops to the
+      // first (and a tap on the first goes to the last).
+      const target =
+        ((idx + direction) % items.length + items.length) % items.length;
+      e.stopPropagation();
+      // goTo reads ref.current — only invoked inside this pointerup
+      // handler, never during render. The rule can't see that through
+      // the curried handleZoneUp.
+      // eslint-disable-next-line react-hooks/refs
+      goTo(target);
+    };
 
   const toggleMute = () => {
     const next = !muted;
@@ -102,7 +147,7 @@ export function ImageCarousel({
         className={cn(
           "flex h-full w-full",
           noNativeScroll
-            ? "overflow-hidden transition-transform duration-300 ease-out"
+            ? "transition-transform duration-300 ease-out"
             : "scrollbar-hide snap-x snap-mandatory overflow-x-auto",
         )}
         style={
@@ -137,6 +182,15 @@ export function ImageCarousel({
                 fill
                 sizes={sizes}
                 priority={priority && i === 0}
+                // Force eager in transform mode so paging shows the next
+                // photo instantly instead of waiting on a lazy fetch.
+                loading={
+                  priority && i === 0
+                    ? undefined
+                    : noNativeScroll
+                      ? "eager"
+                      : "lazy"
+                }
                 draggable={false}
                 className="object-cover select-none [-webkit-user-drag:none]"
               />
@@ -156,7 +210,7 @@ export function ImageCarousel({
           aria-label={muted ? "Unmute video" : "Mute video"}
           data-no-swipe
           className={cn(
-            "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80",
+            "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white backdrop-blur transition hover:bg-black/80",
             mutePosition === "top-right"
               ? items.length > 1
                 ? "top-12 right-3"
@@ -178,7 +232,7 @@ export function ImageCarousel({
             <span
               key={i}
               className={cn(
-                "h-1.5 rounded-full bg-white shadow-sm transition-all duration-200",
+                "h-1.5 rounded-full bg-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)] transition-all duration-200",
                 i === idx ? "w-5 opacity-100" : "w-1.5 opacity-60",
               )}
             />
@@ -188,31 +242,25 @@ export function ImageCarousel({
 
       {items.length > 1 && (
         <>
-          <button
-            type="button"
-            aria-label="Previous"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (idx > 0) goTo(idx - 1);
-            }}
-            className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-default opacity-0"
+          <div
+            role="button"
+            aria-label="Previous photo"
+            onPointerDown={handleZoneDown}
+            onPointerUp={handleZoneUp(-1)}
+            className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-default"
           />
-          <button
-            type="button"
-            aria-label="Next"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (idx < items.length - 1) goTo(idx + 1);
-            }}
-            className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-default opacity-0"
+          <div
+            role="button"
+            aria-label="Next photo"
+            onPointerDown={handleZoneDown}
+            onPointerUp={handleZoneUp(1)}
+            className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-default"
           />
         </>
       )}
 
       {items.length > 1 && (
-        <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
+        <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.35)] backdrop-blur">
           {idx + 1} / {items.length}
         </div>
       )}

@@ -1,5 +1,4 @@
-import type { VenuePlan } from "@/lib/api/venues";
-import type { FiscalType } from "@/components/shared";
+import type { FiscalType, VenuePlan } from "@/lib/api/venues";
 
 // Subscription catalog used by Promos (picker + label lookup).
 //

@@ -11,9 +11,8 @@ import {
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
-import type { Tier } from "@/lib/guest-data";
 import { Badge } from "@/components/ui/badge";
-import { Section } from "@/components/shared";
+import { Section, type Tier } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import {
