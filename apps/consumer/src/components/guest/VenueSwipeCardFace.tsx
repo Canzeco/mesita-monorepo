@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Star } from "lucide-react";
 import { PartnerBadge, RatePill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -16,13 +15,6 @@ import { ImageCarousel } from "./ImageCarousel";
 // Swipe gesture state intentionally lives outside this component — this is
 // only the visuals, so anything that needs to display a "what guests see"
 // card can drop it in without inheriting drag logic.
-
-// 30 days from now in ms — the "New" badge only fires for venues onboarded
-// inside that window so it stays meaningful instead of being on every card.
-// Evaluated at module load so the React 19 purity-in-render lint doesn't
-// flag Date.now() inside the component body.
-const NEW_BADGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-const NEW_BADGE_THRESHOLD = Date.now() - NEW_BADGE_WINDOW_MS;
 
 export function VenueSwipeCardFace({
   venue,
@@ -117,9 +109,6 @@ function CardOverlay({ venue }: { venue: Venue }) {
     .filter(Boolean)
     .join(" · ");
 
-  const isNew =
-    !!venue.created_at && Date.parse(venue.created_at) > NEW_BADGE_THRESHOLD;
-
   return (
     <div className="flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 pt-24 text-white">
       <div className="min-w-0">
@@ -138,12 +127,6 @@ function CardOverlay({ venue }: { venue: Venue }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {isNew && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] font-bold tracking-wider text-zinc-900 uppercase shadow-sm">
-            <Star className="h-3 w-3" />
-            New
-          </span>
-        )}
         <PartnerBadge listingType={venue.listing_type} size="md" />
         {venue.listing_type === "partner" &&
           venue.cashback_percent != null &&
