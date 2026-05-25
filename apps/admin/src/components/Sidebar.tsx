@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   AlertTriangle,
   Bell,
+  Compass,
   FilePen,
   ListPlus,
   ListChecks,
@@ -34,6 +35,10 @@ const INBOX_NAV: NavItem[] = [
   { href: "/notifications", label: "Notifications", Icon: Bell },
 ];
 
+const ATLAS_NAV: NavItem[] = [
+  { href: "/atlas", label: "Atlas", Icon: Compass },
+];
+
 const DANGER_NAV: NavItem[] = [
   { href: "/danger", label: "Danger zone", Icon: AlertTriangle },
 ];
@@ -58,6 +63,7 @@ export function Sidebar({ email }: { email: string | null }) {
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto">
         <NavSection label="Units" items={UNIT_NAV} pathname={pathname} />
         <NavSection label="Inbox" items={INBOX_NAV} pathname={pathname} />
+        <NavSection label="Operations" items={ATLAS_NAV} pathname={pathname} />
         <NavSection label="Danger" items={DANGER_NAV} pathname={pathname} />
       </nav>
 
