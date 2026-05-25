@@ -17,8 +17,10 @@ import { apiFetchGuestProfile } from "@/lib/api/tickets";
 // only) and intentionally left out of the completeness check.
 export default async function GuestShellLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   const supabase = await createServerSupabase();
   const {
@@ -44,7 +46,10 @@ export default async function GuestShellLayout({
   return (
     <MobileFrame>
       <StatusBar />
-      <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        {children}
+        {modal}
+      </div>
       <BottomNav />
     </MobileFrame>
   );
