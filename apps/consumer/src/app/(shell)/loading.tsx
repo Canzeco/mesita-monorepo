@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 // SSR fetch can run while the user sees a spinner instead of the
 // previous page. discover has its own deeper loading.tsx that intercepts
 // tab swaps inside the discover subtree.
-export default function GuestShellLoading() {
+export default function ConsumerShellLoading() {
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-12">
       <Loader2

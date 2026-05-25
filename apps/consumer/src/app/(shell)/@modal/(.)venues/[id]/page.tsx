@@ -1,8 +1,8 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiGetVenue } from "@/lib/api/venues";
 import { errMsg } from "@/lib/utils";
-import { VenueDetailBody } from "@/components/guest/VenueDetailBody";
-import { VenueDetailModalShell } from "@/components/guest/VenueDetailModalShell";
+import { VenueDetailBody } from "@/components/consumer/VenueDetailBody";
+import { VenueDetailModalShell } from "@/components/consumer/VenueDetailModalShell";
 
 export const dynamic = "force-dynamic";
 

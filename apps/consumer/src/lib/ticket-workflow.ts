@@ -1,4 +1,4 @@
-import type { SavedItem, Venue } from "./guest-data";
+import type { SavedItem, Venue } from "./consumer-data";
 
 type WorkflowAction = "attach-screenshot" | "show-qr" | "stripe-checkout";
 
@@ -18,7 +18,7 @@ export function workflowFor(
 ): WorkflowStep[] {
   const venueHandle = `@${v.id.replace(/-/g, "")}`;
   const when = item.when ?? "TBD";
-  const party = `${item.partySize ?? 2} guests`;
+  const party = `${item.partySize ?? 2} consumers`;
 
   const callingTitle =
     item.reservationStatus === "confirmed"

@@ -9,8 +9,8 @@ import { SwipeDeck } from "./SwipeDeck";
 // Fetched on every request: this is a discover surface and freshness matters.
 export const dynamic = "force-dynamic";
 
-// Lat/lng aren't on the cookie yet — the guest geolocate prompt happens
-// client-side. For now the SSR pass passes no location, so guest-recommend-deck
+// Lat/lng aren't on the cookie yet — the consumer geolocate prompt happens
+// client-side. For now the SSR pass passes no location, so consumer-recommend-deck
 // falls back to "newest 200 active venues, RAG-rank by generic intent".
 // Once the client knows lat/lng we'll move the deck fetch into the client
 // or pass it via search params.
@@ -20,13 +20,13 @@ export default async function SwipePage() {
   let venues: Venue[] = [];
   let fetchError: string | null = null;
   try {
-    // Try the curated path first. If guest-recommend-deck isn't deployed yet
+    // Try the curated path first. If consumer-recommend-deck isn't deployed yet
     // (or returns an error), fall back to the flat list. Either way the
     // SwipeDeck UI gets a Venue[].
     const result = await apiRecommendDeck(supabase, { limit: 20 });
     venues = result.deck;
   } catch (err) {
-    console.warn("[swipe] guest-recommend-deck failed, falling back:", err);
+    console.warn("[swipe] consumer-recommend-deck failed, falling back:", err);
     try {
       venues = await apiFetchPublicVenues(supabase);
     } catch (err2) {

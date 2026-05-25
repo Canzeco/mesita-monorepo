@@ -5,11 +5,11 @@ import {
   type CatalogCategory,
   type Venue,
 } from "@/lib/api/venues";
-import { VenueCatalogCard } from "@/components/guest/VenueCatalogCard";
+import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 
 export const dynamic = "force-dynamic";
 
-// Catalog is driven by guest-recommend-catalog: an LLM proposes up to 10
+// Catalog is driven by consumer-recommend-catalog: an LLM proposes up to 10
 // category rows specific to THIS user's pool, time, and (when wired) past
 // taste. Each row is then RAG-ranked against an intent_query. If the EF
 // isn't deployed yet (or fails), we degrade gracefully to a hard-coded
@@ -29,7 +29,7 @@ export default async function CatalogPage() {
     categories = result.categories;
   } catch (err) {
     console.warn(
-      "[catalog] guest-recommend-catalog failed, falling back:",
+      "[catalog] consumer-recommend-catalog failed, falling back:",
       err,
     );
     try {

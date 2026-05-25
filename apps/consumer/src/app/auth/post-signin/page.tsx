@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiGuestSigninPhone } from "@/lib/api/auth";
+import { apiConsumerSigninPhone } from "@/lib/api/auth";
 
 // Post-sign-in router. The sign-in surface redirects here. We:
 //
-//   1. Call the guest post-sign-in EF (stamps app_metadata.role,
+//   1. Call the consumer post-sign-in EF (stamps app_metadata.role,
 //      lazy-creates the profile row).
 //   2. Decide where to send the user — /onboard if the profile row is
 //      missing required fields, /discover/swipe otherwise.
@@ -32,13 +32,14 @@ export default async function PostSigninPage({
       ? params.next
       : null;
 
-  let guestResult: Awaited<ReturnType<typeof apiGuestSigninPhone>> | null =
-    null;
+  let consumerResult: Awaited<
+    ReturnType<typeof apiConsumerSigninPhone>
+  > | null = null;
   try {
-    guestResult = await apiGuestSigninPhone(supabase);
+    consumerResult = await apiConsumerSigninPhone(supabase);
   } catch (err) {
-    console.error("[post-signin] guest-signin-phone:", err);
+    console.error("[post-signin] consumer-signin-phone:", err);
   }
   if (explicitNext) redirect(explicitNext);
-  redirect(guestResult?.onboarded ? "/discover/swipe" : "/onboard");
+  redirect(consumerResult?.onboarded ? "/discover/swipe" : "/onboard");
 }

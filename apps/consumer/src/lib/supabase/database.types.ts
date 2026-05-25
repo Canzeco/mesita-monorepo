@@ -44,7 +44,7 @@ export type Database = {
           balance_after_cents: number;
           created_at: string;
           delta_cents: number;
-          guest_id: string;
+          consumer_id: string;
           id: string;
           kind: Database["public"]["Enums"]["cashback_kind"];
           notes: string | null;
@@ -55,7 +55,7 @@ export type Database = {
           balance_after_cents: number;
           created_at?: string;
           delta_cents: number;
-          guest_id: string;
+          consumer_id: string;
           id?: string;
           kind: Database["public"]["Enums"]["cashback_kind"];
           notes?: string | null;
@@ -66,7 +66,7 @@ export type Database = {
           balance_after_cents?: number;
           created_at?: string;
           delta_cents?: number;
-          guest_id?: string;
+          consumer_id?: string;
           id?: string;
           kind?: Database["public"]["Enums"]["cashback_kind"];
           notes?: string | null;
@@ -75,10 +75,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "cashback_ledger_guest_id_fkey";
-            columns: ["guest_id"];
+            foreignKeyName: "cashback_ledger_consumer_id_fkey";
+            columns: ["consumer_id"];
             isOneToOne: false;
-            referencedRelation: "guests";
+            referencedRelation: "consumers";
             referencedColumns: ["id"];
           },
           {
@@ -97,7 +97,7 @@ export type Database = {
           },
         ];
       };
-      guests: {
+      consumers: {
         Row: {
           avatar_url: string | null;
           birthday: string | null;
@@ -171,7 +171,7 @@ export type Database = {
           currency: string;
           discount_cents: number | null;
           discount_percent: number | null;
-          guest_id: string;
+          consumer_id: string;
           id: string;
           kind: Database["public"]["Enums"]["ticket_kind"];
           opened_by: string;
@@ -207,7 +207,7 @@ export type Database = {
           currency?: string;
           discount_cents?: number | null;
           discount_percent?: number | null;
-          guest_id: string;
+          consumer_id: string;
           id?: string;
           kind?: Database["public"]["Enums"]["ticket_kind"];
           opened_by: string;
@@ -243,7 +243,7 @@ export type Database = {
           currency?: string;
           discount_cents?: number | null;
           discount_percent?: number | null;
-          guest_id?: string;
+          consumer_id?: string;
           id?: string;
           kind?: Database["public"]["Enums"]["ticket_kind"];
           opened_by?: string;
@@ -271,10 +271,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "tickets_guest_id_fkey";
-            columns: ["guest_id"];
+            foreignKeyName: "tickets_consumer_id_fkey";
+            columns: ["consumer_id"];
             isOneToOne: false;
-            referencedRelation: "guests";
+            referencedRelation: "consumers";
             referencedColumns: ["id"];
           },
           {
@@ -446,7 +446,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      generate_guest_code: { Args: never; Returns: string };
+      generate_consumer_code: { Args: never; Returns: string };
     };
     Enums: {
       cashback_kind: "earn" | "redeem" | "expire" | "adjust";

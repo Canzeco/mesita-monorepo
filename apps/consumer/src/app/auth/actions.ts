@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 
-// Guest auth is phone-OTP only — that flow runs client-side in
+// Consumer auth is phone-OTP only — that flow runs client-side in
 // PhoneOtpForm via the browser Supabase client, so no email/password
 // server action is needed here. The only server-side action left is
 // signing out (clears the SSR cookie), invoked from SignOutButton.

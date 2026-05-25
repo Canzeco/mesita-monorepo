@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { COUNTRIES, COUNTRY_BY_CODE, type Country } from "@/lib/guest-data";
+import { COUNTRIES, COUNTRY_BY_CODE, type Country } from "@/lib/consumer-data";
 
 // Phone input with a built-in dial-code + flag picker. The visible
 // surface is a single rounded pill — the left side is a styled "button"

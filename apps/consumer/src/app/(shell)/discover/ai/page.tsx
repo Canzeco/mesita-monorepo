@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Send } from "lucide-react";
-import { AI_SUGGESTIONS } from "@/lib/guest-data";
+import { AI_SUGGESTIONS } from "@/lib/consumer-data";
 
 export default function AiPage() {
   const [input, setInput] = useState("");

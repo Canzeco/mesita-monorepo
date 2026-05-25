@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { Camera, MapPin, Sparkles, Wallet } from "lucide-react";
 
-// Two-column enterprise auth shell for the guest subdomain.
+// Two-column enterprise auth shell for the consumer subdomain.
 //
 //   - Left  (50% on lg+, hidden on mobile): branded marketing column.
-//           Mesita brand, guest-side headline, four value-prop bullets.
+//           Mesita brand, consumer-side headline, four value-prop bullets.
 //   - Right (50% on lg+, full width on mobile): auth surface — caller
 //           passes the title + subtitle + form children, this layout
 //           handles the chrome.
 //
-// The guest app is mobile-first so the right pane keeps the form
+// The consumer app is mobile-first so the right pane keeps the form
 // proportions tight — on mobile the layout collapses to a single
 // column and the in-card design carries the whole experience.
 
@@ -68,7 +68,7 @@ function LandingPane() {
           </span>
         </Link>
         <span className="text-[10px] font-bold tracking-[0.2em] text-white/70 uppercase">
-          For guests
+          For consumers
         </span>
       </div>
 

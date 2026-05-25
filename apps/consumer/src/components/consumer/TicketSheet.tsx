@@ -13,8 +13,8 @@ import {
   ShieldCheck,
   Loader2,
 } from "lucide-react";
-import type { SavedItem } from "@/lib/guest-data";
-import { venueById } from "@/lib/guest-data";
+import type { SavedItem } from "@/lib/consumer-data";
+import { venueById } from "@/lib/consumer-data";
 import { workflowFor, getTicketType } from "@/lib/ticket-workflow";
 import { cn } from "@/lib/utils";
 import { FakeQR } from "./FakeQR";
@@ -206,7 +206,7 @@ export function TicketSheet({
                 )}
                 {item.when && <Row label="When" value={item.when} />}
                 {item.partySize != null && (
-                  <Row label="Party" value={`${item.partySize} guests`} />
+                  <Row label="Party" value={`${item.partySize} consumers`} />
                 )}
               </dl>
             </div>

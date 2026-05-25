@@ -1,16 +1,16 @@
-// Frontend API surface for the guest-facing ticket / cashback / story EFs.
+// Frontend API surface for the consumer-facing ticket / cashback / story EFs.
 //
 // Same constraints as api/venues.ts: clients call exactly one Edge Function
 // per helper; helpers never compose multiple Edge Functions. Manager- and
 // validator-side helpers (create/cancel/verify/mark-paid/lookup) live in
-// the manager app's tree — guest never invokes them.
+// the manager app's tree — consumer never invokes them.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-// ─── Guest profile ───────────────────────────────────────────────────────
+// ─── Consumer profile ───────────────────────────────────────────────────────
 
-export type GuestProfile = {
+export type ConsumerProfile = {
   id: string;
   code: string;
   full_name: string | null;
@@ -21,37 +21,37 @@ export type GuestProfile = {
   cashback_balance_cents: number;
 };
 
-type GuestOnboardingInput = {
+type ConsumerOnboardingInput = {
   full_name: string;
   sex: "male" | "female" | "other";
   birthday: string; // YYYY-MM-DD
   country: string;
   // Optional — phone is the auth identity and lives on auth.user.phone.
-  // guest-update-profile mirrors it into guests.phone on first call.
+  // consumer-update-profile mirrors it into consumers.phone on first call.
   phone?: string;
 };
 
-export async function apiUpdateGuestProfile(
+export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
-  input: GuestOnboardingInput,
-): Promise<GuestProfile> {
-  const { guest } = await invokeEF<{ guest: GuestProfile }>(
+  input: ConsumerOnboardingInput,
+): Promise<ConsumerProfile> {
+  const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,
-    "guest-update-profile",
+    "consumer-update-profile",
     input,
   );
-  return guest;
+  return consumer;
 }
 
-export async function apiFetchGuestProfile(
+export async function apiFetchConsumerProfile(
   client: SupabaseClient,
-): Promise<GuestProfile> {
-  const { guest } = await invokeEF<{ guest: GuestProfile }>(
+): Promise<ConsumerProfile> {
+  const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,
-    "guest-get-profile",
+    "consumer-get-profile",
     {},
   );
-  return guest;
+  return consumer;
 }
 
 // ─── Ticket taxonomy ─────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ type Ticket = {
   cancel_reason?: string | null;
 };
 
-export type GuestTicket = Ticket & {
+export type ConsumerTicket = Ticket & {
   venue: {
     id: string;
     name: string;
@@ -164,15 +164,15 @@ export type GuestTicket = Ticket & {
   } | null;
 };
 
-// ─── Reads + writes (guest-side only) ────────────────────────────────────
+// ─── Reads + writes (consumer-side only) ────────────────────────────────────
 
 export async function apiFetchMyTickets(
   client: SupabaseClient,
   limit = 20,
-): Promise<GuestTicket[]> {
-  const { tickets } = await invokeEF<{ tickets: GuestTicket[] }>(
+): Promise<ConsumerTicket[]> {
+  const { tickets } = await invokeEF<{ tickets: ConsumerTicket[] }>(
     client,
-    "guest-list-tickets",
+    "consumer-list-tickets",
     { limit },
   );
   return tickets;
@@ -185,11 +185,11 @@ export async function apiSubmitStory(
   const { ticket } = await invokeEF<{
     ticket: Ticket;
     alreadyVerified?: boolean;
-  }>(client, "guest-submit-story", input);
+  }>(client, "consumer-submit-story", input);
   return ticket;
 }
 
-// ─── Step timeline (drives the guest's progress card) ────────────────────
+// ─── Step timeline (drives the consumer's progress card) ────────────────────
 
 export type WorkflowStep = {
   id: string;
@@ -201,7 +201,7 @@ export type WorkflowStep = {
 };
 
 /**
- * Build the step timeline for a single ticket so the guest can see exactly
+ * Build the step timeline for a single ticket so the consumer can see exactly
  * where the flow is. Pure function: no side effects, no fetches — the caller
  * passes the already-fetched ticket. The 10-type taxonomy maps onto this
  * helper one-to-one, so adding/removing a kind only touches this file.

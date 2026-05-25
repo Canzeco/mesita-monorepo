@@ -17,7 +17,7 @@ import type { Database } from "./database.types";
 // requires an Edge Function call per request, which is too expensive.
 // Onboard pages and dashboards each do their own server-side check.
 //
-// Guest browsing (discover, venue detail, share) is deliberately public
+// Consumer browsing (discover, venue detail, share) is deliberately public
 // so anonymous visitors can swipe before signing up. /profile,
 // /qr, /saved are private because they expose personal data.
 

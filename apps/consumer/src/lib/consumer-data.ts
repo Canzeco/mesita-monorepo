@@ -679,7 +679,7 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
 // that allows a downgrade/cancel action.
 type TierOrigin = "default" | "instagram" | "subscription" | "appeal";
 
-// Mock guest used by the Profile + Discover header until real guest-side
+// Mock consumer used by the Profile + Discover header until real consumer-side
 // reads are wired up. Only carries the fields the UI actually reads — name,
 // city, joined-at, etc. were leftovers from the original Lovable export
 // and never consumed in the current build.
@@ -1203,14 +1203,14 @@ export function tierBadgeClass(tier: Tier): string {
 
 // ─── Saved venues (mock) ─────────────────────────────────────────────────
 //
-// Bookmarks created by the guest's plain "Save" action on a venue card.
+// Bookmarks created by the consumer's plain "Save" action on a venue card.
 // Shape matches the production `Venue` type so VenueCatalogCard can render
 // these unmodified. Two verified-partner venues (cashback / discount
 // badges) plus two web-listed venues (no badge) so the contextual badge
 // logic on /saved is visible.
 //
-// TODO: replace with `guest-list-saved-venues` edge function once the
-// guest_saved_venues table + EF land. Client calls the EF, never the DB
+// TODO: replace with `consumer-list-saved-venues` edge function once the
+// consumer_saved_venues table + EF land. Client calls the EF, never the DB
 // directly — see api/venues.ts for the existing pattern.
 
 import type { Venue as PublicVenue } from "@/lib/api/venues";

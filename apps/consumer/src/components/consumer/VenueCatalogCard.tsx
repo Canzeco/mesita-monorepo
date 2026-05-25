@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PartnerBadge, RatePill } from "@/components/shared";
 import type { Venue } from "@/lib/api/venues";
 
-// Catalog row card — the row-style venue tile used by the guest /discover
+// Catalog row card — the row-style venue tile used by the consumer /discover
 // catalog page. Field set is driven by the Notion Components table's
 // G-Catalog-V column: Media, Category, Name, Price Level, Time to close,
 // Reward (Offers + Amount + Type). Address is intentionally NOT
@@ -14,7 +14,7 @@ export function VenueCatalogCard({
   href,
 }: {
   venue: Venue;
-  /** Defaults to the guest detail page. Override (or pass null) to disable
+  /** Defaults to the consumer detail page. Override (or pass null) to disable
    *  linking — useful for the manager preview, which should be inert. */
   href?: string | null;
 }) {

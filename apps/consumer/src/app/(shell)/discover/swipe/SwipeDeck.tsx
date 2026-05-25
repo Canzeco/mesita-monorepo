@@ -11,7 +11,7 @@ import {
   Hand,
   Store,
 } from "lucide-react";
-import { VenueSwipeCardFace } from "@/components/guest/VenueSwipeCardFace";
+import { VenueSwipeCardFace } from "@/components/consumer/VenueSwipeCardFace";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 

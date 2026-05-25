@@ -2,20 +2,20 @@
 
 import { useState } from "react";
 import { Copy, ChevronRight, Check, Plus } from "lucide-react";
-import { SimpleHeader } from "@/components/guest/SimpleHeader";
+import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { cn } from "@/lib/utils";
 
-type Tab = "guests" | "venues" | "creators" | "others";
+type Tab = "consumers" | "venues" | "creators" | "others";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "guests", label: "Guests" },
+  { id: "consumers", label: "Consumers" },
   { id: "venues", label: "Venues" },
   { id: "creators", label: "Creators" },
   { id: "others", label: "Others" },
 ];
 
 export default function SharePage() {
-  const [tab, setTab] = useState<Tab>("guests");
+  const [tab, setTab] = useState<Tab>("consumers");
 
   return (
     <div className="flex h-full flex-col">
@@ -42,7 +42,7 @@ export default function SharePage() {
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-hidden px-4 pt-3 pb-4">
-        {tab === "guests" && <GuestsTab />}
+        {tab === "consumers" && <ConsumersTab />}
         {tab === "venues" && <VenuesTab />}
         {tab === "creators" && <CreatorsTab />}
         {tab === "others" && <OthersTab />}
@@ -159,7 +159,7 @@ function PrimaryCta({
   );
 }
 
-function GuestsTab() {
+function ConsumersTab() {
   const giftCode = "8F2K — 9XQ7";
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
@@ -452,7 +452,7 @@ function VenuesTab() {
         />
         <FeatureCard
           title="Better customers"
-          sub="Socially-magnetic, higher-spend, repeat guests."
+          sub="Socially-magnetic, higher-spend, repeat consumers."
         />
         <FeatureCard
           title="Auto IG stories"

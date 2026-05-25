@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Bookmark } from "lucide-react";
-import { SimpleHeader } from "@/components/guest/SimpleHeader";
-import { SavedItemCard } from "@/components/guest/SavedItemCard";
-import { TicketSheet } from "@/components/guest/TicketSheet";
-import { VenueCatalogCard } from "@/components/guest/VenueCatalogCard";
-import { RESERVATIONS, COUPONS, SAVED_VENUES } from "@/lib/guest-data";
-import type { SavedItem } from "@/lib/guest-data";
+import { SimpleHeader } from "@/components/consumer/SimpleHeader";
+import { SavedItemCard } from "@/components/consumer/SavedItemCard";
+import { TicketSheet } from "@/components/consumer/TicketSheet";
+import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
+import { RESERVATIONS, COUPONS, SAVED_VENUES } from "@/lib/consumer-data";
+import type { SavedItem } from "@/lib/consumer-data";
 import type { Venue } from "@/lib/api/venues";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +21,9 @@ export default function SavedPage() {
   const [couponFilter, setCouponFilter] = useState<CouponFilter>("active");
   const [openItem, setOpenItem] = useState<SavedItem | null>(null);
 
-  // TODO: replace with guest-list-saved-venues edge function. Client calls
+  // TODO: replace with consumer-list-saved-venues edge function. Client calls
   // the EF (never the DB directly); the EF returns the venue rows the
-  // guest has bookmarked. For now we seed from the mock catalog and let
+  // consumer has bookmarked. For now we seed from the mock catalog and let
   // the un-save action mutate in-memory state.
   const [venues, setVenues] = useState<Venue[]>(SAVED_VENUES);
   const unsaveVenue = (id: string) =>

@@ -85,7 +85,7 @@ const USER_ICON = {
 
 type LatLng = { lat: number; lng: number };
 
-export function GuestDiscoverMap({
+export function ConsumerDiscoverMap({
   apiKey,
   venues,
   fetchError,

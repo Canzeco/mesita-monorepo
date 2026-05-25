@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Guest surface frame.
+ * Consumer surface frame.
  *
  * - Below md: full-bleed — content fills the viewport, no card chrome.
  *   That's what a real phone needs; the OS supplies its own status bar.

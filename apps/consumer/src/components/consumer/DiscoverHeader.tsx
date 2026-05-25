@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Calendar, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CURRENT_USER, TIERS, tierBadgeClass } from "@/lib/guest-data";
+import { CURRENT_USER, TIERS, tierBadgeClass } from "@/lib/consumer-data";
 
 const CITIES = [
   "Monterrey",

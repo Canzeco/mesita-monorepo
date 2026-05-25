@@ -1,26 +1,26 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchGuestProfile } from "@/lib/api/tickets";
+import { apiFetchConsumerProfile } from "@/lib/api/tickets";
 import { ProfileClient, type RealIdentity } from "./ProfileClient";
 
 // Server shell: loads the real identity (full_name / country / birthday
-// from the guests row, email from auth.users) and hands it to the client
+// from the consumers row, email from auth.users) and hands it to the client
 // tabs view. Everything else on the page is mock until the matching
 // schema + Edge Functions ship.
 
 export const dynamic = "force-dynamic";
 
-export default async function GuestProfilePage() {
+export default async function ConsumerProfilePage() {
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/?next=/profile");
 
-  // guest-profile auto-creates the row on first call; we also pull the
+  // consumer-profile auto-creates the row on first call; we also pull the
   // onboarding extras separately because the lean profile endpoint only
   // returns code + name + phone + balance. Reading the second set lazily
-  // through a guarded query keeps the layout cost low when the guest
+  // through a guarded query keeps the layout cost low when the consumer
   // hasn't onboarded yet.
   let identity: RealIdentity = {
     fullName: null,
@@ -31,7 +31,7 @@ export default async function GuestProfilePage() {
   };
 
   try {
-    const profile = await apiFetchGuestProfile(supabase);
+    const profile = await apiFetchConsumerProfile(supabase);
     identity = {
       fullName: profile.full_name,
       email: user.email ?? null,
@@ -42,7 +42,7 @@ export default async function GuestProfilePage() {
   } catch (err) {
     // Profile fetch failure shouldn't blow up the page — the user can
     // still see the mock preview, log out, etc.
-    console.error("[guest/profile] guest-profile:", err);
+    console.error("[consumer/profile] consumer-profile:", err);
   }
 
   return <ProfileClient identity={identity} />;

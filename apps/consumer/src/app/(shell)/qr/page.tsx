@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { SimpleHeader } from "@/components/guest/SimpleHeader";
+import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchGuestProfile, apiFetchMyTickets } from "@/lib/api/tickets";
+import { apiFetchConsumerProfile, apiFetchMyTickets } from "@/lib/api/tickets";
 import { errMsg } from "@/lib/utils";
 import { MyQrClient } from "./MyQrClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function GuestQrPage() {
+export default async function ConsumerQrPage() {
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -17,7 +17,7 @@ export default async function GuestQrPage() {
 
   let profile;
   try {
-    profile = await apiFetchGuestProfile(supabase);
+    profile = await apiFetchConsumerProfile(supabase);
   } catch (err) {
     return (
       <div className="flex flex-1 flex-col">
@@ -38,7 +38,7 @@ export default async function GuestQrPage() {
   try {
     tickets = await apiFetchMyTickets(supabase, 10);
   } catch (err) {
-    console.error("[guest/qr] tickets:", err);
+    console.error("[consumer/qr] tickets:", err);
   }
 
   return (

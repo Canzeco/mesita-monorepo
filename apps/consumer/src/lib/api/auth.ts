@@ -1,19 +1,19 @@
-// Frontend API surface for the guest sign-in EF.
+// Frontend API surface for the consumer sign-in EF.
 //
 // Same constraint as every other api/*.ts module here: each helper wraps
 // exactly one Edge Function — no composition, no chaining. The sign-in
 // EF is the post-Auth housekeeping step: it reads the freshly-issued
-// JWT, stamps app_metadata.role, lazy-creates the guest profile row,
+// JWT, stamps app_metadata.role, lazy-creates the consumer profile row,
 // and returns what the caller needs to route (role + onboarded boolean).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-type AppRole = "guest" | "staff" | "manager" | "admin";
+type AppRole = "consumer" | "staff" | "manager" | "admin";
 
-type GuestSigninResult = {
+type ConsumerSigninResult = {
   role: AppRole;
-  guest: {
+  consumer: {
     id: string;
     code: string;
     full_name: string | null;
@@ -22,8 +22,8 @@ type GuestSigninResult = {
   onboarded: boolean;
 };
 
-export async function apiGuestSigninPhone(
+export async function apiConsumerSigninPhone(
   client: SupabaseClient,
-): Promise<GuestSigninResult> {
-  return invokeEF<GuestSigninResult>(client, "guest-signin-phone", {});
+): Promise<ConsumerSigninResult> {
+  return invokeEF<ConsumerSigninResult>(client, "consumer-signin-phone", {});
 }

@@ -22,8 +22,8 @@ import {
   ticketIsFormal,
   ticketRequiresStory,
   workflowSteps,
-  type GuestProfile,
-  type GuestTicket,
+  type ConsumerProfile,
+  type ConsumerTicket,
   type WorkflowStep,
 } from "@/lib/api/tickets";
 
@@ -31,8 +31,8 @@ export function MyQrClient({
   profile,
   tickets,
 }: {
-  profile: GuestProfile;
-  tickets: GuestTicket[];
+  profile: ConsumerProfile;
+  tickets: ConsumerTicket[];
 }) {
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
@@ -46,7 +46,7 @@ export function MyQrClient({
   };
 
   // The "active" ticket is the most recent non-terminal one. It surfaces
-  // its step timeline at the top of the page so the guest sees exactly
+  // its step timeline at the top of the page so the consumer sees exactly
   // where the flow is. If everything is terminal, we don't pin one.
   const activeTicket = useMemo(() => {
     return (
@@ -134,7 +134,7 @@ export function MyQrClient({
 
 // ─── Active ticket: timeline + story upload affordance ───────────────────
 
-function ActiveTicketCard({ ticket }: { ticket: GuestTicket }) {
+function ActiveTicketCard({ ticket }: { ticket: ConsumerTicket }) {
   const steps = useMemo(() => workflowSteps(ticket), [ticket]);
   const isFormal = ticketIsFormal(ticket.kind);
   const requiresStory = ticketRequiresStory(ticket.kind);
@@ -265,7 +265,7 @@ function StoryUpload({
   status,
 }: {
   ticketId: string;
-  status: GuestTicket["story_status"];
+  status: ConsumerTicket["story_status"];
 }) {
   const supabase = useBrowserSupabase();
   const [url, setUrl] = useState("");

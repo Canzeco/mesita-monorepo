@@ -7,8 +7,8 @@ import {
   Phone,
   QrCode,
 } from "lucide-react";
-import type { SavedItem, StepKey } from "@/lib/guest-data";
-import { venueById } from "@/lib/guest-data";
+import type { SavedItem, StepKey } from "@/lib/consumer-data";
+import { venueById } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
 const STEP_ICON: Record<

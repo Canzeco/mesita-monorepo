@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { COUNTRIES } from "@/lib/guest-data";
+import { COUNTRIES } from "@/lib/consumer-data";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { apiUpdateGuestProfile } from "@/lib/api/tickets";
+import { apiUpdateConsumerProfile } from "@/lib/api/tickets";
 import { errMsg } from "@/lib/utils";
 import { Field } from "@/components/shared";
 import {
@@ -16,7 +16,7 @@ import {
 
 // Onboarding collects everything beyond the phone, which is already on
 // the auth.user from the OTP sign-in step. Country is inferred from the
-// phone's dial code on the server side (guest-update-profile reads it
+// phone's dial code on the server side (consumer-update-profile reads it
 // from auth.user.phone when the body doesn't carry phone).
 
 export function OnboardForm() {
@@ -44,7 +44,7 @@ export function OnboardForm() {
     setLoading(true);
     void (async () => {
       try {
-        await apiUpdateGuestProfile(supabase, {
+        await apiUpdateConsumerProfile(supabase, {
           full_name: name.trim(),
           sex,
           birthday,

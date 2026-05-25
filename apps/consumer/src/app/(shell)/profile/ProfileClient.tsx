@@ -28,7 +28,7 @@ import {
   UserPlus,
   PartyPopper,
 } from "lucide-react";
-import { SimpleHeader } from "@/components/guest/SimpleHeader";
+import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   CURRENT_USER,
@@ -40,7 +40,7 @@ import {
   venueById,
   type Achievement,
   type AchievementCategory,
-} from "@/lib/guest-data";
+} from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
 type Tab = "class" | "balance" | "game" | "settings";
@@ -73,10 +73,10 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
   const displayName =
     identity.fullName ??
     (identity.email ? identity.email.split("@")[0] : null) ??
-    "Guest";
+    "Consumer";
   const initial = displayName.trim().slice(0, 1).toUpperCase() || "?";
 
-  // Identity facts shown next to the avatar — only the ones the guest
+  // Identity facts shown next to the avatar — only the ones the consumer
   // actually filled. No mock fallbacks.
   const age = identity.birthday ? yearsSince(identity.birthday) : null;
   const subtitleParts: string[] = [];
@@ -84,7 +84,7 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
   if (age != null) subtitleParts.push(`${age}`);
   if (identity.sex) subtitleParts.push(prettySex(identity.sex));
 
-  // The guest (shell) layout already enforces onboarding completion, so by
+  // The consumer (shell) layout already enforces onboarding completion, so by
   // the time we render here all four identity fields are guaranteed real.
   // No banner / no half-state path.
 
@@ -228,7 +228,7 @@ function AppealForUpgradeButton() {
 }
 
 // Read-only explainer of what each class gets. The buy/connect surfaces
-// are above — this is the reference card that helps a guest understand
+// are above — this is the reference card that helps a consumer understand
 // why upgrading is worth it.
 function ClassLadderCard() {
   return (
@@ -729,7 +729,7 @@ function VerifyInstagramSheet({ onClose }: { onClose: () => void }) {
 }
 
 // Years since a YYYY-MM-DD birthday string. Returns null on bad input so
-// the caller can simply skip the "27"-style age line when the guest hasn't
+// the caller can simply skip the "27"-style age line when the consumer hasn't
 // filled their birthday yet.
 function yearsSince(birthday: string): number | null {
   const parsed = new Date(`${birthday}T00:00:00Z`);

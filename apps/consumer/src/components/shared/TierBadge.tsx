@@ -7,7 +7,7 @@ import {
   type BadgeSize,
 } from "./badge-sizing";
 
-// Guest class — the four-tier ladder. Bronze is the default; Silver / Gold
+// Consumer class — the four-tier ladder. Bronze is the default; Silver / Gold
 // / Diamond scale on either Instagram follower count or a monthly Mesita
 // subscription ($200 / $500 / $1,000 MXN). The class IS the brand — a
 // subscriber is "Mesita Silver", not "a Silver member". Diamond can also

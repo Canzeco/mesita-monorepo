@@ -3,7 +3,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 
-// Root of the guest subdomain. Strong routing contract:
+// Root of the consumer subdomain. Strong routing contract:
 //
 //   no session              → render auth (this page)
 //   session + no profile    → /onboard
@@ -14,14 +14,16 @@ import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 
 export const dynamic = "force-dynamic";
 
-const GUEST_AFTER_AUTH = "/auth/post-signin";
+const CONSUMER_AFTER_AUTH = "/auth/post-signin";
 
 function safeNext(raw: string | undefined): string {
-  if (!raw) return GUEST_AFTER_AUTH;
-  return raw.startsWith("/") && !raw.startsWith("//") ? raw : GUEST_AFTER_AUTH;
+  if (!raw) return CONSUMER_AFTER_AUTH;
+  return raw.startsWith("/") && !raw.startsWith("//")
+    ? raw
+    : CONSUMER_AFTER_AUTH;
 }
 
-export default async function GuestRootPage({
+export default async function ConsumerRootPage({
   searchParams,
 }: {
   searchParams: Promise<{ next?: string }>;

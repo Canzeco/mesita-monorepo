@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPublicVenues, type Venue } from "@/lib/api/venues";
 import { errMsg } from "@/lib/utils";
-import { GuestDiscoverMap } from "./GuestDiscoverMap";
+import { ConsumerDiscoverMap } from "./ConsumerDiscoverMap";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export default async function MapPage() {
   );
 
   return (
-    <GuestDiscoverMap
+    <ConsumerDiscoverMap
       apiKey={mapKey}
       venues={located}
       fetchError={fetchError}

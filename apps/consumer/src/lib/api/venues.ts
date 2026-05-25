@@ -1,4 +1,4 @@
-// Frontend API surface for the guest-facing venue Edge Functions.
+// Frontend API surface for the consumer-facing venue Edge Functions.
 //
 // Architectural constraints honoured:
 // - Clients NEVER query the database directly. Every read or write goes
@@ -7,7 +7,7 @@
 //   multiple Edge Functions (composition belongs inside the function).
 //
 // Manager-side helpers (places autocomplete, create / update / delete
-// venue, enrichment) live in the manager app — guest never invokes them.
+// venue, enrichment) live in the manager app — consumer never invokes them.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -103,7 +103,7 @@ export async function apiFetchPublicVenues(
 ): Promise<Venue[]> {
   const { venues } = await invokeEF<{ venues: Venue[] }>(
     client,
-    "guest-list-venues",
+    "consumer-list-venues",
     { limit },
   );
   return venues.map(stripInsecurePhotos);
@@ -116,7 +116,7 @@ export async function apiGetVenue(
   try {
     const { venue } = await invokeEF<{ venue: Venue }>(
       client,
-      "guest-get-venue",
+      "consumer-get-venue",
       looksLikeUuid(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
     );
     return stripInsecurePhotos(venue);
@@ -133,7 +133,7 @@ export async function apiRecommendDeck(
 ): Promise<RecommendDeckResponse> {
   const data = await invokeEF<RecommendDeckResponse>(
     client,
-    "guest-recommend-deck",
+    "consumer-recommend-deck",
     input,
   );
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
@@ -145,7 +145,7 @@ export async function apiRecommendCatalog(
 ): Promise<RecommendCatalogResponse> {
   const data = await invokeEF<RecommendCatalogResponse>(
     client,
-    "guest-recommend-catalog",
+    "consumer-recommend-catalog",
     input,
   );
   return {

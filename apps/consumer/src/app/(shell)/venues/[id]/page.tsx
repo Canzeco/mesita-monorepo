@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiGetVenue } from "@/lib/api/venues";
 import { errMsg } from "@/lib/utils";
-import { VenueDetailBody } from "@/components/guest/VenueDetailBody";
+import { VenueDetailBody } from "@/components/consumer/VenueDetailBody";
 
 export const dynamic = "force-dynamic";
 

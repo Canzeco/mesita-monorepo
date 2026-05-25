@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
-import { TIERS } from "@/lib/guest-data";
+import { TIERS } from "@/lib/consumer-data";
 
 // Placeholder subscribe-confirmation page. The class IS the brand here —
 // "Mesita Silver" / "Mesita Gold" / "Mesita Diamond". Wires up later to
-// Stripe Checkout once recurring guest products exist. For now this page
-// stops at the "Continue to checkout" CTA and explains what the guest is
+// Stripe Checkout once recurring consumer products exist. For now this page
+// stops at the "Continue to checkout" CTA and explains what the consumer is
 // signing up for.
 
 export const dynamic = "force-dynamic";
@@ -138,7 +138,7 @@ export default async function SubscribePage({
           Continue to checkout (coming soon)
         </button>
         <p className="text-muted-foreground text-center text-[11px]">
-          Stripe Checkout for guest subscriptions ships next. The page UI is
+          Stripe Checkout for consumer subscriptions ships next. The page UI is
           live so the rest of the app can link here.
         </p>
       </div>

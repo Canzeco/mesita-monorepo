@@ -1,5 +1,5 @@
-import { DiscoverHeader } from "@/components/guest/DiscoverHeader";
-import { DiscoverTabs } from "@/components/guest/DiscoverTabs";
+import { DiscoverHeader } from "@/components/consumer/DiscoverHeader";
+import { DiscoverTabs } from "@/components/consumer/DiscoverTabs";
 
 export default function DiscoverLayout({
   children,

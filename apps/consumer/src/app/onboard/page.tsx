@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { MobileFrame } from "@/components/guest/MobileFrame";
-import { StatusBar } from "@/components/guest/StatusBar";
+import { MobileFrame } from "@/components/consumer/MobileFrame";
+import { StatusBar } from "@/components/consumer/StatusBar";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchGuestProfile } from "@/lib/api/tickets";
+import { apiFetchConsumerProfile } from "@/lib/api/tickets";
 import { OnboardForm } from "./OnboardForm";
 
-// Guest onboarding — server-side gated. The middleware already blocks
+// Consumer onboarding — server-side gated. The middleware already blocks
 // signed-out users from /profile and friends, but onboard sits
 // between sign-up and the actual app, so it has its own checks:
 //
@@ -14,7 +14,7 @@ import { OnboardForm } from "./OnboardForm";
 //   - signed in, no name  → render the form
 export const dynamic = "force-dynamic";
 
-export default async function GuestOnboardPage() {
+export default async function ConsumerOnboardPage() {
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -27,7 +27,7 @@ export default async function GuestOnboardPage() {
   //   onboard → discover/swipe (full_name truthy) → shell sees missing
   //   country/birthday/sex → bounces back to onboard. Strict here too.
   try {
-    const profile = await apiFetchGuestProfile(supabase);
+    const profile = await apiFetchConsumerProfile(supabase);
     const onboarded =
       !!profile.full_name &&
       !!profile.country &&
@@ -37,7 +37,7 @@ export default async function GuestOnboardPage() {
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.
-    console.error("[guest/onboard] guest-get-profile:", err);
+    console.error("[consumer/onboard] consumer-get-profile:", err);
   }
 
   return (

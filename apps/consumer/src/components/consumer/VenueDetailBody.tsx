@@ -16,7 +16,7 @@ import {
   Mail,
   Star,
 } from "lucide-react";
-import { ImageCarousel } from "@/components/guest/ImageCarousel";
+import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import type { Venue } from "@/lib/api/venues";
 
 // Pure presentation for the venue detail surface. The two callers (full
@@ -159,7 +159,7 @@ const RESERVATION_DEFS = [
   { key: "didi_food_url", label: "DiDi Food", Icon: Bike },
 ] as const;
 
-// Review/discover surfaces. Kept separate from socials so guests can scan
+// Review/discover surfaces. Kept separate from socials so consumers can scan
 // "where can I read about this place" at a glance.
 const REVIEW_DEFS = [
   { key: "tripadvisor_url", label: "TripAdvisor", Icon: Star },

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, MessageCircle } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { COUNTRY_BY_CODE } from "@/lib/guest-data";
+import { COUNTRY_BY_CODE } from "@/lib/consumer-data";
 import { PhoneInputWithCountry } from "./PhoneInputWithCountry";
 import {
   ERROR_BOX_CLASS,
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 // Two-step phone OTP. Phone is the identity — there's no "create account"
 // vs "sign in" anymore; first verify on a number creates the auth.user,
-// subsequent verifies sign that user in. Single flow for both guest and
+// subsequent verifies sign that user in. Single flow for both consumer and
 // manager surfaces — the parent passes the post-verify redirect.
 
 type Step = "phone" | "code";
