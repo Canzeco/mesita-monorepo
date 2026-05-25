@@ -89,4 +89,3 @@ export const TRANSACTIONS: Transaction[] = [
     when: "1 week ago",
   },
 ];
-

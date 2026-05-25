@@ -134,9 +134,10 @@ export function subscriptionForVenue(p: VenuePlan): SubscriptionId {
 
 // Atomic write payload for the picker — one card click sets both plan
 // and fiscal_type in a single apiUpdateVenue call.
-export function dbStateForSubscription(
-  sub: SubscriptionId,
-): { plan: VenuePlan; fiscal_type?: FiscalType } {
+export function dbStateForSubscription(sub: SubscriptionId): {
+  plan: VenuePlan;
+  fiscal_type?: FiscalType;
+} {
   if (sub === "free") return { plan: "free" };
   if (sub === "pro_discount")
     return { plan: "informal_pro", fiscal_type: "informal" };

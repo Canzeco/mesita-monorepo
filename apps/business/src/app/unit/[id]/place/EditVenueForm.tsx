@@ -124,7 +124,6 @@ const DESCRIPTION_PLACEHOLDER =
   "a tight mezcal list, and a back patio that fills up on Fridays. " +
   "Brunch on weekends, late-night menu Thu–Sat.";
 
-
 function nullableUrl(v: string): string | null {
   const t = v.trim();
   if (t === "") return null;
@@ -160,7 +159,12 @@ function mergeOvernightSplit(h: VenueHours): VenueHours {
       const b = longKeys[(i + 1) % longKeys.length];
       const aRanges = out[a];
       const bRanges = out[b];
-      if (!aRanges || !bRanges || aRanges.length === 0 || bRanges.length === 0) {
+      if (
+        !aRanges ||
+        !bRanges ||
+        aRanges.length === 0 ||
+        bRanges.length === 0
+      ) {
         continue;
       }
       const tailIdx = aRanges.findIndex(
@@ -608,9 +612,7 @@ function VenueMapEmbed({
         referrerPolicy="no-referrer-when-downgrade"
         className="block h-full w-full border-0"
       />
-      {mapsUrl && (
-        <OpenInGoogleMaps href={mapsUrl} variant="overlay" />
-      )}
+      {mapsUrl && <OpenInGoogleMaps href={mapsUrl} variant="overlay" />}
     </div>
   );
 }
@@ -646,13 +648,7 @@ function OpenInGoogleMaps({
 
 type PreviewView = "swipe" | "catalog";
 
-function PreviewSection({
-  venue,
-  v,
-}: {
-  venue: MyVenue;
-  v: FormState;
-}) {
+function PreviewSection({ venue, v }: { venue: MyVenue; v: FormState }) {
   // Mirrors the two card surfaces the guest app actually renders for a
   // place: `VenueSwipeCardFace` (full-bleed photo card with overlay) on
   // /discover/swipe and `VenueCatalogCard` (4:3 photo + row of meta) on
@@ -690,7 +686,7 @@ function PreviewSection({
         </div>
       }
     >
-      <div className="bg-zinc-950 -mx-1 -mb-1 flex flex-1 items-center justify-center rounded-xl p-3">
+      <div className="-mx-1 -mb-1 flex flex-1 items-center justify-center rounded-xl bg-zinc-950 p-3">
         {view === "swipe" ? (
           <PreviewSwipeCard venue={venue} v={v} />
         ) : (
@@ -726,13 +722,7 @@ function PreviewTab({
   );
 }
 
-function PreviewSwipeCard({
-  venue,
-  v,
-}: {
-  venue: MyVenue;
-  v: FormState;
-}) {
+function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
   // Compact mirror of VenueSwipeCardFace in the guest repo: full-bleed
   // cover, bottom overlay with category + name + price meta. No drag
   // logic — just the visual face.
@@ -774,13 +764,7 @@ function PreviewSwipeCard({
   );
 }
 
-function PreviewCatalogCard({
-  venue,
-  v,
-}: {
-  venue: MyVenue;
-  v: FormState;
-}) {
+function PreviewCatalogCard({ venue, v }: { venue: MyVenue; v: FormState }) {
   // Compact mirror of VenueCatalogCard in the guest repo: 4:3 photo,
   // then a name + category + price meta block underneath. Constrained
   // width so the proportions read like a row in a 2-col catalog list.
@@ -1559,8 +1543,7 @@ function UrlListField({
     onChange([...values, next]);
     setDraft("");
   };
-  const remove = (idx: number) =>
-    onChange(values.filter((_, i) => i !== idx));
+  const remove = (idx: number) => onChange(values.filter((_, i) => i !== idx));
   return (
     <label className="block">
       <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">

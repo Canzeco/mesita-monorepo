@@ -88,7 +88,11 @@ export async function apiInviteManager(
     redirectBase?: string;
   },
 ): Promise<InviteManagerResult> {
-  return await invokeEF<InviteManagerResult>(client, "manager-invite-manager", input);
+  return await invokeEF<InviteManagerResult>(
+    client,
+    "manager-invite-manager",
+    input,
+  );
 }
 
 export type InviteWaiterResult = {
@@ -110,7 +114,11 @@ export async function apiInviteWaiter(
     redirectBase?: string;
   },
 ): Promise<InviteWaiterResult> {
-  return await invokeEF<InviteWaiterResult>(client, "manager-invite-waiter", input);
+  return await invokeEF<InviteWaiterResult>(
+    client,
+    "manager-invite-waiter",
+    input,
+  );
 }
 
 export async function apiUpdateMemberRole(

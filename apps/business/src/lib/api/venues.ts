@@ -29,7 +29,13 @@ export type VenuePlan =
 // the key entirely. Multiple ranges per day support split shifts.
 export type VenueHours = Partial<
   Record<
-    "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday",
+    | "monday"
+    | "tuesday"
+    | "wednesday"
+    | "thursday"
+    | "friday"
+    | "saturday"
+    | "sunday",
     { open: string; close: string }[]
   >
 >;

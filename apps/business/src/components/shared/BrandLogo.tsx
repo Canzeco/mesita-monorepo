@@ -90,7 +90,14 @@ export function MesitaLogo({ size = 16, className }: LogoProps) {
           <stop offset="100%" stopColor="#E60073" />
         </linearGradient>
       </defs>
-      <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#mesita-grad)" />
+      <rect
+        x="2"
+        y="2"
+        width="20"
+        height="20"
+        rx="6"
+        fill="url(#mesita-grad)"
+      />
       <path
         fill="#FFFFFF"
         d="M12 6.5l1.7 3.5 3.8.55-2.75 2.7.65 3.8L12 15.25l-3.4 1.8.65-3.8L6.5 10.55l3.8-.55z"

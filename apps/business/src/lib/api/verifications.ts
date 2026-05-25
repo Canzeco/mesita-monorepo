@@ -73,7 +73,11 @@ export type LookupMethods = {
 
 export type LookupResult =
   | { state: "not_in_mesita"; venue: null }
-  | { state: "web_listed_unclaimed"; venue: LookupVenue; methods: LookupMethods }
+  | {
+      state: "web_listed_unclaimed";
+      venue: LookupVenue;
+      methods: LookupMethods;
+    }
   | {
       state: "pending_by_me";
       venue: LookupVenue;
@@ -168,4 +172,3 @@ export async function apiManagerVerifiesEmail(
     code,
   });
 }
-

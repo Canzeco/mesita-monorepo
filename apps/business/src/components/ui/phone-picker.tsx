@@ -19,9 +19,36 @@ import { cn } from "@/lib/utils";
 // the product is.
 
 export type CountryCode =
-  | "MX" | "US" | "CA" | "ES" | "AR" | "CO" | "CL" | "PE" | "BR" | "UY"
-  | "EC" | "GT" | "CR" | "PA" | "DO" | "VE" | "BO" | "PY" | "SV" | "HN"
-  | "NI" | "PR" | "GB" | "FR" | "DE" | "IT" | "NL" | "PT" | "AU" | "JP";
+  | "MX"
+  | "US"
+  | "CA"
+  | "ES"
+  | "AR"
+  | "CO"
+  | "CL"
+  | "PE"
+  | "BR"
+  | "UY"
+  | "EC"
+  | "GT"
+  | "CR"
+  | "PA"
+  | "DO"
+  | "VE"
+  | "BO"
+  | "PY"
+  | "SV"
+  | "HN"
+  | "NI"
+  | "PR"
+  | "GB"
+  | "FR"
+  | "DE"
+  | "IT"
+  | "NL"
+  | "PT"
+  | "AU"
+  | "JP";
 
 type Country = {
   code: CountryCode;
@@ -33,36 +60,36 @@ type Country = {
 // Hand-picked list with Latin America + the major partner countries.
 // Mexico ships first so the default flag matches our home market.
 const COUNTRIES: Country[] = [
-  { code: "MX", name: "Mexico",        dial: "+52",  flag: "🇲🇽" },
-  { code: "US", name: "United States", dial: "+1",   flag: "🇺🇸" },
-  { code: "CA", name: "Canada",        dial: "+1",   flag: "🇨🇦" },
-  { code: "ES", name: "Spain",         dial: "+34",  flag: "🇪🇸" },
-  { code: "AR", name: "Argentina",     dial: "+54",  flag: "🇦🇷" },
-  { code: "CO", name: "Colombia",      dial: "+57",  flag: "🇨🇴" },
-  { code: "CL", name: "Chile",         dial: "+56",  flag: "🇨🇱" },
-  { code: "PE", name: "Peru",          dial: "+51",  flag: "🇵🇪" },
-  { code: "BR", name: "Brazil",        dial: "+55",  flag: "🇧🇷" },
-  { code: "UY", name: "Uruguay",       dial: "+598", flag: "🇺🇾" },
-  { code: "EC", name: "Ecuador",       dial: "+593", flag: "🇪🇨" },
-  { code: "GT", name: "Guatemala",     dial: "+502", flag: "🇬🇹" },
-  { code: "CR", name: "Costa Rica",    dial: "+506", flag: "🇨🇷" },
-  { code: "PA", name: "Panama",        dial: "+507", flag: "🇵🇦" },
+  { code: "MX", name: "Mexico", dial: "+52", flag: "🇲🇽" },
+  { code: "US", name: "United States", dial: "+1", flag: "🇺🇸" },
+  { code: "CA", name: "Canada", dial: "+1", flag: "🇨🇦" },
+  { code: "ES", name: "Spain", dial: "+34", flag: "🇪🇸" },
+  { code: "AR", name: "Argentina", dial: "+54", flag: "🇦🇷" },
+  { code: "CO", name: "Colombia", dial: "+57", flag: "🇨🇴" },
+  { code: "CL", name: "Chile", dial: "+56", flag: "🇨🇱" },
+  { code: "PE", name: "Peru", dial: "+51", flag: "🇵🇪" },
+  { code: "BR", name: "Brazil", dial: "+55", flag: "🇧🇷" },
+  { code: "UY", name: "Uruguay", dial: "+598", flag: "🇺🇾" },
+  { code: "EC", name: "Ecuador", dial: "+593", flag: "🇪🇨" },
+  { code: "GT", name: "Guatemala", dial: "+502", flag: "🇬🇹" },
+  { code: "CR", name: "Costa Rica", dial: "+506", flag: "🇨🇷" },
+  { code: "PA", name: "Panama", dial: "+507", flag: "🇵🇦" },
   { code: "DO", name: "Dominican Rep.", dial: "+1809", flag: "🇩🇴" },
-  { code: "VE", name: "Venezuela",     dial: "+58",  flag: "🇻🇪" },
-  { code: "BO", name: "Bolivia",       dial: "+591", flag: "🇧🇴" },
-  { code: "PY", name: "Paraguay",      dial: "+595", flag: "🇵🇾" },
-  { code: "SV", name: "El Salvador",   dial: "+503", flag: "🇸🇻" },
-  { code: "HN", name: "Honduras",      dial: "+504", flag: "🇭🇳" },
-  { code: "NI", name: "Nicaragua",     dial: "+505", flag: "🇳🇮" },
-  { code: "PR", name: "Puerto Rico",   dial: "+1787", flag: "🇵🇷" },
+  { code: "VE", name: "Venezuela", dial: "+58", flag: "🇻🇪" },
+  { code: "BO", name: "Bolivia", dial: "+591", flag: "🇧🇴" },
+  { code: "PY", name: "Paraguay", dial: "+595", flag: "🇵🇾" },
+  { code: "SV", name: "El Salvador", dial: "+503", flag: "🇸🇻" },
+  { code: "HN", name: "Honduras", dial: "+504", flag: "🇭🇳" },
+  { code: "NI", name: "Nicaragua", dial: "+505", flag: "🇳🇮" },
+  { code: "PR", name: "Puerto Rico", dial: "+1787", flag: "🇵🇷" },
   { code: "GB", name: "United Kingdom", dial: "+44", flag: "🇬🇧" },
-  { code: "FR", name: "France",        dial: "+33",  flag: "🇫🇷" },
-  { code: "DE", name: "Germany",       dial: "+49",  flag: "🇩🇪" },
-  { code: "IT", name: "Italy",         dial: "+39",  flag: "🇮🇹" },
-  { code: "NL", name: "Netherlands",   dial: "+31",  flag: "🇳🇱" },
-  { code: "PT", name: "Portugal",      dial: "+351", flag: "🇵🇹" },
-  { code: "AU", name: "Australia",     dial: "+61",  flag: "🇦🇺" },
-  { code: "JP", name: "Japan",         dial: "+81",  flag: "🇯🇵" },
+  { code: "FR", name: "France", dial: "+33", flag: "🇫🇷" },
+  { code: "DE", name: "Germany", dial: "+49", flag: "🇩🇪" },
+  { code: "IT", name: "Italy", dial: "+39", flag: "🇮🇹" },
+  { code: "NL", name: "Netherlands", dial: "+31", flag: "🇳🇱" },
+  { code: "PT", name: "Portugal", dial: "+351", flag: "🇵🇹" },
+  { code: "AU", name: "Australia", dial: "+61", flag: "🇦🇺" },
+  { code: "JP", name: "Japan", dial: "+81", flag: "🇯🇵" },
 ];
 
 // Sorted by descending dial-code length so a stored "+1809..." matches
@@ -169,7 +196,7 @@ export function PhonePicker({
           align="start"
           className="max-h-72 w-72 overflow-hidden p-0"
         >
-          <div className="border-border sticky top-0 z-10 flex items-center gap-2 border-b bg-popover px-3 py-2">
+          <div className="border-border bg-popover sticky top-0 z-10 flex items-center gap-2 border-b px-3 py-2">
             <Search className="text-muted-foreground h-3.5 w-3.5" />
             <input
               autoFocus
