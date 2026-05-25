@@ -11,7 +11,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import type { PlaceLite } from "@/lib/places-types";
 
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
 
 const MAP_HEIGHT_PX = 440;
 const MAP_DEFAULT_CENTER = { lat: 23.6345, lng: -102.5528 };
@@ -51,7 +51,7 @@ export function PlacesMap({ places }: { places: PlaceLite[] }) {
       <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
         <p className="font-medium text-foreground">Map unavailable</p>
         <p className="mt-1">
-          NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY isn&apos;t set on this
+          NEXT_PUBLIC_GMP_KEY isn&apos;t set on this
           deployment.
         </p>
       </section>
