@@ -2,7 +2,7 @@ import type { SavedItem, Venue } from "./guest-data";
 
 type WorkflowAction = "attach-screenshot" | "show-qr" | "stripe-checkout";
 
-export type WorkflowStep = {
+type WorkflowStep = {
   title: string;
   sub: string;
   action?: WorkflowAction;

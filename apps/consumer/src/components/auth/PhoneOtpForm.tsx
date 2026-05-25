@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, MessageCircle } from "lucide-react";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { COUNTRY_BY_CODE } from "@/lib/guest-data";
 import { PhoneInputWithCountry } from "./PhoneInputWithCountry";
 import {
@@ -23,7 +23,7 @@ type Step = "phone" | "code";
 
 export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const router = useRouter();
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
 
   const [step, setStep] = useState<Step>("phone");
   const [countryCode, setCountryCode] = useState("MX");

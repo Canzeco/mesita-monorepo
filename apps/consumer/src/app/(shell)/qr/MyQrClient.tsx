@@ -13,8 +13,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { cn } from "@/lib/utils";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { cn, errMsg } from "@/lib/utils";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiSubmitStory,
   formatCurrency,
@@ -267,7 +267,7 @@ function StoryUpload({
   ticketId: string;
   status: GuestTicket["story_status"];
 }) {
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
   const [url, setUrl] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -288,7 +288,7 @@ function StoryUpload({
       // needing useRouter.)
       window.location.reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't submit story.");
+      setError(errMsg(err, "Couldn't submit story."));
     } finally {
       setPending(false);
     }

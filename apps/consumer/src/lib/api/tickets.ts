@@ -77,7 +77,7 @@ type TicketStatus =
   | "revealed"
   | "cancelled";
 
-export type StoryStatus =
+type StoryStatus =
   | "not_required"
   | "pending"
   | "submitted"
@@ -93,7 +93,7 @@ type ReservationStatus =
   | "no_show"
   | "cancelled";
 
-export type FiscalType = "formal" | "informal";
+type FiscalType = "formal" | "informal";
 
 const FORMAL_KINDS: ReadonlySet<TicketKind> = new Set([
   "p_c",
@@ -126,7 +126,7 @@ export function ticketHasReservation(kind: TicketKind): boolean {
 
 // ─── Ticket shape ────────────────────────────────────────────────────────
 
-export type Ticket = {
+type Ticket = {
   id: string;
   kind: TicketKind;
   status: TicketStatus;

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SimpleHeader } from "@/components/guest/SimpleHeader";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchGuestProfile, apiFetchMyTickets } from "@/lib/api/tickets";
+import { errMsg } from "@/lib/utils";
 import { MyQrClient } from "./MyQrClient";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function GuestQrPage() {
         <SimpleHeader title="My QR" />
         <div className="flex-1 px-4 py-6">
           <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-sm">
-            {err instanceof Error ? err.message : "Couldn't load your profile."}
+            {errMsg(err, "Couldn't load your profile.")}
           </p>
         </div>
       </div>

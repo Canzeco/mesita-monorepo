@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { COUNTRIES } from "@/lib/guest-data";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateGuestProfile } from "@/lib/api/tickets";
+import { errMsg } from "@/lib/utils";
 import { Field } from "@/components/shared";
 import {
   ERROR_BOX_CLASS,
@@ -20,7 +21,7 @@ import {
 
 export function OnboardForm() {
   const router = useRouter();
-  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const supabase = useBrowserSupabase();
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
   const [birthday, setBirthday] = useState("");
@@ -52,9 +53,7 @@ export function OnboardForm() {
         router.push("/discover/swipe");
         router.refresh();
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Couldn't save. Try again.",
-        );
+        setError(errMsg(err, "Couldn't save. Try again."));
         setLoading(false);
       }
     })();

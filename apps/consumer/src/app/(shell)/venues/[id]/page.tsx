@@ -22,6 +22,7 @@ import {
 import { ImageCarousel } from "@/components/guest/ImageCarousel";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiGetVenue, type Venue } from "@/lib/api/venues";
+import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +41,7 @@ export default async function VenueDetailPage({
   try {
     venue = await apiGetVenue(supabase, id);
   } catch (err) {
-    fetchError =
-      err instanceof Error ? err.message : "Couldn't load this venue.";
+    fetchError = errMsg(err, "Couldn't load this venue.");
   }
   if (fetchError) {
     return (

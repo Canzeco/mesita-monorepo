@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPublicVenues, type Venue } from "@/lib/api/venues";
+import { errMsg } from "@/lib/utils";
 import { GuestDiscoverMap } from "./GuestDiscoverMap";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export default async function MapPage() {
   try {
     venues = await apiFetchPublicVenues(supabase, 200);
   } catch (err) {
-    fetchError = err instanceof Error ? err.message : "Couldn't load venues.";
+    fetchError = errMsg(err, "Couldn't load venues.");
   }
 
   const mapKey = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
