@@ -2,8 +2,8 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 
-export type VerificationMethod = "ai_call" | "video" | "postcard";
-export type VerificationStatus = "pending" | "approved" | "rejected";
+type VerificationMethod = "ai_call" | "video" | "postcard";
+type VerificationStatus = "pending" | "approved" | "rejected";
 
 export type AdminVerification = {
   id: string;
@@ -36,7 +36,7 @@ type ListResponse = {
   autoVerifyUpdatedAt: string | null;
 };
 
-export type ListResult =
+type ListResult =
   | { ok: true; data: ListResponse }
   | { ok: false; error: string };
 
@@ -46,7 +46,7 @@ export async function listVerifications(): Promise<ListResult> {
   return { ok: true, data: r.data };
 }
 
-export type DecideResult =
+type DecideResult =
   | { ok: true }
   | { ok: false; error: string };
 
@@ -66,7 +66,7 @@ export async function decideVerification(
 
 export type AutoVerifyMethod = "ai_call" | "video";
 
-export type SetAutoVerifyResult =
+type SetAutoVerifyResult =
   | {
       ok: true;
       autoVerifyAiCall: boolean;

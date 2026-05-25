@@ -1,37 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { efInvoke } from "@/lib/supabase-ef";
+import type { SearchResponse } from "@/lib/places-types";
 
 type RequestBody = {
   queries?: unknown;
   regionCode?: unknown;
   maxResultsPerQuery?: unknown;
-};
-
-type EFPlace = {
-  id: string;
-  displayName: string;
-  formattedAddress: string;
-  lat: number | null;
-  lng: number | null;
-  existsInMesita: boolean;
-  createdAt: string | null;
-  updatedAt: string | null;
-};
-
-type EFResponse = {
-  ok: true;
-  queries: Array<{
-    query: string;
-    places: EFPlace[];
-    truncated: boolean;
-    error: string | null;
-  }>;
-  uniquePlaces: EFPlace[];
-  uniqueCount: number;
-  regionCode: string;
-  maxResultsPerQuery: number;
-  mesitaMatchCount: number;
-  mesitaLookupError: string | null;
 };
 
 export async function POST(req: NextRequest) {
@@ -53,7 +27,7 @@ export async function POST(req: NextRequest) {
   const maxResultsPerQuery =
     typeof body.maxResultsPerQuery === "number" ? body.maxResultsPerQuery : 60;
 
-  const result = await efInvoke<EFResponse>("admin-search-places", {
+  const result = await efInvoke<SearchResponse>("admin-search-places", {
     queries,
     regionCode,
     maxResultsPerQuery,

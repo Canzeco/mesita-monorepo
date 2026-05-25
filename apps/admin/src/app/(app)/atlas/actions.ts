@@ -12,7 +12,7 @@ type SettingsResponse = {
   updatedAt: string | null;
 };
 
-export type GetSettingsResult =
+type GetSettingsResult =
   | { ok: true; data: SettingsResponse }
   | { ok: false; error: string };
 
@@ -29,7 +29,7 @@ type SetPreReadResponse = {
   updatedAt: string | null;
 };
 
-export type SetPreReadResult =
+type SetPreReadResult =
   | { ok: true; data: SetPreReadResponse }
   | { ok: false; error: string };
 
@@ -56,23 +56,13 @@ type SnapshotResult = {
   }>;
 };
 
-export type TriggerSnapshotResult =
+type TriggerSnapshotResult =
   | { ok: true; data: SnapshotResult }
   | { ok: false; error: string };
 
 export async function snapshotAllVenues(): Promise<TriggerSnapshotResult> {
   const r = await efInvoke<SnapshotResult>("admin-snapshot-mesita", {
     all: true,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-export async function snapshotOneVenue(
-  venueId: string,
-): Promise<TriggerSnapshotResult> {
-  const r = await efInvoke<SnapshotResult>("admin-snapshot-mesita", {
-    venueId,
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };

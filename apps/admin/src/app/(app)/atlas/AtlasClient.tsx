@@ -69,7 +69,7 @@ export function AtlasClient({
   };
 
   return (
-    <div className="mt-8 flex flex-col gap-6">
+    <div className="mt-8 grid gap-6 md:grid-cols-2">
       {/* ─── Pre-read toggle ─────────────────────────────────────── */}
       <section className="border-border bg-card rounded-2xl border p-6">
         <div className="flex items-start justify-between gap-6">

@@ -9,7 +9,7 @@ type ResetResponse = {
   };
 };
 
-export type ResetResult =
+type ResetResult =
   | { ok: true; deletedAuthUsers: number | null }
   | { ok: false; error: string };
 

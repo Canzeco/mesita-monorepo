@@ -9,7 +9,7 @@ export default async function VerificationsPage() {
 
   if (!result.ok) {
     return (
-      <div className="mx-auto max-w-5xl px-8 pt-12 pb-14">
+      <div className="mx-auto max-w-6xl px-8 pt-12 pb-14">
         <Header />
         <div className="border-destructive/40 bg-destructive/5 text-destructive mt-8 flex items-start gap-3 rounded-2xl border p-4 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -20,7 +20,7 @@ export default async function VerificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-8 pt-12 pb-14">
+    <div className="mx-auto max-w-6xl px-8 pt-12 pb-14">
       <Header />
       <VerificationsClient
         initialVerifications={result.data.verifications}
