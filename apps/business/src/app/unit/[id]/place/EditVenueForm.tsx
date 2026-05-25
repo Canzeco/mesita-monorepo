@@ -139,10 +139,54 @@ function nullable(v: string): string | null {
   return t === "" ? null : t;
 }
 
+// Belt-and-suspenders for legacy data: any row that still carries the
+// pre-migration split-at-midnight shape (day N ends 23:59 + day N+1
+// starts 00:00) gets merged back into a single overnight range on day N
+// before we hand it to the editor. Live data was migrated server-side in
+// 0021_merge_overnight_hours.sql; this just keeps the manager from ever
+// seeing the two-row mess if a stray split slips through.
+function mergeOvernightSplit(h: VenueHours): VenueHours {
+  const longKeys = DAYS.map((d) => d.long);
+  const out: VenueHours = {};
+  for (const k of longKeys) {
+    const arr = h[k];
+    if (arr) out[k] = arr.map((r) => ({ open: r.open, close: r.close }));
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < longKeys.length; i += 1) {
+      const a = longKeys[i];
+      const b = longKeys[(i + 1) % longKeys.length];
+      const aRanges = out[a];
+      const bRanges = out[b];
+      if (!aRanges || !bRanges || aRanges.length === 0 || bRanges.length === 0) {
+        continue;
+      }
+      const tailIdx = aRanges.findIndex(
+        (r) => r.close === "23:59" && r.open !== "00:00",
+      );
+      const headIdx = bRanges.findIndex(
+        (r) => r.open === "00:00" && r.close !== "23:59",
+      );
+      if (tailIdx < 0 || headIdx < 0) continue;
+      aRanges[tailIdx] = {
+        open: aRanges[tailIdx].open,
+        close: bRanges[headIdx].close,
+      };
+      bRanges.splice(headIdx, 1);
+      if (bRanges.length === 0) delete out[b];
+      changed = true;
+    }
+  }
+  return out;
+}
+
 function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayShifts> {
+  const merged = h ? mergeOvernightSplit(h) : null;
   const out = {} as Record<DayKey, DayShifts>;
   for (const d of DAYS) {
-    const ranges = h?.[d.long] ?? null;
+    const ranges = merged?.[d.long] ?? null;
     if (ranges === null) {
       // No key for the day → treat as unknown (default to a single empty
       // input rather than "Closed" so the manager isn't surprised).
@@ -160,6 +204,16 @@ function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayShifts> {
     }
   }
   return out;
+}
+
+// "Overnight" = the close time is on the next day. We encode that as
+// `close <= open` once both fields are filled, so the manager can type
+// 22:00 → 02:00 and have it just work. Empty fields don't count as
+// overnight — keep the badge off while they're being typed.
+const HHMM_RE = /^\d{2}:\d{2}$/;
+function isOvernight(open: string, close: string): boolean {
+  if (!HHMM_RE.test(open) || !HHMM_RE.test(close)) return false;
+  return close <= open;
 }
 
 function formHoursToVenue(form: Record<DayKey, DayShifts>): VenueHours {
@@ -1422,6 +1476,15 @@ function HoursEditor({
                       aria-label={`${label} shift ${idx + 1} closes at`}
                       className="bg-background border-border focus:border-foreground/40 h-8 w-[68px] rounded-md border px-1.5 text-center text-[12px] tabular-nums outline-none"
                     />
+                    {isOvernight(r.open, r.close) && (
+                      <span
+                        title="Closes the next day"
+                        aria-label="Closes the next day"
+                        className="text-muted-foreground/80 -ml-0.5 text-[9px] font-semibold tracking-wider uppercase select-none"
+                      >
+                        +1d
+                      </span>
+                    )}
                     {d.ranges.length > 1 && (
                       <button
                         type="button"
