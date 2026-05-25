@@ -199,7 +199,7 @@ export async function apiFetchPublicVenues(
 ): Promise<Venue[]> {
   const { venues } = await invokeEF<{ venues: Venue[] }>(
     client,
-    "guest-list-venues",
+    "consumer-list-venues",
     { limit },
   );
   return venues.map(stripInsecurePhotos);
@@ -212,7 +212,7 @@ export async function apiGetVenue(
   try {
     const { venue } = await invokeEF<{ venue: Venue }>(
       client,
-      "guest-get-venue",
+      "consumer-get-venue",
       looksLikeUuid(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
     );
     return stripInsecurePhotos(venue);
@@ -241,7 +241,7 @@ export async function apiRecommendDeck(
 ): Promise<RecommendDeckResponse> {
   const data = await invokeEF<RecommendDeckResponse>(
     client,
-    "guest-recommend-deck",
+    "consumer-recommend-deck",
     input,
   );
   return {
@@ -256,7 +256,7 @@ export async function apiRecommendCatalog(
 ): Promise<RecommendCatalogResponse> {
   const data = await invokeEF<RecommendCatalogResponse>(
     client,
-    "guest-recommend-catalog",
+    "consumer-recommend-catalog",
     input,
   );
   return {

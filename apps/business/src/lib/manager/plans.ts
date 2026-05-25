@@ -64,7 +64,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     label: "Pro with Discounts",
     price: "$500",
     cadence: "MX / year",
-    tagline: "Guest shows the coupon, you discount the bill.",
+    tagline: "Consumer shows the coupon, you discount the bill.",
     visibility: "Medium",
     setup: "1 min",
   },
@@ -73,7 +73,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     label: "Pro with Cashbacks",
     price: "$1,000",
     cadence: "MX / year",
-    tagline: "Card runs through Mesita, returned to the guest's wallet.",
+    tagline: "Card runs through Mesita, returned to the consumer's wallet.",
     visibility: "High",
     setup: "10 min · connect business",
     // Locked until the Mesita-in-the-loop payment + wallet settlement path

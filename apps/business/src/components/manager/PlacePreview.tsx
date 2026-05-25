@@ -3,19 +3,19 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Eye, Layers, Sparkles, Smartphone } from "lucide-react";
-import { VenueSwipeCardFace } from "@/components/guest/VenueSwipeCardFace";
-import { VenueCatalogCard } from "@/components/guest/VenueCatalogCard";
+import { VenueSwipeCardFace } from "@/components/consumer/VenueSwipeCardFace";
+import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 import { PartnerBadge, RatePill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 
-// Preview of how the venue surfaces inside the guest app. Renders on the
+// Preview of how the venue surfaces inside the consumer app. Renders on the
 // /home page so the manager always sees their public face at a glance.
-// To change what guests see, edit in Place and save — this preview reads
+// To change what consumers see, edit in Place and save — this preview reads
 // the persisted state, not a draft.
 //
-// Cross-route imports note: the guest UI components live under
-// src/components/guest/* — Next.js app router doesn't enforce any "guest
+// Cross-route imports note: the consumer UI components live under
+// src/components/consumer/* — Next.js app router doesn't enforce any "consumer
 // app" vs "manager app" boundary, so importing from there into a manager
 // surface is idiomatic.
 
@@ -35,11 +35,11 @@ export function PlacePreview({ venue }: { venue: Venue }) {
       <header className="mb-4 flex flex-col items-start gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="font-display text-lg font-semibold tracking-tight">
-            Live guest preview
+            Live consumer preview
           </h3>
           <p className="text-muted-foreground mt-1 text-xs">
-            What guests see across the swipe deck, catalog rows, and venue page.
-            Edit your venue in Place to update.
+            What consumers see across the swipe deck, catalog rows, and venue
+            page. Edit your venue in Place to update.
           </p>
         </div>
       </header>
@@ -73,7 +73,7 @@ export function PlacePreview({ venue }: { venue: Venue }) {
 }
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
-  // A minimal phone-shaped frame for embedding guest surfaces inside the
+  // A minimal phone-shaped frame for embedding consumer surfaces inside the
   // manager dashboard. Smaller than the real MobileFrame so it fits as a
   // preview panel rather than dominating the page.
   return (
@@ -125,7 +125,7 @@ function CatalogPreview({ venue }: { venue: Venue }) {
 }
 
 function DetailPreview({ venue }: { venue: Venue }) {
-  // Mimics the top of /guest/venue/[id] — hero photo + title block + the
+  // Mimics the top of /consumer/venue/[id] — hero photo + title block + the
   // cashback hero strip when the venue is a partner with a rate. Kept as
   // an inert snippet; full detail page features (story, channels, map
   // link) aren't reproduced — for those, the preview is "good enough".

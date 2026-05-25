@@ -79,9 +79,9 @@ export function AuthTabs({
       )}
 
       <p className="text-muted-foreground mt-6 text-center text-[12.5px]">
-        Guest accounts use the{" "}
+        Consumer accounts use the{" "}
         <Link
-          href="https://guest.mesita.ai"
+          href="https://consumer.mesita.ai"
           className="text-foreground font-semibold hover:underline"
         >
           phone sign-in

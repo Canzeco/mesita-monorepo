@@ -6,9 +6,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-// ─── Guest profile ───────────────────────────────────────────────────────
+// ─── Consumer profile ───────────────────────────────────────────────────────
 
-export type GuestProfile = {
+export type ConsumerProfile = {
   id: string;
   code: string;
   full_name: string | null;
@@ -19,42 +19,42 @@ export type GuestProfile = {
   cashback_balance_cents: number;
 };
 
-export type GuestOnboardingInput = {
+export type ConsumerOnboardingInput = {
   full_name: string;
   sex: "male" | "female" | "other";
   birthday: string; // YYYY-MM-DD
   country: string;
   // Optional — phone is the auth identity and lives on auth.user.phone.
-  // guest-update-profile mirrors it into guests.phone on first call.
+  // consumer-update-profile mirrors it into consumers.phone on first call.
   phone?: string;
 };
 
-export type GuestFullProfile = GuestProfile & {
+export type ConsumerFullProfile = ConsumerProfile & {
   sex: string | null;
   birthday: string | null;
   country: string | null;
 };
 
-export async function apiUpdateGuestProfile(
+export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
-  input: GuestOnboardingInput,
-): Promise<GuestFullProfile> {
-  const { guest } = await invokeEF<{ guest: GuestFullProfile }>(
+  input: ConsumerOnboardingInput,
+): Promise<ConsumerFullProfile> {
+  const { consumer } = await invokeEF<{ consumer: ConsumerFullProfile }>(
     client,
-    "guest-update-profile",
+    "consumer-update-profile",
     input,
   );
-  return guest;
+  return consumer;
 }
 
-// Destructive: drops the caller's guest row + every dependent ticket /
+// Destructive: drops the caller's consumer row + every dependent ticket /
 // cashback_ledger entry, plus the auth.users row so the email can
 // re-sign-up clean. Caller's session ends — the client should sign out
 // and redirect to the sign-in page after.
-export async function apiDeleteGuestAccount(
+export async function apiDeleteConsumerAccount(
   client: SupabaseClient,
 ): Promise<{ id: string }> {
-  return await invokeEF<{ id: string }>(client, "guest-delete-account", {});
+  return await invokeEF<{ id: string }>(client, "consumer-delete-account", {});
 }
 
 // ─── Ticket taxonomy ─────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ const RESERVATION_KINDS: ReadonlySet<TicketKind> = new Set([
   "r_s_dp_sf",
 ]);
 
-// Human-readable label per kind. Kept here so both validator + guest views
+// Human-readable label per kind. Kept here so both validator + consumer views
 // share the same vocabulary.
 export const KIND_LABEL: Record<TicketKind, string> = {
   none: "No transaction",
@@ -171,7 +171,7 @@ export type Ticket = {
   cancel_reason?: string | null;
 };
 
-export type GuestTicket = Ticket & {
+export type ConsumerTicket = Ticket & {
   venue: {
     id: string;
     name: string;
@@ -182,29 +182,29 @@ export type GuestTicket = Ticket & {
 };
 
 export type VenueTicket = Ticket & {
-  guest: { id: string; code: string; full_name: string | null } | null;
+  consumer: { id: string; code: string; full_name: string | null } | null;
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────
 
-export async function apiFetchGuestProfile(
+export async function apiFetchConsumerProfile(
   client: SupabaseClient,
-): Promise<GuestProfile> {
-  const { guest } = await invokeEF<{ guest: GuestProfile }>(
+): Promise<ConsumerProfile> {
+  const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,
-    "guest-get-profile",
+    "consumer-get-profile",
     {},
   );
-  return guest;
+  return consumer;
 }
 
 export async function apiFetchMyTickets(
   client: SupabaseClient,
   limit = 20,
-): Promise<GuestTicket[]> {
-  const { tickets } = await invokeEF<{ tickets: GuestTicket[] }>(
+): Promise<ConsumerTicket[]> {
+  const { tickets } = await invokeEF<{ tickets: ConsumerTicket[] }>(
     client,
-    "guest-list-tickets",
+    "consumer-list-tickets",
     { limit },
   );
   return tickets;
@@ -227,7 +227,7 @@ export async function apiFetchVenueTickets(
 
 export type CreateTicketInput = {
   venueId: string;
-  guestCode: string;
+  consumerCode: string;
   kind: TicketKind;
   checkSubtotalCents: number;
   tipCents: number;
@@ -249,7 +249,7 @@ export type CreateTicketInput = {
 type CreateTicketPayload = {
   ticket: Ticket;
   venue: { id: string; name: string; fiscal_type: FiscalType };
-  guest: { id: string; code: string; full_name: string | null };
+  consumer: { id: string; code: string; full_name: string | null };
 };
 
 export async function apiCreateTicket(
@@ -271,7 +271,7 @@ export type MarkPaidResult = {
   ticket: MarkPaidTicket;
   cashbackCreditedCents: number;
   cashbackRedeemedCents: number;
-  guestBalanceAfterCents: number | null;
+  consumerBalanceAfterCents: number | null;
   alreadyPaid: boolean;
   awaitingStory: boolean;
 };
@@ -282,7 +282,7 @@ type MarkPaidPayload = {
   ticket: MarkPaidTicket;
   cashbackCreditedCents: number;
   cashbackRedeemedCents?: number;
-  guestBalanceAfterCents: number | null;
+  consumerBalanceAfterCents: number | null;
   alreadyPaid?: boolean;
   awaitingStory?: boolean;
 };
@@ -298,29 +298,29 @@ export async function apiMarkTicketPaid(
     ticket: data.ticket,
     cashbackCreditedCents: data.cashbackCreditedCents,
     cashbackRedeemedCents: data.cashbackRedeemedCents ?? 0,
-    guestBalanceAfterCents: data.guestBalanceAfterCents,
+    consumerBalanceAfterCents: data.consumerBalanceAfterCents,
     alreadyPaid: data.alreadyPaid ?? false,
     awaitingStory: data.awaitingStory ?? false,
   };
 }
 
-export type GuestLookupResult = {
+export type ConsumerLookupResult = {
   id: string;
   code: string;
   full_name: string | null;
   cashback_balance_cents: number;
 };
 
-export async function apiLookupGuest(
+export async function apiLookupConsumer(
   client: SupabaseClient,
   code: string,
-): Promise<GuestLookupResult> {
-  const { guest } = await invokeEF<{ guest: GuestLookupResult }>(
+): Promise<ConsumerLookupResult> {
+  const { consumer } = await invokeEF<{ consumer: ConsumerLookupResult }>(
     client,
-    "manager-find-guest",
+    "manager-find-consumer",
     { code },
   );
-  return guest;
+  return consumer;
 }
 
 export async function apiCancelTicket(
@@ -341,7 +341,7 @@ export type VerifyStoryResult = {
   ticket: Ticket;
   cashbackCreditedCents: number;
   cashbackRedeemedCents: number;
-  guestBalanceAfterCents: number | null;
+  consumerBalanceAfterCents: number | null;
 };
 
 // EF response widens VerifyStoryResult with an idempotency flag we drop
@@ -361,7 +361,7 @@ export async function apiVerifyStory(
     ticket: data.ticket,
     cashbackCreditedCents: data.cashbackCreditedCents,
     cashbackRedeemedCents: data.cashbackRedeemedCents,
-    guestBalanceAfterCents: data.guestBalanceAfterCents,
+    consumerBalanceAfterCents: data.consumerBalanceAfterCents,
   };
 }
 
@@ -375,13 +375,13 @@ export async function apiSubmitStory(
 ): Promise<Ticket> {
   const { ticket } = await invokeEF<SubmitStoryPayload>(
     client,
-    "guest-submit-story",
+    "consumer-submit-story",
     input,
   );
   return ticket;
 }
 
-// ─── Step timeline (drives the guest's progress card) ────────────────────
+// ─── Step timeline (drives the consumer's progress card) ────────────────────
 
 export type WorkflowStep = {
   id: string;
@@ -393,7 +393,7 @@ export type WorkflowStep = {
 };
 
 /**
- * Build the step timeline for a single ticket so the guest can see exactly
+ * Build the step timeline for a single ticket so the consumer can see exactly
  * where the flow is. Pure function: no side effects, no fetches — the caller
  * passes the already-fetched ticket. The 10-type taxonomy maps onto this
  * helper one-to-one, so adding/removing a kind only touches this file.

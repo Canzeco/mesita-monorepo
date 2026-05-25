@@ -55,7 +55,7 @@ export function TicketTypesCard({
 }) {
   const rows = isFormal ? FORMAL_REFERENCE : INFORMAL_REFERENCE;
   const subtitle = isFormal
-    ? "Five cashback flows — each builds on None by adding Reservation, Story, or both. Cashback never lands until the story is verified, so failed stories cost the guest the cashback (not the venue)."
+    ? "Five cashback flows — each builds on None by adding Reservation, Story, or both. Cashback never lands until the story is verified, so failed stories cost the consumer the cashback (not the venue)."
     : "Five discount flows — each builds on None by adding Reservation, Story, or both. The story is verified post-checkout; if it fails, the discount was already applied at the bill. That's the vulnerability flag below.";
   return (
     <section className="border-border bg-card rounded-2xl border p-5">

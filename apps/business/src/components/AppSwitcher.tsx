@@ -5,11 +5,16 @@ import { usePathname } from "next/navigation";
 import { UserCircle, Store, ScanLine, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// "/guest" forwards to the right surface based on auth state so the switcher
+// "/consumer" forwards to the right surface based on auth state so the switcher
 // works for both signed-in and signed-out users without us having to know
 // which they are at render time.
 const APPS = [
-  { href: "/guest", match: "/guest", label: "Guest", Icon: UserCircle },
+  {
+    href: "/consumer",
+    match: "/consumer",
+    label: "Consumer",
+    Icon: UserCircle,
+  },
   { href: "/manager", match: "/manager", label: "Manager", Icon: Store },
   {
     href: "/validator",

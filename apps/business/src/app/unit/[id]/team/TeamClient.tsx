@@ -311,7 +311,7 @@ export function TeamClient({
       {/* ── Waiters ──────────────────────────────────────────────── */}
       <Section
         title="Waiters"
-        description="Validate guest tickets from their own phone via WhatsApp or SMS."
+        description="Validate consumer tickets from their own phone via WhatsApp or SMS."
         right={
           <InviteButton
             label="Invite waiter"

@@ -649,20 +649,20 @@ function OpenInGoogleMaps({
 type PreviewView = "swipe" | "catalog";
 
 function PreviewSection({ venue, v }: { venue: MyVenue; v: FormState }) {
-  // Mirrors the two card surfaces the guest app actually renders for a
+  // Mirrors the two card surfaces the consumer app actually renders for a
   // place: `VenueSwipeCardFace` (full-bleed photo card with overlay) on
   // /discover/swipe and `VenueCatalogCard` (4:3 photo + row of meta) on
   // /discover/catalog. Both repos define those components but they
   // can't be cross-imported, and the manager's MyVenue shape differs
-  // slightly from the guest's Venue (no closes_at, listing_type,
+  // slightly from the consumer's Venue (no closes_at, listing_type,
   // cashback_percent here). So this section reproduces the visuals in
   // place, pulling live `v` state so the preview reacts as the manager
   // types in Basics.
   //
   // Both views render in hard-coded dark zinc colors instead of the
-  // manager's tokens (bg-card etc.) so they look like the guest's
+  // manager's tokens (bg-card etc.) so they look like the consumer's
   // actual dark theme even though we're inside the light manager UI.
-  // Per the theme-strategy memory: guest is dark, manager is light,
+  // Per the theme-strategy memory: consumer is dark, manager is light,
   // and we don't unify — so previews bring their own dark.
   const [view, setView] = useState<PreviewView>("swipe");
   return (
@@ -723,7 +723,7 @@ function PreviewTab({
 }
 
 function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
-  // Compact mirror of VenueSwipeCardFace in the guest repo: full-bleed
+  // Compact mirror of VenueSwipeCardFace in the consumer repo: full-bleed
   // cover, bottom overlay with category + name + price meta. No drag
   // logic — just the visual face.
   const cover = v.photos[0] ?? null;
@@ -765,7 +765,7 @@ function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
 }
 
 function PreviewCatalogCard({ venue, v }: { venue: MyVenue; v: FormState }) {
-  // Compact mirror of VenueCatalogCard in the guest repo: 4:3 photo,
+  // Compact mirror of VenueCatalogCard in the consumer repo: 4:3 photo,
   // then a name + category + price meta block underneath. Constrained
   // width so the proportions read like a row in a 2-col catalog list.
   const cover = v.photos[0] ?? null;

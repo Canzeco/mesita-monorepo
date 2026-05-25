@@ -9,11 +9,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type AppRole = "guest" | "staff" | "manager" | "admin";
+export type AppRole = "consumer" | "staff" | "manager" | "admin";
 
-export type GuestSigninResult = {
+export type ConsumerSigninResult = {
   role: AppRole;
-  guest: {
+  consumer: {
     id: string;
     code: string;
     full_name: string | null;
@@ -22,10 +22,10 @@ export type GuestSigninResult = {
   onboarded: boolean;
 };
 
-export async function apiGuestSigninPhone(
+export async function apiConsumerSigninPhone(
   client: SupabaseClient,
-): Promise<GuestSigninResult> {
-  return invokeEF<GuestSigninResult>(client, "guest-signin-phone", {});
+): Promise<ConsumerSigninResult> {
+  return invokeEF<ConsumerSigninResult>(client, "consumer-signin-phone", {});
 }
 
 export type ManagerSigninResult = {

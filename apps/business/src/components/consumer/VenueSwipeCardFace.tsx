@@ -14,7 +14,7 @@ import { ImageCarousel } from "./ImageCarousel";
 //   - PlacePreview on the manager Place page (frozen frame, optional carousel)
 //
 // Swipe gesture state intentionally lives outside this component — this is
-// only the visuals, so anything that needs to display a "what guests see"
+// only the visuals, so anything that needs to display a "what consumers see"
 // card can drop it in without inheriting drag logic.
 
 // 30 days from now in ms — the "New" badge only fires for venues onboarded
@@ -31,7 +31,7 @@ export function VenueSwipeCardFace({
   className,
 }: {
   venue: Venue;
-  /** True on the front swipe card so guests can browse photos. The back peek
+  /** True on the front swipe card so consumers can browse photos. The back peek
    *  and the preview both use the frozen single-photo background. */
   carousel?: boolean;
   priority?: boolean;
