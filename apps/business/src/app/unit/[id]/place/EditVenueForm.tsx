@@ -672,6 +672,7 @@ function PreviewSection({
   return (
     <Section
       title="Preview"
+      className="h-full"
       right={
         <div className="bg-muted inline-flex items-center rounded-full p-0.5 text-[11px] font-semibold">
           <PreviewTab
@@ -689,7 +690,7 @@ function PreviewSection({
         </div>
       }
     >
-      <div className="bg-zinc-950 -mx-1 -mb-1 rounded-xl p-3">
+      <div className="bg-zinc-950 -mx-1 -mb-1 flex flex-1 items-center justify-center rounded-xl p-3">
         {view === "swipe" ? (
           <PreviewSwipeCard venue={venue} v={v} />
         ) : (
