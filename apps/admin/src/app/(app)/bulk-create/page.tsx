@@ -27,7 +27,7 @@ export default function BulkCreateUnitsPage() {
               Pre-read research snapshots
             </p>
             <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-              When ON, each new venue's research path checks existing
+              When ON, each new venue&apos;s research path checks existing
               Storage snapshots first and only fetches what&apos;s missing.
               When OFF, the batch fetches from scratch. Snapshots are
               saved either way.
