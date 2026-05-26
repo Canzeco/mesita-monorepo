@@ -5,6 +5,14 @@ import { BottomNav } from "@/components/consumer/BottomNav";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/tickets";
 
+// Every route under /(shell) calls supabase.auth.getUser() via this layout
+// and therefore can never be prerendered to static HTML. Mark the segment
+// dynamic so Next.js skips the page-data collection pass — otherwise a
+// pure-client page like /discover/ai (which renders fine at runtime) trips
+// the layout's createServerSupabase() at build time and the whole build
+// exits with a "Missing NEXT_PUBLIC_SUPABASE_URL" error.
+export const dynamic = "force-dynamic";
+
 // Mandatory onboarding gate for every page inside /(shell).
 //
 // No exceptions: a consumer with a half-filled profile (no name / country /
