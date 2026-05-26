@@ -6,7 +6,6 @@ import {
   LayoutGrid,
   MapPin,
   Package,
-  Plus,
   Sparkles,
   Users,
   Wrench,
@@ -199,13 +198,16 @@ function VenueHub({
             </Link>
           ))}
         </div>
-        <Link
-          href="/add"
-          className="border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground mt-3 flex items-center justify-center gap-2 rounded-[18px] border border-dashed py-4 text-sm font-medium transition"
-        >
-          <Plus className="h-4 w-4" />
-          Add another place
-        </Link>
+        <div className="mt-8">
+          <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
+            Add another
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {ENTITY_OPTIONS.map((opt) => (
+              <AddEntityTile key={opt.label} option={opt} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
