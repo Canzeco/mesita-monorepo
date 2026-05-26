@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Crown,
   Instagram,
+  Linkedin,
   BadgeCheck,
   ChevronRight,
   Check,
@@ -14,7 +15,6 @@ import {
   Shield,
   HelpCircle,
 } from "lucide-react";
-import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   CURRENT_USER,
@@ -23,6 +23,8 @@ import {
   tierBadgeClass,
 } from "@/lib/consumer-data";
 import { cn, firstInitial } from "@/lib/utils";
+
+type SocialPlatform = "instagram" | "linkedin";
 
 type Tab = "class" | "settings";
 
@@ -45,7 +47,9 @@ export type RealIdentity = {
 
 export function ProfileClient({ identity }: { identity: RealIdentity }) {
   const [tab, setTab] = useState<Tab>("class");
-  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyPlatform, setVerifyPlatform] = useState<SocialPlatform | null>(
+    null,
+  );
 
   // Display name: prefer the onboard-supplied full_name; otherwise the
   // email local-part as a fallback. Never the mock CURRENT_USER.name.
@@ -69,9 +73,7 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
 
   return (
     <div className="flex h-full flex-col">
-      <SimpleHeader title="Mesita" eyebrow="Profile" />
-
-      <div className="px-5 pt-3">
+      <div className="px-5 pt-5">
         <p className="bg-secondary/10 text-secondary rounded-xl px-3 py-2 text-[11px]">
           Preview — tier, communities and achievements below are mock values.
           Your name, email, country, age and sex are real. Your cashback
@@ -85,15 +87,9 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
             {initial}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="font-display truncate text-2xl font-semibold tracking-tight">
-                {displayName}
-              </h1>
-              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold tracking-wider uppercase">
-                <Crown className="h-3 w-3" />
-                {CURRENT_USER.tier}
-              </span>
-            </div>
+            <h1 className="font-display truncate text-2xl font-semibold tracking-tight">
+              {displayName}
+            </h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
               {subtitleParts.join(" · ")}
             </p>
@@ -128,58 +124,103 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
 
       <div className="scrollbar-hide flex-1 overflow-y-auto px-5 pt-5 pb-8">
         {tab === "class" && (
-          <ClassTab onConnectInstagram={() => setVerifyOpen(true)} />
+          <ClassTab onConnectSocial={(p) => setVerifyPlatform(p)} />
         )}
         {tab === "settings" && <SettingsTab />}
       </div>
 
-      {verifyOpen && (
-        <VerifyInstagramSheet onClose={() => setVerifyOpen(false)} />
+      {verifyPlatform && (
+        <VerifySocialSheet
+          platform={verifyPlatform}
+          onClose={() => setVerifyPlatform(null)}
+        />
       )}
     </div>
   );
 }
 
-function ClassTab({ onConnectInstagram }: { onConnectInstagram: () => void }) {
-  // Order matters: the current class anchors the tab, then the two upgrade
-  // paths (Instagram + Subscribe) sit side by side as the two real routes
-  // up, then the class ladder explains what each tier actually gets, then
-  // the manual appeal sits at the bottom as the rare-case escape hatch.
-  // Communities is hidden for now — gated behind a settings/admin page
-  // until the community boosts ship for real.
+function ClassTab({
+  onConnectSocial,
+}: {
+  onConnectSocial: (platform: SocialPlatform) => void;
+}) {
+  // Order: current class anchors the tab, then the two upgrade paths
+  // (social connect + subscription) lay out the actual routes up, then
+  // the manual appeal sits as the rare-case escape hatch. The class
+  // ladder card is gone — SubscriptionPathBox already lists every tier
+  // with its cashback so it was duplicate context.
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
-      <InstagramPathBox onConnect={onConnectInstagram} />
+      <SocialPathBox onConnect={onConnectSocial} />
       <SubscriptionPathBox />
-      <ClassLadderCard />
       <AppealForUpgradeButton />
     </div>
   );
 }
 
-function InstagramPathBox({ onConnect }: { onConnect: () => void }) {
+function SocialPathBox({
+  onConnect,
+}: {
+  onConnect: (platform: SocialPlatform) => void;
+}) {
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
+        Path 1 · Free
+      </p>
+      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
+        Connect a social account
+      </p>
+      <p className="text-muted-foreground mt-0.5 text-[12px]">
+        1K / 5K / 20K followers maps to Silver / Gold / Diamond instantly.
+      </p>
+      <div className="mt-4 flex flex-col gap-2">
+        <SocialRow
+          platform="instagram"
+          label="Instagram"
+          onClick={() => onConnect("instagram")}
+        />
+        <SocialRow
+          platform="linkedin"
+          label="LinkedIn"
+          onClick={() => onConnect("linkedin")}
+        />
+      </div>
+    </section>
+  );
+}
+
+function SocialRow({
+  platform,
+  label,
+  onClick,
+}: {
+  platform: SocialPlatform;
+  label: string;
+  onClick: () => void;
+}) {
+  const Icon = platform === "instagram" ? Instagram : Linkedin;
+  const badge =
+    platform === "instagram"
+      ? "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]"
+      : "bg-[#0A66C2]";
   return (
     <button
       type="button"
-      onClick={onConnect}
-      className="border-border bg-card flex items-center gap-4 rounded-2xl border p-4 text-left transition hover:shadow-md"
+      onClick={onClick}
+      className="bg-muted/40 hover:bg-muted flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
     >
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white">
-        <Instagram className="h-5 w-5" />
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white",
+          badge,
+        )}
+      >
+        <Icon className="h-4 w-4" />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-          Path 1 · Free
-        </p>
-        <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-          Connect Instagram
-        </p>
-        <p className="text-muted-foreground mt-0.5 text-[12px]">
-          1K / 5K / 20K followers maps to Silver / Gold / Diamond instantly.
-        </p>
-      </div>
-      <span className="bg-pink-gradient rounded-full px-4 py-2 text-[12px] font-semibold text-white shadow-sm">
+      <span className="flex-1 text-sm font-semibold">{label}</span>
+      <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
         Connect
       </span>
     </button>
@@ -201,54 +242,6 @@ function AppealForUpgradeButton() {
       </div>
       <ChevronRight className="text-muted-foreground h-4 w-4" />
     </button>
-  );
-}
-
-// Read-only explainer of what each class gets. The buy/connect surfaces
-// are above — this is the reference card that helps a consumer understand
-// why upgrading is worth it.
-function ClassLadderCard() {
-  return (
-    <section className="border-border bg-card rounded-2xl border p-5 shadow-sm">
-      <header className="flex items-center justify-between">
-        <p className="text-secondary text-[10px] font-medium tracking-[0.14em] uppercase">
-          Class ladder
-        </p>
-        <span className="text-muted-foreground text-[11px]">
-          Same at every partner
-        </span>
-      </header>
-      <p className="text-muted-foreground mt-2 text-[12px] leading-relaxed">
-        Higher class = more cashback at every Verified Partner. The rate per
-        class is set by each venue inside Mesita.
-      </p>
-      <ul className="mt-3 flex flex-col gap-2">
-        {TIERS.map((t) => (
-          <li
-            key={t.id}
-            className="bg-muted/30 flex items-center gap-3 rounded-xl px-3 py-2.5"
-          >
-            <span
-              className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                tierBadgeClass(t.id),
-              )}
-            >
-              {t.label[0]}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-sm font-semibold tracking-tight">
-                Mesita {t.label}
-              </p>
-              <p className="text-muted-foreground text-[11px]">{t.cashback}</p>
-            </div>
-            <p className="text-foreground shrink-0 text-[11px] font-semibold">
-              {t.perk}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -455,8 +448,57 @@ function SettingsTab() {
   );
 }
 
-function VerifyInstagramSheet({ onClose }: { onClose: () => void }) {
+function VerifySocialSheet({
+  platform,
+  onClose,
+}: {
+  platform: SocialPlatform;
+  onClose: () => void;
+}) {
   const [code, setCode] = useState("");
+  const cfg =
+    platform === "instagram"
+      ? {
+          Icon: Instagram,
+          iconBg:
+            "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]",
+          title: "Verify Instagram",
+          handle: "@mesita.bot",
+          platformLabel: "Instagram",
+          dmInstruction: (
+            <>
+              DM <span className="text-secondary">@mesita.bot</span> with the
+              word <span className="text-secondary font-mono">VERIFY</span>.
+            </>
+          ),
+          followInstruction: (
+            <>
+              Follow <span className="text-secondary">@mesita.bot</span> on
+              Instagram.
+            </>
+          ),
+        }
+      : {
+          Icon: Linkedin,
+          iconBg: "bg-[#0A66C2]",
+          title: "Verify LinkedIn",
+          handle: "Mesita",
+          platformLabel: "LinkedIn",
+          dmInstruction: (
+            <>
+              Message <span className="text-secondary">Mesita</span> on
+              LinkedIn with the word{" "}
+              <span className="text-secondary font-mono">VERIFY</span>.
+            </>
+          ),
+          followInstruction: (
+            <>
+              Connect with <span className="text-secondary">Mesita</span> on
+              LinkedIn.
+            </>
+          ),
+        };
+  const { Icon } = cfg;
   return (
     <div className="absolute inset-0 z-50 flex items-end">
       <div
@@ -467,29 +509,28 @@ function VerifyInstagramSheet({ onClose }: { onClose: () => void }) {
       <div className="bg-card shadow-elev relative z-10 w-full rounded-t-3xl p-5">
         <div className="bg-foreground/30 mx-auto mb-3 h-1 w-12 rounded-full" />
         <div className="flex items-start gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white">
-            <Instagram className="h-5 w-5" />
+          <span
+            className={cn(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white",
+              cfg.iconBg,
+            )}
+          >
+            <Icon className="h-5 w-5" />
           </span>
           <div>
             <h2 className="font-display text-xl font-semibold tracking-tight">
-              Verify Instagram
+              {cfg.title}
             </h2>
             <p className="text-muted-foreground text-[12px]">
-              via <span className="text-foreground">@mesita.bot</span> ·
+              via <span className="text-foreground">{cfg.handle}</span> ·
               1-minute setup
             </p>
           </div>
         </div>
         <ol className="mt-5 flex flex-col gap-3">
           {[
-            <>
-              Follow <span className="text-secondary">@mesita.bot</span> on
-              Instagram.
-            </>,
-            <>
-              DM <span className="text-secondary">@mesita.bot</span> with the
-              word <span className="text-secondary font-mono">VERIFY</span>.
-            </>,
+            cfg.followInstruction,
+            cfg.dmInstruction,
             <>
               Mesita will reply with an 8-digit verification code. Paste it
               here.
@@ -532,7 +573,7 @@ function VerifyInstagramSheet({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-muted-foreground mt-3 text-center text-[11px]">
-          We never ask for your Instagram password.
+          We never ask for your {cfg.platformLabel} password.
         </p>
       </div>
     </div>
