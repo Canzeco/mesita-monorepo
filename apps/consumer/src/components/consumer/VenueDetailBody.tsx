@@ -33,9 +33,9 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
 export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
-    <div className="flex flex-col gap-3 px-4 pt-16">
-      <SummaryHeader venue={venue} />
+    <div className="flex flex-col gap-3 px-4 pb-0">
       <MediaBox venue={venue} />
+      <SummaryHeader venue={venue} />
       <ReviewsSummaryBox venue={venue} />
       <IndividualReviewsBox venue={venue} />
       <MenuBox venue={venue} />
@@ -148,8 +148,10 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
 // ── 2. Media ────────────────────────────────────────────────────────────
 
 function MediaBox({ venue }: { venue: VenueDetail }) {
+  // Hero treatment: bleeds past the body's px-4 so the photo spans the
+  // full page width under the sticky top bar.
   return (
-    <Box bare>
+    <div className="-mx-4 overflow-hidden">
       {venue.photos.length > 0 ? (
         <ImageCarousel
           photos={venue.photos}
@@ -163,7 +165,7 @@ function MediaBox({ venue }: { venue: VenueDetail }) {
           </span>
         </div>
       )}
-    </Box>
+    </div>
   );
 }
 
