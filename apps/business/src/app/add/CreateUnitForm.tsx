@@ -37,6 +37,7 @@ import {
 } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
+import { isOtpCode } from "@/lib/validators";
 
 const SEARCH_DEBOUNCE_MS = 220;
 
@@ -798,7 +799,7 @@ function PhoneBody({
     e.preventDefault();
     if (state.kind !== "awaiting_code") return;
     const code = otpCode.trim();
-    if (!/^\d{6}$/.test(code)) {
+    if (!isOtpCode(code)) {
       setError("Code must be 6 digits.");
       return;
     }
@@ -974,7 +975,7 @@ function EmailBody({
     e.preventDefault();
     if (state.kind !== "awaiting_code") return;
     const code = otpCode.trim();
-    if (!/^\d{6}$/.test(code)) {
+    if (!isOtpCode(code)) {
       setError("Code must be 6 digits.");
       return;
     }
