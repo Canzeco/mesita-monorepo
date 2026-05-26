@@ -440,45 +440,35 @@ function GoogleCard({
 function MenuBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
-      <div className="bg-background flex items-center gap-3 rounded-xl p-3">
-        <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
-          <Utensils className="h-4 w-4" />
-        </div>
-        <div className="flex-1">
-          <p className="font-display text-base font-semibold">Full menu</p>
-          <p className="text-muted-foreground text-xs">
-            {venue.menu.pages} pages · {venue.menu.updated_label}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="bg-foreground text-background inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold"
-        >
-          View
-          <ChevronRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <BoxHScroll>
-        {venue.menu.dishes.map((d) => (
-          <div
-            key={d.name}
-            className="bg-background flex w-32 shrink-0 flex-col overflow-hidden rounded-2xl"
-          >
-            <div className="bg-pink-gradient flex aspect-square items-center justify-center">
-              <span className="font-display text-3xl font-bold text-white/70">
-                {firstInitial(d.name)}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5 p-3">
-              <p className="line-clamp-2 text-[12px] font-semibold leading-tight">
-                {d.name}
-              </p>
-              <p className="text-muted-foreground text-[11px]">{d.price}</p>
-            </div>
-          </div>
-        ))}
-      </BoxHScroll>
+      {venue.menus.map((m) => (
+        <MenuRow key={m.name} menu={m} />
+      ))}
     </Box>
+  );
+}
+
+function MenuRow({ menu }: { menu: VenueDetail["menus"][number] }) {
+  return (
+    <div className="bg-background flex items-center gap-3 rounded-xl p-3">
+      <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
+        <Utensils className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-display truncate text-base font-semibold">
+          {menu.name}
+        </p>
+        <p className="text-muted-foreground truncate text-xs">
+          {menu.pages} pages · {menu.updated_label}
+        </p>
+      </div>
+      <button
+        type="button"
+        className="bg-foreground text-background inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold"
+      >
+        View
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }
 

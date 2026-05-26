@@ -62,12 +62,12 @@ export type VenueDetail = {
     value: number;
   }>;
 
-  // 6. Menu
-  menu: {
+  // 6. Menu — multiple menus per venue (dinner, wine, cocktails, etc.)
+  menus: Array<{
+    name: string;
     pages: number;
     updated_label: string;
-    dishes: Array<{ name: string; price: string }>;
-  };
+  }>;
 
   // 7. Promotion
   promo: {
@@ -246,17 +246,23 @@ export const mockVenue: VenueDetail = {
     },
   ],
 
-  menu: {
-    pages: 6,
-    updated_label: "updated last week",
-    dishes: [
-      { name: "Ribeye Sonorense", price: "MX$890" },
-      { name: "Arrachera al carbón", price: "MX$520" },
-      { name: "Pulpo a la brasa", price: "MX$480" },
-      { name: "Tartare de atún", price: "MX$360" },
-      { name: "Chocolate fundido", price: "MX$220" },
-    ],
-  },
+  menus: [
+    {
+      name: "Dinner menu",
+      pages: 6,
+      updated_label: "updated last week",
+    },
+    {
+      name: "Wine list",
+      pages: 12,
+      updated_label: "updated 2 weeks ago",
+    },
+    {
+      name: "Cocktail list",
+      pages: 4,
+      updated_label: "updated last week",
+    },
+  ],
 
   promo: {
     badge_label: "Verified partner",
