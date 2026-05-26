@@ -43,15 +43,15 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
     <div className="flex flex-col gap-3 px-4 pb-0">
       <MediaBox venue={venue} />
       <SummaryHeader venue={venue} />
-      <RewardsBox venue={venue} />
       <ReviewsSummaryBox venue={venue} />
       <IndividualReviewsBox venue={venue} />
       <MenuBox venue={venue} />
       <LocationBox venue={venue} />
       <HoursBox venue={venue} />
-      <AboutBox text={venue.long_description} />
       <LinksBox venue={venue} />
+      <AboutBox text={venue.long_description} />
       <DetailsBox venue={venue} />
+      <RewardsBox venue={venue} />
       <ActionBar />
     </div>
   );
