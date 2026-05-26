@@ -47,6 +47,10 @@ type Venue = {
   category: string | null;
   vibe: string | null;
   price_level: number | null;
+  // ISO 4217 currency code (e.g. "MXN", "USD"). Every monetary amount
+  // on this venue — price ranges, reward cap, future cover charges —
+  // is denominated in this currency. Defaults to MXN on the DB side.
+  currency: string;
   listing_type: VenueListingType;
   status: VenueStatus;
   fiscal_type: FiscalType;
@@ -202,6 +206,9 @@ export type UpdateVenueInput = {
   category?: string | null;
   vibe?: string | null;
   price_level?: number | null;
+  // Three-letter ISO 4217 code, e.g. "MXN". Sent uppercase; the EF
+  // validates the shape and rejects anything else.
+  currency?: string | null;
   status?: "active" | "paused" | "archived";
   fiscal_type?: FiscalType;
   plan?: VenuePlan;
