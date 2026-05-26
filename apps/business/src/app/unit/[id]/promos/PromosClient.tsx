@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CreditCard,
@@ -14,7 +14,7 @@ import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
 import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
-import { ERROR_BOX_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
   SUBSCRIPTIONS,
   subscriptionForVenue,
@@ -190,6 +190,13 @@ function ColumnHeader({ children }: { children: React.ReactNode }) {
 
 // ─── Visibility rail ──────────────────────────────────────────────────────
 
+// Visibility rail. Five levels (Low → Max). Mesita shows higher-plan
+// venues to more guests on every discovery surface (swipe, catalog,
+// map), so the business needs to see at a glance where their plan lands
+// on the ladder. Previous design used 5 × 2 paired bars; the redesign
+// drops to one stepped dot-ladder with the current node ringed + a
+// big "Step X of 5 · <label>" headline so the answer is immediate.
+
 function VisibilityRail({
   plan,
 }: {
@@ -207,46 +214,58 @@ function VisibilityRail({
 
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
+      <div className="flex items-baseline justify-between gap-2">
         <h3 className="font-display text-sm font-semibold tracking-tight">
           Visibility
         </h3>
-        <span className={TINY_LABEL_CLASS}>{current}</span>
+        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+          Step {currentIdx + 1} of {levels.length}
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <p className="font-display text-foreground mt-1 text-2xl font-semibold leading-none tracking-tight">
+        {current}
+      </p>
+
+      <div className="mt-5 flex items-center">
         {levels.map((l, i) => {
-          const reached = i <= currentIdx;
+          const reached = i < currentIdx;
           const isCurrent = i === currentIdx;
           return (
-            <div
-              key={l.label}
-              className="flex flex-1 flex-col items-center gap-1.5"
-            >
-              <div className="flex w-full gap-1">
+            <Fragment key={l.label}>
+              {i > 0 && (
                 <div
                   className={cn(
-                    "h-1.5 flex-1 rounded-full",
-                    reached ? "bg-pink-gradient" : "bg-muted",
+                    "h-1 flex-1 rounded-full",
+                    i <= currentIdx ? "bg-pink-gradient" : "bg-muted",
                   )}
                 />
-                <div
-                  className={cn(
-                    "h-1.5 flex-1 rounded-full",
-                    reached ? "bg-pink-gradient" : "bg-muted",
-                  )}
-                />
-              </div>
-              <span
+              )}
+              <div
                 className={cn(
-                  "text-[9px] font-semibold tracking-wider uppercase",
-                  isCurrent ? "text-foreground" : "text-muted-foreground",
+                  "shrink-0 rounded-full transition",
+                  isCurrent
+                    ? "bg-pink-gradient shadow-glow ring-pink-500/30 h-4 w-4 ring-4"
+                    : reached
+                      ? "bg-pink-gradient h-3 w-3"
+                      : "bg-muted h-3 w-3",
                 )}
-              >
-                {l.label}
-              </span>
-            </div>
+              />
+            </Fragment>
           );
         })}
+      </div>
+
+      <div className="mt-2 flex justify-between text-[9px] font-semibold tracking-wider uppercase">
+        {levels.map((l, i) => (
+          <span
+            key={l.label}
+            className={cn(
+              i === currentIdx ? "text-foreground" : "text-muted-foreground/70",
+            )}
+          >
+            {l.label}
+          </span>
+        ))}
       </div>
     </section>
   );
