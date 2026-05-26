@@ -17,6 +17,7 @@ import type {
   SearchResponse,
   SearchErrorResponse,
 } from "@/lib/places-types";
+import { formatShortDate } from "@/lib/format";
 
 const MAX_QUERIES = 200;
 const MAX_RESULTS = 50;
@@ -567,16 +568,6 @@ function QueryRow({
 function csvCell(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
-}
-
-function formatShortDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function formatUsdEstimate(amount: number): string {
