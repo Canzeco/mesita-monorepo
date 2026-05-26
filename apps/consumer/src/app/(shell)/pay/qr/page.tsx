@@ -4,6 +4,7 @@ import { apiFetchConsumerProfile, apiFetchMyTickets } from "@/lib/api/tickets";
 import { errMsg } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { ActiveTicketSection } from "@/components/consumer/ActiveTicketSection";
+import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,9 @@ export default async function PayQrPage() {
   return (
     <div className="flex flex-col gap-4 px-4 pt-2 pb-6">
       <MyQrCard code={profile.code} />
+      <CashbackBalanceCard
+        cashbackBalanceCents={profile.cashback_balance_cents}
+      />
       <ActiveTicketSection tickets={tickets} />
     </div>
   );

@@ -633,21 +633,16 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
           />
         ))}
       </div>
-      <div className="flex flex-col gap-1">
-        <p className="text-muted-foreground text-[11px] leading-relaxed">
-          Welcome {venue.welcome_discount.value}% (1 / month, first visit) ·
-          Diamond {venue.promo_matrix.diamond}% · Gold{" "}
-          {venue.promo_matrix.gold}% · Silver {venue.promo_matrix.silver}% ·
-          Bronze {venue.promo_matrix.bronze}%.
-        </p>
-        <p className="text-foreground text-[11px] font-medium">
-          Your current reward — {currentValue}% {kind} as Mesita{" "}
-          {TIER_PROPER[currentTier]}.
-        </p>
-        <p className="text-muted-foreground text-[11px]">
-          Capped at MX${venue.reward_cap_mxn.toLocaleString("en-US")} per visit.
-        </p>
-      </div>
+      <p className="text-muted-foreground text-[11px] leading-relaxed">
+        Welcome {venue.welcome_discount.value}% (1 / month, first visit) ·
+        Diamond {venue.promo_matrix.diamond}% · Gold {venue.promo_matrix.gold}%
+        · Silver {venue.promo_matrix.silver}% · Bronze{" "}
+        {venue.promo_matrix.bronze}%. Your current reward is{" "}
+        <span className="text-foreground font-medium">
+          {currentValue}% {kind} as Mesita {TIER_PROPER[currentTier]}
+        </span>
+        , capped at MX${venue.reward_cap_mxn.toLocaleString("en-US")} per visit.
+      </p>
     </Box>
   );
 }
