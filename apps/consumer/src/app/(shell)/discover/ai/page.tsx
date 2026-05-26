@@ -14,17 +14,24 @@ export default function AiPage() {
         <div className="bg-peacock shadow-glow mx-auto flex h-16 w-16 items-center justify-center rounded-full text-2xl">
           🦚
         </div>
+        {/* Greeting in Don Memo's voice — Spanish first-person intro. "Memo"
+            is the MX nickname for Guillermo; "Don" lends a warm, hospitable
+            elder-host register that fits a recommendation persona. The
+            descriptor "la IA de Mesita" is the tagline — smaller weight so
+            the name carries the heading. */}
         <h1 className="font-display mt-5 text-center text-3xl font-semibold tracking-tight">
-          What are you in the mood for?
+          Hola, soy Don Memo,
         </h1>
-        <p className="text-muted-foreground mt-2 text-center text-sm leading-relaxed">
-          Tell me the plan — vibe, area, budget —
-          <br />
-          and I&apos;ll find the spot.
+        <p className="text-foreground/80 mt-1 text-center text-sm font-medium">
+          la IA de Mesita
+        </p>
+        <p className="text-muted-foreground mt-4 text-center text-sm leading-relaxed">
+          Cuéntame el plan — vibe, zona, presupuesto —
+          <br />y yo te encuentro el lugar.
         </p>
 
         <p className="bg-secondary/10 text-secondary mx-auto mt-4 max-w-xs rounded-xl px-3 py-2 text-center text-[11px]">
-          Preview — Mesita AI isn&apos;t live yet. Tap a suggestion to see what
+          Preview — Don Memo isn&apos;t live yet. Tap a suggestion to see what
           it&apos;ll feel like.
         </p>
 
@@ -53,7 +60,7 @@ export default function AiPage() {
           onSubmit={(e) => {
             e.preventDefault();
             setNotice(
-              "Coming soon — for now use Swipe or Catalog to find venues, or the Map tab to see what's nearby.",
+              "Don Memo is still warming up — for now use Swipe or Catalog to find venues, or the Map tab to see what's nearby.",
             );
           }}
           className="border-border bg-card flex items-center gap-2 rounded-full border px-4 py-2.5"
@@ -61,7 +68,7 @@ export default function AiPage() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask anything..."
+            placeholder="Pregúntale a Don Memo..."
             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
           />
           <button
