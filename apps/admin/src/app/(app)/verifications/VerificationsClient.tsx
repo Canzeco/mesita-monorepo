@@ -317,7 +317,7 @@ function VerificationRow({
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Why are you rejecting? (shown to the manager)"
+                placeholder="Why are you rejecting? (shown to the business)"
                 rows={2}
                 className="border-border bg-background rounded-xl border px-3 py-2 text-sm outline-none"
               />

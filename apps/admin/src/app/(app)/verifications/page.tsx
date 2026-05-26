@@ -42,7 +42,7 @@ function Header() {
         Unit verification requests
       </h1>
       <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-        Managers prove ownership via phone OTP (auto-confirmed by default,
+        Businesses prove ownership via phone OTP (auto-confirmed by default,
         so it never lands here) or a walkthrough video (queued for review
         by default). Toggle either to flip the policy.
       </p>

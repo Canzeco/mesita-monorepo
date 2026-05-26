@@ -2,10 +2,10 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 
-// Default manager web origin used when the env var isn't set on Vercel —
-// production lives at manager.mesita.ai today. Override per environment by
-// setting MANAGER_WEB_URL.
-const MANAGER_WEB_URL_FALLBACK = "https://manager.mesita.ai";
+// Default business web origin used when the env var isn't set on Vercel —
+// production lives at business.mesita.ai today. Override per environment by
+// setting BUSINESS_WEB_URL.
+const BUSINESS_WEB_URL_FALLBACK = "https://business.mesita.ai";
 
 type FoundVenue = {
   id: string;
@@ -46,13 +46,13 @@ export async function findVenueByPlaceId(
     return { ok: true, found: false, placeId };
   }
 
-  // Clean URL — the operator opens this in a fresh tab, the manager web's
+  // Clean URL — the operator opens this in a fresh tab, the business web's
   // middleware sees no session and bounces through /sign-in if needed.
-  // Once signed in (as themselves, via Google), the manager-get-overview
+  // Once signed in (as themselves, via Google), the business-get-overview
   // EF reads their JWT, finds their email in super_admins, and grants
   // venue access regardless of venue_members.
-  const managerOrigin =
-    (process.env.MANAGER_WEB_URL ?? "").trim() || MANAGER_WEB_URL_FALLBACK;
-  const link = `${managerOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home`;
+  const businessOrigin =
+    (process.env.BUSINESS_WEB_URL ?? "").trim() || BUSINESS_WEB_URL_FALLBACK;
+  const link = `${businessOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home`;
   return { ok: true, found: true, venue, link };
 }

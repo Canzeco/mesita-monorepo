@@ -57,7 +57,7 @@ export function DangerClient() {
           </h2>
           <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
             Permanently deletes <strong>all</strong> venues, tickets, consumers,
-            managers, staff invites, verifications, venue roles and the cashback
+            businesses, staff invites, verifications, venue roles and the cashback
             ledger, and removes every auth account that isn&apos;t a
             super-admin. The super-admin allowlist and app settings are kept.
             This cannot be undone.

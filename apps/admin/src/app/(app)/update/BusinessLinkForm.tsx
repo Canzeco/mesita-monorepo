@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { findVenueByPlaceId, type FindVenueResult } from "./actions";
 
-export function ManagerLinkForm() {
+export function BusinessLinkForm() {
   const [placeId, setPlaceId] = useState("");
   const [result, setResult] = useState<FindVenueResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -55,7 +55,7 @@ export function ManagerLinkForm() {
             <div className="border-border flex items-center justify-between gap-3 border-t px-5 py-3">
               <p className="text-muted-foreground text-xs">
                 We resolve this against the venues table and hand you a
-                clean link. Sign into manager.mesita.ai with your operator
+                clean link. Sign into business.mesita.ai with your operator
                 account to edit.
               </p>
               <button
@@ -92,7 +92,7 @@ export function ManagerLinkForm() {
             <code className="bg-muted/60 rounded px-1.5 py-0.5 font-mono text-xs">
               {result.placeId}
             </code>{" "}
-            as its Google Place ID. Create it from the manager console first
+            as its Google Place ID. Create it from the business console first
             (or via the bulk create flow), then come back here to edit.
           </p>
         </div>
@@ -118,7 +118,7 @@ export function ManagerLinkForm() {
 
           <div className="bg-background mt-5 rounded-2xl p-4">
             <p className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
-              Manager link
+              Business link
             </p>
             <code className="text-foreground/80 mt-2 block max-w-full overflow-x-auto rounded-lg px-2 py-2 font-mono text-xs leading-relaxed">
               {result.link}
@@ -143,11 +143,11 @@ export function ManagerLinkForm() {
                 className="bg-background hover:bg-muted/40 border-border inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition"
               >
                 <ExternalLink className="h-4 w-4" />
-                Open in manager console
+                Open in business console
               </a>
             </div>
             <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
-              Plain URL — no token. Open it signed into your manager
+              Plain URL — no token. Open it signed into your business
               account; the EFs check your email against super_admins and
               grant venue access. The Topbar will show a Super-admin
               banner so you know elevation is active.
