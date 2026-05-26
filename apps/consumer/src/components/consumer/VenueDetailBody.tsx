@@ -17,6 +17,9 @@ import {
   Utensils,
   Users,
   Bookmark,
+  Clock,
+  Settings,
+  Link2,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { cn, firstInitial } from "@/lib/utils";
@@ -37,10 +40,12 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <IndividualReviewsBox venue={venue} />
       <MenuBox venue={venue} />
       <LocationBox venue={venue} />
+      <HoursBox venue={venue} />
       <PromoBox venue={venue} />
       <MatrixBox venue={venue} />
       <AboutBox venue={venue} />
       <DetailsBox venue={venue} />
+      <LinksBox venue={venue} />
       <ActionBar />
     </div>
   );
@@ -500,6 +505,54 @@ function LocationBox({ venue }: { venue: VenueDetail }) {
   );
 }
 
+// ── 6b. Hours & popular times ───────────────────────────────────────────
+
+function HoursBox({ venue }: { venue: VenueDetail }) {
+  return (
+    <Box
+      title="Hours & popular times"
+      icon={Clock}
+      iconColor="text-violet-400"
+      right={`${venue.timezone} · ${venue.city}`}
+    >
+      <div className="bg-background rounded-full px-4 py-2.5 text-sm">
+        <span className="font-semibold text-emerald-400">
+          {venue.open_now ? "Open now" : "Closed"}
+        </span>
+        <span className="text-muted-foreground"> · </span>
+        <span className="text-foreground font-medium">
+          {venue.opens_at} – {venue.closes_at}
+        </span>
+      </div>
+      <BoxHScroll>
+        {venue.popular_times.map((d) => (
+          <DayCard key={d.day} day={d} />
+        ))}
+      </BoxHScroll>
+    </Box>
+  );
+}
+
+function DayCard({ day }: { day: VenueDetail["popular_times"][number] }) {
+  return (
+    <div className="bg-background flex w-32 shrink-0 flex-col gap-3 rounded-2xl p-3">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+        {day.day}
+      </p>
+      <div className="flex h-20 items-end gap-1">
+        {day.bars.map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-full bg-gradient-to-t from-purple-500 to-pink-500"
+            style={{ height: `${Math.max(v * 100, 6)}%` }}
+          />
+        ))}
+      </div>
+      <p className="text-muted-foreground text-[10px]">{day.range}</p>
+    </div>
+  );
+}
+
 // ── 7. Promotion ────────────────────────────────────────────────────────
 
 function PromoBox({ venue }: { venue: VenueDetail }) {
@@ -625,27 +678,36 @@ const REVIEW_DEFS = [
 
 function DetailsBox({ venue }: { venue: VenueDetail }) {
   const rows: Array<[string, string]> = [
-    ["Price range", venue.details.price_range],
-    ["Dress code", venue.details.dress_code],
-    ["Payment", venue.details.payment],
-    ["Parking", venue.details.parking],
-    ["Access", venue.details.access],
+    ["Category", venue.details.category_full],
+    ["Zone", venue.details.zone],
+    ["Price level", "$".repeat(venue.price_level)],
+    ["Hours", `${venue.opens_at} – ${venue.closes_at}`],
+    ["Distance", `${venue.walk_minutes} Min Walk`],
+    ["Participation", venue.details.participation],
+    ["Mechanic", venue.details.mechanic],
   ];
   return (
-    <Box title="Good to know">
-      <div className="bg-background flex flex-col divide-y divide-white/5 rounded-xl">
+    <Box title="Details" icon={Settings} iconColor="text-pink-400">
+      <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
           <div
             key={label}
-            className="flex items-start justify-between gap-4 px-3 py-2.5"
+            className="flex items-baseline justify-between gap-4"
           >
-            <span className="text-muted-foreground text-xs">{label}</span>
-            <span className="text-foreground text-right text-sm font-medium">
+            <dt className="text-muted-foreground text-sm">{label}</dt>
+            <dd className="text-foreground text-right text-sm font-medium">
               {value}
-            </span>
+            </dd>
           </div>
         ))}
-      </div>
+      </dl>
+    </Box>
+  );
+}
+
+function LinksBox({ venue }: { venue: VenueDetail }) {
+  return (
+    <Box title="Channels & links" icon={Link2} iconColor="text-cyan-400">
       <ChipGroup title="Channels" defs={CHANNEL_DEFS} urls={venue.channels} />
       <ChipGroup
         title="Reserve & order"

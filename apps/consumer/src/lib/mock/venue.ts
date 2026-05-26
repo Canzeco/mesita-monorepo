@@ -17,8 +17,12 @@ export type VenueDetail = {
   distance_km: number;
   walk_minutes: number;
   open_now: boolean;
+  opens_at: string;
   closes_at: string;
+  timezone: string;
+  city: string;
   address: string;
+  zone: string;
   short_description: string;
 
   // 2. Media
@@ -84,13 +88,19 @@ export type VenueDetail = {
   // 9. Long description
   long_description: string;
 
-  // 10. Details
+  // Hours / popular times
+  popular_times: Array<{
+    day: string;
+    range: string;
+    bars: number[];
+  }>;
+
+  // 10. Details (Google-Places-style metadata: category, zone, hours, etc.)
   details: {
-    price_range: string;
-    dress_code: string;
-    payment: string;
-    parking: string;
-    access: string;
+    category_full: string;
+    zone: string;
+    participation: string;
+    mechanic: string;
   };
   channels: {
     website_url?: string;
@@ -127,9 +137,13 @@ export const mockVenue: VenueDetail = {
   distance_km: 2.4,
   walk_minutes: 28,
   open_now: true,
+  opens_at: "18:00",
   closes_at: "02:00",
+  timezone: "GMT-6",
+  city: "Monterrey",
   address:
     "Eje Metropolitano 10 2400, Zona Loma Larga Oriente, 66260 Monterrey, N.L.",
+  zone: "Loma Larga Oriente",
   short_description:
     "Experience Sonoran cuisine with a contemporary twist in a luxurious setting.",
 
@@ -261,12 +275,49 @@ export const mockVenue: VenueDetail = {
   long_description:
     "Mochomos Monterrey offers a unique dining experience that combines the rich flavors of Sonoran cuisine with a modern atmosphere. Ideal for business lunches or special dinners, the venue features a diverse menu centered around grilled meats, seafood, and an extensive wine selection. Guests appreciate the attentive service and the elegant ambiance, making it a perfect spot for both corporate meetings and social gatherings.",
 
+  popular_times: [
+    {
+      day: "MON",
+      range: "6p — 1a",
+      bars: [0.08, 0.12, 0.18, 0.28, 0.45, 0.65, 0.85, 0.55, 0.25],
+    },
+    {
+      day: "TUE",
+      range: "6p — 1a",
+      bars: [0.1, 0.14, 0.2, 0.3, 0.48, 0.68, 0.9, 0.58, 0.28],
+    },
+    {
+      day: "WED",
+      range: "6p — 1a",
+      bars: [0.1, 0.16, 0.22, 0.34, 0.52, 0.72, 0.95, 0.62, 0.3],
+    },
+    {
+      day: "THU",
+      range: "6p — 2a",
+      bars: [0.12, 0.2, 0.3, 0.45, 0.65, 0.85, 1.0, 0.8, 0.5, 0.3],
+    },
+    {
+      day: "FRI",
+      range: "6p — 2a",
+      bars: [0.15, 0.25, 0.4, 0.55, 0.75, 0.95, 1.0, 0.9, 0.65, 0.45],
+    },
+    {
+      day: "SAT",
+      range: "6p — 2a",
+      bars: [0.2, 0.35, 0.5, 0.65, 0.85, 1.0, 0.95, 0.85, 0.7, 0.5],
+    },
+    {
+      day: "SUN",
+      range: "12p — 11p",
+      bars: [0.3, 0.5, 0.65, 0.55, 0.35, 0.2, 0.15, 0.18, 0.25, 0.1],
+    },
+  ],
+
   details: {
-    price_range: "MX$650–1,100 / person",
-    dress_code: "Smart casual",
-    payment: "Visa · Mastercard · AMEX",
-    parking: "Valet · Public garage",
-    access: "Wheelchair · Non-smoking · Full bar",
+    category_full: "Place · Restaurant",
+    zone: "Loma Larga Oriente",
+    participation: "Partner",
+    mechanic: "Cashback (Formal)",
   },
   channels: {
     website_url: "https://www.mochomos.com",
