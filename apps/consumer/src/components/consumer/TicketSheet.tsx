@@ -158,7 +158,7 @@ export function TicketSheet({
                 <p className="text-muted-foreground mt-2 text-[12px]">
                   on returning visits
                   {item.cashbackCap
-                    ? ` · up to $${item.cashbackCap.toLocaleString()} MXN`
+                    ? ` · up to MX$${item.cashbackCap.toLocaleString()}`
                     : ""}
                 </p>
               </div>
@@ -182,7 +182,7 @@ export function TicketSheet({
                 {item.cashbackCap != null && (
                   <Row
                     label="Cap per visit"
-                    value={`$${item.cashbackCap.toLocaleString()} MXN`}
+                    value={`MX$${item.cashbackCap.toLocaleString()}`}
                   />
                 )}
                 {item.reservationStatus && (

@@ -17,7 +17,13 @@ export type VenueDetail = {
   // Actual per-person price range. Quick-view surfaces (swipe / catalog
   // / map) keep using price_level rendered as $-symbols; the venue
   // detail page renders price_range so users can see real numbers.
+  // Pre-formatted with the currency prefix (e.g. "MX$200–300") to
+  // match what the venue's currency column dictates.
   price_range: string;
+  // ISO 4217 code mirroring public.venues.currency (default MXN).
+  // Carried through so future surfaces can render dynamic prefixes
+  // without parsing price_range.
+  currency: string;
   distance_km: number;
   walk_minutes: number;
   open_now: boolean;
@@ -170,7 +176,8 @@ export const mockVenue: VenueDetail = {
   category: "Mexican",
   vibe: "Elegant",
   price_level: 3,
-  price_range: "$200–300",
+  price_range: "MX$200–300",
+  currency: "MXN",
   distance_km: 2.4,
   walk_minutes: 28,
   open_now: true,

@@ -22,10 +22,10 @@ export function CashbackBalanceCard({
       <p className="mt-3 text-[11px] leading-snug text-white/85">
         Auto-applies to your next bill at{" "}
         <span className="font-semibold">any partner</span> — Formal or Informal.
-        At Informal venues it comes off the discounted total: e.g. $500 bill
-        with 10% off and $200 balance → you hand the waiter $250 in cash and
-        Mesita pays them the $200 from your wallet. No redeem button, no expiry
-        while you stay active.
+        At Informal venues it comes off the discounted total: e.g. MX$500
+        bill with 10% off and MX$200 balance → you hand the waiter MX$250
+        in cash and Mesita pays them the MX$200 from your wallet. No redeem
+        button, no expiry while you stay active.
       </p>
     </section>
   );

@@ -31,6 +31,12 @@ export type Venue = {
   category: string | null;
   vibe: string | null;
   price_level: number | null;
+  // ISO 4217 code from public.venues.currency (default "MXN"). Every
+  // monetary amount on this venue — price ranges, reward caps,
+  // future cover charges — is denominated in this currency so the
+  // UI can render the right prefix ("MX$", "$", "€") without
+  // hard-coding it.
+  currency: string;
   listing_type: VenueListingType;
   status: VenueStatus;
   fiscal_type: FiscalType;

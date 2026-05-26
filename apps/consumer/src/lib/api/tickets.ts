@@ -357,12 +357,16 @@ export function formatCurrency(
   if (cents == null) return "—";
   const value = cents / 100;
   try {
-    return new Intl.NumberFormat("es-MX", {
+    // Intl with `en-US` + `MXN` yields the unambiguous "MX$1,234" prefix
+    // (Mexican-locale formatting would collapse to just "$1,234", which
+    // reads as USD outside Mexico). Other ISO codes still format with
+    // their conventional prefix ("$", "€", etc.).
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,
       maximumFractionDigits: 0,
     }).format(value);
   } catch {
-    return `$${value.toFixed(0)} ${currency}`;
+    return `${currency === "MXN" ? "MX$" : "$"}${value.toFixed(0)}`;
   }
 }
