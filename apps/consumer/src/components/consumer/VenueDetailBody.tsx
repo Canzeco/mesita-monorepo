@@ -739,13 +739,18 @@ function TierCard({
   value: number | null;
   relation: "lower" | "current" | "higher";
   // True when this exact card represents the guest's currently active
-  // reward (matches both current_tier AND the first-visit/every-visit
-  // axis). The pink-gradient + Manage hover renders only on this card.
+  // reward (matches both current_tier AND the first-visit/returning-
+  // visit axis). The pink-gradient styling renders only on this card.
   active: boolean;
 }) {
+  // `relation` is intentionally unused here — the previous design used
+  // it to gate a "Join <Tier>" hover overlay on higher tiers, but the
+  // overlays were removed for visual calm. We keep the prop to leave
+  // the door open if we re-add tier-targeted CTAs later.
+  void relation;
   if (active) {
     return (
-      <div className="group bg-pink-gradient shadow-glow relative overflow-hidden rounded-xl p-2 text-center text-white">
+      <div className="bg-pink-gradient shadow-glow overflow-hidden rounded-xl p-2 text-center text-white">
         <p className="text-[9px] font-bold tracking-wider text-white/90 uppercase">
           {TIER_PROPER[tier]}
         </p>
@@ -757,12 +762,11 @@ function TierCard({
             <span className="text-[10px] text-white/85">off</span>
           )}
         </p>
-        <CardHoverAction label="Manage" variant="light" />
       </div>
     );
   }
   return (
-    <div className="group bg-background relative overflow-hidden rounded-xl p-2 text-center">
+    <div className="bg-background relative overflow-hidden rounded-xl p-2 text-center">
       <div
         className={cn(
           "absolute inset-x-0 top-0 h-1",
@@ -785,33 +789,6 @@ function TierCard({
           <span className="text-muted-foreground text-[10px]">off</span>
         )}
       </p>
-      {relation === "higher" && value != null && (
-        <CardHoverAction label={`Join`} variant="primary" />
-      )}
-    </div>
-  );
-}
-
-function CardHoverAction({
-  label,
-  variant,
-}: {
-  label: string;
-  variant: "primary" | "light";
-}) {
-  return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 backdrop-blur-sm transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
-      <button
-        type="button"
-        className={cn(
-          "rounded-full px-3 py-1.5 text-[11px] font-semibold shadow-sm",
-          variant === "primary"
-            ? "bg-pink-gradient shadow-glow text-white"
-            : "bg-white text-zinc-900",
-        )}
-      >
-        {label}
-      </button>
     </div>
   );
 }
