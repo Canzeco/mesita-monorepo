@@ -16,18 +16,21 @@ export const dynamic = "force-dynamic";
 export default async function VenueDetailPage() {
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-y-auto">
-      <header className="bg-background/85 sticky top-0 z-20 flex items-center justify-between gap-3 px-3 py-3 backdrop-blur">
+      <header className="bg-background/85 sticky top-0 z-20 flex items-center gap-3 px-3 py-3 backdrop-blur">
         <Link
           href="/discover/swipe"
           aria-label="Back"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
+        <p className="font-display flex-1 truncate text-center text-sm font-semibold">
+          {mockVenue.name}
+        </p>
         <button
           type="button"
           aria-label="Share"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
         >
           <Share2 className="h-4 w-4" />
         </button>

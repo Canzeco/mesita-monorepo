@@ -34,7 +34,6 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
     <div className="flex flex-col gap-3 px-4 pb-0">
-      <VenueTitleStrip venue={venue} />
       <MediaBox venue={venue} />
       <SummaryHeader venue={venue} />
       <ReviewsSummaryBox venue={venue} />
@@ -114,19 +113,6 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
     <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
       {children}
     </div>
-  );
-}
-
-// ── 0. Venue title strip ────────────────────────────────────────────────
-
-// Sits between the sticky top bar and the hero media. Redundant with the
-// Summary box's H1 by design — the strip gives the photo a label and
-// anchors the eye between chrome and content.
-function VenueTitleStrip({ venue }: { venue: VenueDetail }) {
-  return (
-    <p className="font-display text-foreground text-center text-base font-medium">
-      {venue.name}
-    </p>
   );
 }
 

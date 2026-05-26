@@ -16,8 +16,10 @@ import { X, Share2 } from "lucide-react";
 
 export function VenueDetailModalShell({
   children,
+  venueName,
 }: {
   children: React.ReactNode;
+  venueName: string;
 }) {
   const router = useRouter();
 
@@ -31,19 +33,22 @@ export function VenueDetailModalShell({
 
   return (
     <div className="bg-background absolute inset-0 z-50 flex flex-col overflow-y-auto">
-      <header className="bg-background/85 sticky top-0 z-20 flex items-center justify-between gap-3 px-3 py-3 backdrop-blur">
+      <header className="bg-background/85 sticky top-0 z-20 flex items-center gap-3 px-3 py-3 backdrop-blur">
         <button
           type="button"
           onClick={() => router.back()}
           aria-label="Close"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
         >
           <X className="h-4 w-4" />
         </button>
+        <p className="font-display flex-1 truncate text-center text-sm font-semibold">
+          {venueName}
+        </p>
         <button
           type="button"
           aria-label="Share"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
         >
           <Share2 className="h-4 w-4" />
         </button>
