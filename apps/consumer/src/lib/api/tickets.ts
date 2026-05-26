@@ -13,7 +13,11 @@ import { invokeEF } from "./_invoke";
 export type ConsumerProfile = {
   id: string;
   code: string;
+  // Legacy concat of first + last. EFs keep it populated on every write
+  // so older readers (find-consumer search, ticket meta) keep working.
   full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   sex: string | null;
   birthday: string | null;
   country: string | null;
@@ -22,7 +26,8 @@ export type ConsumerProfile = {
 };
 
 type ConsumerOnboardingInput = {
-  full_name: string;
+  first_name: string;
+  last_name: string;
   sex: "male" | "female" | "other";
   birthday: string; // YYYY-MM-DD
   country: string;

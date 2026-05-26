@@ -22,7 +22,8 @@ import {
 export function OnboardForm() {
   const router = useRouter();
   const supabase = useBrowserSupabase();
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [sex, setSex] = useState("");
   const [birthday, setBirthday] = useState("");
   const [country, setCountry] = useState("Mexico");
@@ -32,7 +33,7 @@ export function OnboardForm() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!name.trim() || !sex || !birthday) {
+    if (!firstName.trim() || !lastName.trim() || !sex || !birthday) {
       setError("Please complete all required fields");
       return;
     }
@@ -45,7 +46,8 @@ export function OnboardForm() {
     void (async () => {
       try {
         await apiUpdateConsumerProfile(supabase, {
-          full_name: name.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
           sex,
           birthday,
           country,
@@ -61,16 +63,30 @@ export function OnboardForm() {
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col gap-3">
-      <Field label="Name">
-        <input
-          className={INPUT_CLASS}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={80}
-          placeholder="Your name"
-          required
-        />
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="First name">
+          <input
+            className={INPUT_CLASS}
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            maxLength={60}
+            placeholder="First name"
+            autoComplete="given-name"
+            required
+          />
+        </Field>
+        <Field label="Last name">
+          <input
+            className={INPUT_CLASS}
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            maxLength={60}
+            placeholder="Last name"
+            autoComplete="family-name"
+            required
+          />
+        </Field>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Sex">
