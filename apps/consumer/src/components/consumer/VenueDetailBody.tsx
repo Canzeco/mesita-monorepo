@@ -642,17 +642,17 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — answers "what's MY reward right now?" before the ladder. */}
-      <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
+      <div className="bg-pink-gradient shadow-glow rounded-xl p-3 text-white">
         <p className="text-[10px] font-bold tracking-wider text-white/90 uppercase">
           Your reward
         </p>
-        <p className="font-display mt-1.5 text-4xl font-semibold leading-none">
+        <p className="font-display mt-1 text-3xl font-semibold leading-none">
           {currentValue}% off
         </p>
-        <p className="mt-1.5 text-sm text-white/90">
+        <p className="mt-1 text-xs text-white/90">
           as Mesita {TIER_PROPER[currentTier]} · on every visit
         </p>
-        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium backdrop-blur">
+        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium backdrop-blur">
           <Sparkles className="h-3 w-3" />
           +{venue.welcome_discount.value}% Welcome ·{" "}
           {venue.welcome_discount.subtitle}
