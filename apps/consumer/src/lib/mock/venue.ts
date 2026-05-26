@@ -119,6 +119,7 @@ export type VenueDetail = {
     zone: string;
     participation: string;
     mechanic: string;
+    service_options: string[];
   };
   channels: {
     website_url?: string;
@@ -382,6 +383,7 @@ export const mockVenue: VenueDetail = {
     zone: "Loma Larga Oriente",
     participation: "Partner",
     mechanic: "Cashback (Formal)",
+    service_options: ["Dine-in", "Takeaway", "Delivery", "Valet parking"],
   },
   channels: {
     website_url: "https://www.mochomos.com",
