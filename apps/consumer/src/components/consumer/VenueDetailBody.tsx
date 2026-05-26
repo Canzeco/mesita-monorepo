@@ -197,18 +197,23 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
   // the first real one lands; once mesita_reviews.total > 0 we trust the
   // averaged values that come in on the row.
   const hasReviews = venue.mesita_reviews.total > 0;
-  const ratings: Array<[string, number]> = [
+  const overall = hasReviews ? venue.mesita_reviews.overall : 5.0;
+  const subRatings: Array<[string, number]> = [
     ["Food", hasReviews ? venue.mesita_reviews.food : 5.0],
     ["Service", hasReviews ? venue.mesita_reviews.service : 5.0],
     ["Ambiance", hasReviews ? venue.mesita_reviews.ambiance : 5.0],
-    ["Overall", hasReviews ? venue.mesita_reviews.overall : 5.0],
   ];
   return (
     <Box title="Reviews summary" icon={Star} iconColor="text-violet-400">
-      {/* Mesita box — full-width, contains the four sub-ratings. Header
-          row carries the brand glyph + total review count so the user
-          can tell at a glance whether the numbers are real or default. */}
-      <div className="bg-background flex flex-col gap-3 rounded-xl p-3">
+      {/* Mesita box. Layout:
+            • Header row — pink "m" glyph + label + total review count.
+            • Hero overall — pink-tinted square card on the left with the
+              big serif rating + a gold star + "OVERALL" eyebrow.
+            • Three sub-rating bars on the right (Food / Service /
+              Ambiance) — pink-gradient fill proportional to value, value
+              pinned to the right edge. Visual comparison beats a list of
+              pills. */}
+      <div className="bg-background flex flex-col gap-4 rounded-xl p-4">
         <div className="flex items-center gap-2">
           <MesitaLogo />
           <p className="text-foreground text-sm font-semibold">Mesita</p>
@@ -216,10 +221,28 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
             {venue.mesita_reviews.total} reviews
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {ratings.map(([label, value]) => (
-            <RatingPill key={label} label={label} value={value} />
-          ))}
+
+        <div className="flex items-center gap-4">
+          <div className="bg-pink-500/10 ring-pink-500/30 flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl ring-1">
+            <div className="flex items-baseline gap-1">
+              <span className="font-display text-foreground text-2xl leading-none font-semibold">
+                {overall.toFixed(1)}
+              </span>
+              <Star
+                className="h-3 w-3 fill-amber-400 text-amber-400"
+                strokeWidth={0}
+              />
+            </div>
+            <span className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
+              Overall
+            </span>
+          </div>
+
+          <div className="flex flex-1 flex-col gap-2">
+            {subRatings.map(([label, value]) => (
+              <RatingBar key={label} label={label} value={value} />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -250,15 +273,22 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
   );
 }
 
-function RatingPill({ label, value }: { label: string; value: number }) {
+function RatingBar({ label, value }: { label: string; value: number }) {
+  // Pink-gradient fill proportional to value/5, value pinned to the right
+  // edge in tabular nums so columns stay aligned across rows.
+  const pct = Math.min(100, (value / 5) * 100);
   return (
-    <div className="bg-background flex items-center justify-between gap-2 rounded-full px-3 py-2">
-      <span className="text-foreground truncate text-xs">{label}</span>
-      <span className="flex shrink-0 items-center gap-1 text-xs font-semibold">
-        <Star
-          className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
-          strokeWidth={0}
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground w-14 shrink-0 truncate text-[11px]">
+        {label}
+      </span>
+      <div className="bg-muted relative h-1.5 flex-1 overflow-hidden rounded-full">
+        <div
+          className="bg-pink-gradient absolute inset-y-0 left-0 rounded-full"
+          style={{ width: `${pct}%` }}
         />
+      </div>
+      <span className="text-foreground w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums">
         {value.toFixed(1)}
       </span>
     </div>
