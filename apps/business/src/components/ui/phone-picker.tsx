@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 // holds the national portion. Defaults to Mexico because that's where
 // the product is.
 
-export type CountryCode =
+type CountryCode =
   | "MX"
   | "US"
   | "CA"

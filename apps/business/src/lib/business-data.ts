@@ -28,7 +28,7 @@ export const WALLET: WalletSummary = {
   stripeConnected: true,
 };
 
-export type TransactionKind = "visit" | "payout" | "fee";
+type TransactionKind = "visit" | "payout" | "fee";
 
 export type Transaction = {
   id: string;

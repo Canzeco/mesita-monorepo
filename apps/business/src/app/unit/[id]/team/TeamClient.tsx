@@ -297,7 +297,11 @@ export function TeamClient({
                     busy={busy === `remove-${inv.id}`}
                     label="Revoke invite"
                     onClick={() =>
-                      handleRemove(inv.id, "editorInvite", "Revoke this invite?")
+                      handleRemove(
+                        inv.id,
+                        "editorInvite",
+                        "Revoke this invite?",
+                      )
                     }
                   />
                 )}

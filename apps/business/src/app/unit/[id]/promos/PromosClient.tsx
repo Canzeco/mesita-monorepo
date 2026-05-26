@@ -12,7 +12,7 @@ import {
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
 import { Badge } from "@/components/ui/badge";
-import { Section, type Tier } from "@/components/shared";
+import { Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import {
@@ -38,6 +38,8 @@ const RATE_CHOICES = [0, 10, 20, 50] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
 // ─── Tier ladder catalog ──────────────────────────────────────────────────
+
+type Tier = "bronze" | "silver" | "gold" | "diamond";
 
 type TierMeta = {
   id: Tier;

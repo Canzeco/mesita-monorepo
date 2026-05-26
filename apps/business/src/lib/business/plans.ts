@@ -19,7 +19,6 @@ import type { FiscalType, VenuePlan } from "@/lib/api/venues";
 // payment + wallet settlement path ships. The cards still render so the
 // ladder reads end-to-end, but the picker rejects selection.
 
-export type PlanMechanic = "None" | "Cashback" | "Discount";
 export type PlanVisibility = "Low" | "Medium" | "High" | "Extra high" | "Max";
 
 // Picker id — one per card.
@@ -102,19 +101,6 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     comingSoon: true,
   },
 ];
-
-// Mechanic still rides on the venue's fiscal_type — Formal venues issue
-// cashback through the wallet, Informal venues apply discounts at the
-// bill.
-export function mechanicForFiscal(fiscal: FiscalType): "Cashback" | "Discount" {
-  return fiscal === "formal" ? "Cashback" : "Discount";
-}
-
-export function mechanicForPlan(p: VenuePlan): PlanMechanic {
-  if (p === "free") return "None";
-  if (p === "formal_pro" || p === "formal_ultra") return "Cashback";
-  return "Discount";
-}
 
 export function visibilityForPlan(p: VenuePlan): PlanVisibility {
   if (p === "free") return "Low";
