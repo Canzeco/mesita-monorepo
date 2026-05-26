@@ -638,9 +638,28 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   const currentTier = venue.promo_matrix.current_tier;
   const currentValue = venue.promo_matrix[currentTier];
   const currentRank = TIER_RANK[currentTier];
+  const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
   return (
     <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
-      <WelcomeCard discount={venue.welcome_discount} />
+      {/* Hero — answers "what's MY reward right now?" before the ladder. */}
+      <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
+        <p className="text-[10px] font-bold tracking-wider text-white/90 uppercase">
+          Your reward
+        </p>
+        <p className="font-display mt-1.5 text-4xl font-semibold leading-none">
+          {currentValue}% off
+        </p>
+        <p className="mt-1.5 text-sm text-white/90">
+          as Mesita {TIER_PROPER[currentTier]} · on every visit
+        </p>
+        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium backdrop-blur">
+          <Sparkles className="h-3 w-3" />
+          +{venue.welcome_discount.value}% Welcome ·{" "}
+          {venue.welcome_discount.subtitle}
+        </div>
+      </div>
+
+      {/* Tier ladder — Bronze · Silver · Gold · Diamond for reference. */}
       <div className="grid grid-cols-4 gap-2">
         {TIER_ORDER.map((tier) => {
           const rank = TIER_RANK[tier];
@@ -660,49 +679,15 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
           );
         })}
       </div>
-      <p className="text-muted-foreground text-[11px] leading-relaxed">
-        Welcome {venue.welcome_discount.value}% (1 / month, first visit) ·
-        Diamond {venue.promo_matrix.diamond}% · Gold {venue.promo_matrix.gold}%
-        · Silver {venue.promo_matrix.silver}% · Bronze{" "}
-        {venue.promo_matrix.bronze}%. Your current reward is{" "}
-        <span className="text-foreground font-medium">
-          {currentValue}% off as Mesita {TIER_PROPER[currentTier]}
-        </span>
-        , capped at MX${venue.reward_cap_mxn.toLocaleString("en-US")} per visit.
-      </p>
-      <div className="border-border flex items-center justify-between border-t pt-3 text-xs">
-        <span className="text-muted-foreground">Reward mechanic</span>
+
+      {/* Footer — mechanic on the left, per-visit cap on the right. */}
+      <div className="border-border flex items-center justify-between gap-3 border-t pt-3 text-xs">
         <span className="text-foreground font-medium">
           {venue.details.mechanic}
         </span>
+        <span className="text-muted-foreground">Cap {capLabel} / visit</span>
       </div>
     </Box>
-  );
-}
-
-function WelcomeCard({
-  discount,
-}: {
-  discount: VenueDetail["welcome_discount"];
-}) {
-  // Compact layout matches the tier-grid card height — same padding,
-  // same value type-size, gradient stripe across the top. The
-  // "1 / month · first visit" detail still lives in the helper paragraph
-  // below the grid, so nothing is lost.
-  return (
-    <div className="group bg-background relative overflow-hidden rounded-xl p-2 text-center">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-amber-400" />
-      <p className="text-[9px] font-bold tracking-wider text-violet-400 uppercase">
-        Welcome
-      </p>
-      <p className="mt-0.5 flex items-baseline justify-center gap-1">
-        <span className="font-display text-foreground text-lg font-semibold leading-tight">
-          {discount.value}%
-        </span>
-        <span className="text-muted-foreground text-[10px]">off</span>
-      </p>
-      <CardHoverAction label="Claim" variant="primary" />
-    </div>
   );
 }
 
