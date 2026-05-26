@@ -187,49 +187,53 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
     ? welcome[current_tier]
     : returning[current_tier];
   const mechanicWord = venue.details.mechanic.toLowerCase();
+  const showBadgeRow = activeReward != null || isPartner;
   return (
-    <Box className="!gap-2">
+    <Box className="!gap-3">
       <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
-      <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-sm">
+      {/* Rating sits as its own atom on the left; the category/price/distance
+          list runs separately. The faint middot in between is a visual hinge,
+          not a list separator, so the eye can land on the rating first. */}
+      <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
         <span className="inline-flex items-center gap-1">
           <Star
-            className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+            className="h-4 w-4 fill-amber-400 text-amber-400"
             strokeWidth={0}
           />
           <span className="text-foreground font-semibold">{googleRating}</span>
-          <span>({googleCount})</span>
+          <span className="tabular-nums">({googleCount})</span>
         </span>
-        <span>·</span>
+        <span aria-hidden className="opacity-30">·</span>
         <span>{meta.join(" · ")}</span>
-      </p>
-      <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-        {activeReward != null && (
-          <>
-            <span className="bg-pink-gradient shadow-glow inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-white">
+      </div>
+      {showBadgeRow && (
+        <div className="flex flex-wrap items-center gap-2">
+          {activeReward != null && (
+            <span className="bg-pink-gradient shadow-glow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white">
               <Sparkles className="h-3 w-3" />
               {activeReward}% {mechanicWord}
             </span>
-            <span>·</span>
-          </>
-        )}
-        <span className="inline-flex items-center gap-1.5">
-          {isPartner ? (
-            <BadgeCheck className="h-4 w-4 text-emerald-400" />
-          ) : (
-            <Globe className="h-4 w-4" />
           )}
-          <span className="text-foreground font-medium">
-            {isPartner ? "Verified partner" : "Web listing"}
+          <span className="inline-flex items-center gap-1.5 text-sm">
+            {isPartner ? (
+              <BadgeCheck className="h-4 w-4 text-emerald-400" />
+            ) : (
+              <Globe className="text-muted-foreground h-4 w-4" />
+            )}
+            <span className="text-foreground font-medium">
+              {isPartner ? "Verified partner" : "Web listing"}
+            </span>
           </span>
-        </span>
-        <span>·</span>
-        <span className="inline-flex items-center gap-1.5">
-          <Pencil className="h-3.5 w-3.5" />
-          Updated {venue.last_updated_label}
-        </span>
-      </div>
+        </div>
+      )}
+      {/* Trust line — quiet, sub-meta. Owns its own row so the badges read as
+          status, and the freshness signal reads as provenance. */}
+      <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+        <Pencil className="h-3 w-3" />
+        Updated {venue.last_updated_label}
+      </p>
     </Box>
   );
 }
