@@ -644,24 +644,28 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
     ? welcome[current_tier]
     : returning[current_tier];
   const currentRank = TIER_RANK[current_tier];
+  // Mechanic comes in capitalized ("Cashback" / "Discount") so it can sit
+  // in a subtitle pill; lowercase it when reading inline with the
+  // percentage ("20% cashback").
+  const mechanicWord = venue.details.mechanic.toLowerCase();
   const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
+  const subtitleParts: string[] = [`as Mesita ${TIER_PROPER[current_tier]}`];
+  if (activeValue != null) {
+    subtitleParts.push(is_first_visit ? "first visit" : "on every visit");
+    subtitleParts.push(`capped at ${capLabel} / visit`);
+  }
   return (
     <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
-      {/* Hero — answers "what's MY reward right now?" before the ladder. */}
+      {/* Hero — names the active reward, mechanic, and cap up front. */}
       <div className="bg-pink-gradient shadow-glow rounded-xl p-3 text-white">
         <p className="text-[10px] font-bold tracking-wider text-white/90 uppercase">
           Your reward
         </p>
         <p className="font-display mt-1 text-3xl font-semibold leading-none">
-          {activeValue == null ? "—" : `${activeValue}% off`}
+          {activeValue == null ? "—" : `${activeValue}% ${mechanicWord}`}
         </p>
-        <p className="mt-1 text-xs text-white/90">
-          as Mesita {TIER_PROPER[current_tier]}
-          {is_first_visit
-            ? " · first visit"
-            : activeValue == null
-              ? ""
-              : " · on every visit"}
+        <p className="mt-1 text-xs leading-snug text-white/90">
+          {subtitleParts.join(" · ")}
         </p>
       </div>
 
@@ -719,13 +723,6 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         </div>
       </div>
 
-      {/* Footer — mechanic on the left, per-visit cap on the right. */}
-      <div className="border-border flex items-center justify-between gap-3 border-t pt-3 text-xs">
-        <span className="text-foreground font-medium">
-          {venue.details.mechanic}
-        </span>
-        <span className="text-muted-foreground">Cap {capLabel} / visit</span>
-      </div>
     </Box>
   );
 }
