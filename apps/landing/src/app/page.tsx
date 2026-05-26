@@ -16,14 +16,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-// Subdomain URLs — landing lives on mesita.ai, consumer + manager are
+// Subdomain URLs — landing lives on mesita.ai, consumer + business are
 // separate apps. Keep absolute so links work from any environment.
 const CONSUMER_URL = "https://consumer.mesita.ai";
-// Manager auth lives at the subdomain root — `?mode=signup` lands the
+// Business auth lives at the subdomain root — `?mode=signup` lands the
 // AuthTabs control on the Create account variant. Bare URL renders the
 // default Sign in mode.
-const MANAGER_SIGNUP_URL = "https://manager.mesita.ai/?mode=signup";
-const MANAGER_SIGNIN_URL = "https://manager.mesita.ai/";
+const BUSINESS_SIGNUP_URL = "https://business.mesita.ai/?mode=signup";
+const BUSINESS_SIGNIN_URL = "https://business.mesita.ai/";
 
 // Landing page — single-source-of-truth marketing surface.
 //
@@ -39,7 +39,7 @@ const MANAGER_SIGNIN_URL = "https://manager.mesita.ai/";
 //   6. <Footer />          © Mesita 2026 etc.
 //
 // Pricing (the three-plan grid + fiscal-type explainer) lives on the
-// manager app under /unit/<id>/promos — keeping it inside the auth
+// business app under /unit/<id>/promos — keeping it inside the auth
 // surface keeps the public site focused on the value prop.
 
 export default function Home() {
@@ -92,7 +92,7 @@ function Nav() {
             <Link href={CONSUMER_URL}>Open Mesita</Link>
           </Button>
           <Button asChild size="sm" className="rounded-full">
-            <Link href={MANAGER_SIGNUP_URL}>
+            <Link href={BUSINESS_SIGNUP_URL}>
               List your venue
               <ArrowRight />
             </Link>
@@ -139,7 +139,7 @@ function Hero() {
             variant="primary"
           />
           <PathButton
-            href={MANAGER_SIGNUP_URL}
+            href={BUSINESS_SIGNUP_URL}
             Icon={Store}
             eyebrow="I run a venue"
             label="List your venue"
@@ -369,7 +369,7 @@ function ForVenues() {
             size="lg"
             className="bg-foreground text-background hover:bg-foreground rounded-full hover:opacity-90"
           >
-            <Link href={MANAGER_SIGNUP_URL}>
+            <Link href={BUSINESS_SIGNUP_URL}>
               List your venue
               <ArrowRight />
             </Link>
@@ -394,7 +394,7 @@ function FAQ() {
     },
     {
       q: "What's the difference between a Verified Partner and a Web-Listed venue?",
-      a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at manager.mesita.app and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Wallet / Team dashboard.",
+      a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.app and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Wallet / Team dashboard.",
     },
     {
       q: "How does a consumer reach Silver, Gold, or Diamond?",
@@ -406,7 +406,7 @@ function FAQ() {
     },
     {
       q: "Do I need hardware or POS integration?",
-      a: "No. Setup is ~10 minutes from manager.mesita.app. Your waiters scan the consumer's QR from their own phone (WhatsApp bot or web tool), enter the bill, and Mesita does the rest. No POS, no app to install for staff, no new device at the host stand.",
+      a: "No. Setup is ~10 minutes from business.mesita.app. Your waiters scan the consumer's QR from their own phone (WhatsApp bot or web tool), enter the bill, and Mesita does the rest. No POS, no app to install for staff, no new device at the host stand.",
     },
   ];
   return (
@@ -471,10 +471,10 @@ function Footer() {
             FAQ
           </a>
           <Link
-            href={MANAGER_SIGNIN_URL}
+            href={BUSINESS_SIGNIN_URL}
             className="hover:text-foreground transition"
           >
-            Manager sign-in
+            Business sign-in
           </Link>
         </nav>
       </div>
