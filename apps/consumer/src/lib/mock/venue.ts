@@ -122,12 +122,21 @@ export type VenueDetail = {
   popular_times_featured: string; // day name to show in the Popular times card
 
   // 10. Details (Google-Places-style metadata: category, zone, hours, etc.)
+  // Most of the extra fields below mirror what Google's Places panel
+  // and OpenTable surface on their detail views — dining style, dress
+  // code, parking, accessibility, amenities, executive chef.
   details: {
     category_full: string;
     zone: string;
     participation: string;
     mechanic: string;
     service_options: string[];
+    dining_style: string;
+    dress_code: string;
+    parking: string;
+    accessibility: string[];
+    amenities: string[];
+    executive_chef?: string;
   };
   channels: {
     website_url?: string;
@@ -395,7 +404,23 @@ export const mockVenue: VenueDetail = {
     zone: "Loma Larga Oriente",
     participation: "Partner",
     mechanic: "Cashback",
-    service_options: ["Dine-in", "Takeaway", "Delivery", "Valet parking"],
+    service_options: ["Dine-in", "Takeaway", "Delivery"],
+    dining_style: "Fine dining",
+    dress_code: "Smart casual",
+    parking: "Valet · Public garage",
+    accessibility: [
+      "Wheelchair accessible entrance",
+      "Wheelchair accessible restroom",
+      "Step-free access",
+    ],
+    amenities: [
+      "Outdoor seating",
+      "Private dining rooms",
+      "Full bar",
+      "Live music (Thu–Sat)",
+      "Non-smoking",
+    ],
+    executive_chef: "Chef Andrés Saavedra",
   },
   channels: {
     website_url: "https://www.mochomos.com",

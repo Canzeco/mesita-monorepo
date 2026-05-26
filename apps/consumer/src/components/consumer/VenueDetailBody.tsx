@@ -899,16 +899,26 @@ const REVIEW_DEFS = [
 ] as const;
 
 function DetailsBox({ venue }: { venue: VenueDetail }) {
-  // Only the bits not already surfaced elsewhere on the page: Category,
-  // Zone, Participation. Price level lives in the Summary meta, Hours
-  // in the Hours box, Distance in the Location box, Mechanic in the
-  // Rewards box right slot.
+  // Mirrors what Google Places + OpenTable surface on a venue detail
+  // panel: category, zone, participation, then the Google-tags-style
+  // breakdown — service options, dining style, dress code, parking,
+  // accessibility, amenities, and (when listed) the executive chef.
+  // Price lives in the Summary meta, Hours in the Hours box, Distance
+  // in the Location box, Mechanic in the Rewards box.
   const rows: Array<[string, string]> = [
     ["Category", venue.details.category_full],
     ["Zone", venue.details.zone],
     ["Participation", venue.details.participation],
     ["Service", venue.details.service_options.join(" · ")],
+    ["Dining style", venue.details.dining_style],
+    ["Dress code", venue.details.dress_code],
+    ["Parking", venue.details.parking],
+    ["Accessibility", venue.details.accessibility.join(" · ")],
+    ["Amenities", venue.details.amenities.join(" · ")],
   ];
+  if (venue.details.executive_chef) {
+    rows.push(["Executive chef", venue.details.executive_chef]);
+  }
   return (
     <Box title="Details" icon={Tags} iconColor="text-pink-400">
       <dl className="flex flex-col gap-3">
