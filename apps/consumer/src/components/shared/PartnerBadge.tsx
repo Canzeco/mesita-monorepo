@@ -8,7 +8,7 @@ import {
 } from "./badge-sizing";
 
 // Venue badge that distinguishes Verified Partners (signed up at
-// manager.mesita.app, configured a coupon mechanic) from Web-Listed
+// business.mesita.app, configured a coupon mechanic) from Web-Listed
 // venues (scraped from Google Business, no dashboard, no coupons).
 export type ListingType = "partner" | "web";
 

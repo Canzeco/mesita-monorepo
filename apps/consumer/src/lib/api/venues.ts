@@ -6,8 +6,8 @@
 // - Each helper here calls exactly one Edge Function and never composes
 //   multiple Edge Functions (composition belongs inside the function).
 //
-// Manager-side helpers (places autocomplete, create / update / delete
-// venue, enrichment) live in the manager app — consumer never invokes them.
+// Business-side helpers (places autocomplete, create / update / delete
+// venue, enrichment) live in the business app — consumer never invokes them.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";

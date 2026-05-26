@@ -9,7 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-type AppRole = "consumer" | "staff" | "manager" | "admin";
+type AppRole = "consumer" | "staff" | "business" | "admin";
 
 type ConsumerSigninResult = {
   role: AppRole;

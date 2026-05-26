@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 // Two-step phone OTP. Phone is the identity — there's no "create account"
 // vs "sign in" anymore; first verify on a number creates the auth.user,
 // subsequent verifies sign that user in. Single flow for both consumer and
-// manager surfaces — the parent passes the post-verify redirect.
+// business surfaces — the parent passes the post-verify redirect.
 
 type Step = "phone" | "code";
 

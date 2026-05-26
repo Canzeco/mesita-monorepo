@@ -1,9 +1,9 @@
 // Frontend API surface for the consumer-facing ticket / cashback / story EFs.
 //
 // Same constraints as api/venues.ts: clients call exactly one Edge Function
-// per helper; helpers never compose multiple Edge Functions. Manager- and
+// per helper; helpers never compose multiple Edge Functions. Business- and
 // validator-side helpers (create/cancel/verify/mark-paid/lookup) live in
-// the manager app's tree — consumer never invokes them.
+// the business app's tree — consumer never invokes them.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
