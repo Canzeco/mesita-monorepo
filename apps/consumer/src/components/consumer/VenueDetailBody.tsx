@@ -394,7 +394,7 @@ function ExternalCard({
   );
 }
 
-// ── 4. Individual reviews (merged carousel) ─────────────────────────────
+// ── 4. Relevant reviews (merged carousel) ───────────────────────────────
 
 // Tier label / avatar bg / text tokens shared between IndividualReviewsBox
 // (mesita visitor cards) and the Rewards box (tier cards). Diamond text

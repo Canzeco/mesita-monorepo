@@ -17,7 +17,12 @@ type VenueVisitor = {
   community?: string;
   quote: string;
   avatar: string;
-  ratings: { food: number; service: number; atm: number; value: number };
+  ratings: {
+    food: number;
+    service: number;
+    ambience: number;
+    value: number;
+  };
 };
 
 type VenueHour = { day: Weekday; label: string; range: string };
@@ -158,7 +163,7 @@ const VENUES: Venue[] = [
         quote: "Best sunset terrace in the city.",
         avatar:
           "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80&auto=format&fit=crop&crop=faces",
-        ratings: { food: 5, service: 5, atm: 5, value: 5 },
+        ratings: { food: 5, service: 5, ambience: 5, value: 5 },
       },
       {
         name: "Lucas M.",
@@ -169,7 +174,7 @@ const VENUES: Venue[] = [
         quote: "The DJ set elevates dinner into an event.",
         avatar:
           "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&q=80&auto=format&fit=crop&crop=faces",
-        ratings: { food: 5, service: 4, atm: 5, value: 4 },
+        ratings: { food: 5, service: 4, ambience: 5, value: 4 },
       },
       {
         name: "Renata G.",
@@ -180,7 +185,7 @@ const VENUES: Venue[] = [
         quote: "Pastas are house-made and the wine list is real.",
         avatar:
           "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80&auto=format&fit=crop&crop=faces",
-        ratings: { food: 5, service: 5, atm: 4, value: 4 },
+        ratings: { food: 5, service: 5, ambience: 4, value: 4 },
       },
     ],
     menu: { pages: 4, updated: "this week" },
