@@ -1,6 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, MapPin, Plus, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  LayoutGrid,
+  MapPin,
+  Package,
+  Plus,
+  Sparkles,
+  Users,
+  Wrench,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import {
@@ -15,7 +26,7 @@ import { errMsg } from "@/lib/utils";
 //
 //   no session     → /            (sign in first)
 //   not onboarded  → /onboard     (capture name)
-//   no venues      → render VenuelessHub (Add your first venue CTA)
+//   no venues      → render VenuelessHub (Add your first place CTA)
 //   has venues     → render VenueHub    (cards + Add another CTA)
 //
 // Always renders behind AppHeader so the operator can sign out / jump
@@ -56,45 +67,91 @@ export default async function CentralPage() {
   return <VenueHub email={user.email ?? null} venues={venues} />;
 }
 
-// Authenticated + no venues. Empty home — single CTA to /add. Same
-// AppHeader shell as the multi-venue variant so the operator can sign
-// out without a sidebar.
+// Entity types operators can list on Mesita. Place is live today (claims
+// an existing venue or creates a new one via /add); the other five are
+// scaffolded as "Soon" tiles so the surface signals where the roadmap
+// is headed without enabling backends that don't exist yet.
+type EntityOption = {
+  label: string;
+  Icon: LucideIcon;
+  href: string | null; // null = disabled "Soon" tile
+};
+
+const ENTITY_OPTIONS: EntityOption[] = [
+  { label: "Place", Icon: MapPin, href: "/add" },
+  { label: "Event", Icon: CalendarDays, href: null },
+  { label: "Community", Icon: Users, href: null },
+  { label: "Products", Icon: Package, href: null },
+  { label: "Services", Icon: Wrench, href: null },
+  { label: "Micro-app", Icon: LayoutGrid, href: null },
+];
+
+// Authenticated + no venues. Empty home — Place is the live CTA, the
+// other entity types render as disabled "Soon" tiles to preview what's
+// coming. Same AppHeader shell as the multi-venue variant so the
+// operator can sign out without a sidebar.
 function VenuelessHub({ email }: { email: string | null }) {
   return (
     <div className="bg-background min-h-dvh">
       <AppHeader email={email} venues={[]} />
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="border-border bg-card-soft flex flex-col items-center gap-5 rounded-[22px] border p-10 text-center">
+        <div className="border-border bg-card-soft flex flex-col items-center gap-6 rounded-[22px] border p-10 text-center">
           <span className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full">
             <Sparkles className="h-5 w-5" />
           </span>
           <div>
             <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
-              Add your first venue
+              Add your first place
             </h1>
             <p className="text-muted-foreground mt-2 max-w-[44ch] text-sm leading-[1.55]">
-              Mesita lists every venue on the open internet. Claim the one you
+              Mesita lists every place on the open internet. Claim the one you
               operate (or create a brand new listing) and your dashboard shows
-              up here.
+              up here. Events, communities, products, services and micro-apps
+              are next.
             </p>
           </div>
-          <Link
-            href="/add"
-            className="bg-pink-gradient shadow-glow inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold text-white transition hover:brightness-105"
-          >
-            <MapPin className="h-4 w-4" />
-            Add a venue
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
+            {ENTITY_OPTIONS.map((opt) => (
+              <AddEntityTile key={opt.label} option={opt} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Authenticated + at least one venue. The "Your venues" hub from the
-// screenshot — venue cards link into their unit dashboard, plus a
-// dashed "Add another" CTA. Post-signin lands users here.
+function AddEntityTile({ option }: { option: EntityOption }) {
+  const { label, Icon, href } = option;
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="bg-pink-gradient shadow-glow flex h-full flex-col items-center justify-center gap-1.5 rounded-[14px] px-3 py-4 text-sm font-semibold text-white transition hover:brightness-105"
+      >
+        <Icon className="h-4 w-4" />
+        {label}
+        <ArrowRight className="h-3.5 w-3.5 opacity-90" />
+      </Link>
+    );
+  }
+  return (
+    <div
+      aria-disabled
+      className="border-border text-muted-foreground/70 bg-card relative flex h-full flex-col items-center justify-center gap-1.5 rounded-[14px] border px-3 py-4 text-sm font-medium"
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+      <span className="bg-secondary/10 text-secondary absolute top-1.5 right-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase">
+        Soon
+      </span>
+    </div>
+  );
+}
+
+// Authenticated + at least one venue. The "Your places" hub — venue
+// cards link into their unit dashboard, plus a dashed "Add another"
+// CTA. Post-signin lands users here.
 function VenueHub({
   email,
   venues,
@@ -110,10 +167,10 @@ function VenueHub({
       />
       <div className="mx-auto max-w-3xl px-6 py-10">
         <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
-          Your venues
+          Your places
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Pick a venue to open its dashboard, or add another.
+          Pick a place to open its dashboard, or add another.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {venues.map((v) => (
@@ -147,7 +204,7 @@ function VenueHub({
           className="border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground mt-3 flex items-center justify-center gap-2 rounded-[18px] border border-dashed py-4 text-sm font-medium transition"
         >
           <Plus className="h-4 w-4" />
-          Add another venue
+          Add another place
         </Link>
       </div>
     </div>
