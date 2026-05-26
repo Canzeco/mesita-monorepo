@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import type { Venue } from "@/lib/api/venues";
+import { firstInitial } from "@/lib/utils";
 
 // Pure presentation for the venue detail surface. The two callers (full
 // page at /venues/[id] and the intercepted modal at @modal/(.)venues/[id])
@@ -217,7 +218,7 @@ function ChipGrid({
 }
 
 function PhotoPlaceholder({ name }: { name: string }) {
-  const initial = name.trim().slice(0, 1).toUpperCase() || "·";
+  const initial = firstInitial(name);
   return (
     <div className="bg-pink-gradient flex aspect-[4/5] items-center justify-center">
       <span className="font-display text-7xl font-bold text-white/70">

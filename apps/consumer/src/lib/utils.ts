@@ -11,3 +11,9 @@ export function cn(...inputs: ClassValue[]) {
 export function errMsg(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
+
+// First letter of a name, uppercased, with a placeholder when the
+// trimmed name is empty. Used by avatar/photo placeholders.
+export function firstInitial(name: string, fallback = "·"): string {
+  return name.trim().slice(0, 1).toUpperCase() || fallback;
+}

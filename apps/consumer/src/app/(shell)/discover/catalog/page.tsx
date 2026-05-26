@@ -6,6 +6,7 @@ import {
   type Venue,
 } from "@/lib/api/venues";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
+import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,7 @@ export default async function CatalogPage() {
     try {
       fallback = await apiFetchPublicVenues(supabase, 60);
     } catch (err2) {
-      fetchError =
-        err2 instanceof Error ? err2.message : "Couldn't load the catalog.";
+      fetchError = errMsg(err2, "Couldn't load the catalog.");
     }
   }
 

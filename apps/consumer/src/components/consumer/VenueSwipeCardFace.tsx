@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { PartnerBadge, RatePill } from "@/components/shared";
-import { cn } from "@/lib/utils";
+import { cn, firstInitial } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 import { ImageCarousel } from "./ImageCarousel";
 
@@ -89,7 +89,7 @@ function VenueBackground({ venue }: { venue: Venue }) {
 }
 
 function PhotoPlaceholder({ name }: { name: string }) {
-  const initial = name.trim().slice(0, 1).toUpperCase() || "·";
+  const initial = firstInitial(name);
   return (
     <div className="bg-pink-gradient absolute inset-0">
       <div className="absolute inset-0 flex items-center justify-center text-white/70">

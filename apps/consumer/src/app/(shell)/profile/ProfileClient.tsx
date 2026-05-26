@@ -22,7 +22,7 @@ import {
   TIER_ORDER,
   tierBadgeClass,
 } from "@/lib/consumer-data";
-import { cn } from "@/lib/utils";
+import { cn, firstInitial } from "@/lib/utils";
 
 type Tab = "class" | "settings";
 
@@ -53,7 +53,7 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
     identity.fullName ??
     (identity.email ? identity.email.split("@")[0] : null) ??
     "Consumer";
-  const initial = displayName.trim().slice(0, 1).toUpperCase() || "?";
+  const initial = firstInitial(displayName, "?");
 
   // Identity facts shown next to the avatar — only the ones the consumer
   // actually filled. No mock fallbacks.

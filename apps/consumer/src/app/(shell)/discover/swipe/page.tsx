@@ -5,6 +5,7 @@ import {
   type Venue,
 } from "@/lib/api/venues";
 import { SwipeDeck } from "./SwipeDeck";
+import { errMsg } from "@/lib/utils";
 
 // Fetched on every request: this is a discover surface and freshness matters.
 export const dynamic = "force-dynamic";
@@ -30,8 +31,7 @@ export default async function SwipePage() {
     try {
       venues = await apiFetchPublicVenues(supabase);
     } catch (err2) {
-      fetchError =
-        err2 instanceof Error ? err2.message : "Failed to load venues.";
+      fetchError = errMsg(err2, "Failed to load venues.");
     }
   }
 
