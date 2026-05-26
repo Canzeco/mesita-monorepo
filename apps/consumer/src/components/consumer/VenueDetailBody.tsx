@@ -648,7 +648,7 @@ function WelcomeCard({
   kind: VenueDetail["promo"]["reward_kind"];
 }) {
   return (
-    <div className="bg-background relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3">
+    <div className="group bg-background relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-amber-400" />
       <p className="text-[10px] font-bold tracking-wider text-violet-400 uppercase">
         Welcome
@@ -660,6 +660,7 @@ function WelcomeCard({
       <p className="text-muted-foreground mt-1 text-[10px]">
         {discount.subtitle}
       </p>
+      <CardHoverAction label="Claim" variant="primary" />
     </div>
   );
 }
@@ -677,7 +678,7 @@ function TierCard({
 }) {
   if (current) {
     return (
-      <div className="bg-pink-gradient shadow-glow relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3 text-white">
+      <div className="group bg-pink-gradient shadow-glow relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3 text-white">
         <span className="bg-white/95 absolute top-2 right-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-zinc-900 uppercase">
           Current
         </span>
@@ -687,11 +688,12 @@ function TierCard({
         <p className="font-display mt-1 text-xl font-semibold">{value}%</p>
         <p className="text-[11px] text-white/85">{kind}</p>
         <p className="mt-1 text-[10px] text-white/75">on every visit</p>
+        <CardHoverAction label="Manage class" variant="light" />
       </div>
     );
   }
   return (
-    <div className="bg-background relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3">
+    <div className="group bg-background relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3">
       <div
         className={cn(
           "absolute inset-x-0 top-0 h-1",
@@ -710,6 +712,31 @@ function TierCard({
         {value}%
       </p>
       <p className="text-muted-foreground text-[11px]">{kind}</p>
+      <CardHoverAction label={`Join ${TIER_PROPER[tier]}`} variant="primary" />
+    </div>
+  );
+}
+
+function CardHoverAction({
+  label,
+  variant,
+}: {
+  label: string;
+  variant: "primary" | "light";
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 backdrop-blur-sm transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
+      <button
+        type="button"
+        className={cn(
+          "rounded-full px-3 py-1.5 text-[11px] font-semibold shadow-sm",
+          variant === "primary"
+            ? "bg-pink-gradient shadow-glow text-white"
+            : "bg-white text-zinc-900",
+        )}
+      >
+        {label}
+      </button>
     </div>
   );
 }
