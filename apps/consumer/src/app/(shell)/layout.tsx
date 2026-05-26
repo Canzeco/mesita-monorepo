@@ -21,8 +21,8 @@ export const dynamic = "force-dynamic";
 // route assumes the row is complete and renders accordingly. This kills
 // the "Complete your profile" half-state — it should never be reachable.
 //
-// Phone is collected too, but it's optional today (sign-in is email/OAuth
-// only) and intentionally left out of the completeness check.
+// Phone is omitted from the completeness check on purpose: sign-in is
+// phone OTP, so every authed consumer already has one on auth.user.
 export default async function ConsumerShellLayout({
   children,
   modal,

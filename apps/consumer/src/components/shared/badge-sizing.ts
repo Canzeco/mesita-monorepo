@@ -1,7 +1,7 @@
-// Shared sizing for the badge family (TierBadge, PartnerBadge, RatePill,
-// FiscalBadge). One place to tune padding / font-size / gap / icon size
-// instead of four. The icon class is exported so each badge can keep
-// using its lucide-react icon at the right scale.
+// Shared sizing for the badge family (PartnerBadge, RatePill). One
+// place to tune padding / font-size / gap / icon size instead of two.
+// The icon class is exported so each badge can keep using its
+// lucide-react icon at the right scale.
 
 export type BadgeSize = "xs" | "sm" | "md";
 

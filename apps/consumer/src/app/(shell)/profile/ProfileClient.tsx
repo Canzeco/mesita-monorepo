@@ -32,9 +32,9 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 // The identity bits that survive real onboarding — name, email, country,
-// birthday, sex — flow in from the server page. Everything else on this
-// page (tier ladder, communities, achievements, transactions) is still
-// mock until the corresponding schema columns + Edge Functions ship.
+// birthday, sex — flow in from the server page. The tier ladder rendered
+// on the Class tab is still mock until the corresponding schema columns +
+// Edge Functions ship.
 export type RealIdentity = {
   fullName: string | null;
   email: string | null;
