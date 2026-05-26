@@ -401,38 +401,59 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
   );
 }
 
+// ── Individual review cards (shared shape) ──────────────────────────────
+
+// Both review card types ride the same skeleton so the carousel feels
+// homogeneous — only the source-specific bits (tier chip vs none, italic
+// serif quote vs sans quote) differ. Layout:
+//
+//   [Avatar] [Name + sub]                          [Source logo]
+//   ★★★★★
+//   "Quote..."
+//   bottom meta line
+//
+// MesitaCard keeps the editorial italic-serif quote (Mesita brand voice);
+// GoogleCard renders the same author quote in sans. Everything around
+// them is identical.
+
 function MesitaCard({
   v,
 }: {
   v: VenueDetail["mesita_visitors"][number];
 }) {
+  // Derive a single 1-5 rating from the per-category scores so the
+  // top star row matches the Google card visually. The four numbers
+  // still ride the bottom meta line for readers who want the detail.
+  const overall = Math.round((v.food + v.service + v.ambiance + v.value) / 4);
   return (
     <article className="bg-background flex w-64 shrink-0 flex-col gap-3 rounded-2xl p-4">
-      <div className="flex items-center gap-3">
-        <div
-          className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white/90",
-            TIER_AVATAR_BG[v.tier],
-          )}
-        >
-          {firstInitial(v.name)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{v.name}</p>
-          <p className="text-muted-foreground truncate text-[11px]">
-            {v.handle}
-          </p>
-        </div>
-        <span
-          className={cn(
-            "rounded-full border border-current/30 px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase",
-            TIER_TEXT[v.tier],
-          )}
-        >
-          {TIER_LABEL[v.tier]}
-        </span>
-      </div>
-      <p className="font-display text-sm leading-snug italic">
+      <ReviewHeader
+        avatar={
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white/90",
+              TIER_AVATAR_BG[v.tier],
+            )}
+          >
+            {firstInitial(v.name)}
+          </div>
+        }
+        name={v.name}
+        sub={v.handle}
+        rightChip={
+          <span
+            className={cn(
+              "rounded-full border border-current/30 px-1.5 py-0 text-[8px] font-bold tracking-wider uppercase",
+              TIER_TEXT[v.tier],
+            )}
+          >
+            {TIER_LABEL[v.tier]}
+          </span>
+        }
+        sourceBadge={<MesitaLogo />}
+      />
+      <StarRow rating={overall} />
+      <p className="font-display text-foreground line-clamp-5 text-sm leading-snug italic">
         “{v.quote}”
       </p>
       <div className="text-muted-foreground mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-1 text-[10px]">
@@ -451,32 +472,67 @@ function GoogleCard({
   r: VenueDetail["google_reviews"][number];
 }) {
   return (
-    <article className="bg-background flex w-64 shrink-0 flex-col gap-2 rounded-2xl p-4">
-      <div className="flex items-center gap-2">
-        <GoogleLogo />
-        <p className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
-          Google
-        </p>
-      </div>
-      <div className="flex items-center gap-0.5 text-amber-400">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star
-            key={i}
-            className={cn(
-              "h-3.5 w-3.5",
-              i < r.rating ? "fill-current" : "opacity-30",
-            )}
-            strokeWidth={0}
-          />
-        ))}
-      </div>
+    <article className="bg-background flex w-64 shrink-0 flex-col gap-3 rounded-2xl p-4">
+      <ReviewHeader
+        avatar={
+          <div className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+            {firstInitial(r.author)}
+          </div>
+        }
+        name={r.author}
+        sub={r.date}
+        sourceBadge={<GoogleLogo />}
+      />
+      <StarRow rating={r.rating} />
       <p className="text-foreground line-clamp-5 text-sm leading-snug">
         “{r.quote}”
       </p>
-      <p className="text-muted-foreground mt-auto pt-1 text-[11px]">
-        {r.author} · {r.date}
-      </p>
     </article>
+  );
+}
+
+function ReviewHeader({
+  avatar,
+  name,
+  sub,
+  rightChip,
+  sourceBadge,
+}: {
+  avatar: React.ReactNode;
+  name: string;
+  sub: string;
+  rightChip?: React.ReactNode;
+  sourceBadge: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {avatar}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-sm font-semibold">{name}</p>
+          {rightChip}
+        </div>
+        <p className="text-muted-foreground truncate text-[11px]">{sub}</p>
+      </div>
+      {sourceBadge}
+    </div>
+  );
+}
+
+function StarRow({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5 text-amber-400">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={cn(
+            "h-3.5 w-3.5",
+            i < rating ? "fill-current" : "opacity-30",
+          )}
+          strokeWidth={0}
+        />
+      ))}
+    </div>
   );
 }
 
