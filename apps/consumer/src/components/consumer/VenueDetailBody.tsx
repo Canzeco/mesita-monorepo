@@ -32,6 +32,21 @@ import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
 import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
+import {
+  SectionAnchor,
+  VenueSectionNav,
+} from "@/components/consumer/VenueSectionNav";
+
+const NAV_SECTIONS = [
+  { id: "overview", label: "Overview" },
+  { id: "rewards", label: "Rewards" },
+  { id: "reviews", label: "Reviews" },
+  { id: "menu", label: "Menu" },
+  { id: "hours", label: "Hours" },
+  { id: "location", label: "Location" },
+  { id: "about", label: "About" },
+  { id: "details", label: "Details" },
+] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
@@ -45,16 +60,33 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
     <div className="flex flex-col gap-3 px-4 pb-0">
       <MediaBox venue={venue} />
-      <SummaryHeader venue={venue} />
-      <RewardsBox venue={venue} />
-      <ReviewsSummaryBox venue={venue} />
+      <VenueSectionNav sections={[...NAV_SECTIONS]} />
+      <SectionAnchor id="overview">
+        <SummaryHeader venue={venue} />
+      </SectionAnchor>
+      <SectionAnchor id="rewards">
+        <RewardsBox venue={venue} />
+      </SectionAnchor>
+      <SectionAnchor id="reviews">
+        <ReviewsSummaryBox venue={venue} />
+      </SectionAnchor>
       <IndividualReviewsBox venue={venue} />
-      <MenuBox venue={venue} />
-      <HoursBox venue={venue} />
-      <LocationBox venue={venue} />
-      <AboutBox text={venue.long_description} />
+      <SectionAnchor id="menu">
+        <MenuBox venue={venue} />
+      </SectionAnchor>
+      <SectionAnchor id="hours">
+        <HoursBox venue={venue} />
+      </SectionAnchor>
+      <SectionAnchor id="location">
+        <LocationBox venue={venue} />
+      </SectionAnchor>
+      <SectionAnchor id="about">
+        <AboutBox text={venue.long_description} />
+      </SectionAnchor>
       <LinksBox venue={venue} />
-      <DetailsBox venue={venue} />
+      <SectionAnchor id="details">
+        <DetailsBox venue={venue} />
+      </SectionAnchor>
       <ActionBar />
     </div>
   );
