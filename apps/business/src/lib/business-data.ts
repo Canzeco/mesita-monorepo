@@ -1,6 +1,6 @@
 // Mock fixtures for the business surfaces that haven't been wired to real
-// Edge Functions yet. Each consumer page renders behind a "Preview" banner
-// so the data is honest about being placeholder.
+// Edge Functions yet. Each page that reads from here renders behind a
+// "Preview" banner so the data is honest about being placeholder.
 //
 // Trimmed to only the exports still imported by a page. Unused exports
 // were removed in a cleanup pass — re-add when the surface that needs them

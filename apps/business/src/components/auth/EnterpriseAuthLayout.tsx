@@ -150,8 +150,6 @@ function SoftGlow() {
 
 // Tiny pill between the auth heading and the form. Two tones: "muted"
 // for the signed-in-as breadcrumb, "error" for the OAuth-failed notice.
-// Re-exported here so callers don't have to import from AuthShell when
-// they're using the enterprise layout.
 export function AuthChip({
   tone = "muted",
   children,

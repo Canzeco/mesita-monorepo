@@ -149,8 +149,8 @@ function AddEntityTile({ option }: { option: EntityOption }) {
 }
 
 // Authenticated + at least one venue. The "Your places" hub — venue
-// cards link into their unit dashboard, plus a dashed "Add another"
-// CTA. Post-signin lands users here.
+// cards link into their unit dashboard, plus the same 6-tile entity
+// picker under an "Add another" eyebrow. Post-signin lands users here.
 function VenueHub({
   email,
   venues,
