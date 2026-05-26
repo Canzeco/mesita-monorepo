@@ -41,9 +41,9 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
     <div className="flex flex-col gap-3 px-4 pb-0">
-      <RewardsBox venue={venue} />
       <MediaBox venue={venue} />
       <SummaryHeader venue={venue} />
+      <RewardsBox venue={venue} />
       <ReviewsSummaryBox venue={venue} />
       <IndividualReviewsBox venue={venue} />
       <MenuBox venue={venue} />
