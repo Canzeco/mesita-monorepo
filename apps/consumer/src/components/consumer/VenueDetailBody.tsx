@@ -685,20 +685,21 @@ function WelcomeCard({
 }: {
   discount: VenueDetail["welcome_discount"];
 }) {
+  // Compact layout matches the tier-grid card height — same padding,
+  // same value type-size, gradient stripe across the top. The
+  // "1 / month · first visit" detail still lives in the helper paragraph
+  // below the grid, so nothing is lost.
   return (
-    <div className="group bg-background relative overflow-hidden rounded-xl p-4">
+    <div className="group bg-background relative overflow-hidden rounded-xl p-2 text-center">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-amber-400" />
-      <p className="text-[10px] font-bold tracking-wider text-violet-400 uppercase">
+      <p className="text-[9px] font-bold tracking-wider text-violet-400 uppercase">
         Welcome
       </p>
-      <p className="mt-1 flex items-baseline gap-2">
-        <span className="font-display text-foreground text-3xl font-semibold">
+      <p className="mt-0.5 flex items-baseline justify-center gap-1">
+        <span className="font-display text-foreground text-lg font-semibold leading-tight">
           {discount.value}%
         </span>
-        <span className="text-muted-foreground text-sm">off</span>
-      </p>
-      <p className="text-muted-foreground mt-1 text-xs">
-        {discount.subtitle}
+        <span className="text-muted-foreground text-[10px]">off</span>
       </p>
       <CardHoverAction label="Claim" variant="primary" />
     </div>
