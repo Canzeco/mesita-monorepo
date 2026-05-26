@@ -456,12 +456,20 @@ function MesitaCard({
       <p className="font-display text-foreground line-clamp-5 text-sm leading-snug italic">
         “{v.quote}”
       </p>
-      <div className="text-muted-foreground mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-1 text-[10px]">
-        <span>Food {v.food}</span>
-        <span>Service {v.service}</span>
-        <span>Atm {v.ambiance}</span>
-        <span>Value {v.value}</span>
-      </div>
+      {/* OpenTable-style ratings line: overall (matching the stars
+          above) plus the four per-category numbers as text. Bold
+          numbers + muted labels mirror the OpenTable pattern. */}
+      <p className="text-muted-foreground mt-auto pt-1 text-[10px] leading-snug">
+        Overall <span className="text-foreground font-semibold">{overall}</span>
+        {" · "}Food{" "}
+        <span className="text-foreground font-semibold">{v.food}</span>
+        {" · "}Service{" "}
+        <span className="text-foreground font-semibold">{v.service}</span>
+        {" · "}Ambience{" "}
+        <span className="text-foreground font-semibold">{v.ambiance}</span>
+        {" · "}Value{" "}
+        <span className="text-foreground font-semibold">{v.value}</span>
+      </p>
     </article>
   );
 }
