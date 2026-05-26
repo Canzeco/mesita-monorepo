@@ -615,13 +615,11 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// ── 7. Rewards (welcome + tier matrix in one h-scroll) ──────────────────
+// ── 7. Rewards (welcome on top + 4-up tier grid) ────────────────────────
 
-// Welcome card lives outside this constant and always renders first; the
-// tier order below is descending (highest reward → lowest) so users see
-// the aspirational tier next to Welcome.
-// Ascending — Bronze on the left, Diamond on the right, like a ladder
-// you climb. Welcome sits as its own large card above the row.
+// Tiers render as a non-scrollable 4-column grid: Bronze · Silver · Gold ·
+// Diamond ascend left-to-right like a ladder. Welcome lives outside this
+// constant and renders as the full-width hero card above the grid.
 const TIER_ORDER: Tier[] = ["bronze", "silver", "gold", "diamond"];
 const TIER_RANK: Record<Tier, number> = {
   bronze: 0,
