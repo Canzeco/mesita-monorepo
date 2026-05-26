@@ -14,6 +14,10 @@ export type VenueDetail = {
   category: string;
   vibe: string;
   price_level: 1 | 2 | 3 | 4;
+  // Actual per-person price range. Quick-view surfaces (swipe / catalog
+  // / map) keep using price_level rendered as $-symbols; the venue
+  // detail page renders price_range so users can see real numbers.
+  price_range: string;
   distance_km: number;
   walk_minutes: number;
   open_now: boolean;
@@ -39,7 +43,7 @@ export type VenueDetail = {
     total: number;
   };
   google: { rating: number; count: number };
-  facebook: { rating: number; fans: number };
+  facebook: { rating: number; followers: number };
   instagram: { followers: number; mentions: number };
 
   // 4. Google reviews
@@ -148,6 +152,7 @@ export const mockVenue: VenueDetail = {
   category: "Mexican",
   vibe: "Elegant",
   price_level: 3,
+  price_range: "$200–300",
   distance_km: 2.4,
   walk_minutes: 28,
   open_now: true,
@@ -184,7 +189,7 @@ export const mockVenue: VenueDetail = {
     total: 142,
   },
   google: { rating: 4.7, count: 1891 },
-  facebook: { rating: 4.6, fans: 11100 },
+  facebook: { rating: 4.6, followers: 11100 },
   instagram: { followers: 23000, mentions: 2800 },
 
   google_reviews: [

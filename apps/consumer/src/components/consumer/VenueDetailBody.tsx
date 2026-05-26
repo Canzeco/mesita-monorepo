@@ -125,18 +125,18 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 // ── 1. Summary (loose header) ───────────────────────────────────────────
 
 function SummaryHeader({ venue }: { venue: VenueDetail }) {
+  // Venue page shows the real per-person range (price_range, e.g.
+  // "$200–300"). Quick-view surfaces — swipe, catalog, map — keep
+  // rendering price_level as the $-symbol shorthand.
   const meta = [
-    "$".repeat(venue.price_level),
+    venue.price_range,
     `${venue.distance_km} km`,
     venue.open_now ? `Open until ${venue.closes_at}` : `Closes at ${venue.closes_at}`,
   ];
   const isPartner = venue.listing_type === "partner";
   return (
     <Box className="!gap-2">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
-        {venue.vibe} · {venue.category}
-      </p>
-      <h1 className="font-display -mt-1 text-3xl leading-tight font-semibold tracking-tight">
+      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
         {venue.name}
       </h1>
       <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
@@ -151,6 +151,8 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
             {isPartner ? "Verified partner" : "Web listing"}
           </span>
         </span>
+        <span>·</span>
+        <span className="text-foreground font-medium">{venue.category}</span>
         <span>·</span>
         <span className="inline-flex items-center gap-1">
           <Pencil className="h-3 w-3" />
@@ -223,7 +225,7 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
           logo={<FacebookLogo />}
           icon="star"
           value={venue.facebook.rating.toFixed(1)}
-          meta={`${formatCount(venue.facebook.fans, false)} fans`}
+          meta={`${formatCount(venue.facebook.followers, false)} followers`}
         />
       </div>
     </Box>
