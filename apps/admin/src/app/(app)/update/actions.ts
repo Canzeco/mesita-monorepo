@@ -47,10 +47,10 @@ export async function findVenueByPlaceId(
   }
 
   // Clean URL — the operator opens this in a fresh tab, the business web's
-  // middleware sees no session and bounces through /sign-in if needed.
-  // Once signed in (as themselves, via Google), the business-get-overview
-  // EF reads their JWT, finds their email in super_admins, and grants
-  // venue access regardless of venue_members.
+  // middleware sees no session and bounces through / (the auth surface)
+  // if needed. Once signed in (as themselves, via Google), the
+  // business-get-overview EF reads their JWT, finds their email in
+  // super_admins, and grants venue access regardless of venue_members.
   const businessOrigin =
     (process.env.BUSINESS_WEB_URL ?? "").trim() || BUSINESS_WEB_URL_FALLBACK;
   const link = `${businessOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home`;
