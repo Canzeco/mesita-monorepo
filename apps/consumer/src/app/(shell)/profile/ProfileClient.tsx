@@ -7,7 +7,6 @@ import {
   Instagram,
   GraduationCap,
   BadgeCheck,
-  Plus,
   ChevronRight,
   Check,
   User as UserIcon,
@@ -34,20 +33,17 @@ import {
   CURRENT_USER,
   TIERS,
   TIER_ORDER,
-  TRANSACTIONS,
   ACHIEVEMENTS,
   tierBadgeClass,
-  venueById,
   type Achievement,
   type AchievementCategory,
 } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
-type Tab = "class" | "balance" | "game" | "settings";
+type Tab = "class" | "game" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "class", label: "Class" },
-  { id: "balance", label: "Balance" },
   { id: "game", label: "Game" },
   { id: "settings", label: "Settings" },
 ];
@@ -94,9 +90,9 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
 
       <div className="px-5 pt-3">
         <p className="bg-secondary/10 text-secondary rounded-xl px-3 py-2 text-[11px]">
-          Preview — tier, communities, achievements and the transactions feed
-          below are mock values. Your name, email, country, age and sex are
-          real. Your cashback balance lives on /qr.
+          Preview — tier, communities and achievements below are mock values.
+          Your name, email, country, age and sex are real. Your cashback
+          balance and activity live on /pay/wallet.
         </p>
       </div>
 
@@ -151,7 +147,6 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
         {tab === "class" && (
           <ClassTab onConnectInstagram={() => setVerifyOpen(true)} />
         )}
-        {tab === "balance" && <BalanceTab />}
         {tab === "game" && <GameTab />}
         {tab === "settings" && <SettingsTab />}
       </div>
@@ -418,70 +413,6 @@ function SubscriptionPathBox() {
 function formatFollowers(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}K`;
   return n.toString();
-}
-
-function BalanceTab() {
-  return (
-    <div className="flex flex-col">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
-        Balance
-      </p>
-      <p className="font-display mt-1 text-6xl font-bold tracking-tight">
-        ${CURRENT_USER.balance.toLocaleString()}
-      </p>
-      <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-        Expires 90 days after your last usage · Auto-applies on your next visit
-      </p>
-      <button
-        type="button"
-        className="border-border bg-card hover:bg-muted mt-4 inline-flex w-fit items-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold transition"
-      >
-        <Plus className="h-4 w-4" />
-        Add credits
-      </button>
-
-      <div className="mt-8">
-        <div className="flex items-center justify-between">
-          <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
-            Activity
-          </p>
-          <button
-            type="button"
-            className="text-secondary text-[12px] font-semibold"
-          >
-            See all
-          </button>
-        </div>
-        <div className="divide-border mt-2 divide-y">
-          {TRANSACTIONS.map((t) => {
-            const v = venueById(t.venueId);
-            if (!v) return null;
-            const positive = t.amount > 0;
-            return (
-              <div key={t.id} className="flex items-center gap-3 py-3">
-                <span className="text-2xl">{v.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{v.name}</p>
-                  <p className="text-muted-foreground text-[11px]">
-                    {t.when}
-                    {t.expires && ` · expires in ${t.expires}`}
-                  </p>
-                </div>
-                <p
-                  className={cn(
-                    "font-display text-lg font-bold tabular-nums",
-                    positive ? "text-secondary" : "text-foreground",
-                  )}
-                >
-                  {positive ? "+" : "−"}${Math.abs(t.amount).toLocaleString()}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // Per-category visual identity for achievements. Each category gets its

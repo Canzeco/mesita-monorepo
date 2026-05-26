@@ -2,17 +2,14 @@
 
 import { useMemo, useState } from "react";
 import {
-  Copy,
   Check,
   Wallet,
-  Sparkles,
   Instagram,
   AlertTriangle,
   Loader2,
   Upload,
   Calendar,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { cn, errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -22,29 +19,15 @@ import {
   ticketIsFormal,
   ticketRequiresStory,
   workflowSteps,
-  type ConsumerProfile,
   type ConsumerTicket,
   type WorkflowStep,
 } from "@/lib/api/tickets";
 
-export function MyQrClient({
-  profile,
+export function ActiveTicketSection({
   tickets,
 }: {
-  profile: ConsumerProfile;
   tickets: ConsumerTicket[];
 }) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(profile.code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard unavailable — ignore
-    }
-  };
-
   // The "active" ticket is the most recent non-terminal one. It surfaces
   // its step timeline at the top of the page so the consumer sees exactly
   // where the flow is. If everything is terminal, we don't pin one.
@@ -64,75 +47,9 @@ export function MyQrClient({
     );
   }, [tickets]);
 
-  return (
-    <div className="flex flex-col gap-4 px-4 pt-2 pb-6">
-      <section className="border-border bg-card rounded-3xl border p-5">
-        <div className="flex items-center gap-2">
-          <Sparkles className="text-secondary h-3.5 w-3.5" />
-          <p className="text-secondary text-[10px] font-bold tracking-wider uppercase">
-            Your code
-          </p>
-        </div>
-        <div className="mt-4 flex flex-col items-center gap-3">
-          <div className="border-border bg-background rounded-2xl border p-4">
-            <QRCodeSVG
-              value={`mesita:${profile.code}`}
-              size={184}
-              bgColor="transparent"
-              fgColor="currentColor"
-              level="M"
-              marginSize={0}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={onCopy}
-            aria-label={copied ? "Code copied" : "Copy code"}
-            className="border-border bg-background text-foreground hover:bg-muted flex items-center gap-2 rounded-full border px-4 py-2 text-base font-medium tracking-[0.16em] tabular-nums transition"
-          >
-            {profile.code}
-            {copied ? (
-              <Check className="text-secondary h-3.5 w-3.5" />
-            ) : (
-              <Copy className="text-muted-foreground h-3.5 w-3.5" />
-            )}
-          </button>
-          <p className="text-muted-foreground text-center text-[11px]">
-            Show this to the waiter when you ask for the check.
-            <br />
-            They&apos;ll scan it or type the code into their console.
-          </p>
-        </div>
-      </section>
-
-      <section className="border-border bg-pink-gradient shadow-glow rounded-2xl border p-4 text-white">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-white/80 uppercase">
-              Cashback balance
-            </p>
-            <p className="font-display mt-0.5 text-2xl font-semibold tabular-nums">
-              {formatCurrency(profile.cashback_balance_cents)}
-            </p>
-          </div>
-          <Wallet className="h-7 w-7 text-white/80" />
-        </div>
-        <p className="mt-3 text-[11px] leading-snug text-white/85">
-          Auto-applies to your next bill at{" "}
-          <span className="font-semibold">any partner</span> — Formal or
-          Informal. At Informal venues it comes off the discounted total: e.g.
-          $500 bill with 10% off and $200 balance → you hand the waiter $250 in
-          cash and Mesita pays them the $200 from your wallet. No redeem button,
-          no expiry while you stay active.
-        </p>
-      </section>
-
-      {activeTicket && <ActiveTicketCard ticket={activeTicket} />}
-    </div>
-  );
+  if (!activeTicket) return null;
+  return <ActiveTicketCard ticket={activeTicket} />;
 }
-
-// ─── Active ticket: timeline + story upload affordance ───────────────────
 
 function ActiveTicketCard({ ticket }: { ticket: ConsumerTicket }) {
   const steps = useMemo(() => workflowSteps(ticket), [ticket]);

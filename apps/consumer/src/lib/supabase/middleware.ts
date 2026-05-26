@@ -18,10 +18,11 @@ import type { Database } from "./database.types";
 // Onboard pages and dashboards each do their own server-side check.
 //
 // Consumer browsing (discover, venue detail, share) is deliberately public
-// so anonymous visitors can swipe before signing up. /profile,
-// /qr, /saved are private because they expose personal data.
+// so anonymous visitors can swipe before signing up. /profile, /pay
+// (QR + wallet), /qr (legacy redirect to /pay/qr) and /saved are private
+// because they expose personal data.
 
-const PROTECTED_PREFIXES = ["/profile", "/qr", "/saved"];
+const PROTECTED_PREFIXES = ["/profile", "/pay", "/qr", "/saved"];
 
 // Routes where a signed-in visitor should be bounced through post-signin.
 // Only `/` now — the legacy /sign-in and /sign-up redirect routes were
