@@ -635,6 +635,9 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
           Your current reward — {currentValue}% {kind} as Mesita{" "}
           {TIER_PROPER[currentTier]}.
         </p>
+        <p className="text-muted-foreground text-[11px]">
+          Capped at MX${venue.reward_cap_mxn.toLocaleString("en-US")} per visit.
+        </p>
       </div>
     </Box>
   );
