@@ -32,7 +32,12 @@ export function VenueDetailModalShell({
   }, [router]);
 
   return (
-    <div className="bg-background absolute inset-0 z-50 flex flex-col overflow-y-auto">
+    // animate-in slide-in-from-right makes the modal slide over the underlying
+    // surface left-to-right — feels like a covering pane, not a layout swap.
+    // The left-edge shadow sells the "sliding sheet" depth so the underlying
+    // shell reads as paused, not removed. tw-animate-css is already imported
+    // in globals.css; duration/ease tuned to feel snappy without being abrupt.
+    <div className="animate-in slide-in-from-right bg-background absolute inset-0 z-50 flex flex-col overflow-y-auto shadow-[-12px_0_32px_rgba(0,0,0,0.4)] duration-300 ease-out">
       <header className="bg-background/85 sticky top-0 z-20 flex items-center gap-3 px-3 py-3 backdrop-blur">
         <button
           type="button"
