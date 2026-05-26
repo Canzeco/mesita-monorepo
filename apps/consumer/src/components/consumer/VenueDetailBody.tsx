@@ -24,6 +24,7 @@ import {
   Phone,
   BadgeCheck,
   Pencil,
+  Info,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
@@ -127,35 +128,34 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 function SummaryHeader({ venue }: { venue: VenueDetail }) {
   // Venue page shows the real per-person range (price_range, e.g.
   // "$200–300"). Quick-view surfaces — swipe, catalog, map — keep
-  // rendering price_level as the $-symbol shorthand.
+  // rendering price_level as the $-symbol shorthand. Closing time
+  // moves out of the summary meta — the Hours box owns it.
   const meta = [
+    venue.category,
     venue.price_range,
     `${venue.distance_km} km`,
-    venue.open_now ? `Open until ${venue.closes_at}` : `Closes at ${venue.closes_at}`,
   ];
   const isPartner = venue.listing_type === "partner";
   return (
     <Box className="!gap-2">
-      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
+      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
       <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
-      <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-        <span className="inline-flex items-center gap-1">
+      <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <span className="inline-flex items-center gap-1.5">
           {isPartner ? (
-            <BadgeCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <BadgeCheck className="h-4 w-4 text-emerald-400" />
           ) : (
-            <Globe className="h-3.5 w-3.5" />
+            <Globe className="h-4 w-4" />
           )}
           <span className="text-foreground font-medium">
             {isPartner ? "Verified partner" : "Web listing"}
           </span>
         </span>
         <span>·</span>
-        <span className="text-foreground font-medium">{venue.category}</span>
-        <span>·</span>
-        <span className="inline-flex items-center gap-1">
-          <Pencil className="h-3 w-3" />
+        <span className="inline-flex items-center gap-1.5">
+          <Pencil className="h-3.5 w-3.5" />
           Updated {venue.last_updated_label}
         </span>
       </div>
@@ -450,6 +450,12 @@ function GoogleCard({
 function MenuBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
+      <div className="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2">
+        <Info className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+        <p className="text-[11px] leading-snug text-amber-100/90">
+          Reference only — current menu prices may differ at the venue.
+        </p>
+      </div>
       {venue.menus.map((m) => (
         <MenuRow key={m.name} menu={m} />
       ))}
@@ -600,6 +606,16 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
 // tier order below is descending (highest reward → lowest) so users see
 // the aspirational tier next to Welcome.
 const TIER_ORDER: Tier[] = ["diamond", "gold", "silver", "bronze"];
+// Tier index — higher number = higher tier. Used to derive whether
+// a card sits above, at, or below the user's current tier so the
+// hover overlay can hide the "Join" CTA on tiers you've already
+// surpassed.
+const TIER_RANK: Record<Tier, number> = {
+  bronze: 0,
+  silver: 1,
+  gold: 2,
+  diamond: 3,
+};
 const TIER_PROPER: Record<Tier, string> = {
   bronze: "Bronze",
   silver: "Silver",
@@ -610,7 +626,7 @@ const TIER_PROPER: Record<Tier, string> = {
 function RewardsBox({ venue }: { venue: VenueDetail }) {
   const currentTier = venue.promo_matrix.current_tier;
   const currentValue = venue.promo_matrix[currentTier];
-  const kind = venue.promo.reward_kind;
+  const currentRank = TIER_RANK[currentTier];
   return (
     <Box
       title="Your reward by class"
@@ -619,19 +635,24 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
       right={venue.details.mechanic}
     >
       <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
-        <WelcomeCard
-          discount={venue.welcome_discount}
-          kind={kind}
-        />
-        {TIER_ORDER.map((tier) => (
-          <TierCard
-            key={tier}
-            tier={tier}
-            value={venue.promo_matrix[tier]}
-            kind={kind}
-            current={tier === currentTier}
-          />
-        ))}
+        <WelcomeCard discount={venue.welcome_discount} />
+        {TIER_ORDER.map((tier) => {
+          const rank = TIER_RANK[tier];
+          const relation: "lower" | "current" | "higher" =
+            rank < currentRank
+              ? "lower"
+              : rank === currentRank
+                ? "current"
+                : "higher";
+          return (
+            <TierCard
+              key={tier}
+              tier={tier}
+              value={venue.promo_matrix[tier]}
+              relation={relation}
+            />
+          );
+        })}
       </div>
       <p className="text-muted-foreground text-[11px] leading-relaxed">
         Welcome {venue.welcome_discount.value}% (1 / month, first visit) ·
@@ -639,7 +660,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         · Silver {venue.promo_matrix.silver}% · Bronze{" "}
         {venue.promo_matrix.bronze}%. Your current reward is{" "}
         <span className="text-foreground font-medium">
-          {currentValue}% {kind} as Mesita {TIER_PROPER[currentTier]}
+          {currentValue}% off as Mesita {TIER_PROPER[currentTier]}
         </span>
         , capped at MX${venue.reward_cap_mxn.toLocaleString("en-US")} per visit.
       </p>
@@ -649,10 +670,8 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
 
 function WelcomeCard({
   discount,
-  kind,
 }: {
   discount: VenueDetail["welcome_discount"];
-  kind: VenueDetail["promo"]["reward_kind"];
 }) {
   return (
     <div className="group bg-background relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3">
@@ -663,7 +682,7 @@ function WelcomeCard({
       <p className="font-display text-foreground mt-1 text-xl font-semibold">
         {discount.value}%
       </p>
-      <p className="text-muted-foreground text-[11px]">{kind}</p>
+      <p className="text-muted-foreground text-[11px]">off</p>
       <p className="text-muted-foreground mt-1 text-[10px]">
         {discount.subtitle}
       </p>
@@ -675,15 +694,13 @@ function WelcomeCard({
 function TierCard({
   tier,
   value,
-  kind,
-  current,
+  relation,
 }: {
   tier: Tier;
   value: number;
-  kind: VenueDetail["promo"]["reward_kind"];
-  current: boolean;
+  relation: "lower" | "current" | "higher";
 }) {
-  if (current) {
+  if (relation === "current") {
     return (
       <div className="group bg-pink-gradient shadow-glow relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3 text-white">
         <span className="bg-white/95 absolute top-2 right-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-zinc-900 uppercase">
@@ -693,7 +710,7 @@ function TierCard({
           {TIER_PROPER[tier]}
         </p>
         <p className="font-display mt-1 text-xl font-semibold">{value}%</p>
-        <p className="text-[11px] text-white/85">{kind}</p>
+        <p className="text-[11px] text-white/85">off</p>
         <p className="mt-1 text-[10px] text-white/75">on every visit</p>
         <CardHoverAction label="Manage class" variant="light" />
       </div>
@@ -718,8 +735,13 @@ function TierCard({
       <p className="font-display text-foreground mt-1 text-xl font-semibold">
         {value}%
       </p>
-      <p className="text-muted-foreground text-[11px]">{kind}</p>
-      <CardHoverAction label={`Join ${TIER_PROPER[tier]}`} variant="primary" />
+      <p className="text-muted-foreground text-[11px]">off</p>
+      {relation === "higher" && (
+        <CardHoverAction
+          label={`Join ${TIER_PROPER[tier]}`}
+          variant="primary"
+        />
+      )}
     </div>
   );
 }

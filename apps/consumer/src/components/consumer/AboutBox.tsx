@@ -4,13 +4,29 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Expandable About card. Renders the long story collapsed to 3 lines
-// with a fade-into-ellipsis (line-clamp-3); the whole card is the
-// toggle so taps anywhere on it open it up to full height. Lives
-// outside VenueDetailBody so the server component can stay server.
+// Expandable About card. Short stories render in full — no toggle, no
+// ellipsis. Only when the description is extremely long (over ~600
+// characters, ≈ 10 mobile lines) do we clamp to line-clamp-10 with a
+// "Show more" toggle. The whole card is the toggle target so taps
+// anywhere on it open it up.
+
+const LONG_TEXT_THRESHOLD = 600;
 
 export function AboutBox({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > LONG_TEXT_THRESHOLD;
+
+  if (!isLong) {
+    return (
+      <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
+        <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+          About
+        </h3>
+        <p className="text-muted-foreground text-sm leading-relaxed">{text}</p>
+      </section>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -24,7 +40,7 @@ export function AboutBox({ text }: { text: string }) {
       <p
         className={cn(
           "text-muted-foreground text-sm leading-relaxed",
-          !expanded && "line-clamp-3",
+          !expanded && "line-clamp-10",
         )}
       >
         {text}
