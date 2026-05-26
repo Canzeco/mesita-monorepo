@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   MapPin,
@@ -25,10 +26,12 @@ import {
   BadgeCheck,
   Pencil,
   Info,
+  Crown,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
 import { AboutBox } from "@/components/consumer/AboutBox";
+import { ReviewCard } from "@/components/consumer/ReviewCard";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
@@ -190,33 +193,40 @@ function MediaBox({ venue }: { venue: VenueDetail }) {
 // ── 3. Reviews summary ──────────────────────────────────────────────────
 
 function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
-  // "Mesita · " prefix is gone from each pill label since the Mesita
-  // mini-eyebrow above the grid now brands the whole 2x2 block.
+  // Brand-new venues default to 5.0 across the board with 0 reviews until
+  // the first real one lands; once mesita_reviews.total > 0 we trust the
+  // averaged values that come in on the row.
+  const hasReviews = venue.mesita_reviews.total > 0;
   const ratings: Array<[string, number]> = [
-    ["Food", venue.mesita_reviews.food],
-    ["Service", venue.mesita_reviews.service],
-    ["Ambiance", venue.mesita_reviews.ambiance],
-    ["Overall", venue.mesita_reviews.overall],
+    ["Food", hasReviews ? venue.mesita_reviews.food : 5.0],
+    ["Service", hasReviews ? venue.mesita_reviews.service : 5.0],
+    ["Ambiance", hasReviews ? venue.mesita_reviews.ambiance : 5.0],
+    ["Overall", hasReviews ? venue.mesita_reviews.overall : 5.0],
   ];
   return (
-    <Box
-      title="Reviews summary"
-      icon={Star}
-      iconColor="text-violet-400"
-      right={`${venue.mesita_reviews.total} Mesita reviews`}
-    >
-      <div className="flex items-center gap-2">
-        <MesitaLogo />
-        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          Mesita ratings
-        </p>
+    <Box title="Reviews summary" icon={Star} iconColor="text-violet-400">
+      {/* Mesita box — full-width, contains the four sub-ratings. Header
+          row carries the brand glyph + total review count so the user
+          can tell at a glance whether the numbers are real or default. */}
+      <div className="bg-background flex flex-col gap-3 rounded-xl p-3">
+        <div className="flex items-center gap-2">
+          <MesitaLogo />
+          <p className="text-foreground text-sm font-semibold">Mesita</p>
+          <span className="text-muted-foreground ml-auto text-[11px]">
+            {venue.mesita_reviews.total} reviews
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {ratings.map(([label, value]) => (
+            <RatingPill key={label} label={label} value={value} />
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        {ratings.map(([label, value]) => (
-          <RatingPill key={label} label={label} value={value} />
-        ))}
-      </div>
-      <div className="mt-1 grid grid-cols-3 gap-2">
+
+      {/* External platforms in a 3-up grid — same shape, different
+          source. Three boxes paired with the Mesita box above form the
+          "four boxes" reviews-summary grid. */}
+      <div className="grid grid-cols-3 gap-2">
         <ExternalCard
           logo={<GoogleLogo />}
           icon="star"
@@ -343,12 +353,10 @@ function FacebookLogo() {
 
 // ── 4. Individual reviews (merged carousel) ─────────────────────────────
 
-const TIER_LABEL: Record<Tier, string> = {
-  bronze: "BRONZE",
-  silver: "SILVER",
-  gold: "GOLD",
-  diamond: "DIAMOND",
-};
+// Tier label / avatar bg / text tokens shared between IndividualReviewsBox
+// (mesita visitor cards) and the Rewards box (tier cards). Diamond text
+// reads as blue here; the global --tier-diamond gradient stays violet.
+
 const TIER_AVATAR_BG: Record<Tier, string> = {
   bronze: "bg-tier-bronze",
   silver: "bg-tier-silver",
@@ -389,160 +397,17 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Individual reviews" icon={MessageCircle} iconColor="text-pink-400">
       <BoxHScroll>
-        {items.map((item, i) =>
-          item.kind === "mesita" ? (
-            <MesitaCard key={`m-${i}`} v={item.data} />
-          ) : (
-            <GoogleCard key={`g-${i}`} r={item.data} />
-          ),
-        )}
+        {items.map((item, i) => (
+          <ReviewCard key={`${item.kind}-${i}`} {...item} />
+        ))}
       </BoxHScroll>
     </Box>
   );
 }
 
-// ── Individual review cards (shared shape) ──────────────────────────────
-
-// Both review card types ride the same skeleton so the carousel feels
-// homogeneous — only the source-specific bits (tier chip vs none, italic
-// serif quote vs sans quote) differ. Layout:
-//
-//   [Avatar] [Name + sub]                          [Source logo]
-//   ★★★★★
-//   "Quote..."
-//   bottom meta line
-//
-// MesitaCard keeps the editorial italic-serif quote (Mesita brand voice);
-// GoogleCard renders the same author quote in sans. Everything around
-// them is identical.
-
-function MesitaCard({
-  v,
-}: {
-  v: VenueDetail["mesita_visitors"][number];
-}) {
-  // Derive a single 1-5 rating from the per-category scores so the
-  // top star row matches the Google card visually. The four numbers
-  // still ride the bottom meta line for readers who want the detail.
-  const overall = Math.round((v.food + v.service + v.ambiance + v.value) / 4);
-  return (
-    <article className="bg-background flex w-64 shrink-0 flex-col gap-3 rounded-2xl p-4">
-      <ReviewHeader
-        avatar={
-          <div
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white/90",
-              TIER_AVATAR_BG[v.tier],
-            )}
-          >
-            {firstInitial(v.name)}
-          </div>
-        }
-        name={v.name}
-        sub={v.handle}
-        rightChip={
-          <span
-            className={cn(
-              "rounded-full border border-current/30 px-1.5 py-0 text-[8px] font-bold tracking-wider uppercase",
-              TIER_TEXT[v.tier],
-            )}
-          >
-            {TIER_LABEL[v.tier]}
-          </span>
-        }
-        sourceBadge={<MesitaLogo />}
-      />
-      <StarRow rating={overall} />
-      <p className="font-display text-foreground line-clamp-5 text-sm leading-snug italic">
-        “{v.quote}”
-      </p>
-      {/* OpenTable-style ratings line: overall (matching the stars
-          above) plus the four per-category numbers as text. Bold
-          numbers + muted labels mirror the OpenTable pattern. */}
-      <p className="text-muted-foreground mt-auto pt-1 text-[10px] leading-snug">
-        Overall <span className="text-foreground font-semibold">{overall}</span>
-        {" · "}Food{" "}
-        <span className="text-foreground font-semibold">{v.food}</span>
-        {" · "}Service{" "}
-        <span className="text-foreground font-semibold">{v.service}</span>
-        {" · "}Ambience{" "}
-        <span className="text-foreground font-semibold">{v.ambiance}</span>
-        {" · "}Value{" "}
-        <span className="text-foreground font-semibold">{v.value}</span>
-      </p>
-    </article>
-  );
-}
-
-function GoogleCard({
-  r,
-}: {
-  r: VenueDetail["google_reviews"][number];
-}) {
-  return (
-    <article className="bg-background flex w-64 shrink-0 flex-col gap-3 rounded-2xl p-4">
-      <ReviewHeader
-        avatar={
-          <div className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
-            {firstInitial(r.author)}
-          </div>
-        }
-        name={r.author}
-        sub={r.date}
-        sourceBadge={<GoogleLogo />}
-      />
-      <StarRow rating={r.rating} />
-      <p className="text-foreground line-clamp-5 text-sm leading-snug">
-        “{r.quote}”
-      </p>
-    </article>
-  );
-}
-
-function ReviewHeader({
-  avatar,
-  name,
-  sub,
-  rightChip,
-  sourceBadge,
-}: {
-  avatar: React.ReactNode;
-  name: string;
-  sub: string;
-  rightChip?: React.ReactNode;
-  sourceBadge: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      {avatar}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="truncate text-sm font-semibold">{name}</p>
-          {rightChip}
-        </div>
-        <p className="text-muted-foreground truncate text-[11px]">{sub}</p>
-      </div>
-      {sourceBadge}
-    </div>
-  );
-}
-
-function StarRow({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-0.5 text-amber-400">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star
-          key={i}
-          className={cn(
-            "h-3.5 w-3.5",
-            i < rating ? "fill-current" : "opacity-30",
-          )}
-          strokeWidth={0}
-        />
-      ))}
-    </div>
-  );
-}
+// ── Individual review cards live in @/components/consumer/ReviewCard
+//    (client) — taller layout, optional photo thumbnail, "Read more"
+//    toggle when the quote runs long.
 
 // ── 5. Menu ─────────────────────────────────────────────────────────────
 
@@ -809,6 +674,17 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         </div>
       </div>
 
+      {/* CTA — the rewards box is the closest spot to the user's tier,
+          so this is where "upgrade my class" lands. Wired to /profile
+          once we ship a real upgrade flow; today it just routes to the
+          Class tab. */}
+      <Link
+        href="/profile"
+        className="bg-pink-gradient shadow-glow flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white"
+      >
+        <Crown className="h-4 w-4" />
+        Upgrade class
+      </Link>
     </Box>
   );
 }
@@ -907,26 +783,37 @@ const REVIEW_DEFS = [
 ] as const;
 
 function DetailsBox({ venue }: { venue: VenueDetail }) {
-  // Mirrors what Google Places + OpenTable surface on a venue detail
-  // panel: category, zone, participation, then the Google-tags-style
-  // breakdown — service options, dining style, dress code, parking,
-  // accessibility, amenities, and (when listed) the executive chef.
-  // Price lives in the Summary meta, Hours in the Hours box, Distance
-  // in the Location box, Mechanic in the Rewards box.
+  // Order from "what is this place" → "how do I behave there" → "who
+  // runs it" → "how does Mesita relate to it":
+  //   identity         category · zone · dining style · dress code
+  //   logistics        service · reservations · payment · parking
+  //   amenities        amenities · accessibility · kid/pet friendly
+  //   people           executive chef
+  //   platform meta    participation · mechanic
+  const d = venue.details;
   const rows: Array<[string, string]> = [
-    ["Category", venue.details.category_full],
-    ["Zone", venue.details.zone],
-    ["Participation", venue.details.participation],
-    ["Service", venue.details.service_options.join(" · ")],
-    ["Dining style", venue.details.dining_style],
-    ["Dress code", venue.details.dress_code],
-    ["Parking", venue.details.parking],
-    ["Accessibility", venue.details.accessibility.join(" · ")],
-    ["Amenities", venue.details.amenities.join(" · ")],
+    ["Category", d.category_full],
+    ["Zone", d.zone],
+    ["Dining style", d.dining_style],
+    ["Dress code", d.dress_code],
+    ["Service", d.service_options.join(" · ")],
+    ["Reservations", d.reservations],
+    ["Payment", d.payment_methods.join(" · ")],
+    ["Parking", d.parking],
+    ["Amenities", d.amenities.join(" · ")],
+    ["Accessibility", d.accessibility.join(" · ")],
   ];
-  if (venue.details.executive_chef) {
-    rows.push(["Executive chef", venue.details.executive_chef]);
+  if (d.kid_friendly !== undefined) {
+    rows.push(["Kid friendly", d.kid_friendly ? "Yes" : "No"]);
   }
+  if (d.pet_friendly !== undefined) {
+    rows.push(["Pet friendly", d.pet_friendly ? "Yes" : "No"]);
+  }
+  if (d.executive_chef) {
+    rows.push(["Executive chef", d.executive_chef]);
+  }
+  rows.push(["Participation", d.participation]);
+  rows.push(["Mechanic", d.mechanic]);
   return (
     <Box title="Details" icon={Tags} iconColor="text-pink-400">
       <dl className="flex flex-col gap-3">

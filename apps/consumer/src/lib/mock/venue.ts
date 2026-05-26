@@ -58,6 +58,10 @@ export type VenueDetail = {
     rating: number;
     quote: string;
     date: string;
+    // Optional dish / dining-room photo attached by the reviewer (Google
+    // Maps surfaces these on the review card). Shown as a thumbnail under
+    // the truncated quote.
+    photo_url?: string;
   }>;
 
   // 5. Mesita visitors
@@ -72,6 +76,9 @@ export type VenueDetail = {
     service: number;
     ambiance: number;
     value: number;
+    // Optional photo uploaded by the visitor (Instagram-story style for
+    // Mesita). Same surfacing pattern as Google reviews.
+    photo_url?: string;
   }>;
 
   // 6. Menu — multiple menus per venue (dinner, wine, cocktails, etc.)
@@ -130,19 +137,25 @@ export type VenueDetail = {
   // 10. Details (Google-Places-style metadata: category, zone, hours, etc.)
   // Most of the extra fields below mirror what Google's Places panel
   // and OpenTable surface on their detail views — dining style, dress
-  // code, parking, accessibility, amenities, executive chef.
+  // code, parking, accessibility, amenities, executive chef. Optional
+  // OpenTable extras land here too (reservations, payment methods,
+  // kid/pet friendliness).
   details: {
     category_full: string;
     zone: string;
-    participation: string;
-    mechanic: string;
-    service_options: string[];
     dining_style: string;
     dress_code: string;
+    service_options: string[];
+    reservations: string;
+    payment_methods: string[];
     parking: string;
-    accessibility: string[];
     amenities: string[];
+    accessibility: string[];
+    kid_friendly?: boolean;
+    pet_friendly?: boolean;
     executive_chef?: string;
+    participation: string;
+    mechanic: string;
   };
   channels: {
     website_url?: string;
@@ -232,8 +245,10 @@ export const mockVenue: VenueDetail = {
       author: "Andrea V.",
       rating: 5,
       quote:
-        "La mejor experiencia de cortes en Monterrey. Servicio impecable y ambiente elegante.",
+        "La mejor experiencia de cortes en Monterrey. Servicio impecable y ambiente elegante. Pedí el ribeye y vino tinto de la casa, todo perfecto. El mesero recomendó muy bien los maridajes, definitivamente volveremos para celebrar.",
       date: "2 weeks ago",
+      photo_url:
+        "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&q=80&auto=format&fit=crop",
     },
     {
       author: "Diego R.",
@@ -246,8 +261,10 @@ export const mockVenue: VenueDetail = {
       author: "Sofía L.",
       rating: 5,
       quote:
-        "Vinimos por aniversario. Los cortes están perfectos y el postre cierra de maravilla.",
+        "Vinimos por aniversario. Los cortes están perfectos y el postre cierra de maravilla. El servicio fue impecable de principio a fin, y la decoración del salón privado nos sorprendió.",
       date: "1 month ago",
+      photo_url:
+        "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=600&q=80&auto=format&fit=crop",
     },
     {
       author: "Mariana T.",
@@ -266,11 +283,13 @@ export const mockVenue: VenueDetail = {
       community: "Tec",
       followers: 126000,
       quote:
-        "El mejor ribeye de la ciudad, sin duda. El servicio te hace sentir como en casa.",
+        "El mejor ribeye de la ciudad, sin duda. El servicio te hace sentir como en casa. Llevé a mi familia para celebrar el cumpleaños de mi mamá y nos sorprendieron con un postre especial — detalles que marcan la diferencia.",
       food: 5,
       service: 5,
       ambiance: 5,
       value: 4,
+      photo_url:
+        "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80&auto=format&fit=crop",
     },
     {
       name: "Lucas M.",
@@ -279,11 +298,13 @@ export const mockVenue: VenueDetail = {
       community: "Stanford",
       followers: 78400,
       quote:
-        "Llevé clientes y cerramos la mesa. Ambiente perfecto para negocios o cita especial.",
+        "Llevé clientes y cerramos la mesa. Ambiente perfecto para negocios o cita especial. La cava sorprende.",
       food: 5,
       service: 5,
       ambiance: 5,
       value: 4,
+      photo_url:
+        "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&q=80&auto=format&fit=crop",
     },
     {
       name: "Renata G.",
@@ -305,11 +326,13 @@ export const mockVenue: VenueDetail = {
       community: "Harvard",
       followers: 214000,
       quote:
-        "Una de mis paradas obligadas en Monterrey. La cava nunca decepciona.",
+        "Una de mis paradas obligadas en Monterrey. La cava nunca decepciona y el chef sabe sorprender.",
       food: 5,
       service: 5,
       ambiance: 5,
       value: 5,
+      photo_url:
+        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80&auto=format&fit=crop",
     },
   ],
 
@@ -409,17 +432,12 @@ export const mockVenue: VenueDetail = {
   details: {
     category_full: "Place · Restaurant",
     zone: "Loma Larga Oriente",
-    participation: "Partner",
-    mechanic: "Cashback",
-    service_options: ["Dine-in", "Takeaway", "Delivery"],
     dining_style: "Fine dining",
     dress_code: "Smart casual",
+    service_options: ["Dine-in", "Takeaway", "Delivery"],
+    reservations: "Recommended",
+    payment_methods: ["Visa", "Mastercard", "AMEX", "Cash"],
     parking: "Valet · Public garage",
-    accessibility: [
-      "Wheelchair accessible entrance",
-      "Wheelchair accessible restroom",
-      "Step-free access",
-    ],
     amenities: [
       "Outdoor seating",
       "Private dining rooms",
@@ -427,7 +445,16 @@ export const mockVenue: VenueDetail = {
       "Live music (Thu–Sat)",
       "Non-smoking",
     ],
+    accessibility: [
+      "Wheelchair accessible entrance",
+      "Wheelchair accessible restroom",
+      "Step-free access",
+    ],
+    kid_friendly: true,
+    pet_friendly: false,
     executive_chef: "Chef Andrés Saavedra",
+    participation: "Partner",
+    mechanic: "Cashback",
   },
   channels: {
     website_url: "https://www.mochomos.com",

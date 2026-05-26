@@ -350,7 +350,7 @@ function SubscriptionPathBox() {
                 </div>
                 <p className="text-muted-foreground text-[11px]">
                   {isPaidTier
-                    ? `$${t.priceMxn.toLocaleString()} MXN / mo · ${t.cashback.toLowerCase()}`
+                    ? `MX$${t.priceMxn.toLocaleString()} / mo · ${t.cashback.toLowerCase()}`
                     : `Default · ${t.cashback.toLowerCase()}`}
                 </p>
               </div>
