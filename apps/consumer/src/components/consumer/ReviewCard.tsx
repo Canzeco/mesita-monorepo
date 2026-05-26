@@ -102,7 +102,13 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           truncated={isLong && !expanded}
           onExpand={isLong && !expanded ? () => setExpanded(true) : undefined}
         />
-        {v.photo_url && <Thumbnail src={v.photo_url} alt={`${v.name}'s photo`} />}
+        {v.photo_url && (
+          <Thumbnail
+            src={v.photo_url}
+            alt={`${v.name}'s photo`}
+            aspect={v.photo_aspect ?? "landscape"}
+          />
+        )}
       </article>
     );
   }
@@ -126,7 +132,13 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
         truncated={isLong && !expanded}
         onExpand={isLong && !expanded ? () => setExpanded(true) : undefined}
       />
-      {r.photo_url && <Thumbnail src={r.photo_url} alt={`${r.author}'s photo`} />}
+      {r.photo_url && (
+        <Thumbnail
+          src={r.photo_url}
+          alt={`${r.author}'s photo`}
+          aspect={r.photo_aspect ?? "landscape"}
+        />
+      )}
     </article>
   );
 }
@@ -211,9 +223,31 @@ function Quote({
   );
 }
 
-function Thumbnail({ src, alt }: { src: string; alt: string }) {
+function Thumbnail({
+  src,
+  alt,
+  aspect,
+}: {
+  src: string;
+  alt: string;
+  aspect: "square" | "portrait" | "landscape";
+}) {
+  // Container aspect drives the thumbnail's native shape: portrait for
+  // story/IG-style images, square for IG-post-flavored food shots,
+  // landscape for dining-room / wide table photos.
+  const aspectClass =
+    aspect === "portrait"
+      ? "aspect-[3/4]"
+      : aspect === "landscape"
+        ? "aspect-[16/9]"
+        : "aspect-square";
   return (
-    <div className="relative mt-auto h-28 w-full overflow-hidden rounded-xl">
+    <div
+      className={cn(
+        "relative mt-auto w-full overflow-hidden rounded-xl",
+        aspectClass,
+      )}
+    >
       <Image
         src={src}
         alt={alt}

@@ -58,8 +58,11 @@ export type VenueDetail = {
     date: string;
     // Optional dish / dining-room photo attached by the reviewer (Google
     // Maps surfaces these on the review card). Shown as a thumbnail under
-    // the truncated quote.
+    // the truncated quote. photo_aspect drives the container ratio so
+    // landscape food shots, square IG-style posts, and portrait/story
+    // images all render at their native shape.
     photo_url?: string;
+    photo_aspect?: "square" | "portrait" | "landscape";
   }>;
 
   // 5. Mesita visitors
@@ -75,8 +78,11 @@ export type VenueDetail = {
     ambiance: number;
     value: number;
     // Optional photo uploaded by the visitor (Instagram-story style for
-    // Mesita). Same surfacing pattern as Google reviews.
+    // Mesita). Same surfacing pattern as Google reviews. photo_aspect
+    // controls the thumbnail's container ratio so portrait stories,
+    // landscape dining shots, and square food photos render natively.
     photo_url?: string;
+    photo_aspect?: "square" | "portrait" | "landscape";
   }>;
 
   // 6. Menu — multiple menus per venue (dinner, wine, cocktails, etc.)
@@ -149,8 +155,12 @@ export type VenueDetail = {
     parking: string;
     amenities: string[];
     accessibility: string[];
+    dietary_options: string[];
+    good_for: string[];
+    languages: string[];
     kid_friendly?: boolean;
     pet_friendly?: boolean;
+    established_year?: number;
     executive_chef?: string;
     participation: string;
     mechanic: string;
@@ -244,6 +254,7 @@ export const mockVenue: VenueDetail = {
       date: "2 weeks ago",
       photo_url:
         "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&q=80&auto=format&fit=crop",
+      photo_aspect: "square",
     },
     {
       author: "Diego R.",
@@ -260,6 +271,7 @@ export const mockVenue: VenueDetail = {
       date: "1 month ago",
       photo_url:
         "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=600&q=80&auto=format&fit=crop",
+      photo_aspect: "portrait",
     },
     {
       author: "Mariana T.",
@@ -285,6 +297,7 @@ export const mockVenue: VenueDetail = {
       value: 4,
       photo_url:
         "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80&auto=format&fit=crop",
+      photo_aspect: "landscape",
     },
     {
       name: "Lucas M.",
@@ -300,6 +313,7 @@ export const mockVenue: VenueDetail = {
       value: 4,
       photo_url:
         "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&q=80&auto=format&fit=crop",
+      photo_aspect: "portrait",
     },
     {
       name: "Renata G.",
@@ -328,6 +342,7 @@ export const mockVenue: VenueDetail = {
       value: 5,
       photo_url:
         "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80&auto=format&fit=crop",
+      photo_aspect: "square",
     },
   ],
 
@@ -445,8 +460,16 @@ export const mockVenue: VenueDetail = {
       "Wheelchair accessible restroom",
       "Step-free access",
     ],
+    dietary_options: [
+      "Vegetarian options",
+      "Vegan options",
+      "Gluten-free options",
+    ],
+    good_for: ["Romantic", "Business meetings", "Groups", "Birthdays"],
+    languages: ["Spanish", "English"],
     kid_friendly: true,
     pet_friendly: false,
+    established_year: 2014,
     executive_chef: "Chef Andrés Saavedra",
     participation: "Partner",
     mechanic: "Cashback",

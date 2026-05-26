@@ -133,18 +133,30 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   // "$200–300"). Quick-view surfaces — swipe, catalog, map — keep
   // rendering price_level as the $-symbol shorthand. Closing time
   // moves out of the summary meta — the Hours box owns it.
-  const meta = [
-    venue.category,
-    venue.price_range,
-    `${venue.distance_km} km`,
-  ];
+  const meta = [venue.category, venue.price_range, `${venue.distance_km} km`];
   const isPartner = venue.listing_type === "partner";
+  // Star rating in the Summary uses the Google source for now — easiest
+  // single-number stand-in until we surface a combined Mesita+Google
+  // headline rating. Renders inline at the start of the meta row.
+  const googleRating = venue.google.rating.toFixed(1);
+  const googleCount = venue.google.count.toLocaleString("en-US");
   return (
     <Box className="!gap-2">
       <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
-      <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
+      <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-sm">
+        <span className="inline-flex items-center gap-1">
+          <Star
+            className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+            strokeWidth={0}
+          />
+          <span className="text-foreground font-semibold">{googleRating}</span>
+          <span>({googleCount})</span>
+        </span>
+        <span>·</span>
+        <span>{meta.join(" · ")}</span>
+      </p>
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <span className="inline-flex items-center gap-1.5">
           {isPartner ? (
@@ -425,7 +437,7 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
   }
 
   return (
-    <Box title="Individual reviews" icon={MessageCircle} iconColor="text-pink-400">
+    <Box title="Relevant reviews" icon={MessageCircle} iconColor="text-pink-400">
       <BoxHScroll>
         {items.map((item, i) => (
           <ReviewCard key={`${item.kind}-${i}`} {...item} />
@@ -832,12 +844,18 @@ function DetailsBox({ venue }: { venue: VenueDetail }) {
     ["Parking", d.parking],
     ["Amenities", d.amenities.join(" · ")],
     ["Accessibility", d.accessibility.join(" · ")],
+    ["Dietary", d.dietary_options.join(" · ")],
+    ["Good for", d.good_for.join(" · ")],
+    ["Languages", d.languages.join(" · ")],
   ];
   if (d.kid_friendly !== undefined) {
     rows.push(["Kid friendly", d.kid_friendly ? "Yes" : "No"]);
   }
   if (d.pet_friendly !== undefined) {
     rows.push(["Pet friendly", d.pet_friendly ? "Yes" : "No"]);
+  }
+  if (d.established_year) {
+    rows.push(["Established", String(d.established_year)]);
   }
   if (d.executive_chef) {
     rows.push(["Executive chef", d.executive_chef]);
