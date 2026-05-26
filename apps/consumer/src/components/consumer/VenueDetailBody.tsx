@@ -961,7 +961,7 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
 
 function ActionBar() {
   return (
-    <div className="border-border bg-background/95 sticky bottom-0 -mx-4 mt-3 flex flex-col gap-2 border-t px-4 pt-3 pb-4 backdrop-blur">
+    <div className="border-border sticky bottom-0 -mx-4 mt-3 flex flex-col gap-2 border-t bg-black/50 px-4 pt-3 pb-4 backdrop-blur">
       <button
         type="button"
         className="bg-pink-gradient shadow-glow rounded-full py-3 text-sm font-semibold text-white"
