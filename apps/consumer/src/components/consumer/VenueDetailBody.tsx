@@ -18,7 +18,7 @@ import {
   Users,
   Bookmark,
   Clock,
-  Settings,
+  Tags,
   Link2,
   Car,
   Phone,
@@ -50,8 +50,8 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <LocationBox venue={venue} />
       <HoursBox venue={venue} />
       <AboutBox text={venue.long_description} />
-      <DetailsBox venue={venue} />
       <LinksBox venue={venue} />
+      <DetailsBox venue={venue} />
       <ActionBar />
     </div>
   );
@@ -826,7 +826,7 @@ function DetailsBox({ venue }: { venue: VenueDetail }) {
     ["Service", venue.details.service_options.join(" · ")],
   ];
   return (
-    <Box title="Details" icon={Settings} iconColor="text-pink-400">
+    <Box title="Details" icon={Tags} iconColor="text-pink-400">
       <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
           <div
