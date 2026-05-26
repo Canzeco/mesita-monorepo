@@ -397,9 +397,6 @@ function MesitaCard({
           {TIER_LABEL[v.tier]}
         </span>
       </div>
-      <p className="text-muted-foreground text-[11px]">
-        Mesita · {v.community} · {formatCount(v.followers, false)} followers
-      </p>
       <p className="font-display text-sm leading-snug italic">
         “{v.quote}”
       </p>
