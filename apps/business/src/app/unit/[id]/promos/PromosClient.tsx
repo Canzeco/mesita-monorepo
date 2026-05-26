@@ -155,7 +155,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       <Section title="Promos">
         <div className="grid grid-cols-2 gap-2">
           <ColumnHeader>First visit</ColumnHeader>
-          <ColumnHeader>Every visit</ColumnHeader>
+          <ColumnHeader>Returning visits</ColumnHeader>
           {(["bronze", "silver", "gold", "diamond"] as const).flatMap((tier) => [
             <PromoCell
               key={`welcome-${tier}`}
