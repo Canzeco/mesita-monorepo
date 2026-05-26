@@ -44,40 +44,17 @@ type RateChoice = (typeof RATE_CHOICES)[number];
 
 type Tier = "bronze" | "silver" | "gold" | "diamond";
 
-// Each row in the Promos section corresponds to one of the eight DB columns:
-// welcome_<tier>_rate (first-visit at this venue) or <tier>_rate (every visit
-// afterwards). The DB column name is the source of truth — the UI just
-// renders it.
-type PromoSlot = {
-  // Column on public.venues. Used as the apiUpdateVenue payload key.
-  column:
-    | "welcome_bronze_rate"
-    | "welcome_silver_rate"
-    | "welcome_gold_rate"
-    | "welcome_diamond_rate"
-    | "bronze_rate"
-    | "silver_rate"
-    | "gold_rate"
-    | "diamond_rate";
-  tier: Tier;
-  // "welcome" applies on the guest's first visit at this venue; "default"
-  // applies on every visit afterwards.
-  kind: "welcome" | "default";
-};
-
-const WELCOME_SLOTS: PromoSlot[] = [
-  { column: "welcome_bronze_rate", tier: "bronze", kind: "welcome" },
-  { column: "welcome_silver_rate", tier: "silver", kind: "welcome" },
-  { column: "welcome_gold_rate", tier: "gold", kind: "welcome" },
-  { column: "welcome_diamond_rate", tier: "diamond", kind: "welcome" },
-];
-
-const DEFAULT_SLOTS: PromoSlot[] = [
-  { column: "bronze_rate", tier: "bronze", kind: "default" },
-  { column: "silver_rate", tier: "silver", kind: "default" },
-  { column: "gold_rate", tier: "gold", kind: "default" },
-  { column: "diamond_rate", tier: "diamond", kind: "default" },
-];
+// Each cell maps to one of the eight DB columns: `welcome_<tier>_rate`
+// (first visit at the venue) or `<tier>_rate` (every visit afterwards).
+type PromoColumn =
+  | "welcome_bronze_rate"
+  | "welcome_silver_rate"
+  | "welcome_gold_rate"
+  | "welcome_diamond_rate"
+  | "bronze_rate"
+  | "silver_rate"
+  | "gold_rate"
+  | "diamond_rate";
 
 const TIER_LABEL: Record<Tier, string> = {
   bronze: "Bronze",
@@ -175,34 +152,39 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         )}
       </Section>
 
-      <Section title="Promos · first visit">
-        <div className="flex flex-col gap-1.5">
-          {WELCOME_SLOTS.map((slot) => (
-            <PromoSlotRow
-              key={slot.column}
-              slot={slot}
-              initial={venue[slot.column]}
+      <Section title="Promos">
+        <div className="grid grid-cols-2 gap-2">
+          <ColumnHeader>First visit</ColumnHeader>
+          <ColumnHeader>Every visit</ColumnHeader>
+          {(["bronze", "silver", "gold", "diamond"] as const).flatMap((tier) => [
+            <PromoCell
+              key={`welcome-${tier}`}
+              column={`welcome_${tier}_rate` as PromoColumn}
+              tier={tier}
+              initial={venue[`welcome_${tier}_rate`]}
               venueId={venue.id}
               disabled={isFree}
-            />
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Promos · every visit">
-        <div className="flex flex-col gap-1.5">
-          {DEFAULT_SLOTS.map((slot) => (
-            <PromoSlotRow
-              key={slot.column}
-              slot={slot}
-              initial={venue[slot.column]}
+            />,
+            <PromoCell
+              key={`default-${tier}`}
+              column={`${tier}_rate` as PromoColumn}
+              tier={tier}
+              initial={venue[`${tier}_rate`]}
               venueId={venue.id}
               disabled={isFree}
-            />
-          ))}
+            />,
+          ])}
         </div>
       </Section>
     </div>
+  );
+}
+
+function ColumnHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+      {children}
+    </p>
   );
 }
 
@@ -402,19 +384,23 @@ function SubscriptionCard({
   );
 }
 
-// ─── Promo slot row ───────────────────────────────────────────────────────
+// ─── Promo cell ───────────────────────────────────────────────────────────
 
-// One row per DB column. Reads the saved value off the venue, lets the
-// business pick a new rate (or clear it), and persists the change to
-// apiUpdateVenue with a single-field payload. Optimistic UI — local state
-// flips immediately; we revert if the save fails.
-function PromoSlotRow({
-  slot,
+// One cell in the 2-column grid. Owns the local state for its DB column
+// and persists each pick through apiUpdateVenue (optimistic — reverts on
+// failure). Same tier chip colors across both columns (Bronze copper,
+// Silver cool gray, Gold warm yellow, Diamond violet) — the "First visit"
+// vs "Every visit" distinction lives in the column header above, not in
+// the chip styling.
+function PromoCell({
+  column,
+  tier,
   initial,
   venueId,
   disabled,
 }: {
-  slot: PromoSlot;
+  column: PromoColumn;
+  tier: Tier;
   initial: number | null;
   venueId: string;
   disabled: boolean;
@@ -432,7 +418,7 @@ function PromoSlotRow({
     setRate(next);
     setPending(true);
     setError(null);
-    void apiUpdateVenue(supabase, { id: venueId, [slot.column]: next })
+    void apiUpdateVenue(supabase, { id: venueId, [column]: next })
       .catch((err) => {
         setRate(previous);
         setError(errMsg(err, "Couldn't save."));
@@ -440,96 +426,68 @@ function PromoSlotRow({
       .finally(() => setPending(false));
   };
 
+  const displayRate = disabled ? null : rate;
   return (
-    <div className="border-border bg-card grid grid-cols-[120px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border p-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        {slot.kind === "welcome" ? (
-          <span className="bg-welcome-gradient inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider text-white uppercase">
-            Welcome {TIER_LABEL[slot.tier]}
-          </span>
-        ) : (
-          <TierChip tier={slot.tier} label={TIER_LABEL[slot.tier]} />
-        )}
-        <span className="text-muted-foreground text-[10px]">
-          {slot.kind === "welcome" ? "First visit" : "Every visit"}
+    <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <TierChip tier={tier} label={TIER_LABEL[tier]} />
+        <span className="font-display text-primary text-xl leading-none font-bold tabular-nums">
+          {displayRate ?? "—"}
+          {displayRate != null && (
+            <span className="text-sm font-semibold">%</span>
+          )}
         </span>
       </div>
-      <RatePicker
-        rate={disabled ? null : rate}
-        onChange={onPick}
-        disabled={disabled || pending}
-      />
-      <div className="text-right">
-        {error ? (
-          <p className="text-destructive text-[10px]">{error}</p>
-        ) : (
-          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.12em] uppercase">
-            {rate == null ? "Off" : `${rate}% off`}
-          </p>
-        )}
+      <div className="flex flex-wrap gap-1">
+        <RatePill
+          label="Off"
+          active={displayRate == null}
+          disabled={disabled || pending}
+          onClick={() => onPick(null)}
+        />
+        {RATE_CHOICES.map((c) => (
+          <RatePill
+            key={c}
+            label={String(c)}
+            active={c === displayRate}
+            disabled={disabled || pending}
+            onClick={() => onPick(c)}
+          />
+        ))}
       </div>
+      {error && <p className="text-destructive text-[10px]">{error}</p>}
     </div>
   );
 }
 
-function RatePicker({
-  rate,
-  onChange,
+function RatePill({
+  label,
+  active,
   disabled,
+  onClick,
 }: {
-  rate: RateChoice | null;
-  onChange: (next: RateChoice | null) => void;
-  disabled?: boolean;
+  label: string;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className={cn("flex items-center gap-2", disabled && "opacity-60")}>
-      <span className="font-display text-primary text-2xl leading-none font-bold tabular-nums">
-        {rate ?? "—"}
-        {rate != null && <span className="text-base font-semibold">%</span>}
-      </span>
-      <div className="flex flex-wrap gap-1">
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          disabled={disabled}
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
-            rate == null
-              ? "bg-foreground text-background"
-              : "border-border bg-background text-muted-foreground hover:text-foreground border",
-            disabled && "hover:text-muted-foreground cursor-not-allowed",
-          )}
-        >
-          Off
-        </button>
-        {RATE_CHOICES.map((c) => {
-          const showHint = disabled;
-          return (
-            <div key={c} className="group relative">
-              <button
-                type="button"
-                onClick={() => onChange(c)}
-                disabled={disabled}
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
-                  c === rate
-                    ? "bg-pink-gradient text-white"
-                    : "border-border bg-background text-muted-foreground hover:text-foreground border",
-                  disabled && "hover:text-muted-foreground cursor-not-allowed",
-                )}
-              >
-                {c}
-              </button>
-              {showHint && (
-                <span className="bg-foreground text-background shadow-elev pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 rounded-md px-2 py-1 text-[9px] font-semibold tracking-wider whitespace-nowrap uppercase opacity-0 transition group-hover:opacity-100">
-                  Pick Discounts or Cashbacks
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
+        active && label === "Off"
+          ? "bg-foreground text-background"
+          : active
+            ? "bg-pink-gradient text-white"
+            : "border-border bg-background text-muted-foreground hover:text-foreground border",
+        disabled && "cursor-not-allowed opacity-60 hover:text-muted-foreground",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
