@@ -156,7 +156,7 @@ export function TicketSheet({
                   <span className="text-2xl">%</span>
                 </p>
                 <p className="text-muted-foreground mt-2 text-[12px]">
-                  on every visit
+                  on returning visits
                   {item.cashbackCap
                     ? ` · up to $${item.cashbackCap.toLocaleString()} MXN`
                     : ""}

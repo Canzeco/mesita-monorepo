@@ -651,7 +651,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
   const subtitleParts: string[] = [`as Mesita ${TIER_PROPER[current_tier]}`];
   if (activeValue != null) {
-    subtitleParts.push(is_first_visit ? "first visit" : "on every visit");
+    subtitleParts.push(is_first_visit ? "first visit" : "on returning visits");
     subtitleParts.push(`capped at ${capLabel} / visit`);
   }
   return (
@@ -696,10 +696,12 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         </div>
       </div>
 
-      {/* Every-visit ladder — default × tier. */}
+      {/* Returning-visit ladder — default × tier. "Every visit" was the
+          first label but it overlaps with the first-visit ladder above; the
+          recurring rate only applies once the guest has come back. */}
       <div className="flex flex-col gap-1.5">
         <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          Every visit
+          Returning visits
         </p>
         <div className="grid grid-cols-4 gap-2">
           {TIER_ORDER.map((tier) => {
