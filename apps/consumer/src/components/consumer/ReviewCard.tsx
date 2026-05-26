@@ -269,8 +269,10 @@ function Thumbnail({
 // helpers across the boundary.
 
 function MesitaGlyph() {
+  // 32×32 to match the GoogleGlyph circle below — when both cards sit
+  // in the carousel the source brand badges read at the same weight.
   return (
-    <span className="bg-pink-gradient font-display flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[13px] font-bold leading-none text-white">
+    <span className="bg-pink-gradient font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg font-bold leading-none text-white">
       m
     </span>
   );
