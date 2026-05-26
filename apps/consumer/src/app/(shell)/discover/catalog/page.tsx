@@ -117,10 +117,12 @@ export default async function CatalogPage() {
 
 function Row({
   title,
-  subtitle,
   venues,
 }: {
   title: string;
+  // subtitle kept on the EF response and the fallback paths above for future
+  // surfaces, but the catalog row now renders title-only — the description
+  // line was too dense above the horizontal card scroll.
   subtitle?: string;
   venues: Venue[];
 }) {
@@ -130,9 +132,6 @@ function Row({
         <h2 className="font-display text-xl font-semibold tracking-tight">
           {title}
         </h2>
-        {subtitle && (
-          <p className="text-muted-foreground mt-0.5 text-xs">{subtitle}</p>
-        )}
       </div>
       <div className="scrollbar-hide mt-3 flex gap-3 overflow-x-auto px-4 pb-1">
         {venues.map((v) => (
