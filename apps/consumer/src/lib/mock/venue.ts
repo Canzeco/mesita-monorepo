@@ -25,7 +25,6 @@ export type VenueDetail = {
   // without parsing price_range.
   currency: string;
   distance_km: number;
-  walk_minutes: number;
   open_now: boolean;
   opens_at: string;
   closes_at: string;
@@ -33,7 +32,6 @@ export type VenueDetail = {
   city: string;
   address: string;
   zone: string;
-  short_description: string;
   listing_type: "partner" | "web";
   last_updated_label: string;
 
@@ -50,7 +48,7 @@ export type VenueDetail = {
   };
   google: { rating: number; count: number };
   facebook: { rating: number; followers: number };
-  instagram: { followers: number; mentions: number };
+  instagram: { followers: number };
 
   // 4. Google reviews
   google_reviews: Array<{
@@ -192,7 +190,6 @@ export const mockVenue: VenueDetail = {
   price_range: "MX$200–300",
   currency: "MXN",
   distance_km: 2.4,
-  walk_minutes: 28,
   open_now: true,
   opens_at: "18:00",
   closes_at: "02:00",
@@ -201,8 +198,6 @@ export const mockVenue: VenueDetail = {
   address:
     "Eje Metropolitano 10 2400, Zona Loma Larga Oriente, 66260 Monterrey, N.L.",
   zone: "Loma Larga Oriente",
-  short_description:
-    "Experience Sonoran cuisine with a contemporary twist in a luxurious setting.",
   listing_type: "partner",
   last_updated_label: "2 days ago",
 
@@ -238,7 +233,7 @@ export const mockVenue: VenueDetail = {
   },
   google: { rating: 4.7, count: 1891 },
   facebook: { rating: 4.6, followers: 11100 },
-  instagram: { followers: 23000, mentions: 2800 },
+  instagram: { followers: 23000 },
 
   google_reviews: [
     {
