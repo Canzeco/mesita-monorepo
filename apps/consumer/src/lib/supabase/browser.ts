@@ -5,7 +5,7 @@ import type { Database } from "./database.types";
 // Reads NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
 // Throws at call time (not module load) so the build can collect page data
 // even when env vars aren't injected into the build environment.
-export function createBrowserSupabase() {
+function createBrowserSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !publishableKey) {

@@ -88,7 +88,7 @@ function VenueBackground({ venue }: { venue: Venue }) {
   );
 }
 
-export function PhotoPlaceholder({ name }: { name: string }) {
+function PhotoPlaceholder({ name }: { name: string }) {
   const initial = name.trim().slice(0, 1).toUpperCase() || "·";
   return (
     <div className="bg-pink-gradient absolute inset-0">
