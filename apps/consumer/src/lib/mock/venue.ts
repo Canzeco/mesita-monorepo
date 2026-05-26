@@ -43,6 +43,7 @@ export type VenueDetail = {
     food: number;
     service: number;
     ambiance: number;
+    value: number;
     overall: number;
     total: number;
   };
@@ -238,6 +239,7 @@ export const mockVenue: VenueDetail = {
     food: 5.0,
     service: 4.7,
     ambiance: 5.0,
+    value: 4.6,
     overall: 4.8,
     total: 142,
   },

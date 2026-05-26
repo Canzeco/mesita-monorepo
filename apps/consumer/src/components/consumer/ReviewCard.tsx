@@ -232,9 +232,12 @@ function Thumbnail({
   alt: string;
   aspect: "square" | "portrait" | "landscape";
 }) {
-  // Container aspect drives the thumbnail's native shape: portrait for
-  // story/IG-style images, square for IG-post-flavored food shots,
-  // landscape for dining-room / wide table photos.
+  // Photos sit in a 40-unit-wide (160px) frame centered in the card
+  // rather than spanning full width — full-width portrait shots were
+  // dominating the layout. The aspect class drives the height so a
+  // story stays tall (160 × 213), a square food shot stays square
+  // (160 × 160), and a landscape dining shot stays wide-short
+  // (160 × 90).
   const aspectClass =
     aspect === "portrait"
       ? "aspect-[3/4]"
@@ -242,19 +245,21 @@ function Thumbnail({
         ? "aspect-[16/9]"
         : "aspect-square";
   return (
-    <div
-      className={cn(
-        "relative mt-auto w-full overflow-hidden rounded-xl",
-        aspectClass,
-      )}
-    >
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="288px"
-        className="object-cover"
-      />
+    <div className="mt-auto flex justify-center">
+      <div
+        className={cn(
+          "relative w-40 overflow-hidden rounded-xl",
+          aspectClass,
+        )}
+      >
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes="160px"
+          className="object-cover"
+        />
+      </div>
     </div>
   );
 }

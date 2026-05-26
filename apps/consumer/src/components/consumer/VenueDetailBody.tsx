@@ -140,6 +140,15 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   // headline rating. Renders inline at the start of the meta row.
   const googleRating = venue.google.rating.toFixed(1);
   const googleCount = venue.google.count.toLocaleString("en-US");
+  // Active reward chip — first-visit users see the welcome rate,
+  // returning users see the default-tier rate. Null = venue offers
+  // nothing at the user's tier, so the chip is suppressed.
+  const { welcome, default: returning, current_tier, is_first_visit } =
+    venue.promo_matrix;
+  const activeReward = is_first_visit
+    ? welcome[current_tier]
+    : returning[current_tier];
+  const mechanicWord = venue.details.mechanic.toLowerCase();
   return (
     <Box className="!gap-2">
       <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
@@ -158,6 +167,15 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
         <span>{meta.join(" · ")}</span>
       </p>
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        {activeReward != null && (
+          <>
+            <span className="bg-pink-gradient shadow-glow inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-white">
+              <Sparkles className="h-3 w-3" />
+              {activeReward}% {mechanicWord}
+            </span>
+            <span>·</span>
+          </>
+        )}
         <span className="inline-flex items-center gap-1.5">
           {isPartner ? (
             <BadgeCheck className="h-4 w-4 text-emerald-400" />
@@ -213,7 +231,8 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
   const subRatings: Array<[string, number]> = [
     ["Food", hasReviews ? venue.mesita_reviews.food : 5.0],
     ["Service", hasReviews ? venue.mesita_reviews.service : 5.0],
-    ["Ambiance", hasReviews ? venue.mesita_reviews.ambiance : 5.0],
+    ["Ambience", hasReviews ? venue.mesita_reviews.ambiance : 5.0],
+    ["Value", hasReviews ? venue.mesita_reviews.value : 5.0],
   ];
   return (
     <Box title="Reviews summary" icon={Star} iconColor="text-violet-400">
