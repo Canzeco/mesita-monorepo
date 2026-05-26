@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Crown,
   Instagram,
-  GraduationCap,
   BadgeCheck,
   ChevronRight,
   Check,
@@ -14,18 +13,6 @@ import {
   Bell,
   Shield,
   HelpCircle,
-  Award,
-  Lock,
-  Footprints,
-  CircleDollarSign,
-  Sparkles,
-  Flame,
-  Map as MapIcon,
-  CalendarCheck,
-  Moon,
-  Wine,
-  UserPlus,
-  PartyPopper,
 } from "lucide-react";
 import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -33,18 +20,14 @@ import {
   CURRENT_USER,
   TIERS,
   TIER_ORDER,
-  ACHIEVEMENTS,
   tierBadgeClass,
-  type Achievement,
-  type AchievementCategory,
 } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
-type Tab = "class" | "game" | "settings";
+type Tab = "class" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "class", label: "Class" },
-  { id: "game", label: "Game" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -147,7 +130,6 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
         {tab === "class" && (
           <ClassTab onConnectInstagram={() => setVerifyOpen(true)} />
         )}
-        {tab === "game" && <GameTab />}
         {tab === "settings" && <SettingsTab />}
       </div>
 
@@ -413,108 +395,6 @@ function SubscriptionPathBox() {
 function formatFollowers(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}K`;
   return n.toString();
-}
-
-// Per-category visual identity for achievements. Each category gets its
-// own background tone + Lucide icon so the grid reads as a varied trophy
-// case, not 50 identical medals. Spend/cashback land on golds; visits on
-// bronze; tier on diamond gradient; story on a pink-Instagram gradient;
-// time on night-blue; etc.
-type CategoryStyle = {
-  tone: string;
-  Icon: typeof Award;
-};
-
-const CATEGORY_STYLE: Record<AchievementCategory, CategoryStyle> = {
-  visit: { tone: "bg-tier-bronze text-white", Icon: Footprints },
-  spend: { tone: "bg-tier-gold text-black", Icon: CircleDollarSign },
-  cashback: { tone: "bg-pink-gradient text-white", Icon: Sparkles },
-  streak: { tone: "bg-[oklch(0.65_0.22_25)] text-white", Icon: Flame },
-  variety: { tone: "bg-tier-silver text-zinc-900", Icon: MapIcon },
-  community: { tone: "bg-secondary text-white", Icon: GraduationCap },
-  story: {
-    tone: "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white",
-    Icon: Instagram,
-  },
-  tier: { tone: "bg-tier-diamond text-white", Icon: Crown },
-  time: { tone: "bg-[oklch(0.40_0.15_280)] text-white", Icon: Moon },
-  category: { tone: "bg-[oklch(0.65_0.18_150)] text-white", Icon: Wine },
-  reservation: {
-    tone: "bg-[oklch(0.65_0.18_220)] text-white",
-    Icon: CalendarCheck,
-  },
-  social: { tone: "bg-[oklch(0.70_0.20_25)] text-white", Icon: UserPlus },
-  special: { tone: "bg-welcome-gradient text-white", Icon: PartyPopper },
-};
-
-function GameTab() {
-  const unlocked = ACHIEVEMENTS.filter((a) => a.unlocked).length;
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
-          Achievements
-        </p>
-        <span className="text-secondary text-[12px] font-semibold">
-          {unlocked} / {ACHIEVEMENTS.length} unlocked
-        </span>
-      </div>
-      <div className="border-border bg-card rounded-2xl border p-3">
-        <div className="grid grid-cols-3 gap-2">
-          {ACHIEVEMENTS.map((a) => (
-            <AchievementBadge key={a.id} achievement={a} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AchievementBadge({ achievement }: { achievement: Achievement }) {
-  const style = CATEGORY_STYLE[achievement.category];
-  const Icon = style.Icon;
-  const unlocked = achievement.unlocked;
-  return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center transition",
-        unlocked
-          ? "border-border bg-card hover:shadow-sm"
-          : "bg-muted/40 border-transparent opacity-55",
-      )}
-    >
-      <span
-        className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-          unlocked
-            ? cn(style.tone, "shadow-sm")
-            : "bg-muted text-muted-foreground/40",
-        )}
-      >
-        {unlocked ? (
-          <Icon className="h-4 w-4" />
-        ) : (
-          <Lock className="h-3.5 w-3.5" />
-        )}
-      </span>
-      <p
-        className={cn(
-          "text-[11px] leading-tight font-semibold",
-          !unlocked && "text-muted-foreground",
-        )}
-      >
-        {achievement.label}
-      </p>
-      <p
-        className={cn(
-          "text-[9px] leading-snug",
-          unlocked ? "text-muted-foreground" : "text-muted-foreground/60",
-        )}
-      >
-        {achievement.description}
-      </p>
-    </div>
-  );
 }
 
 function SettingsTab() {
