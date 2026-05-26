@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Star } from "lucide-react";
+import { GoogleLogo, MesitaMark } from "./BrandLogos";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
@@ -82,7 +83,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
               {TIER_LABEL[v.tier]}
             </span>
           }
-          sourceLogo={<MesitaGlyph />}
+          sourceLogo={<MesitaMark />}
         />
         <StarRow rating={overall} />
         <p className="text-muted-foreground text-[10px] leading-snug">
@@ -124,7 +125,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
         }
         name={r.author}
         sub={r.date}
-        sourceLogo={<GoogleGlyph />}
+        sourceLogo={<GoogleLogo />}
       />
       <StarRow rating={r.rating} />
       <Quote
@@ -264,41 +265,6 @@ function Thumbnail({
   );
 }
 
-// Compact brand glyphs reused from VenueDetailBody. Inlined here so the
-// client component stays self-contained and doesn't pull the server file's
-// helpers across the boundary.
-
-function MesitaGlyph() {
-  // 32×32 to match the GoogleGlyph circle below — when both cards sit
-  // in the carousel the source brand badges read at the same weight.
-  return (
-    <span className="bg-pink-gradient font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg font-bold leading-none text-white">
-      m
-    </span>
-  );
-}
-
-function GoogleGlyph() {
-  return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white">
-      <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden>
-        <path
-          fill="#FFC107"
-          d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
-        />
-        <path
-          fill="#FF3D00"
-          d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"
-        />
-        <path
-          fill="#4CAF50"
-          d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"
-        />
-        <path
-          fill="#1976D2"
-          d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"
-        />
-      </svg>
-    </div>
-  );
-}
+// Brand source badges (MesitaMark, GoogleLogo) live in BrandLogos.tsx —
+// shared with the venue detail page so the SVG and pink-gradient mark
+// don't drift between surfaces.
