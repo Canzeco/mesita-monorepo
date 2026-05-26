@@ -652,11 +652,6 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         <p className="mt-1 text-xs text-white/90">
           as Mesita {TIER_PROPER[currentTier]} · on every visit
         </p>
-        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium backdrop-blur">
-          <Sparkles className="h-3 w-3" />
-          +{venue.welcome_discount.value}% Welcome ·{" "}
-          {venue.welcome_discount.subtitle}
-        </div>
       </div>
 
       {/* Tier ladder — Bronze · Silver · Gold · Diamond for reference. */}
