@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
+import { AboutBox } from "@/components/consumer/AboutBox";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
@@ -47,7 +48,7 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <LocationBox venue={venue} />
       <HoursBox venue={venue} />
       <RewardsBox venue={venue} />
-      <AboutBox venue={venue} />
+      <AboutBox text={venue.long_description} />
       <DetailsBox venue={venue} />
       <LinksBox venue={venue} />
       <ActionBar />
@@ -321,7 +322,11 @@ const TIER_TEXT: Record<Tier, string> = {
   bronze: "text-bronze",
   silver: "text-silver",
   gold: "text-gold",
-  diamond: "text-diamond",
+  // Diamond text reads as blue across the venue page even though the
+  // tier-diamond gradient stripe still uses the violet token. Local
+  // override on purpose — the global tier-diamond token stays untouched
+  // so other apps (admin/business) keep their existing diamond hue.
+  diamond: "text-sky-400",
 };
 
 function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
@@ -608,7 +613,12 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   const currentValue = venue.promo_matrix[currentTier];
   const kind = venue.promo.reward_kind;
   return (
-    <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
+    <Box
+      title="Your reward by class"
+      icon={Sparkles}
+      iconColor="text-pink-400"
+      right={venue.details.mechanic}
+    >
       <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
         <WelcomeCard
           discount={venue.welcome_discount}
@@ -744,17 +754,7 @@ function CardHoverAction({
   );
 }
 
-// ── 9. About ────────────────────────────────────────────────────────────
-
-function AboutBox({ venue }: { venue: VenueDetail }) {
-  return (
-    <Box title="About">
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        {venue.long_description}
-      </p>
-    </Box>
-  );
-}
+// ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
 // ── 10. Details ─────────────────────────────────────────────────────────
 
@@ -785,13 +785,13 @@ const REVIEW_DEFS = [
 
 function DetailsBox({ venue }: { venue: VenueDetail }) {
   // Only the bits not already surfaced elsewhere on the page: Category,
-  // Zone, Participation, Mechanic. Price level lives in the Summary meta,
-  // Hours in the Hours box, Distance in the Location box.
+  // Zone, Participation. Price level lives in the Summary meta, Hours
+  // in the Hours box, Distance in the Location box, Mechanic in the
+  // Rewards box right slot.
   const rows: Array<[string, string]> = [
     ["Category", venue.details.category_full],
     ["Zone", venue.details.zone],
     ["Participation", venue.details.participation],
-    ["Mechanic", venue.details.mechanic],
   ];
   return (
     <Box title="Details" icon={Settings} iconColor="text-pink-400">
