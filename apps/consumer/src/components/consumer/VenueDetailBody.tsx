@@ -641,12 +641,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   const currentValue = venue.promo_matrix[currentTier];
   const currentRank = TIER_RANK[currentTier];
   return (
-    <Box
-      title="Your reward by class"
-      icon={Sparkles}
-      iconColor="text-pink-400"
-      right={venue.details.mechanic}
-    >
+    <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
       <WelcomeCard discount={venue.welcome_discount} />
       <div className="grid grid-cols-4 gap-2">
         {TIER_ORDER.map((tier) => {
@@ -677,6 +672,12 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         </span>
         , capped at MX${venue.reward_cap_mxn.toLocaleString("en-US")} per visit.
       </p>
+      <div className="border-border flex items-center justify-between border-t pt-3 text-xs">
+        <span className="text-muted-foreground">Reward mechanic</span>
+        <span className="text-foreground font-medium">
+          {venue.details.mechanic}
+        </span>
+      </div>
     </Box>
   );
 }
