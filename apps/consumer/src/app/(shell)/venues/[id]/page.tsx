@@ -1,10 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { apiGetVenue } from "@/lib/api/venues";
-import { errMsg } from "@/lib/utils";
 import { VenueDetailBody } from "@/components/consumer/VenueDetailBody";
+import { mockVenue } from "@/lib/mock/venue";
 
 export const dynamic = "force-dynamic";
 
@@ -13,42 +10,10 @@ export const dynamic = "force-dynamic";
 // /discover/catalog — they hit the intercepted variant at
 // (shell)/@modal/(.)venues/[id]/page.tsx instead, which renders inside a
 // modal on top of the underlying surface.
+//
+// Mocked: every id resolves to the same fixture in @/lib/mock/venue.
 
-export default async function VenueDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const supabase = await createServerSupabase();
-
-  // apiGetVenue returns null on 404 and throws on real errors. Distinguish so
-  // a transient backend hiccup doesn't render as "this venue doesn't exist."
-  let venue: Awaited<ReturnType<typeof apiGetVenue>> = null;
-  let fetchError: string | null = null;
-  try {
-    venue = await apiGetVenue(supabase, id);
-  } catch (err) {
-    fetchError = errMsg(err, "Couldn't load this venue.");
-  }
-  if (fetchError) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-        <h2 className="font-display text-destructive text-2xl font-semibold tracking-tight">
-          Couldn&apos;t load this venue
-        </h2>
-        <p className="text-muted-foreground max-w-sm text-sm">{fetchError}</p>
-        <Link
-          href="/discover/swipe"
-          className="bg-foreground text-background mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90"
-        >
-          Back to discover
-        </Link>
-      </div>
-    );
-  }
-  if (!venue) notFound();
-
+export default async function VenueDetailPage() {
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-y-auto">
       <Link
@@ -58,7 +23,7 @@ export default async function VenueDetailPage({
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
-      <VenueDetailBody venue={venue} />
+      <VenueDetailBody venue={mockVenue} />
     </div>
   );
 }
