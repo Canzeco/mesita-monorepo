@@ -76,7 +76,13 @@ export type VenueDetail = {
     reward_value: number;
   };
 
-  // 8. Promo matrix
+  // 8. Reward by class — welcome bonus + per-tier rewards in one h-scroll.
+  // Only one applies to a given user: either the welcome (first visit) or
+  // the current_tier card. The other cards are visible for context.
+  welcome_discount: {
+    value: number;
+    subtitle: string;
+  };
   promo_matrix: {
     bronze: number;
     silver: number;
@@ -89,11 +95,16 @@ export type VenueDetail = {
   long_description: string;
 
   // Hours / popular times
+  hours_table: Array<{
+    day: string;
+    range: string;
+  }>;
   popular_times: Array<{
     day: string;
     range: string;
     bars: number[];
   }>;
+  popular_times_featured: string; // day name to show in the Popular times card
 
   // 10. Details (Google-Places-style metadata: category, zone, hours, etc.)
   details: {
@@ -270,6 +281,11 @@ export const mockVenue: VenueDetail = {
     reward_value: 15,
   },
 
+  welcome_discount: {
+    value: 10,
+    subtitle: "First visit only",
+  },
+
   promo_matrix: {
     bronze: 5,
     silver: 8,
@@ -281,6 +297,16 @@ export const mockVenue: VenueDetail = {
   long_description:
     "Mochomos Monterrey offers a unique dining experience that combines the rich flavors of Sonoran cuisine with a modern atmosphere. Ideal for business lunches or special dinners, the venue features a diverse menu centered around grilled meats, seafood, and an extensive wine selection. Guests appreciate the attentive service and the elegant ambiance, making it a perfect spot for both corporate meetings and social gatherings.",
 
+  hours_table: [
+    { day: "Monday", range: "18:00 – 01:00" },
+    { day: "Tuesday", range: "18:00 – 01:00" },
+    { day: "Wednesday", range: "18:00 – 01:00" },
+    { day: "Thursday", range: "18:00 – 02:00" },
+    { day: "Friday", range: "18:00 – 02:00" },
+    { day: "Saturday", range: "18:00 – 02:00" },
+    { day: "Sunday", range: "12:00 – 23:00" },
+  ],
+  popular_times_featured: "SAT",
   popular_times: [
     {
       day: "MON",

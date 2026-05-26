@@ -42,8 +42,7 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <MenuBox venue={venue} />
       <LocationBox venue={venue} />
       <HoursBox venue={venue} />
-      <PromoBox venue={venue} />
-      <MatrixBox venue={venue} />
+      <RewardsBox venue={venue} />
       <AboutBox venue={venue} />
       <DetailsBox venue={venue} />
       <LinksBox venue={venue} />
@@ -527,12 +526,7 @@ function LocationBox({ venue }: { venue: VenueDetail }) {
 
 function HoursBox({ venue }: { venue: VenueDetail }) {
   return (
-    <Box
-      title="Hours & popular times"
-      icon={Clock}
-      iconColor="text-violet-400"
-      right={`${venue.timezone} · ${venue.city}`}
-    >
+    <Box title="Hours & popular times" icon={Clock} iconColor="text-violet-400">
       <div className="bg-background rounded-full px-4 py-2.5 text-sm">
         <span className="font-semibold text-emerald-400">
           {venue.open_now ? "Open now" : "Closed"}
@@ -543,22 +537,52 @@ function HoursBox({ venue }: { venue: VenueDetail }) {
         </span>
       </div>
       <BoxHScroll>
-        {venue.popular_times.map((d) => (
-          <DayCard key={d.day} day={d} />
-        ))}
+        <HoursTableCard venue={venue} />
+        <PopularTimesCard venue={venue} />
       </BoxHScroll>
     </Box>
   );
 }
 
-function DayCard({ day }: { day: VenueDetail["popular_times"][number] }) {
+function HoursTableCard({ venue }: { venue: VenueDetail }) {
   return (
-    <div className="bg-background flex w-32 shrink-0 flex-col gap-3 rounded-2xl p-3">
-      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-        {day.day}
-      </p>
-      <div className="flex h-20 items-end gap-1">
-        {day.bars.map((v, i) => (
+    <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
+      <div>
+        <h4 className="font-display text-base font-semibold">Hours</h4>
+        <p className="text-muted-foreground text-[11px]">
+          {venue.timezone} · {venue.city}
+        </p>
+      </div>
+      <dl className="flex flex-col gap-1.5">
+        {venue.hours_table.map((row) => (
+          <div
+            key={row.day}
+            className="flex items-baseline justify-between gap-3 text-sm"
+          >
+            <dt className="text-muted-foreground">{row.day}</dt>
+            <dd className="text-foreground font-medium">{row.range}</dd>
+          </div>
+        ))}
+      </dl>
+    </article>
+  );
+}
+
+function PopularTimesCard({ venue }: { venue: VenueDetail }) {
+  const featured =
+    venue.popular_times.find(
+      (d) => d.day.toUpperCase() === venue.popular_times_featured.toUpperCase(),
+    ) ?? venue.popular_times[0];
+  return (
+    <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
+      <div>
+        <h4 className="font-display text-base font-semibold">Popular times</h4>
+        <p className="text-muted-foreground text-[11px]">
+          From Google · {featured.day} · {featured.range}
+        </p>
+      </div>
+      <div className="flex h-32 items-end gap-1.5">
+        {featured.bars.map((v, i) => (
           <div
             key={i}
             className="flex-1 rounded-full bg-gradient-to-t from-purple-500 to-pink-500"
@@ -566,34 +590,11 @@ function DayCard({ day }: { day: VenueDetail["popular_times"][number] }) {
           />
         ))}
       </div>
-      <p className="text-muted-foreground text-[10px]">{day.range}</p>
-    </div>
+    </article>
   );
 }
 
-// ── 7. Promotion ────────────────────────────────────────────────────────
-
-function PromoBox({ venue }: { venue: VenueDetail }) {
-  const symbol = venue.promo.reward_kind === "cashback" ? "$" : "%";
-  return (
-    <section className="bg-pink-gradient shadow-glow flex items-center justify-between rounded-2xl p-4 text-white">
-      <div>
-        <p className="text-[10px] font-bold tracking-wider text-white/80 uppercase">
-          {venue.promo.badge_label}
-        </p>
-        <p className="font-display mt-1 text-xl leading-tight font-semibold">
-          {venue.promo.reward_value}% {venue.promo.reward_kind} on every visit
-        </p>
-        <p className="mt-0.5 text-[11px] text-white/80">
-          {symbol === "$" ? "Formal venue" : "Informal venue"} · auto-applied
-        </p>
-      </div>
-      <Sparkles className="h-7 w-7 text-white/85" />
-    </section>
-  );
-}
-
-// ── 8. Promo matrix ─────────────────────────────────────────────────────
+// ── 7. Rewards (welcome + tier matrix in one h-scroll) ──────────────────
 
 const TIER_ORDER: Tier[] = ["bronze", "silver", "gold", "diamond"];
 const TIER_PROPER: Record<Tier, string> = {
@@ -603,55 +604,103 @@ const TIER_PROPER: Record<Tier, string> = {
   diamond: "Diamond",
 };
 
-function MatrixBox({ venue }: { venue: VenueDetail }) {
+function RewardsBox({ venue }: { venue: VenueDetail }) {
   return (
-    <Box title="Your reward by class">
-      <div className="grid grid-cols-2 gap-2">
-        {TIER_ORDER.map((tier) => {
-          const value = venue.promo_matrix[tier];
-          const current = tier === venue.promo_matrix.current_tier;
-          return (
-            <div
-              key={tier}
-              className={cn(
-                "bg-background relative overflow-hidden rounded-xl p-3",
-                current && "ring-1 ring-current/40",
-                current && TIER_TEXT[tier],
-              )}
-            >
-              <div
-                className={cn(
-                  "absolute inset-x-0 top-0 h-1",
-                  TIER_AVATAR_BG[tier],
-                )}
-              />
-              <p
-                className={cn(
-                  "text-[10px] font-bold tracking-wider uppercase",
-                  TIER_TEXT[tier],
-                )}
-              >
-                {TIER_PROPER[tier]}
-              </p>
-              <p className="font-display text-foreground mt-1 text-xl font-semibold">
-                {value}%
-              </p>
-              <p className="text-muted-foreground text-[11px]">
-                {venue.promo.reward_kind}
-              </p>
-              {current && (
-                <span className="bg-foreground text-background absolute top-2 right-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase">
-                  Current
-                </span>
-              )}
-            </div>
-          );
-        })}
+    <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
+      <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
+        <WelcomeCard
+          discount={venue.welcome_discount}
+          kind={venue.promo.reward_kind}
+        />
+        {TIER_ORDER.map((tier) => (
+          <TierCard
+            key={tier}
+            tier={tier}
+            value={venue.promo_matrix[tier]}
+            kind={venue.promo.reward_kind}
+            current={tier === venue.promo_matrix.current_tier}
+          />
+        ))}
       </div>
       <p className="text-muted-foreground text-[11px]">
-        Higher class earns more. Upgrade in Profile.
+        Only one applies — your current class, or the welcome bonus on your
+        first visit.
       </p>
     </Box>
+  );
+}
+
+function WelcomeCard({
+  discount,
+  kind,
+}: {
+  discount: VenueDetail["welcome_discount"];
+  kind: VenueDetail["promo"]["reward_kind"];
+}) {
+  return (
+    <div className="bg-background relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-amber-400" />
+      <p className="text-[10px] font-bold tracking-wider text-violet-400 uppercase">
+        Welcome
+      </p>
+      <p className="font-display text-foreground mt-1 text-xl font-semibold">
+        {discount.value}%
+      </p>
+      <p className="text-muted-foreground text-[11px]">{kind}</p>
+      <p className="text-muted-foreground mt-1 text-[10px]">
+        {discount.subtitle}
+      </p>
+    </div>
+  );
+}
+
+function TierCard({
+  tier,
+  value,
+  kind,
+  current,
+}: {
+  tier: Tier;
+  value: number;
+  kind: VenueDetail["promo"]["reward_kind"];
+  current: boolean;
+}) {
+  if (current) {
+    return (
+      <div className="bg-pink-gradient shadow-glow relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3 text-white">
+        <span className="bg-white/95 absolute top-2 right-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-zinc-900 uppercase">
+          Current
+        </span>
+        <p className="text-[10px] font-bold tracking-wider text-white/85 uppercase">
+          {TIER_PROPER[tier]}
+        </p>
+        <p className="font-display mt-1 text-xl font-semibold">{value}%</p>
+        <p className="text-[11px] text-white/85">{kind}</p>
+        <p className="mt-1 text-[10px] text-white/75">on every visit</p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-background relative w-36 shrink-0 snap-start overflow-hidden rounded-xl p-3">
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 h-1",
+          TIER_AVATAR_BG[tier],
+        )}
+      />
+      <p
+        className={cn(
+          "text-[10px] font-bold tracking-wider uppercase",
+          TIER_TEXT[tier],
+        )}
+      >
+        {TIER_PROPER[tier]}
+      </p>
+      <p className="font-display text-foreground mt-1 text-xl font-semibold">
+        {value}%
+      </p>
+      <p className="text-muted-foreground text-[11px]">{kind}</p>
+    </div>
   );
 }
 
