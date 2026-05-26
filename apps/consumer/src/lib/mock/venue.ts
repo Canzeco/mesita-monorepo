@@ -33,7 +33,7 @@ export type VenueDetail = {
     total: number;
   };
   google: { rating: number; count: number };
-  facebook: { followers: number };
+  facebook: { rating: number; fans: number };
   instagram: { followers: number; mentions: number };
 
   // 4. Google reviews
@@ -136,15 +136,15 @@ export const mockVenue: VenueDetail = {
   photos: [],
 
   mesita_reviews: {
-    food: 4.6,
-    service: 4.5,
-    ambiance: 4.7,
-    overall: 4.6,
+    food: 5.0,
+    service: 4.7,
+    ambiance: 5.0,
+    overall: 4.8,
     total: 142,
   },
-  google: { rating: 4.6, count: 2310 },
-  facebook: { followers: 18400 },
-  instagram: { followers: 96200, mentions: 2800 },
+  google: { rating: 4.7, count: 1891 },
+  facebook: { rating: 4.6, fans: 11100 },
+  instagram: { followers: 23000, mentions: 2800 },
 
   google_reviews: [
     {

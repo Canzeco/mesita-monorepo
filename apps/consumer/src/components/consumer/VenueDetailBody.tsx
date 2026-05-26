@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   MapPin,
   Star,
@@ -14,6 +15,8 @@ import {
   Bike,
   ChevronRight,
   Utensils,
+  Users,
+  Bookmark,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { cn, firstInitial } from "@/lib/utils";
@@ -21,24 +24,24 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
 // Pure presentation for the venue detail surface. The two callers (full
 // page at /venues/[id] and the intercepted modal at @modal/(.)venues/[id])
-// each render their own dismiss chrome around this. Every section is wrapped
-// in a Box so the page reads as a vertical stack of modular cards. Inner
-// items (review cards, visitor cards, dish cards, tier tiles) drop to
-// bg-background so they recede inside their host box.
+// each render their own close button on top of this. The summary header
+// sits loose at the top; every section below is wrapped in a Box. A
+// sticky action bar pins to the bottom of the scroll container.
 
 export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
-    <div className="flex flex-col gap-3 px-4 pt-12 pb-10">
-      <SummaryBox venue={venue} />
+    <div className="flex flex-col gap-3 px-4 pt-16">
+      <SummaryHeader venue={venue} />
       <MediaBox venue={venue} />
-      <ReviewsBox venue={venue} />
-      <GoogleReviewsBox venue={venue} />
-      <MesitaVisitorsBox venue={venue} />
+      <ReviewsSummaryBox venue={venue} />
+      <IndividualReviewsBox venue={venue} />
       <MenuBox venue={venue} />
+      <LocationBox venue={venue} />
       <PromoBox venue={venue} />
       <MatrixBox venue={venue} />
       <AboutBox venue={venue} />
       <DetailsBox venue={venue} />
+      <ActionBar />
     </div>
   );
 }
@@ -47,14 +50,19 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
 
 function Box({
   title,
+  icon: Icon,
+  iconColor,
+  right,
   children,
   className,
   bare = false,
 }: {
   title?: string;
+  icon?: LucideIcon;
+  iconColor?: string;
+  right?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-  // bare = no padding (used by the media card so the photo fills edge-to-edge).
   bare?: boolean;
 }) {
   return (
@@ -65,7 +73,24 @@ function Box({
         className,
       )}
     >
-      {title && <BoxLabel>{title}</BoxLabel>}
+      {(title || Icon) && (
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {Icon && (
+              <Icon
+                className={cn("h-4 w-4", iconColor ?? "text-muted-foreground")}
+                strokeWidth={1.75}
+              />
+            )}
+            {title && <BoxLabel>{title}</BoxLabel>}
+          </div>
+          {right && (
+            <span className="text-muted-foreground text-xs font-medium">
+              {right}
+            </span>
+          )}
+        </header>
+      )}
       {children}
     </section>
   );
@@ -79,9 +104,6 @@ function BoxLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Horizontal-scroll strip designed to live inside a `Box` with p-4. The
-// negative margin cancels the box's padding so cards bleed to the inner
-// edge, and the right padding leaves a comfortable card-peek.
 function BoxHScroll({ children }: { children: React.ReactNode }) {
   return (
     <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
@@ -90,31 +112,31 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── 1. Summary ──────────────────────────────────────────────────────────
+// ── 1. Summary (loose header) ───────────────────────────────────────────
 
-function SummaryBox({ venue }: { venue: VenueDetail }) {
+function SummaryHeader({ venue }: { venue: VenueDetail }) {
   const meta = [
     "$".repeat(venue.price_level),
     `${venue.distance_km} km · ${venue.walk_minutes} min walk`,
     venue.open_now ? `Open until ${venue.closes_at}` : `Closes at ${venue.closes_at}`,
   ];
   return (
-    <Box>
+    <header className="flex flex-col gap-2 px-1">
       <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
         {venue.vibe} · {venue.category}
       </p>
       <h1 className="font-display -mt-1 text-3xl leading-tight font-semibold tracking-tight">
         {venue.name}
       </h1>
-      <p className="text-muted-foreground -mt-1 text-sm">{meta.join(" · ")}</p>
+      <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
       <p className="text-muted-foreground flex items-start gap-2 text-sm">
         <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
         <span>{venue.address}</span>
       </p>
-      <p className="text-foreground text-base leading-relaxed">
+      <p className="text-foreground mt-1 text-base leading-relaxed">
         {venue.short_description}
       </p>
-    </Box>
+    </header>
   );
 }
 
@@ -142,138 +164,119 @@ function MediaBox({ venue }: { venue: VenueDetail }) {
 
 // ── 3. Reviews summary ──────────────────────────────────────────────────
 
-function ReviewsBox({ venue }: { venue: VenueDetail }) {
-  const bars: Array<[string, number]> = [
-    ["Food", venue.mesita_reviews.food],
-    ["Service", venue.mesita_reviews.service],
-    ["Ambiance", venue.mesita_reviews.ambiance],
-    ["Overall", venue.mesita_reviews.overall],
+function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
+  const ratings: Array<[string, number]> = [
+    ["Mesita · Food", venue.mesita_reviews.food],
+    ["Mesita · Service", venue.mesita_reviews.service],
+    ["Mesita · Ambiance", venue.mesita_reviews.ambiance],
+    ["Mesita · Overall", venue.mesita_reviews.overall],
   ];
   return (
-    <Box title="Reviews">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="font-display text-4xl font-semibold tracking-tight">
-            {venue.mesita_reviews.overall.toFixed(1)}
-          </p>
-          <div className="mt-1 flex items-center gap-1 text-amber-400">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className="h-3.5 w-3.5 fill-current"
-                strokeWidth={0}
-              />
-            ))}
-          </div>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {venue.mesita_reviews.total} on Mesita
-          </p>
-        </div>
-        <div className="flex flex-1 flex-col gap-1.5">
-          {bars.map(([label, value]) => (
-            <RatingBar key={label} label={label} value={value} />
-          ))}
-        </div>
+    <Box title="Reviews summary" icon={Star} iconColor="text-violet-400">
+      <div className="grid grid-cols-2 gap-2">
+        {ratings.map(([label, value]) => (
+          <RatingPill key={label} label={label} value={value} />
+        ))}
       </div>
-      <div className="border-border -mx-4 grid grid-cols-3 gap-px overflow-hidden border-t bg-white/5">
-        <ExternalStat
-          label="Google"
+      <div className="mt-1 grid grid-cols-3 gap-2">
+        <ExternalCard
+          logo={<GoogleLogo />}
+          icon="star"
           value={venue.google.rating.toFixed(1)}
-          meta={`${formatCount(venue.google.count)} reviews`}
+          meta={`${formatCount(venue.google.count, true)} reviews`}
         />
-        <ExternalStat
-          label="Instagram"
-          value={formatCount(venue.instagram.followers)}
+        <ExternalCard
+          logo={<InstagramLogo />}
+          icon="users"
+          value={formatCount(venue.instagram.followers, false)}
           meta="followers"
         />
-        <ExternalStat
-          label="Facebook"
-          value={formatCount(venue.facebook.followers)}
-          meta="followers"
+        <ExternalCard
+          logo={<FacebookLogo />}
+          icon="star"
+          value={venue.facebook.rating.toFixed(1)}
+          meta={`${formatCount(venue.facebook.fans, false)} fans`}
         />
       </div>
     </Box>
   );
 }
 
-function RatingBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.max(0, Math.min(1, value / 5)) * 100;
+function RatingPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-muted-foreground w-16 text-[11px]">{label}</span>
-      <div className="bg-muted relative h-1.5 flex-1 overflow-hidden rounded-full">
-        <div
-          className="bg-pink-gradient absolute inset-y-0 left-0 rounded-full"
-          style={{ width: `${pct}%` }}
+    <div className="bg-background flex items-center justify-between gap-2 rounded-full px-3 py-2">
+      <span className="text-foreground truncate text-xs">{label}</span>
+      <span className="flex shrink-0 items-center gap-1 text-xs font-semibold">
+        <Star
+          className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+          strokeWidth={0}
         />
-      </div>
-      <span className="w-7 text-right text-[11px] font-semibold">
         {value.toFixed(1)}
       </span>
     </div>
   );
 }
 
-function ExternalStat({
-  label,
+function ExternalCard({
+  logo,
+  icon,
   value,
   meta,
 }: {
-  label: string;
+  logo: React.ReactNode;
+  icon: "star" | "users";
   value: string;
   meta: string;
 }) {
   return (
-    <div className="bg-card flex flex-col gap-0.5 px-4 py-3">
-      <p className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
-        {label}
-      </p>
-      <p className="font-display text-lg leading-none font-semibold">{value}</p>
-      <p className="text-muted-foreground text-[10px]">{meta}</p>
+    <div className="bg-background flex flex-col items-center gap-1.5 rounded-xl px-2 py-3">
+      <div className="mb-1">{logo}</div>
+      <div className="flex items-center gap-1 text-sm font-semibold">
+        {icon === "star" ? (
+          <Star
+            className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+            strokeWidth={0}
+          />
+        ) : (
+          <Users className="text-muted-foreground h-3.5 w-3.5" />
+        )}
+        {value}
+      </div>
+      <p className="text-muted-foreground text-[10px] leading-tight">{meta}</p>
     </div>
   );
 }
 
-// ── 4. Google reviews ───────────────────────────────────────────────────
-
-function GoogleReviewsBox({ venue }: { venue: VenueDetail }) {
+function GoogleLogo() {
   return (
-    <Box title="From Google">
-      <BoxHScroll>
-        {venue.google_reviews.map((r) => (
-          <article
-            key={r.author}
-            className="bg-background flex w-60 shrink-0 flex-col gap-2 rounded-2xl p-4"
-          >
-            <p className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
-              Google
-            </p>
-            <div className="flex items-center gap-0.5 text-amber-400">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    i < r.rating ? "fill-current" : "opacity-30",
-                  )}
-                  strokeWidth={0}
-                />
-              ))}
-            </div>
-            <p className="text-foreground line-clamp-4 text-sm leading-snug">
-              “{r.quote}”
-            </p>
-            <p className="text-muted-foreground mt-auto pt-1 text-[11px]">
-              {r.author} · {r.date}
-            </p>
-          </article>
-        ))}
-      </BoxHScroll>
-    </Box>
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+      <span className="font-display text-base leading-none font-bold text-blue-600">
+        G
+      </span>
+    </div>
   );
 }
 
-// ── 5. Mesita visitors ─────────────────────────────────────────────────
+function InstagramLogo() {
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400">
+      <Instagram className="h-4 w-4 text-white" strokeWidth={2} />
+    </div>
+  );
+}
+
+function FacebookLogo() {
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1877F2]">
+      <Facebook
+        className="h-4 w-4 fill-white text-white"
+        strokeWidth={0}
+      />
+    </div>
+  );
+}
+
+// ── 4. Individual reviews (merged carousel) ─────────────────────────────
 
 const TIER_LABEL: Record<Tier, string> = {
   bronze: "BRONZE",
@@ -294,63 +297,128 @@ const TIER_TEXT: Record<Tier, string> = {
   diamond: "text-diamond",
 };
 
-function MesitaVisitorsBox({ venue }: { venue: VenueDetail }) {
+function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
+  // Interleave Mesita visitors and Google reviews so featured cards from
+  // both sources sit in one carousel. Mesita leads (richer, owned data).
+  const items: Array<
+    | { kind: "mesita"; data: VenueDetail["mesita_visitors"][number] }
+    | { kind: "google"; data: VenueDetail["google_reviews"][number] }
+  > = [];
+  const maxLen = Math.max(
+    venue.mesita_visitors.length,
+    venue.google_reviews.length,
+  );
+  for (let i = 0; i < maxLen; i++) {
+    if (venue.mesita_visitors[i]) {
+      items.push({ kind: "mesita", data: venue.mesita_visitors[i] });
+    }
+    if (venue.google_reviews[i]) {
+      items.push({ kind: "google", data: venue.google_reviews[i] });
+    }
+  }
+
   return (
-    <Box title="Who's been here">
+    <Box title="Individual reviews" icon={MessageCircle} iconColor="text-pink-400">
       <BoxHScroll>
-        {venue.mesita_visitors.map((v) => (
-          <article
-            key={v.handle}
-            className="bg-background flex w-64 shrink-0 flex-col gap-3 rounded-2xl p-4"
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white/90",
-                  TIER_AVATAR_BG[v.tier],
-                )}
-              >
-                {firstInitial(v.name)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{v.name}</p>
-                <p className="text-muted-foreground truncate text-[11px]">
-                  {v.handle}
-                </p>
-              </div>
-              <span
-                className={cn(
-                  "rounded-full border border-current/30 px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase",
-                  TIER_TEXT[v.tier],
-                )}
-              >
-                {TIER_LABEL[v.tier]}
-              </span>
-            </div>
-            <p className="text-muted-foreground text-[11px]">
-              {v.community} · {formatCount(v.followers)} followers
-            </p>
-            <p className="font-display text-sm leading-snug italic">
-              “{v.quote}”
-            </p>
-            <div className="text-muted-foreground mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-1 text-[10px]">
-              <span>Food {v.food}</span>
-              <span>Service {v.service}</span>
-              <span>Atm {v.ambiance}</span>
-              <span>Value {v.value}</span>
-            </div>
-          </article>
-        ))}
+        {items.map((item, i) =>
+          item.kind === "mesita" ? (
+            <MesitaCard key={`m-${i}`} v={item.data} />
+          ) : (
+            <GoogleCard key={`g-${i}`} r={item.data} />
+          ),
+        )}
       </BoxHScroll>
     </Box>
   );
 }
 
-// ── 6. Menu ─────────────────────────────────────────────────────────────
+function MesitaCard({
+  v,
+}: {
+  v: VenueDetail["mesita_visitors"][number];
+}) {
+  return (
+    <article className="bg-background flex w-64 shrink-0 flex-col gap-3 rounded-2xl p-4">
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white/90",
+            TIER_AVATAR_BG[v.tier],
+          )}
+        >
+          {firstInitial(v.name)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{v.name}</p>
+          <p className="text-muted-foreground truncate text-[11px]">
+            {v.handle}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "rounded-full border border-current/30 px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase",
+            TIER_TEXT[v.tier],
+          )}
+        >
+          {TIER_LABEL[v.tier]}
+        </span>
+      </div>
+      <p className="text-muted-foreground text-[11px]">
+        Mesita · {v.community} · {formatCount(v.followers, false)} followers
+      </p>
+      <p className="font-display text-sm leading-snug italic">
+        “{v.quote}”
+      </p>
+      <div className="text-muted-foreground mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-1 text-[10px]">
+        <span>Food {v.food}</span>
+        <span>Service {v.service}</span>
+        <span>Atm {v.ambiance}</span>
+        <span>Value {v.value}</span>
+      </div>
+    </article>
+  );
+}
+
+function GoogleCard({
+  r,
+}: {
+  r: VenueDetail["google_reviews"][number];
+}) {
+  return (
+    <article className="bg-background flex w-64 shrink-0 flex-col gap-2 rounded-2xl p-4">
+      <div className="flex items-center gap-2">
+        <GoogleLogo />
+        <p className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
+          Google
+        </p>
+      </div>
+      <div className="flex items-center gap-0.5 text-amber-400">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star
+            key={i}
+            className={cn(
+              "h-3.5 w-3.5",
+              i < r.rating ? "fill-current" : "opacity-30",
+            )}
+            strokeWidth={0}
+          />
+        ))}
+      </div>
+      <p className="text-foreground line-clamp-5 text-sm leading-snug">
+        “{r.quote}”
+      </p>
+      <p className="text-muted-foreground mt-auto pt-1 text-[11px]">
+        {r.author} · {r.date}
+      </p>
+    </article>
+  );
+}
+
+// ── 5. Menu ─────────────────────────────────────────────────────────────
 
 function MenuBox({ venue }: { venue: VenueDetail }) {
   return (
-    <Box title="Menu">
+    <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
       <div className="bg-background flex items-center gap-3 rounded-xl p-3">
         <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
           <Utensils className="h-4 w-4" />
@@ -389,6 +457,45 @@ function MenuBox({ venue }: { venue: VenueDetail }) {
           </div>
         ))}
       </BoxHScroll>
+    </Box>
+  );
+}
+
+// ── 6. Location ─────────────────────────────────────────────────────────
+
+function LocationBox({ venue }: { venue: VenueDetail }) {
+  return (
+    <Box
+      title="Location"
+      icon={MapPin}
+      iconColor="text-pink-500"
+      right={`${venue.walk_minutes} min walk`}
+    >
+      <div
+        className="relative aspect-[16/9] overflow-hidden rounded-xl"
+        style={{
+          backgroundColor: "#1d1442",
+          backgroundImage: `
+            linear-gradient(rgba(168, 85, 247, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(168, 85, 247, 0.08) 1px, transparent 1px),
+            radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.18) 0%, transparent 65%)
+          `,
+          backgroundSize: "36px 36px, 36px 36px, 100% 100%",
+        }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <div className="bg-pink-gradient shadow-glow flex h-12 w-12 items-center justify-center rounded-full">
+            <MapPin
+              className="h-5 w-5 fill-white text-white"
+              strokeWidth={1.5}
+            />
+          </div>
+          <span className="rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white">
+            {venue.name}
+          </span>
+        </div>
+      </div>
+      <p className="text-muted-foreground text-xs">{venue.address}</p>
     </Box>
   );
 }
@@ -441,7 +548,12 @@ function MatrixBox({ venue }: { venue: VenueDetail }) {
                 current && TIER_TEXT[tier],
               )}
             >
-              <div className={cn("absolute inset-x-0 top-0 h-1", TIER_AVATAR_BG[tier])} />
+              <div
+                className={cn(
+                  "absolute inset-x-0 top-0 h-1",
+                  TIER_AVATAR_BG[tier],
+                )}
+              />
               <p
                 className={cn(
                   "text-[10px] font-bold tracking-wider uppercase",
@@ -583,10 +695,44 @@ function ChipGroup<K extends string>({
   );
 }
 
+// ── Floating action bar ─────────────────────────────────────────────────
+
+function ActionBar() {
+  return (
+    <div className="border-border bg-background/95 sticky bottom-0 -mx-4 mt-3 flex flex-col gap-2 border-t px-4 pt-3 pb-4 backdrop-blur">
+      <button
+        type="button"
+        className="bg-pink-gradient shadow-glow rounded-full py-3 text-sm font-semibold text-white"
+      >
+        Save + reserve
+      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className="border-border bg-card text-foreground inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold"
+        >
+          <Bookmark className="h-3.5 w-3.5" />
+          Save coupon
+        </button>
+        <button
+          type="button"
+          className="border-border bg-card text-foreground inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold"
+        >
+          <CalendarCheck className="h-3.5 w-3.5" />
+          Reserve table
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-function formatCount(n: number): string {
+function formatCount(n: number, exact: boolean): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}k`;
+  // `exact` keeps counts that matter (e.g. review counts) as "1,891" rather
+  // than collapsing to "1.9K".
+  if (exact && n >= 1000) return n.toLocaleString("en-US");
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }

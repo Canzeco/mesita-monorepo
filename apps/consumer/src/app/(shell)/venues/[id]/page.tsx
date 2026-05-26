@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { X } from "lucide-react";
 import { VenueDetailBody } from "@/components/consumer/VenueDetailBody";
 import { mockVenue } from "@/lib/mock/venue";
 
@@ -19,9 +19,9 @@ export default async function VenueDetailPage() {
       <Link
         href="/discover/swipe"
         className="absolute top-3 left-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-900 backdrop-blur transition hover:bg-white"
-        aria-label="Back"
+        aria-label="Close"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <X className="h-4 w-4" />
       </Link>
       <VenueDetailBody venue={mockVenue} />
     </div>
