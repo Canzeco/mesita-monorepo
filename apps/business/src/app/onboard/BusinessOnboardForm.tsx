@@ -13,27 +13,34 @@ import {
   PRIMARY_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 
-// Business onboard only needs full_name — phone is the auth identity and
-// gets mirrored into businesses.phone by the EF from auth.user.phone.
+// Business onboard captures first + last name so contracts and
+// reservation outreach can address the signer correctly. Phone is the
+// auth identity and gets mirrored into businesses.phone by the EF
+// from auth.user.phone.
 export function BusinessOnboardForm() {
   const router = useRouter();
   const supabase = useBrowserSupabase();
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const trimmed = fullName.trim();
-    if (!trimmed) {
-      setError("Tell us your name so we know who's onboarding.");
+    const first = firstName.trim();
+    const last = lastName.trim();
+    if (!first || !last) {
+      setError("Tell us your first + last name so we know who's onboarding.");
       return;
     }
     setPending(true);
     void (async () => {
       try {
-        await apiCreateBusinessProfile(supabase, { full_name: trimmed });
+        await apiCreateBusinessProfile(supabase, {
+          first_name: first,
+          last_name: last,
+        });
         router.push("/central");
         router.refresh();
       } catch (err) {
@@ -45,17 +52,30 @@ export function BusinessOnboardForm() {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <Field label="Your name" required>
-        <input
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          maxLength={120}
-          autoComplete="name"
-          placeholder="e.g. Iván Solís"
-          className={INPUT_CLASS}
-          required
-        />
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="First name" required>
+          <input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            maxLength={60}
+            autoComplete="given-name"
+            placeholder="Iván"
+            className={INPUT_CLASS}
+            required
+          />
+        </Field>
+        <Field label="Last name" required>
+          <input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            maxLength={60}
+            autoComplete="family-name"
+            placeholder="Solís"
+            className={INPUT_CLASS}
+            required
+          />
+        </Field>
+      </div>
 
       {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
 
