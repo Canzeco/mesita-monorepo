@@ -95,22 +95,28 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          first_name: string | null
           full_name: string | null
           id: string
+          last_name: string | null
           phone: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
+          first_name?: string | null
           full_name?: string | null
           id: string
+          last_name?: string | null
           phone?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
+          first_name?: string | null
           full_name?: string | null
           id?: string
+          last_name?: string | null
           phone?: string | null
         }
         Relationships: []
@@ -181,8 +187,10 @@ export type Database = {
           code: string | null
           country: string | null
           created_at: string
+          first_name: string | null
           full_name: string | null
           id: string
+          last_name: string | null
           phone: string | null
           sex: string | null
         }
@@ -193,8 +201,10 @@ export type Database = {
           code?: string | null
           country?: string | null
           created_at?: string
+          first_name?: string | null
           full_name?: string | null
           id: string
+          last_name?: string | null
           phone?: string | null
           sex?: string | null
         }
@@ -205,8 +215,10 @@ export type Database = {
           code?: string | null
           country?: string | null
           created_at?: string
+          first_name?: string | null
           full_name?: string | null
           id?: string
+          last_name?: string | null
           phone?: string | null
           sex?: string | null
         }
@@ -550,18 +562,22 @@ export type Database = {
       venues: {
         Row: {
           address: string | null
+          bronze_rate: number | null
           cashback_percent: number | null
           category: string | null
           closes_at: string | null
           country: string | null
           created_at: string
+          currency: string
           description: string | null
+          diamond_rate: number | null
           didi_food_url: string | null
           email: string | null
           embedding: string | null
           embedding_source_hash: string | null
           facebook_url: string | null
           fiscal_type: Database["public"]["Enums"]["venue_fiscal_type"]
+          gold_rate: number | null
           google_business_url: string | null
           google_maps_url: string | null
           google_place_id: string | null
@@ -576,6 +592,7 @@ export type Database = {
           lat: number | null
           listing_type: Database["public"]["Enums"]["listing_type"]
           lng: number | null
+          menu_pdf_name: string | null
           menu_pdf_url: string | null
           mesita_review_count: number | null
           mesita_stars_ambience: number | null
@@ -595,6 +612,7 @@ export type Database = {
           resy_url: string | null
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
+          silver_rate: number | null
           slug: string
           status: Database["public"]["Enums"]["venue_status"]
           story: string | null
@@ -607,6 +625,10 @@ export type Database = {
           updated_at: string
           vibe: string | null
           website_url: string | null
+          welcome_bronze_rate: number | null
+          welcome_diamond_rate: number | null
+          welcome_gold_rate: number | null
+          welcome_silver_rate: number | null
           whatsapp_pr_urls: string[]
           whatsapp_url: string | null
           x_url: string | null
@@ -614,18 +636,22 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bronze_rate?: number | null
           cashback_percent?: number | null
           category?: string | null
           closes_at?: string | null
           country?: string | null
           created_at?: string
+          currency?: string
           description?: string | null
+          diamond_rate?: number | null
           didi_food_url?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
           facebook_url?: string | null
           fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"]
+          gold_rate?: number | null
           google_business_url?: string | null
           google_maps_url?: string | null
           google_place_id?: string | null
@@ -640,6 +666,7 @@ export type Database = {
           lat?: number | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           lng?: number | null
+          menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
@@ -659,6 +686,7 @@ export type Database = {
           resy_url?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
+          silver_rate?: number | null
           slug: string
           status?: Database["public"]["Enums"]["venue_status"]
           story?: string | null
@@ -671,6 +699,10 @@ export type Database = {
           updated_at?: string
           vibe?: string | null
           website_url?: string | null
+          welcome_bronze_rate?: number | null
+          welcome_diamond_rate?: number | null
+          welcome_gold_rate?: number | null
+          welcome_silver_rate?: number | null
           whatsapp_pr_urls?: string[]
           whatsapp_url?: string | null
           x_url?: string | null
@@ -678,18 +710,22 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bronze_rate?: number | null
           cashback_percent?: number | null
           category?: string | null
           closes_at?: string | null
           country?: string | null
           created_at?: string
+          currency?: string
           description?: string | null
+          diamond_rate?: number | null
           didi_food_url?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
           facebook_url?: string | null
           fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"]
+          gold_rate?: number | null
           google_business_url?: string | null
           google_maps_url?: string | null
           google_place_id?: string | null
@@ -704,6 +740,7 @@ export type Database = {
           lat?: number | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           lng?: number | null
+          menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
@@ -723,6 +760,7 @@ export type Database = {
           resy_url?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
+          silver_rate?: number | null
           slug?: string
           status?: Database["public"]["Enums"]["venue_status"]
           story?: string | null
@@ -735,6 +773,10 @@ export type Database = {
           updated_at?: string
           vibe?: string | null
           website_url?: string | null
+          welcome_bronze_rate?: number | null
+          welcome_diamond_rate?: number | null
+          welcome_gold_rate?: number | null
+          welcome_silver_rate?: number | null
           whatsapp_pr_urls?: string[]
           whatsapp_url?: string | null
           x_url?: string | null
