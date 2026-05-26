@@ -21,81 +21,128 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
 // Pure presentation for the venue detail surface. The two callers (full
 // page at /venues/[id] and the intercepted modal at @modal/(.)venues/[id])
-// each render their own dismiss chrome around this. Section order is the
-// product spec — summary → media → reviews → google → mesita → menu →
-// promo → matrix → about → details.
+// each render their own dismiss chrome around this. Every section is wrapped
+// in a Box so the page reads as a vertical stack of modular cards. Inner
+// items (review cards, visitor cards, dish cards, tier tiles) drop to
+// bg-background so they recede inside their host box.
 
 export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
-    <div className="flex flex-col gap-7 px-5 pt-12 pb-10">
-      <SummarySection venue={venue} />
-      <MediaSection venue={venue} />
-      <ReviewsSummarySection venue={venue} />
-      <GoogleReviewsSection venue={venue} />
-      <MesitaVisitorsSection venue={venue} />
-      <MenuSection venue={venue} />
-      <PromoSection venue={venue} />
-      <PromoMatrixSection venue={venue} />
-      <AboutSection venue={venue} />
-      <DetailsSection venue={venue} />
+    <div className="flex flex-col gap-3 px-4 pt-12 pb-10">
+      <SummaryBox venue={venue} />
+      <MediaBox venue={venue} />
+      <ReviewsBox venue={venue} />
+      <GoogleReviewsBox venue={venue} />
+      <MesitaVisitorsBox venue={venue} />
+      <MenuBox venue={venue} />
+      <PromoBox venue={venue} />
+      <MatrixBox venue={venue} />
+      <AboutBox venue={venue} />
+      <DetailsBox venue={venue} />
+    </div>
+  );
+}
+
+// ── Box primitive ───────────────────────────────────────────────────────
+
+function Box({
+  title,
+  children,
+  className,
+  bare = false,
+}: {
+  title?: string;
+  children: React.ReactNode;
+  className?: string;
+  // bare = no padding (used by the media card so the photo fills edge-to-edge).
+  bare?: boolean;
+}) {
+  return (
+    <section
+      className={cn(
+        "border-border bg-card flex flex-col rounded-2xl border",
+        bare ? "overflow-hidden" : "gap-3 p-4",
+        className,
+      )}
+    >
+      {title && <BoxLabel>{title}</BoxLabel>}
+      {children}
+    </section>
+  );
+}
+
+function BoxLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+      {children}
+    </h3>
+  );
+}
+
+// Horizontal-scroll strip designed to live inside a `Box` with p-4. The
+// negative margin cancels the box's padding so cards bleed to the inner
+// edge, and the right padding leaves a comfortable card-peek.
+function BoxHScroll({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+      {children}
     </div>
   );
 }
 
 // ── 1. Summary ──────────────────────────────────────────────────────────
 
-function SummarySection({ venue }: { venue: VenueDetail }) {
+function SummaryBox({ venue }: { venue: VenueDetail }) {
   const meta = [
     "$".repeat(venue.price_level),
     `${venue.distance_km} km · ${venue.walk_minutes} min walk`,
     venue.open_now ? `Open until ${venue.closes_at}` : `Closes at ${venue.closes_at}`,
   ];
-
   return (
-    <header className="flex flex-col gap-2">
+    <Box>
       <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
         {venue.vibe} · {venue.category}
       </p>
-      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
+      <h1 className="font-display -mt-1 text-3xl leading-tight font-semibold tracking-tight">
         {venue.name}
       </h1>
-      <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
-      <p className="text-muted-foreground mt-1 flex items-start gap-2 text-sm">
+      <p className="text-muted-foreground -mt-1 text-sm">{meta.join(" · ")}</p>
+      <p className="text-muted-foreground flex items-start gap-2 text-sm">
         <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
         <span>{venue.address}</span>
       </p>
-      <p className="text-foreground mt-2 text-base leading-relaxed">
+      <p className="text-foreground text-base leading-relaxed">
         {venue.short_description}
       </p>
-    </header>
+    </Box>
   );
 }
 
 // ── 2. Media ────────────────────────────────────────────────────────────
 
-function MediaSection({ venue }: { venue: VenueDetail }) {
-  if (venue.photos.length > 0) {
-    return (
-      <ImageCarousel
-        photos={venue.photos}
-        alt={venue.name}
-        aspect="aspect-square"
-        rounded="rounded-3xl"
-      />
-    );
-  }
+function MediaBox({ venue }: { venue: VenueDetail }) {
   return (
-    <div className="bg-pink-gradient flex aspect-square items-center justify-center rounded-3xl">
-      <span className="font-display text-8xl font-bold text-white/70">
-        {firstInitial(venue.name)}
-      </span>
-    </div>
+    <Box bare>
+      {venue.photos.length > 0 ? (
+        <ImageCarousel
+          photos={venue.photos}
+          alt={venue.name}
+          aspect="aspect-square"
+        />
+      ) : (
+        <div className="bg-pink-gradient flex aspect-square items-center justify-center">
+          <span className="font-display text-8xl font-bold text-white/70">
+            {firstInitial(venue.name)}
+          </span>
+        </div>
+      )}
+    </Box>
   );
 }
 
 // ── 3. Reviews summary ──────────────────────────────────────────────────
 
-function ReviewsSummarySection({ venue }: { venue: VenueDetail }) {
+function ReviewsBox({ venue }: { venue: VenueDetail }) {
   const bars: Array<[string, number]> = [
     ["Food", venue.mesita_reviews.food],
     ["Service", venue.mesita_reviews.service],
@@ -103,52 +150,49 @@ function ReviewsSummarySection({ venue }: { venue: VenueDetail }) {
     ["Overall", venue.mesita_reviews.overall],
   ];
   return (
-    <section className="flex flex-col gap-3">
-      <SectionLabel>Reviews</SectionLabel>
-      <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="font-display text-4xl font-semibold tracking-tight">
-              {venue.mesita_reviews.overall.toFixed(1)}
-            </p>
-            <div className="mt-1 flex items-center gap-1 text-amber-400">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className="h-3.5 w-3.5 fill-current"
-                  strokeWidth={0}
-                />
-              ))}
-            </div>
-            <p className="text-muted-foreground mt-1 text-xs">
-              {venue.mesita_reviews.total} on Mesita
-            </p>
-          </div>
-          <div className="flex flex-1 flex-col gap-1.5">
-            {bars.map(([label, value]) => (
-              <RatingBar key={label} label={label} value={value} />
+    <Box title="Reviews">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="font-display text-4xl font-semibold tracking-tight">
+            {venue.mesita_reviews.overall.toFixed(1)}
+          </p>
+          <div className="mt-1 flex items-center gap-1 text-amber-400">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className="h-3.5 w-3.5 fill-current"
+                strokeWidth={0}
+              />
             ))}
           </div>
+          <p className="text-muted-foreground mt-1 text-xs">
+            {venue.mesita_reviews.total} on Mesita
+          </p>
         </div>
-        <div className="border-border grid grid-cols-3 gap-3 border-t pt-3">
-          <ExternalStat
-            label="Google"
-            value={venue.google.rating.toFixed(1)}
-            meta={`${formatCount(venue.google.count)} reviews`}
-          />
-          <ExternalStat
-            label="Instagram"
-            value={formatCount(venue.instagram.followers)}
-            meta="followers"
-          />
-          <ExternalStat
-            label="Facebook"
-            value={formatCount(venue.facebook.followers)}
-            meta="followers"
-          />
+        <div className="flex flex-1 flex-col gap-1.5">
+          {bars.map(([label, value]) => (
+            <RatingBar key={label} label={label} value={value} />
+          ))}
         </div>
       </div>
-    </section>
+      <div className="border-border -mx-4 grid grid-cols-3 gap-px overflow-hidden border-t bg-white/5">
+        <ExternalStat
+          label="Google"
+          value={venue.google.rating.toFixed(1)}
+          meta={`${formatCount(venue.google.count)} reviews`}
+        />
+        <ExternalStat
+          label="Instagram"
+          value={formatCount(venue.instagram.followers)}
+          meta="followers"
+        />
+        <ExternalStat
+          label="Facebook"
+          value={formatCount(venue.facebook.followers)}
+          meta="followers"
+        />
+      </div>
+    </Box>
   );
 }
 
@@ -180,7 +224,7 @@ function ExternalStat({
   meta: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="bg-card flex flex-col gap-0.5 px-4 py-3">
       <p className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
         {label}
       </p>
@@ -192,15 +236,14 @@ function ExternalStat({
 
 // ── 4. Google reviews ───────────────────────────────────────────────────
 
-function GoogleReviewsSection({ venue }: { venue: VenueDetail }) {
+function GoogleReviewsBox({ venue }: { venue: VenueDetail }) {
   return (
-    <section className="flex flex-col gap-3">
-      <SectionLabel>From Google</SectionLabel>
-      <HScroll>
+    <Box title="From Google">
+      <BoxHScroll>
         {venue.google_reviews.map((r) => (
           <article
             key={r.author}
-            className="border-border bg-card flex w-64 shrink-0 flex-col gap-2 rounded-2xl border p-4"
+            className="bg-background flex w-60 shrink-0 flex-col gap-2 rounded-2xl p-4"
           >
             <p className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
               Google
@@ -225,8 +268,8 @@ function GoogleReviewsSection({ venue }: { venue: VenueDetail }) {
             </p>
           </article>
         ))}
-      </HScroll>
-    </section>
+      </BoxHScroll>
+    </Box>
   );
 }
 
@@ -251,15 +294,14 @@ const TIER_TEXT: Record<Tier, string> = {
   diamond: "text-diamond",
 };
 
-function MesitaVisitorsSection({ venue }: { venue: VenueDetail }) {
+function MesitaVisitorsBox({ venue }: { venue: VenueDetail }) {
   return (
-    <section className="flex flex-col gap-3">
-      <SectionLabel>Who&apos;s been here</SectionLabel>
-      <HScroll>
+    <Box title="Who's been here">
+      <BoxHScroll>
         {venue.mesita_visitors.map((v) => (
           <article
             key={v.handle}
-            className="border-border bg-card flex w-72 shrink-0 flex-col gap-3 rounded-2xl border p-4"
+            className="bg-background flex w-64 shrink-0 flex-col gap-3 rounded-2xl p-4"
           >
             <div className="flex items-center gap-3">
               <div
@@ -299,19 +341,18 @@ function MesitaVisitorsSection({ venue }: { venue: VenueDetail }) {
             </div>
           </article>
         ))}
-      </HScroll>
-    </section>
+      </BoxHScroll>
+    </Box>
   );
 }
 
 // ── 6. Menu ─────────────────────────────────────────────────────────────
 
-function MenuSection({ venue }: { venue: VenueDetail }) {
+function MenuBox({ venue }: { venue: VenueDetail }) {
   return (
-    <section className="flex flex-col gap-3">
-      <SectionLabel>Menu</SectionLabel>
-      <div className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
-        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full">
+    <Box title="Menu">
+      <div className="bg-background flex items-center gap-3 rounded-xl p-3">
+        <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
           <Utensils className="h-4 w-4" />
         </div>
         <div className="flex-1">
@@ -328,11 +369,11 @@ function MenuSection({ venue }: { venue: VenueDetail }) {
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
-      <HScroll>
+      <BoxHScroll>
         {venue.menu.dishes.map((d) => (
           <div
             key={d.name}
-            className="border-border bg-card flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border"
+            className="bg-background flex w-32 shrink-0 flex-col overflow-hidden rounded-2xl"
           >
             <div className="bg-pink-gradient flex aspect-square items-center justify-center">
               <span className="font-display text-3xl font-bold text-white/70">
@@ -347,14 +388,14 @@ function MenuSection({ venue }: { venue: VenueDetail }) {
             </div>
           </div>
         ))}
-      </HScroll>
-    </section>
+      </BoxHScroll>
+    </Box>
   );
 }
 
 // ── 7. Promotion ────────────────────────────────────────────────────────
 
-function PromoSection({ venue }: { venue: VenueDetail }) {
+function PromoBox({ venue }: { venue: VenueDetail }) {
   const symbol = venue.promo.reward_kind === "cashback" ? "$" : "%";
   return (
     <section className="bg-pink-gradient shadow-glow flex items-center justify-between rounded-2xl p-4 text-white">
@@ -384,10 +425,9 @@ const TIER_PROPER: Record<Tier, string> = {
   diamond: "Diamond",
 };
 
-function PromoMatrixSection({ venue }: { venue: VenueDetail }) {
+function MatrixBox({ venue }: { venue: VenueDetail }) {
   return (
-    <section className="flex flex-col gap-3">
-      <SectionLabel>Your reward by class</SectionLabel>
+    <Box title="Your reward by class">
       <div className="grid grid-cols-2 gap-2">
         {TIER_ORDER.map((tier) => {
           const value = venue.promo_matrix[tier];
@@ -396,10 +436,8 @@ function PromoMatrixSection({ venue }: { venue: VenueDetail }) {
             <div
               key={tier}
               className={cn(
-                "relative overflow-hidden rounded-2xl border p-3",
-                current
-                  ? "border-current/40 bg-card/80"
-                  : "border-border bg-card",
+                "bg-background relative overflow-hidden rounded-xl p-3",
+                current && "ring-1 ring-current/40",
                 current && TIER_TEXT[tier],
               )}
             >
@@ -430,20 +468,19 @@ function PromoMatrixSection({ venue }: { venue: VenueDetail }) {
       <p className="text-muted-foreground text-[11px]">
         Higher class earns more. Upgrade in Profile.
       </p>
-    </section>
+    </Box>
   );
 }
 
 // ── 9. About ────────────────────────────────────────────────────────────
 
-function AboutSection({ venue }: { venue: VenueDetail }) {
+function AboutBox({ venue }: { venue: VenueDetail }) {
   return (
-    <section className="flex flex-col gap-2">
-      <SectionLabel>About</SectionLabel>
+    <Box title="About">
       <p className="text-muted-foreground text-sm leading-relaxed">
         {venue.long_description}
       </p>
-    </section>
+    </Box>
   );
 }
 
@@ -474,7 +511,7 @@ const REVIEW_DEFS = [
   { key: "google_maps_url", label: "Google Maps", Icon: MapPin },
 ] as const;
 
-function DetailsSection({ venue }: { venue: VenueDetail }) {
+function DetailsBox({ venue }: { venue: VenueDetail }) {
   const rows: Array<[string, string]> = [
     ["Price range", venue.details.price_range],
     ["Dress code", venue.details.dress_code],
@@ -483,13 +520,12 @@ function DetailsSection({ venue }: { venue: VenueDetail }) {
     ["Access", venue.details.access],
   ];
   return (
-    <section className="flex flex-col gap-3">
-      <SectionLabel>Good to know</SectionLabel>
-      <div className="border-border bg-card flex flex-col divide-y divide-white/5 rounded-2xl border">
+    <Box title="Good to know">
+      <div className="bg-background flex flex-col divide-y divide-white/5 rounded-xl">
         {rows.map(([label, value]) => (
           <div
             key={label}
-            className="flex items-start justify-between gap-4 px-4 py-3"
+            className="flex items-start justify-between gap-4 px-3 py-2.5"
           >
             <span className="text-muted-foreground text-xs">{label}</span>
             <span className="text-foreground text-right text-sm font-medium">
@@ -509,7 +545,7 @@ function DetailsSection({ venue }: { venue: VenueDetail }) {
         defs={REVIEW_DEFS}
         urls={venue.reviews_maps}
       />
-    </section>
+    </Box>
   );
 }
 
@@ -536,7 +572,7 @@ function ChipGroup<K extends string>({
             href={urls[key]}
             target="_blank"
             rel="noopener noreferrer"
-            className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition"
+            className="bg-background text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition"
           >
             <Icon className="h-3.5 w-3.5" />
             {label}
@@ -548,22 +584,6 @@ function ChipGroup<K extends string>({
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-      {children}
-    </h3>
-  );
-}
-
-function HScroll({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="scrollbar-hide -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
-      {children}
-    </div>
-  );
-}
 
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
