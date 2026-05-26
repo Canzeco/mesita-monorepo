@@ -82,19 +82,27 @@ export type VenueDetail = {
     reward_value: number;
   };
 
-  // 8. Reward by class — welcome bonus + per-tier rewards in one h-scroll.
-  // Only one applies to a given user: either the welcome (first visit) or
-  // the current_tier card. The other cards are visible for context.
-  welcome_discount: {
-    value: number;
-    subtitle: string;
-  };
+  // 8. Reward by class — eight per-tier promo rates (Welcome × tier on
+  // first visit, default × tier afterwards) + the current guest's tier
+  // + whether this is their first visit at this venue. Active reward is
+  // `is_first_visit ? promo_matrix.welcome[tier] : promo_matrix.default[tier]`.
+  // Mirrors mesita-supabase migration 0027 / public.venues columns. Each
+  // rate is one of 10 / 20 / 50 / 70 or null (= no promo at that tier).
   promo_matrix: {
-    bronze: number;
-    silver: number;
-    gold: number;
-    diamond: number;
+    welcome: {
+      bronze: number | null;
+      silver: number | null;
+      gold: number | null;
+      diamond: number | null;
+    };
+    default: {
+      bronze: number | null;
+      silver: number | null;
+      gold: number | null;
+      diamond: number | null;
+    };
     current_tier: Tier;
+    is_first_visit: boolean;
   };
   reward_cap_mxn: number;
 
@@ -313,19 +321,23 @@ export const mockVenue: VenueDetail = {
     reward_value: 20,
   },
 
-  welcome_discount: {
-    value: 50,
-    subtitle: "1 / month · first visit",
-  },
-
   promo_matrix: {
-    bronze: 10,
-    silver: 10,
-    gold: 20,
-    diamond: 50,
+    welcome: {
+      bronze: 50,
+      silver: 50,
+      gold: 70,
+      diamond: 70,
+    },
+    default: {
+      bronze: 10,
+      silver: 10,
+      gold: 20,
+      diamond: 50,
+    },
     current_tier: "gold",
+    is_first_visit: false,
   },
-  reward_cap_mxn: 1000,
+  reward_cap_mxn: 500,
 
   long_description:
     "Mochomos Monterrey offers a unique dining experience that combines the rich flavors of Sonoran cuisine with a modern atmosphere. Ideal for business lunches or special dinners, the venue features a diverse menu centered around grilled meats, seafood, and an extensive wine selection. Guests appreciate the attentive service and the elegant ambiance, making it a perfect spot for both corporate meetings and social gatherings.",

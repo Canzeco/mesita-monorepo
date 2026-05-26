@@ -635,9 +635,15 @@ const TIER_PROPER: Record<Tier, string> = {
 };
 
 function RewardsBox({ venue }: { venue: VenueDetail }) {
-  const currentTier = venue.promo_matrix.current_tier;
-  const currentValue = venue.promo_matrix[currentTier];
-  const currentRank = TIER_RANK[currentTier];
+  const { welcome, default: returning, current_tier, is_first_visit } =
+    venue.promo_matrix;
+  // Active reward = welcome variant on a first visit, default variant
+  // otherwise. Null means the venue offers nothing at this tier — the
+  // hero still renders so the user knows where they stand.
+  const activeValue = is_first_visit
+    ? welcome[current_tier]
+    : returning[current_tier];
+  const currentRank = TIER_RANK[current_tier];
   const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
   return (
     <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
@@ -647,32 +653,70 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
           Your reward
         </p>
         <p className="font-display mt-1 text-3xl font-semibold leading-none">
-          {currentValue}% off
+          {activeValue == null ? "—" : `${activeValue}% off`}
         </p>
         <p className="mt-1 text-xs text-white/90">
-          as Mesita {TIER_PROPER[currentTier]} · on every visit
+          as Mesita {TIER_PROPER[current_tier]}
+          {is_first_visit
+            ? " · first visit"
+            : activeValue == null
+              ? ""
+              : " · on every visit"}
         </p>
       </div>
 
-      {/* Tier ladder — Bronze · Silver · Gold · Diamond for reference. */}
-      <div className="grid grid-cols-4 gap-2">
-        {TIER_ORDER.map((tier) => {
-          const rank = TIER_RANK[tier];
-          const relation: "lower" | "current" | "higher" =
-            rank < currentRank
-              ? "lower"
-              : rank === currentRank
-                ? "current"
-                : "higher";
-          return (
-            <TierCard
-              key={tier}
-              tier={tier}
-              value={venue.promo_matrix[tier]}
-              relation={relation}
-            />
-          );
-        })}
+      {/* First-visit ladder — Welcome × tier. */}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+          First visit
+        </p>
+        <div className="grid grid-cols-4 gap-2">
+          {TIER_ORDER.map((tier) => {
+            const rank = TIER_RANK[tier];
+            const relation: "lower" | "current" | "higher" =
+              rank < currentRank
+                ? "lower"
+                : rank === currentRank
+                  ? "current"
+                  : "higher";
+            return (
+              <TierCard
+                key={`welcome-${tier}`}
+                tier={tier}
+                value={welcome[tier]}
+                relation={relation}
+                active={is_first_visit && tier === current_tier}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Every-visit ladder — default × tier. */}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+          Every visit
+        </p>
+        <div className="grid grid-cols-4 gap-2">
+          {TIER_ORDER.map((tier) => {
+            const rank = TIER_RANK[tier];
+            const relation: "lower" | "current" | "higher" =
+              rank < currentRank
+                ? "lower"
+                : rank === currentRank
+                  ? "current"
+                  : "higher";
+            return (
+              <TierCard
+                key={`default-${tier}`}
+                tier={tier}
+                value={returning[tier]}
+                relation={relation}
+                active={!is_first_visit && tier === current_tier}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Footer — mechanic on the left, per-visit cap on the right. */}
@@ -690,12 +734,17 @@ function TierCard({
   tier,
   value,
   relation,
+  active,
 }: {
   tier: Tier;
-  value: number;
+  value: number | null;
   relation: "lower" | "current" | "higher";
+  // True when this exact card represents the guest's currently active
+  // reward (matches both current_tier AND the first-visit/every-visit
+  // axis). The pink-gradient + Manage hover renders only on this card.
+  active: boolean;
 }) {
-  if (relation === "current") {
+  if (active) {
     return (
       <div className="group bg-pink-gradient shadow-glow relative overflow-hidden rounded-xl p-2 text-center text-white">
         <p className="text-[9px] font-bold tracking-wider text-white/90 uppercase">
@@ -703,9 +752,11 @@ function TierCard({
         </p>
         <p className="mt-0.5 flex items-baseline justify-center gap-1">
           <span className="font-display text-lg font-semibold leading-tight">
-            {value}%
+            {value == null ? "—" : `${value}%`}
           </span>
-          <span className="text-[10px] text-white/85">off</span>
+          {value != null && (
+            <span className="text-[10px] text-white/85">off</span>
+          )}
         </p>
         <CardHoverAction label="Manage" variant="light" />
       </div>
@@ -729,11 +780,13 @@ function TierCard({
       </p>
       <p className="mt-0.5 flex items-baseline justify-center gap-1">
         <span className="font-display text-foreground text-lg font-semibold leading-tight">
-          {value}%
+          {value == null ? "—" : `${value}%`}
         </span>
-        <span className="text-muted-foreground text-[10px]">off</span>
+        {value != null && (
+          <span className="text-muted-foreground text-[10px]">off</span>
+        )}
       </p>
-      {relation === "higher" && (
+      {relation === "higher" && value != null && (
         <CardHoverAction label={`Join`} variant="primary" />
       )}
     </div>
