@@ -179,6 +179,16 @@ export const mockVenue: VenueDetail = {
     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&q=80&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1551782450-a2132b4ba21d?w=900&q=80&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1532634725-6b9eb1c20a3e?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1502301103665-0b95cc738daf?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1551803091-e20673f15770?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1604908815898-7d3e2a6dc4a7?w=900&q=80&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1485962307416-993cf1d4c2e7?w=900&q=80&auto=format&fit=crop",
   ],
 
   mesita_reviews: {
