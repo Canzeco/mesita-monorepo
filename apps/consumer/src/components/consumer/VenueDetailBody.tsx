@@ -228,12 +228,36 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
           </span>
         </div>
       )}
-      {/* Trust line — quiet, sub-meta. Owns its own row so the badges read as
-          status, and the freshness signal reads as provenance. */}
-      <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-        <Pencil className="h-3 w-3" />
-        Updated {venue.last_updated_label}
-      </p>
+      {/* Quiet sub-meta. Open status answers "can I go now?", address answers
+          "where?", updated answers "is this real?". Duplicates Hours/Location
+          boxes by design — overview is supposed to be a single-glance read. */}
+      <div className="text-muted-foreground flex flex-col gap-1 text-xs">
+        <p className="inline-flex items-center gap-1.5">
+          <Clock className="h-3 w-3" />
+          <span
+            className={cn(
+              "font-semibold",
+              venue.open_now ? "text-emerald-400" : "text-foreground",
+            )}
+          >
+            {venue.open_now ? "Open" : "Closed"}
+          </span>
+          <span aria-hidden className="opacity-30">·</span>
+          <span>
+            {venue.open_now
+              ? `until ${venue.closes_at}`
+              : `opens ${venue.opens_at}`}
+          </span>
+        </p>
+        <p className="inline-flex items-start gap-1.5">
+          <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+          <span className="line-clamp-1">{venue.address}</span>
+        </p>
+        <p className="inline-flex items-center gap-1.5">
+          <Pencil className="h-3 w-3" />
+          Updated {venue.last_updated_label}
+        </p>
+      </div>
     </Box>
   );
 }
