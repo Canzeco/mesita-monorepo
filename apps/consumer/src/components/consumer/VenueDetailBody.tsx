@@ -126,7 +126,7 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
     venue.open_now ? `Open until ${venue.closes_at}` : `Closes at ${venue.closes_at}`,
   ];
   return (
-    <header className="flex flex-col gap-2 px-1">
+    <Box className="!gap-2">
       <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
         {venue.vibe} · {venue.category}
       </p>
@@ -141,7 +141,7 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
       <p className="text-foreground mt-1 text-base leading-relaxed">
         {venue.short_description}
       </p>
-    </header>
+    </Box>
   );
 }
 
