@@ -34,6 +34,7 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
     <div className="flex flex-col gap-3 px-4 pb-0">
+      <VenueTitleStrip venue={venue} />
       <MediaBox venue={venue} />
       <SummaryHeader venue={venue} />
       <ReviewsSummaryBox venue={venue} />
@@ -114,6 +115,19 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
     <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
       {children}
     </div>
+  );
+}
+
+// ── 0. Venue title strip ────────────────────────────────────────────────
+
+// Sits between the sticky top bar and the hero media. Redundant with the
+// Summary box's H1 by design — the strip gives the photo a label and
+// anchors the eye between chrome and content.
+function VenueTitleStrip({ venue }: { venue: VenueDetail }) {
+  return (
+    <p className="font-display text-foreground text-center text-base font-medium">
+      {venue.name}
+    </p>
   );
 }
 
@@ -471,6 +485,7 @@ function MenuBox({ venue }: { venue: VenueDetail }) {
 // ── 6. Location ─────────────────────────────────────────────────────────
 
 function LocationBox({ venue }: { venue: VenueDetail }) {
+  const mapsUrl = venue.reviews_maps.google_maps_url;
   return (
     <Box
       title="Location"
@@ -479,7 +494,7 @@ function LocationBox({ venue }: { venue: VenueDetail }) {
       right={`${venue.walk_minutes} min walk`}
     >
       <div
-        className="relative aspect-[16/9] overflow-hidden rounded-xl"
+        className="relative aspect-[5/2] overflow-hidden rounded-xl"
         style={{
           backgroundColor: "#1d1442",
           backgroundImage: `
@@ -487,22 +502,33 @@ function LocationBox({ venue }: { venue: VenueDetail }) {
             linear-gradient(90deg, rgba(168, 85, 247, 0.08) 1px, transparent 1px),
             radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.18) 0%, transparent 65%)
           `,
-          backgroundSize: "36px 36px, 36px 36px, 100% 100%",
+          backgroundSize: "32px 32px, 32px 32px, 100% 100%",
         }}
       >
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <div className="bg-pink-gradient shadow-glow flex h-12 w-12 items-center justify-center rounded-full">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+          <div className="bg-pink-gradient shadow-glow flex h-10 w-10 items-center justify-center rounded-full">
             <MapPin
-              className="h-5 w-5 fill-white text-white"
+              className="h-4 w-4 fill-white text-white"
               strokeWidth={1.5}
             />
           </div>
-          <span className="rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white">
+          <span className="rounded-full bg-black/80 px-2.5 py-0.5 text-[11px] font-medium text-white">
             {venue.name}
           </span>
         </div>
       </div>
       <p className="text-muted-foreground text-xs">{venue.address}</p>
+      {mapsUrl && (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition"
+        >
+          <MapPin className="h-4 w-4 text-pink-500" />
+          Open in Google Maps
+        </a>
+      )}
     </Box>
   );
 }
@@ -708,44 +734,29 @@ function DetailsBox({ venue }: { venue: VenueDetail }) {
 }
 
 function LinksBox({ venue }: { venue: VenueDetail }) {
+  // Flatten every link source into a single chip set — no subgroups.
+  const chips: { key: string; label: string; Icon: typeof Globe; url: string }[] =
+    [];
+  for (const def of CHANNEL_DEFS) {
+    const url = venue.channels[def.key];
+    if (url) chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+  }
+  for (const def of RESERVATION_DEFS) {
+    const url = venue.reservations[def.key];
+    if (url) chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+  }
+  for (const def of REVIEW_DEFS) {
+    const url = venue.reviews_maps[def.key];
+    if (url) chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+  }
+  if (chips.length === 0) return null;
   return (
-    <Box title="Channels & links" icon={Link2} iconColor="text-cyan-400">
-      <ChipGroup title="Channels" defs={CHANNEL_DEFS} urls={venue.channels} />
-      <ChipGroup
-        title="Reserve & order"
-        defs={RESERVATION_DEFS}
-        urls={venue.reservations}
-      />
-      <ChipGroup
-        title="Reviews & maps"
-        defs={REVIEW_DEFS}
-        urls={venue.reviews_maps}
-      />
-    </Box>
-  );
-}
-
-function ChipGroup<K extends string>({
-  title,
-  defs,
-  urls,
-}: {
-  title: string;
-  defs: readonly { key: K; label: string; Icon: typeof Globe }[];
-  urls: Partial<Record<K, string | undefined>>;
-}) {
-  const active = defs.filter((d) => !!urls[d.key]);
-  if (active.length === 0) return null;
-  return (
-    <div className="flex flex-col gap-2">
-      <h4 className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase">
-        {title}
-      </h4>
+    <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
       <div className="flex flex-wrap gap-2">
-        {active.map(({ key, label, Icon }) => (
+        {chips.map(({ key, label, Icon, url }) => (
           <a
             key={key}
-            href={urls[key]}
+            href={url}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-background text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition"
@@ -755,7 +766,7 @@ function ChipGroup<K extends string>({
           </a>
         ))}
       </div>
-    </div>
+    </Box>
   );
 }
 
