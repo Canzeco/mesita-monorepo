@@ -24,6 +24,8 @@ export type VenueDetail = {
   address: string;
   zone: string;
   short_description: string;
+  listing_type: "partner" | "web";
+  last_updated_label: string;
 
   // 2. Media
   photos: string[];
@@ -157,6 +159,8 @@ export const mockVenue: VenueDetail = {
   zone: "Loma Larga Oriente",
   short_description:
     "Experience Sonoran cuisine with a contemporary twist in a luxurious setting.",
+  listing_type: "partner",
+  last_updated_label: "2 days ago",
 
   photos: [],
 

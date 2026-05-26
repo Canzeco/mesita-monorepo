@@ -20,6 +20,10 @@ import {
   Clock,
   Settings,
   Link2,
+  Car,
+  Phone,
+  BadgeCheck,
+  Pencil,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
@@ -122,9 +126,10 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 function SummaryHeader({ venue }: { venue: VenueDetail }) {
   const meta = [
     "$".repeat(venue.price_level),
-    `${venue.distance_km} km · ${venue.walk_minutes} min walk`,
+    `${venue.distance_km} km`,
     venue.open_now ? `Open until ${venue.closes_at}` : `Closes at ${venue.closes_at}`,
   ];
+  const isPartner = venue.listing_type === "partner";
   return (
     <Box className="!gap-2">
       <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
@@ -134,6 +139,23 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
         {venue.name}
       </h1>
       <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
+      <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+        <span className="inline-flex items-center gap-1">
+          {isPartner ? (
+            <BadgeCheck className="h-3.5 w-3.5 text-emerald-400" />
+          ) : (
+            <Globe className="h-3.5 w-3.5" />
+          )}
+          <span className="text-foreground font-medium">
+            {isPartner ? "Verified partner" : "Web listing"}
+          </span>
+        </span>
+        <span>·</span>
+        <span className="inline-flex items-center gap-1">
+          <Pencil className="h-3 w-3" />
+          Updated {venue.last_updated_label}
+        </span>
+      </div>
     </Box>
   );
 }
@@ -172,7 +194,12 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
     ["Mesita · Overall", venue.mesita_reviews.overall],
   ];
   return (
-    <Box title="Reviews summary" icon={Star} iconColor="text-violet-400">
+    <Box
+      title="Reviews summary"
+      icon={Star}
+      iconColor="text-violet-400"
+      right={`${venue.mesita_reviews.total} Mesita reviews`}
+    >
       <div className="grid grid-cols-2 gap-2">
         {ratings.map(([label, value]) => (
           <RatingPill key={label} label={label} value={value} />
@@ -454,13 +481,16 @@ function MenuRow({ menu }: { menu: VenueDetail["menus"][number] }) {
 // ── 6. Location ─────────────────────────────────────────────────────────
 
 function LocationBox({ venue }: { venue: VenueDetail }) {
-  const mapsUrl = venue.reviews_maps.google_maps_url;
+  const mapsUrl =
+    venue.reviews_maps.google_maps_url ??
+    `https://maps.google.com/?q=${encodeURIComponent(venue.address)}`;
+  const uberUrl = `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[formatted_address]=${encodeURIComponent(venue.address)}`;
   return (
     <Box
       title="Location"
       icon={MapPin}
       iconColor="text-pink-500"
-      right={`${venue.walk_minutes} min walk`}
+      right={`${venue.distance_km} km`}
     >
       <div
         className="relative aspect-[5/2] overflow-hidden rounded-xl"
@@ -487,17 +517,26 @@ function LocationBox({ venue }: { venue: VenueDetail }) {
         </div>
       </div>
       <p className="text-muted-foreground text-xs">{venue.address}</p>
-      {mapsUrl && (
+      <div className="grid grid-cols-2 gap-2">
         <a
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition"
+          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
         >
           <MapPin className="h-4 w-4 text-pink-500" />
-          Open in Google Maps
+          Google Maps
         </a>
-      )}
+        <a
+          href={uberUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
+        >
+          <Car className="h-4 w-4" />
+          Ask Uber
+        </a>
+      </div>
     </Box>
   );
 }
@@ -712,12 +751,12 @@ const REVIEW_DEFS = [
 ] as const;
 
 function DetailsBox({ venue }: { venue: VenueDetail }) {
+  // Only the bits not already surfaced elsewhere on the page: Category,
+  // Zone, Participation, Mechanic. Price level lives in the Summary meta,
+  // Hours in the Hours box, Distance in the Location box.
   const rows: Array<[string, string]> = [
     ["Category", venue.details.category_full],
     ["Zone", venue.details.zone],
-    ["Price level", "$".repeat(venue.price_level)],
-    ["Hours", `${venue.opens_at} – ${venue.closes_at}`],
-    ["Distance", `${venue.walk_minutes} Min Walk`],
     ["Participation", venue.details.participation],
     ["Mechanic", venue.details.mechanic],
   ];
@@ -742,8 +781,18 @@ function DetailsBox({ venue }: { venue: VenueDetail }) {
 
 function LinksBox({ venue }: { venue: VenueDetail }) {
   // Flatten every link source into a single chip set — no subgroups.
+  // Phone leads since calling is the most direct contact action; the
+  // rest follow channel / reservation / review order.
   const chips: { key: string; label: string; Icon: typeof Globe; url: string }[] =
     [];
+  if (venue.phone) {
+    chips.push({
+      key: "phone",
+      label: "Phone",
+      Icon: Phone,
+      url: `tel:${venue.phone.replace(/\s+/g, "")}`,
+    });
+  }
   for (const def of CHANNEL_DEFS) {
     const url = venue.channels[def.key];
     if (url) chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
