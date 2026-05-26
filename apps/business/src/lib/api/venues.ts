@@ -9,8 +9,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type VenueListingType = "partner" | "web";
-export type VenueStatus = "lead" | "active" | "paused" | "archived";
+type VenueListingType = "partner" | "web";
+type VenueStatus = "lead" | "active" | "paused" | "archived";
 
 export type FiscalType = "formal" | "informal";
 // Five-plan venue catalog: Free (default) + Pro and Ultra at each fiscal
@@ -40,7 +40,7 @@ export type VenueHours = Partial<
   >
 >;
 
-export type Venue = {
+type Venue = {
   id: string;
   slug: string;
   name: string;
@@ -123,7 +123,7 @@ export type PlacePrediction = {
   status: PredictionStatus;
 };
 
-export type EnrichmentReport = {
+type EnrichmentReport = {
   google: boolean;
   /** Number of photos actually persisted on the venue after the
    *  gpt-4o-mini vision rank. The EF sources up to MAX_PHOTOS (20)

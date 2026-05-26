@@ -29,10 +29,10 @@ import { invokeEF } from "./_invoke";
 // remain in the DB enum for backwards compatibility with historical
 // rows the admin queue might still surface, but the FE only emits the
 // three live methods.
-export type VerificationMethod = "ai_call" | "ai_email" | "manual_contact";
-export type VerificationStatus = "pending" | "approved" | "rejected";
+type VerificationMethod = "ai_call" | "ai_email" | "manual_contact";
+type VerificationStatus = "pending" | "approved" | "rejected";
 
-export type Verification = {
+type Verification = {
   id: string;
   method: VerificationMethod;
   payload: Record<string, unknown>;

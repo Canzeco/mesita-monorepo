@@ -11,7 +11,7 @@ import { invokeEF } from "./_invoke";
 // 'manager' → 'editor'.
 export type BusinessRole = "owner" | "editor" | "viewer";
 
-export type TeamEditor = {
+type TeamEditor = {
   memberId: string;
   userId: string;
   role: BusinessRole | string;
@@ -20,13 +20,13 @@ export type TeamEditor = {
   createdAt: string;
 };
 
-export type TeamWaiter = {
+type TeamWaiter = {
   userId: string;
   phone: string | null;
   createdAt: string;
 };
 
-export type PendingEditorInvite = {
+type PendingEditorInvite = {
   id: string;
   email: string;
   role: BusinessRole | string;
@@ -35,7 +35,7 @@ export type PendingEditorInvite = {
   expiresAt: string;
 };
 
-export type PendingWaiterInvite = {
+type PendingWaiterInvite = {
   id: string;
   phone: string | null;
   channel: "whatsapp" | "sms";
@@ -47,7 +47,7 @@ export type PendingWaiterInvite = {
 // `super_admin` is a synthetic role for users in public.super_admins
 // who aren't in venue_members for this venue; the EF still grants them
 // owner-level UI affordances.
-export type CallerRole = BusinessRole | "staff" | "super_admin";
+type CallerRole = BusinessRole | "staff" | "super_admin";
 
 // Note on field naming: the EF returns `businesses` / `pendingBusinessInvites`
 // because those rows are joined from the `businesses` (platform-account)
