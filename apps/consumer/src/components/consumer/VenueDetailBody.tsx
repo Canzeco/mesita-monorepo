@@ -592,7 +592,10 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
 
 // ── 7. Rewards (welcome + tier matrix in one h-scroll) ──────────────────
 
-const TIER_ORDER: Tier[] = ["bronze", "silver", "gold", "diamond"];
+// Welcome card lives outside this constant and always renders first; the
+// tier order below is descending (highest reward → lowest) so users see
+// the aspirational tier next to Welcome.
+const TIER_ORDER: Tier[] = ["diamond", "gold", "silver", "bronze"];
 const TIER_PROPER: Record<Tier, string> = {
   bronze: "Bronze",
   silver: "Silver",
