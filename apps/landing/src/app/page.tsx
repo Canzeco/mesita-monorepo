@@ -394,7 +394,7 @@ function FAQ() {
     },
     {
       q: "What's the difference between a Verified Partner and a Web-Listed venue?",
-      a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.app and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Wallet / Team dashboard.",
+      a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.ai and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Wallet / Team dashboard.",
     },
     {
       q: "How does a consumer reach Silver, Gold, or Diamond?",
@@ -406,7 +406,7 @@ function FAQ() {
     },
     {
       q: "Do I need hardware or POS integration?",
-      a: "No. Setup is ~10 minutes from business.mesita.app. Your waiters scan the consumer's QR from their own phone (WhatsApp bot or web tool), enter the bill, and Mesita does the rest. No POS, no app to install for staff, no new device at the host stand.",
+      a: "No. Setup is ~10 minutes from business.mesita.ai. Your waiters scan the consumer's QR from their own phone (WhatsApp bot or web tool), enter the bill, and Mesita does the rest. No POS, no app to install for staff, no new device at the host stand.",
     },
   ];
   return (
