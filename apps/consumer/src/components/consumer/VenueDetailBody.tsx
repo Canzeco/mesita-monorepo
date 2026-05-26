@@ -720,8 +720,11 @@ function TierCard({
         <p className="text-[9px] font-bold tracking-wider text-white/90 uppercase">
           {TIER_PROPER[tier]}
         </p>
-        <p className="font-display mt-0.5 text-lg font-semibold leading-tight">
-          {value}%
+        <p className="mt-0.5 flex items-baseline justify-center gap-1">
+          <span className="font-display text-lg font-semibold leading-tight">
+            {value}%
+          </span>
+          <span className="text-[10px] text-white/85">off</span>
         </p>
         <CardHoverAction label="Manage" variant="light" />
       </div>
@@ -743,8 +746,11 @@ function TierCard({
       >
         {TIER_PROPER[tier]}
       </p>
-      <p className="font-display text-foreground mt-0.5 text-lg font-semibold leading-tight">
-        {value}%
+      <p className="mt-0.5 flex items-baseline justify-center gap-1">
+        <span className="font-display text-foreground text-lg font-semibold leading-tight">
+          {value}%
+        </span>
+        <span className="text-muted-foreground text-[10px]">off</span>
       </p>
       {relation === "higher" && (
         <CardHoverAction label={`Join`} variant="primary" />
