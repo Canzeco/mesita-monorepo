@@ -382,7 +382,7 @@ export const mockVenue: VenueDetail = {
     category_full: "Place · Restaurant",
     zone: "Loma Larga Oriente",
     participation: "Partner",
-    mechanic: "Cashback (Formal)",
+    mechanic: "Cashback",
     service_options: ["Dine-in", "Takeaway", "Delivery", "Valet parking"],
   },
   channels: {
