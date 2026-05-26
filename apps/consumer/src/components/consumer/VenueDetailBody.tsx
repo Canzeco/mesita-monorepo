@@ -190,11 +190,13 @@ function MediaBox({ venue }: { venue: VenueDetail }) {
 // ── 3. Reviews summary ──────────────────────────────────────────────────
 
 function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
+  // "Mesita · " prefix is gone from each pill label since the Mesita
+  // mini-eyebrow above the grid now brands the whole 2x2 block.
   const ratings: Array<[string, number]> = [
-    ["Mesita · Food", venue.mesita_reviews.food],
-    ["Mesita · Service", venue.mesita_reviews.service],
-    ["Mesita · Ambiance", venue.mesita_reviews.ambiance],
-    ["Mesita · Overall", venue.mesita_reviews.overall],
+    ["Food", venue.mesita_reviews.food],
+    ["Service", venue.mesita_reviews.service],
+    ["Ambiance", venue.mesita_reviews.ambiance],
+    ["Overall", venue.mesita_reviews.overall],
   ];
   return (
     <Box
@@ -203,6 +205,12 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
       iconColor="text-violet-400"
       right={`${venue.mesita_reviews.total} Mesita reviews`}
     >
+      <div className="flex items-center gap-2">
+        <MesitaLogo />
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+          Mesita ratings
+        </p>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         {ratings.map(([label, value]) => (
           <RatingPill key={label} label={label} value={value} />
@@ -274,6 +282,18 @@ function ExternalCard({
       </div>
       <p className="text-muted-foreground text-[10px] leading-tight">{meta}</p>
     </div>
+  );
+}
+
+function MesitaLogo() {
+  // Mini brand mark — pink-gradient rounded square with the serif "m"
+  // from app/icon.svg. Reuses the brand --gradient-pink token so the
+  // glyph matches the rest of the venue page (action bar, rewards
+  // hero, etc.) without inline SVG gradient ID collisions.
+  return (
+    <span className="bg-pink-gradient font-display flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[13px] font-bold leading-none text-white">
+      m
+    </span>
   );
 }
 
