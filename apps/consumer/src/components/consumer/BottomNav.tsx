@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Bookmark, Wallet, Share2, User } from "lucide-react";
+import { Compass, Bookmark, QrCode, Share2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
@@ -18,7 +18,7 @@ const ITEMS = [
     label: "Saved",
     match: "/saved",
   },
-  { href: "/pay", Icon: Wallet, label: "Pay", match: "/pay" },
+  { href: "/pay", Icon: QrCode, label: "Pay", match: "/pay" },
   { href: "/share", Icon: Share2, label: "Share", match: "/share" },
   {
     href: "/profile",
