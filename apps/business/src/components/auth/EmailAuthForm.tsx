@@ -12,11 +12,11 @@ import {
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-// Email + password form used by both manager and admin sign-in/sign-up
+// Email + password form used by both business and admin sign-in/sign-up
 // surfaces. Spec is intentionally narrow — no magic link, no OAuth.
 //
 // The bound server action handles the signInWithPassword / signUp call
-// + redirect; the post-signin EF (manager-signin-email or admin-signin-
+// + redirect; the post-signin EF (business-signin-email or admin-signin-
 // email) runs from the /auth/post-signin server page that the action
 // redirects to.
 

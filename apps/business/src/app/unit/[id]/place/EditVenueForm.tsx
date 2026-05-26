@@ -51,11 +51,11 @@ import {
 
 // Place page driven by the Notion Components spec:
 //   - M-Place-V=YES → component renders here
-//   - Manager-E=YES → component is editable; otherwise read-only
+//   - Business-E=YES → component is editable; otherwise read-only
 // Read-only signal & metadata fields fall back to a "not found yet" note
-// when the value is null so the manager understands the enrichment pipeline
+// when the value is null so the business understands the enrichment pipeline
 // is still working on it — except Name + Category, which are always
-// manager-authored and therefore never get the note.
+// business-authored and therefore never get the note.
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 type HoursRange = { open: string; close: string };
@@ -115,7 +115,7 @@ const MAX_PHOTOS = 30;
 
 const NOT_FOUND_NOTE = "Not found yet — pipeline still searching.";
 
-// Example copy in the Description textarea so the manager has something
+// Example copy in the Description textarea so the business has something
 // to react to instead of an empty field. Will be swapped for the AI
 // Hidden Description once the enrichment pipeline lands that field on
 // the venue (Notion: AI Hidden Description, M-Place-V=NO right now).
@@ -142,7 +142,7 @@ function nullable(v: string): string | null {
 // pre-migration split-at-midnight shape (day N ends 23:59 + day N+1
 // starts 00:00) gets merged back into a single overnight range on day N
 // before we hand it to the editor. Live data was migrated server-side in
-// 0021_merge_overnight_hours.sql; this just keeps the manager from ever
+// 0021_merge_overnight_hours.sql; this just keeps the business from ever
 // seeing the two-row mess if a stray split slips through.
 function mergeOvernightSplit(h: VenueHours): VenueHours {
   const longKeys = DAYS.map((d) => d.long);
@@ -193,7 +193,7 @@ function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayShifts> {
     const ranges = merged?.[d.long] ?? null;
     if (ranges === null) {
       // No key for the day → treat as unknown (default to a single empty
-      // input rather than "Closed" so the manager isn't surprised).
+      // input rather than "Closed" so the business isn't surprised).
       out[d.key] = { ranges: [{ open: "", close: "" }], closed: false };
     } else if (ranges.length === 0) {
       out[d.key] = { ranges: [], closed: true };
@@ -211,7 +211,7 @@ function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayShifts> {
 }
 
 // "Overnight" = the close time is on the next day. We encode that as
-// `close <= open` once both fields are filled, so the manager can type
+// `close <= open` once both fields are filled, so the business can type
 // 22:00 → 02:00 and have it just work. Empty fields don't count as
 // overnight — keep the badge off while they're being typed.
 const HHMM_RE = /^\d{2}:\d{2}$/;
@@ -381,7 +381,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           Renders only when the form has unsaved changes (or is in the
           middle of saving / just-saved). Stays out of the way when the
           page is clean. Sticky to the bottom of the scroll viewport so
-          it follows the manager as they edit further down. */}
+          it follows the business as they edit further down. */}
       {(isDirty || pending || saved) && (
         <div className="border-border bg-background/95 shadow-elev sticky bottom-3 z-10 mt-2 flex items-center justify-between gap-4 rounded-2xl border px-5 py-3.5 backdrop-blur">
           <p
@@ -558,7 +558,7 @@ function LocationSection({ venue }: { venue: MyVenue }) {
   // (overlay on the map when coordinates exist; standalone otherwise).
   // The raw Google Maps URL used to render as a readonly card with the
   // full cid=... query string visible — ugly on the page and unhelpful
-  // to the manager. The button replaces that affordance.
+  // to the business. The button replaces that affordance.
   const hasCoords = venue.lat != null && venue.lng != null;
   return (
     <Section title="Location">
@@ -653,16 +653,16 @@ function PreviewSection({ venue, v }: { venue: MyVenue; v: FormState }) {
   // place: `VenueSwipeCardFace` (full-bleed photo card with overlay) on
   // /discover/swipe and `VenueCatalogCard` (4:3 photo + row of meta) on
   // /discover/catalog. Both repos define those components but they
-  // can't be cross-imported, and the manager's MyVenue shape differs
+  // can't be cross-imported, and the business's MyVenue shape differs
   // slightly from the consumer's Venue (no closes_at, listing_type,
   // cashback_percent here). So this section reproduces the visuals in
-  // place, pulling live `v` state so the preview reacts as the manager
+  // place, pulling live `v` state so the preview reacts as the business
   // types in Basics.
   //
   // Both views render in hard-coded dark zinc colors instead of the
-  // manager's tokens (bg-card etc.) so they look like the consumer's
-  // actual dark theme even though we're inside the light manager UI.
-  // Per the theme-strategy memory: consumer is dark, manager is light,
+  // business's tokens (bg-card etc.) so they look like the consumer's
+  // actual dark theme even though we're inside the light business UI.
+  // Per the theme-strategy memory: consumer is dark, business is light,
   // and we don't unify — so previews bring their own dark.
   const [view, setView] = useState<PreviewView>("swipe");
   return (
@@ -1000,7 +1000,7 @@ function PhotoLightbox({
 }) {
   // Minimal full-screen image preview. Click backdrop or hit Escape to
   // close. Doesn't pull in a heavy modal library — for read-only image
-  // zoom this is all the affordance the manager needs.
+  // zoom this is all the affordance the business needs.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();

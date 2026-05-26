@@ -1,11 +1,11 @@
-// Mock fixtures for the manager surfaces that haven't been wired to real
+// Mock fixtures for the business surfaces that haven't been wired to real
 // Edge Functions yet. Each consumer page renders behind a "Preview" banner
 // so the data is honest about being placeholder.
 //
 // Trimmed to only the exports still imported by a page. Unused exports
 // were removed in a cleanup pass — re-add when the surface that needs them
-// gets built. Real persistence ships via dedicated `manager-*` Edge
-// Functions (manager-list-team, manager-get-analytics, etc.) on the way
+// gets built. Real persistence ships via dedicated `business-*` Edge
+// Functions (business-list-team, business-get-analytics, etc.) on the way
 // in future migrations.
 
 // ── Wallet (wallet/page.tsx) ──────────────────────────────────────────────

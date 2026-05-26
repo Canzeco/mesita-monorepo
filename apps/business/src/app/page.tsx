@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
+import {
+  apiGetBusinessProfile,
+  type BusinessProfile,
+} from "@/lib/api/business";
 import { errMsg } from "@/lib/utils";
 import {
   AuthChip,
@@ -9,7 +12,7 @@ import {
 import { AuthTabs } from "@/components/auth/AuthTabs";
 import { authSignInWithEmail, authSignUpWithEmail } from "@/app/auth/actions";
 
-// Root of the manager subdomain. The strong routing contract:
+// Root of the business subdomain. The strong routing contract:
 //
 //   no session              → render auth (this page)
 //   session + no profile    → /onboard
@@ -29,7 +32,7 @@ function safeNext(raw: string | undefined): string {
     : PUBLIC_NEXT_FALLBACK;
 }
 
-export default async function ManagerRootPage({
+export default async function BusinessRootPage({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -47,11 +50,11 @@ export default async function ManagerRootPage({
   // Signed in — never render the auth surface. Decide where they're
   // really going.
   if (user) {
-    let profile: ManagerProfile | null = null;
+    let profile: BusinessProfile | null = null;
     try {
-      profile = await apiGetManagerProfile(supabase);
+      profile = await apiGetBusinessProfile(supabase);
     } catch (err) {
-      console.error("[/] manager-get-profile:", errMsg(err, ""));
+      console.error("[/] business-get-profile:", errMsg(err, ""));
     }
     if (!profile?.full_name) redirect("/onboard");
     redirect("/central");

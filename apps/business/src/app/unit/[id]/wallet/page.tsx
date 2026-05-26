@@ -8,9 +8,9 @@ import {
   Calendar,
   Percent,
 } from "lucide-react";
-import { Topbar } from "@/components/manager/Topbar";
+import { Topbar } from "@/components/business/Topbar";
 import { Section } from "@/components/shared";
-import { WALLET, TRANSACTIONS } from "@/lib/manager-data";
+import { WALLET, TRANSACTIONS } from "@/lib/business-data";
 import { cn } from "@/lib/utils";
 import { NUMBER_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { createServerSupabase } from "@/lib/supabase/server";

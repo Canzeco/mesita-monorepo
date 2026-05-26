@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { apiAcceptManagerInvite } from "@/lib/api/team";
+import { apiAcceptEditorInvite } from "@/lib/api/team";
 import { errMsg } from "@/lib/utils";
 
-// Manager-side accept page. The waiter accept flow runs from WhatsApp /
+// Business-side accept page. The waiter accept flow runs from WhatsApp /
 // SMS via staff-accept-invite and never lands here.
 //
 // Two preconditions: (1) a `token` query param, (2) a signed-in
@@ -56,7 +56,7 @@ export function AcceptInviteClient() {
         return;
       }
       try {
-        const res = await apiAcceptManagerInvite(supabase, token);
+        const res = await apiAcceptEditorInvite(supabase, token);
         if (cancelled) return;
         setVenueId(res.venueId);
         setStatus("success");

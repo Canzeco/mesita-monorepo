@@ -1,6 +1,6 @@
 // Shared empty-state card — dashed-border tile with an icon-circle on top,
 // a title, optional description, and an optional CTA. Replaces the
-// hand-rolled "No venue yet / No managers yet" patterns that used to live
+// hand-rolled "No venue yet / No businesses yet" patterns that used to live
 // inline on each page.
 
 import { cn } from "@/lib/utils";

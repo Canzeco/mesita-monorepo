@@ -3,12 +3,15 @@ import { redirect } from "next/navigation";
 import { ArrowRight, MapPin, Plus, Sparkles } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
-import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
+import {
+  apiGetBusinessProfile,
+  type BusinessProfile,
+} from "@/lib/api/business";
 import { AppHeader } from "@/components/auth/AppHeader";
 import { errMsg } from "@/lib/utils";
 
-// /central — the manager's venue hub. Lives one level below `/` (which
-// is the auth surface). Strong routing contract:
+// /central — the business operator's venue hub. Lives one level below
+// `/` (which is the auth surface). Strong routing contract:
 //
 //   no session     → /            (sign in first)
 //   not onboarded  → /onboard     (capture name)
@@ -27,11 +30,11 @@ export default async function CentralPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/?next=/central");
 
-  let profile: ManagerProfile | null = null;
+  let profile: BusinessProfile | null = null;
   try {
-    profile = await apiGetManagerProfile(supabase);
+    profile = await apiGetBusinessProfile(supabase);
   } catch (err) {
-    console.error("[central] manager-get-profile:", errMsg(err, ""));
+    console.error("[central] business-get-profile:", errMsg(err, ""));
   }
   if (!profile?.full_name) redirect("/onboard");
 
@@ -39,7 +42,7 @@ export default async function CentralPage() {
   try {
     overview = await getUnitOverview(supabase, null, 0);
   } catch (err) {
-    console.error("[central] manager-get-overview:", errMsg(err, ""));
+    console.error("[central] business-get-overview:", errMsg(err, ""));
   }
   const venues = (overview?.venues ?? []).map((v) => ({
     id: v.id,

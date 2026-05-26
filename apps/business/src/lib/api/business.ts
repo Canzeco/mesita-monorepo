@@ -1,4 +1,4 @@
-// Frontend API surface for the manager profile.
+// Frontend API surface for the business profile.
 //
 // Same constraints as api/venues + api/tickets: client calls exactly one
 // Edge Function per helper, helpers never compose multiple Edge Functions.
@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type ManagerProfile = {
+export type BusinessProfile = {
   id: string;
   full_name: string | null;
   email: string | null;
@@ -14,25 +14,25 @@ export type ManagerProfile = {
   created_at: string;
 };
 
-export async function apiGetManagerProfile(
+export async function apiGetBusinessProfile(
   client: SupabaseClient,
-): Promise<ManagerProfile> {
-  const { manager } = await invokeEF<{ manager: ManagerProfile }>(
+): Promise<BusinessProfile> {
+  const { business } = await invokeEF<{ business: BusinessProfile }>(
     client,
-    "manager-get-profile",
+    "business-get-profile",
     {},
   );
-  return manager;
+  return business;
 }
 
-export async function apiCreateManagerProfile(
+export async function apiCreateBusinessProfile(
   client: SupabaseClient,
   input: { full_name?: string | null },
-): Promise<ManagerProfile> {
-  const { manager } = await invokeEF<{ manager: ManagerProfile }>(
+): Promise<BusinessProfile> {
+  const { business } = await invokeEF<{ business: BusinessProfile }>(
     client,
-    "manager-create-profile",
+    "business-create-profile",
     input,
   );
-  return manager;
+  return business;
 }

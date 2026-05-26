@@ -3,7 +3,7 @@ import type { FiscalType, VenuePlan } from "@/lib/api/venues";
 // Subscription catalog used by Promos (picker + label lookup).
 //
 // Five subscriptions, one per DB enum value, ordered ascending so the
-// manager reads the picker left-to-right as a visibility ladder:
+// business reads the picker left-to-right as a visibility ladder:
 //   - "Free without promos"  (plan=free)                            · Low        · $0
 //   - "Pro with Discounts"   (plan=informal_pro,   fiscal=informal) · Medium     · $500
 //   - "Pro with Cashbacks"   (plan=formal_pro,     fiscal=formal)   · High       · $1,000
@@ -12,7 +12,7 @@ import type { FiscalType, VenuePlan } from "@/lib/api/venues";
 //
 // Mechanic is pinned by fiscal_type — Formal venues issue cashback through
 // the wallet, Informal venues apply discounts at the bill. Pro vs Ultra
-// only changes price and visibility tier; the workflow the manager sees
+// only changes price and visibility tier; the workflow the business sees
 // for promos is identical inside a mechanic.
 //
 // Cashback tiers stay locked ("Coming soon") until the Mesita-in-the-loop
@@ -37,7 +37,7 @@ export type SubscriptionRow = {
   cadence: string;
   tagline: string;
   visibility: PlanVisibility;
-  // Rough setup time the manager should expect. Discount is just a coupon
+  // Rough setup time the business should expect. Discount is just a coupon
   // workflow (no integration); Cashback requires connecting a business so
   // Mesita can settle the payment.
   setup?: string;

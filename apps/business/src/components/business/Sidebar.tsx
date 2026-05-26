@@ -61,7 +61,7 @@ function parseUnitPath(pathname: string | null): {
 }
 
 // Default admin web origin used to build the "Back to admin" exit shown
-// to super-admin operators. Hardcoded to manager.mesita.ai's sibling on
+// to super-admin operators. Hardcoded to business.mesita.ai's sibling on
 // prod; override per environment by setting NEXT_PUBLIC_ADMIN_WEB_URL.
 const ADMIN_WEB_URL_FALLBACK = "https://admin.mesita.ai";
 
@@ -99,7 +99,7 @@ export function Sidebar({
   }
 
   // The active unit is URL-driven (/unit/<venueId>/...). Falls back to the
-  // first venue the manager owns when the URL has no unit segment.
+  // first venue the business owns when the URL has no unit segment.
   const { id: unitFromPath, rest: subPath } = parseUnitPath(pathname);
   const activeVenue =
     venues.find((v) => v.id === unitFromPath) ?? venues[0] ?? null;
@@ -138,7 +138,7 @@ export function Sidebar({
       )}
 
       <aside
-        aria-label="Manager navigation"
+        aria-label="Business navigation"
         className={cn(
           "border-border bg-card z-40 flex h-full w-72 shrink-0 flex-col border-r",
           "fixed inset-y-0 left-0 -translate-x-full transition-transform duration-200 ease-out",

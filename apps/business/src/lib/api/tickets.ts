@@ -217,7 +217,7 @@ export async function apiFetchVenueTickets(
 ): Promise<VenueTicket[]> {
   const { tickets } = await invokeEF<{ tickets: VenueTicket[] }>(
     client,
-    "manager-list-tickets",
+    "business-list-tickets",
     { venueId, limit },
   );
   return tickets;
@@ -256,7 +256,7 @@ export async function apiCreateTicket(
   client: SupabaseClient,
   input: CreateTicketInput,
 ): Promise<CreateTicketPayload> {
-  return invokeEF<CreateTicketPayload>(client, "manager-create-ticket", input);
+  return invokeEF<CreateTicketPayload>(client, "business-create-ticket", input);
 }
 
 export type MarkPaidTicket = {
@@ -291,7 +291,7 @@ export async function apiMarkTicketPaid(
   client: SupabaseClient,
   ticketId: string,
 ): Promise<MarkPaidResult> {
-  const data = await invokeEF<MarkPaidPayload>(client, "manager-mark-paid", {
+  const data = await invokeEF<MarkPaidPayload>(client, "business-mark-paid", {
     ticketId,
   });
   return {
@@ -317,7 +317,7 @@ export async function apiLookupConsumer(
 ): Promise<ConsumerLookupResult> {
   const { consumer } = await invokeEF<{ consumer: ConsumerLookupResult }>(
     client,
-    "manager-find-consumer",
+    "business-find-consumer",
     { code },
   );
   return consumer;
@@ -328,7 +328,7 @@ export async function apiCancelTicket(
   ticketId: string,
   reason?: string,
 ): Promise<void> {
-  await invokeEF(client, "manager-cancel-ticket", { ticketId, reason });
+  await invokeEF(client, "business-cancel-ticket", { ticketId, reason });
 }
 
 export type VerifyStoryInput = {
@@ -354,7 +354,7 @@ export async function apiVerifyStory(
 ): Promise<VerifyStoryResult> {
   const data = await invokeEF<VerifyStoryPayload>(
     client,
-    "manager-verify-story",
+    "business-verify-story",
     input,
   );
   return {

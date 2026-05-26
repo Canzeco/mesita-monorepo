@@ -26,29 +26,28 @@ import {
 import { EmptyState, Section } from "@/components/shared";
 import { PhonePicker } from "@/components/ui/phone-picker";
 import {
-  apiInviteManager,
+  apiInviteEditor,
   apiInviteWaiter,
   apiListTeam,
   apiRemoveMember,
   apiTestWaiterChannel,
   apiUpdateMemberRole,
-  type ManagerRole,
+  type BusinessRole,
   type RemoveKind,
   type TeamSnapshot,
 } from "@/lib/api/team";
 
-// "manager" is the legacy DB enum value — surfaced as "Editor" in the
-// UI because that's how the user labels read/write members on the Team
-// page.
-const ROLE_LABEL: Record<ManagerRole, string> = {
+// member_role enum values, surfaced as "Owner / Editor / Viewer" on
+// the Team page. Migration 0025 swapped legacy 'manager' → 'editor'.
+const ROLE_LABEL: Record<BusinessRole, string> = {
   owner: "Owner",
-  manager: "Editor",
+  editor: "Editor",
   viewer: "Viewer",
 };
 
-const ROLE_CHOICES: ManagerRole[] = ["owner", "manager", "viewer"];
+const ROLE_CHOICES: BusinessRole[] = ["owner", "editor", "viewer"];
 
-type InviteOpen = null | "manager" | "waiter";
+type InviteOpen = null | "editor" | "waiter";
 
 export function TeamClient({
   venueId,
@@ -101,11 +100,11 @@ export function TeamClient({
     }
   }
 
-  const handleInviteManager = (email: string, role: ManagerRole) =>
+  const handleInviteEditor = (email: string, role: BusinessRole) =>
     runAction(
-      "invite-manager",
+      "invite-editor",
       async () => {
-        await apiInviteManager(supabase, {
+        await apiInviteEditor(supabase, {
           venueId,
           email,
           role,
@@ -133,8 +132,8 @@ export function TeamClient({
 
   const handleChangeRole = (
     memberId: string,
-    role: ManagerRole,
-    currentRole: ManagerRole,
+    role: BusinessRole,
+    currentRole: BusinessRole,
     name: string,
   ) => {
     if (role === currentRole) return;
@@ -147,7 +146,7 @@ export function TeamClient({
     );
   };
 
-  const handleRemoveManager = (
+  const handleRemoveEditor = (
     memberId: string,
     name: string,
     isSelf: boolean,
@@ -158,7 +157,7 @@ export function TeamClient({
     if (!window.confirm(message)) return;
     return runAction(
       `remove-${memberId}`,
-      () => apiRemoveMember(supabase, { id: memberId, kind: "manager" }),
+      () => apiRemoveMember(supabase, { id: memberId, kind: "editor" }),
       "Couldn't remove that member.",
     );
   };
@@ -197,34 +196,34 @@ export function TeamClient({
     <div className="flex flex-col gap-6">
       {error && <div className={ERROR_BOX_CLASS}>{error}</div>}
 
-      {/* ── Managers ─────────────────────────────────────────────── */}
+      {/* ── Editors ──────────────────────────────────────────────── */}
       <Section
-        title="Managers"
+        title="Editors"
         description="Sign in with email. Owners can invite or remove anyone."
         right={
           isOwner && (
             <InviteButton
-              label="Invite manager"
-              open={inviteOpen === "manager"}
+              label="Invite editor"
+              open={inviteOpen === "editor"}
               onClick={() =>
-                setInviteOpen(inviteOpen === "manager" ? null : "manager")
+                setInviteOpen(inviteOpen === "editor" ? null : "editor")
               }
             />
           )
         }
       >
-        {inviteOpen === "manager" && (
-          <ManagerInviteForm
-            busy={busy === "invite-manager"}
-            onSubmit={handleInviteManager}
+        {inviteOpen === "editor" && (
+          <EditorInviteForm
+            busy={busy === "invite-editor"}
+            onSubmit={handleInviteEditor}
           />
         )}
 
-        {snapshot.managers.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No managers yet.</p>
+        {snapshot.businesses.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No editors yet.</p>
         ) : (
           <ul className="divide-border/60 divide-y">
-            {snapshot.managers.map((m) => (
+            {snapshot.businesses.map((m) => (
               <li key={m.memberId} className="flex items-center gap-3 py-2.5">
                 <Avatar
                   initial={initialOf(m.fullName, m.email)}
@@ -244,7 +243,7 @@ export function TeamClient({
                   </p>
                 </div>
                 <RoleSelect
-                  role={(m.role as ManagerRole) ?? "manager"}
+                  role={(m.role as BusinessRole) ?? "editor"}
                   disabled={
                     !isOwner ||
                     busy === `role-${m.memberId}` ||
@@ -254,8 +253,8 @@ export function TeamClient({
                     handleChangeRole(
                       m.memberId,
                       r,
-                      (m.role as ManagerRole) ?? "manager",
-                      m.fullName ?? m.email ?? "this manager",
+                      (m.role as BusinessRole) ?? "editor",
+                      m.fullName ?? m.email ?? "this editor",
                     )
                   }
                 />
@@ -268,9 +267,9 @@ export function TeamClient({
                       : `Remove ${m.fullName ?? m.email}`
                   }
                   onClick={() =>
-                    handleRemoveManager(
+                    handleRemoveEditor(
                       m.memberId,
-                      m.fullName ?? m.email ?? "this manager",
+                      m.fullName ?? m.email ?? "this editor",
                       m.userId === currentUserId,
                     )
                   }
@@ -280,14 +279,14 @@ export function TeamClient({
           </ul>
         )}
 
-        {snapshot.pendingManagerInvites.length > 0 && (
+        {snapshot.pendingBusinessInvites.length > 0 && (
           <PendingGroup>
-            {snapshot.pendingManagerInvites.map((inv) => (
+            {snapshot.pendingBusinessInvites.map((inv) => (
               <PendingRow
                 key={inv.id}
                 icon={<Mail className="text-muted-foreground h-3.5 w-3.5" />}
                 title={inv.email}
-                subtitle={`Invited as ${ROLE_LABEL[(inv.role as ManagerRole) ?? "manager"]} · expires ${formatRelative(inv.expiresAt)}`}
+                subtitle={`Invited as ${ROLE_LABEL[(inv.role as BusinessRole) ?? "editor"]} · expires ${formatRelative(inv.expiresAt)}`}
               >
                 <CopyButton
                   text={buildAcceptUrl(inv.token)}
@@ -298,7 +297,7 @@ export function TeamClient({
                     busy={busy === `remove-${inv.id}`}
                     label="Revoke invite"
                     onClick={() =>
-                      handleRemove(inv.id, "mgrInvite", "Revoke this invite?")
+                      handleRemove(inv.id, "editorInvite", "Revoke this invite?")
                     }
                   />
                 )}
@@ -444,7 +443,7 @@ function InviteButton({
 }
 
 // Pending-invites group — eyebrow label + stack of subdued tile rows.
-// Used identically by both Managers and Waiters sections.
+// Used identically by both Editors and Waiters sections.
 function PendingGroup({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border/60 flex flex-col gap-2 border-t pt-3">
@@ -483,15 +482,15 @@ function PendingRow({
   );
 }
 
-function ManagerInviteForm({
+function EditorInviteForm({
   busy,
   onSubmit,
 }: {
   busy: boolean;
-  onSubmit: (email: string, role: ManagerRole) => void | Promise<void>;
+  onSubmit: (email: string, role: BusinessRole) => void | Promise<void>;
 }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<ManagerRole>("manager");
+  const [role, setRole] = useState<BusinessRole>("editor");
 
   return (
     <form
@@ -517,7 +516,7 @@ function ManagerInviteForm({
       </div>
       <select
         value={role}
-        onChange={(e) => setRole(e.target.value as ManagerRole)}
+        onChange={(e) => setRole(e.target.value as BusinessRole)}
         className="border-border bg-background w-full rounded-full border px-3 py-2 text-[13px] outline-none sm:w-auto"
       >
         {ROLE_CHOICES.map((r) => (
@@ -615,15 +614,15 @@ function RoleSelect({
   disabled,
   onChange,
 }: {
-  role: ManagerRole;
+  role: BusinessRole;
   disabled: boolean;
-  onChange: (r: ManagerRole) => void;
+  onChange: (r: BusinessRole) => void;
 }) {
   return (
     <select
       value={role}
       disabled={disabled}
-      onChange={(e) => onChange(e.target.value as ManagerRole)}
+      onChange={(e) => onChange(e.target.value as BusinessRole)}
       className="border-border bg-background text-foreground hidden rounded-full border px-2.5 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 sm:block"
     >
       {ROLE_CHOICES.map((r) => (

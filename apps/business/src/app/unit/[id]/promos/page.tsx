@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus, Store } from "lucide-react";
-import { Topbar } from "@/components/manager/Topbar";
-import { PageErrorState } from "@/components/manager/PageErrorState";
+import { Topbar } from "@/components/business/Topbar";
+import { PageErrorState } from "@/components/business/PageErrorState";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
@@ -13,7 +13,7 @@ import { PromosClient } from "./PromosClient";
 // already happens in middleware; we just resolve the unit overview here.
 export const dynamic = "force-dynamic";
 
-export default async function ManagerPromosPage({
+export default async function BusinessPromosPage({
   params,
 }: {
   params: Promise<{ id: string }>;

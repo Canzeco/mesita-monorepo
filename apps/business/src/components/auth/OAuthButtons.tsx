@@ -6,7 +6,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-// Google OAuth button for the manager sign-in / sign-up surface.
+// Google OAuth button for the business sign-in / sign-up surface.
 //
 // signInWithOAuth() opens a top-level redirect to Google. After the user
 // consents, Supabase Auth redirects back to /auth/callback?code=... which
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 //
 // Supabase dashboard config (Authentication → Providers → Google):
 // enable + paste Google Cloud OAuth Client ID + Secret. Plus add
-// https://manager.mesita.ai/auth/callback (and the *.vercel.app pattern)
+// https://business.mesita.ai/auth/callback (and the *.vercel.app pattern)
 // to Authentication → URL Configuration → Redirect URLs.
 
 type Provider = "google";

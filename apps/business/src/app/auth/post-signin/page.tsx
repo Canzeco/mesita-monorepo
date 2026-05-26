@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiManagerSigninEmail } from "@/lib/api/auth";
+import { apiBusinessSigninEmail } from "@/lib/api/auth";
 
 // Post-sign-in router. The sign-in surface (now `/`) redirects here. We:
 //
-//   1. Call the manager post-sign-in EF (stamps app_metadata.role,
+//   1. Call the business post-sign-in EF (stamps app_metadata.role,
 //      lazy-creates the profile row).
 //   2. Decide where to send the user — /onboard if the profile row is
 //      missing required fields, /central otherwise.
@@ -32,11 +32,11 @@ export default async function PostSigninPage({
       ? params.next
       : null;
 
-  let result: Awaited<ReturnType<typeof apiManagerSigninEmail>> | null = null;
+  let result: Awaited<ReturnType<typeof apiBusinessSigninEmail>> | null = null;
   try {
-    result = await apiManagerSigninEmail(supabase);
+    result = await apiBusinessSigninEmail(supabase);
   } catch (err) {
-    console.error("[post-signin] manager-signin-email:", err);
+    console.error("[post-signin] business-signin-email:", err);
   }
   if (explicitNext) redirect(explicitNext);
   redirect(result?.onboarded ? "/central" : "/onboard");

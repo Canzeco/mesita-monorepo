@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { apiCreateManagerProfile } from "@/lib/api/manager";
+import { apiCreateBusinessProfile } from "@/lib/api/business";
 import { Field } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import {
@@ -13,9 +13,9 @@ import {
   PRIMARY_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 
-// Manager onboard only needs full_name — phone is the auth identity and
-// gets mirrored into managers.phone by the EF from auth.user.phone.
-export function ManagerOnboardForm() {
+// Business onboard only needs full_name — phone is the auth identity and
+// gets mirrored into businesses.phone by the EF from auth.user.phone.
+export function BusinessOnboardForm() {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const [fullName, setFullName] = useState("");
@@ -33,7 +33,7 @@ export function ManagerOnboardForm() {
     setPending(true);
     void (async () => {
       try {
-        await apiCreateManagerProfile(supabase, { full_name: trimmed });
+        await apiCreateBusinessProfile(supabase, { full_name: trimmed });
         router.push("/central");
         router.refresh();
       } catch (err) {

@@ -22,7 +22,7 @@ import {
   visibilityForPlan,
   type SubscriptionId,
   type PlanVisibility,
-} from "@/lib/manager/plans";
+} from "@/lib/business/plans";
 
 // Promos — minimal layout. Three blocks stacked top to bottom:
 //   1. Visibility    — slim 5-step rail (Low → Max), no prose
@@ -284,7 +284,7 @@ function SubscriptionCard({
   onPick: () => void;
 }) {
   // Locked tiers stay visible (so the visibility ladder still makes
-  // sense), but the button can't fire and the badge tells the manager
+  // sense), but the button can't fire and the badge tells the business
   // why. We keep the soft pink wash from `featured` so the card still
   // reads as the aspirational top of the ladder.
   return (

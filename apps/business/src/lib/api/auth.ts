@@ -9,7 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type AppRole = "consumer" | "staff" | "manager" | "admin";
+export type AppRole = "consumer" | "staff" | "business" | "admin";
 
 export type ConsumerSigninResult = {
   role: AppRole;
@@ -28,9 +28,9 @@ export async function apiConsumerSigninPhone(
   return invokeEF<ConsumerSigninResult>(client, "consumer-signin-phone", {});
 }
 
-export type ManagerSigninResult = {
+export type BusinessSigninResult = {
   role: AppRole;
-  manager: {
+  business: {
     id: string;
     full_name: string | null;
     email: string | null;
@@ -39,10 +39,10 @@ export type ManagerSigninResult = {
   onboarded: boolean;
 };
 
-export async function apiManagerSigninEmail(
+export async function apiBusinessSigninEmail(
   client: SupabaseClient,
-): Promise<ManagerSigninResult> {
-  return invokeEF<ManagerSigninResult>(client, "manager-signin-email", {});
+): Promise<BusinessSigninResult> {
+  return invokeEF<BusinessSigninResult>(client, "business-signin-email", {});
 }
 
 export type AdminSigninResult = {

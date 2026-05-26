@@ -15,7 +15,7 @@ export type VenueStatus = "lead" | "active" | "paused" | "archived";
 export type FiscalType = "formal" | "informal";
 // Five-plan venue catalog: Free (default) + Pro and Ultra at each fiscal
 // type. The mechanic (cashback vs discount) is fixed by fiscal_type — Pro
-// and Ultra differ only in price and visibility. See lib/manager/plans.ts
+// and Ultra differ only in price and visibility. See lib/business/plans.ts
 // for the picker catalog and visibility/mechanic mappings.
 export type VenuePlan =
   | "free"
@@ -94,7 +94,7 @@ export type Venue = {
   mesita_review_count: number | null;
   mesita_visitor_count: number | null;
   instagram_followers_count: number | null;
-  // Promos page section toggles. Persisted so the manager's on/off
+  // Promos page section toggles. Persisted so the business's on/off
   // choice survives reloads. Defaults: basic=true, advanced=false.
   segmentation_basic_enabled: boolean;
   segmentation_advanced_enabled: boolean;
@@ -103,7 +103,7 @@ export type Venue = {
 };
 
 export type MyVenue = Venue & {
-  my_role: "owner" | "manager" | "staff";
+  my_role: "owner" | "editor" | "staff";
   updated_at?: string;
 };
 
@@ -141,7 +141,7 @@ export type EnrichmentReport = {
   photoRanked?: boolean;
   /** Short reason when photoRanked is false: no_openai_key,
    *  openai_http_<status>, parse:<msg>, exception:<msg>. Useful for
-   *  ops triage; never surfaced to managers. */
+   *  ops triage; never surfaced to businesses. */
   photoRankError?: string | null;
   firecrawl: boolean;
   perplexity: boolean;
@@ -277,7 +277,7 @@ export async function apiPlacesAutocomplete(
   if (trimmed.length < 2) return [];
   const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
     client,
-    "manager-suggest-places",
+    "business-suggest-places",
     { input: trimmed, sessionToken },
     "Couldn't search venues right now.",
   );
@@ -295,7 +295,7 @@ export async function apiEnrichCreateVenue(
 ): Promise<EnrichCreateVenueResponse> {
   return invokeEF<EnrichCreateVenueResponse>(
     client,
-    "manager-create-unit",
+    "business-create-unit",
     { placeId },
     "Couldn't create that venue.",
   );
@@ -335,7 +335,7 @@ export type UpdateVenueInput = {
   tripadvisor_url?: string | null;
   google_maps_url?: string | null;
   email?: string | null;
-  // Place-redesign editable surface (Manager-E=YES in Notion Components).
+  // Place-redesign editable surface (Business-E=YES in Notion Components).
   description?: string | null;
   menu_pdf_url?: string | null;
   tags?: string[];
@@ -361,7 +361,7 @@ export async function apiUpdateVenue(
   // JWT automatically.
   const { venue } = await invokeEF<{ venue: UpdatedVenue }>(
     client,
-    "manager-update-unit",
+    "business-update-unit",
     input,
   );
   return venue;
@@ -375,5 +375,5 @@ export async function apiDeleteVenue(
   client: SupabaseClient,
   id: string,
 ): Promise<{ id: string }> {
-  return await invokeEF<{ id: string }>(client, "manager-delete-unit", { id });
+  return await invokeEF<{ id: string }>(client, "business-delete-unit", { id });
 }

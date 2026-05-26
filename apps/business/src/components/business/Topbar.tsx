@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-// Minimal manager topbar: just the page title + optional subtitle.
+// Minimal business topbar: just the page title + optional subtitle.
 // Everything else (AppSwitcher, global search, notifications) was either
 // disabled placeholder UI or surface clutter — removed until real
 // implementations exist.
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // `innerClassName` lets a page constrain the title row to the same
 // container width as its content below (e.g. `mx-auto w-full max-w-6xl`)
 // so the title and the content cards share a left edge. Without it the
-// title sits flush to the manager content area's edge, which on a wide
+// title sits flush to the business content area's edge, which on a wide
 // monitor reads as misaligned when the content is centered with a
 // max-width.
 export function Topbar({

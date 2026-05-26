@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { Topbar } from "@/components/manager/Topbar";
-import { PageErrorState } from "@/components/manager/PageErrorState";
+import { Topbar } from "@/components/business/Topbar";
+import { PageErrorState } from "@/components/business/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListTeam, type TeamSnapshot } from "@/lib/api/team";
 import { errMsg } from "@/lib/utils";
@@ -36,7 +36,7 @@ export default async function TeamPage({
     return (
       <PageErrorState
         title="Team"
-        subtitle="Managers and waiters for this venue."
+        subtitle="Editors and waiters for this venue."
         heading="Couldn't load the team"
         message={initialError ?? "No data returned."}
         retryHref={`/unit/${id}/team`}
@@ -46,7 +46,7 @@ export default async function TeamPage({
 
   return (
     <>
-      <Topbar title="Team" subtitle="Managers and waiters for this venue." />
+      <Topbar title="Team" subtitle="Editors and waiters for this venue." />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <TeamClient

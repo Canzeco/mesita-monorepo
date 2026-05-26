@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
-import { SuperAdminBanner } from "@/components/manager/SuperAdminBanner";
+import { SuperAdminBanner } from "@/components/business/SuperAdminBanner";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getWhoami } from "@/lib/api/whoami";
 import "./globals.css";

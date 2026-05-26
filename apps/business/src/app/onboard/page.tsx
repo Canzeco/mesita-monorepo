@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
+import {
+  apiGetBusinessProfile,
+  type BusinessProfile,
+} from "@/lib/api/business";
 import { AppHeader } from "@/components/auth/AppHeader";
 import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
-import { ManagerOnboardForm } from "./ManagerOnboardForm";
+import { BusinessOnboardForm } from "./BusinessOnboardForm";
 
-// Manager onboarding — captures the manager's name after signup.
+// Business onboarding — captures the business operator's name after signup.
 // Distinct from venue creation; this is about the *person*, the venue
 // gets its own wizard step at /add.
 //
@@ -20,7 +23,7 @@ import { ManagerOnboardForm } from "./ManagerOnboardForm";
 // switch.
 export const dynamic = "force-dynamic";
 
-export default async function ManagerOnboardPage() {
+export default async function BusinessOnboardPage() {
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -30,11 +33,11 @@ export default async function ManagerOnboardPage() {
   // redirect() throws NEXT_REDIRECT, so it MUST live outside the
   // try/catch — otherwise the catch swallows the redirect and the
   // already-onboarded user sees the form again.
-  let profile: ManagerProfile | null = null;
+  let profile: BusinessProfile | null = null;
   try {
-    profile = await apiGetManagerProfile(supabase);
+    profile = await apiGetBusinessProfile(supabase);
   } catch (err) {
-    console.error("[manager/onboard] manager-get-profile:", err);
+    console.error("[business/onboard] business-get-profile:", err);
   }
   if (profile?.full_name) redirect("/central");
 
@@ -44,7 +47,7 @@ export default async function ManagerOnboardPage() {
         title="Welcome to Mesita"
         subtitle="Tell us who you are. You can add your venue right after."
       >
-        <ManagerOnboardForm />
+        <BusinessOnboardForm />
       </AuthCard>
     </AuthShell>
   );

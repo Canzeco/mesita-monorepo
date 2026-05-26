@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/manager/Sidebar";
+import { Sidebar } from "@/components/business/Sidebar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
-import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
+import {
+  apiGetBusinessProfile,
+  type BusinessProfile,
+} from "@/lib/api/business";
 
-// Sidebar-wrapped manager shell. Auth flow is now one path:
+// Sidebar-wrapped business shell. Auth flow is now one path:
 //   - Require a Supabase session (middleware bounces signed-out users
 //     to /).
 //   - Load the unit overview. The EF reads the JWT and decides whether
@@ -12,12 +15,12 @@ import { apiGetManagerProfile, type ManagerProfile } from "@/lib/api/manager";
 //     true, the EF skips the venue_members check and returns the
 //     requested venue with the response field `isSuperAdmin: true`.
 //   - Onboarded-profile check is skipped for super-admin operators
-//     because they don't need a managers row to operate on a venue
+//     because they don't need a businesses row to operate on a venue
 //     they don't own.
 
 export const dynamic = "force-dynamic";
 
-export default async function ManagerShellLayout({
+export default async function BusinessShellLayout({
   children,
   params,
 }: {
@@ -37,26 +40,26 @@ export default async function ManagerShellLayout({
   // way; we discard it for super-admins.
   const [overviewResult, profileResult] = await Promise.allSettled([
     getUnitOverview(supabase, id, 0),
-    apiGetManagerProfile(supabase),
+    apiGetBusinessProfile(supabase),
   ]);
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
-  let manager: ManagerProfile | null = null;
+  let business: BusinessProfile | null = null;
   if (overviewResult.status === "fulfilled") {
     overview = overviewResult.value;
   } else {
     console.error(
-      "[manager/(shell)] manager-get-overview:",
+      "[business/(shell)] business-get-overview:",
       overviewResult.reason,
     );
   }
   if (profileResult.status === "fulfilled") {
-    manager = profileResult.value;
+    business = profileResult.value;
   } else if (!overview?.isSuperAdmin) {
-    console.error("[manager/(shell)] manager-profile:", profileResult.reason);
+    console.error("[business/(shell)] business-profile:", profileResult.reason);
   }
 
   const isSuperAdmin = overview?.isSuperAdmin === true;
-  if (!isSuperAdmin && !manager?.full_name) redirect("/onboard");
+  if (!isSuperAdmin && !business?.full_name) redirect("/onboard");
 
   return (
     <div className="bg-background flex h-screen w-screen overflow-hidden">
@@ -65,7 +68,9 @@ export default async function ManagerShellLayout({
         isSuperAdmin={isSuperAdmin}
         user={{
           email: user.email ?? null,
-          fullName: isSuperAdmin ? "Super admin" : (manager?.full_name ?? null),
+          fullName: isSuperAdmin
+            ? "Super admin"
+            : (business?.full_name ?? null),
         }}
       />
       {/* SuperAdminBanner is mounted globally by the root layout, so

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Topbar } from "@/components/manager/Topbar";
+import { Topbar } from "@/components/business/Topbar";
 
 // Shared error fallback for unit pages whose server fetch (overview, etc.)
 // failed. Renders Topbar + a centered card with the message and a retry

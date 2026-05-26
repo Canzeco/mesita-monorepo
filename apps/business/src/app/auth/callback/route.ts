@@ -4,7 +4,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // OAuth redirect target. Google / Apple bounce the user back here with
 // ?code=<one-time>, we exchange it for a session cookie, then forward to
 // the requested `next` (defaulting to /auth/post-signin which stamps the
-// manager role + handles the onboarded-vs-not branch).
+// business role + handles the onboarded-vs-not branch).
 //
 // On failure we send the user back to the root auth surface with a
 // banner — they get to retry without ending up in a half-broken state.

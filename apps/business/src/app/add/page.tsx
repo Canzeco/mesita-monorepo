@@ -4,10 +4,10 @@ import { getUnitOverview } from "@/lib/api/unit";
 import { AppHeader, type HeaderVenue } from "@/components/auth/AppHeader";
 import { CreateUnitForm } from "./CreateUnitForm";
 
-// /add lets a manager claim a venue. Distinct from /onboard, which
-// captures the manager's own name once. /add is recurring (multi-unit
-// operators add N venues over time) and also the de-facto home for
-// first-time users who haven't added anything yet.
+// /add lets a business operator claim a venue. Distinct from /onboard,
+// which captures the business operator's own name once. /add is recurring
+// (multi-unit operators add N venues over time) and also the de-facto home
+// for first-time users who haven't added anything yet.
 //
 // Renders with AppHeader at the top instead of the old "Back to home"
 // link, so the operator can sign out / jump back to an existing venue
@@ -30,7 +30,7 @@ export default async function CreateUnitPage() {
     const overview = await getUnitOverview(supabase, null, 0);
     venues = (overview?.venues ?? []).map((v) => ({ id: v.id, name: v.name }));
   } catch (err) {
-    console.error("[add] manager-get-overview:", err);
+    console.error("[add] business-get-overview:", err);
   }
 
   return (

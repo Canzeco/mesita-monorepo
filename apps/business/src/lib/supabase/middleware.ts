@@ -11,7 +11,7 @@ import type { Database } from "./database.types";
 // 2. "Already-signed-in bounce" — / hosts the auth surface; signed-in
 //    visitors should not see it. We bounce them through
 //    /auth/post-signin which forwards to /onboard or /central depending
-//    on whether the manager profile has a full_name.
+//    on whether the business profile has a full_name.
 //
 // The onboarded-vs-not check is intentionally NOT in middleware — that
 // requires an Edge Function call per request, which is too expensive.

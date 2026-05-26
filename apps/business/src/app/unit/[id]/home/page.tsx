@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { LayoutDashboard } from "lucide-react";
-import { Topbar } from "@/components/manager/Topbar";
+import { Topbar } from "@/components/business/Topbar";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 
 // Home is a placeholder until the dashboard surfaces (today's visits,
 // cashback owed, cohort trends) are wired up. We still render the standard
-// Topbar + container shell so the layout matches the rest of the manager
+// Topbar + container shell so the layout matches the rest of the business
 // console — the body is just an EmptyState explaining what will land here.
 
-export default async function ManagerHomePage({
+export default async function BusinessHomePage({
   params,
 }: {
   params: Promise<{ id: string }>;

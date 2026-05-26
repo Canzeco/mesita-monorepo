@@ -10,13 +10,13 @@ import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 
 // Preview of how the venue surfaces inside the consumer app. Renders on the
-// /home page so the manager always sees their public face at a glance.
+// /home page so the business always sees their public face at a glance.
 // To change what consumers see, edit in Place and save — this preview reads
 // the persisted state, not a draft.
 //
 // Cross-route imports note: the consumer UI components live under
 // src/components/consumer/* — Next.js app router doesn't enforce any "consumer
-// app" vs "manager app" boundary, so importing from there into a manager
+// app" vs "business app" boundary, so importing from there into a business
 // surface is idiomatic.
 
 type Tab = "swipe" | "catalog" | "detail";
@@ -74,7 +74,7 @@ export function PlacePreview({ venue }: { venue: Venue }) {
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   // A minimal phone-shaped frame for embedding consumer surfaces inside the
-  // manager dashboard. Smaller than the real MobileFrame so it fits as a
+  // business dashboard. Smaller than the real MobileFrame so it fits as a
   // preview panel rather than dominating the page.
   return (
     <div className="w-full max-w-sm">

@@ -10,7 +10,7 @@ import {
 import { KIND_LABEL, type TicketKind } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
 
-// Manager education card — explains the 10-ticket taxonomy the active plan
+// Business education card — explains the 10-ticket taxonomy the active plan
 // enables. Rendered under the Plan section in Promos: plan + fiscal type
 // determines what flows the venue can run, the rate is a separate knob.
 

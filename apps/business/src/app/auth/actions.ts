@@ -5,12 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isEmail } from "@/lib/validators";
 
-// Manager auth: email + password (these actions) plus Google / Apple OAuth
+// Business auth: email + password (these actions) plus Google / Apple OAuth
 // (handled by OAuthButtons + /auth/callback). No magic link, no password
-// reset (managers will self-serve via a dedicated flow once we ship it).
+// reset (businesses will self-serve via a dedicated flow once we ship it).
 // Sign-in / sign-up are server actions so the session cookie lands on the
 // SSR client; the role stamping + profile creation happens on
-// /auth/post-signin which calls manager-signin-email.
+// /auth/post-signin which calls business-signin-email.
 
 export type AuthFormState = {
   error?: string;

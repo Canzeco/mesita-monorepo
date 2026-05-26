@@ -11,7 +11,7 @@ import { ImageCarousel } from "./ImageCarousel";
 // The static visual "face" of a swipe card. Used by:
 //   - SwipeDeck back-card peek (frozen frame, single photo)
 //   - SwipeDeck front-card render (multi-photo carousel)
-//   - PlacePreview on the manager Place page (frozen frame, optional carousel)
+//   - PlacePreview on the business Place page (frozen frame, optional carousel)
 //
 // Swipe gesture state intentionally lives outside this component — this is
 // only the visuals, so anything that needs to display a "what consumers see"

@@ -21,7 +21,7 @@ export function VenueCatalogCard({
 }: {
   venue: Venue;
   /** Defaults to the consumer detail page. Override (or pass null) to disable
-   *  linking — useful for the manager preview, which should be inert. */
+   *  linking — useful for the business preview, which should be inert. */
   href?: string | null;
 }) {
   const photo = venue.photos[0];

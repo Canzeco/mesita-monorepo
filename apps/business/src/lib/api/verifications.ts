@@ -13,7 +13,7 @@
 //
 // The third "Talk to us" option is now a direct wa.me deep-link to
 // Mesita ops — no EF round-trip, no admin queue row. See the WhatsApp
-// constant in CreateUnitForm. The legacy manager-requests-manual-review
+// constant in CreateUnitForm. The legacy business-requests-manual-review
 // EF still exists server-side for historical rows but is no longer
 // wrapped here.
 //
@@ -63,7 +63,7 @@ export type LookupVenue = {
 };
 
 // What the UI needs to decide which auto-verify cards to render.
-// Returned by manager-lookup-venue for every claim-able state. The
+// Returned by business-lookup-venue for every claim-able state. The
 // "Talk to us" WhatsApp fallback is rendered unconditionally on the
 // FE and isn't surfaced here.
 export type LookupMethods = {
@@ -95,7 +95,7 @@ export async function apiLookupVenue(
   client: SupabaseClient,
   placeId: string,
 ): Promise<LookupResult> {
-  return invokeEF<LookupResult>(client, "manager-lookup-venue", { placeId });
+  return invokeEF<LookupResult>(client, "business-lookup-venue", { placeId });
 }
 
 // ── Phone OTP path ────────────────────────────────────────────────────
@@ -112,12 +112,12 @@ export type SendPhoneOtpResult = {
   mockCode: string | null;
 };
 
-export async function apiManagerSendsPhoneOtp(
+export async function apiBusinessSendsPhoneOtp(
   client: SupabaseClient,
   venueId: string,
   requesterEmail: string,
 ): Promise<SendPhoneOtpResult> {
-  return invokeEF<SendPhoneOtpResult>(client, "manager-sends-phone-otp", {
+  return invokeEF<SendPhoneOtpResult>(client, "business-sends-phone-otp", {
     venueId,
     requesterEmail,
   });
@@ -131,12 +131,12 @@ export type VerifyOtpResult = {
   awaitingAdmin: boolean;
 };
 
-export async function apiManagerVerifiesPhone(
+export async function apiBusinessVerifiesPhone(
   client: SupabaseClient,
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "manager-verifies-phone", {
+  return invokeEF<VerifyOtpResult>(client, "business-verifies-phone", {
     verificationId,
     code,
   });
@@ -151,23 +151,23 @@ export type SendEmailOtpResult = {
   mockCode: string | null;
 };
 
-export async function apiManagerSendsEmailOtp(
+export async function apiBusinessSendsEmailOtp(
   client: SupabaseClient,
   venueId: string,
   requesterEmail: string,
 ): Promise<SendEmailOtpResult> {
-  return invokeEF<SendEmailOtpResult>(client, "manager-sends-email-otp", {
+  return invokeEF<SendEmailOtpResult>(client, "business-sends-email-otp", {
     venueId,
     requesterEmail,
   });
 }
 
-export async function apiManagerVerifiesEmail(
+export async function apiBusinessVerifiesEmail(
   client: SupabaseClient,
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "manager-verifies-email", {
+  return invokeEF<VerifyOtpResult>(client, "business-verifies-email", {
     verificationId,
     code,
   });

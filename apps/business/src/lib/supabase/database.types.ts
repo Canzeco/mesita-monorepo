@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          atlas_pre_read_snapshots: boolean
           auto_verify_ai_call: boolean
           auto_verify_ai_email: boolean
           auto_verify_video: boolean
@@ -24,6 +25,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          atlas_pre_read_snapshots?: boolean
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
@@ -32,6 +34,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          atlas_pre_read_snapshots?: boolean
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
@@ -41,12 +44,83 @@ export type Database = {
         }
         Relationships: []
       }
+      business_invites: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["member_role"]
+          token: string
+          venue_id: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token: string
+          venue_id: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_invites_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
       cashback_ledger: {
         Row: {
           balance_after_cents: number
+          consumer_id: string
           created_at: string
           delta_cents: number
-          consumer_id: string
           id: string
           kind: Database["public"]["Enums"]["cashback_kind"]
           notes: string | null
@@ -55,9 +129,9 @@ export type Database = {
         }
         Insert: {
           balance_after_cents: number
+          consumer_id: string
           created_at?: string
           delta_cents: number
-          consumer_id: string
           id?: string
           kind: Database["public"]["Enums"]["cashback_kind"]
           notes?: string | null
@@ -66,9 +140,9 @@ export type Database = {
         }
         Update: {
           balance_after_cents?: number
+          consumer_id?: string
           created_at?: string
           delta_cents?: number
-          consumer_id?: string
           id?: string
           kind?: Database["public"]["Enums"]["cashback_kind"]
           notes?: string | null
@@ -135,77 +209,6 @@ export type Database = {
           id?: string
           phone?: string | null
           sex?: string | null
-        }
-        Relationships: []
-      }
-      manager_invites: {
-        Row: {
-          claimed_at: string | null
-          claimed_by: string | null
-          created_at: string
-          created_by: string
-          email: string
-          expires_at: string
-          id: string
-          role: Database["public"]["Enums"]["member_role"]
-          token: string
-          venue_id: string
-        }
-        Insert: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by: string
-          email: string
-          expires_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["member_role"]
-          token: string
-          venue_id: string
-        }
-        Update: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by?: string
-          email?: string
-          expires_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["member_role"]
-          token?: string
-          venue_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "manager_invites_venue_id_fkey"
-            columns: ["venue_id"]
-            isOneToOne: false
-            referencedRelation: "venues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      managers: {
-        Row: {
-          created_at: string
-          email: string | null
-          full_name: string | null
-          id: string
-          phone: string | null
-        }
-        Insert: {
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id: string
-          phone?: string | null
-        }
-        Update: {
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          phone?: string | null
         }
         Relationships: []
       }
@@ -287,11 +290,11 @@ export type Database = {
           cashback_cents: number | null
           cashback_percent: number
           check_subtotal_cents: number | null
+          consumer_id: string
           created_at: string
           currency: string
           discount_cents: number | null
           discount_percent: number | null
-          consumer_id: string
           id: string
           kind: Database["public"]["Enums"]["ticket_kind"]
           opened_by: string
@@ -323,11 +326,11 @@ export type Database = {
           cashback_cents?: number | null
           cashback_percent: number
           check_subtotal_cents?: number | null
+          consumer_id: string
           created_at?: string
           currency?: string
           discount_cents?: number | null
           discount_percent?: number | null
-          consumer_id: string
           id?: string
           kind?: Database["public"]["Enums"]["ticket_kind"]
           opened_by: string
@@ -359,11 +362,11 @@ export type Database = {
           cashback_cents?: number | null
           cashback_percent?: number
           check_subtotal_cents?: number | null
+          consumer_id?: string
           created_at?: string
           currency?: string
           discount_cents?: number | null
           discount_percent?: number | null
-          consumer_id?: string
           id?: string
           kind?: Database["public"]["Enums"]["ticket_kind"]
           opened_by?: string
@@ -401,14 +404,14 @@ export type Database = {
             foreignKeyName: "tickets_opened_by_fkey"
             columns: ["opened_by"]
             isOneToOne: false
-            referencedRelation: "managers"
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "tickets_story_verified_by_fkey"
             columns: ["story_verified_by"]
             isOneToOne: false
-            referencedRelation: "managers"
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
           {
@@ -422,32 +425,32 @@ export type Database = {
       }
       venue_members: {
         Row: {
+          business_id: string
           created_at: string
           id: string
-          manager_id: string
           role: Database["public"]["Enums"]["member_role"]
           venue_id: string
         }
         Insert: {
+          business_id: string
           created_at?: string
           id?: string
-          manager_id: string
           role?: Database["public"]["Enums"]["member_role"]
           venue_id: string
         }
         Update: {
+          business_id?: string
           created_at?: string
           id?: string
-          manager_id?: string
           role?: Database["public"]["Enums"]["member_role"]
           venue_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "venue_members_manager_id_fkey"
-            columns: ["manager_id"]
+            foreignKeyName: "venue_members_business_id_fkey"
+            columns: ["business_id"]
             isOneToOne: false
-            referencedRelation: "managers"
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
           {
@@ -752,7 +755,7 @@ export type Database = {
     Enums: {
       cashback_kind: "earn" | "redeem" | "expire" | "adjust"
       listing_type: "partner" | "web" | "unclaimed"
-      member_role: "owner" | "manager" | "staff" | "viewer"
+      member_role: "owner" | "editor" | "staff" | "viewer"
       reservation_status:
         | "pending"
         | "confirmed"
@@ -791,7 +794,7 @@ export type Database = {
         | "formal_ultra"
         | "informal_pro"
         | "informal_ultra"
-      venue_role: "staff" | "manager"
+      venue_role: "staff" | "business"
       venue_status:
         | "lead"
         | "active"
@@ -935,7 +938,7 @@ export const Constants = {
     Enums: {
       cashback_kind: ["earn", "redeem", "expire", "adjust"],
       listing_type: ["partner", "web", "unclaimed"],
-      member_role: ["owner", "manager", "staff", "viewer"],
+      member_role: ["owner", "editor", "staff", "viewer"],
       reservation_status: [
         "pending",
         "confirmed",
@@ -979,7 +982,7 @@ export const Constants = {
         "informal_pro",
         "informal_ultra",
       ],
-      venue_role: ["staff", "manager"],
+      venue_role: ["staff", "business"],
       venue_status: [
         "lead",
         "active",

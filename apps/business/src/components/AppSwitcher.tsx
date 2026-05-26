@@ -15,7 +15,7 @@ const APPS = [
     label: "Consumer",
     Icon: UserCircle,
   },
-  { href: "/manager", match: "/manager", label: "Manager", Icon: Store },
+  { href: "/business", match: "/business", label: "Business", Icon: Store },
   {
     href: "/validator",
     match: "/validator",

@@ -1,6 +1,6 @@
-// Frontend helper for the manager-get-overview Edge Function.
+// Frontend helper for the business-get-overview Edge Function.
 //
-// Wrapped in React.cache so the manager layout and the active page (which
+// Wrapped in React.cache so the business layout and the active page (which
 // both need the bundle) reuse a single Edge Function round trip per render.
 // The EF decides super-admin elevation server-side from the caller's JWT
 // against public.super_admins; the client never carries a key.
@@ -25,7 +25,7 @@ async function fetchUnitOverview(
   activeUnitId: string | null,
   ticketsLimit = 20,
 ): Promise<UnitOverview> {
-  return invokeEF<UnitOverview>(client, "manager-get-overview", {
+  return invokeEF<UnitOverview>(client, "business-get-overview", {
     activeUnitId: activeUnitId ?? undefined,
     ticketsLimit,
   });

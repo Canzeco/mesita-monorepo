@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus, Store } from "lucide-react";
-import { Topbar } from "@/components/manager/Topbar";
-import { PageErrorState } from "@/components/manager/PageErrorState";
+import { Topbar } from "@/components/business/Topbar";
+import { PageErrorState } from "@/components/business/PageErrorState";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
@@ -11,7 +11,7 @@ import { EditVenueForm } from "./EditVenueForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function ManagerPlacePage({
+export default async function BusinessPlacePage({
   params,
 }: {
   params: Promise<{ id: string }>;

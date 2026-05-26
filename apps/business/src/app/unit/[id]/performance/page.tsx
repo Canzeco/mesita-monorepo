@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
-import { Topbar } from "@/components/manager/Topbar";
+import { Topbar } from "@/components/business/Topbar";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
 
