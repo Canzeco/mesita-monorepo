@@ -79,6 +79,7 @@ type FormState = {
   description: string;
   hours: Record<DayKey, DayShifts>;
   menu_pdf_url: string;
+  menu_pdf_name: string;
   photos: string[];
   tags: string[];
   phone: string;
@@ -240,6 +241,7 @@ function venueToFormState(venue: MyVenue): FormState {
     description: venue.description ?? "",
     hours: venueHoursToForm(venue.hours),
     menu_pdf_url: venue.menu_pdf_url ?? "",
+    menu_pdf_name: venue.menu_pdf_name ?? "",
     photos: venue.photos ?? [],
     tags: venue.tags ?? [],
     phone: venue.phone ?? "",
@@ -306,6 +308,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           : v.description.trim().slice(0, DESCRIPTION_MAX),
       hours: formHoursToVenue(v.hours),
       menu_pdf_url: nullableUrl(v.menu_pdf_url),
+      menu_pdf_name: nullable(v.menu_pdf_name),
       photos: v.photos.slice(0, MAX_PHOTOS),
       tags: v.tags
         .map((t) => t.trim().toLowerCase().slice(0, TAG_MAX))
@@ -1052,6 +1055,15 @@ function ProductSection({
   // tomorrow it's product photos, signature dishes, drink list, etc.
   return (
     <Section title="Product">
+      <Field label="Menu name">
+        <input
+          type="text"
+          value={v.menu_pdf_name}
+          onChange={(e) => set("menu_pdf_name", e.target.value.slice(0, 80))}
+          placeholder="Dinner menu"
+          className="border-border bg-card focus:border-foreground/40 w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
+        />
+      </Field>
       <Field label="Menu PDF link">
         <UrlInput
           icon={<FileText className="h-4 w-4" />}

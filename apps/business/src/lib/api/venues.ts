@@ -79,6 +79,9 @@ type Venue = {
   diamond_rate: number | null;
   photos: string[];
   menu_pdf_url: string | null;
+  // Display name paired with menu_pdf_url (e.g. "Dinner menu"). Null
+  // means the consumer falls back to the generic "Full menu" copy.
+  menu_pdf_name: string | null;
   tags: string[];
   whatsapp_pr_urls: string[];
   instagram_pr_urls: string[];
@@ -249,6 +252,7 @@ export type UpdateVenueInput = {
   // Place-redesign editable surface (Business-E=YES in Notion Components).
   description?: string | null;
   menu_pdf_url?: string | null;
+  menu_pdf_name?: string | null;
   tags?: string[];
   whatsapp_pr_urls?: string[];
   instagram_pr_urls?: string[];
