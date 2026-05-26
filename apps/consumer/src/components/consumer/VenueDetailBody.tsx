@@ -22,6 +22,7 @@ import {
   Link2,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
+import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
@@ -133,13 +134,6 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
         {venue.name}
       </h1>
       <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
-      <p className="text-muted-foreground flex items-start gap-2 text-sm">
-        <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>{venue.address}</span>
-      </p>
-      <p className="text-foreground mt-1 text-base leading-relaxed">
-        {venue.short_description}
-      </p>
     </Box>
   );
 }
@@ -524,7 +518,10 @@ function HoursBox({ venue }: { venue: VenueDetail }) {
       </div>
       <BoxHScroll>
         <HoursTableCard venue={venue} />
-        <PopularTimesCard venue={venue} />
+        <PopularTimesCard
+          popularTimes={venue.popular_times}
+          initialDay={venue.popular_times_featured}
+        />
       </BoxHScroll>
     </Box>
   );
@@ -554,32 +551,6 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
   );
 }
 
-function PopularTimesCard({ venue }: { venue: VenueDetail }) {
-  const featured =
-    venue.popular_times.find(
-      (d) => d.day.toUpperCase() === venue.popular_times_featured.toUpperCase(),
-    ) ?? venue.popular_times[0];
-  return (
-    <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
-      <div>
-        <h4 className="font-display text-base font-semibold">Popular times</h4>
-        <p className="text-muted-foreground text-[11px]">
-          From Google · {featured.day} · {featured.range}
-        </p>
-      </div>
-      <div className="flex h-32 items-end gap-1.5">
-        {featured.bars.map((v, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-full bg-gradient-to-t from-purple-500 to-pink-500"
-            style={{ height: `${Math.max(v * 100, 6)}%` }}
-          />
-        ))}
-      </div>
-    </article>
-  );
-}
-
 // ── 7. Rewards (welcome + tier matrix in one h-scroll) ──────────────────
 
 const TIER_ORDER: Tier[] = ["bronze", "silver", "gold", "diamond"];
@@ -591,27 +562,38 @@ const TIER_PROPER: Record<Tier, string> = {
 };
 
 function RewardsBox({ venue }: { venue: VenueDetail }) {
+  const currentTier = venue.promo_matrix.current_tier;
+  const currentValue = venue.promo_matrix[currentTier];
+  const kind = venue.promo.reward_kind;
   return (
     <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
       <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
         <WelcomeCard
           discount={venue.welcome_discount}
-          kind={venue.promo.reward_kind}
+          kind={kind}
         />
         {TIER_ORDER.map((tier) => (
           <TierCard
             key={tier}
             tier={tier}
             value={venue.promo_matrix[tier]}
-            kind={venue.promo.reward_kind}
-            current={tier === venue.promo_matrix.current_tier}
+            kind={kind}
+            current={tier === currentTier}
           />
         ))}
       </div>
-      <p className="text-muted-foreground text-[11px]">
-        Only one applies — your current class, or the welcome bonus on your
-        first visit.
-      </p>
+      <div className="flex flex-col gap-1">
+        <p className="text-muted-foreground text-[11px] leading-relaxed">
+          Welcome {venue.welcome_discount.value}% (1 / month, first visit) ·
+          Diamond {venue.promo_matrix.diamond}% · Gold{" "}
+          {venue.promo_matrix.gold}% · Silver {venue.promo_matrix.silver}% ·
+          Bronze {venue.promo_matrix.bronze}%.
+        </p>
+        <p className="text-foreground text-[11px] font-medium">
+          Your current reward — {currentValue}% {kind} as Mesita{" "}
+          {TIER_PROPER[currentTier]}.
+        </p>
+      </div>
     </Box>
   );
 }

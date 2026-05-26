@@ -278,19 +278,19 @@ export const mockVenue: VenueDetail = {
   promo: {
     badge_label: "Verified partner",
     reward_kind: "cashback",
-    reward_value: 15,
+    reward_value: 20,
   },
 
   welcome_discount: {
-    value: 10,
-    subtitle: "First visit only",
+    value: 50,
+    subtitle: "1 / month · first visit",
   },
 
   promo_matrix: {
-    bronze: 5,
-    silver: 8,
-    gold: 15,
-    diamond: 22,
+    bronze: 10,
+    silver: 10,
+    gold: 20,
+    diamond: 50,
     current_tier: "gold",
   },
 
