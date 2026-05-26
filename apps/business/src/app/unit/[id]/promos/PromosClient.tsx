@@ -34,60 +34,57 @@ import {
 
 // ─── Rate picker scale ────────────────────────────────────────────────────
 
-const RATE_CHOICES = [0, 10, 20, 50] as const;
+// Eight per-tier promo rates land in the venues table as smallint columns
+// constrained to this set (or null). See migration 0027. Zero is no longer
+// a legal value — to "turn off" a tier, write null.
+const RATE_CHOICES = [10, 20, 50, 70] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
 // ─── Tier ladder catalog ──────────────────────────────────────────────────
 
 type Tier = "bronze" | "silver" | "gold" | "diamond";
 
-type TierMeta = {
-  id: Tier;
-  label: string;
-  visitRange: string;
-  defaultRate: RateChoice;
-  onMesita: number;
-  // Cap the highest selectable rate for this tier. The picker hides any
-  // RATE_CHOICES entry strictly greater than this value. Undefined means
-  // "no cap" — all four pills (0/10/20/50) show.
-  //
-  // The cap exists to keep low-loyalty tiers from being offered runaway
-  // discounts; reward intensity should scale with visit count.
-  maxRate?: RateChoice;
+// Each row in the Promos section corresponds to one of the eight DB columns:
+// welcome_<tier>_rate (first-visit at this venue) or <tier>_rate (every visit
+// afterwards). The DB column name is the source of truth — the UI just
+// renders it.
+type PromoSlot = {
+  // Column on public.venues. Used as the apiUpdateVenue payload key.
+  column:
+    | "welcome_bronze_rate"
+    | "welcome_silver_rate"
+    | "welcome_gold_rate"
+    | "welcome_diamond_rate"
+    | "bronze_rate"
+    | "silver_rate"
+    | "gold_rate"
+    | "diamond_rate";
+  tier: Tier;
+  // "welcome" applies on the guest's first visit at this venue; "default"
+  // applies on every visit afterwards.
+  kind: "welcome" | "default";
 };
 
-const TIERS: TierMeta[] = [
-  {
-    id: "bronze",
-    label: "Bronze",
-    visitRange: "0–2 visits",
-    defaultRate: 10,
-    onMesita: 18_420,
-    maxRate: 10,
-  },
-  {
-    id: "silver",
-    label: "Silver",
-    visitRange: "3–6 visits",
-    defaultRate: 10,
-    onMesita: 6_240,
-    maxRate: 20,
-  },
-  {
-    id: "gold",
-    label: "Gold",
-    visitRange: "7–19 visits",
-    defaultRate: 20,
-    onMesita: 1_860,
-  },
-  {
-    id: "diamond",
-    label: "Diamond",
-    visitRange: "20+ visits",
-    defaultRate: 30 as RateChoice,
-    onMesita: 184,
-  },
+const WELCOME_SLOTS: PromoSlot[] = [
+  { column: "welcome_bronze_rate", tier: "bronze", kind: "welcome" },
+  { column: "welcome_silver_rate", tier: "silver", kind: "welcome" },
+  { column: "welcome_gold_rate", tier: "gold", kind: "welcome" },
+  { column: "welcome_diamond_rate", tier: "diamond", kind: "welcome" },
 ];
+
+const DEFAULT_SLOTS: PromoSlot[] = [
+  { column: "bronze_rate", tier: "bronze", kind: "default" },
+  { column: "silver_rate", tier: "silver", kind: "default" },
+  { column: "gold_rate", tier: "gold", kind: "default" },
+  { column: "diamond_rate", tier: "diamond", kind: "default" },
+];
+
+const TIER_LABEL: Record<Tier, string> = {
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  diamond: "Diamond",
+};
 
 // ─── Subscription icons + accents ─────────────────────────────────────────
 
@@ -178,11 +175,30 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         )}
       </Section>
 
-      <Section title="Promos">
-        <WelcomeRow disabled={isFree} />
+      <Section title="Promos · first visit">
         <div className="flex flex-col gap-1.5">
-          {TIERS.map((t) => (
-            <TierRow key={t.id} tier={t} disabled={isFree} />
+          {WELCOME_SLOTS.map((slot) => (
+            <PromoSlotRow
+              key={slot.column}
+              slot={slot}
+              initial={venue[slot.column]}
+              venueId={venue.id}
+              disabled={isFree}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Promos · every visit">
+        <div className="flex flex-col gap-1.5">
+          {DEFAULT_SLOTS.map((slot) => (
+            <PromoSlotRow
+              key={slot.column}
+              slot={slot}
+              initial={venue[slot.column]}
+              venueId={venue.id}
+              disabled={isFree}
+            />
           ))}
         </div>
       </Section>
@@ -386,84 +402,71 @@ function SubscriptionCard({
   );
 }
 
-// ─── Welcome row + Tier rows ──────────────────────────────────────────────
+// ─── Promo slot row ───────────────────────────────────────────────────────
 
-function WelcomeRow({ disabled }: { disabled: boolean }) {
-  const [rate, setRate] = useState<RateChoice>(20);
-  return (
-    <PromoRow
-      chip={
-        <span className="bg-welcome-gradient inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider text-white uppercase">
-          Welcome
-        </span>
-      }
-      sub="First visit"
-      rate={disabled ? 0 : rate}
-      onRate={setRate}
-      disabled={disabled}
-      audience={12_480}
-      audienceLabel="Nearby"
-    />
-  );
-}
-
-function TierRow({ tier, disabled }: { tier: TierMeta; disabled: boolean }) {
-  const initial: RateChoice = (RATE_CHOICES.find(
-    (r) => r >= tier.defaultRate,
-  ) ?? 50) as RateChoice;
-  const [rate, setRate] = useState<RateChoice>(initial);
-  return (
-    <PromoRow
-      chip={<TierChip tier={tier.id} label={tier.label} />}
-      sub={tier.visitRange}
-      rate={disabled ? 0 : rate}
-      onRate={setRate}
-      disabled={disabled}
-      maxRate={tier.maxRate}
-      audience={tier.onMesita}
-      audienceLabel="On Mesita"
-    />
-  );
-}
-
-function PromoRow({
-  chip,
-  sub,
-  rate,
-  onRate,
+// One row per DB column. Reads the saved value off the venue, lets the
+// business pick a new rate (or clear it), and persists the change to
+// apiUpdateVenue with a single-field payload. Optimistic UI — local state
+// flips immediately; we revert if the save fails.
+function PromoSlotRow({
+  slot,
+  initial,
+  venueId,
   disabled,
-  maxRate,
-  audience,
-  audienceLabel,
 }: {
-  chip: React.ReactNode;
-  sub: string;
-  rate: RateChoice;
-  onRate: (next: RateChoice) => void;
+  slot: PromoSlot;
+  initial: number | null;
+  venueId: string;
   disabled: boolean;
-  maxRate?: RateChoice;
-  audience: number;
-  audienceLabel: string;
 }) {
+  const supabase = useBrowserSupabase();
+  const [rate, setRate] = useState<RateChoice | null>(
+    initial as RateChoice | null,
+  );
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onPick = (next: RateChoice | null) => {
+    if (disabled || pending) return;
+    const previous = rate;
+    setRate(next);
+    setPending(true);
+    setError(null);
+    void apiUpdateVenue(supabase, { id: venueId, [slot.column]: next })
+      .catch((err) => {
+        setRate(previous);
+        setError(errMsg(err, "Couldn't save."));
+      })
+      .finally(() => setPending(false));
+  };
+
   return (
     <div className="border-border bg-card grid grid-cols-[120px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border p-3">
       <div className="flex min-w-0 flex-col gap-0.5">
-        {chip}
-        <span className="text-muted-foreground text-[10px]">{sub}</span>
+        {slot.kind === "welcome" ? (
+          <span className="bg-welcome-gradient inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider text-white uppercase">
+            Welcome {TIER_LABEL[slot.tier]}
+          </span>
+        ) : (
+          <TierChip tier={slot.tier} label={TIER_LABEL[slot.tier]} />
+        )}
+        <span className="text-muted-foreground text-[10px]">
+          {slot.kind === "welcome" ? "First visit" : "Every visit"}
+        </span>
       </div>
       <RatePicker
-        rate={rate}
-        onChange={onRate}
-        disabled={disabled}
-        maxRate={maxRate}
+        rate={disabled ? null : rate}
+        onChange={onPick}
+        disabled={disabled || pending}
       />
       <div className="text-right">
-        <p className="font-display text-sm leading-none font-bold tabular-nums">
-          {audience.toLocaleString()}
-        </p>
-        <p className="text-muted-foreground mt-0.5 text-[9px] font-medium tracking-[0.12em] uppercase">
-          {audienceLabel}
-        </p>
+        {error ? (
+          <p className="text-destructive text-[10px]">{error}</p>
+        ) : (
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.12em] uppercase">
+            {rate == null ? "Off" : `${rate}% off`}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -473,24 +476,34 @@ function RatePicker({
   rate,
   onChange,
   disabled,
-  maxRate,
 }: {
-  rate: RateChoice;
-  onChange: (next: RateChoice) => void;
+  rate: RateChoice | null;
+  onChange: (next: RateChoice | null) => void;
   disabled?: boolean;
-  maxRate?: RateChoice;
 }) {
-  const choices =
-    maxRate != null ? RATE_CHOICES.filter((c) => c <= maxRate) : RATE_CHOICES;
   return (
     <div className={cn("flex items-center gap-2", disabled && "opacity-60")}>
       <span className="font-display text-primary text-2xl leading-none font-bold tabular-nums">
-        {rate}
-        <span className="text-base font-semibold">%</span>
+        {rate ?? "—"}
+        {rate != null && <span className="text-base font-semibold">%</span>}
       </span>
       <div className="flex flex-wrap gap-1">
-        {choices.map((c) => {
-          const showHint = disabled && c !== 0;
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          disabled={disabled}
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
+            rate == null
+              ? "bg-foreground text-background"
+              : "border-border bg-background text-muted-foreground hover:text-foreground border",
+            disabled && "hover:text-muted-foreground cursor-not-allowed",
+          )}
+        >
+          Off
+        </button>
+        {RATE_CHOICES.map((c) => {
+          const showHint = disabled;
           return (
             <div key={c} className="group relative">
               <button
