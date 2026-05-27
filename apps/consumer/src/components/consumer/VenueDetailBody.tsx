@@ -562,6 +562,12 @@ function MenuBox({ venue }: { venue: VenueDetail }) {
 }
 
 function MenuRow({ menu }: { menu: VenueDetail["menus"][number] }) {
+  function onView() {
+    // Once menu_pdf_url is wired through VenueDetail this becomes a
+    // direct <a target="_blank" /> link. For now there's nothing to open
+    // so we surface that explicitly instead of silently doing nothing.
+    toast(`${menu.name} viewer ships once the venue uploads a PDF`);
+  }
   return (
     <div className="bg-background flex items-center gap-3 rounded-xl p-3">
       <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
@@ -577,7 +583,8 @@ function MenuRow({ menu }: { menu: VenueDetail["menus"][number] }) {
       </div>
       <button
         type="button"
-        className="bg-foreground text-background inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold"
+        onClick={onView}
+        className="bg-foreground text-background hover:opacity-90 inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-[0.97]"
       >
         View
         <ChevronRight className="h-3.5 w-3.5" />

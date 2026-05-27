@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   Crown,
   Instagram,
@@ -29,6 +30,7 @@ import {
   tierBadgeClass,
 } from "@/lib/consumer-data";
 import { cn, firstInitial } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 type SocialPlatform = "instagram" | "linkedin";
 
@@ -441,6 +443,22 @@ function AppealForUpgradeButton() {
   return (
     <button
       type="button"
+      onClick={() =>
+        toast.action(
+          "Appeal form lands soon — meanwhile email class@mesita.ai with your case",
+          {
+            label: "Copy email",
+            onClick: () => {
+              if (typeof navigator !== "undefined" && navigator.clipboard) {
+                navigator.clipboard
+                  .writeText("class@mesita.ai")
+                  .then(() => toast.success("class@mesita.ai copied"))
+                  .catch(() => toast.error("Couldn't copy"));
+              }
+            },
+          },
+        )
+      }
       className="border-border bg-card hover:bg-muted/40 flex w-full items-center gap-3 rounded-2xl border border-dashed px-4 py-3 text-left transition"
     >
       <Crown className="text-foreground h-4 w-4 shrink-0" />
@@ -600,17 +618,49 @@ function formatFollowers(n: number): string {
   return n.toString();
 }
 
+// Settings row config — each row carries the route it should drive when
+// the corresponding screen ships. Rows where we already have a real route
+// link directly; the rest fire a toast pointing at the support email so
+// users have somewhere to go right now.
+type SettingsRow = {
+  Icon: LucideIcon;
+  label: string;
+  sub: string;
+} & ({ href: string } | { stubReason: string });
+
 function SettingsTab() {
-  const items = [
-    { Icon: UserIcon, label: "Personal details", sub: "Name, email, phone" },
+  const items: SettingsRow[] = [
+    {
+      Icon: UserIcon,
+      label: "Personal details",
+      sub: "Name, email, phone",
+      stubReason:
+        "Personal details editor lands next — for now re-onboard at /onboard or email support@mesita.ai",
+    },
     {
       Icon: CreditCard,
       label: "Payment methods",
       sub: "Apple Pay · Visa · 4242",
+      href: "/pay/wallet",
     },
-    { Icon: Bell, label: "Notifications", sub: "Push, email" },
-    { Icon: Shield, label: "Privacy & data", sub: "Permissions, export" },
-    { Icon: HelpCircle, label: "Help & support", sub: "FAQ · contact us" },
+    {
+      Icon: Bell,
+      label: "Notifications",
+      sub: "Push, email",
+      stubReason: "Notification preferences land with the push-token integration.",
+    },
+    {
+      Icon: Shield,
+      label: "Privacy & data",
+      sub: "Permissions, export",
+      stubReason: "Privacy controls + data export land before launch — email privacy@mesita.ai.",
+    },
+    {
+      Icon: HelpCircle,
+      label: "Help & support",
+      sub: "FAQ · contact us",
+      stubReason: "Help center lands soon — email support@mesita.ai meanwhile.",
+    },
   ];
   return (
     <div className="flex flex-col">
@@ -618,23 +668,8 @@ function SettingsTab() {
         Account
       </p>
       <div className="divide-border border-border bg-card mt-3 divide-y overflow-hidden rounded-2xl border">
-        {items.map(({ Icon, label, sub }) => (
-          <button
-            key={label}
-            type="button"
-            className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
-          >
-            <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-              <Icon className="h-4 w-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">{label}</span>
-              <span className="text-muted-foreground block text-[11px]">
-                {sub}
-              </span>
-            </span>
-            <ChevronRight className="text-muted-foreground h-4 w-4" />
-          </button>
+        {items.map((row) => (
+          <SettingsRowButton key={row.label} row={row} />
         ))}
       </div>
 
@@ -655,6 +690,39 @@ function SettingsTab() {
         Mesita · v2.4.1
       </p>
     </div>
+  );
+}
+
+// One settings row — either a Link (real route) or a button (stub toast).
+// Rendering is identical; the only branch is what happens on tap.
+function SettingsRowButton({ row }: { row: SettingsRow }) {
+  const inner = (
+    <>
+      <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+        <row.Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{row.label}</span>
+        <span className="text-muted-foreground block text-[11px]">
+          {row.sub}
+        </span>
+      </span>
+      <ChevronRight className="text-muted-foreground h-4 w-4" />
+    </>
+  );
+  const className =
+    "hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition";
+  if ("href" in row) {
+    return (
+      <Link href={row.href} className={className}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={() => toast(row.stubReason)} className={className}>
+      {inner}
+    </button>
   );
 }
 
