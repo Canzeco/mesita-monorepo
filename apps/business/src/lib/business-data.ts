@@ -10,7 +10,7 @@
 
 // ── Wallet (wallet/page.tsx) ──────────────────────────────────────────────
 
-export type WalletSummary = {
+type WalletSummary = {
   balance: number;
   pendingPayout: number;
   thisMonth: number;
@@ -30,7 +30,7 @@ export const WALLET: WalletSummary = {
 
 type TransactionKind = "visit" | "payout" | "fee";
 
-export type Transaction = {
+type Transaction = {
   id: string;
   kind: TransactionKind;
   label: string;

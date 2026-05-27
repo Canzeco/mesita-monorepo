@@ -29,7 +29,7 @@ export type SubscriptionId =
   | "ultra_discount"
   | "ultra_cashback";
 
-export type SubscriptionRow = {
+type SubscriptionRow = {
   id: SubscriptionId;
   label: string;
   price: string;
