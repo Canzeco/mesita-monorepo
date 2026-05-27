@@ -145,16 +145,16 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
 // that allows a downgrade/cancel action.
 type TierOrigin = "default" | "instagram" | "subscription" | "appeal";
 
-// Mock consumer used by the Profile + Discover header until real consumer-side
-// reads are wired up. Only carries the fields the UI actually reads — name,
-// city, joined-at, etc. were leftovers from the original Lovable export
-// and never consumed in the current build.
+// Mock consumer used by the Profile + Discover header until real
+// consumer-side reads are wired up. Only carries the fields the UI
+// actually reads. The real cashback balance comes from the consumer
+// profile EF (`apiFetchConsumerProfile().cashback_balance_cents`); the
+// mock no longer carries a duplicate `balance` field.
 export const CURRENT_USER = {
   tier: "gold" as Tier,
   tierOrigin: "instagram" as TierOrigin,
   /** Only meaningful when `tierOrigin === "subscription"`. ISO date string. */
   tierRenewsAt: null as string | null,
-  balance: 1284,
   followers: 7320,
 };
 
