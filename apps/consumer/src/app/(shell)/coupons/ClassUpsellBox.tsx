@@ -108,8 +108,11 @@ export function ClassUpsellBox() {
           <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
           <span>
             <strong className="font-semibold text-white">Invitation</strong>{" "}
-            — free if you&apos;re a model, executive, or carry real local
-            influence.
+            — free for models, executives, or anyone with real local
+            influence.{" "}
+            <span className="font-semibold text-white underline-offset-2 hover:underline">
+              Request an invitation →
+            </span>
           </span>
         </li>
       </ul>
