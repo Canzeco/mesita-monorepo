@@ -187,7 +187,19 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
     ? welcome[current_tier]
     : returning[current_tier];
   const mechanicWord = venue.details.mechanic.toLowerCase();
-  const showBadgeRow = activeReward != null || isPartner;
+  // Three chip styles, one per info type:
+  //   • promo (cashback)    — loud pink gradient, the marketing punch
+  //   • status (open/closed)— soft green when open, neutral when closed
+  //   • trust (verified/web)— soft emerald when partner, neutral for web
+  // Verified + Open both go emerald-toned when positive: two greens read
+  // as "two good signals" not "duplicate badges", because their labels
+  // disambiguate them.
+  const chipBase =
+    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold";
+  const chipPositive =
+    "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+  const chipNeutral =
+    "border-border bg-card text-muted-foreground";
   return (
     <Box className="!gap-3">
       <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
@@ -208,50 +220,42 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
         <span aria-hidden className="opacity-30">·</span>
         <span>{meta.join(" · ")}</span>
       </div>
-      {showBadgeRow && (
-        <div className="flex flex-wrap items-center gap-2">
-          {activeReward != null && (
-            <span className="bg-pink-gradient shadow-glow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white">
-              <Sparkles className="h-3 w-3" />
-              {activeReward}% {mechanicWord}
-            </span>
+      {/* Chip row — promo + trust + live status, all the same chip size so
+          the eye reads them as a set. Cashback retains its loud pink fill
+          because it's the *promo* not just info; verified + open share the
+          soft chip style. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {activeReward != null && (
+          <span className="bg-pink-gradient shadow-glow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white">
+            <Sparkles className="h-3 w-3" />
+            {activeReward}% {mechanicWord}
+          </span>
+        )}
+        <span className={cn(chipBase, isPartner ? chipPositive : chipNeutral)}>
+          {isPartner ? (
+            <BadgeCheck className="h-3 w-3" />
+          ) : (
+            <Globe className="h-3 w-3" />
           )}
-          <span className="inline-flex items-center gap-1.5 text-sm">
-            {isPartner ? (
-              <BadgeCheck className="h-4 w-4 text-emerald-400" />
-            ) : (
-              <Globe className="text-muted-foreground h-4 w-4" />
-            )}
-            <span className="text-foreground font-medium">
-              {isPartner ? "Verified partner" : "Web listing"}
-            </span>
-          </span>
-        </div>
-      )}
-      {/* Quiet sub-meta. Open status answers "can I go now?", address answers
-          "where?", updated answers "is this real?". Duplicates Hours/Location
-          boxes by design — overview is supposed to be a single-glance read. */}
-      <div className="text-muted-foreground flex flex-col gap-1 text-xs">
-        <p className="inline-flex items-center gap-1.5">
+          {isPartner ? "Verified partner" : "Web listing"}
+        </span>
+        <span
+          className={cn(chipBase, venue.open_now ? chipPositive : chipNeutral)}
+        >
           <Clock className="h-3 w-3" />
-          <span
-            className={cn(
-              "font-semibold",
-              venue.open_now ? "text-emerald-400" : "text-foreground",
-            )}
-          >
-            {venue.open_now ? "Open" : "Closed"}
-          </span>
-          <span aria-hidden className="opacity-30">·</span>
-          <span>
-            {venue.open_now
-              ? `until ${venue.closes_at}`
-              : `opens ${venue.opens_at}`}
-          </span>
-        </p>
+          {venue.open_now
+            ? `Open · until ${venue.closes_at}`
+            : `Closed · opens ${venue.opens_at}`}
+        </span>
+      </div>
+      {/* Context block — address gets full width with a 2-line clamp so a
+          long street name reads instead of truncating to "...". Freshness
+          stays as the trailing line, smaller, so trust info doesn't compete
+          with the chips above. */}
+      <div className="text-muted-foreground flex flex-col gap-1.5 text-xs">
         <p className="inline-flex items-start gap-1.5">
           <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
-          <span className="line-clamp-1">{venue.address}</span>
+          <span className="line-clamp-2">{venue.address}</span>
         </p>
         <p className="inline-flex items-center gap-1.5">
           <Pencil className="h-3 w-3" />
