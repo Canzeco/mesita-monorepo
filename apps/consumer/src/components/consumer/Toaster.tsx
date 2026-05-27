@@ -27,18 +27,20 @@ export function Toaster() {
 
 function ToastCard({ t }: { t: Toast }) {
   const Icon = t.tone === "success" ? Check : t.tone === "error" ? AlertCircle : null;
+  // emerald-600 / red-600 read against the light card; the lighter 400
+  // variants we used before were tuned for the old dark surface.
   const iconClass =
     t.tone === "success"
-      ? "text-emerald-400"
+      ? "text-emerald-600"
       : t.tone === "error"
-        ? "text-red-400"
+        ? "text-red-600"
         : "text-foreground";
   return (
     <div
       role="status"
       className={cn(
-        "animate-in slide-in-from-bottom-2 fade-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-full border bg-zinc-900/95 px-4 py-2.5 text-sm shadow-2xl backdrop-blur duration-200",
-        t.tone === "error" ? "border-red-500/40" : "border-white/10",
+        "animate-in slide-in-from-bottom-2 fade-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-full border bg-card/95 px-4 py-2.5 text-sm shadow-elev backdrop-blur duration-200",
+        t.tone === "error" ? "border-red-500/40" : "border-border",
       )}
     >
       {Icon && (
@@ -52,7 +54,7 @@ function ToastCard({ t }: { t: Toast }) {
             t.action?.onClick();
             toast.dismiss(t.id);
           }}
-          className="text-secondary -mr-2 shrink-0 rounded-full px-3 py-1 text-xs font-semibold hover:bg-white/10"
+          className="text-secondary hover:bg-muted -mr-2 shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
         >
           {t.action.label}
         </button>
@@ -61,7 +63,7 @@ function ToastCard({ t }: { t: Toast }) {
         type="button"
         aria-label="Dismiss"
         onClick={() => toast.dismiss(t.id)}
-        className="text-muted-foreground -mr-1 shrink-0 rounded-full p-1 hover:bg-white/10"
+        className="text-muted-foreground hover:bg-muted -mr-1 shrink-0 rounded-full p-1"
       >
         <X className="h-3 w-3" />
       </button>

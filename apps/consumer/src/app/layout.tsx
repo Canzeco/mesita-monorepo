@@ -47,8 +47,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${fraunces.variable} dark h-full antialiased`}
-      style={{ colorScheme: "dark" }}
+      className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
+      style={{ colorScheme: "light" }}
     >
       <body className="bg-background text-foreground flex min-h-full flex-col">
         {children}

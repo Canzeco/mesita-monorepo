@@ -151,7 +151,7 @@ function ReservationSheetContent({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="animate-in slide-in-from-bottom-4 bg-background w-full max-w-md rounded-t-3xl border-t border-white/10 p-5 duration-300 ease-out">
+      <div className="animate-in slide-in-from-bottom-4 bg-background border-border w-full max-w-md rounded-t-3xl border-t p-5 duration-300 ease-out">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">

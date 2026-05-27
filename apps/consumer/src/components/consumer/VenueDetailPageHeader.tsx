@@ -68,7 +68,7 @@ export function VenueDetailPageHeader({
       <Link
         href="/discover/swipe"
         aria-label="Back"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground border-border border transition hover:bg-muted"
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
@@ -84,7 +84,7 @@ export function VenueDetailPageHeader({
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
           saved
             ? "bg-pink-gradient text-white shadow-sm"
-            : "bg-white/95 text-zinc-900 hover:bg-white",
+            : "bg-card text-foreground border-border border hover:bg-muted",
         )}
       >
         <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
@@ -93,7 +93,7 @@ export function VenueDetailPageHeader({
         type="button"
         onClick={onShare}
         aria-label="Share"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:bg-white"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground border-border border transition hover:bg-muted"
       >
         <Share2 className="h-4 w-4" />
       </button>

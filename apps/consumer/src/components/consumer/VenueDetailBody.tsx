@@ -1078,7 +1078,7 @@ export function VenueDetailActionBar({
   }
 
   return (
-    <div className="border-border flex shrink-0 flex-col gap-2 border-t bg-black/50 px-4 pt-3 pb-4 backdrop-blur">
+    <div className="border-border bg-background/85 flex shrink-0 flex-col gap-2 border-t px-4 pt-3 pb-4 backdrop-blur">
       <button
         type="button"
         onClick={onSaveAndReserve}
