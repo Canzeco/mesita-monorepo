@@ -27,6 +27,7 @@ import {
   Pencil,
   Info,
   Crown,
+  Navigation,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
@@ -172,11 +173,10 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   // "$200–300"). Quick-view surfaces — swipe, catalog, map — keep
   // rendering price_level as the $-symbol shorthand. Closing time
   // moves out of the summary meta — the Hours box owns it.
-  const meta = [venue.category, venue.price_range, `${venue.distance_km} km`];
   const isPartner = venue.listing_type === "partner";
   // Star rating in the Summary uses the Google source for now — easiest
   // single-number stand-in until we surface a combined Mesita+Google
-  // headline rating. Renders inline at the start of the meta row.
+  // headline rating.
   const googleRating = venue.google.rating.toFixed(1);
   const googleCount = venue.google.count.toLocaleString("en-US");
   // Active reward chip — first-visit users see the welcome rate,
@@ -206,20 +206,34 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
       <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
-      {/* Rating sits as its own atom on the left; the category/price/distance
-          list runs separately. The faint middot in between is a visual hinge,
-          not a list separator, so the eye can land on the rating first. */}
-      <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <span className="inline-flex items-center gap-1">
-          <Star
-            className="h-4 w-4 fill-amber-400 text-amber-400"
-            strokeWidth={0}
-          />
-          <span className="text-foreground font-semibold">{googleRating}</span>
-          <span className="tabular-nums">({googleCount})</span>
-        </span>
-        <span aria-hidden className="opacity-30">·</span>
-        <span>{meta.join(" · ")}</span>
+      {/* Fact grid — four cells, two columns, no nested backgrounds. Splits
+          what used to be a middot-soup meta line into discrete atoms so the
+          eye can scan rating · cuisine · price · distance independently.
+          The Star fills amber to anchor "this is a rating"; the other icons
+          stay neutral so they read as facts, not status. */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+        <FactCell
+          icon={Star}
+          iconClass="fill-amber-400 text-amber-400"
+          value={googleRating}
+          sub={`${googleCount} reviews`}
+        />
+        <FactCell
+          icon={Utensils}
+          value={venue.category}
+          sub="cuisine"
+          capitalize
+        />
+        <FactCell
+          icon={Tags}
+          value={venue.price_range}
+          sub="per person"
+        />
+        <FactCell
+          icon={Navigation}
+          value={`${venue.distance_km} km`}
+          sub="from you"
+        />
       </div>
       {/* Chip row — promo + trust + live status, all the same chip size so
           the eye reads them as a set. Cashback retains its loud pink fill
@@ -264,6 +278,45 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
         </p>
       </div>
     </Box>
+  );
+}
+
+// One cell of the Overview fact grid. Icon + bold value + muted sub label.
+// No background; the parent Box owns the surface. Capitalize flips the
+// first letter for fields stored lowercase (category enum).
+function FactCell({
+  icon: Icon,
+  iconClass,
+  value,
+  sub,
+  capitalize,
+}: {
+  icon: LucideIcon;
+  iconClass?: string;
+  value: string;
+  sub: string;
+  capitalize?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon
+        className={cn("text-muted-foreground mt-0.5 h-4 w-4 shrink-0", iconClass)}
+        strokeWidth={iconClass?.includes("fill-") ? 0 : undefined}
+      />
+      <div className="min-w-0">
+        <p
+          className={cn(
+            "text-foreground text-sm font-semibold leading-tight",
+            capitalize && "capitalize",
+          )}
+        >
+          {value}
+        </p>
+        <p className="text-muted-foreground text-[11px] leading-tight">
+          {sub}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -366,9 +419,9 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
         />
         <ExternalCard
           logo={<FacebookLogo />}
-          icon="star"
-          value={venue.facebook.rating.toFixed(1)}
-          meta={`${formatCount(venue.facebook.followers, false)} followers`}
+          icon="users"
+          value={formatCount(venue.facebook.followers, false)}
+          meta="followers"
         />
       </div>
     </Box>
