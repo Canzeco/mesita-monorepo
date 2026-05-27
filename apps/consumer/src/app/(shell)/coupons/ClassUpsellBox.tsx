@@ -95,9 +95,11 @@ export function ClassUpsellBox() {
         <li className="flex items-start gap-2">
           <Instagram className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
           <span>
-            <strong className="font-semibold text-white">Instagram</strong>{" "}
-            — connect your account and post a story each time you visit a
-            partner.
+            <strong className="font-semibold text-white">
+              Instagram Stories
+            </strong>{" "}
+            — connect your account and post a story each time you visit
+            a partner.
           </span>
         </li>
         <li className="flex items-start gap-2">

@@ -442,7 +442,7 @@ function VenuesTab() {
           Know someone who runs a restaurant or bar?
         </h2>
         <p className="text-muted-foreground mt-2 text-sm">
-          Invite them to set up on Mesita — free, ~10 min.
+          Invite them to set up on Mesita — free, ~8 min.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2.5">
@@ -467,7 +467,7 @@ function VenuesTab() {
           sub="Influenced spend, repeat rate, ROAS in one dashboard."
         />
         <FeatureCard
-          title="Setup in 10 minutes"
+          title="Setup in 8 minutes"
           sub="All from a browser — no app, no hardware, no POS."
         />
       </div>
@@ -476,7 +476,7 @@ function VenuesTab() {
         label="Send invitation"
         share={{
           title: "Mesita for venues",
-          text: "I think you'd love Mesita — setup is ~10 min and free to start.",
+          text: "I think you'd love Mesita — setup is ~8 min and free to start.",
           url: "https://www.mesita.ai",
         }}
       />

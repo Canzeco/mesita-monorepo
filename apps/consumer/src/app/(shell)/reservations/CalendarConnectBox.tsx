@@ -1,50 +1,46 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import { toast } from "@/lib/toast";
 
-// Calendar-sync card at the top of /reservations. Lists the three
-// provider integrations as branded rows so the user recognises the
-// destination at a glance — Google Calendar uses its real four-color
-// mark, Apple Calendar mirrors the iOS app's white-with-red-31 look,
-// Outlook uses the Microsoft blue calendar treatment.
-//
-// Each row is a tappable button that toasts the "coming soon" state.
-// Post-MVP each row opens that provider's OAuth flow.
+// Calendar-sync card at the top of /reservations. Three providers
+// laid out as a single 3-column row of branded tiles so the surface
+// stays compact and the choice is one glance, not a scroll. Each
+// tile is its own button that toasts the "coming soon" state and
+// will own its OAuth flow post-MVP.
 
 type ProviderId = "google" | "apple" | "outlook";
 
 const PROVIDERS: {
   id: ProviderId;
   label: string;
-  sub: string;
+  fullLabel: string; // used in the toast for clarity
   Logo: React.FC;
 }[] = [
   {
     id: "google",
-    label: "Google Calendar",
-    sub: "Auto-add bookings, get reminders",
+    label: "Google",
+    fullLabel: "Google Calendar",
     Logo: GoogleCalendarLogo,
-  },
-  {
-    id: "apple",
-    label: "Apple Calendar",
-    sub: "iCloud subscription · syncs to Mac, iPhone, iPad",
-    Logo: AppleCalendarLogo,
   },
   {
     id: "outlook",
     label: "Outlook",
-    sub: "Microsoft 365 · work + personal accounts",
+    fullLabel: "Outlook",
     Logo: OutlookLogo,
+  },
+  {
+    id: "apple",
+    label: "Apple",
+    fullLabel: "Apple Calendar",
+    Logo: AppleCalendarLogo,
   },
 ];
 
 export function CalendarConnectBox() {
   function onConnect(p: ProviderId) {
-    const label = PROVIDERS.find((x) => x.id === p)?.label ?? p;
+    const fullLabel = PROVIDERS.find((x) => x.id === p)?.fullLabel ?? p;
     toast.action(
-      `${label} sync is coming soon — we'll auto-add reservations the moment you connect.`,
+      `${fullLabel} sync is coming soon — we'll auto-add reservations the moment you connect.`,
       { label: "Notify me", onClick: () => {} },
     );
   }
@@ -63,31 +59,22 @@ export function CalendarConnectBox() {
         </p>
       </header>
 
-      <ul className="flex flex-col gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {PROVIDERS.map((p) => (
-          <li key={p.id}>
-            <button
-              type="button"
-              onClick={() => onConnect(p.id)}
-              className="bg-card border-border hover:bg-muted/40 group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition active:scale-[0.99]"
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-                <p.Logo />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{p.label}</span>
-                <span className="text-muted-foreground block truncate text-[11px]">
-                  {p.sub}
-                </span>
-              </span>
-              <ChevronRight
-                className="text-muted-foreground h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
-                strokeWidth={2}
-              />
-            </button>
-          </li>
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onConnect(p.id)}
+            aria-label={`Connect ${p.fullLabel}`}
+            className="bg-card border-border hover:bg-muted/40 flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center transition active:scale-[0.99]"
+          >
+            <p.Logo />
+            <span className="text-[12px] font-semibold leading-tight">
+              {p.label}
+            </span>
+          </button>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }
