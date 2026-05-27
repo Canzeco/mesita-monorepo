@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Bookmark } from "lucide-react";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
-import { SAVED_VENUES } from "@/lib/consumer-data";
+import { SAVED_VENUES } from "@/lib/mock/saved-venues-mock";
 import { mockVenue } from "@/lib/mock/venue";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
