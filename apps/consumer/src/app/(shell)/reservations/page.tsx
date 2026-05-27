@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { ReservationCard } from "@/components/consumer/ReservationCard";
 import { CalendarConnectBox } from "./CalendarConnectBox";
+import { WhatsAppRemindersBox } from "./WhatsAppRemindersBox";
 import {
   MOCK_RESERVATIONS,
   type ReservationItem,
@@ -61,8 +62,9 @@ export default function ReservationsPage() {
         </p>
       </div>
 
-      <div className="px-4 pt-3">
+      <div className="flex flex-col gap-3 px-4 pt-3">
         <CalendarConnectBox />
+        <WhatsAppRemindersBox />
       </div>
 
       <div className="px-4 pt-4">
