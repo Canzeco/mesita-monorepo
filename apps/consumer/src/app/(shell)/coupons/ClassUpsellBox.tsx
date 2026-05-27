@@ -9,7 +9,7 @@ import {
   CreditCard,
   Mail,
 } from "lucide-react";
-import { CURRENT_USER, TIERS } from "@/lib/consumer-data";
+import { CURRENT_USER } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
 // Promo strip at the top of /coupons. Single paragraph folds the
@@ -156,5 +156,3 @@ export function ClassUpsellBox() {
     </Link>
   );
 }
-
-void TIERS;
