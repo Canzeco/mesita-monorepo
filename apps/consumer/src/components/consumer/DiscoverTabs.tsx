@@ -44,7 +44,16 @@ export function DiscoverTabs() {
 
   return (
     <div className="px-3 pt-2 pb-1">
-      <div className="border-border bg-card/70 flex items-center gap-1 rounded-full border p-1 backdrop-blur">
+      {/*
+        Five tabs share equal flex-1 width; the longest label ("AI
+        Search") used to wrap to two lines inside the active pill at
+        narrow viewports. Tightening padding (px-2 from px-2.5), gap
+        (gap-1 from gap-1.5), font (11px from 12px), and icon size
+        (h-3 from h-3.5) buys back ~12px per column — enough that "AI
+        Search" fits inline. `whitespace-nowrap` is the belt-and-braces
+        guarantee against future longer labels wrapping.
+      */}
+      <div className="border-border bg-card/70 flex items-center gap-0.5 rounded-full border p-1 backdrop-blur">
         {TABS.map(({ href, label, Icon }) => {
           const active = activeHref === href;
           return (
@@ -56,13 +65,13 @@ export function DiscoverTabs() {
                 if (href !== pathname) setOptimisticHref(href);
               }}
               className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-2 text-[12px] font-medium transition",
+                "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-[11px] font-medium whitespace-nowrap transition",
                 active
                   ? "bg-foreground text-background shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-3 w-3 shrink-0" />
               {label}
             </Link>
           );
