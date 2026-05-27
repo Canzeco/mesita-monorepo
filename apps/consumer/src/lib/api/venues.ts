@@ -143,13 +143,6 @@ export async function apiRecommendCatalog(
     summary: data.summary,
   };
 }
-
-function looksLikeUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    s,
-  );
-}
-
 // Legacy rows may carry http:// photos. Next.js Image rejects them and
 // would crash the whole page; filter to https before render.
 function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
