@@ -1132,7 +1132,7 @@ export function VenueDetailActionBar({
           className={cn("h-4 w-4", saved && "fill-current")}
           strokeWidth={2}
         />
-        {saved ? "Saved" : "Save coupon"}
+        {saved ? "Coupon saved" : "Save coupon"}
       </button>
       <button
         type="button"
