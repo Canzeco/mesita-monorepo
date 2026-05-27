@@ -157,7 +157,12 @@ export function VenueSectionNav({ sections }: { sections: Section[] }) {
 
   return (
     <nav
-      className="bg-background/85 border-border sticky top-[60px] z-10 -mx-4 border-b backdrop-blur"
+      // sticky top-0 anchors the strip to the very top of the modal's
+      // scroll area — which sits flush below the modal header now that
+      // the header lives outside the scroll container. The previous
+      // `top-[60px]` left a 60px gap of empty modal background between
+      // the header and the strip during scroll.
+      className="bg-background/85 border-border sticky top-0 z-10 -mx-4 border-b backdrop-blur"
       aria-label="Venue sections"
     >
       <div
