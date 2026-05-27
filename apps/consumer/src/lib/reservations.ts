@@ -96,12 +96,7 @@ function getServerSnapshot() {
   return EMPTY;
 }
 
-export function listReservations(): ReadonlyArray<Reservation> {
-  ensureHydrated();
-  return cache;
-}
-
-export function addReservation(input: {
+function addReservation(input: {
   venueId: string;
   venueName: string;
   date: string;
@@ -125,7 +120,7 @@ export function addReservation(input: {
   return r;
 }
 
-export function cancelReservation(id: string): void {
+function cancelReservation(id: string): void {
   ensureHydrated();
   const next = cache.map((r) =>
     r.id === id ? { ...r, status: "cancelled" as const } : r,
@@ -133,10 +128,6 @@ export function cancelReservation(id: string): void {
   cache = next;
   writeToStorage(cache);
   emit();
-}
-
-export function useReservations(): ReadonlyArray<Reservation> {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 export function useReservationActions() {
