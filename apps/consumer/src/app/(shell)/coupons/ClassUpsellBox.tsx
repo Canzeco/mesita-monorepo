@@ -8,6 +8,9 @@ import {
   Instagram,
   CreditCard,
   Mail,
+  Key,
+  Gift,
+  Star,
 } from "lucide-react";
 import { CURRENT_USER, TIERS } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
@@ -117,9 +120,34 @@ export function ClassUpsellBox() {
         </li>
       </ul>
 
+      {/* What else higher classes get — beyond just bigger coupons. The
+          paths section answered "how to climb"; this answers "why care".
+          Three perks, terse, separated from the discount story above so
+          the coupon angle and the lifestyle angle each get their moment. */}
+      <p className="mt-5 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
+        Higher classes also get
+      </p>
+      <ul className="mt-2 flex flex-col gap-2 text-[12.5px] leading-snug text-white/90">
+        <li className="flex items-start gap-2">
+          <Key className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
+          <span>Direct access to invite-only venues.</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Gift className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
+          <span>
+            Gifts at the table — welcome drinks, amuse-bouches, the
+            chef&apos;s special on the house.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Star className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
+          <span>Priority booking when a venue is full.</span>
+        </li>
+      </ul>
+
       {/* Tier ladder dots — visualizes the four classes + where the user
           currently sits. */}
-      <div className="mt-4 flex items-center gap-1.5">
+      <div className="mt-5 flex items-center gap-1.5">
         {TIER_ORDER.map((tier) => {
           const reached = TIER_ORDER.indexOf(tier) <= currentIdx;
           return (

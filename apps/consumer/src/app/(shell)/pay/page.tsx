@@ -5,6 +5,7 @@ import { errMsg } from "@/lib/utils";
 import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
+import { ActivityFeed } from "./ActivityFeed";
 
 // /pay — the scan-at-the-bill surface. Single page: the consumer's QR
 // code on top, the cashback balance card below. Split out of /coupons
@@ -45,6 +46,7 @@ export default async function PayPage() {
           <CashbackBalanceCard
             cashbackBalanceCents={profile.cashback_balance_cents}
           />
+          <ActivityFeed />
         </div>
       </div>
     </div>
