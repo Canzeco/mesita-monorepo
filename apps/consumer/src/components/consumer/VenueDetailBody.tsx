@@ -1033,17 +1033,19 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
 // the scrollable body so its opaque buttons can't occlude content. shrink-0
 // keeps it from compressing inside the parent's flex-col.
 //
-// All three buttons are mock-functional: Save coupon toggles the venue in
-// the localStorage saved-venues store, the other two fire toast stubs
-// pending the real reservation Sheet (PR3). The pink "Save + reserve"
-// also bookmarks as a side effect so the toast's "View" CTA actually
-// takes the user somewhere useful.
+// Save coupon toggles the venue in the localStorage saved-venues store.
+// Reserve table opens the ReservationSheet via the onReserve callback
+// passed in by the parent layout (the sheet itself is mounted there because
+// it overlays the modal). Save + reserve bookmarks first, then opens the
+// sheet so a single tap covers both intents.
 export function VenueDetailActionBar({
   venueId,
   venueName,
+  onReserve,
 }: {
   venueId: string;
   venueName: string;
+  onReserve: () => void;
 }) {
   const router = useRouter();
   const { isSaved, toggle } = useSavedVenues();
@@ -1063,21 +1065,9 @@ export function VenueDetailActionBar({
     }
   }
 
-  function onReserve() {
-    toast.action(
-      `Reservation flow lands in PR #3 — meanwhile we saved ${venueName} for you`,
-      { label: "View", onClick: () => router.push("/saved") },
-    );
-    if (!saved) toggle(venueId);
-  }
-
   function onSaveAndReserve() {
     if (!saved) toggle(venueId);
-    toast.action(
-      `Saved ${venueName} — Don Memo will reserve when the booking sheet ships`,
-      { label: "View", onClick: () => router.push("/saved") },
-      { tone: "success" },
-    );
+    onReserve();
   }
 
   return (

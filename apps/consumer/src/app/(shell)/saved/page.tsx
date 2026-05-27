@@ -10,6 +10,10 @@ import { RESERVATIONS, COUPONS, SAVED_VENUES } from "@/lib/consumer-data";
 import type { SavedItem } from "@/lib/consumer-data";
 import { mockVenue } from "@/lib/mock/venue";
 import { useSavedVenues } from "@/lib/saved-venues";
+import {
+  useReservations,
+  type Reservation,
+} from "@/lib/reservations";
 import { toast } from "@/lib/toast";
 import type { Venue } from "@/lib/api/venues";
 import { cn } from "@/lib/utils";
@@ -92,6 +96,18 @@ export default function SavedPage() {
     setSaved(id, false);
     if (v) toast(`Removed ${v.name} from saved`);
   }
+
+  // Reservation panel — dynamic bookings from the ReservationSheet sit
+  // ABOVE the static fixture list so the user sees their own action at
+  // the top. Cancelled reservations move out of "upcoming" automatically.
+  const dynamicReservations = useReservations();
+  const reservationItems = useMemo<SavedItem[]>(() => {
+    const dynamic = dynamicReservations
+      .filter((r) => r.status === "upcoming")
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map(toSavedItem);
+    return [...dynamic, ...RESERVATIONS];
+  }, [dynamicReservations]);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -183,7 +199,7 @@ export default function SavedPage() {
         ) : tab === "reservations" ? (
           resFilter === "upcoming" ? (
             <div className="flex flex-col gap-3">
-              {RESERVATIONS.map((r) => (
+              {reservationItems.map((r) => (
                 <SavedItemCard
                   key={r.id}
                   item={r}
@@ -323,4 +339,55 @@ function EmptyState() {
       Nothing here yet.
     </div>
   );
+}
+
+// Project a dynamic Reservation onto the existing SavedItem shape so the
+// rich SavedItemCard can render it without changes. Most fields get
+// sensible defaults; the venueId is the only one that needs to resolve to
+// an entry in venueById() inside the ticket workflow — for the mock that
+// means "mochomos-monterrey" or any of the fixture-known ids.
+function toSavedItem(r: Reservation): SavedItem {
+  const when = formatWhen(r.date, r.time);
+  return {
+    id: r.id,
+    venueId: r.venueId,
+    steps: ["R", "P", "C"],
+    badgeTone: "pink",
+    state: "arrive",
+    totalDots: 7,
+    doneDots: 0,
+    cashback: null,
+    when,
+    partySize: r.partySize,
+    cashbackCap: undefined,
+    reservationStatus: "confirmed",
+  };
+}
+
+function formatWhen(iso: string, time: string): string {
+  // "2026-05-28" + "20:00" → "Wed May 28 · 8:00 PM"
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dt.getDay()];
+  const month = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ][dt.getMonth()];
+  const [hStr, mStr] = time.split(":");
+  const h = Number(hStr);
+  const min = Number(mStr);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = ((h + 11) % 12) + 1;
+  const minPart = min === 0 ? "" : `:${String(min).padStart(2, "0")}`;
+  return `${weekday} ${month} ${d} · ${h12}${minPart} ${period}`;
 }
