@@ -9,7 +9,7 @@ import {
   CreditCard,
   Mail,
 } from "lucide-react";
-import { CURRENT_USER } from "@/lib/consumer-data";
+import { CURRENT_USER, TIER_ORDER } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
 // Promo strip at the top of /coupons. Single paragraph folds the
@@ -29,8 +29,6 @@ const TIER_PROPER: Record<string, string> = {
   gold: "Gold",
   diamond: "Diamond",
 };
-
-const TIER_ORDER = ["bronze", "silver", "gold", "diamond"] as const;
 
 export function ClassUpsellBox() {
   const current = CURRENT_USER.tier;
