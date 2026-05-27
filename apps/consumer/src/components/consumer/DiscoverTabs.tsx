@@ -3,24 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, LayoutGrid, Map as MapIcon, Search, Bookmark } from "lucide-react";
+import { Flame, LayoutGrid, Map as MapIcon, Search, Sparkles, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Saved joined the Discover sub-nav when the BottomNav restructured to
-// (Discover · Reservations · Coupons · Share · Profile). Bookmarking a
-// venue is part of how you find places, not a wallet concern — so the
-// saved list lives next to Swipe / Catalog / Map / AI rather than
-// taking its own top-level tab.
+// Six Discover modes, ordered left-to-right as a friction ramp:
 //
-// AI keeps the "AI" label but wears the magnifying-glass (Search) icon
-// rather than the Sparkles glyph — the action the user performs there
-// is still "search", just powered by an LLM. Sparkles read as decorative
-// and didn't say what tap-here did; a lupa is universally legible.
+//   no typing                  │ typed query     │ recall
+//   Swipe → Map → Catalog      │ Search → AI     │ Saved
+//   flick  spatial scroll-grid │ keyword sentence │ yours
+//
+// Within "no typing", Swipe is the brand-defining default (lowest
+// friction, leftmost); Map adds a spatial filter without input; Catalog
+// is the slowest of the three (broader scan, more deliberate). Within
+// "typed", Search owns single-word lookups (la lupa) and AI handles
+// conversational queries via Don Memo. Saved sits outside the discovery
+// modes — it's *recall*, not discovery — so it always anchors the right
+// end.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
-  { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
-  { href: "/discover/ai", label: "AI", Icon: Search },
+  { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
+  { href: "/discover/search", label: "Search", Icon: Search },
+  { href: "/discover/ai", label: "AI", Icon: Sparkles },
   { href: "/discover/saved", label: "Saved", Icon: Bookmark },
 ];
 
