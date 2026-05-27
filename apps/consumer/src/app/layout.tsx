@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -52,10 +51,10 @@ export default function RootLayout({
     >
       <body className="bg-background text-foreground flex min-h-full flex-col">
         {children}
-        {/* Sonner toaster — surfaces via toast() / toast.success() etc.
-            from anywhere in the tree. Tucked at the body root so
-            stacking context is predictable. */}
-        <Toaster richColors closeButton position="bottom-center" />
+        {/* The consumer shell mounts its own <Toaster /> (see
+            src/components/consumer/Toaster.tsx + src/lib/toast.ts) so the
+            toaster surfaces inside the mobile-frame stacking context,
+            above the bottom nav. No root-level toaster is needed. */}
       </body>
     </html>
   );
