@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Coins,
   Bookmark,
@@ -11,24 +12,30 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Live-activity strip below the cashback card on /pay. Mixes monetary
-// events (earned cashback) with non-monetary ones (saved, booked,
-// upgraded, swiped) so the surface reads as alive — not just a
-// transaction log. Adds social-proof energy to what would otherwise be
-// a wallet-empty page for new users.
+// Activity strip below the cashback card on /pay. Two tabs:
 //
-// Mocked for now. Once the activity stream is live this becomes a
-// short server fetch + Supabase realtime subscription.
+//   Me    — the user's own events. The default. Booked, saved,
+//           earned, upgraded — the surface treats personal history
+//           as the core thing because that's what the user actually
+//           cares about on a wallet page.
+//
+//   Live  — anonymised public activity stream. Social proof + energy
+//           for new accounts whose "Me" tab is still empty. Pulsing
+//           dot on the tab pill telegraphs that the feed is moving.
+//
+// Both lists share the same KIND_META so the icon language is
+// consistent. The presence/absence of an `@handle` is the only
+// visual hint for which feed you're on.
 
+type Tab = "me" | "live";
 type ActivityKind = "earned" | "saved" | "booked" | "upgraded" | "swiped";
 
 type Activity = {
   id: string;
   kind: ActivityKind;
-  handle: string;
-  /** Verb phrase ending — used after the handle. */
+  /** Visible only on the Live feed. Omit for private items. */
+  handle?: string;
   verb: string;
-  /** Optional venue name highlighted in the line. */
   venue?: string;
   when: string;
 };
@@ -38,11 +45,7 @@ const KIND_META: Record<
   { Icon: LucideIcon; bg: string; color: string }
 > = {
   earned: { Icon: Coins, bg: "bg-pink-500/10", color: "text-pink-600" },
-  saved: {
-    Icon: Bookmark,
-    bg: "bg-amber-500/10",
-    color: "text-amber-600",
-  },
+  saved: { Icon: Bookmark, bg: "bg-amber-500/10", color: "text-amber-600" },
   booked: {
     Icon: CalendarCheck,
     bg: "bg-emerald-500/10",
@@ -52,9 +55,47 @@ const KIND_META: Record<
   swiped: { Icon: Heart, bg: "bg-rose-500/10", color: "text-rose-600" },
 };
 
-const ACTIVITY: Activity[] = [
+// ── Private / personal activity ──────────────────────────────────────────
+// Once consumer-list-activity ships these come from a per-user query.
+// Verbs lead with "You" so the row reads naturally in second person.
+
+const MY_ACTIVITY: Activity[] = [
   {
-    id: "a1",
+    id: "m1",
+    kind: "earned",
+    verb: "You earned MX$340 cashback at",
+    venue: "Casa Luminar",
+    when: "yesterday",
+  },
+  {
+    id: "m2",
+    kind: "booked",
+    verb: "You booked a table at",
+    venue: "Neón Bar",
+    when: "2 days ago",
+  },
+  {
+    id: "m3",
+    kind: "saved",
+    verb: "You saved a coupon at",
+    venue: "Mar Verde",
+    when: "3 days ago",
+  },
+  {
+    id: "m4",
+    kind: "upgraded",
+    verb: "You upgraded to",
+    venue: "Mesita Gold",
+    when: "1 week ago",
+  },
+];
+
+// ── Live / community activity ────────────────────────────────────────────
+// Anonymised: handles, venues, and amounts get shuffled before render.
+
+const LIVE_ACTIVITY: Activity[] = [
+  {
+    id: "l1",
     kind: "earned",
     handle: "@maria",
     verb: "earned MX$120 cashback at",
@@ -62,7 +103,7 @@ const ACTIVITY: Activity[] = [
     when: "2 min ago",
   },
   {
-    id: "a2",
+    id: "l2",
     kind: "booked",
     handle: "@carlos",
     verb: "booked a table at",
@@ -70,7 +111,7 @@ const ACTIVITY: Activity[] = [
     when: "5 min ago",
   },
   {
-    id: "a3",
+    id: "l3",
     kind: "upgraded",
     handle: "@sofia",
     verb: "just upgraded to",
@@ -78,7 +119,7 @@ const ACTIVITY: Activity[] = [
     when: "8 min ago",
   },
   {
-    id: "a4",
+    id: "l4",
     kind: "saved",
     handle: "@diego",
     verb: "saved a coupon at",
@@ -86,7 +127,7 @@ const ACTIVITY: Activity[] = [
     when: "12 min ago",
   },
   {
-    id: "a5",
+    id: "l5",
     kind: "earned",
     handle: "@lucia",
     verb: "earned MX$340 cashback at",
@@ -94,7 +135,7 @@ const ACTIVITY: Activity[] = [
     when: "18 min ago",
   },
   {
-    id: "a6",
+    id: "l6",
     kind: "swiped",
     handle: "@pat",
     verb: "swiped right on",
@@ -104,27 +145,38 @@ const ACTIVITY: Activity[] = [
 ];
 
 export function ActivityFeed() {
+  const [tab, setTab] = useState<Tab>("me");
+  const items = tab === "me" ? MY_ACTIVITY : LIVE_ACTIVITY;
+
   return (
     <section className="flex flex-col gap-3">
-      <header className="flex items-baseline justify-between">
-        <div>
-          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-            Live activity
-          </p>
-          <h2 className="font-display mt-0.5 text-lg font-semibold tracking-tight">
-            What&apos;s happening on Mesita
-          </h2>
-        </div>
-        <span className="bg-emerald-500/10 text-emerald-700 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
-          <span className="bg-emerald-500 relative flex h-1.5 w-1.5 rounded-full">
-            <span className="bg-emerald-500/60 absolute inset-0 animate-ping rounded-full" />
-          </span>
-          Live
-        </span>
+      <header>
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+          Activity
+        </p>
+        <h2 className="font-display mt-0.5 text-lg font-semibold tracking-tight">
+          {tab === "me" ? "Your recent moves" : "What's happening on Mesita"}
+        </h2>
       </header>
 
+      <div className="border-border bg-card flex rounded-full border p-1">
+        <TabButton
+          active={tab === "me"}
+          onClick={() => setTab("me")}
+          label="Me"
+          count={MY_ACTIVITY.length}
+        />
+        <TabButton
+          active={tab === "live"}
+          onClick={() => setTab("live")}
+          label="Live"
+          count={LIVE_ACTIVITY.length}
+          dot
+        />
+      </div>
+
       <ul className="flex flex-col gap-2">
-        {ACTIVITY.map((a) => {
+        {items.map((a) => {
           const meta = KIND_META[a.kind];
           return (
             <li
@@ -144,7 +196,10 @@ export function ActivityFeed() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-foreground text-[13px] leading-snug">
-                  <strong className="font-semibold">{a.handle}</strong>{" "}
+                  {a.handle && (
+                    <strong className="font-semibold">{a.handle}</strong>
+                  )}
+                  {a.handle ? " " : ""}
                   {a.verb}{" "}
                   {a.venue && (
                     <strong className="text-foreground font-semibold">
@@ -161,10 +216,65 @@ export function ActivityFeed() {
         })}
       </ul>
 
-      <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-[11px]">
-        <Sparkles className="h-3 w-3" />
-        Anonymised — handles, venues, and amounts are shuffled.
-      </p>
+      {tab === "live" && (
+        <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-[11px]">
+          <Sparkles className="h-3 w-3" />
+          Anonymised — handles, venues, and amounts are shuffled.
+        </p>
+      )}
     </section>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  label,
+  count,
+  dot = false,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  dot?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition",
+        active ? "bg-foreground text-background" : "text-muted-foreground",
+      )}
+    >
+      {dot && (
+        <span className="relative flex h-1.5 w-1.5">
+          <span
+            className={cn(
+              "absolute inset-0 animate-ping rounded-full",
+              active ? "bg-emerald-300/70" : "bg-emerald-500/60",
+            )}
+          />
+          <span
+            className={cn(
+              "relative h-1.5 w-1.5 rounded-full",
+              active ? "bg-emerald-300" : "bg-emerald-500",
+            )}
+          />
+        </span>
+      )}
+      {label}
+      <span
+        className={cn(
+          "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+          active
+            ? "bg-background/20 text-background"
+            : "bg-muted text-muted-foreground",
+        )}
+      >
+        {count}
+      </span>
+    </button>
   );
 }
