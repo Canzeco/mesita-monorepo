@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, LayoutGrid, Map as MapIcon, Sparkles, Bookmark } from "lucide-react";
+import { Flame, LayoutGrid, Map as MapIcon, Search, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Saved joined the Discover sub-nav when the BottomNav restructured to
@@ -11,11 +11,16 @@ import { cn } from "@/lib/utils";
 // venue is part of how you find places, not a wallet concern — so the
 // saved list lives next to Swipe / Catalog / Map / AI rather than
 // taking its own top-level tab.
+//
+// AI keeps the "AI" label but wears the magnifying-glass (Search) icon
+// rather than the Sparkles glyph — the action the user performs there
+// is still "search", just powered by an LLM. Sparkles read as decorative
+// and didn't say what tap-here did; a lupa is universally legible.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
-  { href: "/discover/ai", label: "AI", Icon: Sparkles },
+  { href: "/discover/ai", label: "AI", Icon: Search },
   { href: "/discover/saved", label: "Saved", Icon: Bookmark },
 ];
 
