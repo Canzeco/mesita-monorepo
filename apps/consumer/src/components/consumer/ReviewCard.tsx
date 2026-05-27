@@ -6,6 +6,7 @@ import { Star } from "lucide-react";
 import { GoogleLogo, MesitaMark } from "./BrandLogos";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
+import { TIER_AVATAR_BG, TIER_TEXT } from "@/lib/tier-styles";
 
 // Individual review card — same skeleton for Mesita and Google, with the
 // source-specific bits (italic-serif quote vs sans, tier chip vs none,
@@ -20,20 +21,6 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 //   [Photo thumbnail]                                        (when present)
 
 const LONG_QUOTE_THRESHOLD = 220;
-
-const TIER_AVATAR_BG: Record<Tier, string> = {
-  bronze: "bg-tier-bronze",
-  silver: "bg-tier-silver",
-  gold: "bg-tier-gold",
-  diamond: "bg-tier-diamond",
-};
-
-const TIER_TEXT: Record<Tier, string> = {
-  bronze: "text-bronze",
-  silver: "text-silver",
-  gold: "text-gold",
-  diamond: "text-sky-600",
-};
 
 const TIER_LABEL: Record<Tier, string> = {
   bronze: "BRONZE",

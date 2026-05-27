@@ -61,6 +61,7 @@ const NAV_SECTIONS = [
 ] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
+import { TIER_AVATAR_BG, TIER_TEXT } from "@/lib/tier-styles";
 
 // Pure presentation for the venue detail surface. The two callers (full
 // page at /venues/[id] and the intercepted modal at @modal/(.)venues/[id])
@@ -524,26 +525,10 @@ function ExternalCard({
 
 // ── 4. Relevant reviews (merged carousel) ───────────────────────────────
 
-// Tier label / avatar bg / text tokens shared between IndividualReviewsBox
-// (mesita visitor cards) and the Rewards box (tier cards). Diamond text
-// reads as blue here; the global --tier-diamond gradient stays violet.
-
-const TIER_AVATAR_BG: Record<Tier, string> = {
-  bronze: "bg-tier-bronze",
-  silver: "bg-tier-silver",
-  gold: "bg-tier-gold",
-  diamond: "bg-tier-diamond",
-};
-const TIER_TEXT: Record<Tier, string> = {
-  bronze: "text-bronze",
-  silver: "text-silver",
-  gold: "text-gold",
-  // Diamond text reads as blue across the venue page even though the
-  // tier-diamond gradient stripe still uses the violet token. Local
-  // override on purpose — the global tier-diamond token stays untouched
-  // so other apps (admin/business) keep their existing diamond hue.
-  diamond: "text-sky-600",
-};
+// TIER_AVATAR_BG and TIER_TEXT live in @/lib/tier-styles so the venue
+// page (Rewards box + ReviewCard) shares one source for these tokens.
+// Diamond text reads as blue here even though --tier-diamond stays
+// violet — see tier-styles.ts for the rationale.
 
 function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
   // Interleave Mesita visitors and Google reviews so featured cards from
