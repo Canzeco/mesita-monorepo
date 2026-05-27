@@ -70,7 +70,7 @@ export async function apiListTeam(
   });
 }
 
-export type InviteEditorResult =
+type InviteEditorResult =
   | {
       mode: "linked";
       memberId: string;
@@ -104,7 +104,7 @@ export async function apiInviteEditor(
   );
 }
 
-export type InviteWaiterResult = {
+type InviteWaiterResult = {
   inviteId: string;
   token: string;
   phone: string | null;

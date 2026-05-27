@@ -186,7 +186,7 @@ export async function apiPlacesAutocomplete(
   return predictions;
 }
 
-export type EnrichCreateVenueResponse = {
+type EnrichCreateVenueResponse = {
   venue: { id: string; slug: string; name: string; status: VenueStatus };
   enrichment: EnrichmentReport;
 };
@@ -261,7 +261,7 @@ export type UpdateVenueInput = {
   segmentation_advanced_enabled?: boolean;
 };
 
-export type UpdatedVenue = Venue & {
+type UpdatedVenue = Venue & {
   phone: string | null;
   updated_at: string;
 };
