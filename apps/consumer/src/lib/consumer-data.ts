@@ -1,83 +1,12 @@
 export const TIER_ORDER = ["bronze", "silver", "gold", "diamond"] as const;
 type Tier = (typeof TIER_ORDER)[number];
 
-type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-
-type ExternalReview = {
-  source: "google" | "uber" | "facebook" | "instagram";
-  value: string;
-  meta: string;
-};
-
-type VenueVisitor = {
-  name: string;
-  handle: string;
-  followers: string;
-  tier: Tier;
-  community?: string;
-  quote: string;
-  avatar: string;
-  ratings: {
-    food: number;
-    service: number;
-    ambience: number;
-    value: number;
-  };
-};
-
-type VenueHour = { day: Weekday; label: string; range: string };
-
-type VenueMedia =
-  | { type: "image"; src: string }
-  | { type: "video"; src: string; poster?: string };
-
-export type Venue = {
-  id: string;
-  name: string;
-  category: string;
-  vibe: string;
-  priceLevel: 1 | 2 | 3 | 4;
-  distanceKm: number;
-  walkMinutes: number;
-  closesAt: string;
-  listingType: "partner" | "web";
-  cashbackPercent: number | null;
-  rating: number;
-  ratingExternal: number;
-  externalLabel: string;
-  reviewsCount: number;
-  photos: string[];
-  description: string;
-  area: string;
-  emoji: string;
-  media?: VenueMedia[];
-  coupon?: {
-    percent: number;
-    title: string;
-    sub: string;
-    status: "active" | "expired";
-  };
-  externalReviews?: ExternalReview[];
-  mesitaReviews?: {
-    food: number;
-    service: number;
-    ambiance: number;
-    overall: number;
-    total: number;
-  };
-  visitors?: VenueVisitor[];
-  menu?: { pages: number; updated: string };
-  hours?: VenueHour[];
-  todayLabel?: Weekday;
-  popularTimes?: { day: Weekday; note: string; bars: number[] }[];
-  contact?: { phone: string; website: string };
-  priceRange?: { min: number; max: number; currency: string };
-  dressCode?: string;
-  payment?: string[];
-  parkingInfo?: string;
-  access?: string[];
-  story?: string;
-};
+// NOTE: The original Lovable export shipped a large local `Venue` type
+// (with fields for popular-times bars, visitor avatars, etc.). Discover
+// surfaces now consume `Venue` from `@/lib/api/venues` — the EF-backed
+// shape — and the rich detail surface reads `VenueDetail` from
+// `@/lib/mock/venue`. This module no longer carries a Venue type; the
+// SAVED_VENUES export below is typed against the public api Venue.
 
 export const AI_SUGGESTIONS = [
   "Rooftop with a sunset view",
