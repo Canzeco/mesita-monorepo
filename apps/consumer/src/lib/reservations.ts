@@ -1,10 +1,18 @@
 // Reservations store — mock implementation backed by localStorage.
-// Mirrors the saved-venues.ts shape: module-scope cache +
-// useSyncExternalStore + cross-tab sync. Public API is what the future
-// `consumer-list-reservations` EF will return, so swapping the backend
-// in is a one-file change.
+//
+// Pared down to the actions the UI actually calls (`add` from
+// ReservationSheet, `cancel` reserved for the future cancel CTA). The
+// list itself is now rendered from `src/lib/mock/reservations-mock.ts`
+// (static MOCK_RESERVATIONS) and reads do not go through this store,
+// so the useSyncExternalStore subscriber plumbing the older revision
+// carried has been removed.
+//
+// localStorage is still written so that when `consumer-list-reservations`
+// lands a future migration can replay it as a backfill, and so the
+// /reservations page can light up the moment that EF replaces the static
+// mock without losing in-flight bookings.
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback } from "react";
 
 const STORAGE_KEY = "mesita:reservations";
 
@@ -24,11 +32,8 @@ type Reservation = {
   status: "upcoming" | "past" | "cancelled";
 };
 
-type Listener = () => void;
-
 let cache: ReadonlyArray<Reservation> = [];
 let hydrated = false;
-const listeners = new Set<Listener>();
 
 function readFromStorage(): Reservation[] {
   if (typeof window === "undefined") return [];
@@ -67,35 +72,6 @@ function ensureHydrated() {
   hydrated = true;
 }
 
-function emit() {
-  for (const l of listeners) l();
-}
-
-function subscribe(listener: Listener): () => void {
-  ensureHydrated();
-  listeners.add(listener);
-  function onStorage(e: StorageEvent) {
-    if (e.key !== STORAGE_KEY) return;
-    cache = readFromStorage();
-    emit();
-  }
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-function getSnapshot(): ReadonlyArray<Reservation> {
-  ensureHydrated();
-  return cache;
-}
-
-const EMPTY: ReadonlyArray<Reservation> = [];
-function getServerSnapshot() {
-  return EMPTY;
-}
-
 function addReservation(input: {
   venueId: string;
   venueName: string;
@@ -116,7 +92,6 @@ function addReservation(input: {
   };
   cache = [r, ...cache];
   writeToStorage(cache);
-  emit();
   return r;
 }
 
@@ -127,7 +102,6 @@ function cancelReservation(id: string): void {
   );
   cache = next;
   writeToStorage(cache);
-  emit();
 }
 
 export function useReservationActions() {
