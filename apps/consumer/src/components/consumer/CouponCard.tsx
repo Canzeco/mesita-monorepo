@@ -181,19 +181,28 @@ function LinkedReservationStub({
 }) {
   const isBooking = reservation.state === "booking";
   return (
-    <div className="text-muted-foreground flex items-center gap-1.5 border-t border-dashed border-border/70 px-3 py-1.5 text-[11px]">
-      <Calendar className="h-3 w-3 shrink-0 text-emerald-700" strokeWidth={2} />
-      <span className="text-muted-foreground tracking-wide uppercase text-[9px] font-bold">
-        Reservation tied
-      </span>
-      <span className="text-muted-foreground/60">·</span>
-      <span className="text-foreground/80 truncate">
-        {reservation.when}
-      </span>
+    <div className="flex items-center gap-2.5 border-t border-dashed border-border/70 bg-emerald-500/[0.04] px-3 py-2.5">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-500/20">
+        <Calendar className="h-4 w-4 text-emerald-700" strokeWidth={2} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
+          Reservation tied
+        </p>
+        <p className="text-foreground mt-0.5 text-[13px] leading-tight font-semibold truncate">
+          {reservation.when}{" "}
+          <span className="text-muted-foreground font-normal">
+            · {reservation.partySize}{" "}
+            {reservation.partySize === 1 ? "person" : "people"}
+          </span>
+        </p>
+      </div>
       <span
         className={cn(
-          "ml-auto inline-flex shrink-0 items-center rounded-full px-1.5 py-0 text-[9px] font-semibold",
-          isBooking ? "text-amber-700" : "text-emerald-700",
+          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+          isBooking
+            ? "border-amber-500/30 bg-amber-50 text-amber-800"
+            : "border-emerald-500/30 bg-emerald-50 text-emerald-800",
         )}
       >
         {isBooking ? "Booking" : "Booked"}

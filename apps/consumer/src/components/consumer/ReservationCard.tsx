@@ -140,25 +140,32 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
 function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
   const ig = coupon.kind === "instagram";
   return (
-    <div className="text-muted-foreground -mx-3 -mb-3 flex items-center gap-1.5 border-t border-dashed border-border/70 px-3 py-1.5 text-[11px]">
-      {ig ? (
-        <Instagram className="h-3 w-3 shrink-0 text-pink-500" strokeWidth={2} />
-      ) : (
-        <Ticket className="h-3 w-3 shrink-0 text-pink-500" strokeWidth={2} />
-      )}
-      <span className="text-muted-foreground tracking-wide uppercase text-[9px] font-bold">
-        Coupon tied
-      </span>
-      <span className="text-muted-foreground/60">·</span>
-      <span className="text-foreground/80 truncate">
-        {coupon.percent}% cashback
-      </span>
+    <div className="-mx-3 -mb-3 flex items-center gap-2.5 border-t border-dashed border-border/70 bg-pink-500/[0.04] px-3 py-2.5">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 ring-1 ring-pink-500/20">
+        {ig ? (
+          <Instagram className="h-4 w-4 text-pink-600" strokeWidth={2} />
+        ) : (
+          <Ticket className="h-4 w-4 text-pink-600" strokeWidth={2} />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
+          Coupon tied
+        </p>
+        <p className="text-foreground mt-0.5 text-[13px] leading-tight font-semibold">
+          <span className="text-pink-600">{coupon.percent}%</span>{" "}
+          cashback{" "}
+          <span className="text-muted-foreground font-normal">
+            · {coupon.tierLabel}
+          </span>
+        </p>
+      </div>
       <span
         className={cn(
-          "ml-auto inline-flex shrink-0 items-center rounded-full px-1.5 py-0 text-[9px] font-semibold",
+          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
           coupon.state === "active"
-            ? "text-emerald-700"
-            : "text-amber-700",
+            ? "border-emerald-500/30 bg-emerald-50 text-emerald-800"
+            : "border-amber-500/30 bg-amber-50 text-amber-800",
         )}
       >
         {coupon.state === "active" ? "Active" : "Pending"}
