@@ -1070,11 +1070,15 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
 // the scrollable body so its opaque buttons can't occlude content. shrink-0
 // keeps it from compressing inside the parent's flex-col.
 //
-// Save coupon toggles the venue in the localStorage saved-venues store.
-// Reserve table opens the ReservationSheet via the onReserve callback
-// passed in by the parent layout (the sheet itself is mounted there because
-// it overlays the modal). Save + reserve bookmarks first, then opens the
-// sheet so a single tap covers both intents.
+// Two equal buttons, full width each:
+//   • Save coupon — toggles the venue in the localStorage saved-venues
+//     store. Toast confirms; tap "View" to jump to /coupons.
+//   • Reserve table — opens the ReservationSheet via onReserve. Also
+//     silently ensures the venue is saved (so the coupon lands in the
+//     wallet) per the entity-split contract: every reservation links a
+//     coupon, so reserving implicitly issues one if none exists. We do
+//     this without an extra toast so the user just sees the reservation
+//     sheet — the coupon side-effect is invisible.
 export function VenueDetailActionBar({
   venueId,
   venueName,
@@ -1085,7 +1089,7 @@ export function VenueDetailActionBar({
   onReserve: () => void;
 }) {
   const router = useRouter();
-  const { isSaved, toggle } = useSavedVenues();
+  const { isSaved, toggle, setSaved } = useSavedVenues();
   const saved = isSaved(venueId);
 
   function onSaveCoupon() {
@@ -1093,8 +1097,8 @@ export function VenueDetailActionBar({
     toggle(venueId);
     if (nowSaved) {
       toast.action(
-        "Coupon saved to your wishlist",
-        { label: "View", onClick: () => router.push("/saved") },
+        "Coupon saved to your wallet",
+        { label: "View", onClick: () => router.push("/coupons") },
         { tone: "success" },
       );
     } else {
@@ -1102,46 +1106,42 @@ export function VenueDetailActionBar({
     }
   }
 
-  function onSaveAndReserve() {
-    if (!saved) toggle(venueId);
+  function onReserveTable() {
+    // Silently save the venue if it isn't already — reservations always
+    // carry a coupon, so this guarantees one lands in the wallet. No
+    // toast: the user's mental model is "I'm reserving", saving is an
+    // implicit side-effect they'd find confusing to confirm explicitly.
+    if (!saved) setSaved(venueId, true);
     onReserve();
   }
 
   return (
-    <div className="border-border bg-background/85 flex shrink-0 flex-col gap-2 border-t px-4 pt-3 pb-4 backdrop-blur">
+    <div className="border-border bg-background/85 flex shrink-0 gap-2 border-t px-4 pt-3 pb-4 backdrop-blur">
       <button
         type="button"
-        onClick={onSaveAndReserve}
-        className="bg-pink-gradient shadow-glow rounded-full py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99]"
+        onClick={onSaveCoupon}
+        aria-pressed={saved}
+        className={cn(
+          "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border py-3 text-sm font-semibold transition active:scale-[0.99]",
+          saved
+            ? "bg-pink-gradient shadow-glow border-transparent text-white hover:brightness-110"
+            : "border-border bg-card text-foreground hover:bg-muted",
+        )}
       >
-        Save + reserve
+        <Bookmark
+          className={cn("h-4 w-4", saved && "fill-current")}
+          strokeWidth={2}
+        />
+        {saved ? "Saved" : "Save coupon"}
       </button>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={onSaveCoupon}
-          aria-pressed={saved}
-          className={cn(
-            "border-border inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold transition active:scale-[0.99]",
-            saved
-              ? "border-pink-500/40 bg-pink-500/10 text-pink-300"
-              : "bg-card text-foreground hover:bg-muted",
-          )}
-        >
-          <Bookmark
-            className={cn("h-3.5 w-3.5", saved && "fill-current")}
-          />
-          {saved ? "Saved" : "Save coupon"}
-        </button>
-        <button
-          type="button"
-          onClick={onReserve}
-          className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold transition active:scale-[0.99]"
-        >
-          <CalendarCheck className="h-3.5 w-3.5" />
-          Reserve table
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onReserveTable}
+        className="bg-pink-gradient shadow-glow inline-flex flex-1 items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99]"
+      >
+        <CalendarCheck className="h-4 w-4" strokeWidth={2} />
+        Reserve table
+      </button>
     </div>
   );
 }
