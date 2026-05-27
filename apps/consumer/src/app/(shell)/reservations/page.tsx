@@ -2,27 +2,24 @@
 
 import { useMemo, useState } from "react";
 import { SimpleHeader } from "@/components/consumer/SimpleHeader";
-import { SavedItemCard } from "@/components/consumer/SavedItemCard";
-import { TicketSheet } from "@/components/consumer/TicketSheet";
+import { ReservationCard } from "@/components/consumer/ReservationCard";
 import { CalendarConnectBox } from "./CalendarConnectBox";
-import { RESERVATIONS } from "@/lib/consumer-data";
-import type { SavedItem } from "@/lib/consumer-data";
 import {
-  useReservations,
-  type Reservation,
-} from "@/lib/reservations";
+  MOCK_RESERVATIONS,
+  type ReservationItem,
+} from "@/lib/mock/reservations-mock";
 import { cn } from "@/lib/utils";
 
-// Top-level Reservations surface. Lifted out of the old /saved tabs when
-// the BottomNav restructured — reservations are their own first-class
-// entity now (separate from the coupons wallet). This page intentionally
-// shows ONLY booking details (date, time, party size, venue) — discount
-// info lives on the linked coupon in /coupons.
+// Top-level Reservations surface. Booking entries only — no money,
+// no cashback, no ticket-style step dots. The companion coupon (if any)
+// lives in /coupons.
 //
-// Backed by mock fixtures + the localStorage-backed useReservations
-// store. Once consumer-list-reservations is wired in (PR #27 in the
-// entity-split sequence) this becomes an EF call and the fixtures go
-// away.
+// Lifecycle pills: booking · booked · cancelled. The list filter
+// matches one bucket at a time:
+//
+//   Upcoming   booking + booked (anything still actionable)
+//   Past       any cancelled / completed
+//   Cancelled  cancelled only
 
 export const dynamic = "force-dynamic";
 
@@ -30,18 +27,29 @@ type Filter = "upcoming" | "past" | "cancelled";
 
 export default function ReservationsPage() {
   const [filter, setFilter] = useState<Filter>("upcoming");
-  const [openItem, setOpenItem] = useState<SavedItem | null>(null);
 
-  // Dynamic reservations from the ReservationSheet (localStorage) merged
-  // with the fixture seed so first-paint isn't empty.
-  const dynamicReservations = useReservations();
-  const items = useMemo<SavedItem[]>(() => {
-    const dynamic = dynamicReservations
-      .filter((r) => r.status === "upcoming")
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .map(toSavedItem);
-    return [...dynamic, ...RESERVATIONS];
-  }, [dynamicReservations]);
+  const items = useMemo<ReservationItem[]>(() => {
+    if (filter === "upcoming") {
+      return MOCK_RESERVATIONS.filter(
+        (r) => r.status === "booking" || r.status === "booked",
+      );
+    }
+    if (filter === "cancelled") {
+      return MOCK_RESERVATIONS.filter((r) => r.status === "cancelled");
+    }
+    return MOCK_RESERVATIONS.filter((r) => r.status === "cancelled"); // "past" stub
+  }, [filter]);
+
+  const counts = useMemo(() => {
+    return {
+      upcoming: MOCK_RESERVATIONS.filter(
+        (r) => r.status === "booking" || r.status === "booked",
+      ).length,
+      past: 0,
+      cancelled: MOCK_RESERVATIONS.filter((r) => r.status === "cancelled")
+        .length,
+    };
+  }, []);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -61,9 +69,13 @@ export default function ReservationsPage() {
         <div className="border-border bg-card scrollbar-hide flex gap-1 overflow-x-auto rounded-full border p-1">
           {(
             [
-              { id: "upcoming", label: "Upcoming", count: 4 },
-              { id: "past", label: "Past", count: 2 },
-              { id: "cancelled", label: "Cancelled", count: 2 },
+              { id: "upcoming", label: "Upcoming", count: counts.upcoming },
+              { id: "past", label: "Past", count: counts.past },
+              {
+                id: "cancelled",
+                label: "Cancelled",
+                count: counts.cancelled,
+              },
             ] as { id: Filter; label: string; count: number }[]
           ).map((f) => (
             <FilterPill
@@ -78,30 +90,24 @@ export default function ReservationsPage() {
       </div>
 
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 py-4">
-        {filter === "upcoming" ? (
-          <div className="flex flex-col gap-3">
-            {items.map((r) => (
-              <SavedItemCard
-                key={r.id}
-                item={r}
-                onClick={() => setOpenItem(r)}
-              />
-            ))}
-          </div>
-        ) : (
+        {items.length === 0 ? (
           <EmptyState
             label={
-              filter === "past"
-                ? "No past reservations yet."
-                : "No cancelled reservations."
+              filter === "upcoming"
+                ? "Nothing booked yet. Tap a venue to reserve."
+                : filter === "past"
+                  ? "No past reservations yet."
+                  : "No cancelled reservations."
             }
           />
+        ) : (
+          <div className="flex flex-col gap-3">
+            {items.map((r) => (
+              <ReservationCard key={r.id} r={r} />
+            ))}
+          </div>
         )}
       </div>
-
-      {openItem && (
-        <TicketSheet item={openItem} onClose={() => setOpenItem(null)} />
-      )}
     </div>
   );
 }
@@ -147,42 +153,4 @@ function EmptyState({ label }: { label: string }) {
       {label}
     </div>
   );
-}
-
-// Project a dynamic Reservation onto the existing SavedItem shape so the
-// SavedItemCard renders it without changes. Once we ship a real
-// ReservationCard component this projection goes away.
-function toSavedItem(r: Reservation): SavedItem {
-  const when = formatWhen(r.date, r.time);
-  return {
-    id: r.id,
-    venueId: r.venueId,
-    steps: ["R", "P", "C"],
-    badgeTone: "pink",
-    state: "arrive",
-    totalDots: 7,
-    doneDots: 0,
-    cashback: null,
-    when,
-    partySize: r.partySize,
-    cashbackCap: undefined,
-    reservationStatus: "confirmed",
-  };
-}
-
-function formatWhen(iso: string, time: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
-  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dt.getDay()];
-  const month = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ][dt.getMonth()];
-  const [hStr, mStr] = time.split(":");
-  const h = Number(hStr);
-  const min = Number(mStr);
-  const period = h >= 12 ? "PM" : "AM";
-  const h12 = ((h + 11) % 12) + 1;
-  const minPart = min === 0 ? "" : `:${String(min).padStart(2, "0")}`;
-  return `${weekday} ${month} ${d} · ${h12}${minPart} ${period}`;
 }

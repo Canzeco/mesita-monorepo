@@ -1,40 +1,72 @@
 "use client";
 
-import { useState } from "react";
-import { SavedItemCard } from "@/components/consumer/SavedItemCard";
-import { TicketSheet } from "@/components/consumer/TicketSheet";
-import { COUPONS } from "@/lib/consumer-data";
-import type { SavedItem } from "@/lib/consumer-data";
+import { useMemo, useState } from "react";
+import { CouponCard } from "@/components/consumer/CouponCard";
+import {
+  MOCK_COUPONS,
+  type CouponItem,
+} from "@/lib/mock/coupons-mock";
 import { cn } from "@/lib/utils";
 
-// Coupons section of the /coupons page. Pulled into its own client
-// component so the parent server page can stay async (auth + profile
-// fetch). Mock data for now — once consumer-list-coupons is wired in
-// (PR #27 in the entity-split sequence) this becomes an EF call.
+// Coupons list on /coupons. Filter pills bucket the wallet across the
+// union of both lifecycles (normal + instagram):
+//
+//   Active     normal:active                  + ig:verified | pending_story | under_review
+//   Used       normal:redeemed                + ig:redeemed
+//   Expired    normal:expired | cancelled     + ig:expired   | rejected
 
 type Filter = "active" | "used" | "expired";
 
+function bucket(c: CouponItem): Filter {
+  if (c.kind === "normal") {
+    if (c.status === "active") return "active";
+    if (c.status === "redeemed") return "used";
+    return "expired"; // expired | cancelled
+  }
+  // instagram
+  if (
+    c.status === "verified" ||
+    c.status === "pending_story" ||
+    c.status === "under_review"
+  )
+    return "active";
+  if (c.status === "redeemed") return "used";
+  return "expired"; // expired | rejected
+}
+
 export function CouponsList() {
   const [filter, setFilter] = useState<Filter>("active");
-  const [openItem, setOpenItem] = useState<SavedItem | null>(null);
+
+  const items = useMemo(
+    () => MOCK_COUPONS.filter((c) => bucket(c) === filter),
+    [filter],
+  );
+
+  const counts = useMemo(() => {
+    return {
+      active: MOCK_COUPONS.filter((c) => bucket(c) === "active").length,
+      used: MOCK_COUPONS.filter((c) => bucket(c) === "used").length,
+      expired: MOCK_COUPONS.filter((c) => bucket(c) === "expired").length,
+    };
+  }, []);
 
   return (
     <section className="flex flex-col gap-3">
-      <header className="flex items-center justify-between">
+      <header className="flex items-baseline justify-between">
         <h2 className="font-display text-lg font-semibold tracking-tight">
           Your coupons
         </h2>
         <span className="text-muted-foreground text-[11px]">
-          {filter === "active" ? `${COUPONS.length} active` : ""}
+          {counts.active} active
         </span>
       </header>
 
       <div className="border-border bg-card scrollbar-hide flex gap-1 overflow-x-auto rounded-full border p-1">
         {(
           [
-            { id: "active", label: "Active", count: 29 },
-            { id: "used", label: "Used", count: 4 },
-            { id: "expired", label: "Expired", count: 2 },
+            { id: "active", label: "Active", count: counts.active },
+            { id: "used", label: "Used", count: counts.used },
+            { id: "expired", label: "Expired", count: counts.expired },
           ] as { id: Filter; label: string; count: number }[]
         ).map((f) => (
           <FilterPill
@@ -47,24 +79,20 @@ export function CouponsList() {
         ))}
       </div>
 
-      {filter === "active" ? (
-        <div className="flex flex-col gap-3">
-          {COUPONS.map((c) => (
-            <SavedItemCard
-              key={c.id}
-              item={c}
-              onClick={() => setOpenItem(c)}
-            />
-          ))}
+      {items.length === 0 ? (
+        <div className="border-border text-muted-foreground rounded-2xl border border-dashed p-8 text-center text-sm">
+          {filter === "active"
+            ? "Save a venue and a coupon lands here."
+            : filter === "used"
+              ? "No coupons used yet."
+              : "No expired coupons."}
         </div>
       ) : (
-        <div className="border-border text-muted-foreground rounded-2xl border border-dashed p-8 text-center text-sm">
-          {filter === "used" ? "No coupons used yet." : "No expired coupons."}
+        <div className="flex flex-col gap-3">
+          {items.map((c) => (
+            <CouponCard key={c.id} c={c} />
+          ))}
         </div>
-      )}
-
-      {openItem && (
-        <TicketSheet item={openItem} onClose={() => setOpenItem(null)} />
       )}
     </section>
   );
