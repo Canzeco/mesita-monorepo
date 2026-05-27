@@ -10,10 +10,10 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 // Modal chrome for the intercepted /venues/[id] route. Sits as an absolute
-// layer inside the shell's content area (between StatusBar and BottomNav,
-// matching TicketSheet's positioning). The wrapped VenueDetailBody scrolls
-// in a dedicated middle band; dismiss is router.back(), so the URL
-// restores to whichever surface the user came from with its state intact.
+// layer inside the shell's content area (between StatusBar and BottomNav).
+// The wrapped VenueDetailBody scrolls in a dedicated middle band; dismiss
+// is router.back(), so the URL restores to whichever surface the user
+// came from with its state intact.
 //
 // Layout is three rigid rows in a flex-col so the action bar can never
 // occlude the body's last visible content:
