@@ -81,13 +81,7 @@ function getServerSnapshot(): ReadonlySet<string> {
 
 const EMPTY: ReadonlySet<string> = new Set();
 
-// Imperative API (callable from non-React contexts).
-export function isVenueSaved(venueId: string): boolean {
-  ensureHydrated();
-  return cache.has(venueId);
-}
-
-export function toggleSavedVenue(venueId: string): boolean {
+function toggleSavedVenue(venueId: string): boolean {
   ensureHydrated();
   const next = new Set(cache);
   let nowSaved: boolean;
@@ -104,7 +98,7 @@ export function toggleSavedVenue(venueId: string): boolean {
   return nowSaved;
 }
 
-export function setVenueSaved(venueId: string, saved: boolean): void {
+function setVenueSaved(venueId: string, saved: boolean): void {
   ensureHydrated();
   const has = cache.has(venueId);
   if (has === saved) return;
@@ -114,11 +108,6 @@ export function setVenueSaved(venueId: string, saved: boolean): void {
   cache = next;
   writeToStorage(cache);
   emit();
-}
-
-export function listSavedVenueIds(): string[] {
-  ensureHydrated();
-  return [...cache];
 }
 
 // React hook — returns the live set + helpers. Re-renders whenever any
