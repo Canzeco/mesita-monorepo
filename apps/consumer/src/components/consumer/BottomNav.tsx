@@ -9,33 +9,33 @@ import {
   QrCode,
   Share2,
   User,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Six top-level surfaces. Coupons and Pay split apart so the wallet
-// surface stays focused on the coupons list, and Pay owns its own tab
-// for the QR-to-pay + cashback balance — the two ideas had been folded
-// together but they answer different intents ("show me my deals" vs
-// "I'm at the bill, scan me").
+// Six top-level surfaces. Pay carries a `primary` flag — its icon
+// renders inside a pink-tinted ring-circle even when the tab isn't
+// selected so it reads as the lead CTA among the six (scan-to-pay
+// is the moment every visit ends at, and the surface deserves the
+// extra weight). When Pay IS selected, the circle fills with the
+// full pink gradient + glow shadow.
 //
-//   Discover     — Swipe / Map / Catalog / Search / AI / Saved
-//                  sub-tabs.
-//   Reservations — booking entries only, no money fields shown.
-//   Coupons      — the coupons wallet (active / used / expired).
-//   Pay          — the QR-to-pay + cashback balance.
-//   Share        — referral.
-//   Profile      — account / settings.
-//
-// Six items is tight at narrow widths; the label font-size + flex-1
-// distribution scales it; truncate guards against the longest label
-// ("Reservations") overflowing its column on edge devices.
-const ITEMS = [
+// Active state on ANY tab also gets a top pill indicator + ringed
+// background on the icon cell so the current surface is unmistakable
+// at a glance, not just a color change.
+
+type Item = {
+  href: string;
+  Icon: LucideIcon;
+  label: string;
+  match: string;
+  primary?: boolean;
+};
+
+const ITEMS: Item[] = [
   {
     href: "/discover/swipe",
     Icon: Compass,
-    // Label reads "Explore" while the route stays /discover and the
-    // component names (DiscoverHeader, DiscoverTabs) keep their
-    // identifiers. Visible word only.
     label: "Explore",
     match: "/discover",
   },
@@ -46,35 +46,69 @@ const ITEMS = [
     match: "/reservations",
   },
   { href: "/coupons", Icon: Ticket, label: "Coupons", match: "/coupons" },
-  { href: "/pay", Icon: QrCode, label: "Pay", match: "/pay" },
-  { href: "/share", Icon: Share2, label: "Share", match: "/share" },
   {
-    href: "/profile",
-    Icon: User,
-    label: "Profile",
-    match: "/profile",
+    href: "/pay",
+    Icon: QrCode,
+    label: "Pay",
+    match: "/pay",
+    primary: true,
   },
+  { href: "/share", Icon: Share2, label: "Share", match: "/share" },
+  { href: "/profile", Icon: User, label: "Profile", match: "/profile" },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
   return (
     <nav className="border-border bg-card/95 sticky bottom-0 z-40 shrink-0 border-t px-1 pt-2 backdrop-blur">
-      <div className="flex justify-around">
-        {ITEMS.map(({ href, Icon, label, match }) => {
+      <div className="flex items-end justify-around">
+        {ITEMS.map(({ href, Icon, label, match, primary }) => {
           const active = pathname.startsWith(match);
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-medium transition",
+                "relative flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-medium transition",
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
+              {/* Top pill — visible only when the tab is active. Tiny,
+                  pink, centered. Gives the active state a graphic
+                  marker so it's not just a color shift on the label. */}
+              {active && (
+                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
+              )}
+
+              {/* Icon cell. Always 32×32 so the row height stays
+                  consistent. Pay gets a pink-tinted ring-fill at rest
+                  and a solid pink gradient when active. Other tabs
+                  get a soft pink ring when active (only) — the
+                  background hugs the icon to telegraph "current tab"
+                  without shouting. */}
+              <span
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full transition",
+                  primary
+                    ? active
+                      ? "bg-pink-gradient shadow-glow"
+                      : "bg-pink-500/15 ring-1 ring-pink-500/25"
+                    : active
+                      ? "bg-primary/10 ring-1 ring-primary/20"
+                      : "",
+                )}
+              >
+                <Icon
+                  className={cn(
+                    "h-5 w-5",
+                    primary && active && "text-white",
+                    primary && !active && "text-pink-600",
+                  )}
+                  strokeWidth={active ? 2.25 : 1.75}
+                />
+              </span>
               <span className="w-full truncate text-center">{label}</span>
             </Link>
           );
