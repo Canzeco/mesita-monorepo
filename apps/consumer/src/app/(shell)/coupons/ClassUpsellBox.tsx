@@ -12,18 +12,11 @@ import {
 import { CURRENT_USER, TIERS } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
-// Promo strip at the top of /coupons. Pitches the tier-upgrade flow
-// using the user's CURRENT tier as a reference so the message reads
-// personal ("You're on Gold — Diamond gets …") instead of generic.
-//
-// Copy is intentionally honest: partners *tend* to offer bigger
-// discounts to higher classes — not "every partner, guaranteed".
-// The three paths to upgrade (Instagram, Subscription, Invitation)
-// are listed inline so the box telegraphs how to actually move up,
-// not just that there's a ladder.
-//
-// Diamond holders see a "Top class" confirmation chip instead of an
-// upgrade CTA — there's nowhere to go.
+// Promo strip at the top of /coupons. Names the four classes
+// (Bronze / Silver / Gold / Diamond) explicitly and explains the
+// three upgrade paths. The CTA is intentionally class-agnostic
+// ("Upgrade your class") rather than tier-specific so the message
+// holds for any current rung.
 
 const TIER_PROPER: Record<string, string> = {
   bronze: "Bronze",
@@ -40,12 +33,7 @@ export function ClassUpsellBox() {
   const currentIdx = TIER_ORDER.indexOf(
     current as (typeof TIER_ORDER)[number],
   );
-  const nextTier =
-    currentIdx >= 0 && currentIdx < TIER_ORDER.length - 1
-      ? TIER_ORDER[currentIdx + 1]
-      : null;
-  const nextLabel = nextTier ? TIER_PROPER[nextTier] : null;
-  const isMaxedOut = nextTier == null;
+  const isMaxedOut = currentIdx === TIER_ORDER.length - 1;
 
   if (isMaxedOut) {
     return (
@@ -85,42 +73,49 @@ export function ClassUpsellBox() {
           <h3 className="font-display mt-1 text-xl leading-[1.1] font-semibold tracking-tight">
             Better class, better coupons.
           </h3>
-          <p className="mt-1.5 text-[13px] leading-snug text-white/90">
-            Partners tend to offer bigger discounts to higher classes — up
-            to 70% off in some cases.
+          <p className="mt-2 text-[13px] leading-snug text-white/90">
+            Four classes at Mesita —{" "}
+            <strong className="font-semibold text-white">
+              Bronze, Silver, Gold, Diamond
+            </strong>
+            . Partners tend to offer bigger coupons to higher classes,{" "}
+            <strong className="font-semibold text-white">up to 70% off</strong>.
           </p>
         </div>
       </div>
 
-      {/* Three honest paths to move up. Icon column hints at the channel;
-          the inline strong tag carries the headline word so the eye can
-          scan the column quickly. */}
-      <ul className="mt-4 flex flex-col gap-2 text-[12px] leading-snug text-white/90">
+      <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
+        Three ways to upgrade
+      </p>
+
+      <ul className="mt-2 flex flex-col gap-2 text-[12.5px] leading-snug text-white/90">
         <li className="flex items-start gap-2">
-          <Instagram className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/80" />
+          <Instagram className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
           <span>
             <strong className="font-semibold text-white">Instagram</strong>{" "}
-            — connect your account; popular profiles that post visits
-            climb fastest.
+            — connect your account and post a story each time you visit a
+            partner.
           </span>
         </li>
         <li className="flex items-start gap-2">
-          <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/80" />
+          <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
           <span>
             <strong className="font-semibold text-white">Subscription</strong>{" "}
             — pay monthly to jump straight to a higher class.
           </span>
         </li>
         <li className="flex items-start gap-2">
-          <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/80" />
+          <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
           <span>
             <strong className="font-semibold text-white">Invitation</strong>{" "}
-            — models, hospitality elite, partner VIPs.
+            — free if you&apos;re a model, executive, or carry real local
+            influence.
           </span>
         </li>
       </ul>
 
-      {/* Tier ladder dots — visualizes the climb. */}
+      {/* Tier ladder dots — visualizes the four classes + where the user
+          currently sits. */}
       <div className="mt-4 flex items-center gap-1.5">
         {TIER_ORDER.map((tier) => {
           const reached = TIER_ORDER.indexOf(tier) <= currentIdx;
@@ -136,12 +131,12 @@ export function ClassUpsellBox() {
         })}
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex items-center justify-between gap-3">
         <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold tracking-wide backdrop-blur">
           You&apos;re {currentLabel}
         </span>
         <span className="inline-flex items-center gap-1 text-sm font-semibold transition group-hover:gap-2">
-          Upgrade to {nextLabel}
+          Upgrade your class
           <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
         </span>
       </div>
