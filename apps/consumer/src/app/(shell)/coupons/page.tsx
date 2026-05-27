@@ -32,7 +32,7 @@ export default async function CouponsPage() {
   } catch (err) {
     return (
       <div className="flex h-full flex-col">
-        <SimpleHeader title="Coupons" />
+        <SimpleHeader title="Pay & Win" />
         <div className="px-4 py-6">
           <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-sm">
             {errMsg(err, "Couldn't load your profile.")}
@@ -44,7 +44,7 @@ export default async function CouponsPage() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <SimpleHeader title="Coupons" />
+      <SimpleHeader title="Pay & Win" />
       <div className="scrollbar-hide flex-1 overflow-y-auto">
         <div className="flex flex-col gap-4 px-4 pt-2 pb-6">
           <MyQrCard code={profile.code} />

@@ -33,7 +33,11 @@ const ITEMS = [
     label: "Reservations",
     match: "/reservations",
   },
-  { href: "/coupons", Icon: Ticket, label: "Coupons", match: "/coupons" },
+  // Tab routes to /coupons but is branded "Pay & Win" — the surface
+  // hosts the QR-to-pay AND the coupons wallet, and "Pay & Win" makes
+  // the gambling-adjacent reward framing explicit (cashback, tier
+  // upgrades). Route stays /coupons to avoid a redirect chain.
+  { href: "/coupons", Icon: Ticket, label: "Pay & Win", match: "/coupons" },
   { href: "/share", Icon: Share2, label: "Share", match: "/share" },
   {
     href: "/profile",
