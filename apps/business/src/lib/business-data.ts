@@ -1,12 +1,12 @@
-// Mock fixtures for the business surfaces that haven't been wired to real
-// Edge Functions yet. Each page that reads from here renders behind a
-// "Preview" banner so the data is honest about being placeholder.
+// Mock fixtures for business surfaces that aren't wired to real Edge
+// Functions yet. The only page still reading from here is /unit/[id]/wallet
+// — it renders behind a "Preview" banner so the placeholder nature is
+// obvious to the operator.
 //
-// Trimmed to only the exports still imported by a page. Unused exports
-// were removed in a cleanup pass — re-add when the surface that needs them
-// gets built. Real persistence ships via dedicated `business-*` Edge
-// Functions (business-list-team, business-get-analytics, etc.) on the way
-// in future migrations.
+// Trimmed to only the exports that page imports. When the wallet wires
+// up to the real cashback_ledger + Stripe Connect payout flow, this file
+// can be deleted entirely. Team data (business-list-team) and overview
+// (business-get-overview) already moved to dedicated EFs.
 
 // ── Wallet (wallet/page.tsx) ──────────────────────────────────────────────
 
