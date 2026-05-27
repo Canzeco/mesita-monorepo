@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { StatusBar } from "@/components/consumer/StatusBar";
+import { TopBar } from "@/components/consumer/TopBar";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
@@ -53,9 +54,15 @@ export default async function ConsumerShellLayout({
     redirect("/onboard");
   }
 
+  // Layout owns the fixed chrome: StatusBar + TopBar at the top,
+  // BottomNav at the bottom. None of these sit inside the scrolling
+  // children container, so they CAN'T scroll out of view — page-level
+  // code never has to think about it. See TopBar.tsx for the
+  // route → header mapping.
   return (
     <MobileFrame>
       <StatusBar />
+      <TopBar />
       <div className="relative flex flex-1 flex-col overflow-hidden">
         <ShellChildrenSlot>{children}</ShellChildrenSlot>
         {modal}

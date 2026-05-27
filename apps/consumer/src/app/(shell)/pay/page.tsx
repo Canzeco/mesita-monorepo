@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
-import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
 import { ActivityFeed } from "./ActivityFeed";
@@ -11,6 +10,9 @@ import { ActivityFeed } from "./ActivityFeed";
 // code on top, the cashback balance card below. Split out of /coupons
 // when the BottomNav grew to six tabs and the wallet's two jobs
 // ("browse my deals" vs "scan me at the bill") earned their own homes.
+//
+// Top header (SimpleHeader title="Pay") is owned by the shell layout
+// via TopBar — see src/components/consumer/TopBar.tsx.
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,6 @@ export default async function PayPage() {
   } catch (err) {
     return (
       <div className="flex h-full flex-col">
-        <SimpleHeader title="Pay" />
         <div className="px-4 py-6">
           <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-sm">
             {errMsg(err, "Couldn't load your profile.")}
@@ -39,7 +40,6 @@ export default async function PayPage() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <SimpleHeader title="Pay" />
       <div className="scrollbar-hide flex-1 overflow-y-auto">
         <div className="flex flex-col gap-4 px-4 pt-2 pb-6">
           <MyQrCard code={profile.code} />

@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { Copy, ChevronRight, Check, Plus } from "lucide-react";
-import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { cn } from "@/lib/utils";
+
+// Top header (SimpleHeader title="Mesita" eyebrow="Share with friends")
+// is owned by the shell layout via TopBar — see
+// src/components/consumer/TopBar.tsx.
 
 type Tab = "consumers" | "venues" | "creators" | "others";
 
@@ -19,8 +22,6 @@ export default function SharePage() {
 
   return (
     <div className="flex h-full flex-col">
-      <SimpleHeader title="Mesita" eyebrow="Share with friends" />
-
       <div className="px-4 pt-4">
         <div className="border-border bg-card grid grid-cols-4 gap-0 rounded-full border p-1">
           {TABS.map((t) => (

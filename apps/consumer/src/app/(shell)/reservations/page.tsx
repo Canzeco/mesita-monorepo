@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { ReservationCard } from "@/components/consumer/ReservationCard";
 import { CalendarConnectBox } from "./CalendarConnectBox";
 import { WhatsAppRemindersBox } from "./WhatsAppRemindersBox";
@@ -54,8 +53,6 @@ export default function ReservationsPage() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <SimpleHeader title="Reservations" />
-
       <div className="px-4 pt-3">
         <p className="bg-secondary/10 text-secondary rounded-xl px-3 py-2 text-[11px]">
           Preview — reservations aren&apos;t connected to the backend yet.
