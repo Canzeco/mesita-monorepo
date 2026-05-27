@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
-// /pay is the section root — there's no standalone landing surface,
-// just two sub-routes (QR + Wallet). Default to QR since it's the
-// scan-at-the-bill primary action.
-export default function PayIndexPage() {
-  redirect("/pay/qr");
+// /pay is gone as a top-level route — the QR + wallet folded into
+// /coupons when the BottomNav restructured. Keep this stub so old
+// bookmarks and link shares survive the move.
+export default function PayRedirect() {
+  redirect("/coupons");
 }

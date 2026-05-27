@@ -2,9 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Bookmark, QrCode, Share2, User } from "lucide-react";
+import { Compass, CalendarCheck, Ticket, Share2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Five top-level surfaces. Reservations + Coupons replaced Saved + Pay
+// when the consumer model split into reservations + coupons as separate
+// first-class entities:
+//
+//   Discover     — Swipe / Catalog / Map / AI / Saved (Saved is now a
+//                  Discover sub-route since it's part of how you find
+//                  venues, not a wallet concern).
+//   Reservations — booking entries only, no money fields shown.
+//   Coupons      — the coupons wallet AND the QR-to-pay surface.
+//   Share        — referral.
+//   Profile      — account / settings.
 const ITEMS = [
   {
     href: "/discover/swipe",
@@ -13,12 +24,12 @@ const ITEMS = [
     match: "/discover",
   },
   {
-    href: "/saved",
-    Icon: Bookmark,
-    label: "Saved",
-    match: "/saved",
+    href: "/reservations",
+    Icon: CalendarCheck,
+    label: "Reservations",
+    match: "/reservations",
   },
-  { href: "/pay", Icon: QrCode, label: "Pay", match: "/pay" },
+  { href: "/coupons", Icon: Ticket, label: "Coupons", match: "/coupons" },
   { href: "/share", Icon: Share2, label: "Share", match: "/share" },
   {
     href: "/profile",

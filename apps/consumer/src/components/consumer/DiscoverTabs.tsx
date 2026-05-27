@@ -3,14 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, LayoutGrid, Map as MapIcon, Sparkles } from "lucide-react";
+import { Flame, LayoutGrid, Map as MapIcon, Sparkles, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Saved joined the Discover sub-nav when the BottomNav restructured to
+// (Discover · Reservations · Coupons · Share · Profile). Bookmarking a
+// venue is part of how you find places, not a wallet concern — so the
+// saved list lives next to Swipe / Catalog / Map / AI rather than
+// taking its own top-level tab.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
   { href: "/discover/ai", label: "AI", Icon: Sparkles },
+  { href: "/discover/saved", label: "Saved", Icon: Bookmark },
 ];
 
 export function DiscoverTabs() {
