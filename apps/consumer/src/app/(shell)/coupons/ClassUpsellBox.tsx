@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Crown, ChevronRight, Sparkles } from "lucide-react";
+import {
+  Crown,
+  ChevronRight,
+  Sparkles,
+  Instagram,
+  CreditCard,
+  Mail,
+} from "lucide-react";
 import { CURRENT_USER, TIERS } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
@@ -9,7 +16,13 @@ import { cn } from "@/lib/utils";
 // using the user's CURRENT tier as a reference so the message reads
 // personal ("You're on Gold — Diamond gets …") instead of generic.
 //
-// Diamond holders see a "Top tier" confirmation chip instead of an
+// Copy is intentionally honest: partners *tend* to offer bigger
+// discounts to higher classes — not "every partner, guaranteed".
+// The three paths to upgrade (Instagram, Subscription, Invitation)
+// are listed inline so the box telegraphs how to actually move up,
+// not just that there's a ladder.
+//
+// Diamond holders see a "Top class" confirmation chip instead of an
 // upgrade CTA — there's nowhere to go.
 
 const TIER_PROPER: Record<string, string> = {
@@ -19,7 +32,6 @@ const TIER_PROPER: Record<string, string> = {
   diamond: "Diamond",
 };
 
-// Order matters for the "next tier above" lookup.
 const TIER_ORDER = ["bronze", "silver", "gold", "diamond"] as const;
 
 export function ClassUpsellBox() {
@@ -35,11 +47,6 @@ export function ClassUpsellBox() {
   const nextLabel = nextTier ? TIER_PROPER[nextTier] : null;
   const isMaxedOut = nextTier == null;
 
-  // Diamond hits 70% on partner spend; that's the punchline that
-  // motivates the climb. Smaller tiers see the same headline number to
-  // keep the pitch consistent.
-  const headlineDiscount = 70;
-
   if (isMaxedOut) {
     return (
       <div className="bg-tier-diamond shadow-glow flex items-center gap-3 rounded-2xl p-4 text-white">
@@ -51,7 +58,7 @@ export function ClassUpsellBox() {
             Mesita Diamond
           </p>
           <p className="font-display mt-0.5 text-base font-semibold">
-            Top class. You unlock every coupon.
+            Top class. Partners give you their best rates.
           </p>
         </div>
       </div>
@@ -63,8 +70,6 @@ export function ClassUpsellBox() {
       href="/profile"
       className="bg-pink-gradient shadow-glow group relative block overflow-hidden rounded-2xl p-5 text-white transition active:scale-[0.99]"
     >
-      {/* Soft sparkle accent in the upper-right — pure decoration, lets
-          the headline breathe without going flat. */}
       <Sparkles
         className="absolute top-3 right-3 h-4 w-4 text-white/40"
         strokeWidth={2}
@@ -81,14 +86,41 @@ export function ClassUpsellBox() {
             Better class, better coupons.
           </h3>
           <p className="mt-1.5 text-[13px] leading-snug text-white/90">
-            {nextLabel} members unlock up to {headlineDiscount}% off at every
-            partner — bigger welcome rates, faster cashback, fewer caps.
+            Partners tend to offer bigger discounts to higher classes — up
+            to 70% off in some cases.
           </p>
         </div>
       </div>
 
-      {/* Tier ladder dots — visualizes where the user sits + how far the
-          next rung is. Soft enough not to compete with the CTA. */}
+      {/* Three honest paths to move up. Icon column hints at the channel;
+          the inline strong tag carries the headline word so the eye can
+          scan the column quickly. */}
+      <ul className="mt-4 flex flex-col gap-2 text-[12px] leading-snug text-white/90">
+        <li className="flex items-start gap-2">
+          <Instagram className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/80" />
+          <span>
+            <strong className="font-semibold text-white">Instagram</strong>{" "}
+            — connect your account; popular profiles that post visits
+            climb fastest.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/80" />
+          <span>
+            <strong className="font-semibold text-white">Subscription</strong>{" "}
+            — pay monthly to jump straight to a higher class.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/80" />
+          <span>
+            <strong className="font-semibold text-white">Invitation</strong>{" "}
+            — models, hospitality elite, partner VIPs.
+          </span>
+        </li>
+      </ul>
+
+      {/* Tier ladder dots — visualizes the climb. */}
       <div className="mt-4 flex items-center gap-1.5">
         {TIER_ORDER.map((tier) => {
           const reached = TIER_ORDER.indexOf(tier) <= currentIdx;
@@ -117,6 +149,4 @@ export function ClassUpsellBox() {
   );
 }
 
-// TIERS imported but unused at runtime — kept in scope for future
-// "next reward bump at {tier}" copy that pulls from the canonical map.
 void TIERS;
