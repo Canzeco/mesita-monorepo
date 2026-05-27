@@ -78,6 +78,9 @@ export function ClassUpsellBox() {
           <h3 className="font-display mt-1 text-xl leading-[1.1] font-semibold tracking-tight">
             Better class, better coupons.
           </h3>
+          <p className="font-display mt-1.5 text-[13px] leading-snug italic text-white/85">
+            Your social capital, made spendable.
+          </p>
           <p className="mt-2 text-[13px] leading-snug text-white/90">
             Four classes:{" "}
             <strong className="font-semibold text-white">
