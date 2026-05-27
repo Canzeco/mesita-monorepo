@@ -37,15 +37,6 @@
   --tier-gold: oklch(0.84 0.16 88);
   --tier-diamond: oklch(0.7 0.18 320);
 
-  /* WhatsApp validator green — brand-matched to WhatsApp */
-  --whatsapp: oklch(0.66 0.17 152);
-  --whatsapp-deep: oklch(0.48 0.13 158);
-  --gradient-whatsapp: linear-gradient(
-    135deg,
-    oklch(0.72 0.17 152),
-    oklch(0.52 0.14 158)
-  );
-
   --gradient-hero:
     radial-gradient(
       1200px 600px at 20% -10%,
@@ -93,16 +84,6 @@
     135deg,
     oklch(0.72 0.22 355),
     oklch(0.6 0.25 5)
-  );
-  /* Multi-stop "celebration" gradient used on the Welcome coupon pill —
-     violet → magenta → peach, distinct from the brand pink so the
-     Welcome (first-visit, one-time) coupon visually pops against the
-     per-tier rate cards. */
-  --gradient-welcome: linear-gradient(
-    90deg,
-    oklch(0.72 0.18 305),
-    oklch(0.7 0.24 5) 50%,
-    oklch(0.82 0.16 60)
   );
   --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.4);
   --shadow-elev: 0 25px 60px -15px oklch(0.18 0.06 15 / 0.18);
@@ -228,17 +209,11 @@
   .bg-peacock {
     background: var(--gradient-peacock);
   }
-  .bg-gold {
-    background: var(--gradient-gold);
-  }
   .bg-card-soft {
     background: var(--gradient-card);
   }
   .bg-pink-gradient {
     background: var(--gradient-pink);
-  }
-  .bg-welcome-gradient {
-    background: var(--gradient-welcome);
   }
   .shadow-glow {
     box-shadow: var(--shadow-glow);
@@ -255,9 +230,6 @@
   .text-bronze {
     color: var(--tier-bronze);
   }
-  .text-diamond {
-    color: var(--tier-diamond);
-  }
   .bg-tier-gold {
     background: var(--gradient-gold);
   }
@@ -269,18 +241,6 @@
   }
   .bg-tier-diamond {
     background: var(--gradient-diamond);
-  }
-  .bg-whatsapp {
-    background: var(--whatsapp);
-  }
-  .bg-whatsapp-gradient {
-    background: var(--gradient-whatsapp);
-  }
-  .text-whatsapp {
-    color: var(--whatsapp);
-  }
-  .text-whatsapp-deep {
-    color: var(--whatsapp-deep);
   }
   .border-whatsapp {
     border-color: var(--whatsapp);
