@@ -8,7 +8,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "mesita:reservations";
 
-export type Reservation = {
+type Reservation = {
   id: string;
   venueId: string;
   venueName: string;

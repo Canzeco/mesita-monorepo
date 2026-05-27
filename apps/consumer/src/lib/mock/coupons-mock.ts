@@ -7,8 +7,6 @@
 // the coupon so the card can render a "tied reservation" stub without
 // a cross-lookup.
 
-export type CouponKind = "normal" | "instagram";
-
 export type NormalCouponStatus =
   | "active"
   | "redeemed"
