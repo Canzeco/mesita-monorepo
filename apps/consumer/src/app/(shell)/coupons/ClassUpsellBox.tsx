@@ -8,18 +8,20 @@ import {
   Instagram,
   CreditCard,
   Mail,
-  Key,
-  Gift,
-  Star,
 } from "lucide-react";
 import { CURRENT_USER, TIERS } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
-// Promo strip at the top of /coupons. Names the four classes
-// (Bronze / Silver / Gold / Diamond) explicitly and explains the
-// three upgrade paths. The CTA is intentionally class-agnostic
-// ("Upgrade your class") rather than tier-specific so the message
-// holds for any current rung.
+// Promo strip at the top of /coupons. Single paragraph folds the
+// class names, the coupon discount range, and the lifestyle perks
+// (exclusive venues, priority booking, table gifts) into one
+// connected pitch — the prior two-section split read as redundant
+// because all three lived under the same "why care" umbrella.
+//
+// Three ways to climb listed after as the concrete actions. CTA is
+// class-agnostic ("Upgrade your class") so the copy holds at any rung.
+//
+// Diamond holders see a maxed-out variant.
 
 const TIER_PROPER: Record<string, string> = {
   bronze: "Bronze",
@@ -77,29 +79,30 @@ export function ClassUpsellBox() {
             Better class, better coupons.
           </h3>
           <p className="mt-2 text-[13px] leading-snug text-white/90">
-            Four classes at Mesita —{" "}
+            Four classes:{" "}
             <strong className="font-semibold text-white">
               Bronze, Silver, Gold, Diamond
             </strong>
-            . Partners tend to offer bigger coupons to higher classes,{" "}
-            <strong className="font-semibold text-white">up to 70% off</strong>.
+            . Our partners tend to offer bigger coupons,{" "}
+            <strong className="font-semibold text-white">up to 70% off</strong>,
+            to higher classes. And higher classes also tend to get direct
+            access to exclusive venues, priority booking when a venue is full,
+            and gifts like welcome drinks.
           </p>
         </div>
       </div>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
-        Three ways to upgrade
+        Three ways to climb
       </p>
 
       <ul className="mt-2 flex flex-col gap-2 text-[12.5px] leading-snug text-white/90">
         <li className="flex items-start gap-2">
           <Instagram className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
           <span>
-            <strong className="font-semibold text-white">
-              Instagram Stories
-            </strong>{" "}
-            — connect your account and post a story each time you visit
-            a partner.
+            <strong className="font-semibold text-white">Instagram</strong>{" "}
+            — connect your account and post a story each time you visit a
+            partner.
           </span>
         </li>
         <li className="flex items-start gap-2">
@@ -113,37 +116,11 @@ export function ClassUpsellBox() {
           <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
           <span>
             <strong className="font-semibold text-white">Invitation</strong>{" "}
-            — free for models, executives, or anyone with real local
-            influence.{" "}
+            — free for models, executives, and locals with real influence.{" "}
             <span className="font-semibold text-white underline-offset-2 hover:underline">
               Request an invitation →
             </span>
           </span>
-        </li>
-      </ul>
-
-      {/* What else higher classes get — beyond just bigger coupons. The
-          paths section answered "how to climb"; this answers "why care".
-          Three perks, terse, separated from the discount story above so
-          the coupon angle and the lifestyle angle each get their moment. */}
-      <p className="mt-5 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
-        Higher classes also get
-      </p>
-      <ul className="mt-2 flex flex-col gap-2 text-[12.5px] leading-snug text-white/90">
-        <li className="flex items-start gap-2">
-          <Key className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
-          <span>Direct access to invite-only venues.</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <Gift className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
-          <span>
-            Gifts at the table — welcome drinks, amuse-bouches, the
-            chef&apos;s special on the house.
-          </span>
-        </li>
-        <li className="flex items-start gap-2">
-          <Star className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
-          <span>Priority booking when a venue is full.</span>
         </li>
       </ul>
 
