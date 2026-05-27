@@ -183,7 +183,6 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   // single-number stand-in until we surface a combined Mesita+Google
   // headline rating.
   const googleRating = venue.google.rating.toFixed(1);
-  const googleCount = venue.google.count.toLocaleString("en-US");
   // Active reward chip — first-visit users see the welcome rate,
   // returning users see the default-tier rate. Null = venue offers
   // nothing at the user's tier, so the chip is suppressed.
@@ -211,34 +210,46 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
       <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
-      {/* Fact grid — four cells, two columns, no nested backgrounds. Splits
-          what used to be a middot-soup meta line into discrete atoms so the
-          eye can scan rating · cuisine · price · distance independently.
-          The Star fills amber to anchor "this is a rating"; the other icons
-          stay neutral so they read as facts, not status. */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-        <FactCell
-          icon={Star}
-          iconClass="fill-amber-400 text-amber-400"
-          value={googleRating}
-          sub={`${googleCount} reviews`}
-        />
-        <FactCell
-          icon={Utensils}
-          value={venue.category}
-          sub="cuisine"
-          capitalize
-        />
-        <FactCell
-          icon={Tags}
-          value={venue.price_range}
-          sub="per person"
-        />
-        <FactCell
-          icon={Navigation}
-          value={`${venue.distance_km} km`}
-          sub="from you"
-        />
+      {/* Hero rating + stacked side facts — mirrors the Reviews Summary
+          "4.8 OVERALL" card pattern so the venue page reads as one design
+          family. Rating is the most-consulted number so it gets the
+          weighted treatment; cuisine / price / distance stack as compact
+          rows on the right. The hero card's bg-muted/40 fill anchors the
+          left column; right column stays naked text against the parent
+          Box's bg-card. */}
+      <div className="grid grid-cols-[auto_1fr] gap-3">
+        <div className="bg-muted/40 flex min-w-[96px] flex-col items-center justify-center rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <Star
+              className="h-5 w-5 fill-amber-400 text-amber-400"
+              strokeWidth={0}
+            />
+            <span className="font-display text-2xl font-semibold leading-none">
+              {googleRating}
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1.5 text-[10px] font-medium tracking-[0.1em] uppercase">
+            {formatCount(venue.google.count, false)} reviews
+          </p>
+        </div>
+        <div className="flex flex-col justify-center gap-2.5">
+          <FactRow
+            icon={Utensils}
+            value={venue.category}
+            sub="cuisine"
+            capitalize
+          />
+          <FactRow
+            icon={Tags}
+            value={venue.price_range}
+            sub="per person"
+          />
+          <FactRow
+            icon={Navigation}
+            value={`${venue.distance_km} km`}
+            sub="from you"
+          />
+        </div>
       </div>
       {/* Chip row — promo + trust + live status, all the same chip size so
           the eye reads them as a set. Cashback retains its loud pink fill
@@ -286,28 +297,24 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// One cell of the Overview fact grid. Icon + bold value + muted sub label.
-// No background; the parent Box owns the surface. Capitalize flips the
-// first letter for fields stored lowercase (category enum).
-function FactCell({
+// One side row of the Overview hero block. Icon + bold value + muted sub
+// label, laid out horizontally. No background; the parent Box owns the
+// surface. Capitalize flips the first letter for fields stored lowercase
+// (category enum).
+function FactRow({
   icon: Icon,
-  iconClass,
   value,
   sub,
   capitalize,
 }: {
   icon: LucideIcon;
-  iconClass?: string;
   value: string;
   sub: string;
   capitalize?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-2">
-      <Icon
-        className={cn("text-muted-foreground mt-0.5 h-4 w-4 shrink-0", iconClass)}
-        strokeWidth={iconClass?.includes("fill-") ? 0 : undefined}
-      />
+    <div className="flex items-start gap-2.5">
+      <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
       <div className="min-w-0">
         <p
           className={cn(
