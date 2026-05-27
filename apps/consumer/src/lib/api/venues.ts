@@ -114,25 +114,6 @@ export async function apiFetchPublicVenues(
   );
   return venues.map(stripInsecurePhotos);
 }
-
-export async function apiGetVenue(
-  client: SupabaseClient,
-  idOrSlug: string,
-): Promise<Venue | null> {
-  try {
-    const { venue } = await invokeEF<{ venue: Venue }>(
-      client,
-      "consumer-get-venue",
-      looksLikeUuid(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
-    );
-    return stripInsecurePhotos(venue);
-  } catch (err) {
-    // 404 → friendly empty state instead of a thrown error.
-    if (err instanceof Error && /404/.test(err.message)) return null;
-    throw err;
-  }
-}
-
 export async function apiRecommendDeck(
   client: SupabaseClient,
   input: RecommendDeckInput = {},
