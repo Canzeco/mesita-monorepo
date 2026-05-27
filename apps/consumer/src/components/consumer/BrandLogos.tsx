@@ -54,24 +54,40 @@ export function FacebookLogo() {
   );
 }
 
-// Mesita "m" mark. Two variants:
+// Mesita flame mark — the official brand glyph (pink flame from the
+// `/public/brand` lockup) sitting inside a pink-gradient badge so it
+// reads as part of the Google/Instagram/Facebook attribution row.
+//
+// Two variants:
 //   - "sm": h-5 w-5 rounded-md — the inline brand spot in the reviews
 //     summary box.
 //   - "md": h-8 w-8 rounded-full — the source badge on individual
 //     review cards so it matches the Google/Instagram/Facebook circles.
 // Static class strings (instead of template-literal concatenation) so
-// Tailwind's class scanner can see every variant.
+// Tailwind's class scanner can see every variant. The flame itself is
+// rendered in white on the gradient so a single SVG path covers both
+// variants — the wrapper's size class drives the final glyph size.
 export function MesitaMark({ variant = "md" }: { variant?: "sm" | "md" }) {
+  const flame = (
+    <svg
+      viewBox="0 0 100 100"
+      className="h-[60%] w-[60%]"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M81.3,28.5c-4.9,0-8.4,5.1-8.4,14.9c0,4.1-2.1,7.3-5.5,7.3c-4.1,0-5.6-2.9-5.6-6.2c0-6,5.7-6.7,5.7-16.2c0-6.9-8.8-12.2-8.8-12.2c2.8,9.9-2.3,15.1-7.5,15.1c-3,0-7.2-2.1-7.2-9.9c0-10.5,8-16.5,8-16.5C32.4,5,28.8,24.2,32.7,33.6c2.5,5.8,3.1,13.3-2.9,13.3c-7.1,0-3.4-13.2-3.4-13.2c-3.1,1.5-12.1,8.4-13,22.4c-0.1,0.7-0.1,1.4-0.1,2.2c0,0.7,0,1.4,0.1,2.1c0,0,0,0.1,0,0.1C14.5,79.8,30.5,95,50,95c20.3,0,36.7-16.4,36.7-36.7C86.7,40.2,75.6,37.4,81.3,28.5z M50,90.2c0,0-16.1-3.4-16.1-18.6c0-13.4,10-22.7,18.7-22.7c0,0-7.3,4.4-7.3,15c0,7.1,3.8,9,6.5,9c4.8,0,9.4-4.8,6.8-13.8c0,0,7.4,5.2,7.4,13.5C66.1,86.1,50,90.2,50,90.2z" />
+    </svg>
+  );
   if (variant === "sm") {
     return (
-      <span className="bg-pink-gradient font-display flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[13px] font-bold leading-none text-white">
-        m
+      <span className="bg-pink-gradient flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-white">
+        {flame}
       </span>
     );
   }
   return (
-    <span className="bg-pink-gradient font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg font-bold leading-none text-white">
-      m
+    <span className="bg-pink-gradient flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white">
+      {flame}
     </span>
   );
 }
