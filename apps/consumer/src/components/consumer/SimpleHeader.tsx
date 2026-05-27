@@ -1,11 +1,20 @@
 import Link from "next/link";
+import { ClassChip } from "./ClassChip";
 
+// Shared header used by every top-level surface that isn't /discover
+// (Reservations, Coupons, Pay, Share, Profile). The right-side
+// ClassChip mirrors the one on DiscoverHeader so the user's tier is
+// glanceable everywhere — set `chip={false}` to opt out on surfaces
+// where it would be redundant (e.g. /profile, where the same class
+// info lives inline in the page body).
 export function SimpleHeader({
   title,
   eyebrow,
+  chip = true,
 }: {
   title: string;
   eyebrow?: string;
+  chip?: boolean;
 }) {
   return (
     <header className="border-border flex items-center gap-3 border-b px-4 py-3">
@@ -26,6 +35,7 @@ export function SimpleHeader({
           </p>
         )}
       </div>
+      {chip && <ClassChip />}
     </header>
   );
 }

@@ -3,12 +3,10 @@
 import { ChevronRight } from "lucide-react";
 import { toast } from "@/lib/toast";
 
-// WhatsApp reminders connector. Sits below CalendarConnectBox on
-// /reservations. Sibling intent, different channel: calendar = silent
-// background sync, WhatsApp = active ping when the reservation is
-// close (day-before, hour-before). Both eventually drive the same
-// "don't miss it" outcome but via different surfaces, so they each
-// earn their own card.
+// WhatsApp reminders connector. Compact one-line variant: badge +
+// short headline + chevron. Sits below CalendarConnectBox; the long
+// explainer copy moved into the toast since the headline alone
+// telegraphs the value prop.
 
 export function WhatsAppRemindersBox() {
   function onConnect() {
@@ -18,46 +16,30 @@ export function WhatsAppRemindersBox() {
     );
   }
   return (
-    <section className="border-border bg-card-soft flex flex-col gap-3 rounded-2xl border p-4">
-      <header>
-        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+    <button
+      type="button"
+      onClick={onConnect}
+      className="border-border bg-card-soft hover:bg-muted/40 group flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+        <WhatsAppLogo />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-muted-foreground block text-[9px] font-bold tracking-[0.18em] uppercase">
           Reminders
-        </p>
-        <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-          Get reservation pings on WhatsApp
-        </p>
-        <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
-          Confirmations the moment a venue accepts your booking, plus a
-          day-of reminder an hour before your table.
-        </p>
-      </header>
-
-      <button
-        type="button"
-        onClick={onConnect}
-        className="bg-card border-border hover:bg-muted/40 group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition active:scale-[0.99]"
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-          <WhatsAppLogo />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">WhatsApp</span>
-          <span className="text-muted-foreground block truncate text-[11px]">
-            Booking confirmations & day-of reminders
-          </span>
+        <span className="font-display block text-[13px] leading-tight font-semibold">
+          Get pings on WhatsApp
         </span>
-        <ChevronRight
-          className="text-muted-foreground h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
-          strokeWidth={2}
-        />
-      </button>
-    </section>
+      </span>
+      <ChevronRight
+        className="text-muted-foreground h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
+        strokeWidth={2}
+      />
+    </button>
   );
 }
 
-// Inline WhatsApp brand mark — green rounded square with the speech-
-// bubble glyph cut out. Recognisable at 36px without needing an
-// external asset.
 function WhatsAppLogo() {
   return (
     <svg

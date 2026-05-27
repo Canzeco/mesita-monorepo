@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Calendar, Check, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CURRENT_USER, TIERS, tierBadgeClass } from "@/lib/consumer-data";
+import { ClassChip } from "./ClassChip";
 
 type WhatOption = { id: string; label: string; soon: boolean };
 const WHAT_OPTIONS: WhatOption[] = [
@@ -269,24 +269,6 @@ export function DiscoverHeader() {
   );
 }
 
-// Top-right header chip. Replaces the old QR-only square with a tier-colored
-// avatar showing the user's current Mesita class (B / S / G / D). Tap routes
-// to /pay (the QR + cashback balance surface) so the original "scan at the
-// bill" affordance is preserved and the class becomes glanceable at all
-// times.
-function ClassChip() {
-  const meta = TIERS.find((t) => t.id === CURRENT_USER.tier);
-  const initial = (meta?.label ?? CURRENT_USER.tier).charAt(0).toUpperCase();
-  return (
-    <Link
-      href="/pay"
-      aria-label={`Pay · Mesita ${meta?.label ?? "class"}`}
-      className={cn(
-        "font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-base font-bold transition hover:opacity-90",
-        tierBadgeClass(CURRENT_USER.tier),
-      )}
-    >
-      {initial}
-    </Link>
-  );
-}
+// ClassChip moved to a shared component so /reservations, /coupons,
+// /pay, /share can render the same tier-colored avatar via
+// SimpleHeader. See src/components/consumer/ClassChip.tsx.
