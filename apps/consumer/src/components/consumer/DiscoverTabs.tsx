@@ -3,28 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, LayoutGrid, Map as MapIcon, Search, Sparkles, Bookmark } from "lucide-react";
+import { Flame, LayoutGrid, Map as MapIcon, Search, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Six Discover modes, ordered left-to-right as a friction ramp:
+// Five Discover modes, ordered left-to-right as a friction ramp:
 //
-//   no typing                  │ typed query     │ recall
-//   Swipe → Map → Catalog      │ Search → AI     │ Saved
-//   flick  spatial scroll-grid │ keyword sentence │ yours
+//   no typing                  │ typed query │ recall
+//   Swipe → Map → Catalog      │ AI Search   │ Saved
+//   flick  spatial scroll-grid │ ask anything │ yours
 //
-// Within "no typing", Swipe is the brand-defining default (lowest
-// friction, leftmost); Map adds a spatial filter without input; Catalog
-// is the slowest of the three (broader scan, more deliberate). Within
-// "typed", Search owns single-word lookups (la lupa) and AI handles
-// conversational queries via Don Memo. Saved sits outside the discovery
-// modes — it's *recall*, not discovery — so it always anchors the right
-// end.
+// AI and Search merged into one tab — the underlying surface (Don
+// Memo at /discover/ai) handles both one-word lookups ("sushi") and
+// full sentences ("a romantic spot for Friday under MX$800") through
+// the same conversational entry. Splitting them into two tabs created
+// a false choice. The lupa icon stays because it telegraphs the
+// action (search); the "AI" in the label carries the "how it's
+// powered" half.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
   { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
-  { href: "/discover/search", label: "Search", Icon: Search },
-  { href: "/discover/ai", label: "AI", Icon: Sparkles },
+  { href: "/discover/ai", label: "AI Search", Icon: Search },
   { href: "/discover/saved", label: "Saved", Icon: Bookmark },
 ];
 
