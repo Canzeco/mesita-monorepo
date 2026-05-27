@@ -3,16 +3,21 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Share2 } from "lucide-react";
+import { VenueDetailActionBar } from "./VenueDetailBody";
 
 // Modal chrome for the intercepted /venues/[id] route. Sits as an absolute
 // layer inside the shell's content area (between StatusBar and BottomNav,
 // matching TicketSheet's positioning). The wrapped VenueDetailBody scrolls
-// inside; dismiss is router.back(), so the URL restores to whichever
-// surface the user came from (discover/catalog, discover/swipe, etc.) with
-// its state intact.
+// in a dedicated middle band; dismiss is router.back(), so the URL
+// restores to whichever surface the user came from (discover/catalog,
+// discover/swipe, etc.) with its state intact.
 //
-// Header bar mirrors the hard-nav page: a sticky translucent row with a
-// left dismiss button and a right Share button.
+// Layout is three rigid rows in a flex-col so the action bar can never
+// occlude the body's last visible content:
+//   1. Header (shrink-0) — translucent dismiss + venue name + share
+//   2. Scroll area (flex-1 overflow-y-auto) — VenueDetailBody renders
+//      every section inside this band
+//   3. Action bar (shrink-0) — the primary CTA cluster, always visible
 
 export function VenueDetailModalShell({
   children,
@@ -32,13 +37,12 @@ export function VenueDetailModalShell({
   }, [router]);
 
   return (
-    // animate-in slide-in-from-right makes the modal slide over the underlying
-    // surface left-to-right — feels like a covering pane, not a layout swap.
-    // The left-edge shadow sells the "sliding sheet" depth so the underlying
-    // shell reads as paused, not removed. tw-animate-css is already imported
-    // in globals.css; duration/ease tuned to feel snappy without being abrupt.
-    <div className="animate-in slide-in-from-right bg-background absolute inset-0 z-50 flex flex-col overflow-y-auto shadow-[-12px_0_32px_rgba(0,0,0,0.4)] duration-300 ease-out">
-      <header className="bg-background/85 sticky top-0 z-20 flex items-center gap-3 px-3 py-3 backdrop-blur">
+    // overflow-hidden on the outer container so the slide-in animation
+    // doesn't expose a horizontal scrollbar during the translate. The
+    // left-edge shadow sells the "covering sheet" depth so the underlying
+    // shell reads as paused, not removed.
+    <div className="animate-in slide-in-from-right bg-background absolute inset-0 z-50 flex flex-col overflow-hidden shadow-[-12px_0_32px_rgba(0,0,0,0.4)] duration-300 ease-out">
+      <header className="bg-background/85 z-20 flex shrink-0 items-center gap-3 px-3 py-3 backdrop-blur">
         <button
           type="button"
           onClick={() => router.back()}
@@ -58,7 +62,8 @@ export function VenueDetailModalShell({
           <Share2 className="h-4 w-4" />
         </button>
       </header>
-      {children}
+      <div className="flex-1 overflow-y-auto">{children}</div>
+      <VenueDetailActionBar />
     </div>
   );
 }

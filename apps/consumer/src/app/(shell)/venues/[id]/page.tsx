@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft, Share2 } from "lucide-react";
-import { VenueDetailBody } from "@/components/consumer/VenueDetailBody";
+import {
+  VenueDetailActionBar,
+  VenueDetailBody,
+} from "@/components/consumer/VenueDetailBody";
 import { mockVenue } from "@/lib/mock/venue";
 
 export const dynamic = "force-dynamic";
@@ -11,12 +14,15 @@ export const dynamic = "force-dynamic";
 // (shell)/@modal/(.)venues/[id]/page.tsx instead, which renders inside a
 // modal on top of the underlying surface.
 //
-// Mocked: every id resolves to the same fixture in @/lib/mock/venue.
+// Layout mirrors the modal shell — header, scroll area, action bar in
+// three rigid flex-col rows — so the opaque CTA buttons never occlude the
+// scrolled-past body content. Mocked: every id resolves to the same
+// fixture in @/lib/mock/venue.
 
 export default async function VenueDetailPage() {
   return (
-    <div className="bg-background relative flex flex-1 flex-col overflow-y-auto">
-      <header className="bg-background/85 sticky top-0 z-20 flex items-center gap-3 px-3 py-3 backdrop-blur">
+    <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
+      <header className="bg-background/85 z-20 flex shrink-0 items-center gap-3 px-3 py-3 backdrop-blur">
         <Link
           href="/discover/swipe"
           aria-label="Back"
@@ -35,7 +41,10 @@ export default async function VenueDetailPage() {
           <Share2 className="h-4 w-4" />
         </button>
       </header>
-      <VenueDetailBody venue={mockVenue} />
+      <div className="flex-1 overflow-y-auto">
+        <VenueDetailBody venue={mockVenue} />
+      </div>
+      <VenueDetailActionBar />
     </div>
   );
 }

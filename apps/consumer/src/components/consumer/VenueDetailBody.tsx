@@ -64,7 +64,9 @@ import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
 export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
   return (
-    <div className="flex flex-col gap-3 px-4 pb-0">
+    // pb-4 gives the last section breathing room above whatever footer
+    // (action bar / nav) the parent layout renders below the scroll area.
+    <div className="flex flex-col gap-3 px-4 pb-4">
       <MediaBox venue={venue} />
       <VenueSectionNav sections={[...NAV_SECTIONS]} />
       <SectionAnchor id="overview">
@@ -93,7 +95,6 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <SectionAnchor id="details">
         <DetailsBox venue={venue} />
       </SectionAnchor>
-      <ActionBar />
     </div>
   );
 }
@@ -961,11 +962,17 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// ── Floating action bar ─────────────────────────────────────────────────
-
-function ActionBar() {
+// ── Action bar ──────────────────────────────────────────────────────────
+//
+// Rendered by the venue modal shell + the hard-nav page as a sibling AFTER
+// the scrollable body so its opaque buttons can't occlude content. Used to
+// live inside VenueDetailBody as a sticky-bottom child, but the pink "Save
+// + reserve" button hid the last visible row of the Overview chips on
+// first paint. shrink-0 keeps it from compressing inside the parent's
+// flex-col.
+export function VenueDetailActionBar() {
   return (
-    <div className="border-border sticky bottom-0 -mx-4 mt-3 flex flex-col gap-2 border-t bg-black/50 px-4 pt-3 pb-4 backdrop-blur">
+    <div className="border-border flex shrink-0 flex-col gap-2 border-t bg-black/50 px-4 pt-3 pb-4 backdrop-blur">
       <button
         type="button"
         className="bg-pink-gradient shadow-glow rounded-full py-3 text-sm font-semibold text-white"
