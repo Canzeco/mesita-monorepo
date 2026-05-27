@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { SavedItemCard } from "@/components/consumer/SavedItemCard";
 import { TicketSheet } from "@/components/consumer/TicketSheet";
+import { CalendarConnectBox } from "./CalendarConnectBox";
 import { RESERVATIONS } from "@/lib/consumer-data";
 import type { SavedItem } from "@/lib/consumer-data";
 import {
@@ -50,6 +51,10 @@ export default function ReservationsPage() {
         <p className="bg-secondary/10 text-secondary rounded-xl px-3 py-2 text-[11px]">
           Preview — reservations aren&apos;t connected to the backend yet.
         </p>
+      </div>
+
+      <div className="px-4 pt-3">
+        <CalendarConnectBox />
       </div>
 
       <div className="px-4 pt-4">
