@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { StatusBar } from "@/components/consumer/StatusBar";
 import { BottomNav } from "@/components/consumer/BottomNav";
+import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/tickets";
@@ -56,7 +57,7 @@ export default async function ConsumerShellLayout({
     <MobileFrame>
       <StatusBar />
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        {children}
+        <ShellChildrenSlot>{children}</ShellChildrenSlot>
         {modal}
       </div>
       <BottomNav />
