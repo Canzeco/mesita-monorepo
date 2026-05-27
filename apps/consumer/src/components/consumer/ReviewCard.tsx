@@ -32,7 +32,7 @@ const TIER_TEXT: Record<Tier, string> = {
   bronze: "text-bronze",
   silver: "text-silver",
   gold: "text-gold",
-  diamond: "text-sky-400",
+  diamond: "text-sky-600",
 };
 
 const TIER_LABEL: Record<Tier, string> = {

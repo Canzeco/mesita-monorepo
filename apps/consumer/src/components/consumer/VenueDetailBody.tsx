@@ -183,95 +183,111 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   // single-number stand-in until we surface a combined Mesita+Google
   // headline rating.
   const googleRating = venue.google.rating.toFixed(1);
-  // Active reward chip — first-visit users see the welcome rate,
-  // returning users see the default-tier rate. Null = venue offers
-  // nothing at the user's tier, so the chip is suppressed.
+  // Active reward — first-visit users see the welcome rate, returning
+  // users see the default-tier rate. Null = venue offers nothing at the
+  // user's tier, so the cashback banner is suppressed entirely.
   const { welcome, default: returning, current_tier, is_first_visit } =
     venue.promo_matrix;
   const activeReward = is_first_visit
     ? welcome[current_tier]
     : returning[current_tier];
   const mechanicWord = venue.details.mechanic.toLowerCase();
-  // Three chip styles, one per info type:
-  //   • promo (cashback)    — loud pink gradient, the marketing punch
-  //   • status (open/closed)— soft green when open, neutral when closed
-  //   • trust (verified/web)— soft emerald when partner, neutral for web
-  // Verified + Open both go emerald-toned when positive: two greens read
-  // as "two good signals" not "duplicate badges", because their labels
-  // disambiguate them.
-  const chipBase =
-    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold";
-  const chipPositive =
-    "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
-  const chipNeutral =
-    "border-border bg-card text-muted-foreground";
+  const tierLabel = TIER_PROPER[current_tier];
   return (
-    <Box className="!gap-3">
-      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight break-words">
+    // bg-card-soft is the gradient utility (white → faint pink) — gives
+    // the summary card a premium "anchor" feel against the discover
+    // surfaces it leads into, without competing with the photos above.
+    <Box className="bg-card-soft !gap-4">
+      <h1 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
-      {/* Hero rating + stacked side facts — mirrors the Reviews Summary
-          "4.8 OVERALL" card pattern so the venue page reads as one design
-          family. Rating is the most-consulted number so it gets the
-          weighted treatment; cuisine / price / distance stack as compact
-          rows on the right. The hero card's bg-muted/40 fill anchors the
-          left column; right column stays naked text against the parent
-          Box's bg-card. */}
-      <div className="grid grid-cols-[auto_1fr] gap-3">
-        <div className="bg-muted/40 flex min-w-[96px] flex-col items-center justify-center rounded-2xl px-4 py-3">
-          <div className="flex items-center gap-1.5">
-            <Star
-              className="h-5 w-5 fill-amber-400 text-amber-400"
-              strokeWidth={0}
-            />
-            <span className="font-display text-2xl font-semibold leading-none">
-              {googleRating}
-            </span>
-          </div>
-          <p className="text-muted-foreground mt-1.5 text-[10px] font-medium tracking-[0.1em] uppercase">
+      {/* Hero rating + stacked side facts. The rating block is now a
+          pink-tinted gradient pill with a soft ring instead of a flat
+          muted square, and the star + number stack vertically so the
+          rating reads like a hero stat. Fact rows pair each icon with
+          a soft colored circle — amber/emerald/sky/pink in rotation —
+          to add a little visual rhythm without losing calm. */}
+      <div className="grid grid-cols-[auto_1fr] gap-4">
+        <div className="relative flex min-w-[108px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-pink-500/[0.12] to-pink-500/[0.04] px-4 py-4 ring-1 ring-pink-500/15">
+          <Star
+            className="h-5 w-5 fill-amber-400 text-amber-400"
+            strokeWidth={0}
+          />
+          <span className="font-display text-[34px] font-semibold leading-none">
+            {googleRating}
+          </span>
+          <span className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
             {formatCount(venue.google.count, false)} reviews
-          </p>
+          </span>
         </div>
-        <div className="flex flex-col justify-center gap-2.5">
+        <div className="flex flex-col justify-center gap-3">
           <FactRow
             icon={Utensils}
+            iconBg="bg-amber-500/10"
+            iconColor="text-amber-600"
             value={venue.category}
             sub="cuisine"
             capitalize
           />
           <FactRow
             icon={Tags}
+            iconBg="bg-emerald-500/10"
+            iconColor="text-emerald-600"
             value={venue.price_range}
             sub="per person"
           />
           <FactRow
             icon={Navigation}
+            iconBg="bg-sky-500/10"
+            iconColor="text-sky-600"
             value={`${venue.distance_km} km`}
             sub="from you"
           />
         </div>
       </div>
-      {/* Chip row — promo + trust + live status, all the same chip size so
-          the eye reads them as a set. Cashback retains its loud pink fill
-          because it's the *promo* not just info; verified + open share the
-          soft chip style. */}
-      <div className="flex flex-wrap items-center gap-2">
-        {activeReward != null && (
-          <span className="bg-pink-gradient shadow-glow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white">
-            <Sparkles className="h-3 w-3" />
-            {activeReward}% {mechanicWord}
-          </span>
-        )}
-        <span className={cn(chipBase, isPartner ? chipPositive : chipNeutral)}>
+      {/* Cashback banner — the headline promo, treated as a full-width
+          gradient row rather than a tiny chip. Suppressed entirely when
+          the venue offers nothing at the user's tier. */}
+      {activeReward != null && (
+        <div className="bg-pink-gradient shadow-glow flex items-center gap-3 rounded-xl px-4 py-3 text-white">
+          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="text-[15px] font-bold">
+              {activeReward}% {mechanicWord}
+            </p>
+            <p className="text-[11px] text-white/85">
+              at Mesita {tierLabel}
+            </p>
+          </div>
+        </div>
+      )}
+      {/* Trust row — small chips, deliberately differentiated. Partner
+          reads sky-tinted (a trust signal cool), open status reads
+          emerald (a "live now" warm). Sharing a single emerald used to
+          make them read as duplicate badges. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+            isPartner
+              ? "border-sky-500/30 bg-sky-500/10 text-sky-700"
+              : "border-border bg-card text-muted-foreground",
+          )}
+        >
           {isPartner ? (
-            <BadgeCheck className="h-3 w-3" />
+            <BadgeCheck className="h-3 w-3" strokeWidth={2.5} />
           ) : (
             <Globe className="h-3 w-3" />
           )}
           {isPartner ? "Verified partner" : "Web listing"}
         </span>
         <span
-          className={cn(chipBase, venue.open_now ? chipPositive : chipNeutral)}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+            venue.open_now
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+              : "border-border bg-card text-muted-foreground",
+          )}
         >
           <Clock className="h-3 w-3" />
           {venue.open_now
@@ -279,16 +295,18 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
             : `Closed · opens ${venue.opens_at}`}
         </span>
       </div>
-      {/* Context block — address gets full width with a 2-line clamp so a
-          long street name reads instead of truncating to "...". Freshness
-          stays as the trailing line, smaller, so trust info doesn't compete
-          with the chips above. */}
-      <div className="text-muted-foreground flex flex-col gap-1.5 text-xs">
-        <p className="inline-flex items-start gap-1.5">
-          <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+      {/* Context — address bumped up to 13px with a pink pin so the
+          location reads as a real anchor instead of a footnote. Freshness
+          stays muted-tiny so it whispers. */}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-foreground/80 inline-flex items-start gap-2 text-[13px] leading-snug">
+          <MapPin
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink-500"
+            strokeWidth={2}
+          />
           <span className="line-clamp-2">{venue.address}</span>
         </p>
-        <p className="inline-flex items-center gap-1.5">
+        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px]">
           <Pencil className="h-3 w-3" />
           Updated {venue.last_updated_label}
         </p>
@@ -297,28 +315,40 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// One side row of the Overview hero block. Icon + bold value + muted sub
-// label, laid out horizontally. No background; the parent Box owns the
-// surface. Capitalize flips the first letter for fields stored lowercase
-// (category enum).
+// One side row of the Overview hero block. Icon sits in a soft colored
+// circle (amber / emerald / sky to match the column's role); value uses
+// the display font for that "headline stat" feel without competing with
+// the rating hero on the left. Capitalize flips the first letter for
+// fields stored lowercase (category enum).
 function FactRow({
   icon: Icon,
   value,
   sub,
   capitalize,
+  iconBg,
+  iconColor,
 }: {
   icon: LucideIcon;
   value: string;
   sub: string;
   capitalize?: boolean;
+  iconBg: string;
+  iconColor: string;
 }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+    <div className="flex items-center gap-2.5">
+      <div
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          iconBg,
+        )}
+      >
+        <Icon className={cn("h-3.5 w-3.5", iconColor)} strokeWidth={2.25} />
+      </div>
       <div className="min-w-0">
         <p
           className={cn(
-            "text-foreground text-sm font-semibold leading-tight",
+            "font-display text-foreground text-[15px] font-semibold leading-tight",
             capitalize && "capitalize",
           )}
         >
@@ -512,7 +542,7 @@ const TIER_TEXT: Record<Tier, string> = {
   // tier-diamond gradient stripe still uses the violet token. Local
   // override on purpose — the global tier-diamond token stays untouched
   // so other apps (admin/business) keep their existing diamond hue.
-  diamond: "text-sky-400",
+  diamond: "text-sky-600",
 };
 
 function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
@@ -555,9 +585,9 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
 function MenuBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
-      <div className="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2">
-        <Info className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-        <p className="text-[11px] leading-snug text-amber-100/90">
+      <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
+        <Info className="h-3.5 w-3.5 shrink-0 text-amber-600" strokeWidth={2.25} />
+        <p className="text-[11px] leading-snug font-medium text-amber-900">
           Reference only — current menu prices may differ at the venue.
         </p>
       </div>
@@ -669,7 +699,7 @@ function HoursBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Hours & popular times" icon={Clock} iconColor="text-violet-400">
       <div className="bg-background rounded-full px-4 py-2.5 text-sm">
-        <span className="font-semibold text-emerald-400">
+        <span className="font-semibold text-emerald-700">
           {venue.open_now ? "Open now" : "Closed"}
         </span>
         <span className="text-muted-foreground"> · </span>
