@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
 import { SuperAdminBanner } from "@/components/business/SuperAdminBanner";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getWhoami } from "@/lib/api/whoami";
@@ -80,10 +79,6 @@ export default async function RootLayout({
           </div>
         )}
         {children}
-        {/* Sonner toaster — surfaces via toast() / toast.success() etc.
-            from anywhere in the tree. Tucked at the body root so
-            stacking context is predictable. */}
-        <Toaster richColors closeButton position="bottom-center" />
       </body>
     </html>
   );
