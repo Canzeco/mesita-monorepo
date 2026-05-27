@@ -14,6 +14,10 @@ import {
   Bell,
   Shield,
   HelpCircle,
+  Calendar,
+  Utensils,
+  BookOpen,
+  MessageCircle,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
@@ -154,8 +158,118 @@ function ClassTab({
       <CurrentClassCard />
       <SocialPathBox onConnect={onConnectSocial} />
       <SubscriptionPathBox />
+      <DonMemoToolsBox />
       <AppealForUpgradeButton />
     </div>
+  );
+}
+
+// Don Memo's tool kit — calendar + reservation-platform integrations that
+// power the agentic side of /discover/ai. Listed as preview affordances:
+// the Connect buttons fire an inline notice instead of an OAuth flow until
+// Don Memo himself is live. Lives in the Class tab as a sibling of the
+// upgrade paths since both sections are "connect external accounts that
+// Mesita uses on your behalf"; once the connectors actually wire up we may
+// promote it to its own tab.
+const DON_MEMO_TOOLS = [
+  {
+    id: "google-calendar" as const,
+    label: "Google Calendar",
+    sub: "Read availability, add bookings",
+    Icon: Calendar,
+    badge:
+      "bg-[linear-gradient(135deg,#4285F4,#34A853,#FBBC04,#EA4335)] text-white",
+  },
+  {
+    id: "opentable" as const,
+    label: "OpenTable",
+    sub: "Auto-confirm reservations",
+    Icon: Utensils,
+    badge: "bg-[#DA3743] text-white",
+  },
+  {
+    id: "resy" as const,
+    label: "Resy",
+    sub: "Auto-confirm reservations",
+    Icon: BookOpen,
+    badge: "bg-black text-white",
+  },
+  {
+    id: "whatsapp" as const,
+    label: "WhatsApp",
+    sub: "Confirmaciones por chat",
+    Icon: MessageCircle,
+    badge: "bg-[#25D366] text-white",
+  },
+];
+
+type DonMemoToolId = (typeof DON_MEMO_TOOLS)[number]["id"];
+
+function DonMemoToolsBox() {
+  // Inline notice that auto-clears — same UX feel as the /discover/ai
+  // submit affordance so users learn the "Don Memo isn't live yet" tone.
+  const [notice, setNotice] = useState<string | null>(null);
+  function ping(id: DonMemoToolId) {
+    const label = DON_MEMO_TOOLS.find((t) => t.id === id)?.label ?? id;
+    setNotice(`Don Memo still warming up — the ${label} connector activates once he's live.`);
+    setTimeout(() => setNotice(null), 4000);
+  }
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
+        Don Memo · Tools
+      </p>
+      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
+        Let Don Memo book for you
+      </p>
+      <p className="text-muted-foreground mt-0.5 text-[12px]">
+        Connect your calendar and reservation apps so Don Memo can check
+        availability and confirm bookings for you.
+      </p>
+      <div className="mt-4 flex flex-col gap-2">
+        {DON_MEMO_TOOLS.map((t) => (
+          <DonMemoToolRow key={t.id} tool={t} onConnect={() => ping(t.id)} />
+        ))}
+      </div>
+      {notice && (
+        <p className="bg-secondary/10 text-secondary mt-3 rounded-xl px-3 py-2 text-[11px]">
+          {notice}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DonMemoToolRow({
+  tool,
+  onConnect,
+}: {
+  tool: (typeof DON_MEMO_TOOLS)[number];
+  onConnect: () => void;
+}) {
+  const { Icon, label, sub, badge } = tool;
+  return (
+    <button
+      type="button"
+      onClick={onConnect}
+      className="bg-muted/40 hover:bg-muted flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
+    >
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+          badge,
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="text-muted-foreground block text-[11px]">{sub}</span>
+      </span>
+      <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+        Connect
+      </span>
+    </button>
   );
 }
 
