@@ -11,9 +11,9 @@
 //   toast("Couldn't save — try again", { tone: "error" });
 //   toast.action("Reserved", { label: "View", onClick: () => router.push("/saved") });
 
-export type ToastTone = "info" | "success" | "error";
+type ToastTone = "info" | "success" | "error";
 
-export type ToastInput = {
+type ToastInput = {
   message: string;
   tone?: ToastTone;
   durationMs?: number;
