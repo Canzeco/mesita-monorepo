@@ -33,7 +33,10 @@ const ITEMS = [
   {
     href: "/discover/swipe",
     Icon: Compass,
-    label: "Discover",
+    // Label reads "Explore" while the route stays /discover and the
+    // component names (DiscoverHeader, DiscoverTabs) keep their
+    // identifiers. Visible word only.
+    label: "Explore",
     match: "/discover",
   },
   {
