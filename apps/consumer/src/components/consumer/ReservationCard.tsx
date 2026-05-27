@@ -1,19 +1,26 @@
 "use client";
 
 import Image from "next/image";
-import { Calendar, Users, Clock, X, CheckCircle2 } from "lucide-react";
-import type { ReservationItem, ReservationStatus } from "@/lib/mock/reservations-mock";
+import {
+  Calendar,
+  Users,
+  Clock,
+  X,
+  CheckCircle2,
+  Ticket,
+  Instagram,
+} from "lucide-react";
+import type {
+  ReservationItem,
+  ReservationStatus,
+  LinkedCouponSummary,
+} from "@/lib/mock/reservations-mock";
 import { cn } from "@/lib/utils";
 
-// Reservation card — booking metadata only. No money, no cashback, no
-// step dots. The linked coupon (in /coupons) owns the discount surface.
-//
-// Status drives the lead pill + the optional rich note row underneath
-// the meta line. Three terminal states, no in-between dots:
-//
-//   booking    soft amber pulse — "we're working on it"
-//   booked     emerald confirmation — "you're in"
-//   cancelled  muted strike — terminal, no action
+// Reservation card. Booking metadata only. When the reservation has a
+// linked coupon (the wallet entry tied to the visit), a small "ticket
+// stub" rides along underneath the card — dashed perforated edge above
+// it sells the metaphor without needing a literal scissor icon.
 
 const STATUS_META: Record<
   ReservationStatus,
@@ -55,8 +62,6 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
       )}
     >
       <div className="flex items-start gap-3">
-        {/* Hero photo — square, modest. Reservation card is utility, not
-            marketing, so the photo doesn't dominate the card. */}
         <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
           {r.venuePhoto ? (
             <Image
@@ -119,6 +124,56 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
           {r.statusNote}
         </div>
       )}
+
+      {/* Linked coupon ticket stub — only renders if the reservation
+          has a coupon tied to it. Dashed border-top sells the
+          "perforated edge" metaphor; the inline ticket icon + the
+          small percent badge keep the stub visually distinct from
+          the main reservation surface above. */}
+      {r.linkedCoupon && !cancelled && (
+        <LinkedCouponStub coupon={r.linkedCoupon} />
+      )}
     </article>
+  );
+}
+
+function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
+  const ig = coupon.kind === "instagram";
+  return (
+    <div className="-mx-3 -mb-3 border-t border-dashed border-border/70 px-3 pt-3 pb-3">
+      <p className="text-muted-foreground mb-1.5 text-[9px] font-bold tracking-[0.18em] uppercase">
+        Coupon tied to this booking
+      </p>
+      <div className="flex items-center gap-2.5">
+        <div className="bg-pink-500/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+          {ig ? (
+            <Instagram className="h-4 w-4 text-pink-600" strokeWidth={2} />
+          ) : (
+            <Ticket className="h-4 w-4 text-pink-600" strokeWidth={2} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold leading-tight">
+            {coupon.percent}% cashback ·{" "}
+            <span className="text-muted-foreground font-normal">
+              {coupon.tierLabel}
+            </span>
+          </p>
+          <p className="text-muted-foreground text-[10px]">
+            {ig ? "Story coupon" : "Normal coupon"}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+            coupon.state === "active"
+              ? "border-emerald-500/30 bg-emerald-50 text-emerald-800"
+              : "border-amber-500/30 bg-amber-50 text-amber-800",
+          )}
+        >
+          {coupon.state === "active" ? "Active" : "Pending"}
+        </span>
+      </div>
+    </div>
   );
 }

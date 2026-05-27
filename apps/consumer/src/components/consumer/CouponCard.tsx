@@ -8,24 +8,23 @@ import {
   Clock,
   AlertCircle,
   X,
+  Calendar,
+  Users,
 } from "lucide-react";
 import type {
   CouponItem,
   NormalCouponStatus,
   InstagramCouponStatus,
+  LinkedReservationSummary,
 } from "@/lib/mock/coupons-mock";
 import { cn } from "@/lib/utils";
 
-// Coupon card — discount instrument. Split by kind because the
-// lifecycles + the calls to action diverge enough that one card with
-// every possible state is harder to read than two specialized ones.
-//
-//   normal     auto-issued from a save; just shows the discount + a
-//              status pill (active / redeemed / expired / cancelled).
-//
-//   instagram  earned via story verification; the active state shows
-//              the discount, the in-flight states call the user to
-//              the next verification step.
+// Coupon card. Split by kind because the lifecycles + the calls to
+// action diverge enough that one card with every possible state is
+// harder to read than two specialized ones. When the coupon is tied
+// to a known reservation (auto-issued or attached at booking), a
+// small reservation-ticket stub appears below the card — dashed
+// perforated edge sells the "ticket pair" metaphor.
 
 const NORMAL_STATUS: Record<
   NormalCouponStatus,
@@ -102,69 +101,116 @@ export function CouponCard({ c }: { c: CouponItem }) {
   return (
     <article
       className={cn(
-        "flex overflow-hidden rounded-2xl border",
+        "overflow-hidden rounded-2xl border",
         muted ? "border-border bg-card opacity-70" : "border-border bg-card",
       )}
     >
-      <div className="bg-muted relative h-auto w-20 shrink-0">
-        {c.venuePhoto ? (
-          <Image
-            src={c.venuePhoto}
-            alt={c.venueName}
-            fill
-            sizes="80px"
-            className="object-cover"
-          />
-        ) : null}
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="font-display truncate text-base leading-tight font-semibold">
-              {c.venueName}
-            </h3>
-            <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
-              {c.tierLabel} · {c.capLabel}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="font-display text-foreground text-2xl leading-none font-semibold">
-              {c.percent}
-              <span className="text-foreground/70 text-base">%</span>
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-[9px] font-bold tracking-[0.16em] uppercase">
-              cashback
-            </p>
-          </div>
+      <div className="flex">
+        <div className="bg-muted relative h-auto w-20 shrink-0">
+          {c.venuePhoto ? (
+            <Image
+              src={c.venuePhoto}
+              alt={c.venueName}
+              fill
+              sizes="80px"
+              className="object-cover"
+            />
+          ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-              meta.pillClass,
-            )}
-          >
-            <meta.Icon className="h-3 w-3" strokeWidth={2.25} />
-            {meta.label}
-          </span>
-          {isInstagram && (
-            <span className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
-              <Sparkles className="h-3 w-3" />
-              Story coupon
+        <div className="flex min-w-0 flex-1 flex-col gap-2 p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-display truncate text-base leading-tight font-semibold">
+                {c.venueName}
+              </h3>
+              <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                {c.tierLabel} · {c.capLabel}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-display text-foreground text-2xl leading-none font-semibold">
+                {c.percent}
+                <span className="text-foreground/70 text-base">%</span>
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-[9px] font-bold tracking-[0.16em] uppercase">
+                cashback
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                meta.pillClass,
+              )}
+            >
+              <meta.Icon className="h-3 w-3" strokeWidth={2.25} />
+              {meta.label}
             </span>
+            {isInstagram && (
+              <span className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
+                <Sparkles className="h-3 w-3" />
+                Story coupon
+              </span>
+            )}
+          </div>
+
+          {isInstagram && c.status === "rejected" && c.rejectReason && (
+            <p className="bg-destructive/10 text-destructive rounded-lg px-2.5 py-1.5 text-[11px] leading-snug">
+              {c.rejectReason}
+            </p>
           )}
         </div>
-
-        {/* Instagram rejected coupons get a reason hint inline so the user
-            knows what to fix on the retry. */}
-        {isInstagram && c.status === "rejected" && c.rejectReason && (
-          <p className="bg-destructive/10 text-destructive rounded-lg px-2.5 py-1.5 text-[11px] leading-snug">
-            {c.rejectReason}
-          </p>
-        )}
       </div>
+
+      {/* Linked reservation ticket stub — only renders if a reservation
+          is tied to the coupon AND the coupon isn't in a terminal state
+          where it wouldn't matter anyway. */}
+      {c.linkedReservation && !muted && (
+        <LinkedReservationStub reservation={c.linkedReservation} />
+      )}
     </article>
+  );
+}
+
+function LinkedReservationStub({
+  reservation,
+}: {
+  reservation: LinkedReservationSummary;
+}) {
+  const isBooking = reservation.state === "booking";
+  return (
+    <div className="border-t border-dashed border-border/70 px-3 py-2.5">
+      <p className="text-muted-foreground mb-1.5 text-[9px] font-bold tracking-[0.18em] uppercase">
+        Reservation using this coupon
+      </p>
+      <div className="flex items-center gap-2.5">
+        <div className="bg-emerald-500/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+          <Calendar className="h-4 w-4 text-emerald-700" strokeWidth={2} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground truncate text-[13px] font-semibold leading-tight">
+            {reservation.when}
+          </p>
+          <p className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
+            <Users className="h-2.5 w-2.5" />
+            {reservation.partySize}{" "}
+            {reservation.partySize === 1 ? "person" : "people"}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+            isBooking
+              ? "border-amber-500/30 bg-amber-50 text-amber-800"
+              : "border-emerald-500/30 bg-emerald-50 text-emerald-800",
+          )}
+        >
+          {isBooking ? "Booking" : "Booked"}
+        </span>
+      </div>
+    </div>
   );
 }

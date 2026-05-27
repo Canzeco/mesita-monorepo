@@ -2,29 +2,10 @@
 // model. A coupon is a discount instrument: it lives in the wallet, gets
 // redeemed on a visit, and has its own per-kind lifecycle.
 //
-// Two kinds, with different birth/verification paths:
-//
-//   normal     — auto-issued when the user saves a partner venue
-//                (see the saved_venues → coupons trigger in mesita-
-//                supabase migration 0031). Lifecycle:
-//
-//                   active ─▶ redeemed | expired | cancelled
-//
-//   instagram  — earned by posting a story tagging the venue +
-//                Mesita. Goes through verification before the
-//                discount unlocks. Lifecycle:
-//
-//                   pending_story ─▶ under_review ─▶ verified
-//                       │                  │
-//                       │                  ╰▶ rejected ─▶ pending_story
-//                       │
-//                       ╰▶ expired   (no story before TTL)
-//
-//                   verified ─▶ redeemed | expired
-//
-// Card surface only shows the *current* status — the full history is
-// implicit. Instagram coupons get a slightly different visual treatment
-// so the verification ask is unmistakable.
+// When the coupon is being used (or planned-to-be-used) at a known
+// reservation, the embedded `linkedReservation` summary travels with
+// the coupon so the card can render a "tied reservation" stub without
+// a cross-lookup.
 
 export type CouponKind = "normal" | "instagram";
 
@@ -42,29 +23,34 @@ export type InstagramCouponStatus =
   | "redeemed"
   | "expired";
 
-export type CouponItem =
-  | (CouponBase & { kind: "normal"; status: NormalCouponStatus })
-  | (CouponBase & {
-      kind: "instagram";
-      status: InstagramCouponStatus;
-      /** Reject reason, surfaced on the card when status === "rejected". */
-      rejectReason?: string;
-    });
+/** Compact reservation summary shown as a stub below a coupon card. */
+export type LinkedReservationSummary = {
+  id: string;
+  when: string;
+  partySize: number;
+  /** Subset of the full reservation status — only the states a coupon stub cares about. */
+  state: "booking" | "booked";
+};
 
 type CouponBase = {
   id: string;
   venueId: string;
   venueName: string;
   venuePhoto: string | null;
-  /** Discount percent (10/20/50/70). */
   percent: number;
-  /** "Mesita Gold", "Mesita Diamond", etc. */
   tierLabel: string;
-  /** "MX$500 / visit", "no cap", etc. — display-ready. */
   capLabel: string;
-  /** ISO date or null. Drives the "expires in X days" hint when present. */
   expiresAt: string | null;
+  linkedReservation?: LinkedReservationSummary;
 };
+
+export type CouponItem =
+  | (CouponBase & { kind: "normal"; status: NormalCouponStatus })
+  | (CouponBase & {
+      kind: "instagram";
+      status: InstagramCouponStatus;
+      rejectReason?: string;
+    });
 
 export const MOCK_COUPONS: CouponItem[] = [
   {
@@ -79,6 +65,12 @@ export const MOCK_COUPONS: CouponItem[] = [
     tierLabel: "Mesita Gold",
     capLabel: "Capped MX$500 / visit",
     expiresAt: null,
+    linkedReservation: {
+      id: "res-mar-verde",
+      when: "Wed May 28 · 8:00 PM",
+      partySize: 2,
+      state: "booked",
+    },
   },
   {
     id: "cp-neon-bar",
@@ -92,6 +84,12 @@ export const MOCK_COUPONS: CouponItem[] = [
     tierLabel: "Mesita Gold",
     capLabel: "Capped MX$500 / visit",
     expiresAt: null,
+    linkedReservation: {
+      id: "res-neon-bar",
+      when: "Sat May 31 · 9:00 PM",
+      partySize: 6,
+      state: "booking",
+    },
   },
   {
     id: "cp-casa-luminar",
@@ -105,6 +103,12 @@ export const MOCK_COUPONS: CouponItem[] = [
     tierLabel: "Mesita Gold",
     capLabel: "Capped MX$300 / visit",
     expiresAt: null,
+    linkedReservation: {
+      id: "res-casa-luminar",
+      when: "Fri Jun 6 · 8:30 PM",
+      partySize: 4,
+      state: "booked",
+    },
   },
   {
     id: "cp-ig-ferment",

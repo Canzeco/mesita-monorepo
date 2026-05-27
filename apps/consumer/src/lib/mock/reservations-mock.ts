@@ -1,33 +1,31 @@
-// Reservation entity, independent of the legacy ticket model. A
-// reservation is *only* booking metadata — when, where, who, status.
-// Money / discount / cashback live on the linked coupon (if any).
-//
-// Status machine:
-//
-//   booking   ───▶  booked     (venue confirmed)
-//      │
-//      ╰────────▶  cancelled   (by user or venue)
-//
-//   booked   ────▶  cancelled  (by user — terminal)
-//
-// "booking" covers everything in-flight: Mesita's AI calling the venue,
-// human concierge negotiating, OpenTable / Resy round-trip pending, etc.
-// We surface a status-specific note (e.g., "AI calling venue · expect
-// a call in ~3 min") when the data has one.
+// Reservation entity. Booking metadata only — no money fields. When a
+// reservation has a coupon riding along with it (the auto-issued one
+// from saving the venue, or one specifically linked at booking time),
+// the embedded `linkedCoupon` summary travels with the reservation so
+// the card can render a "tied coupon" stub without a cross-lookup.
 
 export type ReservationStatus = "booking" | "booked" | "cancelled";
+
+/** Compact coupon summary shown as a stub below a reservation card. */
+export type LinkedCouponSummary = {
+  id: string;
+  percent: number;
+  tierLabel: string;
+  kind: "normal" | "instagram";
+  /** Lifecycle hint — surfaced as a small pill. Subset of the full status. */
+  state: "active" | "pending";
+};
 
 export type ReservationItem = {
   id: string;
   venueId: string;
   venueName: string;
   venuePhoto: string | null;
-  /** Human-readable when string. e.g. "Wed May 28 · 8:00 PM". */
   when: string;
   partySize: number;
   status: ReservationStatus;
-  /** Optional rich status note rendered below the meta row. */
   statusNote?: string;
+  linkedCoupon?: LinkedCouponSummary;
 };
 
 export const MOCK_RESERVATIONS: ReservationItem[] = [
@@ -40,6 +38,13 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     when: "Wed May 28 · 8:00 PM",
     partySize: 2,
     status: "booked",
+    linkedCoupon: {
+      id: "cp-mar-verde",
+      percent: 20,
+      tierLabel: "Mesita Gold",
+      kind: "normal",
+      state: "active",
+    },
   },
   {
     id: "res-neon-bar",
@@ -51,6 +56,13 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     partySize: 6,
     status: "booking",
     statusNote: "AI calling venue · expect a call in ~3 min to confirm",
+    linkedCoupon: {
+      id: "cp-neon-bar",
+      percent: 20,
+      tierLabel: "Mesita Gold",
+      kind: "normal",
+      state: "active",
+    },
   },
   {
     id: "res-casa-luminar",
@@ -61,6 +73,13 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     when: "Fri Jun 6 · 8:30 PM",
     partySize: 4,
     status: "booked",
+    linkedCoupon: {
+      id: "cp-casa-luminar",
+      percent: 10,
+      tierLabel: "Mesita Gold",
+      kind: "normal",
+      state: "active",
+    },
   },
   {
     id: "res-atelier",
@@ -72,5 +91,6 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     partySize: 2,
     status: "booking",
     statusNote: "Booking via OpenTable · usually under a minute",
+    // No linkedCoupon — this venue isn't a Mesita partner.
   },
 ];
