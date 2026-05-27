@@ -15,7 +15,6 @@ import {
   Bell,
   Shield,
   HelpCircle,
-  Calendar,
   Utensils,
   BookOpen,
   MessageCircle,
@@ -169,22 +168,18 @@ function ClassTab({
   );
 }
 
-// Don Memo's tool kit — calendar + reservation-platform integrations that
-// power the agentic side of /discover/ai. Listed as preview affordances:
-// the Connect buttons fire an inline notice instead of an OAuth flow until
-// Don Memo himself is live. Lives in the Class tab as a sibling of the
-// upgrade paths since both sections are "connect external accounts that
-// Mesita uses on your behalf"; once the connectors actually wire up we may
-// promote it to its own tab.
+// Don Memo's tool kit — reservation-platform integrations that power the
+// agentic side of /discover/ai. Listed as preview affordances: the Connect
+// buttons fire an inline notice instead of an OAuth flow until Don Memo
+// himself is live. Lives in the Class tab as a sibling of the upgrade
+// paths since both sections are "connect external accounts that Mesita
+// uses on your behalf".
+//
+// Calendar connectors moved out of this list — they now live on the
+// /reservations surface (CalendarConnectBox) since calendar sync is a
+// reservation-page concern, not an account-settings concern. The
+// remaining tools are pure reservation/comms integrations.
 const DON_MEMO_TOOLS = [
-  {
-    id: "google-calendar" as const,
-    label: "Google Calendar",
-    sub: "Read availability, add bookings",
-    Icon: Calendar,
-    badge:
-      "bg-[linear-gradient(135deg,#4285F4,#34A853,#FBBC04,#EA4335)] text-white",
-  },
   {
     id: "opentable" as const,
     label: "OpenTable",
@@ -228,8 +223,9 @@ function DonMemoToolsBox() {
         Let Don Memo book for you
       </p>
       <p className="text-muted-foreground mt-0.5 text-[12px]">
-        Connect your calendar and reservation apps so Don Memo can check
-        availability and confirm bookings for you.
+        Connect your reservation apps so Don Memo can check availability
+        and confirm bookings for you. (Calendar sync lives on the
+        Reservations tab.)
       </p>
       <div className="mt-4 flex flex-col gap-2">
         {DON_MEMO_TOOLS.map((t) => (
