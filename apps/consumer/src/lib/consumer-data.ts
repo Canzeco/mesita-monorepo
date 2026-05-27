@@ -159,9 +159,13 @@ export function tierBadgeClass(tier: Tier): string {
 // badges) plus two web-listed venues (no badge) so the contextual badge
 // logic on /saved is visible.
 //
-// TODO: replace with `consumer-list-saved-venues` edge function once the
-// consumer_saved_venues table + EF land. Client calls the EF, never the DB
-// directly — see api/venues.ts for the existing pattern.
+// TODO: swap this mock for a `consumer-list-saved-venues` EF call.
+// The EF (and the underlying public.saved_venues table) already ship —
+// see mesita-supabase/supabase/functions/consumer-list-saved-venues.
+// What's pending is the consumer-side wire-up: a hook that invokes the
+// EF and the /discover/saved page reading from it instead of this
+// constant. Client calls the EF, never the DB directly — see
+// api/venues.ts for the existing pattern.
 
 import type { Venue as PublicVenue } from "@/lib/api/venues";
 
