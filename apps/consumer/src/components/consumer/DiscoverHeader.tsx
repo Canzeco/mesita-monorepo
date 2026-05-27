@@ -271,15 +271,16 @@ export function DiscoverHeader() {
 
 // Top-right header chip. Replaces the old QR-only square with a tier-colored
 // avatar showing the user's current Mesita class (B / S / G / D). Tap routes
-// to /coupons, which carries the QR + wallet + saved coupons — so the
-// affordance is preserved and the class becomes glanceable at all times.
+// to /pay (the QR + cashback balance surface) so the original "scan at the
+// bill" affordance is preserved and the class becomes glanceable at all
+// times.
 function ClassChip() {
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier);
   const initial = (meta?.label ?? CURRENT_USER.tier).charAt(0).toUpperCase();
   return (
     <Link
-      href="/coupons"
-      aria-label={`Coupons · Mesita ${meta?.label ?? "class"}`}
+      href="/pay"
+      aria-label={`Pay · Mesita ${meta?.label ?? "class"}`}
       className={cn(
         "font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-base font-bold transition hover:opacity-90",
         tierBadgeClass(CURRENT_USER.tier),

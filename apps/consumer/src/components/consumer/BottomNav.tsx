@@ -2,29 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, CalendarCheck, Ticket, Share2, User } from "lucide-react";
+import {
+  Compass,
+  CalendarCheck,
+  Ticket,
+  QrCode,
+  Share2,
+  User,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Five top-level surfaces. Reservations + Coupons replaced Saved + Pay
-// when the consumer model split into reservations + coupons as separate
-// first-class entities:
+// Six top-level surfaces. Coupons and Pay split apart so the wallet
+// surface stays focused on the coupons list, and Pay owns its own tab
+// for the QR-to-pay + cashback balance — the two ideas had been folded
+// together but they answer different intents ("show me my deals" vs
+// "I'm at the bill, scan me").
 //
-//   Discover     — Swipe / Catalog / Map / AI / Saved (Saved is now a
-//                  Discover sub-route since it's part of how you find
-//                  venues, not a wallet concern).
+//   Discover     — Swipe / Map / Catalog / Search / AI / Saved
+//                  sub-tabs.
 //   Reservations — booking entries only, no money fields shown.
-//   Coupons      — the coupons wallet AND the QR-to-pay surface.
+//   Coupons      — the coupons wallet (active / used / expired).
+//   Pay          — the QR-to-pay + cashback balance.
 //   Share        — referral.
 //   Profile      — account / settings.
+//
+// Six items is tight at narrow widths; the label font-size + flex-1
+// distribution scales it; truncate guards against the longest label
+// ("Reservations") overflowing its column on edge devices.
 const ITEMS = [
   {
     href: "/discover/swipe",
     Icon: Compass,
-    // Label reads "Explore" while the underlying route stays /discover
-    // (and the internal component names — DiscoverHeader, DiscoverTabs —
-    // keep their existing identifiers). Cheap to flip the user-facing
-    // word without a full route rename.
-    label: "Explore",
+    label: "Discover",
     match: "/discover",
   },
   {
@@ -33,11 +42,8 @@ const ITEMS = [
     label: "Reservations",
     match: "/reservations",
   },
-  // Tab routes to /coupons but is branded "Pay & Win" — the surface
-  // hosts the QR-to-pay AND the coupons wallet, and "Pay & Win" makes
-  // the gambling-adjacent reward framing explicit (cashback, tier
-  // upgrades). Route stays /coupons to avoid a redirect chain.
-  { href: "/coupons", Icon: Ticket, label: "Pay & Win", match: "/coupons" },
+  { href: "/coupons", Icon: Ticket, label: "Coupons", match: "/coupons" },
+  { href: "/pay", Icon: QrCode, label: "Pay", match: "/pay" },
   { href: "/share", Icon: Share2, label: "Share", match: "/share" },
   {
     href: "/profile",
@@ -50,7 +56,7 @@ const ITEMS = [
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="border-border bg-card/95 sticky bottom-0 z-40 shrink-0 border-t px-2 pt-2 backdrop-blur">
+    <nav className="border-border bg-card/95 sticky bottom-0 z-40 shrink-0 border-t px-1 pt-2 backdrop-blur">
       <div className="flex justify-around">
         {ITEMS.map(({ href, Icon, label, match }) => {
           const active = pathname.startsWith(match);
@@ -59,14 +65,14 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1.5 py-1 text-[10px] font-medium transition",
+                "flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-medium transition",
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
-              {label}
+              <span className="w-full truncate text-center">{label}</span>
             </Link>
           );
         })}
