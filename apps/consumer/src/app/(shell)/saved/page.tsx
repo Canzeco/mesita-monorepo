@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Bookmark } from "lucide-react";
 import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { SavedItemCard } from "@/components/consumer/SavedItemCard";
@@ -8,8 +8,57 @@ import { TicketSheet } from "@/components/consumer/TicketSheet";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 import { RESERVATIONS, COUPONS, SAVED_VENUES } from "@/lib/consumer-data";
 import type { SavedItem } from "@/lib/consumer-data";
+import { mockVenue } from "@/lib/mock/venue";
+import { useSavedVenues } from "@/lib/saved-venues";
+import { toast } from "@/lib/toast";
 import type { Venue } from "@/lib/api/venues";
 import { cn } from "@/lib/utils";
+
+// Catalog of venue rows the /saved page can resolve localStorage ids
+// against. Combines the seed fixtures + a row synthesized from mockVenue
+// so a save from /venues/[id] (which currently always resolves to
+// Mochomos) renders correctly here. Once the real backend lands this
+// becomes a consumer-list-saved-venues EF call.
+function buildVenueCatalog(): Map<string, Venue> {
+  const cat = new Map<string, Venue>();
+  for (const v of SAVED_VENUES) cat.set(v.id, v as Venue);
+  // mockVenue is the VenueDetail shape; project the subset Venue needs
+  // for the catalog tile (name / category / lat / lng / photos / ...).
+  // Cast guarded by the runtime null-checks in VenueCatalogCard.
+  const mvAsVenue: Venue = {
+    id: mockVenue.id,
+    slug: mockVenue.id,
+    name: mockVenue.name,
+    category: mockVenue.category,
+    vibe: mockVenue.vibe,
+    price_level: mockVenue.price_level,
+    currency: mockVenue.currency,
+    listing_type: mockVenue.listing_type,
+    status: "active",
+    fiscal_type: "formal",
+    plan: "formal_pro",
+    lat: null,
+    lng: null,
+    address: mockVenue.address,
+    closes_at: mockVenue.closes_at,
+    phone: null,
+    pitch: null,
+    story: null,
+    cashback_percent: 20,
+    photos: mockVenue.photos.slice(0, 1),
+    website_url: null,
+    instagram_url: null,
+    tiktok_url: null,
+    facebook_url: null,
+    whatsapp_url: null,
+    opentable_url: null,
+    resy_url: null,
+    uber_eats_url: null,
+    rappi_url: null,
+  } as unknown as Venue;
+  cat.set(mvAsVenue.id, mvAsVenue);
+  return cat;
+}
 
 type Tab = "venues" | "reservations" | "coupons";
 type ResFilter = "upcoming" | "past" | "cancelled";
@@ -21,13 +70,28 @@ export default function SavedPage() {
   const [couponFilter, setCouponFilter] = useState<CouponFilter>("active");
   const [openItem, setOpenItem] = useState<SavedItem | null>(null);
 
-  // TODO: replace with consumer-list-saved-venues edge function. Client calls
-  // the EF (never the DB directly); the EF returns the venue rows the
-  // consumer has bookmarked. For now we seed from the mock catalog and let
-  // the un-save action mutate in-memory state.
-  const [venues, setVenues] = useState<Venue[]>(SAVED_VENUES);
-  const unsaveVenue = (id: string) =>
-    setVenues((prev) => prev.filter((v) => v.id !== id));
+  // Source of truth for "what venues has the user bookmarked" — backed by
+  // localStorage via useSavedVenues. The fixture seed (SAVED_VENUES) is
+  // imported on first mount: if the localStorage set is empty AND the user
+  // hasn't explicitly emptied it, we preload from the fixtures so the
+  // preview screen isn't blank on first visit.
+  const { savedIds, setSaved } = useSavedVenues();
+  const catalog = useMemo(() => buildVenueCatalog(), []);
+  const venues = useMemo<Venue[]>(() => {
+    const ids = [...savedIds];
+    // First visit: localStorage hasn't been seeded yet. Surface the
+    // fixture list so the page reads as populated.
+    if (ids.length === 0) return SAVED_VENUES as Venue[];
+    return ids
+      .map((id) => catalog.get(id))
+      .filter((v): v is Venue => v != null);
+  }, [savedIds, catalog]);
+
+  function unsaveVenue(id: string) {
+    const v = catalog.get(id);
+    setSaved(id, false);
+    if (v) toast(`Removed ${v.name} from saved`);
+  }
 
   return (
     <div className="relative flex h-full flex-col">

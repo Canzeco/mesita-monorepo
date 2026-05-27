@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { StatusBar } from "@/components/consumer/StatusBar";
 import { BottomNav } from "@/components/consumer/BottomNav";
+import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/tickets";
 
@@ -59,6 +60,7 @@ export default async function ConsumerShellLayout({
         {modal}
       </div>
       <BottomNav />
+      <Toaster />
     </MobileFrame>
   );
 }

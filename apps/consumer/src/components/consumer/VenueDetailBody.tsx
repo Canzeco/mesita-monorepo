@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   MapPin,
@@ -43,6 +46,8 @@ import {
   SectionAnchor,
   VenueSectionNav,
 } from "@/components/consumer/VenueSectionNav";
+import { useSavedVenues } from "@/lib/saved-venues";
+import { toast } from "@/lib/toast";
 
 const NAV_SECTIONS = [
   { id: "overview", label: "Overview" },
@@ -1018,31 +1023,86 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
 // ── Action bar ──────────────────────────────────────────────────────────
 //
 // Rendered by the venue modal shell + the hard-nav page as a sibling AFTER
-// the scrollable body so its opaque buttons can't occlude content. Used to
-// live inside VenueDetailBody as a sticky-bottom child, but the pink "Save
-// + reserve" button hid the last visible row of the Overview chips on
-// first paint. shrink-0 keeps it from compressing inside the parent's
-// flex-col.
-export function VenueDetailActionBar() {
+// the scrollable body so its opaque buttons can't occlude content. shrink-0
+// keeps it from compressing inside the parent's flex-col.
+//
+// All three buttons are mock-functional: Save coupon toggles the venue in
+// the localStorage saved-venues store, the other two fire toast stubs
+// pending the real reservation Sheet (PR3). The pink "Save + reserve"
+// also bookmarks as a side effect so the toast's "View" CTA actually
+// takes the user somewhere useful.
+export function VenueDetailActionBar({
+  venueId,
+  venueName,
+}: {
+  venueId: string;
+  venueName: string;
+}) {
+  const router = useRouter();
+  const { isSaved, toggle } = useSavedVenues();
+  const saved = isSaved(venueId);
+
+  function onSaveCoupon() {
+    const nowSaved = !saved;
+    toggle(venueId);
+    if (nowSaved) {
+      toast.action(
+        "Coupon saved to your wishlist",
+        { label: "View", onClick: () => router.push("/saved") },
+        { tone: "success" },
+      );
+    } else {
+      toast(`Removed ${venueName} from saved`);
+    }
+  }
+
+  function onReserve() {
+    toast.action(
+      `Reservation flow lands in PR #3 — meanwhile we saved ${venueName} for you`,
+      { label: "View", onClick: () => router.push("/saved") },
+    );
+    if (!saved) toggle(venueId);
+  }
+
+  function onSaveAndReserve() {
+    if (!saved) toggle(venueId);
+    toast.action(
+      `Saved ${venueName} — Don Memo will reserve when the booking sheet ships`,
+      { label: "View", onClick: () => router.push("/saved") },
+      { tone: "success" },
+    );
+  }
+
   return (
     <div className="border-border flex shrink-0 flex-col gap-2 border-t bg-black/50 px-4 pt-3 pb-4 backdrop-blur">
       <button
         type="button"
-        className="bg-pink-gradient shadow-glow rounded-full py-3 text-sm font-semibold text-white"
+        onClick={onSaveAndReserve}
+        className="bg-pink-gradient shadow-glow rounded-full py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99]"
       >
         Save + reserve
       </button>
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          className="border-border bg-card text-foreground inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold"
+          onClick={onSaveCoupon}
+          aria-pressed={saved}
+          className={cn(
+            "border-border inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold transition active:scale-[0.99]",
+            saved
+              ? "border-pink-500/40 bg-pink-500/10 text-pink-300"
+              : "bg-card text-foreground hover:bg-muted",
+          )}
         >
-          <Bookmark className="h-3.5 w-3.5" />
-          Save coupon
+          <Bookmark
+            className={cn("h-3.5 w-3.5", saved && "fill-current")}
+          />
+          {saved ? "Saved" : "Save coupon"}
         </button>
         <button
           type="button"
-          className="border-border bg-card text-foreground inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold"
+          onClick={onReserve}
+          className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-semibold transition active:scale-[0.99]"
         >
           <CalendarCheck className="h-3.5 w-3.5" />
           Reserve table

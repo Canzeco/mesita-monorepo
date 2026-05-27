@@ -9,6 +9,10 @@
 export type Tier = "bronze" | "silver" | "gold" | "diamond";
 
 export type VenueDetail = {
+  // Stable identifier — matches public.venues.id once the real fetch lands.
+  // Used as the key in the localStorage saved-venues store, share URLs, and
+  // any future per-venue persistence.
+  id: string;
   // 1. Summary
   name: string;
   category: string;
@@ -194,6 +198,7 @@ export type VenueDetail = {
 };
 
 export const mockVenue: VenueDetail = {
+  id: "mochomos-monterrey",
   name: "Mochomos Monterrey",
   category: "Mexican",
   vibe: "Elegant",

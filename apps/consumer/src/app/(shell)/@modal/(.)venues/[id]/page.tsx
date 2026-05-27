@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function VenueModalPage() {
   return (
-    <VenueDetailModalShell venueName={mockVenue.name}>
+    <VenueDetailModalShell venueId={mockVenue.id} venueName={mockVenue.name}>
       <VenueDetailBody venue={mockVenue} />
     </VenueDetailModalShell>
   );
