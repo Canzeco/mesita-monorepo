@@ -53,7 +53,16 @@ function buildVenueCatalog(): Map<string, Venue> {
     resy_url: null,
     uber_eats_url: null,
     rappi_url: null,
-  } as unknown as Venue;
+    x_url: null,
+    youtube_url: null,
+    threads_url: null,
+    reddit_url: null,
+    didi_food_url: null,
+    tripadvisor_url: null,
+    google_maps_url: null,
+    email: null,
+    created_at: new Date(0).toISOString(),
+  };
   cat.set(mvAsVenue.id, mvAsVenue);
   return cat;
 }
