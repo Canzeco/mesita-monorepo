@@ -71,37 +71,35 @@ export function InstagramLogo({ size = 16, className }: LogoProps) {
   );
 }
 
-// Mesita — the in-house brand mark. A simple rounded square filled with the
-// existing pink gradient utility, then a small sparkle in white. Keeps the
-// look consistent with the Topbar's primary CTA.
+// Mesita — the in-house brand mark. The official flame glyph from the
+// /Logos lockup, rendered in white on a pink-gradient rounded square so it
+// matches the Topbar's primary CTA when sitting next to GoogleLogo /
+// InstagramLogo in the Signals tiles. Each instance carries its own gradient
+// id (Safari + Webpack hashing breaks shared ids across multiple <svg>
+// roots), same pattern as InstagramLogo above.
+let _mesitaGradId = 0;
 export function MesitaLogo({ size = 16, className }: LogoProps) {
+  const id = `mesita-grad-${_mesitaGradId++}`;
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 100 100"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="mesita-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={id} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FF4D8F" />
           <stop offset="100%" stopColor="#E60073" />
         </linearGradient>
       </defs>
-      <rect
-        x="2"
-        y="2"
-        width="20"
-        height="20"
-        rx="6"
-        fill="url(#mesita-grad)"
-      />
-      <path
-        fill="#FFFFFF"
-        d="M12 6.5l1.7 3.5 3.8.55-2.75 2.7.65 3.8L12 15.25l-3.4 1.8.65-3.8L6.5 10.55l3.8-.55z"
-      />
+      <rect x="0" y="0" width="100" height="100" rx="22" fill={`url(#${id})`} />
+      {/* Flame mark, scaled down ~60% and centered inside the badge. */}
+      <g transform="translate(20 20) scale(0.6)" fill="#FFFFFF">
+        <path d="M81.3,28.5c-4.9,0-8.4,5.1-8.4,14.9c0,4.1-2.1,7.3-5.5,7.3c-4.1,0-5.6-2.9-5.6-6.2c0-6,5.7-6.7,5.7-16.2c0-6.9-8.8-12.2-8.8-12.2c2.8,9.9-2.3,15.1-7.5,15.1c-3,0-7.2-2.1-7.2-9.9c0-10.5,8-16.5,8-16.5C32.4,5,28.8,24.2,32.7,33.6c2.5,5.8,3.1,13.3-2.9,13.3c-7.1,0-3.4-13.2-3.4-13.2c-3.1,1.5-12.1,8.4-13,22.4c-0.1,0.7-0.1,1.4-0.1,2.2c0,0.7,0,1.4,0.1,2.1c0,0,0,0.1,0,0.1C14.5,79.8,30.5,95,50,95c20.3,0,36.7-16.4,36.7-36.7C86.7,40.2,75.6,37.4,81.3,28.5z M50,90.2c0,0-16.1-3.4-16.1-18.6c0-13.4,10-22.7,18.7-22.7c0,0-7.3,4.4-7.3,15c0,7.1,3.8,9,6.5,9c4.8,0,9.4-4.8,6.8-13.8c0,0,7.4,5.2,7.4,13.5C66.1,86.1,50,90.2,50,90.2z" />
+      </g>
     </svg>
   );
 }
