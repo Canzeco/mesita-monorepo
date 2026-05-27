@@ -14,11 +14,7 @@ import {
   Bell,
   Shield,
   HelpCircle,
-  Utensils,
-  BookOpen,
-  MessageCircle,
-  Server,
-  Code2,
+  Camera,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
@@ -162,116 +158,8 @@ function ClassTab({
       <CurrentClassCard />
       <SocialPathBox onConnect={onConnectSocial} />
       <SubscriptionPathBox />
-      <DonMemoToolsBox />
-      <DevelopersBox />
       <AppealForUpgradeButton />
     </div>
-  );
-}
-
-// Don Memo's tool kit — reservation-platform integrations that power the
-// agentic side of /discover/ai. Listed as preview affordances: the Connect
-// buttons fire an inline notice instead of an OAuth flow until Don Memo
-// himself is live. Lives in the Class tab as a sibling of the upgrade
-// paths since both sections are "connect external accounts that Mesita
-// uses on your behalf".
-//
-// Calendar connectors moved out of this list — they now live on the
-// /reservations surface (CalendarConnectBox) since calendar sync is a
-// reservation-page concern, not an account-settings concern. The
-// remaining tools are pure reservation/comms integrations.
-const DON_MEMO_TOOLS = [
-  {
-    id: "opentable" as const,
-    label: "OpenTable",
-    sub: "Auto-confirm reservations",
-    Icon: Utensils,
-    badge: "bg-[#DA3743] text-white",
-  },
-  {
-    id: "resy" as const,
-    label: "Resy",
-    sub: "Auto-confirm reservations",
-    Icon: BookOpen,
-    badge: "bg-black text-white",
-  },
-  {
-    id: "whatsapp" as const,
-    label: "WhatsApp",
-    sub: "Confirmaciones por chat",
-    Icon: MessageCircle,
-    badge: "bg-[#25D366] text-white",
-  },
-];
-
-type DonMemoToolId = (typeof DON_MEMO_TOOLS)[number]["id"];
-
-function DonMemoToolsBox() {
-  // Inline notice that auto-clears — same UX feel as the /discover/ai
-  // submit affordance so users learn the "Don Memo isn't live yet" tone.
-  const [notice, setNotice] = useState<string | null>(null);
-  function ping(id: DonMemoToolId) {
-    const label = DON_MEMO_TOOLS.find((t) => t.id === id)?.label ?? id;
-    setNotice(`Don Memo still warming up — the ${label} connector activates once he's live.`);
-    setTimeout(() => setNotice(null), 4000);
-  }
-  return (
-    <section className="border-border bg-card rounded-2xl border p-4">
-      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Don Memo · Tools
-      </p>
-      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-        Let Don Memo book for you
-      </p>
-      <p className="text-muted-foreground mt-0.5 text-[12px]">
-        Connect your reservation apps so Don Memo can check availability
-        and confirm bookings for you. (Calendar sync lives on the
-        Reservations tab.)
-      </p>
-      <div className="mt-4 flex flex-col gap-2">
-        {DON_MEMO_TOOLS.map((t) => (
-          <DonMemoToolRow key={t.id} tool={t} onConnect={() => ping(t.id)} />
-        ))}
-      </div>
-      {notice && (
-        <p className="bg-secondary/10 text-secondary mt-3 rounded-xl px-3 py-2 text-[11px]">
-          {notice}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function DonMemoToolRow({
-  tool,
-  onConnect,
-}: {
-  tool: (typeof DON_MEMO_TOOLS)[number];
-  onConnect: () => void;
-}) {
-  const { Icon, label, sub, badge } = tool;
-  return (
-    <button
-      type="button"
-      onClick={onConnect}
-      className="bg-muted/40 hover:bg-muted flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
-    >
-      <span
-        className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-          badge,
-        )}
-      >
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{label}</span>
-        <span className="text-muted-foreground block text-[11px]">{sub}</span>
-      </span>
-      <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-        Connect
-      </span>
-    </button>
   );
 }
 
@@ -280,6 +168,16 @@ function SocialPathBox({
 }: {
   onConnect: (platform: SocialPlatform) => void;
 }) {
+  // Mock connected state: CURRENT_USER.tierOrigin tracks how the tier
+  // was granted, so when tierOrigin === "instagram" the IG account is
+  // by definition already verified. Until real OAuth ships this is the
+  // single source of truth for whether to render the "Connected" badge
+  // (and the StoryAutoUploadToggle that sits below it). LinkedIn isn't
+  // a tier origin in the mock yet, so it always renders unconnected.
+  const igConnected = CURRENT_USER.tierOrigin === "instagram";
+  const linkedinConnected = false;
+  const [storyAutoUpload, setStoryAutoUpload] = useState(true);
+
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
       <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
@@ -295,11 +193,19 @@ function SocialPathBox({
         <SocialRow
           platform="instagram"
           label="Instagram"
+          connected={igConnected}
           onClick={() => onConnect("instagram")}
         />
+        {igConnected && (
+          <StoryAutoUploadToggle
+            checked={storyAutoUpload}
+            onChange={setStoryAutoUpload}
+          />
+        )}
         <SocialRow
           platform="linkedin"
           label="LinkedIn"
+          connected={linkedinConnected}
           onClick={() => onConnect("linkedin")}
         />
       </div>
@@ -310,10 +216,12 @@ function SocialPathBox({
 function SocialRow({
   platform,
   label,
+  connected,
   onClick,
 }: {
   platform: SocialPlatform;
   label: string;
+  connected: boolean;
   onClick: () => void;
 }) {
   const Icon = platform === "instagram" ? Instagram : Linkedin;
@@ -336,101 +244,63 @@ function SocialRow({
         <Icon className="h-4 w-4" />
       </span>
       <span className="flex-1 text-sm font-semibold">{label}</span>
-      <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-        Connect
-      </span>
+      {connected ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+          <Check className="h-3 w-3" strokeWidth={3} />
+          Connected
+        </span>
+      ) : (
+        <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+          Connect
+        </span>
+      )}
     </button>
   );
 }
 
-// Power-user surface — bring Mesita into your own AI client (MCP) or build
-// on the public API. Same eyebrow + headline + bg-card shape as the other
-// Class-tab cards, but the audience is technical so the copy assumes
-// familiarity with the protocols. Both CTAs are inert until the developer
-// portal lands.
-const DEVELOPER_TOOLS = [
-  {
-    id: "mcp" as const,
-    label: "MCP server",
-    sub: "Add Mesita to Claude, ChatGPT, Cursor",
-    Icon: Server,
-    badge: "bg-[#1A1A1A] text-white",
-    cta: "Setup",
-  },
-  {
-    id: "api" as const,
-    label: "API access",
-    sub: "REST + OAuth · docs at mesita.dev",
-    Icon: Code2,
-    badge: "bg-[linear-gradient(135deg,#6366F1,#8B5CF6)] text-white",
-    cta: "Get key",
-  },
-];
-
-type DeveloperToolId = (typeof DEVELOPER_TOOLS)[number]["id"];
-
-function DevelopersBox() {
-  const [notice, setNotice] = useState<string | null>(null);
-  function ping(id: DeveloperToolId) {
-    const label = DEVELOPER_TOOLS.find((t) => t.id === id)?.label ?? id;
-    setNotice(
-      `${label} ships with the developer portal. Email dev@mesita.ai for early access.`,
-    );
-    setTimeout(() => setNotice(null), 5000);
-  }
-  return (
-    <section className="border-border bg-card rounded-2xl border p-4">
-      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Developers · Beta
-      </p>
-      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-        Build with Mesita
-      </p>
-      <p className="text-muted-foreground mt-0.5 text-[12px]">
-        Bring Mesita into your own AI client, or build on the public API.
-      </p>
-      <div className="mt-4 flex flex-col gap-2">
-        {DEVELOPER_TOOLS.map((t) => (
-          <DeveloperToolRow key={t.id} tool={t} onClick={() => ping(t.id)} />
-        ))}
-      </div>
-      {notice && (
-        <p className="bg-secondary/10 text-secondary mt-3 rounded-xl px-3 py-2 text-[11px]">
-          {notice}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function DeveloperToolRow({
-  tool,
-  onClick,
+// Subordinate toggle that sits right under a connected Instagram row.
+// When ON, the consumer agrees to drop a Story tagging the partner each
+// time they visit — in exchange Mesita upgrades the per-visit promo.
+// Indented (ml-3) so it visually nests under the IG row it belongs to.
+function StoryAutoUploadToggle({
+  checked,
+  onChange,
 }: {
-  tool: (typeof DEVELOPER_TOOLS)[number];
-  onClick: () => void;
+  checked: boolean;
+  onChange: (next: boolean) => void;
 }) {
-  const { Icon, label, sub, badge, cta } = tool;
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="bg-muted/40 hover:bg-muted flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="bg-muted/20 hover:bg-muted/40 ml-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
     >
-      <span
-        className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-          badge,
-        )}
-      >
-        <Icon className="h-4 w-4" />
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 ring-1 ring-pink-500/25">
+        <Camera className="h-3.5 w-3.5 text-pink-600" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{label}</span>
-        <span className="text-muted-foreground block text-[11px]">{sub}</span>
+        <span className="block text-[12.5px] leading-tight font-semibold">
+          Upload Story when I visit
+        </span>
+        <span className="text-muted-foreground mt-0.5 block text-[10.5px] leading-snug">
+          Bigger promo every time you tag a partner.
+        </span>
       </span>
-      <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-        {cta}
+      <span
+        className={cn(
+          "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+          checked ? "bg-pink-gradient" : "bg-muted",
+        )}
+        aria-hidden
+      >
+        <span
+          className={cn(
+            "bg-card absolute top-0.5 h-4 w-4 rounded-full shadow-sm transition-transform",
+            checked ? "translate-x-[18px]" : "translate-x-0.5",
+          )}
+        />
       </span>
     </button>
   );
