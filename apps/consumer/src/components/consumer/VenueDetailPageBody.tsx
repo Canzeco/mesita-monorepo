@@ -19,7 +19,13 @@ export function VenueDetailPageBody({ venue }: { venue: VenueDetail }) {
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
       <VenueDetailPageHeader venueId={venue.id} venueName={venue.name} />
-      <div className="flex-1 overflow-y-auto">
+      {/*
+        `min-h-0` mirrors VenueDetailModalShell — without it the flex-1
+        scroll container grows to fit content, `overflow-y-auto` never
+        triggers, and the sticky section nav can't pin against a
+        non-scrolling parent. See VenueDetailModalShell for the long form.
+      */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <VenueDetailBody venue={venue} />
       </div>
       <VenueDetailActionBar

@@ -162,7 +162,14 @@ export function VenueSectionNav({ sections }: { sections: Section[] }) {
       // the header lives outside the scroll container. The previous
       // `top-[60px]` left a 60px gap of empty modal background between
       // the header and the strip during scroll.
-      className="bg-background/85 border-border sticky top-0 z-10 -mx-4 border-b backdrop-blur"
+      //
+      // Solid `bg-background` (no /85, no backdrop-blur) is intentional:
+      // a translucent strip lets the next section's content (notably the
+      // RewardsBox pink hero) bleed through as it scrolls past, looking
+      // like a phantom banner pinned above the strip. We trade the glass
+      // effect for a clean cut between scrolled-out content and the
+      // pinned nav.
+      className="bg-background border-border sticky top-0 z-20 -mx-4 border-b"
       aria-label="Venue sections"
     >
       <div

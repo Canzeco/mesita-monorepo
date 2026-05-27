@@ -129,7 +129,17 @@ export function VenueDetailModalShell({
           <Share2 className="h-4 w-4" />
         </button>
       </header>
-      <div className="flex-1 overflow-y-auto">{children}</div>
+      {/*
+        `min-h-0` is the load-bearing class here: without it, a flex-1 child
+        keeps its default `min-height: auto` (= content size) and grows to
+        fit the whole VenueDetailBody — `overflow-y-auto` then never
+        triggers, the page scrolls on the outer body instead, and
+        `position: sticky top-0` on the section nav ends up anchored to a
+        scroll container that isn't actually scrolling. The visible
+        symptom was the RewardsBox pink hero appearing in the gap between
+        the modal header and the (mis-pinned) section nav.
+      */}
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       <VenueDetailActionBar
         venueId={venueId}
         venueName={venueName}
