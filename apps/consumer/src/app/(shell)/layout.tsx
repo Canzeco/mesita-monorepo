@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/consumer/BottomNav";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/tickets";
+import { apiFetchConsumerProfile } from "@/lib/api/profile";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/tickets";
+import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { ProfileClient, type RealIdentity } from "./ProfileClient";
 
 // Server shell: loads the real identity (full_name / country / birthday

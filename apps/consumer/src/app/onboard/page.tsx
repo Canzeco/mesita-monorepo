@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { StatusBar } from "@/components/consumer/StatusBar";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/tickets";
+import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { OnboardForm } from "./OnboardForm";
 
 // Consumer onboarding — server-side gated. The middleware already blocks

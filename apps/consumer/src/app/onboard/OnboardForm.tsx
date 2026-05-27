@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { COUNTRIES } from "@/lib/consumer-data";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { apiUpdateConsumerProfile } from "@/lib/api/tickets";
+import { apiUpdateConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
 import { Field } from "@/components/shared";
 import {

@@ -1,5 +1,5 @@
 import { Wallet } from "lucide-react";
-import { formatCurrency } from "@/lib/api/tickets";
+import { formatCurrency } from "@/lib/api/profile";
 
 export function CashbackBalanceCard({
   cashbackBalanceCents,

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/tickets";
+import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
 import { SimpleHeader } from "@/components/consumer/SimpleHeader";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
