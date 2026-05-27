@@ -20,7 +20,11 @@ const ITEMS = [
   {
     href: "/discover/swipe",
     Icon: Compass,
-    label: "Discover",
+    // Label reads "Explore" while the underlying route stays /discover
+    // (and the internal component names — DiscoverHeader, DiscoverTabs —
+    // keep their existing identifiers). Cheap to flip the user-facing
+    // word without a full route rename.
+    label: "Explore",
     match: "/discover",
   },
   {
