@@ -18,6 +18,8 @@ import {
   Utensils,
   BookOpen,
   MessageCircle,
+  Server,
+  Code2,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
@@ -159,6 +161,7 @@ function ClassTab({
       <SocialPathBox onConnect={onConnectSocial} />
       <SubscriptionPathBox />
       <DonMemoToolsBox />
+      <DevelopersBox />
       <AppealForUpgradeButton />
     </div>
   );
@@ -336,6 +339,99 @@ function SocialRow({
       <span className="flex-1 text-sm font-semibold">{label}</span>
       <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
         Connect
+      </span>
+    </button>
+  );
+}
+
+// Power-user surface — bring Mesita into your own AI client (MCP) or build
+// on the public API. Same eyebrow + headline + bg-card shape as the other
+// Class-tab cards, but the audience is technical so the copy assumes
+// familiarity with the protocols. Both CTAs are inert until the developer
+// portal lands.
+const DEVELOPER_TOOLS = [
+  {
+    id: "mcp" as const,
+    label: "MCP server",
+    sub: "Add Mesita to Claude, ChatGPT, Cursor",
+    Icon: Server,
+    badge: "bg-[#1A1A1A] text-white",
+    cta: "Setup",
+  },
+  {
+    id: "api" as const,
+    label: "API access",
+    sub: "REST + OAuth · docs at mesita.dev",
+    Icon: Code2,
+    badge: "bg-[linear-gradient(135deg,#6366F1,#8B5CF6)] text-white",
+    cta: "Get key",
+  },
+];
+
+type DeveloperToolId = (typeof DEVELOPER_TOOLS)[number]["id"];
+
+function DevelopersBox() {
+  const [notice, setNotice] = useState<string | null>(null);
+  function ping(id: DeveloperToolId) {
+    const label = DEVELOPER_TOOLS.find((t) => t.id === id)?.label ?? id;
+    setNotice(
+      `${label} ships with the developer portal. Email dev@mesita.ai for early access.`,
+    );
+    setTimeout(() => setNotice(null), 5000);
+  }
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
+        Developers · Beta
+      </p>
+      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
+        Build with Mesita
+      </p>
+      <p className="text-muted-foreground mt-0.5 text-[12px]">
+        Bring Mesita into your own AI client, or build on the public API.
+      </p>
+      <div className="mt-4 flex flex-col gap-2">
+        {DEVELOPER_TOOLS.map((t) => (
+          <DeveloperToolRow key={t.id} tool={t} onClick={() => ping(t.id)} />
+        ))}
+      </div>
+      {notice && (
+        <p className="bg-secondary/10 text-secondary mt-3 rounded-xl px-3 py-2 text-[11px]">
+          {notice}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DeveloperToolRow({
+  tool,
+  onClick,
+}: {
+  tool: (typeof DEVELOPER_TOOLS)[number];
+  onClick: () => void;
+}) {
+  const { Icon, label, sub, badge, cta } = tool;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="bg-muted/40 hover:bg-muted flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
+    >
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+          badge,
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="text-muted-foreground block text-[11px]">{sub}</span>
+      </span>
+      <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+        {cta}
       </span>
     </button>
   );
