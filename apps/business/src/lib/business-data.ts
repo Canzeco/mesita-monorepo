@@ -12,20 +12,16 @@
 
 type WalletSummary = {
   balance: number;
-  pendingPayout: number;
   thisMonth: number;
   lifetime: number;
   payoutAccount: string;
-  stripeConnected: boolean;
 };
 
 export const WALLET: WalletSummary = {
   balance: 142_300,
-  pendingPayout: 38_400,
   thisMonth: 38_400,
   lifetime: 412_900,
   payoutAccount: "BBVA · ··· 4421",
-  stripeConnected: true,
 };
 
 type TransactionKind = "visit" | "payout" | "fee";
