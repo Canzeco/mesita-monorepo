@@ -9,7 +9,6 @@ import {
   AlertCircle,
   X,
   Calendar,
-  Users,
 } from "lucide-react";
 import type {
   CouponItem,
@@ -182,35 +181,23 @@ function LinkedReservationStub({
 }) {
   const isBooking = reservation.state === "booking";
   return (
-    <div className="border-t border-dashed border-border/70 px-3 py-2.5">
-      <p className="text-muted-foreground mb-1.5 text-[9px] font-bold tracking-[0.18em] uppercase">
-        Reservation using this coupon
-      </p>
-      <div className="flex items-center gap-2.5">
-        <div className="bg-emerald-500/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-          <Calendar className="h-4 w-4 text-emerald-700" strokeWidth={2} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-foreground truncate text-[13px] font-semibold leading-tight">
-            {reservation.when}
-          </p>
-          <p className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
-            <Users className="h-2.5 w-2.5" />
-            {reservation.partySize}{" "}
-            {reservation.partySize === 1 ? "person" : "people"}
-          </p>
-        </div>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-            isBooking
-              ? "border-amber-500/30 bg-amber-50 text-amber-800"
-              : "border-emerald-500/30 bg-emerald-50 text-emerald-800",
-          )}
-        >
-          {isBooking ? "Booking" : "Booked"}
-        </span>
-      </div>
+    <div className="text-muted-foreground flex items-center gap-1.5 border-t border-dashed border-border/70 px-3 py-1.5 text-[11px]">
+      <Calendar className="h-3 w-3 shrink-0 text-emerald-700" strokeWidth={2} />
+      <span className="text-muted-foreground tracking-wide uppercase text-[9px] font-bold">
+        Reservation tied
+      </span>
+      <span className="text-muted-foreground/60">·</span>
+      <span className="text-foreground/80 truncate">
+        {reservation.when}
+      </span>
+      <span
+        className={cn(
+          "ml-auto inline-flex shrink-0 items-center rounded-full px-1.5 py-0 text-[9px] font-semibold",
+          isBooking ? "text-amber-700" : "text-emerald-700",
+        )}
+      >
+        {isBooking ? "Booking" : "Booked"}
+      </span>
     </div>
   );
 }

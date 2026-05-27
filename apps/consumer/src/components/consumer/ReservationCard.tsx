@@ -140,40 +140,29 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
 function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
   const ig = coupon.kind === "instagram";
   return (
-    <div className="-mx-3 -mb-3 border-t border-dashed border-border/70 px-3 pt-3 pb-3">
-      <p className="text-muted-foreground mb-1.5 text-[9px] font-bold tracking-[0.18em] uppercase">
-        Coupon tied to this booking
-      </p>
-      <div className="flex items-center gap-2.5">
-        <div className="bg-pink-500/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-          {ig ? (
-            <Instagram className="h-4 w-4 text-pink-600" strokeWidth={2} />
-          ) : (
-            <Ticket className="h-4 w-4 text-pink-600" strokeWidth={2} />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-tight">
-            {coupon.percent}% cashback ·{" "}
-            <span className="text-muted-foreground font-normal">
-              {coupon.tierLabel}
-            </span>
-          </p>
-          <p className="text-muted-foreground text-[10px]">
-            {ig ? "Story coupon" : "Normal coupon"}
-          </p>
-        </div>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-            coupon.state === "active"
-              ? "border-emerald-500/30 bg-emerald-50 text-emerald-800"
-              : "border-amber-500/30 bg-amber-50 text-amber-800",
-          )}
-        >
-          {coupon.state === "active" ? "Active" : "Pending"}
-        </span>
-      </div>
+    <div className="text-muted-foreground -mx-3 -mb-3 flex items-center gap-1.5 border-t border-dashed border-border/70 px-3 py-1.5 text-[11px]">
+      {ig ? (
+        <Instagram className="h-3 w-3 shrink-0 text-pink-500" strokeWidth={2} />
+      ) : (
+        <Ticket className="h-3 w-3 shrink-0 text-pink-500" strokeWidth={2} />
+      )}
+      <span className="text-muted-foreground tracking-wide uppercase text-[9px] font-bold">
+        Coupon tied
+      </span>
+      <span className="text-muted-foreground/60">·</span>
+      <span className="text-foreground/80 truncate">
+        {coupon.percent}% cashback
+      </span>
+      <span
+        className={cn(
+          "ml-auto inline-flex shrink-0 items-center rounded-full px-1.5 py-0 text-[9px] font-semibold",
+          coupon.state === "active"
+            ? "text-emerald-700"
+            : "text-amber-700",
+        )}
+      >
+        {coupon.state === "active" ? "Active" : "Pending"}
+      </span>
     </div>
   );
 }

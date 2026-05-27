@@ -10,11 +10,8 @@ type WhatOption = { id: string; label: string; soon: boolean };
 const WHAT_OPTIONS: WhatOption[] = [
   { id: "places", label: "Places", soon: false },
   { id: "events", label: "Events", soon: true },
-  { id: "communities", label: "Communities", soon: true },
-  { id: "people", label: "People", soon: true },
-  { id: "products", label: "Products", soon: true },
   { id: "services", label: "Services", soon: true },
-  { id: "micro-apps", label: "Micro-apps", soon: true },
+  { id: "communities", label: "Communities", soon: true },
 ];
 
 const CITIES = [
