@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Share2, Bookmark } from "lucide-react";
+import { ChevronLeft, Share2, Bookmark } from "lucide-react";
 import { VenueDetailActionBar } from "./VenueDetailBody";
 import { ReservationSheet } from "./ReservationSheet";
 import { useSavedVenues } from "@/lib/saved-venues";
@@ -98,10 +98,10 @@ export function VenueDetailModalShell({
         <button
           type="button"
           onClick={() => router.back()}
-          aria-label="Close"
+          aria-label="Back"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground border-border border transition hover:bg-muted"
         >
-          <X className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
         </button>
         <p className="font-display flex-1 truncate text-center text-sm font-semibold">
           {venueName}
