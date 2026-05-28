@@ -83,8 +83,8 @@ export function ClassUpsellBox() {
           accents — copy stands on its own. */}
       <p className="mt-3 text-[13px] leading-snug text-white/90">
         Mesita has four classes: Bronze, Silver, Gold, and Diamond. The
-        higher your class, the more partners want you in the room. Some
-        compete with cashbacks up to 70%. Upgrade your class.
+        higher your class, the more our partners want you in the room.
+        Some compete with cashbacks up to 70%. Upgrade your class.
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
@@ -106,7 +106,7 @@ export function ClassUpsellBox() {
           {
             icon: Linkedin,
             label: "LinkedIn",
-            tagline: "Verify role and followers",
+            tagline: "Verify role and reach.",
           },
           {
             icon: CreditCard,
