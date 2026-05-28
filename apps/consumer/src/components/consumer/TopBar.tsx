@@ -18,7 +18,7 @@ import { DiscoverHeader } from "./DiscoverHeader";
 //
 // Per-route policy:
 //   /discover/*    DiscoverHeader (3-pill picker in the center)
-//   /saved         SimpleHeader title="Saved"
+//   /saved         SimpleHeader title="My Saved Places"
 //   /pay           SimpleHeader title="Pay & Post"
 //   /reservations  SimpleHeader title="My Reservations"
 //   /coupons       SimpleHeader title="My Coupons" (still reachable
@@ -33,7 +33,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
 
   if (pathname.startsWith("/discover")) return <DiscoverHeader />;
   if (pathname.startsWith("/saved")) {
-    return <SimpleHeader title="Saved" />;
+    return <SimpleHeader title="My Saved Places" />;
   }
   if (pathname.startsWith("/reservations")) {
     return <SimpleHeader title="My Reservations" />;
