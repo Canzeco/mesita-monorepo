@@ -91,9 +91,7 @@ export function VenueCatalogCard({
                 <span className="inline-flex items-center gap-1">
                   {subtitleParts.length > 0 && <span>·</span>}
                   <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
-                  <span className="text-foreground font-semibold">
-                    {ratingLabel}
-                  </span>
+                  <span>{ratingLabel}</span>
                 </span>
               )}
             </p>
