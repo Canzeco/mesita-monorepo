@@ -42,6 +42,9 @@ export default async function ConsumerShellLayout({
   // consumer-get-profile lazily creates the row, so a brand-new account still
   // reads back successfully (just with null fields). If the EF throws, we
   // surface the error route — better than rendering a half-broken shell.
+  // Also captures the consumer's display name so the /profile TopBar can
+  // render it instead of the literal word "Profile".
+  let userName: string | null = null;
   try {
     const profile = await apiFetchConsumerProfile(supabase);
     const onboarded =
@@ -50,6 +53,10 @@ export default async function ConsumerShellLayout({
       !!profile.birthday &&
       !!profile.sex;
     if (!onboarded) redirect("/onboard");
+    userName =
+      profile.first_name && profile.last_name
+        ? `${profile.first_name} ${profile.last_name}`
+        : (profile.first_name ?? profile.last_name ?? profile.full_name);
   } catch {
     redirect("/onboard");
   }
@@ -70,7 +77,7 @@ export default async function ConsumerShellLayout({
     <MobileFrame>
       <StatusBar />
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <TopBar />
+        <TopBar userName={userName} />
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <ShellChildrenSlot>{children}</ShellChildrenSlot>
         </div>

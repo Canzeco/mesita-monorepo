@@ -18,22 +18,22 @@ import { DiscoverHeader } from "./DiscoverHeader";
 //
 // Per-route policy:
 //   /discover/*    DiscoverHeader (3-pill picker in the center)
-//   /reservations  SimpleHeader title="Reservations"
-//   /coupons       SimpleHeader title="Coupons"
+//   /reservations  SimpleHeader title="My Reservations"
+//   /coupons       SimpleHeader title="My Coupons"
 //   /pay           SimpleHeader title="Pay"
 //   /share         SimpleHeader title="Share"
-//   /profile       SimpleHeader title="Profile"
+//   /profile       SimpleHeader title=<first name + last name>
 //   everything     null — Subscribe / Venue pages ship their own
 //     else         back-arrow chrome and opt out by not matching.
-export function TopBar() {
+export function TopBar({ userName }: { userName?: string | null }) {
   const pathname = usePathname() ?? "";
 
   if (pathname.startsWith("/discover")) return <DiscoverHeader />;
   if (pathname.startsWith("/reservations")) {
-    return <SimpleHeader title="Reservations" />;
+    return <SimpleHeader title="My Reservations" />;
   }
   if (pathname.startsWith("/coupons")) {
-    return <SimpleHeader title="Coupons" />;
+    return <SimpleHeader title="My Coupons" />;
   }
   if (pathname.startsWith("/pay")) {
     return <SimpleHeader title="Pay" />;
@@ -42,7 +42,11 @@ export function TopBar() {
     return <SimpleHeader title="Share" />;
   }
   if (pathname.startsWith("/profile")) {
-    return <SimpleHeader title="Profile" />;
+    // Personalize the Profile chrome with the consumer's full name.
+    // Layout passes the prop after fetching the consumer profile —
+    // falls back to the literal "Profile" if the name isn't available
+    // (legacy rows without first/last set, or the EF failed).
+    return <SimpleHeader title={userName?.trim() || "Profile"} />;
   }
   return null;
 }
