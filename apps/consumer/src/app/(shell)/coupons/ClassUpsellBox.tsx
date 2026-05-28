@@ -65,33 +65,36 @@ export function ClassUpsellBox() {
         className="absolute top-3 right-3 h-4 w-4 text-white/40"
         strokeWidth={2}
       />
-      <div className="flex items-start gap-3">
+
+      {/* Header row — crown badge + title, side by side. The body text
+          and everything below flow at full width so the column under
+          the crown isn't an empty rail. */}
+      <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
           <Crown className="h-5 w-5 fill-current" />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
-            Mesita classes
-          </p>
-          <h3 className="font-display mt-1 text-xl leading-[1.1] font-semibold tracking-tight">
-            Better class, better coupons.
-          </h3>
-          <p className="font-display mt-1.5 text-[13px] leading-snug italic text-white/85">
-            Your social capital, made spendable.
-          </p>
-          <p className="mt-2 text-[13px] leading-snug text-white/90">
-            Four classes:{" "}
-            <strong className="font-semibold text-white">
-              Bronze, Silver, Gold, Diamond
-            </strong>
-            . Our partners tend to offer bigger coupons,{" "}
-            <strong className="font-semibold text-white">up to 70% off</strong>,
-            to higher classes. And higher classes also tend to get direct
-            access to exclusive venues, priority booking when a venue is full,
-            and gifts like welcome drinks.
-          </p>
-        </div>
+        <h3 className="font-display min-w-0 flex-1 text-xl leading-[1.1] font-semibold tracking-tight">
+          Better class, better coupons.
+        </h3>
       </div>
+
+      {/* Body — full-width paragraph. Leads with the tagline (italic) so
+          it sets the frame, then folds in the class names, the rate
+          range, and the lifestyle perks as one connected pitch. */}
+      <p className="mt-3 text-[13px] leading-snug text-white/90">
+        <em className="font-display text-white/95">
+          Your social capital, made spendable.
+        </em>{" "}
+        Four classes:{" "}
+        <strong className="font-semibold text-white">
+          Bronze, Silver, Gold, Diamond
+        </strong>
+        . Our partners tend to offer bigger coupons,{" "}
+        <strong className="font-semibold text-white">up to 70% off</strong>, to
+        higher classes. Higher classes also tend to get direct access to
+        exclusive venues, priority booking when a venue is full, and gifts
+        like welcome drinks.
+      </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
         Three ways to climb
