@@ -79,19 +79,12 @@ export function ClassUpsellBox() {
         </h3>
       </div>
 
-      {/* Body — full-width paragraph. Class names → partner-competition
-          framing with cashback range → italic "make your social capital
-          spendable" sign-off. */}
+      {/* Body — full-width paragraph. Single weight, no bold/italic
+          accents — copy stands on its own. */}
       <p className="mt-3 text-[13px] leading-snug text-white/90">
-        Mesita has four classes:{" "}
-        <strong className="font-semibold text-white">
-          Bronze, Silver, Gold, and Diamond
-        </strong>
-        . Partners compete to attract high-value guests with cashbacks{" "}
-        <strong className="font-semibold text-white">up to 70%</strong>.{" "}
-        <em className="font-display text-white/95">
-          Upgrade to make your social capital spendable.
-        </em>
+        Mesita has four classes: Bronze, Silver, Gold, and Diamond. Our
+        partners compete to attract the high-value guests offering cashbacks
+        up to 70%. Upgrade to make your social capital spendable.
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
