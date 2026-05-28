@@ -161,16 +161,19 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // Four-card stack:
-  //   1. CurrentClassCard — what tier the user holds today + how they got it.
-  //   2. ClassPerksBox    — the "why care": coupons up to 70% off plus the
-  //      lifestyle perks (exclusive venues, priority booking, welcome drinks).
-  //      Mirrors the /coupons promo so the value proposition lives here too.
-  //   3. ClassLadderBox   — the four-tier overview, current position
-  //      highlighted, so the user sees the full landscape.
-  //   4. FourWaysToClimb  — horizontal carousel of the four upgrade
-  //      paths (Subscription, Instagram, LinkedIn, Invitation), each
-  //      with its own CTA.
+  // Four-card stack, ordered status → action → motivation → context so a
+  // first-time user immediately sees both where they sit AND what to do
+  // next without scrolling:
+  //   1. CurrentClassCard — your tier today + the progress bar / next-tier
+  //      affordance baked into the hero.
+  //   2. FourWaysToClimb  — the actionable grid (Instagram, LinkedIn,
+  //      Subscribe, Invitation). Promoted above perks/ladder because it's
+  //      the only section with CTAs; everything below is explanation.
+  //   3. ClassPerksBox    — the "why care": coupons up to 70% off plus
+  //      lifestyle perks. Comes after the actions so users only need to
+  //      read it if they're undecided.
+  //   4. ClassLadderBox   — the four-tier visual overview. Reference, not
+  //      drive — last because it's the most static piece of info.
   //
   // Story-auto-upload used to live below as an opt-in toggle. It's
   // mandatory now (every Instagram-tier visit posts a story), so the
@@ -178,9 +181,9 @@ function ClassTab({
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
+      <FourWaysToClimb onConnectSocial={onConnectSocial} />
       <ClassPerksBox />
       <ClassLadderBox />
-      <FourWaysToClimb onConnectSocial={onConnectSocial} />
     </div>
   );
 }
@@ -268,20 +271,11 @@ function ClassPerksBox() {
   );
 }
 
-// The four-tier ladder visualized as a non-scrollable 4-column grid.
-// Current tier is highlighted with a ring + bg-card. Tiers below the
-// current rung read "held"; tiers above read as the requirement to
-// reach them (subscription price or followers).
-// Per-tier perk label rendered beneath the tier name in the ladder.
-// Stays on the discount/cashback ladder rather than the price ladder so
-// the user reads what each rung IS, not what it costs.
-const LADDER_PERK: Record<(typeof TIER_ORDER)[number], string> = {
-  bronze: "Base discount",
-  silver: "More discount",
-  gold: "Bigger discount",
-  diamond: "Max discount",
-};
-
+// Visual-first ladder. The previous version led with an abstract sentence
+// ("Bronze ascends to Diamond. You sit at Mesita Gold"); replaced with a
+// segmented progress strip + the 4-tier badge grid so a first-time user
+// reads their position in one glance without parsing copy. The dots strip
+// mirrors the one on /coupons (ClassUpsellBox) so the metaphor is shared.
 function ClassLadderBox() {
   const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
   return (
@@ -289,16 +283,25 @@ function ClassLadderBox() {
       <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
         The class ladder
       </p>
-      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-        All four classes
-      </p>
-      <p className="text-muted-foreground mt-0.5 text-[12px]">
-        Bronze ascends to Diamond. You sit at{" "}
-        <span className="text-foreground font-semibold">
-          Mesita {TIERS.find((t) => t.id === CURRENT_USER.tier)?.label}
-        </span>
-        .
-      </p>
+
+      {/* Segmented strip — one bar per tier, filled up to and including the
+          user's current rung. Reads as "you've climbed this much" at a
+          glance, no copy required. */}
+      <div className="mt-2 flex items-center gap-1.5">
+        {TIER_ORDER.map((tier) => {
+          const reached = TIER_ORDER.indexOf(tier) <= currentIdx;
+          return (
+            <span
+              key={tier}
+              className={cn(
+                "h-1.5 flex-1 rounded-full",
+                reached ? "bg-foreground" : "bg-muted",
+              )}
+            />
+          );
+        })}
+      </div>
+
       <div className="mt-3 grid grid-cols-4 gap-2">
         {TIERS.map((t) => {
           const tierIdx = TIER_ORDER.indexOf(t.id);
@@ -332,7 +335,7 @@ function ClassLadderBox() {
                     : "text-muted-foreground",
                 )}
               >
-                {isCurrent ? "Current" : LADDER_PERK[t.id]}
+                {isCurrent ? "You" : tierIdx < currentIdx ? "Held" : "Locked"}
               </span>
             </div>
           );
@@ -568,8 +571,21 @@ function CurrentClassCard() {
   // Top of the Class tab. The class IS the brand — "Mesita Gold" reads as a
   // proper noun, not "a Gold member". Origin determines the subtitle: who
   // earned the tier and how (followers / subscription / appeal / default).
+  //
+  // Below the brand line we render a "next tier" affordance:
+  //   - Instagram: a progress bar from current → next threshold with the
+  //     concrete delta ("12.7K more followers to climb"). The bar gives a
+  //     dummy an immediate visual answer to "how close am I?".
+  //   - Subscription: a single line pointing at the next price tier.
+  //   - Default/appeal: a single line suggesting a path.
+  // Hidden entirely at Diamond — no more rungs to sell.
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier)!;
   const brand = `Mesita ${meta.label}`;
+  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
+  const nextTier =
+    currentIdx < TIER_ORDER.length - 1
+      ? TIERS.find((t) => t.id === TIER_ORDER[currentIdx + 1])!
+      : null;
   const origin = (() => {
     switch (CURRENT_USER.tierOrigin) {
       case "instagram":
@@ -598,7 +614,65 @@ function CurrentClassCard() {
         {brand}
       </h2>
       <p className="mt-1.5 text-[12px] opacity-90">{origin}</p>
+      {nextTier && <NextTierProgress current={meta} next={nextTier} />}
     </section>
+  );
+}
+
+function NextTierProgress({
+  current,
+  next,
+}: {
+  current: (typeof TIERS)[number];
+  next: (typeof TIERS)[number];
+}) {
+  const isInstagram = CURRENT_USER.tierOrigin === "instagram";
+  const isSubscription = CURRENT_USER.tierOrigin === "subscription";
+
+  if (isInstagram) {
+    const followers = CURRENT_USER.followers;
+    const span = next.followerThreshold - current.followerThreshold;
+    const within = Math.max(0, followers - current.followerThreshold);
+    const pct = span > 0 ? Math.min(100, (within / span) * 100) : 0;
+    const remaining = Math.max(0, next.followerThreshold - followers);
+    return (
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[10px] font-semibold tracking-wide opacity-85 uppercase">
+          <span>Mesita {current.label}</span>
+          <span>Mesita {next.label}</span>
+        </div>
+        <div className="bg-current/15 mt-1.5 h-1.5 overflow-hidden rounded-full">
+          <div
+            className="bg-current/80 h-full rounded-full transition-[width] duration-500 ease-out"
+            style={{ width: `${pct}%` }}
+            aria-hidden
+          />
+        </div>
+        <p className="mt-2 text-[12px] opacity-90">
+          <span className="font-semibold">
+            {formatFollowers(remaining)} more
+          </span>{" "}
+          Instagram followers to climb.
+        </p>
+      </div>
+    );
+  }
+
+  if (isSubscription) {
+    return (
+      <p className="mt-3 text-[12px] opacity-90">
+        <span className="font-semibold">Upgrade to Mesita {next.label}</span> ·
+        ${next.priceUsd} / mo
+      </p>
+    );
+  }
+
+  // Default tier (Bronze) or appeal that landed below Diamond.
+  return (
+    <p className="mt-3 text-[12px] opacity-90">
+      <span className="font-semibold">Next: Mesita {next.label}</span> · connect
+      Instagram or subscribe to climb.
+    </p>
   );
 }
 
