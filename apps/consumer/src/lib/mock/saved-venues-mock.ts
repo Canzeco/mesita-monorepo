@@ -57,6 +57,8 @@ export const SAVED_VENUES: PublicVenue[] = [
     google_maps_url: null,
     email: null,
     created_at: "2026-05-01T00:00:00Z",
+    google_rating: 4.6,
+    google_count: 1820,
   },
   {
     id: "brasero",
@@ -99,6 +101,8 @@ export const SAVED_VENUES: PublicVenue[] = [
     google_maps_url: null,
     email: null,
     created_at: "2026-05-03T00:00:00Z",
+    google_rating: 4.8,
+    google_count: 940,
   },
   {
     id: "kaffe-aurelio",
@@ -141,6 +145,8 @@ export const SAVED_VENUES: PublicVenue[] = [
     google_maps_url: null,
     email: null,
     created_at: "2026-05-09T00:00:00Z",
+    google_rating: 4.5,
+    google_count: 320,
   },
   {
     id: "tapanco-9",
@@ -183,5 +189,7 @@ export const SAVED_VENUES: PublicVenue[] = [
     google_maps_url: null,
     email: null,
     created_at: "2026-05-12T00:00:00Z",
+    google_rating: 4.7,
+    google_count: 1240,
   },
 ];
