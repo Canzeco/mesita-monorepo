@@ -33,48 +33,52 @@ export function CalendarConnectBox() {
   );
 }
 
-// Google Calendar product mark — modern (post-2020) look: white rounded
-// tile, Google-blue "31" in the center, and a colored corner accent that
-// echoes the product icon (blue page corner with a tiny shadow). Avoids
-// the old multi-colored top stripe in favor of a cleaner blue-heavy
-// silhouette that scales down well to 40px and reads as Google's calendar
-// at a glance.
+// Google Calendar product mark — faithful render of the official 2020+
+// product icon. White rounded tile, bold blue "31" centered, and the
+// four canonical Google brand-color edges:
+//   - top    : red    (#EA4335)
+//   - right  : yellow (#FBBC04)
+//   - bottom : green  (#34A853)
+//   - left   : blue   (#4285F4) — same hue family as the central "31"
+// Each edge is a short bar starting from the corner of an adjacent side,
+// so the silhouette reads as the well-known multi-color outlined tile
+// you see on Android / iOS app icons and the GCal web favicon.
 function GoogleCalendarLogo() {
   return (
     <svg
-      viewBox="0 0 40 40"
+      viewBox="0 0 48 48"
       className="h-9 w-9"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
       {/* White tile body */}
       <rect
-        x="2"
-        y="2"
+        x="6"
+        y="6"
         width="36"
         height="36"
-        rx="6"
+        rx="2"
         fill="#FFFFFF"
-        stroke="#DADCE0"
-        strokeWidth="0.5"
+        stroke="#E8EAED"
+        strokeWidth="1"
       />
-      {/* Top-right blue corner accent — folded-page silhouette */}
-      <path d="M30 2 L38 2 L38 10 Z" fill="#1A73E8" />
-      {/* Bottom-left green corner accent */}
-      <path d="M2 30 L2 38 L10 38 Z" fill="#34A853" />
-      {/* Top-left red dot, bottom-right yellow dot — subtle brand color
-          touches without dominating */}
-      <rect x="2" y="2" width="6" height="2" fill="#EA4335" />
-      <rect x="32" y="36" width="6" height="2" fill="#FBBC04" />
-      {/* "31" centered in Google blue */}
+      {/* Top-right red corner: short horizontal red bar on top edge */}
+      <rect x="24" y="6" width="18" height="3" fill="#EA4335" />
+      {/* Right-side yellow corner: short vertical yellow bar on right edge */}
+      <rect x="39" y="6" width="3" height="18" fill="#FBBC04" />
+      {/* Bottom-right green corner: short horizontal green bar on bottom */}
+      <rect x="24" y="39" width="18" height="3" fill="#34A853" />
+      {/* Left-side blue corner: short vertical blue bar on left edge */}
+      <rect x="6" y="24" width="3" height="18" fill="#4285F4" />
+      {/* Bold "31" centered in Google blue */}
       <text
-        x="20"
-        y="27"
+        x="24"
+        y="31"
         textAnchor="middle"
-        fontSize="14"
+        fontSize="16"
         fontWeight="700"
         fill="#1A73E8"
-        fontFamily="Roboto, ui-sans-serif, system-ui, sans-serif"
+        fontFamily="'Google Sans', 'Product Sans', Roboto, ui-sans-serif, system-ui, sans-serif"
       >
         31
       </text>
