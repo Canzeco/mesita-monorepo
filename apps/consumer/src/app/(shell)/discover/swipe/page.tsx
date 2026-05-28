@@ -44,39 +44,49 @@ export default async function SwipePage() {
     return aRank - bRank;
   });
 
-  // Demo-only enrichment for the venue overview parity checkpoint: the
-  // swipe card now renders the same eight metadata cells as the venue
-  // detail overview, but recommend-deck / list-venues don't yet return
-  // the Google rating, distance, zone, price range, freshness label, or
-  // reward cap. The detail page already has a fully populated
-  // VenueDetail fixture for Mochomos Monterrey (mockVenue) — splice
-  // those values onto the matching deck row so the card lights up for
-  // the demo venue. Other rows degrade gracefully (chips hide when null)
-  // until the EF starts populating these columns directly.
+  // Demo-only enrichment for the venue overview parity checkpoint.
+  //
+  // 1. Mochomos (mockVenue.id) gets the full overview payload from the
+  //    VenueDetail fixture — rating, distance, zone, freshness label,
+  //    reward cap, etc.
+  // 2. Every other deck row gets a minimal mock so the promo chip can
+  //    still render across the board: a placeholder cashback_percent
+  //    + is_first_visit flag, both labelled "MOCK" on the chip itself.
+  //
+  // recommend-deck / list-venues don't yet return any of these fields;
+  // the EF + a Google snapshot table land later and override these
+  // mocked values per-venue.
+  const PROMO_MOCK_PERCENT = 20;
   const enriched = sorted.map((v) => {
-    if (
-      v.id !== mockVenue.id &&
-      v.slug !== mockVenue.id &&
-      v.name !== mockVenue.name
-    ) {
-      return v;
+    const isMochomos =
+      v.id === mockVenue.id ||
+      v.slug === mockVenue.id ||
+      v.name === mockVenue.name;
+    if (isMochomos) {
+      return {
+        ...v,
+        google_rating: v.google_rating ?? mockVenue.google.rating,
+        google_count: v.google_count ?? mockVenue.google.count,
+        price_range: v.price_range ?? mockVenue.price_range,
+        last_updated_label:
+          v.last_updated_label ?? mockVenue.last_updated_label,
+        open_now: v.open_now ?? mockVenue.open_now,
+        opens_at: v.opens_at ?? mockVenue.opens_at,
+        distance_km: v.distance_km ?? mockVenue.distance_km,
+        zone: v.zone ?? mockVenue.zone,
+        reward_cap_mxn: v.reward_cap_mxn ?? mockVenue.reward_cap_mxn,
+        cashback_percent:
+          v.cashback_percent ??
+          mockVenue.promo_matrix.welcome[mockVenue.promo_matrix.current_tier] ??
+          PROMO_MOCK_PERCENT,
+        is_first_visit:
+          v.is_first_visit ?? mockVenue.promo_matrix.is_first_visit,
+      };
     }
     return {
       ...v,
-      google_rating: v.google_rating ?? mockVenue.google.rating,
-      google_count: v.google_count ?? mockVenue.google.count,
-      price_range: v.price_range ?? mockVenue.price_range,
-      last_updated_label: v.last_updated_label ?? mockVenue.last_updated_label,
-      open_now: v.open_now ?? mockVenue.open_now,
-      opens_at: v.opens_at ?? mockVenue.opens_at,
-      distance_km: v.distance_km ?? mockVenue.distance_km,
-      zone: v.zone ?? mockVenue.zone,
-      reward_cap_mxn: v.reward_cap_mxn ?? mockVenue.reward_cap_mxn,
-      // Mocked first-visit flag so the swipe ribbon reads "X% OFF
-      // welcome discount". Once the EF tracks per-user visit history
-      // this flips to false on the second-and-later swipes.
-      is_first_visit:
-        v.is_first_visit ?? mockVenue.promo_matrix.is_first_visit,
+      cashback_percent: v.cashback_percent ?? PROMO_MOCK_PERCENT,
+      is_first_visit: v.is_first_visit ?? true,
     };
   });
 

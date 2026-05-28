@@ -158,10 +158,12 @@ function CardOverlay({ venue }: { venue: Venue }) {
   })();
   const isOpen = venue.open_now === true;
 
+  // Promo chip is independent of partner status — both verified
+  // partners and web-listed venues can carry a welcome / return-visit
+  // promo. The "MOCK" tag on the chip itself signals it's still
+  // placeholder data until the per-tier promo EF ships.
   const showCashback =
-    isPartner &&
-    venue.cashback_percent != null &&
-    venue.cashback_percent > 0;
+    venue.cashback_percent != null && venue.cashback_percent > 0;
   // Default to first-visit framing when the EF hasn't told us either
   // way — every consumer is a new face to most venues, so "welcome"
   // is the safer default than "return-visit".
