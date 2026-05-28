@@ -13,7 +13,6 @@ import {
   Bell,
   Shield,
   HelpCircle,
-  Camera,
   Mail,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -168,21 +167,15 @@ function ClassTab({
   //   3. FourWaysToClimb   — horizontal carousel of the four upgrade
   //      paths (Subscription, Instagram, LinkedIn, Invitation), each
   //      with its own CTA.
-  // When Instagram is connected, the Story-auto-upload toggle appears
-  // below the carousel as a full-width row.
-  const igConnected = CURRENT_USER.tierOrigin === "instagram";
-  const [storyAutoUpload, setStoryAutoUpload] = useState(true);
+  //
+  // Story-auto-upload used to live below as an opt-in toggle. It's
+  // mandatory now (every Instagram-tier visit posts a story), so the
+  // toggle was removed — implicit in connecting IG, not a separate UI.
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
       <ClassLadderBox />
       <FourWaysToClimb onConnectSocial={onConnectSocial} />
-      {igConnected && (
-        <StoryAutoUploadToggle
-          checked={storyAutoUpload}
-          onChange={setStoryAutoUpload}
-        />
-      )}
     </div>
   );
 }
@@ -410,54 +403,6 @@ function ClimbCard({
   return (
     <button type="button" onClick={onClick} className="block text-left">
       {body}
-    </button>
-  );
-}
-
-// Subordinate toggle that sits right under a connected Instagram row.
-// When ON, the consumer agrees to drop a Story tagging the partner each
-// time they visit — in exchange Mesita upgrades the per-visit promo.
-// Indented (ml-3) so it visually nests under the IG row it belongs to.
-function StoryAutoUploadToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className="bg-muted/20 hover:bg-muted/40 ml-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
-    >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 ring-1 ring-pink-500/25">
-        <Camera className="h-3.5 w-3.5 text-pink-600" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[12.5px] leading-tight font-semibold">
-          Upload Story when I visit
-        </span>
-        <span className="text-muted-foreground mt-0.5 block text-[10.5px] leading-snug">
-          Bigger promo every time you tag a partner.
-        </span>
-      </span>
-      <span
-        className={cn(
-          "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-          checked ? "bg-pink-gradient" : "bg-muted",
-        )}
-        aria-hidden
-      >
-        <span
-          className={cn(
-            "bg-card absolute top-0.5 h-4 w-4 rounded-full shadow-sm transition-transform",
-            checked ? "translate-x-[18px]" : "translate-x-0.5",
-          )}
-        />
-      </span>
     </button>
   );
 }
