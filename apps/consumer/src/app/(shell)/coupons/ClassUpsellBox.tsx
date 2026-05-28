@@ -84,8 +84,7 @@ export function ClassUpsellBox() {
       <p className="mt-3 text-[13px] leading-snug text-white/90">
         Mesita has four classes: Bronze, Silver, Gold, and Diamond. Our
         partners compete to attract the high-value guests by offering
-        cashbacks up to 70%. Upgrade class to make your social capital
-        spendable.
+        cashbacks up to 70%. Mesita makes your social capital spendable.
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
