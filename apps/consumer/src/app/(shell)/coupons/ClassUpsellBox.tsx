@@ -116,7 +116,7 @@ export function ClassUpsellBox() {
           {
             icon: Mail,
             label: "Invitation",
-            tagline: "Models and local elites.",
+            tagline: "For models and local elites",
           },
         ].map((m) => (
           <div
