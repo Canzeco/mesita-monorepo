@@ -27,14 +27,18 @@ export default async function CatalogPage() {
       maxCategories: 10,
       perCategory: 10,
     });
-    categories = result.categories;
+    categories = result.categories.map((c) => ({
+      ...c,
+      venues: c.venues.map(withMockOverview),
+    }));
   } catch (err) {
     console.warn(
       "[catalog] consumer-recommend-catalog failed, falling back:",
       err,
     );
     try {
-      fallback = await apiFetchPublicVenues(supabase, 60);
+      const list = await apiFetchPublicVenues(supabase, 60);
+      fallback = list.map(withMockOverview);
     } catch (err2) {
       fetchError = errMsg(err2, "Couldn't load the catalog.");
     }
@@ -113,6 +117,31 @@ export default async function CatalogPage() {
       )}
     </div>
   );
+}
+
+// Deterministic mock for the overview fields the catalog EF doesn't
+// return yet — google_rating, distance_km, and is_first_visit. Stable
+// per-venue (seeded by the id) so the same row always shows the same
+// numbers across refreshes. Falls back to real EF values whenever they
+// exist; ships out once consumer-recommend-catalog widens its
+// response.
+function withMockOverview(v: Venue): Venue {
+  const seed = stringHash(v.id);
+  const ratingTenths = seed % 10; // 0..9 → .0..9
+  return {
+    ...v,
+    google_rating: v.google_rating ?? Number((4 + ratingTenths / 10).toFixed(1)),
+    distance_km:
+      v.distance_km ??
+      Number((0.4 + ((seed >> 4) % 50) / 10).toFixed(1)),
+    is_first_visit: v.is_first_visit ?? true,
+  };
+}
+
+function stringHash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }
 
 function Row({
