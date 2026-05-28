@@ -182,18 +182,20 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 // ── 1. Summary (loose header) ───────────────────────────────────────────
 
 function SummaryHeader({ venue }: { venue: VenueDetail }) {
-  // Venue page shows the real per-person range (price_range, e.g.
-  // "$200–300"). Quick-view surfaces — swipe, catalog, map — keep
-  // rendering price_level as the $-symbol shorthand. Closing time
-  // moves out of the summary meta — the Hours box owns it.
+  // 10-item layout, top to bottom:
+  //   row 1 (1 cell, full width)  : venue name
+  //   rows 2–5 (2 cells each, 50/50): trust + identity + commerce + place
+  //     ↳ Verified Partner / Web Listed │ Updated …
+  //     ↳ Category                       │ Google rating + count
+  //     ↳ Price range                    │ Open/closed status
+  //     ↳ Neighbourhood (zone)           │ Distance
+  //   row 6 (1 cell, full width)  : active reward banner
+  //
+  // The middle 8 cells share a uniform StatCell shape — colored icon
+  // circle + display-font value + muted sub — so the grid reads as one
+  // legible matrix instead of seven different chip shapes piled on top.
   const isPartner = venue.listing_type === "partner";
-  // Star rating in the Summary uses the Google source for now — easiest
-  // single-number stand-in until we surface a combined Mesita+Google
-  // headline rating.
   const googleRating = venue.google.rating.toFixed(1);
-  // Active reward — first-visit users see the welcome rate, returning
-  // users see the default-tier rate. Null = venue offers nothing at the
-  // user's tier, so the cashback banner is suppressed entirely.
   const { welcome, default: returning, current_tier, is_first_visit } =
     venue.promo_matrix;
   const activeReward = is_first_visit
@@ -209,49 +211,65 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
       <h1 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
-      {/* Hero rating + stacked side facts. The rating block is now a
-          pink-tinted gradient pill with a soft ring instead of a flat
-          muted square, and the star + number stack vertically so the
-          rating reads like a hero stat. Fact rows pair each icon with
-          a soft colored circle — amber/emerald/sky/pink in rotation —
-          to add a little visual rhythm without losing calm. */}
-      <div className="grid grid-cols-[auto_1fr] gap-4">
-        <div className="relative flex min-w-[108px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-pink-500/[0.12] to-pink-500/[0.04] px-4 py-4 ring-1 ring-pink-500/15">
-          <Star
-            className="h-5 w-5 fill-amber-400 text-amber-400"
-            strokeWidth={0}
-          />
-          <span className="font-display text-[34px] font-semibold leading-none">
-            {googleRating}
-          </span>
-          <span className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-            {formatCount(venue.google.count, false)} reviews
-          </span>
-        </div>
-        <div className="flex flex-col justify-center gap-3">
-          <FactRow
-            icon={Utensils}
-            iconBg="bg-amber-500/10"
-            iconColor="text-amber-600"
-            value={venue.category}
-            sub="cuisine"
-            capitalize
-          />
-          <FactRow
-            icon={Tags}
-            iconBg="bg-emerald-500/10"
-            iconColor="text-emerald-600"
-            value={venue.price_range}
-            sub="per person"
-          />
-          <FactRow
-            icon={Navigation}
-            iconBg="bg-sky-500/10"
-            iconColor="text-sky-600"
-            value={`${venue.distance_km} km`}
-            sub="from you"
-          />
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <StatCell
+          icon={isPartner ? BadgeCheck : Globe}
+          iconBg={isPartner ? "bg-sky-500/10" : "bg-muted"}
+          iconColor={isPartner ? "text-sky-600" : "text-muted-foreground"}
+          value={isPartner ? "Verified partner" : "Web listing"}
+          sub={isPartner ? "vouched for" : "auto-discovered"}
+        />
+        <StatCell
+          icon={Pencil}
+          iconBg="bg-muted"
+          iconColor="text-muted-foreground"
+          value={`Updated ${venue.last_updated_label}`}
+          sub="freshness"
+        />
+        <StatCell
+          icon={Utensils}
+          iconBg="bg-amber-500/10"
+          iconColor="text-amber-600"
+          value={venue.category}
+          sub="cuisine"
+          capitalize
+        />
+        <StatCell
+          icon={Star}
+          iconBg="bg-amber-500/10"
+          iconColor="text-amber-500"
+          starIcon
+          value={googleRating}
+          sub={`${formatCount(venue.google.count, false)} on Google`}
+        />
+        <StatCell
+          icon={Tags}
+          iconBg="bg-emerald-500/10"
+          iconColor="text-emerald-600"
+          value={venue.price_range}
+          sub="per person"
+        />
+        <StatCell
+          icon={Clock}
+          iconBg={venue.open_now ? "bg-emerald-500/10" : "bg-muted"}
+          iconColor={venue.open_now ? "text-emerald-600" : "text-muted-foreground"}
+          value={venue.open_now ? `Until ${venue.closes_at}` : `Opens ${venue.opens_at}`}
+          sub={venue.open_now ? "open now" : "closed now"}
+        />
+        <StatCell
+          icon={MapPin}
+          iconBg="bg-pink-500/10"
+          iconColor="text-pink-500"
+          value={venue.zone}
+          sub="neighbourhood"
+        />
+        <StatCell
+          icon={Navigation}
+          iconBg="bg-sky-500/10"
+          iconColor="text-sky-600"
+          value={`${venue.distance_km} km`}
+          sub="from you"
+        />
       </div>
       {/* Cashback banner — the headline promo, treated as a full-width
           gradient row rather than a tiny chip. Suppressed entirely when
@@ -269,72 +287,22 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
           </div>
         </div>
       )}
-      {/* Trust row — small chips, deliberately differentiated. Partner
-          reads sky-tinted (a trust signal cool), open status reads
-          emerald (a "live now" warm). Sharing a single emerald used to
-          make them read as duplicate badges. */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-            isPartner
-              ? "border-sky-500/30 bg-sky-500/10 text-sky-700"
-              : "border-border bg-card text-muted-foreground",
-          )}
-        >
-          {isPartner ? (
-            <BadgeCheck className="h-3 w-3" strokeWidth={2.5} />
-          ) : (
-            <Globe className="h-3 w-3" />
-          )}
-          {isPartner ? "Verified partner" : "Web listing"}
-        </span>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-            venue.open_now
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
-              : "border-border bg-card text-muted-foreground",
-          )}
-        >
-          <Clock className="h-3 w-3" />
-          {venue.open_now
-            ? `Open · until ${venue.closes_at}`
-            : `Closed · opens ${venue.opens_at}`}
-        </span>
-      </div>
-      {/* Context — address bumped up to 13px with a pink pin so the
-          location reads as a real anchor instead of a footnote. Freshness
-          stays muted-tiny so it whispers. */}
-      <div className="flex flex-col gap-1.5">
-        <p className="text-foreground/80 inline-flex items-start gap-2 text-[13px] leading-snug">
-          <MapPin
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink-500"
-            strokeWidth={2}
-          />
-          <span className="line-clamp-2">{venue.address}</span>
-        </p>
-        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px]">
-          <Pencil className="h-3 w-3" />
-          Updated {venue.last_updated_label}
-        </p>
-      </div>
     </Box>
   );
 }
 
-// One side row of the Overview hero block. Icon sits in a soft colored
-// circle (amber / emerald / sky to match the column's role); value uses
-// the display font for that "headline stat" feel without competing with
-// the rating hero on the left. Capitalize flips the first letter for
-// fields stored lowercase (category enum).
-function FactRow({
+// Uniform stat tile for the 8 middle cells of the Summary grid. Icon
+// circle on the left, display-font value + muted sub on the right.
+// `starIcon` swaps the normal stroke for a filled lucide star so the
+// rating cell reads as a graphic, not a glyph.
+function StatCell({
   icon: Icon,
   value,
   sub,
   capitalize,
   iconBg,
   iconColor,
+  starIcon,
 }: {
   icon: LucideIcon;
   value: string;
@@ -342,27 +310,31 @@ function FactRow({
   capitalize?: boolean;
   iconBg: string;
   iconColor: string;
+  starIcon?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="border-border/40 bg-card/60 flex items-center gap-2.5 rounded-xl border p-2.5">
       <div
         className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
           iconBg,
         )}
       >
-        <Icon className={cn("h-3.5 w-3.5", iconColor)} strokeWidth={2.25} />
+        <Icon
+          className={cn("h-4 w-4", iconColor, starIcon && "fill-current")}
+          strokeWidth={starIcon ? 0 : 2.25}
+        />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "font-display text-foreground text-[15px] font-semibold leading-tight",
+            "font-display text-foreground truncate text-[13px] font-semibold leading-tight",
             capitalize && "capitalize",
           )}
         >
           {value}
         </p>
-        <p className="text-muted-foreground text-[11px] leading-tight">
+        <p className="text-muted-foreground mt-0.5 truncate text-[10px] leading-tight">
           {sub}
         </p>
       </div>
