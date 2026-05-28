@@ -394,7 +394,7 @@ function FourWaysToClimb({
       key: "subscription",
       icon: CreditCard,
       iconBg: "bg-pink-gradient",
-      label: "Subscription",
+      label: "Subscribe",
       values: TIERS.filter((t) => t.id !== "bronze").map(
         (t) => `$${t.priceUsd}`,
       ),
@@ -440,8 +440,8 @@ function FourWaysToClimb({
           the header reads as the rung map. The CTA moved out of the
           row (and out of this header) — it lives below each item now,
           full-width, so the data columns get room to breathe. */}
-      <div className="grid grid-cols-[1fr_repeat(3,minmax(3rem,1fr))] items-center gap-2 px-3 pt-2 pb-1.5">
-        <span aria-hidden />
+      <div className="grid grid-cols-[auto_repeat(3,minmax(0,1fr))] items-center gap-2 px-3 pt-2 pb-1.5">
+        <span aria-hidden className="h-7 w-7" />
         {(["silver", "gold", "diamond"] as const).map((tier) => (
           <span
             key={tier}
@@ -507,17 +507,17 @@ function ClimbTableRow({ row }: { row: ClimbRow }) {
   //      the data columns aren't squeezed by a 5th column.
   const body = (
     <div className="hover:bg-muted/30 flex flex-col gap-2.5 px-3 py-3 transition">
-      <div className="grid grid-cols-[1fr_repeat(3,minmax(3rem,1fr))] items-center gap-2">
-        <span className="flex min-w-0 items-center gap-2">
+      <div className="grid grid-cols-[auto_repeat(3,minmax(0,1fr))] items-center gap-2">
+        <span className="flex items-center gap-2">
           <span
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white",
               row.iconBg,
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5" />
           </span>
-          <span className="font-display min-w-0 truncate text-[13px] font-semibold tracking-tight">
+          <span className="font-display text-[13px] font-semibold tracking-tight whitespace-nowrap">
             {row.label}
           </span>
         </span>
