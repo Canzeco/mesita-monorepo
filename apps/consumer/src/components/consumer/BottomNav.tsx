@@ -60,7 +60,7 @@ const ITEMS: Item[] = [
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="border-border bg-card/95 sticky bottom-0 z-40 shrink-0 border-t px-1 pt-2 backdrop-blur">
+    <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-1 pt-2 backdrop-blur">
       <div className="flex items-end justify-around">
         {ITEMS.map(({ href, Icon, label, match, primary }) => {
           const active = pathname.startsWith(match);

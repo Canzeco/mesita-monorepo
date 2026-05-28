@@ -49,7 +49,7 @@ export default function RootLayout({
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
-      <body className="bg-background text-foreground flex min-h-full flex-col">
+      <body className="bg-background text-foreground flex h-full flex-col">
         {children}
         {/* The consumer shell mounts its own <Toaster /> (see
             src/components/consumer/Toaster.tsx + src/lib/toast.ts) so the

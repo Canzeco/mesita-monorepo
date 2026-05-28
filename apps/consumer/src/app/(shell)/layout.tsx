@@ -54,20 +54,29 @@ export default async function ConsumerShellLayout({
     redirect("/onboard");
   }
 
-  // Layout owns the fixed chrome: StatusBar + TopBar at the top,
-  // BottomNav at the bottom. None of these sit inside the scrolling
-  // children container, so they CAN'T scroll out of view — page-level
-  // code never has to think about it. See TopBar.tsx for the
-  // route → header mapping.
+  // Two-box layout strategy (per user spec):
+  //   - Top: StatusBar + TopBar (combined chrome band, shrink-0).
+  //   - Bottom: BottomNav (shrink-0).
+  //   - Middle: the body — flex-1, overflows internally via the page's
+  //     own scroll container; never affects the chrome bands.
+  //
+  // The modal slot lives INSIDE the \`shell-stage\` wrapper that contains
+  // TopBar + body + BottomNav. When a modal (e.g. the intercepted
+  // /venues/[id] route) is active, its \`absolute inset-0\` covers all
+  // three at once — the only thing still visible above it is the
+  // StatusBar (deliberate: the iOS-style 9:41/100% strip is decoration,
+  // not chrome the modal needs to replace).
   return (
     <MobileFrame>
       <StatusBar />
-      <TopBar />
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <ShellChildrenSlot>{children}</ShellChildrenSlot>
+        <TopBar />
+        <div className="relative flex flex-1 flex-col overflow-hidden">
+          <ShellChildrenSlot>{children}</ShellChildrenSlot>
+        </div>
+        <BottomNav />
         {modal}
       </div>
-      <BottomNav />
       <Toaster />
     </MobileFrame>
   );
