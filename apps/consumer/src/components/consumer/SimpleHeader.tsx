@@ -1,26 +1,20 @@
 import Link from "next/link";
 import { ClassChip } from "./ClassChip";
 
-// Shared header used by every top-level surface that isn't /discover
-// (Reservations, Coupons, Pay, Share, Profile). The right-side
-// ClassChip mirrors the one on DiscoverHeader so the user's tier is
-// glanceable everywhere — set `chip={false}` to opt out on surfaces
-// where it would be redundant (e.g. /profile, where the same class
-// info lives inline in the page body).
-export function SimpleHeader({
-  title,
-  eyebrow,
-  chip = true,
-}: {
-  title: string;
-  eyebrow?: string;
-  chip?: boolean;
-}) {
+// Shared header for every top-level surface that isn't /discover
+// (Reservations, Coupons, Pay, Share, Profile).
+//
+// Strict 3-column structure that matches DiscoverHeader pixel-for-pixel:
+//
+//   [Peacock logo · 40px]   [Centered title]   [Class chip · 40px]
+//
+// The middle column is `flex-1` and centers its content via flex
+// alignment. Any future surface that wants a richer center (icon row,
+// pill bar, etc.) drops in here without breaking the column model.
+// `h-16` (64px) is shared with DiscoverHeader so the body band gets a
+// consistent reservation across every route.
+export function SimpleHeader({ title }: { title: string }) {
   return (
-    // Fixed h-16 (64px) so this header lines up pixel-for-pixel with
-    // DiscoverHeader. Without it the two TopBar variants rendered at
-    // different heights and the body band visibly shifted as the user
-    // tabbed between /reservations and /discover.
     <header className="border-border flex h-16 shrink-0 items-center gap-3 border-b px-4">
       <Link
         href="/profile"
@@ -29,17 +23,12 @@ export function SimpleHeader({
       >
         🦚
       </Link>
-      <div className="min-w-0 flex-1">
-        <h1 className="font-display text-xl leading-tight font-semibold tracking-tight">
+      <div className="flex min-w-0 flex-1 items-center justify-center">
+        <h1 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
           {title}
         </h1>
-        {eyebrow && (
-          <p className="text-muted-foreground mt-0.5 text-[10px] font-medium tracking-[0.18em] uppercase">
-            {eyebrow}
-          </p>
-        )}
       </div>
-      {chip && <ClassChip />}
+      <ClassChip />
     </header>
   );
 }
