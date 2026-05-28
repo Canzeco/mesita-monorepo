@@ -14,6 +14,10 @@ import {
   Shield,
   HelpCircle,
   Mail,
+  TicketPercent,
+  Star,
+  CalendarCheck,
+  Martini,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
@@ -160,11 +164,14 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // Three-card stack:
+  // Four-card stack:
   //   1. CurrentClassCard — what tier the user holds today + how they got it.
-  //   2. ClassLadderBox    — the four-tier overview, current position
+  //   2. ClassPerksBox    — the "why care": coupons up to 70% off plus the
+  //      lifestyle perks (exclusive venues, priority booking, welcome drinks).
+  //      Mirrors the /coupons promo so the value proposition lives here too.
+  //   3. ClassLadderBox   — the four-tier overview, current position
   //      highlighted, so the user sees the full landscape.
-  //   3. FourWaysToClimb   — horizontal carousel of the four upgrade
+  //   4. FourWaysToClimb  — horizontal carousel of the four upgrade
   //      paths (Subscription, Instagram, LinkedIn, Invitation), each
   //      with its own CTA.
   //
@@ -174,9 +181,93 @@ function ClassTab({
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
+      <ClassPerksBox />
       <ClassLadderBox />
       <FourWaysToClimb onConnectSocial={onConnectSocial} />
     </div>
+  );
+}
+
+// "Why climb" pitch — coupons + lifestyle perks. Same value proposition
+// as the /coupons promo box, restyled for the light profile surface with
+// tinted icon circles per the Pretty UI convention. Header-only when the
+// user already sits at Diamond (no upside left to sell).
+function ClassPerksBox() {
+  const isMaxedOut =
+    TIER_ORDER.indexOf(CURRENT_USER.tier) === TIER_ORDER.length - 1;
+
+  const perks: { icon: LucideIcon; tone: string; title: string; body: string }[] = [
+    {
+      icon: TicketPercent,
+      tone: "bg-primary/10 text-primary",
+      title: "Bigger coupons",
+      body: "Up to 70% off at partners.",
+    },
+    {
+      icon: Star,
+      tone: "bg-amber-500/15 text-amber-600",
+      title: "Exclusive venues",
+      body: "Direct access to invite-only places.",
+    },
+    {
+      icon: CalendarCheck,
+      tone: "bg-emerald-500/15 text-emerald-600",
+      title: "Priority booking",
+      body: "Get a table when a place is full.",
+    },
+    {
+      icon: Martini,
+      tone: "bg-fuchsia-500/15 text-fuchsia-600",
+      title: "Welcome drinks",
+      body: "House drink on arrival at select partners.",
+    },
+  ];
+
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
+        What your class unlocks
+      </p>
+      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
+        Better class, better coupons
+      </p>
+      <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
+        <em className="text-foreground/85 font-display">
+          Your social capital, made spendable.
+        </em>{" "}
+        The higher your class, the bigger the coupons our partners give
+        you —{" "}
+        <span className="text-foreground font-semibold">up to 70% off</span>
+        {isMaxedOut
+          ? ". You already sit at the top rung."
+          : ". Higher classes also unlock the perks below."}
+      </p>
+      <ul className="mt-3 grid grid-cols-2 gap-2.5">
+        {perks.map((p) => (
+          <li
+            key={p.title}
+            className="border-border bg-muted/30 flex items-start gap-2 rounded-xl border p-2.5"
+          >
+            <span
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                p.tone,
+              )}
+            >
+              <p.icon className="h-3.5 w-3.5" />
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block text-[12px] font-semibold">
+                {p.title}
+              </span>
+              <span className="text-muted-foreground block text-[10.5px]">
+                {p.body}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
