@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Sparkles,
   Instagram,
+  Linkedin,
   CreditCard,
   Mail,
 } from "lucide-react";
@@ -18,7 +19,7 @@ import { cn } from "@/lib/utils";
 // connected pitch — the prior two-section split read as redundant
 // because all three lived under the same "why care" umbrella.
 //
-// Three ways to climb listed after as the concrete actions. CTA is
+// Four ways to climb listed after as the concrete actions. CTA is
 // class-agnostic ("Upgrade your class") so the copy holds at any rung.
 //
 // Diamond holders see a maxed-out variant.
@@ -97,7 +98,7 @@ export function ClassUpsellBox() {
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
-        Three ways to climb
+        Four ways to climb
       </p>
 
       <ul className="mt-2 flex flex-col gap-2 text-[12.5px] leading-snug text-white/90">
@@ -107,6 +108,14 @@ export function ClassUpsellBox() {
             <strong className="font-semibold text-white">Instagram</strong>{" "}
             — connect your account and post a story each time you visit a
             partner.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Linkedin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
+          <span>
+            <strong className="font-semibold text-white">LinkedIn</strong>{" "}
+            — connect your account; your follower count and verified role
+            lift your class.
           </span>
         </li>
         <li className="flex items-start gap-2">
