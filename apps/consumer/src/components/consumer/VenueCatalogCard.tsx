@@ -1,13 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  BadgeCheck,
   Clock,
   Gift,
+  Globe,
   MapPin,
   Navigation,
   Star,
 } from "lucide-react";
-import { PartnerBadge } from "@/components/shared";
 import { CURRENT_USER } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -19,21 +20,13 @@ const TIER_PROPER: Record<string, string> = {
   diamond: "Diamond",
 };
 
-// Catalog row card — the row-style venue tile used by:
-//   - /saved (My Saved Places)
-//   - /discover/catalog
+// Catalog row card — used by /saved and /discover/catalog.
 //
-// Layout mirrors the swipe-card overlay condensed for a 2-column
-// grid: partner badge + bookmark on the photo, then a tight body
-// with name, identity row (category · price · rating), location row
-// (distance · zone), opening status, and the mock promo chip
-// pinned to the bottom of the card.
-//
-// Address is intentionally NOT rendered here — the Notion Components
-// table marks G-Catalog-V=NO for the address field. Photo overlays
-// drop the cashback rate pill (the promo chip in the body now
-// carries that signal — duplicating it on the photo competed for
-// attention without adding information).
+// Body is a chip-strip layout that mirrors the swipe-card overlay so
+// the two surfaces feel like the same product. Each meta value lives
+// in a small neutral chip (bg-muted/60); the promo lives in a
+// brand-pink chip pinned to the bottom of the card via mt-auto so it
+// keeps its own row even when the chip-strip grows.
 
 export function VenueCatalogCard({
   venue,
@@ -45,7 +38,9 @@ export function VenueCatalogCard({
   href?: string | null;
 }) {
   const photo = venue.photos[0];
-  const category = venue.category?.toLowerCase() ?? null;
+  const isPartner = venue.listing_type === "partner";
+  const partnerLabel = isPartner ? "Verified partner" : "Web listed";
+  const category = venue.category ?? null;
   const priceLevel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const ratingLabel =
@@ -67,19 +62,13 @@ export function VenueCatalogCard({
   })();
   const isOpen = venue.open_now === true;
 
-  const identityParts = [category, priceLevel].filter(Boolean) as string[];
-  const locationParts = [distanceLabel, zoneLabel].filter(Boolean) as string[];
-
-  // Promo chip mocks the per-tier welcome / return-visit reward until
-  // the EF lands. Mirrors the swipe card.
+  // Promo chip — same mock framing as the swipe card.
   const promoPercent =
     venue.cashback_percent != null && venue.cashback_percent > 0
       ? venue.cashback_percent
       : 20;
   const isFirstVisit = venue.is_first_visit !== false;
-  const promoKindLabel = isFirstVisit
-    ? "welcome discount"
-    : "return-visit discount";
+  const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
   const tierLabel = TIER_PROPER[CURRENT_USER.tier] ?? "Mesita";
   const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
   const capLabel =
@@ -105,76 +94,76 @@ export function VenueCatalogCard({
             </span>
           </div>
         )}
-        <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1.5">
-          <PartnerBadge listingType={venue.listing_type} />
-        </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-1 p-3.5">
-        <h3 className="font-display text-base leading-tight font-semibold tracking-tight">
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        <h3 className="font-display text-[15px] leading-tight font-semibold tracking-tight">
           {venue.name}
         </h3>
 
-        {/* Identity row — category · price · rating. Rating renders
-            with one decimal (`.toFixed(1)`) so it can't visually be
-            mistaken for the integer rating count. */}
-        {(identityParts.length > 0 || ratingLabel) && (
-          <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-[11px]">
-            {identityParts.length > 0 && (
-              <span className="capitalize">
-                {identityParts.join(" · ")}
-              </span>
+        {/* Compact chip strip — same shape as the swipe overlay,
+            re-toned for the light card surface (bg-muted/60 + muted
+            text instead of bg-white/12 + white text). Wraps as many
+            rows as the content needs. */}
+        <div className="flex flex-wrap gap-1">
+          <Chip>
+            {isPartner ? (
+              <BadgeCheck className="h-2.5 w-2.5 shrink-0 text-sky-600" />
+            ) : (
+              <Globe className="text-muted-foreground h-2.5 w-2.5 shrink-0" />
             )}
-            {ratingLabel && (
-              <span className="inline-flex items-center gap-1">
-                {identityParts.length > 0 && <span>·</span>}
-                <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
-                <span className="text-foreground font-semibold">
-                  {ratingLabel}
+            <span>{partnerLabel}</span>
+          </Chip>
+          {category && (
+            <Chip>
+              <span className="capitalize">{category.toLowerCase()}</span>
+            </Chip>
+          )}
+          {priceLevel && <Chip>{priceLevel}</Chip>}
+          {ratingLabel && (
+            <Chip>
+              <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
+              <span className="text-foreground font-semibold">
+                {ratingLabel}
+              </span>
+              {ratingCountLabel && (
+                <span className="text-muted-foreground/80">
+                  ({ratingCountLabel})
                 </span>
-                {ratingCountLabel && (
-                  <span className="text-muted-foreground/70">
-                    ({ratingCountLabel})
-                  </span>
-                )}
-              </span>
-            )}
-          </p>
-        )}
-
-        {locationParts.length > 0 && (
-          <p className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
-            {distanceLabel && (
-              <>
-                <Navigation className="h-2.5 w-2.5 shrink-0" />
-                <span className="font-medium">{distanceLabel}</span>
-              </>
-            )}
-            {distanceLabel && zoneLabel && <span>·</span>}
-            {zoneLabel && (
-              <>
-                <MapPin className="h-2.5 w-2.5 shrink-0" />
-                <span className="truncate">{zoneLabel}</span>
-              </>
-            )}
-          </p>
-        )}
-
-        {statusLabel && (
-          <p className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
-            <Clock
-              className={cn(
-                "h-2.5 w-2.5 shrink-0",
-                isOpen ? "text-emerald-600" : "text-muted-foreground",
               )}
-            />
-            <span className="font-medium">{statusLabel}</span>
-          </p>
-        )}
+            </Chip>
+          )}
+          {distanceLabel && (
+            <Chip>
+              <Navigation className="text-muted-foreground h-2.5 w-2.5 shrink-0" />
+              <span>{distanceLabel}</span>
+            </Chip>
+          )}
+          {zoneLabel && (
+            <Chip>
+              <MapPin className="text-muted-foreground h-2.5 w-2.5 shrink-0" />
+              <span className="max-w-[110px] truncate">{zoneLabel}</span>
+            </Chip>
+          )}
+          {statusLabel && (
+            <Chip>
+              <Clock
+                className={cn(
+                  "h-2.5 w-2.5 shrink-0",
+                  isOpen ? "text-emerald-600" : "text-muted-foreground",
+                )}
+              />
+              <span>{statusLabel}</span>
+            </Chip>
+          )}
+        </div>
 
-        <div className="mt-1.5">
+        {/* Promo pinned to the bottom of the card via mt-auto so it
+            always reads as its own row, never tucked alongside the
+            neutral chips. */}
+        <div className="mt-auto">
           <span
-            className="bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] whitespace-nowrap text-white"
+            className="bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] whitespace-nowrap text-white"
             title={
               capLabel
                 ? `at Mesita ${tierLabel} · ${capLabel}`
@@ -182,7 +171,7 @@ export function VenueCatalogCard({
             }
           >
             <Gift className="h-2.5 w-2.5 shrink-0" strokeWidth={2.25} />
-            <span className="truncate font-semibold">
+            <span className="font-semibold">
               {promoPercent}% OFF {promoKindLabel}
             </span>
             <span className="text-[8.5px] font-bold tracking-[0.14em] uppercase text-white/70">
@@ -204,6 +193,17 @@ export function VenueCatalogCard({
     <Link href={href ?? `/venues/${venue.id}`} className={className}>
       {inner}
     </Link>
+  );
+}
+
+// Neutral chip used by every meta value. Same shape as the swipe-card
+// MetaChip, re-toned for the light card surface so the contrast on a
+// white background still reads premium.
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="bg-muted/70 ring-border/40 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium whitespace-nowrap text-foreground/80 ring-1">
+      {children}
+    </span>
   );
 }
 
