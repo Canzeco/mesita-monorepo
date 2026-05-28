@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   X,
-  Ticket,
+  Bookmark,
   Heart,
   Compass,
   RotateCcw,
@@ -330,7 +330,7 @@ function Deck({ venues }: { venues: Venue[] }) {
           onClick={save}
           className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold text-white"
         >
-          <Ticket className="h-4 w-4" /> Save or Reserve
+          <Bookmark className="h-4 w-4" /> Save or Reserve
         </button>
       </div>
     </div>
