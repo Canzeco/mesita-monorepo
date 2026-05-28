@@ -65,14 +65,16 @@ export function AppShell({ email, children }: AppShellProps) {
           aria-label="Admin navigation"
         >
           <Sidebar email={email} onNavigate={close} />
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Close menu"
-            className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 -right-12 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {open && (
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Close menu"
+              className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 -right-12 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 
