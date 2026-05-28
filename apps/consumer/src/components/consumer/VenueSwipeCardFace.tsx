@@ -254,6 +254,12 @@ function CardOverlay({ venue }: { venue: Venue }) {
             <span className="font-semibold">
               {venue.cashback_percent}% OFF {promoKindLabel}
             </span>
+            {/* Honest tag — every promo on the deck is mocked right now;
+                the per-tier promo Edge Function hasn't shipped yet. Once
+                it does, drop this little "mock" suffix. */}
+            <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-white/70">
+              · mock
+            </span>
           </span>
         )}
       </div>
