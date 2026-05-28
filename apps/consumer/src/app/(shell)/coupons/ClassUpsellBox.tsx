@@ -87,7 +87,7 @@ export function ClassUpsellBox() {
         <strong className="font-semibold text-white">
           Bronze, Silver, Gold, and Diamond
         </strong>
-        . Partners compete for high-value guests with cashbacks{" "}
+        . Partners compete to attract high-value guests with cashbacks{" "}
         <strong className="font-semibold text-white">up to 70%</strong>.{" "}
         <em className="font-display text-white/95">
           Upgrade to make your social capital spendable.
