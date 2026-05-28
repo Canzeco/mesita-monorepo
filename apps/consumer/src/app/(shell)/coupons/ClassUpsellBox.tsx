@@ -79,22 +79,21 @@ export function ClassUpsellBox() {
         </h3>
       </div>
 
-      {/* Body — full-width paragraph. Italic tagline leads, then the
-          class ladder → coupon mechanic → lifestyle perks pitch. */}
+      {/* Body — full-width paragraph. Class names → coupon mechanic →
+          partner-competition framing → italic "make your social capital
+          spendable" sign-off. */}
       <p className="mt-3 text-[13px] leading-snug text-white/90">
-        <em className="font-display text-white/95">
-          Your social capital, made spendable.
-        </em>{" "}
         Mesita has four classes:{" "}
         <strong className="font-semibold text-white">
           Bronze, Silver, Gold, and Diamond
         </strong>
-        . The higher your class, the bigger the coupons our partners give
-        you,{" "}
-        <strong className="font-semibold text-white">up to 70% off</strong>.
-        Higher classes can also unlock extras like direct access to
-        exclusive venues, priority booking when a place is full, and welcome
-        drinks.
+        . The higher your class, the bigger your coupons. Our partners
+        compete with coupons,{" "}
+        <strong className="font-semibold text-white">up to 70% off</strong>,
+        to attract the high-value guests.{" "}
+        <em className="font-display text-white/95">
+          Upgrade to make your social capital spendable.
+        </em>
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
