@@ -61,8 +61,11 @@ export function DiscoverHeader() {
   const what = WHAT_OPTIONS.find((o) => o.id === whatId) ?? WHAT_OPTIONS[0];
 
   return (
-    <div className="border-border/60 relative z-30 border-b px-3 pt-2 pb-2.5">
-      <div className="flex items-center gap-2">
+    // Fixed h-16 (64px) to match SimpleHeader so the TopBar height is
+    // identical across every top-level surface. Picker pills + avatar
+    // both center vertically inside the strict 64px row.
+    <div className="border-border/60 relative z-30 flex h-16 shrink-0 items-center border-b px-3">
+      <div className="flex w-full items-center gap-2">
         <Link
           href="/profile"
           className="bg-peacock shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-lg"

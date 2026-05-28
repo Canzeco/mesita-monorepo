@@ -17,10 +17,14 @@ export function SimpleHeader({
   chip?: boolean;
 }) {
   return (
-    <header className="border-border flex items-center gap-3 border-b px-4 py-3">
+    // Fixed h-16 (64px) so this header lines up pixel-for-pixel with
+    // DiscoverHeader. Without it the two TopBar variants rendered at
+    // different heights and the body band visibly shifted as the user
+    // tabbed between /reservations and /discover.
+    <header className="border-border flex h-16 shrink-0 items-center gap-3 border-b px-4">
       <Link
         href="/profile"
-        className="bg-peacock shadow-glow flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg"
+        className="bg-peacock shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-lg"
         aria-label="Profile"
       >
         🦚
