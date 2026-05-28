@@ -270,7 +270,7 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
           iconBg="bg-pink-500/10"
           iconColor="text-pink-500"
           value={venue.zone}
-          sub="neighbourhood"
+          sub="zone"
         />
         <StatCell
           icon={Navigation}
