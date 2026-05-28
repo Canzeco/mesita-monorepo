@@ -14,10 +14,6 @@ import {
   Shield,
   HelpCircle,
   Mail,
-  TicketPercent,
-  Star,
-  CalendarCheck,
-  Martini,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
@@ -124,187 +120,16 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // Four-card stack, ordered status → action → motivation → context so a
-  // first-time user immediately sees both where they sit AND what to do
-  // next without scrolling:
-  //   1. CurrentClassCard — your tier today + the progress bar / next-tier
-  //      affordance baked into the hero.
-  //   2. FourWaysToClimb  — the actionable grid (Instagram, LinkedIn,
-  //      Subscribe, Invitation). Promoted above perks/ladder because it's
-  //      the only section with CTAs; everything below is explanation.
-  //   3. ClassPerksBox    — the "why care": coupons up to 70% off plus
-  //      lifestyle perks. Comes after the actions so users only need to
-  //      read it if they're undecided.
-  //   4. ClassLadderBox   — the four-tier visual overview. Reference, not
-  //      drive — last because it's the most static piece of info.
-  //
-  // Story-auto-upload used to live below as an opt-in toggle. It's
-  // mandatory now (every Instagram-tier visit posts a story), so the
-  // toggle was removed — implicit in connecting IG, not a separate UI.
+  // Two-card stack. Status (current tier + next-tier progress) and
+  // action (how to climb) — everything else (perks pitch, four-tier
+  // ladder) was reference content that bloated the tab without
+  // changing what a user can do on it. The /coupons promo carries
+  // the "why climb" pitch when it's needed.
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
       <FourWaysToClimb onConnectSocial={onConnectSocial} />
-      <ClassPerksBox />
-      <ClassLadderBox />
     </div>
-  );
-}
-
-// "Why climb" pitch — coupons + lifestyle perks. Same value proposition
-// as the /coupons promo box, restyled for the light profile surface with
-// tinted icon circles per the Pretty UI convention. Header-only when the
-// user already sits at Diamond (no upside left to sell).
-function ClassPerksBox() {
-  const isMaxedOut =
-    TIER_ORDER.indexOf(CURRENT_USER.tier) === TIER_ORDER.length - 1;
-
-  const perks: { icon: LucideIcon; tone: string; title: string; body: string }[] = [
-    {
-      icon: TicketPercent,
-      tone: "bg-primary/10 text-primary",
-      title: "Bigger coupons",
-      body: "Up to 70% off at partners.",
-    },
-    {
-      icon: Star,
-      tone: "bg-amber-500/15 text-amber-600",
-      title: "Exclusive venues",
-      body: "Direct access to invite-only places.",
-    },
-    {
-      icon: CalendarCheck,
-      tone: "bg-emerald-500/15 text-emerald-600",
-      title: "Priority booking",
-      body: "Get a table when a place is full.",
-    },
-    {
-      icon: Martini,
-      tone: "bg-fuchsia-500/15 text-fuchsia-600",
-      title: "Welcome drinks",
-      body: "House drink on arrival at select partners.",
-    },
-  ];
-
-  return (
-    <section className="border-border bg-card rounded-2xl border p-4">
-      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-        What your class unlocks
-      </p>
-      <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-        Better class, better coupons
-      </p>
-      <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-        <em className="text-foreground/85 font-display">
-          Your social capital, made spendable.
-        </em>{" "}
-        The higher your class, the bigger the coupons our partners give
-        you —{" "}
-        <span className="text-foreground font-semibold">up to 70% off</span>
-        {isMaxedOut
-          ? ". You already sit at the top rung."
-          : ". Higher classes also unlock the perks below."}
-      </p>
-      <ul className="mt-3 grid grid-cols-2 gap-2.5">
-        {perks.map((p) => (
-          <li
-            key={p.title}
-            className="border-border bg-muted/30 flex items-start gap-2 rounded-xl border p-2.5"
-          >
-            <span
-              className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                p.tone,
-              )}
-            >
-              <p.icon className="h-3.5 w-3.5" />
-            </span>
-            <span className="min-w-0 flex-1 leading-tight">
-              <span className="block text-[12px] font-semibold">
-                {p.title}
-              </span>
-              <span className="text-muted-foreground block text-[10.5px]">
-                {p.body}
-              </span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-// Visual-first ladder. The previous version led with an abstract sentence
-// ("Bronze ascends to Diamond. You sit at Mesita Gold"); replaced with a
-// segmented progress strip + the 4-tier badge grid so a first-time user
-// reads their position in one glance without parsing copy. The dots strip
-// mirrors the one on /coupons (ClassUpsellBox) so the metaphor is shared.
-function ClassLadderBox() {
-  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
-  return (
-    <section className="border-border bg-card rounded-2xl border p-4">
-      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-        The class ladder
-      </p>
-
-      {/* Segmented strip — one bar per tier, filled up to and including the
-          user's current rung. Reads as "you've climbed this much" at a
-          glance, no copy required. */}
-      <div className="mt-2 flex items-center gap-1.5">
-        {TIER_ORDER.map((tier) => {
-          const reached = TIER_ORDER.indexOf(tier) <= currentIdx;
-          return (
-            <span
-              key={tier}
-              className={cn(
-                "h-1.5 flex-1 rounded-full",
-                reached ? "bg-foreground" : "bg-muted",
-              )}
-            />
-          );
-        })}
-      </div>
-
-      <div className="mt-3 grid grid-cols-4 gap-2">
-        {TIERS.map((t) => {
-          const tierIdx = TIER_ORDER.indexOf(t.id);
-          const isCurrent = tierIdx === currentIdx;
-          return (
-            <div
-              key={t.id}
-              className={cn(
-                "flex flex-col items-center gap-1.5 rounded-xl p-2 text-center",
-                isCurrent
-                  ? "border-foreground bg-card ring-foreground/10 border ring-2"
-                  : "bg-muted/30 border border-transparent",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold",
-                  tierBadgeClass(t.id),
-                )}
-              >
-                {t.label[0]}
-              </span>
-              <span className="font-display text-[12px] leading-none font-semibold tracking-tight">
-                {t.label}
-              </span>
-              <span
-                className={cn(
-                  "text-[9px] leading-tight",
-                  isCurrent
-                    ? "text-foreground font-semibold"
-                    : "text-muted-foreground",
-                )}
-              >
-                {isCurrent ? "You" : tierIdx < currentIdx ? "Held" : "Locked"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
