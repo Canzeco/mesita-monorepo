@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import {
   BadgeCheck,
+  Clock,
   Globe,
   MapPin,
   Navigation,
@@ -132,6 +133,26 @@ function CardOverlay({ venue }: { venue: Venue }) {
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const zoneLabel = venue.zone ?? null;
 
+  // Opening status — surfaces one of three things, in priority order:
+  //   open_now === true  + closes_at → "Open · until 02:00"
+  //   open_now === false + opens_at  → "Closed · opens 18:00"
+  //   only closes_at present         → "Until 02:00" (partial info)
+  // The two-fact phrasing ("Open · until …") makes the binary state
+  // legible at a glance even when the user doesn't process the time
+  // string. Day-aware ("opens tomorrow at 18:00") ships once the EF
+  // returns a date, not just an HH:MM.
+  const statusLabel = (() => {
+    if (venue.open_now === true && venue.closes_at) {
+      return `Open · until ${venue.closes_at}`;
+    }
+    if (venue.open_now === false && venue.opens_at) {
+      return `Closed · opens ${venue.opens_at}`;
+    }
+    if (venue.closes_at) return `Until ${venue.closes_at}`;
+    return null;
+  })();
+  const isOpen = venue.open_now === true;
+
   const showCashback =
     isPartner &&
     venue.cashback_percent != null &&
@@ -184,7 +205,7 @@ function CardOverlay({ venue }: { venue: Venue }) {
         )}
       </div>
 
-      {(distanceLabel || zoneLabel) && (
+      {(distanceLabel || zoneLabel || statusLabel) && (
         <div className="flex flex-wrap items-center gap-1.5">
           {distanceLabel && (
             <MetaChip>
@@ -198,6 +219,17 @@ function CardOverlay({ venue }: { venue: Venue }) {
               <span className="max-w-[180px] truncate font-semibold">
                 {zoneLabel}
               </span>
+            </MetaChip>
+          )}
+          {statusLabel && (
+            <MetaChip>
+              <Clock
+                className={cn(
+                  "h-3 w-3 shrink-0",
+                  isOpen ? "text-emerald-300" : "text-white/55",
+                )}
+              />
+              <span className="font-semibold">{statusLabel}</span>
             </MetaChip>
           )}
         </div>
