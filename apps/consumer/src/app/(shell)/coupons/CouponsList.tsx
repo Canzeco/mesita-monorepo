@@ -82,7 +82,7 @@ export function CouponsList() {
       {items.length === 0 ? (
         <div className="border-border text-muted-foreground rounded-2xl border border-dashed p-8 text-center text-sm">
           {filter === "active"
-            ? "Save a venue and a coupon lands here."
+            ? "No active coupons yet."
             : filter === "used"
               ? "No coupons used yet."
               : "No expired coupons."}

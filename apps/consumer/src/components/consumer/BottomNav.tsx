@@ -4,25 +4,30 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Compass,
+  Bookmark,
   CalendarCheck,
-  Ticket,
   QrCode,
-  Share2,
   User,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Six top-level surfaces. Pay carries a `primary` flag — its icon
-// renders inside a pink-tinted ring-circle even when the tab isn't
-// selected so it reads as the lead CTA among the six (scan-to-pay
-// is the moment every visit ends at, and the surface deserves the
-// extra weight). When Pay IS selected, the circle fills with the
-// full pink gradient + glow shadow.
+// Five top-level surfaces. Pay & Post carries a `primary` flag — its
+// icon renders inside a pink-tinted ring-circle even when the tab
+// isn't selected so it reads as the lead CTA among the five
+// (scan-to-pay + post-a-story are the moments every visit ends at,
+// and the surface deserves the extra weight). When the tab IS
+// selected, the circle fills with the full pink gradient + glow.
 //
 // Active state on ANY tab also gets a top pill indicator + ringed
 // background on the icon cell so the current surface is unmistakable
 // at a glance, not just a color change.
+//
+// Coupons and Share were dropped from the bottom row on the
+// "byebye coupons-as-entity" checkpoint — they now live as Profile
+// sub-tabs (alongside Class + Settings). Saved was promoted out of
+// Discover into the bottom row — bookmarking a place is now a
+// first-class action, the "Save → coupon" coupling is gone.
 
 type Item = {
   href: string;
@@ -40,20 +45,24 @@ const ITEMS: Item[] = [
     match: "/discover",
   },
   {
+    href: "/saved",
+    Icon: Bookmark,
+    label: "Saved",
+    match: "/saved",
+  },
+  {
+    href: "/pay",
+    Icon: QrCode,
+    label: "Pay & Post",
+    match: "/pay",
+    primary: true,
+  },
+  {
     href: "/reservations",
     Icon: CalendarCheck,
     label: "Reservations",
     match: "/reservations",
   },
-  { href: "/coupons", Icon: Ticket, label: "Coupons", match: "/coupons" },
-  {
-    href: "/pay",
-    Icon: QrCode,
-    label: "Pay",
-    match: "/pay",
-    primary: true,
-  },
-  { href: "/share", Icon: Share2, label: "Share", match: "/share" },
   { href: "/profile", Icon: User, label: "Profile", match: "/profile" },
 ];
 

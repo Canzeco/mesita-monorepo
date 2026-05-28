@@ -1046,14 +1046,14 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
 // keeps it from compressing inside the parent's flex-col.
 //
 // Two equal buttons, full width each:
-//   • Save coupon — toggles the venue in the localStorage saved-venues
-//     store. Toast confirms; tap "View" to jump to /coupons.
+//   • Save place — toggles the venue in the localStorage saved-venues
+//     store. Place-only since the "byebye coupons-as-entity" checkpoint:
+//     saving no longer mints a coupon as a side effect. Toast confirms;
+//     tap "View" to jump to /saved.
 //   • Reserve table — opens the ReservationSheet via onReserve. Also
-//     silently ensures the venue is saved (so the coupon lands in the
-//     wallet) per the entity-split contract: every reservation links a
-//     coupon, so reserving implicitly issues one if none exists. We do
-//     this without an extra toast so the user just sees the reservation
-//     sheet — the coupon side-effect is invisible.
+//     silently ensures the venue is saved so the bookmark sticks if the
+//     user reserves without an explicit Save tap. No toast — implicit
+//     side-effect the user would find confusing to confirm explicitly.
 export function VenueDetailActionBar({
   venueId,
   venueName,
@@ -1067,13 +1067,13 @@ export function VenueDetailActionBar({
   const { isSaved, toggle, setSaved } = useSavedVenues();
   const saved = isSaved(venueId);
 
-  function onSaveCoupon() {
+  function onSavePlace() {
     const nowSaved = !saved;
     toggle(venueId);
     if (nowSaved) {
       toast.action(
-        "Coupon saved to your wallet",
-        { label: "View", onClick: () => router.push("/coupons") },
+        `Saved ${venueName}`,
+        { label: "View", onClick: () => router.push("/saved") },
         { tone: "success" },
       );
     } else {
@@ -1082,10 +1082,11 @@ export function VenueDetailActionBar({
   }
 
   function onReserveTable() {
-    // Silently save the venue if it isn't already — reservations always
-    // carry a coupon, so this guarantees one lands in the wallet. No
-    // toast: the user's mental model is "I'm reserving", saving is an
-    // implicit side-effect they'd find confusing to confirm explicitly.
+    // Silently save the venue if it isn't already — the bookmark sticks
+    // so the user can find this place later from /saved without an
+    // extra explicit Save tap. No toast: the user's mental model is
+    // "I'm reserving", saving is an implicit side-effect they'd find
+    // confusing to confirm explicitly.
     if (!saved) setSaved(venueId, true);
     onReserve();
   }
@@ -1094,7 +1095,7 @@ export function VenueDetailActionBar({
     <div className="border-border bg-background/85 flex shrink-0 gap-2 border-t px-4 pt-3 pb-4 backdrop-blur">
       <button
         type="button"
-        onClick={onSaveCoupon}
+        onClick={onSavePlace}
         aria-pressed={saved}
         className={cn(
           "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border py-3 text-sm font-semibold transition active:scale-[0.99]",
@@ -1107,7 +1108,7 @@ export function VenueDetailActionBar({
           className={cn("h-4 w-4", saved && "fill-current")}
           strokeWidth={2}
         />
-        {saved ? "Coupon saved" : "Save coupon"}
+        {saved ? "Saved" : "Save place"}
       </button>
       <button
         type="button"

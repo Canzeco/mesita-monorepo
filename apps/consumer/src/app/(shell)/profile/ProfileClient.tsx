@@ -25,6 +25,9 @@ import {
   VerifySocialSheet,
   type SocialPlatform,
 } from "@/components/consumer/VerifySocialSheet";
+import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
+import { CouponsList } from "@/app/(shell)/coupons/CouponsList";
+import { ShareBody } from "@/app/(shell)/share/page";
 import {
   CURRENT_USER,
   TIERS,
@@ -34,10 +37,17 @@ import {
 import { cn, firstInitial } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
-type Tab = "class" | "settings";
+// Four-tab Profile. Coupons and Share folded in as sub-tabs on the
+// "byebye coupons-as-entity" checkpoint: the standalone /coupons and
+// /share routes are still alive (deep links, modal interception, etc.),
+// but the BottomNav entry points for both are gone — the primary entry
+// is here now.
+type Tab = "class" | "settings" | "coupons" | "share";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "class", label: "Class" },
+  { id: "coupons", label: "Coupons" },
+  { id: "share", label: "Share" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -127,7 +137,7 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex-1 rounded-full px-3 py-2 text-sm font-medium transition",
+                "flex-1 rounded-full px-2 py-1.5 text-[12px] font-medium whitespace-nowrap transition",
                 tab === t.id
                   ? "bg-pink-gradient text-white shadow-sm"
                   : "text-muted-foreground",
@@ -139,11 +149,24 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
         </div>
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-5 pt-5 pb-8">
+      <div className="scrollbar-hide flex-1 overflow-y-auto">
         {tab === "class" && (
-          <ClassTab onConnectSocial={(p) => setVerifyPlatform(p)} />
+          <div className="px-5 pt-5 pb-8">
+            <ClassTab onConnectSocial={(p) => setVerifyPlatform(p)} />
+          </div>
         )}
-        {tab === "settings" && <SettingsTab />}
+        {tab === "settings" && (
+          <div className="px-5 pt-5 pb-8">
+            <SettingsTab />
+          </div>
+        )}
+        {tab === "coupons" && (
+          <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
+            <ClassUpsellBox />
+            <CouponsList />
+          </div>
+        )}
+        {tab === "share" && <ShareBody />}
       </div>
 
       {verifyPlatform && (

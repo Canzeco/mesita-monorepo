@@ -3,14 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, LayoutGrid, Map as MapIcon, Search, Bookmark } from "lucide-react";
+import { Flame, LayoutGrid, Map as MapIcon, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Five Discover modes, ordered left-to-right as a friction ramp:
+// Four Discover modes, ordered left-to-right as a friction ramp:
 //
-//   no typing                  │ typed query │ recall
-//   Swipe → Map → Catalog      │ AI Search   │ Saved
-//   flick  spatial scroll-grid │ ask anything │ yours
+//   no typing                  │ typed query
+//   Swipe → Map → Catalog      │ AI Search
+//   flick  spatial scroll-grid │ ask anything
+//
+// Saved was previously the 5th tab here. It's now a top-level
+// BottomNav surface again (post the "byebye coupons-as-entity"
+// checkpoint), so it leaves the Discover strip — bookmarking is a
+// first-class destination, not a sub-mode of discovery.
 //
 // AI and Search merged into one tab — the underlying surface (Don
 // Memo at /discover/ai) handles both one-word lookups ("sushi") and
@@ -24,7 +29,6 @@ const TABS = [
   { href: "/discover/map", label: "Map", Icon: MapIcon },
   { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
   { href: "/discover/ai", label: "AI Search", Icon: Search },
-  { href: "/discover/saved", label: "Saved", Icon: Bookmark },
 ];
 
 export function DiscoverTabs() {
