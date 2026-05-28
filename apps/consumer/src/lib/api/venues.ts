@@ -143,6 +143,50 @@ export async function apiRecommendCatalog(
     summary: data.summary,
   };
 }
+// Per-row status mirrored from atlas-suggest-venue. Drives the badge
+// in the consumer search picker:
+//   - not_in_mesita: Google has it, Mesita doesn't — show "Not on
+//     Mesita yet" + nudge users to ping us.
+//   - web_listed: Mesita has a web-listed (unclaimed) entry — show
+//     "Listed · unclaimed" so consumers know they can still see the
+//     basic profile.
+//   - verified_partner_other: A claimed partner row — primary CTA.
+//   - verified_partner_self: The caller owns this venue.
+export type PlacePredictionStatus =
+  | "not_in_mesita"
+  | "web_listed"
+  | "verified_partner_other"
+  | "verified_partner_self";
+
+export type PlacePrediction = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  status: PlacePredictionStatus;
+};
+
+/**
+ * Google Places autocomplete + Mesita merge for the consumer
+ * /discover/search picker. Calls consumer-suggest-places, which
+ * forwards to atlas-suggest-venue. Mirrors the business /add page
+ * mechanic — same shape, same atlas pipeline — so a consumer can
+ * find places that haven't onboarded to Mesita yet.
+ */
+export async function apiSuggestPlaces(
+  client: SupabaseClient,
+  input: string,
+  sessionToken: string,
+): Promise<PlacePrediction[]> {
+  const trimmed = input.trim();
+  if (trimmed.length < 2) return [];
+  const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
+    client,
+    "consumer-suggest-places",
+    { input: trimmed, sessionToken },
+  );
+  return predictions;
+}
+
 // Legacy rows may carry http:// photos. Next.js Image rejects them and
 // would crash the whole page; filter to https before render.
 function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
