@@ -182,10 +182,14 @@ function CardOverlay({ venue }: { venue: Venue }) {
         {venue.name}
       </h2>
 
-      {/* Row 1 — identity/status: who they are, what they are, how
-          much, how good. Row 2 — location: where they are. The two
-          dimensions get their own line so the strip reads as two
-          parallel facts, not a six-chip soup. */}
+      {/* One inline-wrap strip carrying every overview signal in a
+          single visual flow. Chips wrap naturally — the strip can be
+          one, two, three or four rows tall depending on how much
+          actually applies to the venue. Order matches the spec:
+          verification → category → price → stars → distance →
+          neighborhood → open status → promotion. The promotion chip
+          uses the brand pink gradient so the commercial signal stays
+          the loudest pip in the strip. */}
       <div className="flex flex-wrap items-center gap-1.5">
         <MetaChip>
           {isPartner ? (
@@ -216,52 +220,43 @@ function CardOverlay({ venue }: { venue: Venue }) {
             )}
           </MetaChip>
         )}
-      </div>
-
-      {(distanceLabel || zoneLabel || statusLabel) && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {distanceLabel && (
-            <MetaChip>
-              <Navigation className="h-3 w-3 shrink-0 text-white/70" />
-              <span className="font-semibold">{distanceLabel}</span>
-            </MetaChip>
-          )}
-          {zoneLabel && (
-            <MetaChip>
-              <MapPin className="h-3 w-3 shrink-0 text-white/70" />
-              <span className="max-w-[180px] truncate font-semibold">
-                {zoneLabel}
-              </span>
-            </MetaChip>
-          )}
-          {statusLabel && (
-            <MetaChip>
-              <Clock
-                className={cn(
-                  "h-3 w-3 shrink-0",
-                  isOpen ? "text-emerald-300" : "text-white/55",
-                )}
-              />
-              <span className="font-semibold">{statusLabel}</span>
-            </MetaChip>
-          )}
-        </div>
-      )}
-
-      {showCashback && (
-        <div className="bg-pink-gradient shadow-glow mt-0.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-          <Gift className="h-4 w-4 shrink-0" strokeWidth={2.5} />
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="text-[14px] font-bold">
+        {distanceLabel && (
+          <MetaChip>
+            <Navigation className="h-3 w-3 shrink-0 text-white/70" />
+            <span className="font-semibold">{distanceLabel}</span>
+          </MetaChip>
+        )}
+        {zoneLabel && (
+          <MetaChip>
+            <MapPin className="h-3 w-3 shrink-0 text-white/70" />
+            <span className="max-w-[180px] truncate font-semibold">
+              {zoneLabel}
+            </span>
+          </MetaChip>
+        )}
+        {statusLabel && (
+          <MetaChip>
+            <Clock
+              className={cn(
+                "h-3 w-3 shrink-0",
+                isOpen ? "text-emerald-300" : "text-white/55",
+              )}
+            />
+            <span className="font-semibold">{statusLabel}</span>
+          </MetaChip>
+        )}
+        {showCashback && (
+          <span
+            className="bg-pink-gradient shadow-glow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white"
+            title={capLabel ? `at Mesita ${tierLabel} · ${capLabel}` : `at Mesita ${tierLabel}`}
+          >
+            <Gift className="h-3 w-3 shrink-0" strokeWidth={2.25} />
+            <span className="font-semibold">
               {venue.cashback_percent}% OFF {promoKindLabel}
-            </p>
-            <p className="text-[10.5px] text-white/85">
-              at Mesita {tierLabel}
-              {capLabel ? ` · ${capLabel}` : ""}
-            </p>
-          </div>
-        </div>
-      )}
+            </span>
+          </span>
+        )}
+      </div>
     </div>
   );
 }
