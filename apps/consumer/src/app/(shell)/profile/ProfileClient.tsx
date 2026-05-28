@@ -184,6 +184,16 @@ function ClassTab({
 // Current tier is highlighted with a ring + bg-card. Tiers below the
 // current rung read "held"; tiers above read as the requirement to
 // reach them (subscription price or followers).
+// Per-tier perk label rendered beneath the tier name in the ladder.
+// Stays on the discount/cashback ladder rather than the price ladder so
+// the user reads what each rung IS, not what it costs.
+const LADDER_PERK: Record<(typeof TIER_ORDER)[number], string> = {
+  bronze: "Base discount",
+  silver: "More discount",
+  gold: "Bigger discount",
+  diamond: "Max discount",
+};
+
 function ClassLadderBox() {
   const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
   return (
@@ -205,7 +215,6 @@ function ClassLadderBox() {
         {TIERS.map((t) => {
           const tierIdx = TIER_ORDER.indexOf(t.id);
           const isCurrent = tierIdx === currentIdx;
-          const isHeld = tierIdx < currentIdx;
           return (
             <div
               key={t.id}
@@ -227,14 +236,15 @@ function ClassLadderBox() {
               <span className="font-display text-[12px] leading-none font-semibold tracking-tight">
                 {t.label}
               </span>
-              <span className="text-muted-foreground text-[9px] leading-none">
-                {isCurrent
-                  ? "Current"
-                  : isHeld
-                    ? "Held"
-                    : t.priceMxn > 0
-                      ? `MX$${t.priceMxn.toLocaleString()}`
-                      : "Default"}
+              <span
+                className={cn(
+                  "text-[9px] leading-tight",
+                  isCurrent
+                    ? "text-foreground font-semibold"
+                    : "text-muted-foreground",
+                )}
+              >
+                {isCurrent ? "Current" : LADDER_PERK[t.id]}
               </span>
             </div>
           );
