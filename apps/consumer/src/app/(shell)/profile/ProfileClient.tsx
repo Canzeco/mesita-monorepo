@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
-  Crown,
   Instagram,
   Linkedin,
   ChevronRight,
@@ -15,6 +14,7 @@ import {
   Shield,
   HelpCircle,
   Camera,
+  Mail,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
@@ -148,112 +148,255 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // Order: current class anchors the tab, then the two upgrade paths
-  // (social connect + subscription) lay out the actual routes up, then
-  // the manual appeal sits as the rare-case escape hatch. The class
-  // ladder card is gone — SubscriptionPathBox already lists every tier
-  // with its cashback so it was duplicate context.
+  // Three-card stack:
+  //   1. CurrentClassCard — what tier the user holds today + how they got it.
+  //   2. ClassLadderBox    — the four-tier overview, current position
+  //      highlighted, so the user sees the full landscape.
+  //   3. FourWaysToClimb   — horizontal carousel of the four upgrade
+  //      paths (Subscription, Instagram, LinkedIn, Invitation), each
+  //      with its own CTA.
+  // When Instagram is connected, the Story-auto-upload toggle appears
+  // below the carousel as a full-width row.
+  const igConnected = CURRENT_USER.tierOrigin === "instagram";
+  const [storyAutoUpload, setStoryAutoUpload] = useState(true);
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
-      <SocialPathBox onConnect={onConnectSocial} />
-      <SubscriptionPathBox />
-      <AppealForUpgradeButton />
+      <ClassLadderBox />
+      <FourWaysToClimb onConnectSocial={onConnectSocial} />
+      {igConnected && (
+        <StoryAutoUploadToggle
+          checked={storyAutoUpload}
+          onChange={setStoryAutoUpload}
+        />
+      )}
     </div>
   );
 }
 
-function SocialPathBox({
-  onConnect,
-}: {
-  onConnect: (platform: SocialPlatform) => void;
-}) {
-  // Mock connected state: CURRENT_USER.tierOrigin tracks how the tier
-  // was granted, so when tierOrigin === "instagram" the IG account is
-  // by definition already verified. Until real OAuth ships this is the
-  // single source of truth for whether to render the "Connected" badge
-  // (and the StoryAutoUploadToggle that sits below it). LinkedIn isn't
-  // a tier origin in the mock yet, so it always renders unconnected.
-  const igConnected = CURRENT_USER.tierOrigin === "instagram";
-  const linkedinConnected = false;
-  const [storyAutoUpload, setStoryAutoUpload] = useState(true);
-
+// The four-tier ladder visualized as a non-scrollable 4-column grid.
+// Current tier is highlighted with a ring + bg-card. Tiers below the
+// current rung read "held"; tiers above read as the requirement to
+// reach them (subscription price or followers).
+function ClassLadderBox() {
+  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
       <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Path 1 · Free
+        The class ladder
       </p>
       <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-        Connect a social account
+        All four classes
       </p>
       <p className="text-muted-foreground mt-0.5 text-[12px]">
-        1K / 5K / 20K followers maps to Silver / Gold / Diamond instantly.
+        Bronze ascends to Diamond. You sit at{" "}
+        <span className="text-foreground font-semibold">
+          Mesita {TIERS.find((t) => t.id === CURRENT_USER.tier)?.label}
+        </span>
+        .
       </p>
-      <div className="mt-4 flex flex-col gap-2">
-        <SocialRow
-          platform="instagram"
-          label="Instagram"
-          connected={igConnected}
-          onClick={() => onConnect("instagram")}
+      <div className="mt-3 grid grid-cols-4 gap-2">
+        {TIERS.map((t) => {
+          const tierIdx = TIER_ORDER.indexOf(t.id);
+          const isCurrent = tierIdx === currentIdx;
+          const isHeld = tierIdx < currentIdx;
+          return (
+            <div
+              key={t.id}
+              className={cn(
+                "flex flex-col items-center gap-1.5 rounded-xl p-2 text-center",
+                isCurrent
+                  ? "border-foreground bg-card ring-foreground/10 border ring-2"
+                  : "bg-muted/30 border border-transparent",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold",
+                  tierBadgeClass(t.id),
+                )}
+              >
+                {t.label[0]}
+              </span>
+              <span className="font-display text-[12px] leading-none font-semibold tracking-tight">
+                {t.label}
+              </span>
+              <span className="text-muted-foreground text-[9px] leading-none">
+                {isCurrent
+                  ? "Current"
+                  : isHeld
+                    ? "Held"
+                    : t.priceMxn > 0
+                      ? `MX$${t.priceMxn.toLocaleString()}`
+                      : "Default"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// Horizontal carousel of the four upgrade paths. Equal-width tiles
+// (w-44) so 2.3 fit at a time on a 400px viewport — visually telegraphs
+// "more to the right". -mx-5 lets the strip bleed past the parent's
+// p-5 padding so the first card kisses the left edge and the scroll
+// has full breathing room.
+function FourWaysToClimb({
+  onConnectSocial,
+}: {
+  onConnectSocial: (platform: SocialPlatform) => void;
+}) {
+  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
+  const nextTier =
+    currentIdx < TIER_ORDER.length - 1 ? TIER_ORDER[currentIdx + 1] : null;
+  const igConnected = CURRENT_USER.tierOrigin === "instagram";
+  const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
+  return (
+    <section>
+      <p className="text-foreground/70 px-1 text-[10px] font-medium tracking-[0.14em] uppercase">
+        Four ways to climb
+      </p>
+      <div className="scrollbar-hide -mx-5 mt-2 flex gap-3 overflow-x-auto px-5 pb-1">
+        <ClimbCard
+          eyebrow="Subscribe"
+          title="Pay monthly"
+          sub="Cancel anytime · jump straight to the tier."
+          icon={CreditCard}
+          iconBg="bg-pink-gradient"
+          state={isSubscribed ? "active" : "default"}
+          cta={isSubscribed ? "Active" : "Subscribe"}
+          href={nextTier ? `/subscribe/${nextTier}` : undefined}
         />
-        {igConnected && (
-          <StoryAutoUploadToggle
-            checked={storyAutoUpload}
-            onChange={setStoryAutoUpload}
-          />
-        )}
-        <SocialRow
-          platform="linkedin"
-          label="LinkedIn"
-          connected={linkedinConnected}
-          onClick={() => onConnect("linkedin")}
+        <ClimbCard
+          eyebrow="Instagram"
+          title="Post a story"
+          sub="Connect and post each time you visit a partner."
+          icon={Instagram}
+          iconBg="bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]"
+          state={igConnected ? "connected" : "default"}
+          cta={igConnected ? "Connected" : "Connect"}
+          onClick={() => onConnectSocial("instagram")}
+        />
+        <ClimbCard
+          eyebrow="LinkedIn"
+          title="Verify role"
+          sub="Connect to claim Silver / Gold / Diamond by network."
+          icon={Linkedin}
+          iconBg="bg-[#0A66C2]"
+          state="default"
+          cta="Connect"
+          onClick={() => onConnectSocial("linkedin")}
+        />
+        <ClimbCard
+          eyebrow="Invitation"
+          title="Request access"
+          sub="For models, founders, press, locals with real influence."
+          icon={Mail}
+          iconBg="bg-amber-500"
+          state="default"
+          cta="Request"
+          onClick={() =>
+            toast.action(
+              "Appeal form lands soon — meanwhile email class@mesita.ai with your case",
+              {
+                label: "Copy email",
+                onClick: () => {
+                  if (typeof navigator !== "undefined" && navigator.clipboard) {
+                    navigator.clipboard
+                      .writeText("class@mesita.ai")
+                      .then(() => toast.success("class@mesita.ai copied"))
+                      .catch(() => toast.error("Couldn't copy"));
+                  }
+                },
+              },
+            )
+          }
         />
       </div>
     </section>
   );
 }
 
-function SocialRow({
-  platform,
-  label,
-  connected,
+// One horizontally-scrolled tile inside FourWaysToClimb. Equal width
+// (w-48) and equal height (min-h enforced via flex) so the carousel
+// reads as a uniform row.
+function ClimbCard({
+  eyebrow,
+  title,
+  sub,
+  icon: Icon,
+  iconBg,
+  state,
+  cta,
+  href,
   onClick,
 }: {
-  platform: SocialPlatform;
-  label: string;
-  connected: boolean;
-  onClick: () => void;
+  eyebrow: string;
+  title: string;
+  sub: string;
+  icon: LucideIcon;
+  iconBg: string;
+  state: "default" | "connected" | "active";
+  cta: string;
+  href?: string;
+  onClick?: () => void;
 }) {
-  const Icon = platform === "instagram" ? Instagram : Linkedin;
-  const badge =
-    platform === "instagram"
-      ? "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]"
-      : "bg-[#0A66C2]";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="bg-muted/40 hover:bg-muted flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
-    >
+  const ctaClass =
+    state === "connected" || state === "active"
+      ? "bg-emerald-500/15 text-emerald-700"
+      : "bg-pink-gradient text-white shadow-sm";
+  const ctaContent =
+    state === "connected" || state === "active" ? (
+      <span className="inline-flex items-center gap-1">
+        <Check className="h-3 w-3" strokeWidth={3} />
+        {cta}
+      </span>
+    ) : (
+      cta
+    );
+  const body = (
+    <div className="flex h-full w-48 shrink-0 flex-col gap-2 rounded-2xl border border-border bg-card p-3.5">
       <span
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white",
-          badge,
+          "flex h-9 w-9 items-center justify-center rounded-xl text-white",
+          iconBg,
         )}
       >
         <Icon className="h-4 w-4" />
       </span>
-      <span className="flex-1 text-sm font-semibold">{label}</span>
-      {connected ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-          <Check className="h-3 w-3" strokeWidth={3} />
-          Connected
-        </span>
-      ) : (
-        <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-          Connect
-        </span>
-      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
+          {eyebrow}
+        </p>
+        <p className="font-display mt-0.5 text-[14px] leading-tight font-semibold tracking-tight">
+          {title}
+        </p>
+        <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+          {sub}
+        </p>
+      </div>
+      <span
+        className={cn(
+          "self-start rounded-full px-3 py-1 text-[11px] font-semibold",
+          ctaClass,
+        )}
+      >
+        {ctaContent}
+      </span>
+    </div>
+  );
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className="block text-left">
+      {body}
     </button>
   );
 }
@@ -306,40 +449,6 @@ function StoryAutoUploadToggle({
   );
 }
 
-function AppealForUpgradeButton() {
-  return (
-    <button
-      type="button"
-      onClick={() =>
-        toast.action(
-          "Appeal form lands soon — meanwhile email class@mesita.ai with your case",
-          {
-            label: "Copy email",
-            onClick: () => {
-              if (typeof navigator !== "undefined" && navigator.clipboard) {
-                navigator.clipboard
-                  .writeText("class@mesita.ai")
-                  .then(() => toast.success("class@mesita.ai copied"))
-                  .catch(() => toast.error("Couldn't copy"));
-              }
-            },
-          },
-        )
-      }
-      className="border-border bg-card hover:bg-muted/40 flex w-full items-center gap-3 rounded-2xl border border-dashed px-4 py-3 text-left transition"
-    >
-      <Crown className="text-foreground h-4 w-4 shrink-0" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">Appeal for upgrade</p>
-        <p className="text-muted-foreground text-[11px]">
-          Model, chef, press, founder? Request a manual class upgrade.
-        </p>
-      </div>
-      <ChevronRight className="text-muted-foreground h-4 w-4" />
-    </button>
-  );
-}
-
 function CurrentClassCard() {
   // Top of the Class tab. The class IS the brand — "Mesita Gold" reads as a
   // proper noun, not "a Gold member". Origin determines the subtitle: who
@@ -375,108 +484,6 @@ function CurrentClassCard() {
       </h2>
       <p className="mt-1.5 text-[12px] opacity-90">{origin}</p>
     </section>
-  );
-}
-
-function SubscriptionPathBox() {
-  // Path 2 — paid monthly subscription, tier-as-product. Each row links to
-  // /subscribe/[tier] which today stops at the checkout CTA (Stripe
-  // wiring lands next).
-  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
-  const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
-
-  return (
-    <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-secondary text-[10px] font-medium tracking-[0.14em] uppercase">
-            Path 2 · Subscribe
-          </p>
-          <p className="font-display mt-0.5 text-base font-semibold tracking-tight">
-            Buy a Mesita class
-          </p>
-        </div>
-        <span className="text-muted-foreground text-[11px]">
-          Monthly · cancel anytime
-        </span>
-      </div>
-      <p className="text-muted-foreground mt-2 text-[12px] leading-relaxed">
-        Granted upfront — you become the tier the moment you subscribe, no spend
-        accumulation needed.
-      </p>
-      <div className="mt-4 flex flex-col gap-2.5">
-        {TIERS.map((t) => {
-          const isCurrent = t.id === CURRENT_USER.tier;
-          const isPaidTier = t.priceMxn > 0;
-          const tierIdx = TIER_ORDER.indexOf(t.id);
-          const brand = `Mesita ${t.label}`;
-          // A user "has" a paid tier already if their current is >= this one.
-          // We surface that so they don't try to sub at a lower tier than
-          // they already hold via followers.
-          const alreadyAtOrAbove = tierIdx <= currentIdx;
-          return (
-            <div
-              key={t.id}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5",
-                isCurrent
-                  ? "border-foreground bg-card border"
-                  : "bg-muted/40 border border-transparent",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                  tierBadgeClass(t.id),
-                )}
-              >
-                {t.label[0]}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="font-display text-base font-semibold tracking-tight">
-                    {brand}
-                  </p>
-                  {isCurrent && (
-                    <span className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
-                      Current
-                    </span>
-                  )}
-                </div>
-                <p className="text-muted-foreground text-[11px]">
-                  {isPaidTier
-                    ? `MX$${t.priceMxn.toLocaleString()} / mo · ${t.cashback.toLowerCase()}`
-                    : `Default · ${t.cashback.toLowerCase()}`}
-                </p>
-              </div>
-              {isPaidTier ? (
-                isCurrent && isSubscribed ? (
-                  <span className="bg-secondary/15 text-secondary inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold">
-                    <Check className="h-3 w-3" />
-                    Active
-                  </span>
-                ) : alreadyAtOrAbove && !isCurrent ? (
-                  <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[11px] font-semibold">
-                    Held
-                  </span>
-                ) : (
-                  <Link
-                    href={`/subscribe/${t.id}`}
-                    className="bg-pink-gradient rounded-full px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-sm"
-                  >
-                    Subscribe
-                  </Link>
-                )
-              ) : (
-                <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[11px] font-semibold">
-                  Free
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
