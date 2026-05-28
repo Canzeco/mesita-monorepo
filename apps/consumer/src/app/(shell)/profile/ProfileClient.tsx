@@ -345,11 +345,14 @@ function ClassLadderBox() {
   );
 }
 
-// 2×2 grid of the four upgrade paths. Each cell carries its own
-// three-row tier ladder (Silver / Gold / Diamond requirement on this
-// path) so the user can immediately see what gets them to each rung
-// without having to tap through. The carousel variant moved to a grid
-// per user spec — "make a beautiful table or something".
+// Table layout for the four upgrade paths. One row per method, with
+// Silver / Gold / Diamond columns showing the threshold/price/audience
+// for that path. CTA pill at the end of each row. Earlier shape was a
+// 2×2 grid of cards — each card carried its own three-row ladder, which
+// made the same Silver/Gold/Diamond labels repeat four times. Folding
+// the ladder into shared column headers eats less vertical space and
+// makes the cross-method comparison ("$50 a month or 5K followers?")
+// readable at a glance.
 function FourWaysToClimb({
   onConnectSocial,
 }: {
@@ -361,191 +364,174 @@ function FourWaysToClimb({
   const igConnected = CURRENT_USER.tierOrigin === "instagram";
   const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
 
-  // Follower threshold ladder shared by Instagram and LinkedIn. Both
-  // platforms map the same follower count → same Mesita tier (1K →
-  // Silver, 5K → Gold, 20K → Diamond) so we only declare it once.
-  const followerLadder: LadderRow[] = TIERS.filter((t) => t.id !== "bronze").map(
-    (t) => ({
-      tier: t.id,
-      label: t.label,
-      value: `${formatFollowers(t.followerThreshold)}`,
-    }),
+  const followerValues = TIERS.filter((t) => t.id !== "bronze").map((t) =>
+    formatFollowers(t.followerThreshold),
   );
 
+  const rows: ClimbRow[] = [
+    {
+      key: "instagram",
+      icon: Instagram,
+      iconBg:
+        "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]",
+      label: "Instagram",
+      values: followerValues,
+      state: igConnected ? "connected" : "default",
+      cta: igConnected ? "Connected" : "Connect",
+      onClick: () => onConnectSocial("instagram"),
+    },
+    {
+      key: "linkedin",
+      icon: Linkedin,
+      iconBg: "bg-[#0A66C2]",
+      label: "LinkedIn",
+      values: followerValues,
+      state: "default",
+      cta: "Connect",
+      onClick: () => onConnectSocial("linkedin"),
+    },
+    {
+      key: "subscription",
+      icon: CreditCard,
+      iconBg: "bg-pink-gradient",
+      label: "Subscription",
+      values: TIERS.filter((t) => t.id !== "bronze").map(
+        (t) => `$${t.priceUsd}`,
+      ),
+      valueSuffix: "/mo",
+      state: isSubscribed ? "active" : "default",
+      cta: isSubscribed ? "Active" : "Subscribe",
+      href: nextTier ? `/subscribe/${nextTier}` : undefined,
+    },
+    {
+      key: "invitation",
+      icon: Mail,
+      iconBg: "bg-amber-500",
+      label: "Invitation",
+      values: ["Locals", "Creators", "VIPs"],
+      state: "default",
+      cta: "Request",
+      onClick: () =>
+        toast.action(
+          "Appeal form lands soon — meanwhile email class@mesita.ai with your case",
+          {
+            label: "Copy email",
+            onClick: () => {
+              if (typeof navigator !== "undefined" && navigator.clipboard) {
+                navigator.clipboard
+                  .writeText("class@mesita.ai")
+                  .then(() => toast.success("class@mesita.ai copied"))
+                  .catch(() => toast.error("Couldn't copy"));
+              }
+            },
+          },
+        ),
+    },
+  ];
+
   return (
-    <section>
-      <p className="text-foreground/70 px-1 text-[10px] font-medium tracking-[0.14em] uppercase">
+    <section className="border-border bg-card overflow-hidden rounded-2xl border">
+      <p className="text-foreground/70 px-4 pt-3.5 text-[10px] font-medium tracking-[0.14em] uppercase">
         Four ways to climb
       </p>
-      <div className="mt-2 grid grid-cols-2 gap-3">
-        <ClimbCard
-          eyebrow="Instagram"
-          title="Post a story"
-          icon={Instagram}
-          iconBg="bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]"
-          ladder={followerLadder}
-          ladderSuffix="followers"
-          state={igConnected ? "connected" : "default"}
-          cta={igConnected ? "Connected" : "Connect"}
-          onClick={() => onConnectSocial("instagram")}
-        />
-        <ClimbCard
-          eyebrow="LinkedIn"
-          title="Verify role"
-          icon={Linkedin}
-          iconBg="bg-[#0A66C2]"
-          ladder={followerLadder}
-          ladderSuffix="followers"
-          state="default"
-          cta="Connect"
-          onClick={() => onConnectSocial("linkedin")}
-        />
-        <ClimbCard
-          eyebrow="Subscribe"
-          title="Pay monthly"
-          icon={CreditCard}
-          iconBg="bg-pink-gradient"
-          ladder={TIERS.filter((t) => t.id !== "bronze").map((t) => ({
-            tier: t.id,
-            label: t.label,
-            value: `$${t.priceUsd}`,
-          }))}
-          ladderSuffix="/ mo"
-          state={isSubscribed ? "active" : "default"}
-          cta={isSubscribed ? "Active" : "Subscribe"}
-          href={nextTier ? `/subscribe/${nextTier}` : undefined}
-        />
-        <ClimbCard
-          eyebrow="Invitation"
-          title="Request access"
-          icon={Mail}
-          iconBg="bg-amber-500"
-          ladder={[
-            { tier: "silver", label: "Silver", value: "Locals" },
-            { tier: "gold", label: "Gold", value: "Creators" },
-            { tier: "diamond", label: "Diamond", value: "VIPs" },
-          ]}
-          state="default"
-          cta="Request"
-          onClick={() =>
-            toast.action(
-              "Appeal form lands soon — meanwhile email class@mesita.ai with your case",
-              {
-                label: "Copy email",
-                onClick: () => {
-                  if (typeof navigator !== "undefined" && navigator.clipboard) {
-                    navigator.clipboard
-                      .writeText("class@mesita.ai")
-                      .then(() => toast.success("class@mesita.ai copied"))
-                      .catch(() => toast.error("Couldn't copy"));
-                  }
-                },
-              },
-            )
-          }
-        />
+
+      {/* Tier column header — three labels aligned with the value cells
+          in each row below. Uses the tier badge color as a tiny dot so
+          the header reads as the rung map ("filled past your current"
+          would over-complicate; keep it neutral here). */}
+      <div className="grid grid-cols-[1fr_repeat(3,minmax(2.75rem,auto))_auto] items-center gap-2 px-3 pt-2 pb-1.5">
+        <span aria-hidden />
+        {(["silver", "gold", "diamond"] as const).map((tier) => (
+          <span
+            key={tier}
+            className="text-muted-foreground inline-flex items-center justify-center gap-1 text-[9px] font-bold tracking-[0.14em] uppercase"
+          >
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                tierBadgeClass(tier),
+              )}
+              aria-hidden
+            />
+            {tier === "silver"
+              ? "Silver"
+              : tier === "gold"
+                ? "Gold"
+                : "Diamond"}
+          </span>
+        ))}
+        <span aria-hidden />
+      </div>
+
+      <div className="divide-border/60 border-border/60 divide-y border-t">
+        {rows.map((row) => (
+          <ClimbTableRow key={row.key} row={row} />
+        ))}
       </div>
     </section>
   );
 }
 
-type LadderRow = {
-  tier: (typeof TIER_ORDER)[number];
-  label: string;
-  value: string;
-};
-
-// One cell of the 2×2 climb grid. Header (icon + eyebrow + title) on
-// top, three-row tier ladder in the middle, CTA at the bottom. The
-// ladder rows use the tier badge color for the dot so each row
-// telegraphs which rung it leads to.
-function ClimbCard({
-  eyebrow,
-  title,
-  icon: Icon,
-  iconBg,
-  ladder,
-  ladderSuffix,
-  state,
-  cta,
-  href,
-  onClick,
-}: {
-  eyebrow: string;
-  title: string;
+type ClimbRow = {
+  key: string;
   icon: LucideIcon;
   iconBg: string;
-  ladder: LadderRow[];
-  /** Optional suffix appended to each ladder row's value (e.g. "/ mo"). */
-  ladderSuffix?: string;
+  label: string;
+  values: string[];
+  /** Optional suffix appended to each value (e.g. "/mo"). */
+  valueSuffix?: string;
   state: "default" | "connected" | "active";
   cta: string;
   href?: string;
   onClick?: () => void;
-}) {
+};
+
+function ClimbTableRow({ row }: { row: ClimbRow }) {
   const ctaClass =
-    state === "connected" || state === "active"
+    row.state === "connected" || row.state === "active"
       ? "bg-emerald-500/15 text-emerald-700"
       : "bg-pink-gradient text-white shadow-sm";
   const ctaContent =
-    state === "connected" || state === "active" ? (
+    row.state === "connected" || row.state === "active" ? (
       <span className="inline-flex items-center gap-1">
         <Check className="h-3 w-3" strokeWidth={3} />
-        {cta}
+        {row.cta}
       </span>
     ) : (
-      cta
+      row.cta
     );
+  const Icon = row.icon;
   const body = (
-    <div className="border-border bg-card flex h-full flex-col gap-3 rounded-2xl border p-3.5">
-      <header className="flex items-center gap-2">
+    <div className="hover:bg-muted/30 grid grid-cols-[1fr_repeat(3,minmax(2.75rem,auto))_auto] items-center gap-2 px-3 py-2.5 transition">
+      <span className="flex min-w-0 items-center gap-2">
         <span
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white",
-            iconBg,
+            row.iconBg,
           )}
         >
           <Icon className="h-4 w-4" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-            {eyebrow}
-          </p>
-          <p className="font-display mt-0.5 text-[13px] leading-tight font-semibold tracking-tight">
-            {title}
-          </p>
-        </div>
-      </header>
-      <ul className="flex flex-1 flex-col gap-1">
-        {ladder.map((row) => (
-          <li
-            key={row.tier}
-            className="flex items-center justify-between gap-2 text-[11px] leading-tight"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className={cn(
-                  "h-2 w-2 shrink-0 rounded-full",
-                  tierBadgeClass(row.tier),
-                )}
-                aria-hidden
-              />
-              <span className="text-muted-foreground">{row.label}</span>
+        <span className="font-display min-w-0 truncate text-[13px] font-semibold tracking-tight">
+          {row.label}
+        </span>
+      </span>
+      {row.values.map((v, i) => (
+        <span
+          key={i}
+          className="text-foreground text-center text-[11px] font-semibold tabular-nums"
+        >
+          {v}
+          {row.valueSuffix && (
+            <span className="text-muted-foreground ml-0.5 font-normal">
+              {row.valueSuffix}
             </span>
-            <span className="text-foreground truncate font-semibold tabular-nums">
-              {row.value}
-              {ladderSuffix && (
-                <span className="text-muted-foreground ml-0.5 font-normal">
-                  {ladderSuffix}
-                </span>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
+          )}
+        </span>
+      ))}
       <span
         className={cn(
-          "self-start rounded-full px-3 py-1 text-[11px] font-semibold",
+          "rounded-full px-2.5 py-1 text-[10.5px] font-semibold whitespace-nowrap",
           ctaClass,
         )}
       >
@@ -553,15 +539,19 @@ function ClimbCard({
       </span>
     </div>
   );
-  if (href) {
+  if (row.href) {
     return (
-      <Link href={href} className="block">
+      <Link href={row.href} className="block">
         {body}
       </Link>
     );
   }
   return (
-    <button type="button" onClick={onClick} className="block w-full text-left">
+    <button
+      type="button"
+      onClick={row.onClick}
+      className="block w-full text-left"
+    >
       {body}
     </button>
   );
