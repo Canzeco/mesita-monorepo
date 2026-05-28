@@ -52,25 +52,22 @@ export default function ReservationsPage() {
     };
   }, []);
 
-  // Flex column with three shrink-0 top regions (preview banner,
-  // calendar/reminders card, filter pills) and a scrollable list at the
-  // bottom. The list needs both `flex-1` AND `min-h-0` — without
-  // `min-h-0`, the flex child defaults to min-content sizing and never
-  // clips, so `overflow-y-auto` has nothing to scroll.
+  // One scroll surface for the whole page — preview banner, calendar/
+  // reminders card, filter pills, and the reservations list all flow
+  // together inside a single overflow-y-auto column. The previous
+  // layout pinned the calendar + reminders card at the top while only
+  // the list scrolled; this version lets the user push everything
+  // upwards to give the list more room when they want it.
   return (
-    <div className="relative flex h-full flex-col">
-      <div className="shrink-0 px-4 pt-3">
+    <div className="scrollbar-hide relative h-full overflow-y-auto">
+      <div className="flex flex-col gap-3 px-4 pt-3 pb-6">
         <PreviewBadge label="Preview · mock reservations" />
-      </div>
 
-      <div className="shrink-0 px-4 pt-3">
         <div className="border-border bg-card-soft divide-border/70 divide-y overflow-hidden rounded-2xl border">
           <CalendarConnectBox />
           <WhatsAppRemindersBox />
         </div>
-      </div>
 
-      <div className="shrink-0 px-4 pt-4">
         <div className="border-border bg-card scrollbar-hide flex gap-1 overflow-x-auto rounded-full border p-1">
           {(
             [
@@ -92,9 +89,7 @@ export default function ReservationsPage() {
             />
           ))}
         </div>
-      </div>
 
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {items.length === 0 ? (
           <EmptyState
             label={
