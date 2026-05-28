@@ -108,22 +108,22 @@ export function ClassUpsellBox() {
           {
             icon: Instagram,
             label: "Instagram",
-            tagline: "Post a story each visit",
+            tagline: "Post a story each visit.",
           },
           {
             icon: Linkedin,
             label: "LinkedIn",
-            tagline: "Verify role + followers",
+            tagline: "Verify role and followers",
           },
           {
             icon: CreditCard,
-            label: "Subscribe",
-            tagline: "Pay monthly to jump",
+            label: "Subscription",
+            tagline: "Pay monthly to jump.",
           },
           {
             icon: Mail,
             label: "Invitation",
-            tagline: "For real-influence locals",
+            tagline: "Models and local elites.",
           },
         ].map((m) => (
           <div
