@@ -50,10 +50,12 @@ import {
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 
-// Section nav order for the venue detail page. Reward sits at the END
+// Section nav order for the venue detail page. Coupon sits at the END
 // of the page now (the user reads About → Reviews → Menus → Time →
-// Location → Contact → Details first; the per-class reward is the
-// landing-pad CTA once they've made up their mind, not the lead).
+// Location → Contact → Details first; the per-class coupon is the
+// landing-pad CTA once they've made up their mind, not the lead). The
+// section id stays as "rewards" so existing anchors and analytics
+// events keep matching — only the visible label moves to "Coupon".
 const NAV_SECTIONS = [
   { id: "overview", label: "Overview" },
   { id: "about", label: "About" },
@@ -63,7 +65,7 @@ const NAV_SECTIONS = [
   { id: "location", label: "Location" },
   { id: "contact", label: "Contact" },
   { id: "details", label: "Details" },
-  { id: "rewards", label: "Reward" },
+  { id: "rewards", label: "Coupon" },
 ] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
@@ -715,7 +717,7 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// ── Reward (welcome on top + 4-up tier grid) ────────────────────────────
+// ── Coupon (welcome on top + 4-up tier grid) ────────────────────────────
 
 // Tiers render as a non-scrollable 4-column grid: Bronze · Silver · Gold ·
 // Diamond ascend left-to-right like a ladder. Welcome lives outside this
@@ -755,11 +757,11 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
     subtitleParts.push(`capped at ${capLabel} / visit`);
   }
   return (
-    <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
-      {/* Hero — names the active reward, mechanic, and cap up front. */}
+    <Box title="Coupon" icon={Sparkles} iconColor="text-pink-400">
+      {/* Hero — names the active coupon, mechanic, and cap up front. */}
       <div className="bg-pink-gradient shadow-glow rounded-xl p-3 text-white">
         <p className="text-[10px] font-bold tracking-wider text-white/90 uppercase">
-          Your reward
+          Your coupon
         </p>
         <p className="font-display mt-1 text-3xl font-semibold leading-none">
           {activeValue == null ? "—" : `${activeValue}% ${mechanicWord}`}
