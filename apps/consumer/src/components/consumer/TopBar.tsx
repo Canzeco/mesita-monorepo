@@ -21,7 +21,7 @@ import { DiscoverHeader } from "./DiscoverHeader";
 //   /reservations  SimpleHeader title="My Reservations"
 //   /coupons       SimpleHeader title="My Coupons"
 //   /pay           SimpleHeader title="Pay"
-//   /share         SimpleHeader title="Share"
+//   /share         SimpleHeader title="Share Mesita"
 //   /profile       SimpleHeader title=<first name + last name>
 //   everything     null — Subscribe / Venue pages ship their own
 //     else         back-arrow chrome and opt out by not matching.
@@ -39,7 +39,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
     return <SimpleHeader title="Pay" />;
   }
   if (pathname.startsWith("/share")) {
-    return <SimpleHeader title="Share" />;
+    return <SimpleHeader title="Share Mesita" />;
   }
   if (pathname.startsWith("/profile")) {
     // Personalize the Profile chrome with the consumer's full name.

@@ -51,22 +51,27 @@ export default function ReservationsPage() {
     };
   }, []);
 
+  // Flex column with three shrink-0 top regions (preview banner,
+  // calendar/reminders card, filter pills) and a scrollable list at the
+  // bottom. The list needs both `flex-1` AND `min-h-0` — without
+  // `min-h-0`, the flex child defaults to min-content sizing and never
+  // clips, so `overflow-y-auto` has nothing to scroll.
   return (
     <div className="relative flex h-full flex-col">
-      <div className="px-4 pt-3">
+      <div className="shrink-0 px-4 pt-3">
         <p className="bg-secondary/10 text-secondary rounded-xl px-3 py-2 text-[11px]">
           Preview — reservations aren&apos;t connected to the backend yet.
         </p>
       </div>
 
-      <div className="px-4 pt-3">
+      <div className="shrink-0 px-4 pt-3">
         <div className="border-border bg-card-soft divide-border/70 divide-y overflow-hidden rounded-2xl border">
           <CalendarConnectBox />
           <WhatsAppRemindersBox />
         </div>
       </div>
 
-      <div className="px-4 pt-4">
+      <div className="shrink-0 px-4 pt-4">
         <div className="border-border bg-card scrollbar-hide flex gap-1 overflow-x-auto rounded-full border p-1">
           {(
             [
@@ -90,7 +95,7 @@ export default function ReservationsPage() {
         </div>
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-4 py-4">
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {items.length === 0 ? (
           <EmptyState
             label={
