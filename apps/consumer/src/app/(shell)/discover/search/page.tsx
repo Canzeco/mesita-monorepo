@@ -107,7 +107,10 @@ export default function DiscoverSearchPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search places by name"
-            className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
+            // The trailing utilities suppress the browser's native
+            // search-clear "X" (Webkit + legacy IE/Edge) — we already
+            // render a styled "Clear" affordance to the right.
+            className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-ms-clear]:hidden"
           />
           {searching && (
             <Loader2 className="text-muted-foreground h-4 w-4 shrink-0 animate-spin" />
