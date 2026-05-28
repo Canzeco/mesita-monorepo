@@ -3,32 +3,34 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, LayoutGrid, Map as MapIcon, Search } from "lucide-react";
+import {
+  Flame,
+  LayoutGrid,
+  Map as MapIcon,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Four Discover modes, ordered left-to-right as a friction ramp:
+// Five Discover modes, ordered left-to-right as an ascending
+// engagement curve — start with the lowest-effort browse, end with
+// the highest-effort tool:
 //
-//   no typing                  │ typed query
-//   Swipe → Map → Catalog      │ AI Search
-//   flick  spatial scroll-grid │ ask anything
+//   default home   known target   spatial    full browse   smart catch-all
+//   Swipe       →  Search      →  Map     →  Catalog    →  Ask AI
+//   flick          keyword         pin-map    grid          conversational
 //
-// Saved was previously the 5th tab here. It's now a top-level
-// BottomNav surface again (post the "byebye coupons-as-entity"
-// checkpoint), so it leaves the Discover strip — bookmarking is a
-// first-class destination, not a sub-mode of discovery.
-//
-// AI and Search merged into one tab — the underlying surface (Don
-// Memo at /discover/ai) handles both one-word lookups ("sushi") and
-// full sentences ("a romantic spot for Friday under MX$800") through
-// the same conversational entry. Splitting them into two tabs created
-// a false choice. The lupa icon stays because it telegraphs the
-// action (search); the "AI" in the label carries the "how it's
-// powered" half.
+// Search and Ask AI live on separate tabs again (used to be merged).
+// Keyword vs full-sentence is a real branch in user intent: the
+// keyword lookup ("Mar Verde") should resolve instantly without
+// going through a chat model, and a dummy user benefits from a clear
+// "I just want to type the name" lane.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
+  { href: "/discover/search", label: "Search", Icon: Search },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
   { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
-  { href: "/discover/ai", label: "AI Search", Icon: Search },
+  { href: "/discover/ai", label: "Ask AI", Icon: Sparkles },
 ];
 
 export function DiscoverTabs() {
