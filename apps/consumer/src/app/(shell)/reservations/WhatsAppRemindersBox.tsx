@@ -1,10 +1,12 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { toast } from "@/lib/toast";
 
-// WhatsApp reminders tile. Compact vertical layout matching
-// CalendarConnectBox so the two sit side-by-side at 50/50 width on
-// /reservations and read as one connector strip.
+// WhatsApp reminders row. Horizontal iOS Settings–style layout matching
+// CalendarConnectBox — icon, label + value, chevron — so the two stack
+// inside one grouped card on /reservations and read as a single
+// connector list.
 
 export function WhatsAppRemindersBox() {
   function onConnect() {
@@ -17,15 +19,19 @@ export function WhatsAppRemindersBox() {
     <button
       type="button"
       onClick={onConnect}
-      className="border-border bg-card-soft hover:bg-muted/40 flex flex-col items-start gap-2 rounded-2xl border p-3 text-left transition active:scale-[0.99]"
+      aria-label="Turn on WhatsApp reminders"
+      className="hover:bg-muted/40 flex w-full items-center gap-3 px-3 py-3 text-left transition active:bg-muted/60"
     >
       <WhatsAppLogo />
-      <span className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-        Reminders
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-display text-[14px] leading-tight font-semibold">
+          Reminders
+        </span>
+        <span className="text-muted-foreground mt-0.5 text-[12px] leading-tight">
+          Pings on WhatsApp
+        </span>
       </span>
-      <span className="font-display text-[13px] leading-tight font-semibold">
-        Pings on WhatsApp
-      </span>
+      <ChevronRight className="text-muted-foreground/70 h-4 w-4 shrink-0" />
     </button>
   );
 }
@@ -34,7 +40,7 @@ function WhatsAppLogo() {
   return (
     <svg
       viewBox="0 0 32 32"
-      className="h-9 w-9"
+      className="h-8 w-8 shrink-0"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >

@@ -59,9 +59,11 @@ export default function ReservationsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 px-4 pt-3">
-        <CalendarConnectBox />
-        <WhatsAppRemindersBox />
+      <div className="px-4 pt-3">
+        <div className="border-border bg-card-soft divide-border/70 divide-y overflow-hidden rounded-2xl border">
+          <CalendarConnectBox />
+          <WhatsAppRemindersBox />
+        </div>
       </div>
 
       <div className="px-4 pt-4">
