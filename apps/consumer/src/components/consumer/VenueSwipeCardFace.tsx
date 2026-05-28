@@ -2,11 +2,18 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Clock, MapPin, Navigation, Pencil, Star, Tags } from "lucide-react";
-import { PartnerBadge, RatePill } from "@/components/shared";
+import { BadgeCheck, Globe, Navigation, Sparkles, Star } from "lucide-react";
 import { cn, firstInitial } from "@/lib/utils";
+import { CURRENT_USER } from "@/lib/consumer-data";
 import type { Venue } from "@/lib/api/venues";
 import { ImageCarousel } from "./ImageCarousel";
+
+const TIER_PROPER: Record<string, string> = {
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  diamond: "Diamond",
+};
 
 // The static visual "face" of a swipe card. Used by:
 //   - SwipeDeck back-card peek (frozen frame, single photo)
@@ -103,153 +110,90 @@ function PhotoPlaceholder({ name }: { name: string }) {
 }
 
 function CardOverlay({ venue }: { venue: Venue }) {
-  // The overlay mirrors the venue-detail overview grid so the swipe
-  // card carries the same eight signals + cashback ribbon, just
-  // re-flowed into a denser stack that fits inside a Tinder-style
-  // card. Each chip is independently optional — if the EF hasn't
-  // populated a field yet, the chip simply doesn't render.
+  // Tight overlay: name on top, a single info strip below (partner type
+  // · category · price · stars · distance), then a full-width cashback
+  // ribbon. The previous version stacked an eyebrow + two strips +
+  // partner/rate chips + a cap line — way too busy. Each chip is still
+  // independently optional so missing fields disappear cleanly.
+  const isPartner = venue.listing_type === "partner";
+  const partnerLabel = isPartner ? "Verified" : "Listed";
   const priceLevelLabel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
-  const priceRange = venue.price_range ?? null;
-  const closesLabel =
-    venue.open_now === false && venue.opens_at
-      ? `opens ${venue.opens_at}`
-      : venue.closes_at
-        ? `until ${venue.closes_at}`
-        : null;
   const ratingLabel =
     venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
-  const ratingSub =
-    venue.google_count != null ? `· ${formatCount(venue.google_count)}` : null;
   const distanceLabel =
     venue.distance_km != null ? `${venue.distance_km} km` : null;
-  const zoneLabel = venue.zone ?? null;
-  const updatedLabel = venue.last_updated_label
-    ? `Updated ${venue.last_updated_label}`
-    : null;
 
+  const showCashback =
+    isPartner &&
+    venue.cashback_percent != null &&
+    venue.cashback_percent > 0;
+  const mechanicWord =
+    venue.fiscal_type === "informal" ? "discount" : "cashback";
+  const tierLabel = TIER_PROPER[CURRENT_USER.tier] ?? "Mesita";
   const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
   const capLabel =
     venue.reward_cap_mxn != null
       ? `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`
       : null;
 
-  const showCashback =
-    venue.listing_type === "partner" &&
-    venue.cashback_percent != null &&
-    venue.cashback_percent > 0;
-  const mechanicWord = venue.fiscal_type === "informal" ? "discount" : "cashback";
-
   return (
     <div className="flex flex-col gap-2.5 bg-gradient-to-t from-black/90 via-black/65 to-transparent p-5 pt-24 text-white">
-      <div className="min-w-0">
-        {/* Eyebrow is the venue's single Category (one-of, mapped to a
-            Google primary type). Vibe is a tag (multi, 14 dimensions)
-            and doesn't belong here — joining the two with " · "
-            mis-reads as if a venue could have two categories. Vibe
-            ships as a real tag chip when the tag-display work lands. */}
+      <h2 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight drop-shadow-sm">
+        {venue.name}
+      </h2>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <MetaChip>
+          {isPartner ? (
+            <BadgeCheck className="h-3 w-3 shrink-0 text-sky-300" />
+          ) : (
+            <Globe className="h-3 w-3 shrink-0 text-white/70" />
+          )}
+          <span className="font-semibold">{partnerLabel}</span>
+        </MetaChip>
         {venue.category && (
-          <p className="text-[11px] font-medium tracking-[0.18em] text-white/75 uppercase">
-            {venue.category.toLowerCase()}
-          </p>
+          <MetaChip>
+            <span className="font-semibold capitalize">
+              {venue.category.toLowerCase()}
+            </span>
+          </MetaChip>
         )}
-        <h2 className="font-display mt-1 text-[28px] leading-[1.1] font-semibold tracking-tight drop-shadow-sm">
-          {venue.name}
-        </h2>
+        {priceLevelLabel && (
+          <MetaChip>
+            <span className="font-semibold">{priceLevelLabel}</span>
+          </MetaChip>
+        )}
+        {ratingLabel && (
+          <MetaChip>
+            <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+            <span className="font-semibold">{ratingLabel}</span>
+          </MetaChip>
+        )}
+        {distanceLabel && (
+          <MetaChip>
+            <Navigation className="h-3 w-3 shrink-0 text-white/70" />
+            <span className="font-semibold">{distanceLabel}</span>
+          </MetaChip>
+        )}
       </div>
 
-      {/* Glassy chip strip — every overview signal renders as a self-
-          contained pill on top of the photo gradient. The pill base
-          is a frosted bg-white/12 + ring-white/15 so the chips read
-          as one consistent surface; only the rating chip keeps a
-          colored accent (amber star), everything else uses muted
-          white icons so the strip doesn't look like a christmas tree
-          of competing colors. Wraps to a second row on narrow cards. */}
-      {(ratingLabel ||
-        priceRange ||
-        priceLevelLabel ||
-        distanceLabel ||
-        closesLabel ||
-        zoneLabel ||
-        updatedLabel) && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {ratingLabel && (
-            <MetaChip>
-              <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
-              <span className="font-semibold">{ratingLabel}</span>
-              {ratingSub && (
-                <span className="text-white/65">{ratingSub} Google</span>
-              )}
-            </MetaChip>
-          )}
-          {(priceRange || priceLevelLabel) && (
-            <MetaChip>
-              <Tags className="text-white/70 h-3 w-3 shrink-0" />
-              <span className="font-semibold">
-                {priceRange ?? priceLevelLabel}
-              </span>
-              {priceRange && (
-                <span className="text-white/60">per person</span>
-              )}
-            </MetaChip>
-          )}
-          {distanceLabel && (
-            <MetaChip>
-              <Navigation className="text-white/70 h-3 w-3 shrink-0" />
-              <span className="font-semibold">{distanceLabel}</span>
-            </MetaChip>
-          )}
-          {closesLabel && (
-            <MetaChip>
-              <Clock
-                className={cn(
-                  "h-3 w-3 shrink-0",
-                  venue.open_now === false ? "text-white/50" : "text-white/70",
-                )}
-              />
-              <span>{closesLabel}</span>
-            </MetaChip>
-          )}
-          {zoneLabel && (
-            <MetaChip>
-              <MapPin className="text-white/70 h-3 w-3 shrink-0" />
-              <span className="max-w-[120px] truncate">{zoneLabel}</span>
-            </MetaChip>
-          )}
-          {updatedLabel && (
-            <MetaChip>
-              <Pencil className="text-white/55 h-3 w-3 shrink-0" />
-              <span className="text-white/75">{updatedLabel}</span>
-            </MetaChip>
-          )}
+      {showCashback && (
+        <div className="bg-pink-gradient shadow-glow mt-0.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5">
+          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="text-[14px] font-bold">
+              {venue.cashback_percent}% {mechanicWord}
+            </p>
+            <p className="text-[10.5px] text-white/85">
+              at Mesita {tierLabel}
+              {capLabel ? ` · ${capLabel}` : ""}
+            </p>
+          </div>
         </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2 pt-0.5">
-        <PartnerBadge listingType={venue.listing_type} size="md" />
-        {showCashback && (
-          <RatePill
-            percent={venue.cashback_percent!}
-            mechanic={mechanicWord}
-            size="md"
-          />
-        )}
-      </div>
-
-      {showCashback && capLabel && (
-        <p className="text-[10.5px] text-white/65">{capLabel}</p>
       )}
     </div>
   );
-}
-
-// Compact "1.9K" / "1.2M" style for review counts. Mirrors the
-// formatter used inside VenueDetailBody so the swipe card stays in
-// sync with the overview's number style.
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
-  return n.toString();
 }
 
 // Glass pill used by every meta cell on the swipe overlay. Uniform
