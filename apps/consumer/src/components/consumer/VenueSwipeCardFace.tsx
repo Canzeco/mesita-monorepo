@@ -151,6 +151,10 @@ function CardOverlay({ venue }: { venue: Venue }) {
         {venue.name}
       </h2>
 
+      {/* Row 1 — identity/status: who they are, what they are, how
+          much, how good. Row 2 — location: where they are. The two
+          dimensions get their own line so the strip reads as two
+          parallel facts, not a six-chip soup. */}
       <div className="flex flex-wrap items-center gap-1.5">
         <MetaChip>
           {isPartner ? (
@@ -178,21 +182,26 @@ function CardOverlay({ venue }: { venue: Venue }) {
             <span className="font-semibold">{ratingLabel}</span>
           </MetaChip>
         )}
-        {distanceLabel && (
-          <MetaChip>
-            <Navigation className="h-3 w-3 shrink-0 text-white/70" />
-            <span className="font-semibold">{distanceLabel}</span>
-          </MetaChip>
-        )}
-        {zoneLabel && (
-          <MetaChip>
-            <MapPin className="h-3 w-3 shrink-0 text-white/70" />
-            <span className="max-w-[140px] truncate font-semibold">
-              {zoneLabel}
-            </span>
-          </MetaChip>
-        )}
       </div>
+
+      {(distanceLabel || zoneLabel) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {distanceLabel && (
+            <MetaChip>
+              <Navigation className="h-3 w-3 shrink-0 text-white/70" />
+              <span className="font-semibold">{distanceLabel}</span>
+            </MetaChip>
+          )}
+          {zoneLabel && (
+            <MetaChip>
+              <MapPin className="h-3 w-3 shrink-0 text-white/70" />
+              <span className="max-w-[180px] truncate font-semibold">
+                {zoneLabel}
+              </span>
+            </MetaChip>
+          )}
+        </div>
+      )}
 
       {showCashback && (
         <div className="bg-pink-gradient shadow-glow mt-0.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5">
