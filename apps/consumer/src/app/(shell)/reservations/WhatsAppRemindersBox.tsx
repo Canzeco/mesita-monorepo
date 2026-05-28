@@ -1,12 +1,10 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import { toast } from "@/lib/toast";
 
-// WhatsApp reminders connector. Compact one-line variant: badge +
-// short headline + chevron. Sits below CalendarConnectBox; the long
-// explainer copy moved into the toast since the headline alone
-// telegraphs the value prop.
+// WhatsApp reminders tile. Compact vertical layout matching
+// CalendarConnectBox so the two sit side-by-side at 50/50 width on
+// /reservations and read as one connector strip.
 
 export function WhatsAppRemindersBox() {
   function onConnect() {
@@ -19,23 +17,15 @@ export function WhatsAppRemindersBox() {
     <button
       type="button"
       onClick={onConnect}
-      className="border-border bg-card-soft hover:bg-muted/40 group flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]"
+      className="border-border bg-card-soft hover:bg-muted/40 flex flex-col items-start gap-2 rounded-2xl border p-3 text-left transition active:scale-[0.99]"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-        <WhatsAppLogo />
+      <WhatsAppLogo />
+      <span className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
+        Reminders
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-muted-foreground block text-[9px] font-bold tracking-[0.18em] uppercase">
-          Reminders
-        </span>
-        <span className="font-display block text-[13px] leading-tight font-semibold">
-          Get pings on WhatsApp
-        </span>
+      <span className="font-display text-[13px] leading-tight font-semibold">
+        Pings on WhatsApp
       </span>
-      <ChevronRight
-        className="text-muted-foreground h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
-        strokeWidth={2}
-      />
     </button>
   );
 }

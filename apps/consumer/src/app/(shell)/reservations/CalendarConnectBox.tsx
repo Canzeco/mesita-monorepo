@@ -1,14 +1,12 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import { toast } from "@/lib/toast";
 
-// Calendar-sync card. Same shape as the WhatsApp card so the two read
-// as a series: branded logo on the left, eyebrow + headline in the
-// middle, chevron arrow on the right. The 3 supported providers
-// (Google / Apple / Outlook) are named in the subtitle instead of
-// rendered as three separate tiles — the tap reveals the per-provider
-// choice via the toast for now and a sheet post-MVP.
+// Calendar-sync tile. Compact vertical layout so it can sit side-by-side
+// with WhatsAppRemindersBox at 50/50 width on /reservations. Branded
+// Google Calendar logo leads since Google is the dominant provider; the
+// "Apple, Outlook" reminder lives in the subtitle and the per-provider
+// pick reveals via the connect sheet post-tap.
 
 export function CalendarConnectBox() {
   function onConnect() {
@@ -22,51 +20,61 @@ export function CalendarConnectBox() {
       type="button"
       onClick={onConnect}
       aria-label="Connect calendar"
-      className="border-border bg-card-soft hover:bg-muted/40 group flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]"
+      className="border-border bg-card-soft hover:bg-muted/40 flex flex-col items-start gap-2 rounded-2xl border p-3 text-left transition active:scale-[0.99]"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-        <GoogleCalendarLogo />
+      <GoogleCalendarLogo />
+      <span className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
+        Calendar sync
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-muted-foreground block text-[9px] font-bold tracking-[0.18em] uppercase">
-          Calendar sync
-        </span>
-        <span className="font-display block text-[13px] leading-tight font-semibold">
-          Auto-add to Google, Apple, or Outlook
-        </span>
+      <span className="font-display text-[13px] leading-tight font-semibold">
+        Google, Apple, Outlook
       </span>
-      <ChevronRight
-        className="text-muted-foreground h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
-        strokeWidth={2}
-      />
     </button>
   );
 }
 
-// Google Calendar logo as the lead — most-used provider, immediately
-// telegraphs "calendar". Apple + Outlook show up by name in the
-// subtitle and on the connect sheet that opens post-tap.
+// Google Calendar product mark — modern (post-2020) look: white rounded
+// tile, Google-blue "31" in the center, and a colored corner accent that
+// echoes the product icon (blue page corner with a tiny shadow). Avoids
+// the old multi-colored top stripe in favor of a cleaner blue-heavy
+// silhouette that scales down well to 40px and reads as Google's calendar
+// at a glance.
 function GoogleCalendarLogo() {
   return (
     <svg
-      viewBox="0 0 32 32"
+      viewBox="0 0 40 40"
       className="h-9 w-9"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      <rect x="1" y="1" width="30" height="30" rx="6" fill="#ffffff" stroke="#dadce0" />
-      <rect x="1" y="1" width="8" height="6" fill="#1A73E8" />
-      <rect x="9" y="1" width="7" height="6" fill="#EA4335" />
-      <rect x="16" y="1" width="7" height="6" fill="#FBBC04" />
-      <rect x="23" y="1" width="8" height="6" fill="#34A853" />
+      {/* White tile body */}
+      <rect
+        x="2"
+        y="2"
+        width="36"
+        height="36"
+        rx="6"
+        fill="#FFFFFF"
+        stroke="#DADCE0"
+        strokeWidth="0.5"
+      />
+      {/* Top-right blue corner accent — folded-page silhouette */}
+      <path d="M30 2 L38 2 L38 10 Z" fill="#1A73E8" />
+      {/* Bottom-left green corner accent */}
+      <path d="M2 30 L2 38 L10 38 Z" fill="#34A853" />
+      {/* Top-left red dot, bottom-right yellow dot — subtle brand color
+          touches without dominating */}
+      <rect x="2" y="2" width="6" height="2" fill="#EA4335" />
+      <rect x="32" y="36" width="6" height="2" fill="#FBBC04" />
+      {/* "31" centered in Google blue */}
       <text
-        x="16"
-        y="24"
+        x="20"
+        y="27"
         textAnchor="middle"
-        fontSize="12"
+        fontSize="14"
         fontWeight="700"
         fill="#1A73E8"
-        fontFamily="ui-sans-serif, system-ui, sans-serif"
+        fontFamily="Roboto, ui-sans-serif, system-ui, sans-serif"
       >
         31
       </text>

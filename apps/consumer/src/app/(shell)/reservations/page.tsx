@@ -59,7 +59,7 @@ export default function ReservationsPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 px-4 pt-3">
+      <div className="grid grid-cols-2 gap-3 px-4 pt-3">
         <CalendarConnectBox />
         <WhatsAppRemindersBox />
       </div>
