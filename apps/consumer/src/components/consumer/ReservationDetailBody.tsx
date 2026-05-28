@@ -246,7 +246,7 @@ function LinkedCouponCard({ coupon }: { coupon: LinkedCouponSummary }) {
   const ig = coupon.kind === "instagram";
   return (
     <Link
-      href="/coupons"
+      href={`/coupon/${coupon.id}`}
       className="hover:bg-pink-500/[0.06] flex items-center gap-3 rounded-2xl border border-pink-500/15 bg-pink-500/[0.04] px-4 py-3.5 transition"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-500/15 ring-1 ring-pink-500/20">

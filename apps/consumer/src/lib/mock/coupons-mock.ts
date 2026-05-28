@@ -148,3 +148,13 @@ export const MOCK_COUPONS: CouponItem[] = [
     expiresAt: "2026-06-08",
   },
 ];
+
+/**
+ * Lookup by id used by `/coupon/[id]` (both the hard-nav page and the
+ * intercepted modal). Returns null on a miss so the route can render a
+ * not-found state without crashing — every id is mock for now, but once
+ * the real Edge Function lands the same shape applies.
+ */
+export function getMockCouponById(id: string): CouponItem | null {
+  return MOCK_COUPONS.find((c) => c.id === id) ?? null;
+}

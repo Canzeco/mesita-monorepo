@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Instagram,
   Sparkles,
@@ -97,11 +98,18 @@ export function CouponCard({ c }: { c: CouponItem }) {
     ? IG_STATUS[c.status as InstagramCouponStatus]
     : NORMAL_STATUS[c.status as NormalCouponStatus];
 
+  // Tapping the card opens the intercepted /coupon/[id] modal on soft
+  // nav and the full page on hard nav. The linked-reservation stub stays
+  // inside the same link so the whole ticket pair is one tap target.
   return (
-    <article
+    <Link
+      href={`/coupon/${c.id}`}
+      aria-label={`Open coupon for ${c.venueName}`}
       className={cn(
-        "overflow-hidden rounded-2xl border",
-        muted ? "border-border bg-card opacity-70" : "border-border bg-card",
+        "block overflow-hidden rounded-2xl border transition active:scale-[0.995]",
+        muted
+          ? "border-border bg-card opacity-70"
+          : "border-border bg-card hover:bg-muted/40",
       )}
     >
       <div className="flex">
@@ -170,7 +178,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
       {c.linkedReservation && !muted && (
         <LinkedReservationStub reservation={c.linkedReservation} />
       )}
-    </article>
+    </Link>
   );
 }
 
