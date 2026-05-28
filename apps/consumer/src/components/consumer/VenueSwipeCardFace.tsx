@@ -158,12 +158,15 @@ function CardOverlay({ venue }: { venue: Venue }) {
   })();
   const isOpen = venue.open_now === true;
 
-  // Promo chip is independent of partner status — both verified
-  // partners and web-listed venues can carry a welcome / return-visit
-  // promo. The "MOCK" tag on the chip itself signals it's still
-  // placeholder data until the per-tier promo EF ships.
-  const showCashback =
-    venue.cashback_percent != null && venue.cashback_percent > 0;
+  // Promo chip always renders for now — partner or web-listed, real
+  // rate or mocked default. The chip wears a "MOCK" tag so the
+  // placeholder framing is honest; once the per-tier promo EF lands,
+  // we gate on `cashback_percent != null` and drop the fallback +
+  // the "MOCK" suffix.
+  const promoPercent =
+    venue.cashback_percent != null && venue.cashback_percent > 0
+      ? venue.cashback_percent
+      : 20;
   // Default to first-visit framing when the EF hasn't told us either
   // way — every consumer is a new face to most venues, so "welcome"
   // is the safer default than "return-visit".
@@ -247,23 +250,22 @@ function CardOverlay({ venue }: { venue: Venue }) {
             <span className="font-semibold">{statusLabel}</span>
           </MetaChip>
         )}
-        {showCashback && (
-          <span
-            className="bg-pink-gradient shadow-glow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white"
-            title={capLabel ? `at Mesita ${tierLabel} · ${capLabel}` : `at Mesita ${tierLabel}`}
-          >
-            <Gift className="h-3 w-3 shrink-0" strokeWidth={2.25} />
-            <span className="font-semibold">
-              {venue.cashback_percent}% OFF {promoKindLabel}
-            </span>
-            {/* Honest tag — every promo on the deck is mocked right now;
-                the per-tier promo Edge Function hasn't shipped yet. Once
-                it does, drop this little "mock" suffix. */}
-            <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-white/70">
-              · mock
-            </span>
+        <span
+          className="bg-pink-gradient shadow-glow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white"
+          title={capLabel ? `at Mesita ${tierLabel} · ${capLabel}` : `at Mesita ${tierLabel}`}
+        >
+          <Gift className="h-3 w-3 shrink-0" strokeWidth={2.25} />
+          <span className="font-semibold">
+            {promoPercent}% OFF {promoKindLabel}
           </span>
-        )}
+          {/* Honest tag — every promo on the deck is mocked right now;
+              the per-tier promo Edge Function hasn't shipped yet. Once
+              it does, drop this "mock" suffix + gate the chip on a
+              real rate. */}
+          <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-white/70">
+            · mock
+          </span>
+        </span>
       </div>
     </div>
   );
