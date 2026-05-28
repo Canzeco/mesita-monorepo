@@ -1,13 +1,39 @@
 import Image from "next/image";
 import Link from "next/link";
-import { PartnerBadge, RatePill } from "@/components/shared";
+import {
+  Clock,
+  Gift,
+  MapPin,
+  Navigation,
+  Star,
+} from "lucide-react";
+import { PartnerBadge } from "@/components/shared";
+import { CURRENT_USER } from "@/lib/consumer-data";
+import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 
-// Catalog row card — the row-style venue tile used by the consumer /discover
-// catalog page. Field set is driven by the Notion Components table's
-// G-Catalog-V column: Media, Category, Name, Price Level, Time to close,
-// Reward (Offers + Amount + Type). Address is intentionally NOT
-// rendered here — the table marks it G-Catalog-V=NO.
+const TIER_PROPER: Record<string, string> = {
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  diamond: "Diamond",
+};
+
+// Catalog row card — the row-style venue tile used by:
+//   - /saved (My Saved Places)
+//   - /discover/catalog
+//
+// Layout mirrors the swipe-card overlay condensed for a 2-column
+// grid: partner badge + bookmark on the photo, then a tight body
+// with name, identity row (category · price · rating), location row
+// (distance · zone), opening status, and the mock promo chip
+// pinned to the bottom of the card.
+//
+// Address is intentionally NOT rendered here — the Notion Components
+// table marks G-Catalog-V=NO for the address field. Photo overlays
+// drop the cashback rate pill (the promo chip in the body now
+// carries that signal — duplicating it on the photo competed for
+// attention without adding information).
 
 export function VenueCatalogCard({
   venue,
@@ -19,15 +45,47 @@ export function VenueCatalogCard({
   href?: string | null;
 }) {
   const photo = venue.photos[0];
-  // One-of category only — vibe is a tag (multi, separate dimension)
-  // and doesn't belong stacked with the category line. Tag chip work
-  // ships separately.
-  const subtitle = venue.category?.toLowerCase() ?? "";
+  const category = venue.category?.toLowerCase() ?? null;
   const priceLevel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
-  const meta = [priceLevel, venue.closes_at ? `until ${venue.closes_at}` : null]
-    .filter(Boolean)
-    .join(" · ");
+  const ratingLabel =
+    venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
+  const ratingCountLabel =
+    venue.google_count != null ? formatCount(venue.google_count) : null;
+  const distanceLabel =
+    venue.distance_km != null ? `${venue.distance_km} km` : null;
+  const zoneLabel = venue.zone ?? null;
+  const statusLabel = (() => {
+    if (venue.open_now === true && venue.closes_at) {
+      return `Open · until ${venue.closes_at}`;
+    }
+    if (venue.open_now === false && venue.opens_at) {
+      return `Closed · opens ${venue.opens_at}`;
+    }
+    if (venue.closes_at) return `Until ${venue.closes_at}`;
+    return null;
+  })();
+  const isOpen = venue.open_now === true;
+
+  const identityParts = [category, priceLevel].filter(Boolean) as string[];
+  const locationParts = [distanceLabel, zoneLabel].filter(Boolean) as string[];
+
+  // Promo chip mocks the per-tier welcome / return-visit reward until
+  // the EF lands. Mirrors the swipe card.
+  const promoPercent =
+    venue.cashback_percent != null && venue.cashback_percent > 0
+      ? venue.cashback_percent
+      : 20;
+  const isFirstVisit = venue.is_first_visit !== false;
+  const promoKindLabel = isFirstVisit
+    ? "welcome discount"
+    : "return-visit discount";
+  const tierLabel = TIER_PROPER[CURRENT_USER.tier] ?? "Mesita";
+  const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
+  const capLabel =
+    venue.reward_cap_mxn != null
+      ? `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`
+      : null;
 
   const inner = (
     <>
@@ -49,38 +107,95 @@ export function VenueCatalogCard({
         )}
         <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1.5">
           <PartnerBadge listingType={venue.listing_type} />
-          {venue.listing_type === "partner" &&
-            venue.cashback_percent != null &&
-            venue.cashback_percent > 0 && (
-              <RatePill
-                percent={venue.cashback_percent}
-                mechanic={
-                  venue.fiscal_type === "informal" ? "discount" : "cashback"
-                }
-              />
-            )}
         </div>
       </div>
-      <div className="flex flex-col gap-1 p-3.5">
+
+      <div className="flex flex-1 flex-col gap-1 p-3.5">
         <h3 className="font-display text-base leading-tight font-semibold tracking-tight">
           {venue.name}
         </h3>
-        {subtitle && (
-          <p className="text-muted-foreground truncate text-[11px]">
-            {subtitle}
+
+        {/* Identity row — category · price · rating. Rating renders
+            with one decimal (`.toFixed(1)`) so it can't visually be
+            mistaken for the integer rating count. */}
+        {(identityParts.length > 0 || ratingLabel) && (
+          <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-[11px]">
+            {identityParts.length > 0 && (
+              <span className="capitalize">
+                {identityParts.join(" · ")}
+              </span>
+            )}
+            {ratingLabel && (
+              <span className="inline-flex items-center gap-1">
+                {identityParts.length > 0 && <span>·</span>}
+                <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
+                <span className="text-foreground font-semibold">
+                  {ratingLabel}
+                </span>
+                {ratingCountLabel && (
+                  <span className="text-muted-foreground/70">
+                    ({ratingCountLabel})
+                  </span>
+                )}
+              </span>
+            )}
           </p>
         )}
-        {meta && (
-          <p className="text-muted-foreground/80 text-[11px] font-medium">
-            {meta}
+
+        {locationParts.length > 0 && (
+          <p className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
+            {distanceLabel && (
+              <>
+                <Navigation className="h-2.5 w-2.5 shrink-0" />
+                <span className="font-medium">{distanceLabel}</span>
+              </>
+            )}
+            {distanceLabel && zoneLabel && <span>·</span>}
+            {zoneLabel && (
+              <>
+                <MapPin className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{zoneLabel}</span>
+              </>
+            )}
           </p>
         )}
+
+        {statusLabel && (
+          <p className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
+            <Clock
+              className={cn(
+                "h-2.5 w-2.5 shrink-0",
+                isOpen ? "text-emerald-600" : "text-muted-foreground",
+              )}
+            />
+            <span className="font-medium">{statusLabel}</span>
+          </p>
+        )}
+
+        <div className="mt-1.5">
+          <span
+            className="bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] whitespace-nowrap text-white"
+            title={
+              capLabel
+                ? `at Mesita ${tierLabel} · ${capLabel}`
+                : `at Mesita ${tierLabel}`
+            }
+          >
+            <Gift className="h-2.5 w-2.5 shrink-0" strokeWidth={2.25} />
+            <span className="truncate font-semibold">
+              {promoPercent}% OFF {promoKindLabel}
+            </span>
+            <span className="text-[8.5px] font-bold tracking-[0.14em] uppercase text-white/70">
+              · mock
+            </span>
+          </span>
+        </div>
       </div>
     </>
   );
 
   const className =
-    "block overflow-hidden rounded-2xl border border-border bg-card transition hover:shadow-md";
+    "flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:shadow-md";
 
   if (href === null) {
     return <div className={className}>{inner}</div>;
@@ -90,4 +205,11 @@ export function VenueCatalogCard({
       {inner}
     </Link>
   );
+}
+
+// Compact "1.9K" / "1.2M" style for ratings counts.
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return n.toString();
 }

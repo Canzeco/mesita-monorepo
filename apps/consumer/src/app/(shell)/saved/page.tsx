@@ -63,6 +63,21 @@ function buildVenueCatalog(): Map<string, Venue> {
     google_maps_url: null,
     email: null,
     created_at: new Date(0).toISOString(),
+    // Overview parity — same fields the swipe card relies on so the
+    // catalog/saved tile can surface rating, distance, zone, opening
+    // status, and the promo chip. Sourced from the VenueDetail mock
+    // fixture; will collapse to optional EF-returned fields once the
+    // recommend/list EFs widen their response.
+    google_rating: mockVenue.google.rating,
+    google_count: mockVenue.google.count,
+    price_range: mockVenue.price_range,
+    last_updated_label: mockVenue.last_updated_label,
+    open_now: mockVenue.open_now,
+    opens_at: mockVenue.opens_at,
+    distance_km: mockVenue.distance_km,
+    zone: mockVenue.zone,
+    reward_cap_mxn: mockVenue.reward_cap_mxn,
+    is_first_visit: mockVenue.promo_matrix.is_first_visit,
   };
   cat.set(mvAsVenue.id, mvAsVenue);
   return cat;
