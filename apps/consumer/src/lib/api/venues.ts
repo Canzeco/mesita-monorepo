@@ -92,14 +92,14 @@ export type Venue = {
   /** Per-visit cashback ceiling in the venue's currency. */
   reward_cap_mxn?: number | null;
   /**
-   * Short promo callout shown as a soft pink chip on the swipe card
-   * (e.g. "Welcome drink on us", "Hot pick tonight"). Separate from
-   * the cashback ribbon so partners can run extras on top of their
-   * standing rate — and so non-partners (web_listed) still have
-   * something promotional to show. Server-formatted; the client just
-   * renders it. Mocked until the promo Edge Function lands.
+   * Whether this is the guest's first visit at this venue. Drives the
+   * ribbon copy:
+   *   true  → "X% OFF welcome discount"
+   *   false → "X% OFF return-visit discount"
+   * Lean EFs leave this null; the ribbon falls back to first-visit
+   * copy so a fresh consumer sees the welcome framing.
    */
-  promo_label?: string | null;
+  is_first_visit?: boolean | null;
 };
 
 // Discover surfaces (swipe + catalog) — both go through dedicated EFs

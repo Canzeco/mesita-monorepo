@@ -9,7 +9,6 @@ import {
   Globe,
   MapPin,
   Navigation,
-  Sparkles,
   Star,
 } from "lucide-react";
 import { cn, firstInitial } from "@/lib/utils";
@@ -163,8 +162,13 @@ function CardOverlay({ venue }: { venue: Venue }) {
     isPartner &&
     venue.cashback_percent != null &&
     venue.cashback_percent > 0;
-  const mechanicWord =
-    venue.fiscal_type === "informal" ? "discount" : "cashback";
+  // Default to first-visit framing when the EF hasn't told us either
+  // way — every consumer is a new face to most venues, so "welcome"
+  // is the safer default than "return-visit".
+  const isFirstVisit = venue.is_first_visit !== false;
+  const promoKindLabel = isFirstVisit
+    ? "welcome discount"
+    : "return-visit discount";
   const tierLabel = TIER_PROPER[CURRENT_USER.tier] ?? "Mesita";
   const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
   const capLabel =
@@ -212,12 +216,6 @@ function CardOverlay({ venue }: { venue: Venue }) {
             )}
           </MetaChip>
         )}
-        {venue.promo_label && (
-          <span className="ring-pink-300/30 inline-flex items-center gap-1.5 rounded-full bg-pink-400/25 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-pink-50 ring-1 backdrop-blur">
-            <Gift className="h-3 w-3 shrink-0 text-pink-100" />
-            <span className="font-semibold">{venue.promo_label}</span>
-          </span>
-        )}
       </div>
 
       {(distanceLabel || zoneLabel || statusLabel) && (
@@ -252,10 +250,10 @@ function CardOverlay({ venue }: { venue: Venue }) {
 
       {showCashback && (
         <div className="bg-pink-gradient shadow-glow mt-0.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+          <Gift className="h-4 w-4 shrink-0" strokeWidth={2.5} />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="text-[14px] font-bold">
-              {venue.cashback_percent}% {mechanicWord}
+              {venue.cashback_percent}% OFF {promoKindLabel}
             </p>
             <p className="text-[10.5px] text-white/85">
               at Mesita {tierLabel}
