@@ -143,12 +143,14 @@ function CardOverlay({ venue }: { venue: Venue }) {
   return (
     <div className="flex flex-col gap-2.5 bg-gradient-to-t from-black/90 via-black/65 to-transparent p-5 pt-24 text-white">
       <div className="min-w-0">
-        {(venue.vibe || venue.category) && (
+        {/* Eyebrow is the venue's single Category (one-of, mapped to a
+            Google primary type). Vibe is a tag (multi, 14 dimensions)
+            and doesn't belong here — joining the two with " · "
+            mis-reads as if a venue could have two categories. Vibe
+            ships as a real tag chip when the tag-display work lands. */}
+        {venue.category && (
           <p className="text-[11px] font-medium tracking-[0.18em] text-white/75 uppercase">
-            {[venue.vibe, venue.category]
-              .filter(Boolean)
-              .join(" · ")
-              .toLowerCase()}
+            {venue.category.toLowerCase()}
           </p>
         )}
         <h2 className="font-display mt-1 text-[28px] leading-[1.1] font-semibold tracking-tight drop-shadow-sm">

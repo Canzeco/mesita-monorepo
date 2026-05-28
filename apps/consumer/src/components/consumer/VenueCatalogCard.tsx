@@ -19,10 +19,10 @@ export function VenueCatalogCard({
   href?: string | null;
 }) {
   const photo = venue.photos[0];
-  const subtitle = [venue.vibe, venue.category]
-    .filter(Boolean)
-    .join(" · ")
-    .toLowerCase();
+  // One-of category only — vibe is a tag (multi, separate dimension)
+  // and doesn't belong stacked with the category line. Tag chip work
+  // ships separately.
+  const subtitle = venue.category?.toLowerCase() ?? "";
   const priceLevel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const meta = [priceLevel, venue.closes_at ? `until ${venue.closes_at}` : null]
