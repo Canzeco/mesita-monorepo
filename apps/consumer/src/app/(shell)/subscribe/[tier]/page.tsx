@@ -75,7 +75,7 @@ export default async function SubscribePage({
             Subscribe to {brand}
           </h1>
           <p className="text-muted-foreground text-[11px]">
-            ${meta.priceMxn.toLocaleString()} MXN / month · cancel anytime
+            ${meta.priceUsd.toLocaleString()} USD / month · cancel anytime
           </p>
         </div>
       </header>
@@ -98,9 +98,9 @@ export default async function SubscribePage({
           </h2>
           <p className="mt-1 text-sm opacity-90">{copy.tagline}</p>
           <p className="font-display mt-4 text-4xl font-bold tabular-nums">
-            ${meta.priceMxn.toLocaleString()}
+            ${meta.priceUsd.toLocaleString()}
             <span className="ml-1 text-base font-semibold opacity-80">
-              MXN / mo
+              USD / mo
             </span>
           </p>
         </section>

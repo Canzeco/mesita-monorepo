@@ -91,9 +91,11 @@ export const TIERS: {
   id: Tier;
   label: string;
   req: string;
-  /** Monthly subscription price in MXN. 0 for Bronze (the default tier).
+  /** Monthly subscription price in USD. 0 for Bronze (the default tier).
    *  Granted upfront — no spend accumulation required. */
-  priceMxn: number;
+  priceUsd: number;
+  /** Follower threshold via social verification (Instagram or LinkedIn). */
+  followerThreshold: number;
   cashback: string;
   perk: string;
 }[] = [
@@ -105,31 +107,35 @@ export const TIERS: {
     id: "bronze",
     label: "Bronze",
     req: "Default · no IG or under 1K followers",
-    priceMxn: 0,
+    priceUsd: 0,
+    followerThreshold: 0,
     cashback: "Base cashback",
     perk: "Welcome to the club",
   },
   {
     id: "silver",
     label: "Silver",
-    req: "1K+ followers · or MX$100 / mo",
-    priceMxn: 100,
+    req: "1K+ followers · or $10 / mo",
+    priceUsd: 10,
+    followerThreshold: 1_000,
     cashback: "More cashback",
     perk: "Insider perks",
   },
   {
     id: "gold",
     label: "Gold",
-    req: "5K+ followers · or MX$500 / mo",
-    priceMxn: 500,
+    req: "5K+ followers · or $50 / mo",
+    priceUsd: 50,
+    followerThreshold: 5_000,
     cashback: "Even more cashback",
     perk: "Priority access",
   },
   {
     id: "diamond",
     label: "Diamond",
-    req: "20K+ followers · or MX$2,000 / mo · or appeal",
-    priceMxn: 2000,
+    req: "20K+ followers · or $200 / mo · or appeal",
+    priceUsd: 200,
+    followerThreshold: 20_000,
     cashback: "Most cashback",
     perk: "VIP · private events",
   },

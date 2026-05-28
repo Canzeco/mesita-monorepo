@@ -254,11 +254,11 @@ function ClassLadderBox() {
   );
 }
 
-// Horizontal carousel of the four upgrade paths. Equal-width tiles
-// (w-44) so 2.3 fit at a time on a 400px viewport — visually telegraphs
-// "more to the right". -mx-5 lets the strip bleed past the parent's
-// p-5 padding so the first card kisses the left edge and the scroll
-// has full breathing room.
+// 2×2 grid of the four upgrade paths. Each cell carries its own
+// three-row tier ladder (Silver / Gold / Diamond requirement on this
+// path) so the user can immediately see what gets them to each rung
+// without having to tap through. The carousel variant moved to a grid
+// per user spec — "make a beautiful table or something".
 function FourWaysToClimb({
   onConnectSocial,
 }: {
@@ -269,28 +269,31 @@ function FourWaysToClimb({
     currentIdx < TIER_ORDER.length - 1 ? TIER_ORDER[currentIdx + 1] : null;
   const igConnected = CURRENT_USER.tierOrigin === "instagram";
   const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
+
+  // Follower threshold ladder shared by Instagram and LinkedIn. Both
+  // platforms map the same follower count → same Mesita tier (1K →
+  // Silver, 5K → Gold, 20K → Diamond) so we only declare it once.
+  const followerLadder: LadderRow[] = TIERS.filter((t) => t.id !== "bronze").map(
+    (t) => ({
+      tier: t.id,
+      label: t.label,
+      value: `${formatFollowers(t.followerThreshold)}`,
+    }),
+  );
+
   return (
     <section>
       <p className="text-foreground/70 px-1 text-[10px] font-medium tracking-[0.14em] uppercase">
         Four ways to climb
       </p>
-      <div className="scrollbar-hide -mx-5 mt-2 flex gap-3 overflow-x-auto px-5 pb-1">
-        <ClimbCard
-          eyebrow="Subscribe"
-          title="Pay monthly"
-          sub="Cancel anytime · jump straight to the tier."
-          icon={CreditCard}
-          iconBg="bg-pink-gradient"
-          state={isSubscribed ? "active" : "default"}
-          cta={isSubscribed ? "Active" : "Subscribe"}
-          href={nextTier ? `/subscribe/${nextTier}` : undefined}
-        />
+      <div className="mt-2 grid grid-cols-2 gap-3">
         <ClimbCard
           eyebrow="Instagram"
           title="Post a story"
-          sub="Connect and post each time you visit a partner."
           icon={Instagram}
           iconBg="bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]"
+          ladder={followerLadder}
+          ladderSuffix="followers"
           state={igConnected ? "connected" : "default"}
           cta={igConnected ? "Connected" : "Connect"}
           onClick={() => onConnectSocial("instagram")}
@@ -298,19 +301,39 @@ function FourWaysToClimb({
         <ClimbCard
           eyebrow="LinkedIn"
           title="Verify role"
-          sub="Connect to claim Silver / Gold / Diamond by network."
           icon={Linkedin}
           iconBg="bg-[#0A66C2]"
+          ladder={followerLadder}
+          ladderSuffix="followers"
           state="default"
           cta="Connect"
           onClick={() => onConnectSocial("linkedin")}
         />
         <ClimbCard
+          eyebrow="Subscribe"
+          title="Pay monthly"
+          icon={CreditCard}
+          iconBg="bg-pink-gradient"
+          ladder={TIERS.filter((t) => t.id !== "bronze").map((t) => ({
+            tier: t.id,
+            label: t.label,
+            value: `$${t.priceUsd}`,
+          }))}
+          ladderSuffix="/ mo"
+          state={isSubscribed ? "active" : "default"}
+          cta={isSubscribed ? "Active" : "Subscribe"}
+          href={nextTier ? `/subscribe/${nextTier}` : undefined}
+        />
+        <ClimbCard
           eyebrow="Invitation"
           title="Request access"
-          sub="For models, founders, press, locals with real influence."
           icon={Mail}
           iconBg="bg-amber-500"
+          ladder={[
+            { tier: "silver", label: "Silver", value: "Locals" },
+            { tier: "gold", label: "Gold", value: "Creators" },
+            { tier: "diamond", label: "Diamond", value: "VIPs" },
+          ]}
           state="default"
           cta="Request"
           onClick={() =>
@@ -335,15 +358,23 @@ function FourWaysToClimb({
   );
 }
 
-// One horizontally-scrolled tile inside FourWaysToClimb. Equal width
-// (w-48) and equal height (min-h enforced via flex) so the carousel
-// reads as a uniform row.
+type LadderRow = {
+  tier: (typeof TIER_ORDER)[number];
+  label: string;
+  value: string;
+};
+
+// One cell of the 2×2 climb grid. Header (icon + eyebrow + title) on
+// top, three-row tier ladder in the middle, CTA at the bottom. The
+// ladder rows use the tier badge color for the dot so each row
+// telegraphs which rung it leads to.
 function ClimbCard({
   eyebrow,
   title,
-  sub,
   icon: Icon,
   iconBg,
+  ladder,
+  ladderSuffix,
   state,
   cta,
   href,
@@ -351,9 +382,11 @@ function ClimbCard({
 }: {
   eyebrow: string;
   title: string;
-  sub: string;
   icon: LucideIcon;
   iconBg: string;
+  ladder: LadderRow[];
+  /** Optional suffix appended to each ladder row's value (e.g. "/ mo"). */
+  ladderSuffix?: string;
   state: "default" | "connected" | "active";
   cta: string;
   href?: string;
@@ -373,26 +406,52 @@ function ClimbCard({
       cta
     );
   const body = (
-    <div className="flex h-full w-48 shrink-0 flex-col gap-2 rounded-2xl border border-border bg-card p-3.5">
-      <span
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-xl text-white",
-          iconBg,
-        )}
-      >
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-          {eyebrow}
-        </p>
-        <p className="font-display mt-0.5 text-[14px] leading-tight font-semibold tracking-tight">
-          {title}
-        </p>
-        <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-          {sub}
-        </p>
-      </div>
+    <div className="border-border bg-card flex h-full flex-col gap-3 rounded-2xl border p-3.5">
+      <header className="flex items-center gap-2">
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white",
+            iconBg,
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
+            {eyebrow}
+          </p>
+          <p className="font-display mt-0.5 text-[13px] leading-tight font-semibold tracking-tight">
+            {title}
+          </p>
+        </div>
+      </header>
+      <ul className="flex flex-1 flex-col gap-1">
+        {ladder.map((row) => (
+          <li
+            key={row.tier}
+            className="flex items-center justify-between gap-2 text-[11px] leading-tight"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  tierBadgeClass(row.tier),
+                )}
+                aria-hidden
+              />
+              <span className="text-muted-foreground">{row.label}</span>
+            </span>
+            <span className="text-foreground truncate font-semibold tabular-nums">
+              {row.value}
+              {ladderSuffix && (
+                <span className="text-muted-foreground ml-0.5 font-normal">
+                  {ladderSuffix}
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
       <span
         className={cn(
           "self-start rounded-full px-3 py-1 text-[11px] font-semibold",
@@ -411,7 +470,7 @@ function ClimbCard({
     );
   }
   return (
-    <button type="button" onClick={onClick} className="block text-left">
+    <button type="button" onClick={onClick} className="block w-full text-left">
       {body}
     </button>
   );
