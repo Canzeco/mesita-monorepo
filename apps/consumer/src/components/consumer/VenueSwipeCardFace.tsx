@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Clock, MapPin, Navigation, Pencil, Star, Tags } from "lucide-react";
 import { PartnerBadge, RatePill } from "@/components/shared";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -102,15 +103,45 @@ function PhotoPlaceholder({ name }: { name: string }) {
 }
 
 function CardOverlay({ venue }: { venue: Venue }) {
-  const meta = [
-    venue.price_level != null ? "$".repeat(venue.price_level) : null,
-    venue.closes_at ? `until ${venue.closes_at}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // The overlay mirrors the venue-detail overview grid so the swipe
+  // card carries the same eight signals + cashback ribbon, just
+  // re-flowed into a denser stack that fits inside a Tinder-style
+  // card. Each chip is independently optional — if the EF hasn't
+  // populated a field yet, the chip simply doesn't render.
+  const priceLevelLabel =
+    venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  const priceRange = venue.price_range ?? null;
+  const closesLabel =
+    venue.open_now === false && venue.opens_at
+      ? `opens ${venue.opens_at}`
+      : venue.closes_at
+        ? `until ${venue.closes_at}`
+        : null;
+  const ratingLabel =
+    venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
+  const ratingSub =
+    venue.google_count != null ? `· ${formatCount(venue.google_count)}` : null;
+  const distanceLabel =
+    venue.distance_km != null ? `${venue.distance_km} km` : null;
+  const zoneLabel = venue.zone ?? null;
+  const updatedLabel = venue.last_updated_label
+    ? `Updated ${venue.last_updated_label}`
+    : null;
+
+  const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
+  const capLabel =
+    venue.reward_cap_mxn != null
+      ? `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`
+      : null;
+
+  const showCashback =
+    venue.listing_type === "partner" &&
+    venue.cashback_percent != null &&
+    venue.cashback_percent > 0;
+  const mechanicWord = venue.fiscal_type === "informal" ? "discount" : "cashback";
 
   return (
-    <div className="flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 pt-24 text-white">
+    <div className="flex flex-col gap-2.5 bg-gradient-to-t from-black/90 via-black/65 to-transparent p-5 pt-24 text-white">
       <div className="min-w-0">
         {(venue.vibe || venue.category) && (
           <p className="text-[11px] font-medium tracking-[0.18em] text-white/75 uppercase">
@@ -120,26 +151,98 @@ function CardOverlay({ venue }: { venue: Venue }) {
               .toLowerCase()}
           </p>
         )}
-        <h2 className="font-display mt-1 text-3xl leading-tight font-semibold tracking-tight drop-shadow-sm">
+        <h2 className="font-display mt-1 text-[28px] leading-[1.1] font-semibold tracking-tight drop-shadow-sm">
           {venue.name}
         </h2>
-        {meta && <p className="mt-1 text-[12px] text-white/85">{meta}</p>}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <PartnerBadge listingType={venue.listing_type} size="md" />
-        {venue.listing_type === "partner" &&
-          venue.cashback_percent != null &&
-          venue.cashback_percent > 0 && (
-            <RatePill
-              percent={venue.cashback_percent}
-              mechanic={
-                venue.fiscal_type === "informal" ? "discount" : "cashback"
-              }
-              size="md"
-            />
+      {/* Primary meta strip — rating, price range, distance. Each chip
+          hides when its field is null so we never render dangling
+          icons. */}
+      {(ratingLabel || priceRange || priceLevelLabel || distanceLabel) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-white/90">
+          {ratingLabel && (
+            <span className="inline-flex items-center gap-1">
+              <Star className="h-3 w-3 fill-current text-amber-400" />
+              <span className="font-semibold">{ratingLabel}</span>
+              {ratingSub && (
+                <span className="text-white/65">{ratingSub} Google</span>
+              )}
+            </span>
           )}
+          {(priceRange || priceLevelLabel) && (
+            <span className="inline-flex items-center gap-1">
+              <Tags className="h-3 w-3 text-emerald-300" />
+              <span className="font-semibold">
+                {priceRange ?? priceLevelLabel}
+              </span>
+              {priceRange && <span className="text-white/65">per person</span>}
+            </span>
+          )}
+          {distanceLabel && (
+            <span className="inline-flex items-center gap-1">
+              <Navigation className="h-3 w-3 text-sky-300" />
+              <span className="font-semibold">{distanceLabel}</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Secondary meta strip — open status, zone, freshness. Same
+          hide-when-empty rules. */}
+      {(closesLabel || zoneLabel || updatedLabel) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/80">
+          {closesLabel && (
+            <span className="inline-flex items-center gap-1">
+              <Clock
+                className={cn(
+                  "h-3 w-3",
+                  venue.open_now === false
+                    ? "text-white/55"
+                    : "text-emerald-300",
+                )}
+              />
+              <span>{closesLabel}</span>
+            </span>
+          )}
+          {zoneLabel && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3 w-3 text-pink-300" />
+              <span className="max-w-[120px] truncate">{zoneLabel}</span>
+            </span>
+          )}
+          {updatedLabel && (
+            <span className="inline-flex items-center gap-1">
+              <Pencil className="h-3 w-3 text-white/55" />
+              <span>{updatedLabel}</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+        <PartnerBadge listingType={venue.listing_type} size="md" />
+        {showCashback && (
+          <RatePill
+            percent={venue.cashback_percent!}
+            mechanic={mechanicWord}
+            size="md"
+          />
+        )}
       </div>
+
+      {showCashback && capLabel && (
+        <p className="text-[10.5px] text-white/65">{capLabel}</p>
+      )}
     </div>
   );
+}
+
+// Compact "1.9K" / "1.2M" style for review counts. Mirrors the
+// formatter used inside VenueDetailBody so the swipe card stays in
+// sync with the overview's number style.
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return n.toString();
 }

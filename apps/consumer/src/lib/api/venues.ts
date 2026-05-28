@@ -68,6 +68,29 @@ export type Venue = {
   google_maps_url: string | null;
   email: string | null;
   created_at: string;
+
+  // ── Overview parity (optional) ────────────────────────────────────
+  //
+  // The swipe / catalog cards used to show only what's strictly on the
+  // venues row (name, vibe, category, price_level, closes_at, cashback).
+  // The "all info on the tinder card too" checkpoint widens that to
+  // mirror the venue-detail overview grid. Every field below is
+  // optional because the recommend-deck / list-venues EFs don't return
+  // them yet — the card hides cells when the field is null/undefined,
+  // so the contract degrades cleanly until the EF starts populating
+  // them (sourced from Google Places + cached on the row).
+  google_rating?: number | null;
+  google_count?: number | null;
+  /** Pre-formatted with the currency prefix, e.g. "MX$200–300". */
+  price_range?: string | null;
+  /** Short relative timestamp like "2 days ago" (server-formatted). */
+  last_updated_label?: string | null;
+  open_now?: boolean | null;
+  opens_at?: string | null;
+  distance_km?: number | null;
+  zone?: string | null;
+  /** Per-visit cashback ceiling in the venue's currency. */
+  reward_cap_mxn?: number | null;
 };
 
 // Discover surfaces (swipe + catalog) — both go through dedicated EFs

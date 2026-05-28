@@ -4,6 +4,7 @@ import {
   apiFetchPublicVenues,
   type Venue,
 } from "@/lib/api/venues";
+import { mockVenue } from "@/lib/mock/venue";
 import { SwipeDeck } from "./SwipeDeck";
 import { errMsg } from "@/lib/utils";
 
@@ -43,5 +44,36 @@ export default async function SwipePage() {
     return aRank - bRank;
   });
 
-  return <SwipeDeck venues={sorted} fetchError={fetchError} />;
+  // Demo-only enrichment for the venue overview parity checkpoint: the
+  // swipe card now renders the same eight metadata cells as the venue
+  // detail overview, but recommend-deck / list-venues don't yet return
+  // the Google rating, distance, zone, price range, freshness label, or
+  // reward cap. The detail page already has a fully populated
+  // VenueDetail fixture for Mochomos Monterrey (mockVenue) — splice
+  // those values onto the matching deck row so the card lights up for
+  // the demo venue. Other rows degrade gracefully (chips hide when null)
+  // until the EF starts populating these columns directly.
+  const enriched = sorted.map((v) => {
+    if (
+      v.id !== mockVenue.id &&
+      v.slug !== mockVenue.id &&
+      v.name !== mockVenue.name
+    ) {
+      return v;
+    }
+    return {
+      ...v,
+      google_rating: v.google_rating ?? mockVenue.google.rating,
+      google_count: v.google_count ?? mockVenue.google.count,
+      price_range: v.price_range ?? mockVenue.price_range,
+      last_updated_label: v.last_updated_label ?? mockVenue.last_updated_label,
+      open_now: v.open_now ?? mockVenue.open_now,
+      opens_at: v.opens_at ?? mockVenue.opens_at,
+      distance_km: v.distance_km ?? mockVenue.distance_km,
+      zone: v.zone ?? mockVenue.zone,
+      reward_cap_mxn: v.reward_cap_mxn ?? mockVenue.reward_cap_mxn,
+    };
+  });
+
+  return <SwipeDeck venues={enriched} fetchError={fetchError} />;
 }
