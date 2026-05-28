@@ -20,6 +20,7 @@ import {
   Martini,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { PreviewBadge } from "@/components/consumer/PreviewBadge";
 import {
   VerifySocialSheet,
   type SocialPlatform,
@@ -93,12 +94,8 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-5 pt-5">
-        <p className="bg-secondary/10 text-secondary rounded-xl px-3 py-2 text-[11px]">
-          Preview — tier, communities and achievements below are mock values.
-          Your name, email, country, age and sex are real. Your cashback
-          balance and activity live on /pay/wallet.
-        </p>
+      <div className="px-5 pt-4">
+        <PreviewBadge label="Preview · tier and activity are mock" />
       </div>
 
       <div className="px-5 pt-5">

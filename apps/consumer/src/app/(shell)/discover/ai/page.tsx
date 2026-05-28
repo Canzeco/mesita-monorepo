@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Send } from "lucide-react";
+import { PreviewBadge } from "@/components/consumer/PreviewBadge";
 import { AI_SUGGESTIONS } from "@/lib/consumer-data";
 
 export default function AiPage() {
@@ -30,10 +31,9 @@ export default function AiPage() {
           <br />y yo te encuentro el lugar.
         </p>
 
-        <p className="bg-secondary/10 text-secondary mx-auto mt-4 max-w-xs rounded-xl px-3 py-2 text-center text-[11px]">
-          Preview — Don Memo isn&apos;t live yet. Tap a suggestion to see what
-          it&apos;ll feel like.
-        </p>
+        <div className="mt-4 flex justify-center">
+          <PreviewBadge label="Preview · Don Memo isn't live yet" align="center" />
+        </div>
 
         <div className="mt-6 flex flex-col gap-2.5">
           {AI_SUGGESTIONS.map((s) => (

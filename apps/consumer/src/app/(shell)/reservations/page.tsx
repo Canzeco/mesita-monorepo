@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ReservationCard } from "@/components/consumer/ReservationCard";
+import { PreviewBadge } from "@/components/consumer/PreviewBadge";
 import { CalendarConnectBox } from "./CalendarConnectBox";
 import { WhatsAppRemindersBox } from "./WhatsAppRemindersBox";
 import {
@@ -59,9 +60,7 @@ export default function ReservationsPage() {
   return (
     <div className="relative flex h-full flex-col">
       <div className="shrink-0 px-4 pt-3">
-        <p className="bg-secondary/10 text-secondary rounded-xl px-3 py-2 text-[11px]">
-          Preview — reservations aren&apos;t connected to the backend yet.
-        </p>
+        <PreviewBadge label="Preview · mock reservations" />
       </div>
 
       <div className="shrink-0 px-4 pt-3">

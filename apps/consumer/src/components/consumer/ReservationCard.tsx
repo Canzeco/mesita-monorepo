@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Calendar,
   Users,
@@ -54,10 +55,15 @@ const STATUS_META: Record<
 export function ReservationCard({ r }: { r: ReservationItem }) {
   const meta = STATUS_META[r.status];
   const cancelled = r.status === "cancelled";
+  // Tapping the card opens the intercepted /reservation/[id] modal on
+  // soft nav and the full page on hard nav. Linked-coupon stub stays
+  // inside the same link so the whole ticket is one tap target.
   return (
-    <article
+    <Link
+      href={`/reservation/${r.id}`}
+      aria-label={`Open reservation at ${r.venueName}`}
       className={cn(
-        "border-border bg-card flex flex-col gap-3 overflow-hidden rounded-2xl border p-3",
+        "border-border bg-card hover:bg-muted/40 flex flex-col gap-3 overflow-hidden rounded-2xl border p-3 transition active:scale-[0.995]",
         cancelled && "opacity-70",
       )}
     >
@@ -133,7 +139,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
       {r.linkedCoupon && !cancelled && (
         <LinkedCouponStub coupon={r.linkedCoupon} />
       )}
-    </article>
+    </Link>
   );
 }
 
