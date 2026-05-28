@@ -20,7 +20,6 @@ import {
   Martini,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
-import { PreviewBadge } from "@/components/consumer/PreviewBadge";
 import {
   VerifySocialSheet,
   type SocialPlatform,
@@ -34,7 +33,7 @@ import {
   TIER_ORDER,
   tierBadgeClass,
 } from "@/lib/consumer-data";
-import { cn, firstInitial } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
 // Four-tab Profile. Coupons and Share folded in as sub-tabs on the
@@ -51,84 +50,25 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "settings", label: "Settings" },
 ];
 
-// The identity bits that survive real onboarding — name, email, country,
-// birthday, sex — flow in from the server page. The tier ladder rendered
-// on the Class tab is still mock until the corresponding schema columns +
-// Edge Functions ship.
-export type RealIdentity = {
-  firstName: string | null;
-  lastName: string | null;
-  fullName: string | null;
-  email: string | null;
-  country: string | null;
-  birthday: string | null;
-  sex: string | null;
-};
+// Profile shell. The previous large avatar + name + "country · age ·
+// sex" hero block was removed — the TopBar already renders the user's
+// display name in the center column and the class chip on the right,
+// so the inline block was duplicate chrome that ate vertical space.
+// Identity-driven copy ships back here when there's something
+// genuinely useful to surface (e.g. a per-user CTA), not before.
+//
+// The consumer (shell) layout enforces onboarding completion before
+// this page renders, so all identity fields are already guaranteed
+// real upstream.
 
-export function ProfileClient({ identity }: { identity: RealIdentity }) {
+export function ProfileClient() {
   const [tab, setTab] = useState<Tab>("class");
   const [verifyPlatform, setVerifyPlatform] = useState<SocialPlatform | null>(
     null,
   );
 
-  // Display name preference, in order:
-  //   1. `${first_name} ${last_name}` if both present — the canonical
-  //      form. Restaurants need a full name on the reservation, so the
-  //      profile must show what's actually attached to bookings.
-  //   2. either first_name OR last_name alone (whichever's set).
-  //   3. legacy full_name (rows from before the onboarding split).
-  //   4. email local-part fallback.
-  //   5. "Consumer" placeholder.
-  const composedName =
-    identity.firstName && identity.lastName
-      ? `${identity.firstName} ${identity.lastName}`
-      : identity.firstName || identity.lastName || null;
-  const displayName =
-    composedName ??
-    identity.fullName ??
-    (identity.email ? identity.email.split("@")[0] : null) ??
-    "Consumer";
-  const initial = firstInitial(displayName, "?");
-
-  // Identity facts shown next to the avatar — only the ones the consumer
-  // actually filled. No mock fallbacks.
-  const age = identity.birthday ? yearsSince(identity.birthday) : null;
-  const subtitleParts: string[] = [];
-  if (identity.country) subtitleParts.push(identity.country);
-  if (age != null) subtitleParts.push(`${age}`);
-  if (identity.sex) subtitleParts.push(prettySex(identity.sex));
-
-  // The consumer (shell) layout already enforces onboarding completion, so by
-  // the time we render here all four identity fields are guaranteed real.
-  // No banner / no half-state path.
-
   return (
     <div className="flex h-full flex-col">
-      <div className="px-5 pt-4">
-        <PreviewBadge label="Preview · tier and activity are mock" />
-      </div>
-
-      <div className="px-5 pt-5">
-        <div className="flex items-center gap-4">
-          <div className="bg-pink-gradient shadow-glow ring-card flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-2xl font-bold text-white ring-2">
-            {initial}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display truncate text-2xl font-semibold tracking-tight">
-              {displayName}
-            </h1>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              {subtitleParts.join(" · ")}
-            </p>
-            {identity.email && (
-              <p className="text-muted-foreground/80 mt-0.5 truncate text-[11px]">
-                {identity.email}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="px-4 pt-4">
         <div className="border-border bg-card flex rounded-full border p-1">
           {TABS.map((t) => (
@@ -806,26 +746,4 @@ function SettingsRowButton({ row }: { row: SettingsRow }) {
       {inner}
     </button>
   );
-}
-
-// Years since a YYYY-MM-DD birthday string. Returns null on bad input so
-// the caller can simply skip the "27"-style age line when the consumer hasn't
-// filled their birthday yet.
-function yearsSince(birthday: string): number | null {
-  const parsed = new Date(`${birthday}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  const now = new Date();
-  let age = now.getUTCFullYear() - parsed.getUTCFullYear();
-  const m = now.getUTCMonth() - parsed.getUTCMonth();
-  if (m < 0 || (m === 0 && now.getUTCDate() < parsed.getUTCDate())) age -= 1;
-  if (age < 0 || age > 130) return null;
-  return age;
-}
-
-// Display the sex string as a Title-Cased label. The DB stores raw values
-// (male/female/other); the header shows "Female", "Male", "Other".
-function prettySex(sex: string): string {
-  const lower = sex.trim().toLowerCase();
-  if (!lower) return "";
-  return lower[0].toUpperCase() + lower.slice(1);
 }
