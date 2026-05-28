@@ -156,66 +156,69 @@ function CardOverlay({ venue }: { venue: Venue }) {
         </h2>
       </div>
 
-      {/* Primary meta strip — rating, price range, distance. Each chip
-          hides when its field is null so we never render dangling
-          icons. */}
-      {(ratingLabel || priceRange || priceLevelLabel || distanceLabel) && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-white/90">
+      {/* Glassy chip strip — every overview signal renders as a self-
+          contained pill on top of the photo gradient. The pill base
+          is a frosted bg-white/12 + ring-white/15 so the chips read
+          as one consistent surface; only the rating chip keeps a
+          colored accent (amber star), everything else uses muted
+          white icons so the strip doesn't look like a christmas tree
+          of competing colors. Wraps to a second row on narrow cards. */}
+      {(ratingLabel ||
+        priceRange ||
+        priceLevelLabel ||
+        distanceLabel ||
+        closesLabel ||
+        zoneLabel ||
+        updatedLabel) && (
+        <div className="flex flex-wrap items-center gap-1.5">
           {ratingLabel && (
-            <span className="inline-flex items-center gap-1">
-              <Star className="h-3 w-3 fill-current text-amber-400" />
+            <MetaChip>
+              <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
               <span className="font-semibold">{ratingLabel}</span>
               {ratingSub && (
                 <span className="text-white/65">{ratingSub} Google</span>
               )}
-            </span>
+            </MetaChip>
           )}
           {(priceRange || priceLevelLabel) && (
-            <span className="inline-flex items-center gap-1">
-              <Tags className="h-3 w-3 text-emerald-300" />
+            <MetaChip>
+              <Tags className="text-white/70 h-3 w-3 shrink-0" />
               <span className="font-semibold">
                 {priceRange ?? priceLevelLabel}
               </span>
-              {priceRange && <span className="text-white/65">per person</span>}
-            </span>
+              {priceRange && (
+                <span className="text-white/60">per person</span>
+              )}
+            </MetaChip>
           )}
           {distanceLabel && (
-            <span className="inline-flex items-center gap-1">
-              <Navigation className="h-3 w-3 text-sky-300" />
+            <MetaChip>
+              <Navigation className="text-white/70 h-3 w-3 shrink-0" />
               <span className="font-semibold">{distanceLabel}</span>
-            </span>
+            </MetaChip>
           )}
-        </div>
-      )}
-
-      {/* Secondary meta strip — open status, zone, freshness. Same
-          hide-when-empty rules. */}
-      {(closesLabel || zoneLabel || updatedLabel) && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/80">
           {closesLabel && (
-            <span className="inline-flex items-center gap-1">
+            <MetaChip>
               <Clock
                 className={cn(
-                  "h-3 w-3",
-                  venue.open_now === false
-                    ? "text-white/55"
-                    : "text-emerald-300",
+                  "h-3 w-3 shrink-0",
+                  venue.open_now === false ? "text-white/50" : "text-white/70",
                 )}
               />
               <span>{closesLabel}</span>
-            </span>
+            </MetaChip>
           )}
           {zoneLabel && (
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="h-3 w-3 text-pink-300" />
+            <MetaChip>
+              <MapPin className="text-white/70 h-3 w-3 shrink-0" />
               <span className="max-w-[120px] truncate">{zoneLabel}</span>
-            </span>
+            </MetaChip>
           )}
           {updatedLabel && (
-            <span className="inline-flex items-center gap-1">
-              <Pencil className="h-3 w-3 text-white/55" />
-              <span>{updatedLabel}</span>
-            </span>
+            <MetaChip>
+              <Pencil className="text-white/55 h-3 w-3 shrink-0" />
+              <span className="text-white/75">{updatedLabel}</span>
+            </MetaChip>
           )}
         </div>
       )}
@@ -245,4 +248,16 @@ function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
   return n.toString();
+}
+
+// Glass pill used by every meta cell on the swipe overlay. Uniform
+// padding, font size, and ring so the strip reads as one consistent
+// row rather than a pile of mismatched chips. Children supply their
+// own icon + value.
+function MetaChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="ring-white/12 inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white/90 ring-1 backdrop-blur">
+      {children}
+    </span>
+  );
 }
