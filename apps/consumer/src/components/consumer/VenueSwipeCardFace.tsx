@@ -220,9 +220,7 @@ function CardOverlay({ venue }: { venue: Venue }) {
           <MetaChip>
             <span className="font-semibold">{ratingLabel}</span>
             <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
-            {ratingCountLabel && (
-              <span className="text-white/65">({ratingCountLabel})</span>
-            )}
+            {ratingCountLabel && <span>({ratingCountLabel})</span>}
           </MetaChip>
         )}
         {distanceLabel && (
