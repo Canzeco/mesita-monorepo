@@ -42,6 +42,8 @@ const TABS: { id: Tab; label: string }[] = [
 // on the Class tab is still mock until the corresponding schema columns +
 // Edge Functions ship.
 export type RealIdentity = {
+  firstName: string | null;
+  lastName: string | null;
   fullName: string | null;
   email: string | null;
   country: string | null;
@@ -55,9 +57,20 @@ export function ProfileClient({ identity }: { identity: RealIdentity }) {
     null,
   );
 
-  // Display name: prefer the onboard-supplied full_name; otherwise the
-  // email local-part as a fallback. Never the mock CURRENT_USER.name.
+  // Display name preference, in order:
+  //   1. `${first_name} ${last_name}` if both present — the canonical
+  //      form. Restaurants need a full name on the reservation, so the
+  //      profile must show what's actually attached to bookings.
+  //   2. either first_name OR last_name alone (whichever's set).
+  //   3. legacy full_name (rows from before the onboarding split).
+  //   4. email local-part fallback.
+  //   5. "Consumer" placeholder.
+  const composedName =
+    identity.firstName && identity.lastName
+      ? `${identity.firstName} ${identity.lastName}`
+      : identity.firstName || identity.lastName || null;
   const displayName =
+    composedName ??
     identity.fullName ??
     (identity.email ? identity.email.split("@")[0] : null) ??
     "Consumer";

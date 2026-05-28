@@ -23,6 +23,8 @@ export default async function ConsumerProfilePage() {
   // through a guarded query keeps the layout cost low when the consumer
   // hasn't onboarded yet.
   let identity: RealIdentity = {
+    firstName: null,
+    lastName: null,
     fullName: null,
     email: user.email ?? null,
     country: null,
@@ -33,6 +35,8 @@ export default async function ConsumerProfilePage() {
   try {
     const profile = await apiFetchConsumerProfile(supabase);
     identity = {
+      firstName: profile.first_name,
+      lastName: profile.last_name,
       fullName: profile.full_name,
       email: user.email ?? null,
       country: profile.country,

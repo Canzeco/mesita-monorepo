@@ -8,22 +8,21 @@ import { cn } from "@/lib/utils";
 // is owned by the shell layout via TopBar — see
 // src/components/consumer/TopBar.tsx.
 
-type Tab = "consumers" | "venues" | "creators" | "others";
+type Tab = "friends" | "restaurants" | "others";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "consumers", label: "Consumers" },
-  { id: "venues", label: "Venues" },
-  { id: "creators", label: "Creators" },
+  { id: "friends", label: "Friends" },
+  { id: "restaurants", label: "Restaurants" },
   { id: "others", label: "Others" },
 ];
 
 export default function SharePage() {
-  const [tab, setTab] = useState<Tab>("consumers");
+  const [tab, setTab] = useState<Tab>("friends");
 
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4">
-        <div className="border-border bg-card grid grid-cols-4 gap-0 rounded-full border p-1">
+        <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-full border p-1">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -43,9 +42,8 @@ export default function SharePage() {
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-hidden px-4 pt-3 pb-4">
-        {tab === "consumers" && <ConsumersTab />}
-        {tab === "venues" && <VenuesTab />}
-        {tab === "creators" && <CreatorsTab />}
+        {tab === "friends" && <FriendsTab />}
+        {tab === "restaurants" && <RestaurantsTab />}
         {tab === "others" && <OthersTab />}
       </div>
     </div>
@@ -160,7 +158,7 @@ function PrimaryCta({
   );
 }
 
-function ConsumersTab() {
+function FriendsTab() {
   const giftCode = "8F2K — 9XQ7";
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
@@ -306,10 +304,11 @@ function ConsumersTab() {
   );
 }
 
-// Three lighter partner programs collapsed into one page — Creators,
-// Creators get their own top-level tab. Others stacks the remaining
-// lighter partner programs — agencies + modeling talent — in compact
-// cards on one scroll.
+// Others stacks the lighter partner programs — creators, marketing
+// agencies, and modeling/talent agencies — in compact cards on one
+// scroll. Creators used to live on its own top-level tab but the share
+// menu collapsed to three (Friends / Restaurants / Others) so the
+// creator program folded in here as the first card.
 type PartnerGroup = {
   id: string;
   title: string;
@@ -342,6 +341,7 @@ const CREATOR_GROUP: PartnerGroup = {
 };
 
 const OTHER_GROUPS: PartnerGroup[] = [
+  CREATOR_GROUP,
   {
     id: "agencies",
     title: "Marketing agencies",
@@ -380,23 +380,13 @@ const OTHER_GROUPS: PartnerGroup[] = [
   },
 ];
 
-function CreatorsTab() {
-  return (
-    <div className="flex flex-col gap-5">
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        {CREATOR_GROUP.blurb}
-      </p>
-      <PartnerCard group={CREATOR_GROUP} />
-    </div>
-  );
-}
-
 function OthersTab() {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Two lighter partner programs Mesita runs alongside venues. Pick the one
-        that fits — each has its own onboarding flow.
+        Three lighter partner programs Mesita runs alongside venues —
+        creators, marketing agencies, and modeling talent. Pick the one that
+        fits; each has its own onboarding flow.
       </p>
       {OTHER_GROUPS.map((g) => (
         <PartnerCard key={g.id} group={g} />
@@ -435,7 +425,7 @@ function PartnerCard({ group: g }: { group: PartnerGroup }) {
   );
 }
 
-function VenuesTab() {
+function RestaurantsTab() {
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -456,7 +446,7 @@ function VenuesTab() {
           sub="Socially-magnetic, higher-spend, repeat consumers."
         />
         <FeatureCard
-          title="Auto IG stories"
+          title="Instagram Stories"
           sub="Each visit becomes organic reach, AI-verified."
         />
         <FeatureCard
@@ -476,7 +466,7 @@ function VenuesTab() {
       <PrimaryCta
         label="Send invitation"
         share={{
-          title: "Mesita for venues",
+          title: "Mesita for restaurants",
           text: "I think you'd love Mesita — setup is ~8 min and free to start.",
           url: "https://www.mesita.ai",
         }}
