@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { BadgeCheck, Globe, Navigation, Sparkles, Star } from "lucide-react";
+import {
+  BadgeCheck,
+  Globe,
+  MapPin,
+  Navigation,
+  Sparkles,
+  Star,
+} from "lucide-react";
 import { cn, firstInitial } from "@/lib/utils";
 import { CURRENT_USER } from "@/lib/consumer-data";
 import type { Venue } from "@/lib/api/venues";
@@ -116,13 +123,14 @@ function CardOverlay({ venue }: { venue: Venue }) {
   // partner/rate chips + a cap line — way too busy. Each chip is still
   // independently optional so missing fields disappear cleanly.
   const isPartner = venue.listing_type === "partner";
-  const partnerLabel = isPartner ? "Verified" : "Listed";
+  const partnerLabel = isPartner ? "Verified partner" : "Web listed";
   const priceLevelLabel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const ratingLabel =
     venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
   const distanceLabel =
     venue.distance_km != null ? `${venue.distance_km} km` : null;
+  const zoneLabel = venue.zone ?? null;
 
   const showCashback =
     isPartner &&
@@ -174,6 +182,14 @@ function CardOverlay({ venue }: { venue: Venue }) {
           <MetaChip>
             <Navigation className="h-3 w-3 shrink-0 text-white/70" />
             <span className="font-semibold">{distanceLabel}</span>
+          </MetaChip>
+        )}
+        {zoneLabel && (
+          <MetaChip>
+            <MapPin className="h-3 w-3 shrink-0 text-white/70" />
+            <span className="max-w-[140px] truncate font-semibold">
+              {zoneLabel}
+            </span>
           </MetaChip>
         )}
       </div>
