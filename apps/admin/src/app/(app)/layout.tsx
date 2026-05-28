@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Shield } from "lucide-react";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { efInvoke } from "@/lib/supabase-ef";
 import { authSignOut } from "@/app/auth/actions";
@@ -73,11 +73,8 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden">
-      <Sidebar email={whoami.data.email ?? user.email ?? null} />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">
-        {children}
-      </main>
-    </div>
+    <AppShell email={whoami.data.email ?? user.email ?? null}>
+      {children}
+    </AppShell>
   );
 }

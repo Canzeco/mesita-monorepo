@@ -20,6 +20,11 @@ type NavItem = {
   Icon: React.ComponentType<{ className?: string }>;
 };
 
+type SidebarProps = {
+  email: string | null;
+  onNavigate?: () => void;
+};
+
 // Verifications were dropped from the sidebar when ownership flipped
 // to fully-automatic (phone OTP / video AI / WhatsApp fallback) — the
 // /verifications route still exists as the admin escape hatch for
@@ -43,11 +48,15 @@ const DANGER_NAV: NavItem[] = [
   { href: "/danger", label: "Danger zone", Icon: AlertTriangle },
 ];
 
-export function Sidebar({ email }: { email: string | null }) {
+export function Sidebar({ email, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   return (
     <aside className="border-border bg-card flex h-full w-64 shrink-0 flex-col gap-6 overflow-hidden border-r px-3 pt-5 pb-4">
-      <Link href="/central" className="inline-flex items-center gap-2 px-2">
+      <Link
+        href="/central"
+        onClick={onNavigate}
+        className="inline-flex items-center gap-2 px-2"
+      >
         <span className="bg-peacock shadow-glow flex h-7 w-7 items-center justify-center rounded-full text-sm">
           🦚
         </span>
@@ -61,10 +70,30 @@ export function Sidebar({ email }: { email: string | null }) {
       </Link>
 
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto">
-        <NavSection label="Units" items={UNIT_NAV} pathname={pathname} />
-        <NavSection label="Inbox" items={INBOX_NAV} pathname={pathname} />
-        <NavSection label="Operations" items={ATLAS_NAV} pathname={pathname} />
-        <NavSection label="Danger" items={DANGER_NAV} pathname={pathname} />
+        <NavSection
+          label="Units"
+          items={UNIT_NAV}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
+        <NavSection
+          label="Inbox"
+          items={INBOX_NAV}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
+        <NavSection
+          label="Operations"
+          items={ATLAS_NAV}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
+        <NavSection
+          label="Danger"
+          items={DANGER_NAV}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
       </nav>
 
       {email && (
@@ -87,10 +116,12 @@ function NavSection({
   label,
   items,
   pathname,
+  onNavigate,
 }: {
   label: string;
   items: NavItem[];
   pathname: string;
+  onNavigate?: () => void;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -103,6 +134,7 @@ function NavSection({
           <Link
             key={href}
             href={href}
+            onClick={onNavigate}
             className={
               "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition " +
               (active
