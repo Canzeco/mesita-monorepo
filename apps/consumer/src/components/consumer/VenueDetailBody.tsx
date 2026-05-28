@@ -49,15 +49,20 @@ import {
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 
+// Section nav order for the venue detail page. Reward sits at the END
+// of the page now (the user reads About → Reviews → Menus → Time →
+// Location → Contact → Details first; the per-class reward is the
+// landing-pad CTA once they've made up their mind, not the lead).
 const NAV_SECTIONS = [
   { id: "overview", label: "Overview" },
-  { id: "rewards", label: "Rewards" },
-  { id: "reviews", label: "Reviews" },
-  { id: "menu", label: "Menu" },
-  { id: "hours", label: "Hours" },
-  { id: "location", label: "Location" },
   { id: "about", label: "About" },
+  { id: "reviews", label: "Reviews" },
+  { id: "menu", label: "Menus" },
+  { id: "hours", label: "Time" },
+  { id: "location", label: "Location" },
+  { id: "contact", label: "Contact" },
   { id: "details", label: "Details" },
+  { id: "rewards", label: "Reward" },
 ] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
@@ -79,8 +84,8 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <SectionAnchor id="overview">
         <SummaryHeader venue={venue} />
       </SectionAnchor>
-      <SectionAnchor id="rewards">
-        <RewardsBox venue={venue} />
+      <SectionAnchor id="about">
+        <AboutBox text={venue.long_description} />
       </SectionAnchor>
       <SectionAnchor id="reviews">
         <ReviewsSummaryBox venue={venue} />
@@ -95,12 +100,14 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <SectionAnchor id="location">
         <LocationBox venue={venue} />
       </SectionAnchor>
-      <SectionAnchor id="about">
-        <AboutBox text={venue.long_description} />
+      <SectionAnchor id="contact">
+        <LinksBox venue={venue} />
       </SectionAnchor>
-      <LinksBox venue={venue} />
       <SectionAnchor id="details">
         <DetailsBox venue={venue} />
+      </SectionAnchor>
+      <SectionAnchor id="rewards">
+        <RewardsBox venue={venue} />
       </SectionAnchor>
     </div>
   );
@@ -565,11 +572,11 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
 //    (client) — taller layout, optional photo thumbnail, "Read more"
 //    toggle when the quote runs long.
 
-// ── 5. Menu ─────────────────────────────────────────────────────────────
+// ── Menus ───────────────────────────────────────────────────────────────
 
 function MenuBox({ venue }: { venue: VenueDetail }) {
   return (
-    <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
+    <Box title="Menus" icon={Utensils} iconColor="text-amber-400">
       <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
         <Info className="h-3.5 w-3.5 shrink-0 text-amber-600" strokeWidth={2.25} />
         <p className="text-[11px] leading-snug font-medium text-amber-900">
@@ -678,11 +685,11 @@ function LocationBox({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// ── 6b. Hours & popular times ───────────────────────────────────────────
+// ── Time (hours & popular times) ────────────────────────────────────────
 
 function HoursBox({ venue }: { venue: VenueDetail }) {
   return (
-    <Box title="Hours & popular times" icon={Clock} iconColor="text-violet-400">
+    <Box title="Time" icon={Clock} iconColor="text-violet-400">
       <div className="bg-background rounded-full px-4 py-2.5 text-sm">
         <span className="font-semibold text-emerald-700">
           {venue.open_now ? "Open now" : "Closed"}
@@ -727,7 +734,7 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// ── 7. Rewards (welcome on top + 4-up tier grid) ────────────────────────
+// ── Reward (welcome on top + 4-up tier grid) ────────────────────────────
 
 // Tiers render as a non-scrollable 4-column grid: Bronze · Silver · Gold ·
 // Diamond ascend left-to-right like a ladder. Welcome lives outside this
@@ -767,7 +774,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
     subtitleParts.push(`capped at ${capLabel} / visit`);
   }
   return (
-    <Box title="Your reward by class" icon={Sparkles} iconColor="text-pink-400">
+    <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — names the active reward, mechanic, and cap up front. */}
       <div className="bg-pink-gradient shadow-glow rounded-xl p-3 text-white">
         <p className="text-[10px] font-bold tracking-wider text-white/90 uppercase">
@@ -1030,7 +1037,7 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
   }
   if (chips.length === 0) return null;
   return (
-    <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
+    <Box title="Contact" icon={Link2} iconColor="text-cyan-400">
       <div className="flex flex-wrap gap-2">
         {chips.map(({ key, label, Icon, url }) => (
           <a
