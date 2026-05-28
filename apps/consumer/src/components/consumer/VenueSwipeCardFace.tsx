@@ -127,8 +127,13 @@ function CardOverlay({ venue }: { venue: Venue }) {
   const partnerLabel = isPartner ? "Verified partner" : "Web listed";
   const priceLevelLabel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  // Rating always renders with exactly one decimal ("4.3", "4.0") so
+  // it visually disambiguates from the integer ratings-count next to
+  // it ("1.9K"). No word — the star icon does the labelling.
   const ratingLabel =
     venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
+  const ratingCountLabel =
+    venue.google_count != null ? formatCount(venue.google_count) : null;
   const distanceLabel =
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const zoneLabel = venue.zone ?? null;
@@ -201,6 +206,9 @@ function CardOverlay({ venue }: { venue: Venue }) {
           <MetaChip>
             <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
             <span className="font-semibold">{ratingLabel}</span>
+            {ratingCountLabel && (
+              <span className="text-white/65">· {ratingCountLabel}</span>
+            )}
           </MetaChip>
         )}
       </div>
@@ -251,6 +259,15 @@ function CardOverlay({ venue }: { venue: Venue }) {
       )}
     </div>
   );
+}
+
+// Compact "1.9K" / "1.2M" style for ratings counts. Mirrors the
+// formatter used inside VenueDetailBody so the swipe card stays in
+// sync with the detail page.
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return n.toString();
 }
 
 // Glass pill used by every meta cell on the swipe overlay. Uniform
