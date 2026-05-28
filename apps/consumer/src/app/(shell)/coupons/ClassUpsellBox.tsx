@@ -101,41 +101,52 @@ export function ClassUpsellBox() {
         Four ways to climb
       </p>
 
-      <ul className="mt-2 flex flex-col gap-2 text-[12.5px] leading-snug text-white/90">
-        <li className="flex items-start gap-2">
-          <Instagram className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
-          <span>
-            <strong className="font-semibold text-white">Instagram</strong>{" "}
-            — connect your account and post a story each time you visit a
-            partner.
-          </span>
-        </li>
-        <li className="flex items-start gap-2">
-          <Linkedin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
-          <span>
-            <strong className="font-semibold text-white">LinkedIn</strong>{" "}
-            — connect your account; your follower count and verified role
-            lift your class.
-          </span>
-        </li>
-        <li className="flex items-start gap-2">
-          <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
-          <span>
-            <strong className="font-semibold text-white">Subscription</strong>{" "}
-            — pay monthly to jump straight to a higher class.
-          </span>
-        </li>
-        <li className="flex items-start gap-2">
-          <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85" />
-          <span>
-            <strong className="font-semibold text-white">Invitation</strong>{" "}
-            — free for models, executives, and locals with real influence.{" "}
-            <span className="font-semibold text-white underline-offset-2 hover:underline">
-              Request an invitation →
-            </span>
-          </span>
-        </li>
-      </ul>
+      {/* 2×2 grid of glassy method tiles. Each tile is read-only here
+          — tapping anywhere on the promo navigates to /profile (the
+          parent Link), where the actual Connect / Subscribe / Request
+          actions live. Keeps the promo as a single tap target while
+          still showing the four paths visually. */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {[
+          {
+            icon: Instagram,
+            label: "Instagram",
+            tagline: "Post a story each visit",
+          },
+          {
+            icon: Linkedin,
+            label: "LinkedIn",
+            tagline: "Verify role + followers",
+          },
+          {
+            icon: CreditCard,
+            label: "Subscribe",
+            tagline: "Pay monthly to jump",
+          },
+          {
+            icon: Mail,
+            label: "Invitation",
+            tagline: "For real-influence locals",
+          },
+        ].map((m) => (
+          <div
+            key={m.label}
+            className="rounded-xl bg-white/12 p-2.5 backdrop-blur ring-1 ring-white/10"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/20">
+                <m.icon className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+              </span>
+              <span className="text-[12px] font-semibold text-white">
+                {m.label}
+              </span>
+            </div>
+            <p className="mt-1 text-[10.5px] leading-snug text-white/85">
+              {m.tagline}
+            </p>
+          </div>
+        ))}
+      </div>
 
       {/* Tier ladder dots — visualizes the four classes + where the user
           currently sits. */}
