@@ -437,9 +437,10 @@ function FourWaysToClimb({
 
       {/* Tier column header — three labels aligned with the value cells
           in each row below. Uses the tier badge color as a tiny dot so
-          the header reads as the rung map ("filled past your current"
-          would over-complicate; keep it neutral here). */}
-      <div className="grid grid-cols-[1fr_repeat(3,minmax(2.75rem,auto))_auto] items-center gap-2 px-3 pt-2 pb-1.5">
+          the header reads as the rung map. The CTA moved out of the
+          row (and out of this header) — it lives below each item now,
+          full-width, so the data columns get room to breathe. */}
+      <div className="grid grid-cols-[1fr_repeat(3,minmax(3rem,1fr))] items-center gap-2 px-3 pt-2 pb-1.5">
         <span aria-hidden />
         {(["silver", "gold", "diamond"] as const).map((tier) => (
           <span
@@ -460,7 +461,6 @@ function FourWaysToClimb({
                 : "Diamond"}
           </span>
         ))}
-        <span aria-hidden />
       </div>
 
       <div className="divide-border/60 border-border/60 divide-y border-t">
@@ -487,51 +487,57 @@ type ClimbRow = {
 };
 
 function ClimbTableRow({ row }: { row: ClimbRow }) {
-  const ctaClass =
-    row.state === "connected" || row.state === "active"
-      ? "bg-emerald-500/15 text-emerald-700"
-      : "bg-pink-gradient text-white shadow-sm";
-  const ctaContent =
-    row.state === "connected" || row.state === "active" ? (
-      <span className="inline-flex items-center gap-1">
-        <Check className="h-3 w-3" strokeWidth={3} />
-        {row.cta}
-      </span>
-    ) : (
-      row.cta
-    );
+  const isReached = row.state === "connected" || row.state === "active";
+  const ctaClass = isReached
+    ? "bg-emerald-500/15 text-emerald-700"
+    : "bg-pink-gradient text-white shadow-sm";
+  const ctaContent = isReached ? (
+    <span className="inline-flex items-center justify-center gap-1.5">
+      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+      {row.cta}
+    </span>
+  ) : (
+    row.cta
+  );
   const Icon = row.icon;
+  // Each item is a two-row block:
+  //   1. Data row — icon + label + 3 tier values, aligned with the
+  //      column header above.
+  //   2. CTA row — full-width pill so the tap target is generous and
+  //      the data columns aren't squeezed by a 5th column.
   const body = (
-    <div className="hover:bg-muted/30 grid grid-cols-[1fr_repeat(3,minmax(2.75rem,auto))_auto] items-center gap-2 px-3 py-2.5 transition">
-      <span className="flex min-w-0 items-center gap-2">
-        <span
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white",
-            row.iconBg,
-          )}
-        >
-          <Icon className="h-4 w-4" />
+    <div className="hover:bg-muted/30 flex flex-col gap-2.5 px-3 py-3 transition">
+      <div className="grid grid-cols-[1fr_repeat(3,minmax(3rem,1fr))] items-center gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white",
+              row.iconBg,
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+          <span className="font-display min-w-0 truncate text-[13px] font-semibold tracking-tight">
+            {row.label}
+          </span>
         </span>
-        <span className="font-display min-w-0 truncate text-[13px] font-semibold tracking-tight">
-          {row.label}
-        </span>
-      </span>
-      {row.values.map((v, i) => (
-        <span
-          key={i}
-          className="text-foreground text-center text-[11px] font-semibold tabular-nums"
-        >
-          {v}
-          {row.valueSuffix && (
-            <span className="text-muted-foreground ml-0.5 font-normal">
-              {row.valueSuffix}
-            </span>
-          )}
-        </span>
-      ))}
+        {row.values.map((v, i) => (
+          <span
+            key={i}
+            className="text-foreground text-center text-[11px] font-semibold tabular-nums"
+          >
+            {v}
+            {row.valueSuffix && (
+              <span className="text-muted-foreground ml-0.5 font-normal">
+                {row.valueSuffix}
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
       <span
         className={cn(
-          "rounded-full px-2.5 py-1 text-[10.5px] font-semibold whitespace-nowrap",
+          "block rounded-full py-2 text-center text-[12px] font-semibold",
           ctaClass,
         )}
       >
