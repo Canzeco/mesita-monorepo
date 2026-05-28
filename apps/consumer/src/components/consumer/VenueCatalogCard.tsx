@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Gift } from "lucide-react";
+import { Gift, Star } from "lucide-react";
 import { CURRENT_USER } from "@/lib/consumer-data";
 import type { Venue } from "@/lib/api/venues";
 
@@ -40,6 +40,8 @@ export function VenueCatalogCard({
   const category = venue.category?.toLowerCase() ?? null;
   const priceLevel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  const ratingLabel =
+    venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
   const subtitleParts = [category, priceLevel].filter(Boolean) as string[];
 
   const promoPercent =
@@ -80,9 +82,20 @@ export function VenueCatalogCard({
           <h3 className="font-display text-[15px] leading-tight font-semibold tracking-tight">
             {venue.name}
           </h3>
-          {subtitleParts.length > 0 && (
-            <p className="text-muted-foreground text-[11.5px] capitalize">
-              {subtitleParts.join(" · ")}
+          {(subtitleParts.length > 0 || ratingLabel) && (
+            <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-[11.5px]">
+              {subtitleParts.length > 0 && (
+                <span className="capitalize">{subtitleParts.join(" · ")}</span>
+              )}
+              {ratingLabel && (
+                <span className="inline-flex items-center gap-1">
+                  {subtitleParts.length > 0 && <span>·</span>}
+                  <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
+                  <span className="text-foreground font-semibold">
+                    {ratingLabel}
+                  </span>
+                </span>
+              )}
             </p>
           )}
         </div>
