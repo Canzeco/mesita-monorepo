@@ -91,6 +91,15 @@ export type Venue = {
   zone?: string | null;
   /** Per-visit cashback ceiling in the venue's currency. */
   reward_cap_mxn?: number | null;
+  /**
+   * Short promo callout shown as a soft pink chip on the swipe card
+   * (e.g. "Welcome drink on us", "Hot pick tonight"). Separate from
+   * the cashback ribbon so partners can run extras on top of their
+   * standing rate — and so non-partners (web_listed) still have
+   * something promotional to show. Server-formatted; the client just
+   * renders it. Mocked until the promo Edge Function lands.
+   */
+  promo_label?: string | null;
 };
 
 // Discover surfaces (swipe + catalog) — both go through dedicated EFs

@@ -72,6 +72,10 @@ export default async function SwipePage() {
       distance_km: v.distance_km ?? mockVenue.distance_km,
       zone: v.zone ?? mockVenue.zone,
       reward_cap_mxn: v.reward_cap_mxn ?? mockVenue.reward_cap_mxn,
+      // Mocked until the promo EF lands. Sits on the swipe overlay
+      // as a soft pink chip — distinct from the cashback ribbon
+      // below so a partner can run a perk on top of their rate.
+      promo_label: v.promo_label ?? "Welcome drink on us",
     };
   });
 

@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   BadgeCheck,
   Clock,
+  Gift,
   Globe,
   MapPin,
   Navigation,
@@ -210,6 +211,12 @@ function CardOverlay({ venue }: { venue: Venue }) {
               <span className="text-white/65">({ratingCountLabel})</span>
             )}
           </MetaChip>
+        )}
+        {venue.promo_label && (
+          <span className="ring-pink-300/30 inline-flex items-center gap-1.5 rounded-full bg-pink-400/25 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-pink-50 ring-1 backdrop-blur">
+            <Gift className="h-3 w-3 shrink-0 text-pink-100" />
+            <span className="font-semibold">{venue.promo_label}</span>
+          </span>
         )}
       </div>
 
