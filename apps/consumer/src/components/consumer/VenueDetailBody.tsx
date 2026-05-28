@@ -22,6 +22,7 @@ import {
   Users,
   Bookmark,
   Clock,
+  Tag,
   Tags,
   Link2,
   Car,
@@ -227,11 +228,11 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
           sub="freshness"
         />
         <StatCell
-          icon={Utensils}
+          icon={Tag}
           iconBg="bg-amber-500/10"
           iconColor="text-amber-600"
           value={venue.category}
-          sub="cuisine"
+          sub="category"
           capitalize
         />
         <StatCell
