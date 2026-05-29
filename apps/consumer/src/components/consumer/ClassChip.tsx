@@ -18,7 +18,7 @@ export function ClassChip({ size = "md" }: { size?: "sm" | "md" }) {
   return (
     <Link
       href="/profile"
-      aria-label={`Your class · Mesita ${meta?.label ?? "class"}`}
+      aria-label={`Your plan · Mesita ${meta?.label ?? "plan"}`}
       className={cn(
         "font-display flex shrink-0 items-center justify-center rounded-2xl font-bold transition hover:opacity-90",
         size === "sm" ? "h-9 w-9 text-sm" : "h-10 w-10 text-base",

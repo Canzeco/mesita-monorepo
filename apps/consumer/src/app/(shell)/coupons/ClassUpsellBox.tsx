@@ -41,7 +41,7 @@ export function ClassUpsellBox() {
             Mesita Premium
           </p>
           <p className="font-display mt-0.5 text-base font-semibold">
-            Top class. Partners give you their best rates.
+            Top plan. Partners give you their best rates.
           </p>
         </div>
       </div>

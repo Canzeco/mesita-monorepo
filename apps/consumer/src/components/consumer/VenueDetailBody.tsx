@@ -835,7 +835,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
           className="border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition"
         >
           <Crown className="h-4 w-4" />
-          Upgrade class
+          Upgrade plan
         </Link>
       </div>
     </Box>

@@ -33,10 +33,10 @@ import { toast } from "@/lib/toast";
 // /share route stays alive (deep links). The Coupons tab was removed —
 // coupons are "hidden" (users save the place, redeem a QR at the venue),
 // so the wallet surface didn't earn its spot in the Profile.
-type Tab = "class" | "settings" | "share";
+type Tab = "plan" | "settings" | "share";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "class", label: "Class" },
+  { id: "plan", label: "Plan" },
   { id: "share", label: "Share" },
   { id: "settings", label: "Settings" },
 ];
@@ -53,7 +53,7 @@ const TABS: { id: Tab; label: string }[] = [
 // real upstream.
 
 export function ProfileClient() {
-  const [tab, setTab] = useState<Tab>("class");
+  const [tab, setTab] = useState<Tab>("plan");
   const [verifyPlatform, setVerifyPlatform] = useState<SocialPlatform | null>(
     null,
   );
@@ -81,7 +81,7 @@ export function ProfileClient() {
       </div>
 
       <div className="scrollbar-hide flex-1 overflow-y-auto">
-        {tab === "class" && (
+        {tab === "plan" && (
           <div className="px-5 pt-5 pb-8">
             <ClassTab onConnectSocial={(p) => setVerifyPlatform(p)} />
           </div>
@@ -114,7 +114,7 @@ function ClassTab({
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
-        <SectionEyebrow>Current class</SectionEyebrow>
+        <SectionEyebrow>Current plan</SectionEyebrow>
         <CurrentClassCard />
       </section>
       <section className="flex flex-col gap-2">

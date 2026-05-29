@@ -52,7 +52,7 @@ export default function SubscribePage() {
       <div className="flex flex-col gap-5 px-5 py-5">
         <section className="bg-tier-premium shadow-elev rounded-2xl p-5 text-white">
           <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
-            Mesita Class
+            Mesita Plan
           </p>
           <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">
             Mesita Premium
