@@ -8,7 +8,7 @@ import {
   Clock,
   CheckCircle2,
   X,
-  Ticket,
+  Gift,
   Instagram,
   MapPin,
   CalendarPlus,
@@ -59,7 +59,7 @@ const STATUS_META: Record<
     Icon: X,
     iconClass: "text-muted-foreground",
     banner:
-      "This reservation is cancelled. Saved coupons remain valid for a new booking.",
+      "This reservation is cancelled. Saved rewards remain valid for a new booking.",
   },
 };
 
@@ -253,12 +253,12 @@ function LinkedCouponCard({ coupon }: { coupon: LinkedCouponSummary }) {
         {ig ? (
           <Instagram className="h-5 w-5 text-pink-600" strokeWidth={2} />
         ) : (
-          <Ticket className="h-5 w-5 text-pink-600" strokeWidth={2} />
+          <Gift className="h-5 w-5 text-pink-600" strokeWidth={2} />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-          Coupon tied to this reservation
+          Reward tied to this reservation
         </p>
         <p className="text-foreground mt-0.5 text-[14px] leading-tight font-semibold">
           <span className="text-pink-600">{coupon.percent}%</span> cashback{" "}

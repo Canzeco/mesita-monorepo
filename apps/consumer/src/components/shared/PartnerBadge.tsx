@@ -30,8 +30,8 @@ export function PartnerBadge({
     <span
       title={
         isPartner
-          ? "Verified Partner — runs the coupon mechanic"
-          : "Web-Listed — auto-sourced from Google, no coupon"
+          ? "Verified Partner — runs the reward program"
+          : "Web-Listed — auto-sourced from Google, no reward"
       }
       className={cn(BADGE_SHELL, tone, BADGE_SIZE_CLASS[size], className)}
     >

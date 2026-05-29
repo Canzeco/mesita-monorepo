@@ -77,7 +77,7 @@ const MY_ACTIVITY: Activity[] = [
   {
     id: "m3",
     kind: "saved",
-    verb: "You saved a coupon at",
+    verb: "You unlocked a reward at",
     venue: "Mar Verde",
     when: "3 days ago",
   },
@@ -122,7 +122,7 @@ const LIVE_ACTIVITY: Activity[] = [
     id: "l4",
     kind: "saved",
     handle: "@diego",
-    verb: "saved a coupon at",
+    verb: "unlocked a reward at",
     venue: "Casa Luminar",
     when: "12 min ago",
   },

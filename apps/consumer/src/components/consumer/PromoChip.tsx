@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgePercent } from "lucide-react";
+import { Gift } from "lucide-react";
 import { CURRENT_USER, tierProperLabel } from "@/lib/consumer-data";
 import type { Venue } from "@/lib/api/venues";
 
@@ -53,7 +53,7 @@ export function PromoChip({
           : `at Mesita ${tierLabel}`
       }
     >
-      <BadgePercent className={`${iconSize} shrink-0`} strokeWidth={2.25} />
+      <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
       <span className="font-semibold">
         {promoPercent}% OFF {promoKindLabel}
       </span>

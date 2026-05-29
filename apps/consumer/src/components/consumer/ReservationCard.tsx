@@ -8,7 +8,7 @@ import {
   Clock,
   X,
   CheckCircle2,
-  Ticket,
+  Gift,
   Instagram,
 } from "lucide-react";
 import type {
@@ -151,12 +151,12 @@ function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
         {ig ? (
           <Instagram className="h-4 w-4 text-pink-600" strokeWidth={2} />
         ) : (
-          <Ticket className="h-4 w-4 text-pink-600" strokeWidth={2} />
+          <Gift className="h-4 w-4 text-pink-600" strokeWidth={2} />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-          Coupon tied
+          Reward tied
         </p>
         <p className="text-foreground mt-0.5 text-[13px] leading-tight font-semibold">
           <span className="text-pink-600">{coupon.percent}%</span>{" "}
