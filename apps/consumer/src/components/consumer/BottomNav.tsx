@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Compass,
   Bookmark,
-  CalendarCheck,
+  Gift,
   QrCode,
   User,
   type LucideIcon,
@@ -45,6 +45,8 @@ const ITEMS: Item[] = [
     match: "/discover",
   },
   {
+    // Saved now covers both saved places and reservations (sub-tabs on
+    // the Saved page); /reservations stays reachable as a deep link.
     href: "/saved",
     Icon: Bookmark,
     label: "Saved",
@@ -53,15 +55,15 @@ const ITEMS: Item[] = [
   {
     href: "/pay",
     Icon: QrCode,
-    label: "Pay & Post",
+    label: "Pay",
     match: "/pay",
     primary: true,
   },
   {
-    href: "/reservations",
-    Icon: CalendarCheck,
-    label: "Reservations",
-    match: "/reservations",
+    href: "/share",
+    Icon: Gift,
+    label: "Share",
+    match: "/share",
   },
   { href: "/profile", Icon: User, label: "Profile", match: "/profile" },
 ];

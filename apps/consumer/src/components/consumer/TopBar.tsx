@@ -37,7 +37,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
     return <SimpleHeader title="My Reservations" />;
   }
   if (pathname.startsWith("/pay")) {
-    return <SimpleHeader title="Pay & Post" />;
+    return <SimpleHeader title="Pay" />;
   }
   if (pathname.startsWith("/share")) {
     return <SimpleHeader title="Share Mesita" />;

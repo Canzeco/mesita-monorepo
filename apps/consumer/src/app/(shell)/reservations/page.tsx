@@ -27,6 +27,13 @@ export const dynamic = "force-dynamic";
 type Filter = "upcoming" | "past" | "cancelled";
 
 export default function ReservationsPage() {
+  return <ReservationsBody />;
+}
+
+// Exported so the Saved page can mount it as its "Reservations" sub-tab
+// without duplicating the filter logic (the standalone /reservations route
+// stays reachable for deep links).
+export function ReservationsBody() {
   const [filter, setFilter] = useState<Filter>("upcoming");
 
   const items = useMemo<ReservationItem[]>(() => {

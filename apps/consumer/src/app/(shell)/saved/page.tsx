@@ -1,15 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bookmark } from "lucide-react";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
+import { ReservationsBody } from "@/app/(shell)/reservations/page";
 import { SAVED_VENUES } from "@/lib/mock/saved-venues-mock";
 import { mockVenue } from "@/lib/mock/venue";
 import { enrichVenueWithMockOverview } from "@/lib/mock/enrich-overview";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
+
+type Tab = "places" | "reservations";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "places", label: "Places" },
+  { id: "reservations", label: "Reservations" },
+];
 
 // /saved is now a top-level BottomNav surface again — the "byebye
 // coupons-as-entity" checkpoint promotes saving a place to a
@@ -86,6 +95,36 @@ function buildVenueCatalog(): Map<string, Venue> {
 }
 
 export default function SavedPage() {
+  const [tab, setTab] = useState<Tab>("places");
+  return (
+    <div className="flex h-full flex-col">
+      <div className="px-4 pt-4">
+        <div className="border-border bg-card grid grid-cols-2 gap-0 rounded-full border p-1">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "rounded-full px-1 py-1.5 text-center text-[12px] font-medium transition",
+                tab === t.id
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {tab === "places" ? <PlacesBody /> : <ReservationsBody />}
+      </div>
+    </div>
+  );
+}
+
+function PlacesBody() {
   const { savedIds, setSaved } = useSavedVenues();
   const catalog = useMemo(() => buildVenueCatalog(), []);
   const venues = useMemo<Venue[]>(() => {

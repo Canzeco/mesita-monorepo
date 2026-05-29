@@ -20,7 +20,6 @@ import {
   VerifySocialSheet,
   type SocialPlatform,
 } from "@/components/consumer/VerifySocialSheet";
-import { ShareBody } from "@/app/(shell)/share/page";
 import {
   CURRENT_USER,
   TIERS,
@@ -33,11 +32,10 @@ import { toast } from "@/lib/toast";
 // /share route stays alive (deep links). The Coupons tab was removed —
 // coupons are "hidden" (users save the place, redeem a QR at the venue),
 // so the wallet surface didn't earn its spot in the Profile.
-type Tab = "plan" | "settings" | "share";
+type Tab = "plan" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
-  { id: "share", label: "Share" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -91,7 +89,6 @@ export function ProfileClient() {
             <SettingsTab />
           </div>
         )}
-        {tab === "share" && <ShareBody />}
       </div>
 
       {verifyPlatform && (
