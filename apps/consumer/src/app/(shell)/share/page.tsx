@@ -321,76 +321,35 @@ function FriendsTab() {
 type PartnerGroup = {
   id: string;
   title: string;
-  blurb: string;
-  bullets: string[];
   icon: LucideIcon;
   iconBg: string;
-  url: string;
-  shareUrl: string;
-  shareTitle: string;
-  shareText: string;
-  cta: string;
-};
-
-const CREATOR_GROUP: PartnerGroup = {
-  id: "creators",
-  title: "Creators",
-  blurb: "Food, nightlife, travel & lifestyle creators.",
-  icon: Megaphone,
-  iconBg: "bg-pink-gradient text-white",
-  bullets: [
-    "Custom code · bigger welcome gift",
-    "Revenue share on your signups",
-    "Private tastings & openings",
-    "Equity path for long-term partners",
-  ],
-  url: "mesita.ai/creators",
-  shareUrl: "https://www.mesita.ai/creators",
-  shareTitle: "Mesita creator program",
-  shareText:
-    "Mesita partners with creators worldwide — custom codes, revenue share, and equity for long-term collabs.",
-  cta: "Apply as a creator",
+  body: string;
 };
 
 const OTHER_GROUPS: PartnerGroup[] = [
-  CREATOR_GROUP,
+  {
+    id: "influencers",
+    title: "Influencers",
+    icon: Megaphone,
+    iconBg: "bg-pink-gradient text-white",
+    body:
+      "Do you create content about travel, food, nightlife or lifestyle? 20% of Mesita's equity is reserved for creators — let's partner.",
+  },
   {
     id: "agencies",
     title: "Marketing agencies",
-    blurb: "Add Mesita to the stack you sell to restaurants & bars.",
     icon: Briefcase,
     iconBg: "bg-sky-500 text-white",
-    bullets: [
-      "Recurring revenue per venue you onboard",
-      "Cashback redemptions = attributable ROI",
-      "White-glove onboarding for your first 5 venues",
-      "Partner dashboard across every client",
-    ],
-    url: "mesita.ai/agencies",
-    shareUrl: "https://www.mesita.ai/agencies",
-    shareTitle: "Mesita partner program",
-    shareText:
-      "Mesita's partner program could fit your agency — recurring revenue + co-branded campaigns.",
-    cta: "Become a partner",
+    body:
+      "Do you manage marketing for restaurants or bars? Add Mesita to your stack.",
   },
   {
     id: "models",
-    title: "Modeling & talent agencies",
-    blurb: "Activate the talent you manage — they go Premium, you earn.",
+    title: "Model & talent agencies",
     icon: Star,
     iconBg: "bg-tier-premium text-white",
-    bullets: [
-      "Premium by default — your roster starts at the top",
-      "Boosted cashback at partner venues",
-      "Priority tables on Fri & Sat",
-      "Agency dashboard for bookings + earnings",
-    ],
-    url: "mesita.ai/models",
-    shareUrl: "https://www.mesita.ai/models",
-    shareTitle: "Mesita for talent agencies",
-    shareText:
-      "Get your talent roster Premium access + revenue share on Mesita.",
-    cta: "Activate your roster",
+    body:
+      "Our partner venues want your talent in the room. Make all your talent Mesita Premium, free — no tricks.",
   },
 ];
 
@@ -398,8 +357,7 @@ function OthersTab() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-[13px] leading-relaxed">
-        Partner programs Mesita runs alongside venues. Pick the one that fits —
-        each has its own onboarding.
+        Other ways to partner with Mesita.
       </p>
       {OTHER_GROUPS.map((g) => (
         <PartnerCard key={g.id} group={g} />
@@ -410,6 +368,9 @@ function OthersTab() {
 
 function PartnerCard({ group: g }: { group: PartnerGroup }) {
   const Icon = g.icon;
+  const mailto = `mailto:partners@mesita.ai?subject=${encodeURIComponent(
+    `Mesita — ${g.title}`,
+  )}`;
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
       <div className="flex items-center gap-3">
@@ -421,36 +382,20 @@ function PartnerCard({ group: g }: { group: PartnerGroup }) {
         >
           <Icon className="h-5 w-5" />
         </span>
-        <div className="min-w-0">
-          <h3 className="font-display text-[15px] leading-tight font-bold tracking-tight">
-            {g.title}
-          </h3>
-          <p className="text-muted-foreground mt-0.5 text-[11.5px] leading-snug">
-            {g.blurb}
-          </p>
-        </div>
+        <h3 className="font-display text-[15px] font-bold tracking-tight">
+          {g.title}
+        </h3>
       </div>
-      <ul className="mt-3 flex flex-col gap-1.5">
-        {g.bullets.map((b) => (
-          <li
-            key={b}
-            className="text-foreground/85 flex items-start gap-2 text-[12px]"
-          >
-            <Check
-              className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0"
-              strokeWidth={3}
-            />
-            <span className="leading-snug">{b}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4">
-        <PrimaryCta
-          variant="outline"
-          label={g.cta}
-          share={{ title: g.shareTitle, text: g.shareText, url: g.shareUrl }}
-        />
-      </div>
+      <p className="text-muted-foreground mt-3 text-[13px] leading-relaxed">
+        {g.body}
+      </p>
+      <a
+        href={mailto}
+        className="border-border bg-card text-foreground hover:bg-muted mt-4 flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-[13px] font-semibold transition"
+      >
+        Contact
+        <ChevronRight className="h-4 w-4" />
+      </a>
     </section>
   );
 }
