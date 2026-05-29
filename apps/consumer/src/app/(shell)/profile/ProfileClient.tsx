@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Check,
   Crown,
-  Sparkles,
   User as UserIcon,
   CreditCard,
   Bell,
@@ -110,131 +109,89 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // Three sections: where you stand (current plan), what the plans actually
-  // get you (Free vs Premium comparison), and — when you're not yet Premium —
-  // how to upgrade (the three doors).
-  const isPremium = CURRENT_USER.tier === "premium";
+  // A slim current-class banner, then a horizontal-scroll pair of plan
+  // cards (Free, then Premium) — each self-contained with its perks, and
+  // Premium also carrying the three ways to unlock it.
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
-      <PlanComparison />
-      {isPremium ? (
-        <PremiumActiveCard />
-      ) : (
-        <UnlockPremiumCard onConnectSocial={onConnectSocial} />
-      )}
+      <PlanCarousel onConnectSocial={onConnectSocial} />
     </div>
   );
 }
 
-// ─── Plan comparison ──────────────────────────────────────────────────────
+// ─── Plan carousel ────────────────────────────────────────────────────────
 
-// Free vs Premium at a glance. The whole point of the tab: make the value of
-// Premium obvious. Each row is one promise; the Premium column is tinted +
-// emphasized so the eye lands on what you gain.
-type CompareCell = { text: string };
-const COMPARE_ROWS: { label: string; free: CompareCell; premium: CompareCell }[] =
-  [
-    {
-      label: "Cashback & discounts",
-      free: { text: "Base" },
-      premium: { text: "Boosted" },
-    },
-    {
-      label: "Recommendations",
-      free: { text: "Standard" },
-      premium: { text: "Personalized" },
-    },
-    {
-      label: "Reservations / month",
-      free: { text: "2" },
-      premium: { text: "Unlimited" },
-    },
-  ];
-
-function PlanComparison() {
+// Two self-contained plan cards in a horizontal scroller: Free first, then
+// Premium. Each lists its perks; Premium also carries the three doors to
+// unlock it. The user's current plan is flagged.
+function PlanCarousel({
+  onConnectSocial,
+}: {
+  onConnectSocial: (platform: SocialPlatform) => void;
+}) {
   const current = CURRENT_USER.tier;
-  const premium = TIERS.find((t) => t.id === "premium")!;
   return (
-    <section className="border-border bg-card overflow-hidden rounded-2xl border">
-      <p className="text-foreground/70 px-4 pt-3.5 pb-3 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Compare plans
-      </p>
-
-      {/* Header row: plan names + price, current plan flagged. */}
-      <div className="grid grid-cols-[1.25fr_0.85fr_1fr] items-end gap-1 px-3">
-        <span />
-        <PlanHeader label="Free" price="$0" isCurrent={current === "free"} />
-        <PlanHeader
-          label="Premium"
-          price={`$${premium.priceMxn} MXN`}
-          accent
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
+          Plans
+        </p>
+        <p className="text-muted-foreground text-[10px]">Swipe to compare →</p>
+      </div>
+      <div className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1">
+        <FreePlanCard isCurrent={current === "free"} />
+        <PremiumPlanCard
           isCurrent={current === "premium"}
+          onConnectSocial={onConnectSocial}
         />
       </div>
-
-      {/* Feature rows. Premium column carries a soft tint band so it reads as
-          the highlighted choice. */}
-      <div className="mt-2">
-        {COMPARE_ROWS.map((row, i) => (
-          <div
-            key={row.label}
-            className={cn(
-              "grid grid-cols-[1.25fr_0.85fr_1fr] items-center gap-1 px-3 py-2.5",
-              i > 0 && "border-border/50 border-t",
-            )}
-          >
-            <span className="text-foreground/80 text-[12px] leading-tight font-medium">
-              {row.label}
-            </span>
-            <span className="flex justify-center">
-              <CompareValue cell={row.free} />
-            </span>
-            <span className="bg-tier-premium/[0.07] flex justify-center rounded-md py-1.5">
-              <CompareValue cell={row.premium} accent />
-            </span>
-          </div>
-        ))}
-      </div>
-    </section>
+    </div>
   );
 }
 
-function PlanHeader({
+function PlanCardHeader({
   label,
   price,
+  priceSuffix,
+  sub,
   accent,
   isCurrent,
 }: {
   label: string;
   price: string;
+  priceSuffix?: string;
+  sub?: string;
   accent?: boolean;
   isCurrent: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-0.5 rounded-t-xl px-1 py-2",
-        accent && "bg-tier-premium/[0.07]",
-      )}
-    >
-      <span className="inline-flex items-center gap-1">
-        {accent && <Crown className="text-premium h-3 w-3 fill-current" />}
-        <span
-          className={cn(
-            "font-display text-[13px] font-bold tracking-tight",
-            accent && "text-premium",
-          )}
-        >
-          {label}
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <span className="inline-flex items-center gap-1.5">
+          {accent && <Crown className="text-premium h-4 w-4 fill-current" />}
+          <span
+            className={cn(
+              "font-display text-xl font-bold tracking-tight",
+              accent && "text-premium",
+            )}
+          >
+            {label}
+          </span>
         </span>
-      </span>
-      <span className="text-muted-foreground text-[10px] font-medium">
-        {price}
-        {accent && <span className="opacity-70"> /mo</span>}
-      </span>
+        <p className="font-display text-foreground mt-1 text-lg leading-none font-bold tabular-nums">
+          {price}
+          {priceSuffix && (
+            <span className="text-muted-foreground text-[12px] font-medium">
+              {" "}
+              {priceSuffix}
+            </span>
+          )}
+        </p>
+        {sub && <p className="text-muted-foreground mt-1 text-[11px]">{sub}</p>}
+      </div>
       {isCurrent && (
-        <span className="bg-foreground text-background mt-0.5 rounded-full px-1.5 py-px text-[8px] font-bold tracking-wider uppercase">
+        <span className="bg-foreground text-background shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
           Current
         </span>
       )}
@@ -242,51 +199,64 @@ function PlanHeader({
   );
 }
 
-function CompareValue({ cell, accent }: { cell: CompareCell; accent?: boolean }) {
+function PerkList({ perks, accent }: { perks: string[]; accent?: boolean }) {
   return (
-    <span
-      className={cn(
-        "text-center text-[12px] font-semibold tabular-nums",
-        accent ? "text-premium" : "text-foreground/70",
-      )}
-    >
-      {cell.text}
-    </span>
+    <ul className="flex flex-col gap-2">
+      {perks.map((p) => (
+        <li key={p} className="flex items-start gap-2 text-[13px]">
+          <Check
+            className={cn(
+              "mt-0.5 h-4 w-4 shrink-0",
+              accent ? "text-premium" : "text-emerald-600",
+            )}
+            strokeWidth={3}
+          />
+          <span className="text-foreground/85 leading-snug">{p}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-// Shown to Premium members in place of the upgrade doors — there's nothing
-// left to sell, so confirm the perks instead.
-function PremiumActiveCard() {
+function FreePlanCard({ isCurrent }: { isCurrent: boolean }) {
+  const perks = [
+    "Base cashback & discounts",
+    "Standard recommendations",
+    "2 reservations / month",
+    "Hidden coupons, redeemed by QR at the venue",
+  ];
   return (
-    <section className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
-      <span className="bg-tier-premium flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white">
-        <Sparkles className="h-5 w-5" />
-      </span>
-      <div className="min-w-0 flex-1 leading-tight">
-        <p className="font-display text-[14px] font-semibold tracking-tight">
-          You&apos;re on Premium
-        </p>
-        <p className="text-muted-foreground text-[12px]">
-          Best rates, personalized picks, and unlimited reservations are on.
-        </p>
-      </div>
-    </section>
+    <article className="border-border bg-card flex w-[80%] shrink-0 snap-start flex-col gap-4 rounded-2xl border p-5">
+      <PlanCardHeader
+        label="Free"
+        price="$0"
+        sub="Every Mesita account starts here"
+        isCurrent={isCurrent}
+      />
+      <PerkList perks={perks} />
+      <p className="text-muted-foreground mt-auto text-[11px] leading-snug">
+        No upgrade needed — Free is yours by default.
+      </p>
+    </article>
   );
 }
 
-// The three doors into Premium. One row per door (Instagram / Subscribe /
-// Invitation), each showing its single requirement + a full-width CTA.
-// With two tiers there's exactly one target (Premium), so the old
-// multi-column tier ladder collapses to a clean requirement-per-door list.
-function UnlockPremiumCard({
+function PremiumPlanCard({
+  isCurrent,
   onConnectSocial,
 }: {
+  isCurrent: boolean;
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
+  const premium = TIERS.find((t) => t.id === "premium")!;
+  const perks = [
+    "Boosted cashback & discounts",
+    "Personalized recommendations",
+    "Unlimited reservations",
+    "Everything in Free",
+  ];
   const igConnected = CURRENT_USER.tierOrigin === "instagram";
   const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
-  const premium = TIERS.find((t) => t.id === "premium")!;
 
   const rows: ClimbRow[] = [
     {
@@ -337,16 +307,27 @@ function UnlockPremiumCard({
   ];
 
   return (
-    <section className="border-border bg-card overflow-hidden rounded-2xl border">
-      <p className="text-foreground/70 px-4 pt-3.5 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Ways to upgrade · 3 doors
-      </p>
-      <div className="divide-border/60 border-border/60 divide-y border-t">
-        {rows.map((row) => (
-          <ClimbTableRow key={row.key} row={row} />
-        ))}
+    <article className="border-tier-premium/40 bg-card flex w-[80%] shrink-0 snap-start flex-col gap-4 rounded-2xl border-2 p-5">
+      <PlanCardHeader
+        label="Premium"
+        price={`$${premium.priceMxn} MXN`}
+        priceSuffix="/ mo"
+        sub="or earned free via Instagram / invitation"
+        accent
+        isCurrent={isCurrent}
+      />
+      <PerkList perks={perks} accent />
+      <div>
+        <p className="text-foreground/70 mb-2 text-[10px] font-medium tracking-[0.14em] uppercase">
+          {isCurrent ? "How members get Premium" : "Three ways to unlock"}
+        </p>
+        <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-xl border">
+          {rows.map((row) => (
+            <ClimbTableRow key={row.key} row={row} />
+          ))}
+        </div>
       </div>
-    </section>
+    </article>
   );
 }
 
@@ -428,13 +409,11 @@ function ClimbTableRow({ row }: { row: ClimbRow }) {
 }
 
 function CurrentClassCard() {
-  // Top of the Class tab. The class IS the brand — "Mesita Premium" reads as
-  // a proper noun. Origin determines the subtitle: how Premium was earned
-  // (followers / subscription / invitation / default). Free guests get a
-  // path-to-Premium affordance; Premium guests have no rung left to sell.
+  // Slim current-class banner. The class IS the brand — "Mesita Premium"
+  // reads as a proper noun. Origin is the one-line subtitle (how it was
+  // earned). The plan cards below carry the perks + upgrade paths.
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier)!;
   const brand = `Mesita ${meta.label}`;
-  const isPremium = CURRENT_USER.tier === "premium";
   const origin = (() => {
     switch (CURRENT_USER.tierOrigin) {
       case "instagram":
@@ -452,59 +431,18 @@ function CurrentClassCard() {
   return (
     <section
       className={cn(
-        "rounded-2xl p-5 shadow-sm",
+        "rounded-2xl px-4 py-3.5 shadow-sm",
         tierBadgeClass(CURRENT_USER.tier),
       )}
     >
-      <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
+      <p className="text-[9px] font-semibold tracking-[0.18em] uppercase opacity-80">
         Your class
       </p>
-      <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">
+      <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
         {brand}
       </h2>
-      <p className="mt-1.5 text-[12px] opacity-90">{origin}</p>
-      {!isPremium && <PathToPremium />}
+      <p className="mt-0.5 text-[11px] leading-snug opacity-90">{origin}</p>
     </section>
-  );
-}
-
-function PathToPremium() {
-  // Free guests: show how close their Instagram following is to the Premium
-  // threshold, plus the alternative doors. The bar answers "how close am I?".
-  const premium = TIERS.find((t) => t.id === "premium")!;
-  const followers = CURRENT_USER.followers;
-  const pct =
-    premium.followerThreshold > 0
-      ? Math.min(100, (followers / premium.followerThreshold) * 100)
-      : 0;
-  const remaining = Math.max(0, premium.followerThreshold - followers);
-  return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between text-[10px] font-semibold tracking-wide opacity-85 uppercase">
-        <span>Mesita Free</span>
-        <span>Mesita Premium</span>
-      </div>
-      <div className="bg-current/15 mt-1.5 h-1.5 overflow-hidden rounded-full">
-        <div
-          className="bg-current/80 h-full rounded-full transition-[width] duration-500 ease-out"
-          style={{ width: `${pct}%` }}
-          aria-hidden
-        />
-      </div>
-      <p className="mt-2 text-[12px] opacity-90">
-        {remaining > 0 ? (
-          <>
-            <span className="font-semibold">
-              {formatFollowers(remaining)} more
-            </span>{" "}
-            Instagram followers — or subscribe for ${premium.priceMxn} MXN/mo —
-            to unlock Premium.
-          </>
-        ) : (
-          <>Post a story to claim Mesita Premium.</>
-        )}
-      </p>
-    </div>
   );
 }
 
