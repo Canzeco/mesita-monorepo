@@ -39,10 +39,12 @@ import {
 // NOTE: when the enrich agent starts CONSUMING these params, it must mirror
 // this same node catalog server-side (it resolves effective-enabled from the
 // tier ceiling per node). Until then this is the config surface.
-type AtlasStep = "link" | "contents" | "summary";
+type AtlasStep = "link" | "profile" | "posts" | "contents" | "summary";
 
 const STEP_LABEL: Record<AtlasStep, string> = {
   link: "Link",
+  profile: "Profile",
+  posts: "Posts",
   contents: "Contents",
   summary: "AI summary",
 };
@@ -84,45 +86,46 @@ const ATLAS_SOURCES: {
     label: "Instagram",
     steps: [
       { step: "link", tier: 2 },
-      { step: "contents", tier: 2 },
+      { step: "profile", tier: 2 },
+      { step: "posts", tier: 2 },
     ],
   },
   {
     key: "facebook",
     label: "Facebook",
     steps: [
-      { step: "link", tier: 4 },
-      { step: "contents", tier: 4 },
+      { step: "link", tier: 2 },
+      { step: "profile", tier: 2 },
     ],
   },
   {
     key: "serp",
     label: "SERP",
     steps: [
-      { step: "summary", tier: 3 },
-      { step: "contents", tier: 5 },
+      { step: "summary", tier: 2 },
+      { step: "contents", tier: 4 },
     ],
   },
   {
     key: "opentable",
     label: "OpenTable",
     steps: [
-      { step: "link", tier: 4 },
-      { step: "contents", tier: 5 },
+      { step: "link", tier: 3 },
+      { step: "contents", tier: 4 },
     ],
   },
   {
     key: "tripadvisor",
     label: "TripAdvisor",
     steps: [
-      { step: "link", tier: 4 },
-      { step: "contents", tier: 5 },
+      { step: "link", tier: 3 },
+      { step: "contents", tier: 4 },
     ],
   },
-  { key: "yelp", label: "Yelp", steps: [{ step: "link", tier: 4 }] },
-  { key: "ubereats", label: "UberEats", steps: [{ step: "link", tier: 4 }] },
-  { key: "tiktok", label: "TikTok", steps: [{ step: "link", tier: 4 }] },
-  { key: "youtube", label: "YouTube", steps: [{ step: "link", tier: 4 }] },
+  { key: "yelp", label: "Yelp", steps: [{ step: "link", tier: 3 }] },
+  { key: "ubereats", label: "UberEats", steps: [{ step: "link", tier: 3 }] },
+  { key: "tiktok", label: "TikTok", steps: [{ step: "link", tier: 3 }] },
+  { key: "youtube", label: "YouTube", steps: [{ step: "link", tier: 3 }] },
 ];
 
 function stepEnabled(
@@ -371,11 +374,13 @@ function SourcesSection({
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
         Set the tier ceiling — each source step
         (<span className="text-foreground font-medium">Link</span> resolves its
-        URL, <span className="text-foreground font-medium">Contents</span>{" "}
-        scrapes it, <span className="text-foreground font-medium">AI summary</span>{" "}
+        URL, <span className="text-foreground font-medium">Profile</span>/
+        <span className="text-foreground font-medium">Contents</span> read it,{" "}
+        <span className="text-foreground font-medium">Posts</span> pulls
+        posts/photos, <span className="text-foreground font-medium">AI summary</span>{" "}
         condenses it) runs when its tier is at or above the ceiling. The chips
         below just show what&apos;s on at the current ceiling — they aren&apos;t
-        edited directly. Google Business is the spine and always runs.
+        edited directly. Google Business &amp; Mesita are the spine and always run.
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
