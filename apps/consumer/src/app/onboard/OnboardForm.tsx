@@ -30,10 +30,17 @@ export function OnboardForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    if (!firstName.trim() || !lastName.trim() || !sex || !birthday) {
+    // Read from the DOM (FormData) as the source of truth, not just React
+    // state — browser autofill can populate the name inputs without firing
+    // onChange, which previously sent null names and bounced back to
+    // /onboard (full_name gate). DOM values win, with state as the fallback.
+    const fd = new FormData(e.currentTarget);
+    const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
+    const last = ((fd.get("last_name") as string | null) ?? lastName).trim();
+    if (!first || !last || !sex || !birthday) {
       setError("Please complete all required fields");
       return;
     }
@@ -46,8 +53,8 @@ export function OnboardForm() {
     void (async () => {
       try {
         await apiUpdateConsumerProfile(supabase, {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
+          first_name: first,
+          last_name: last,
           sex,
           birthday,
           country,
@@ -66,6 +73,7 @@ export function OnboardForm() {
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name">
           <input
+            name="first_name"
             className={INPUT_CLASS}
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
@@ -77,6 +85,7 @@ export function OnboardForm() {
         </Field>
         <Field label="Last name">
           <input
+            name="last_name"
             className={INPUT_CLASS}
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
