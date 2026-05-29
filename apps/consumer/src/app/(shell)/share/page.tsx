@@ -191,66 +191,50 @@ function FriendsTab() {
         friends to use it each get $100 on us.
       </p>
 
-      {/* ISO/IEC 7810 ID-1 ratio (≈1.586:1) — the physical credit-card
-          aspect. Constrains the box so it reads as an actual card no
-          matter how wide its container is. */}
-      <div className="border-border bg-card flex aspect-[1.586/1] w-full items-stretch gap-3 rounded-2xl border p-4">
-        <div className="flex w-[32%] flex-col items-center justify-between py-1">
-          <span className="text-3xl leading-none" aria-hidden>
+      {/* Gift voucher — a filled pink-gradient card. Bow + amount up top,
+          the shareable code in a frosted pill at the bottom with one-tap
+          copy. */}
+      <div className="bg-pink-gradient shadow-glow relative overflow-hidden rounded-2xl p-5 text-white">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-white/80 uppercase">
+              Mesita · Gift card
+            </p>
+            <p className="mt-1 text-[11px] text-white/85">To a friend, from you</p>
+          </div>
+          <span className="text-2xl leading-none" aria-hidden>
             🎀
           </span>
-          <p className="text-muted-foreground/80 text-[9px] leading-snug font-medium tracking-[0.18em] uppercase">
-            To a
-            <br />
-            friend
-            <br />
-            from <span className="text-foreground font-bold">you</span>
-          </p>
         </div>
-        <div
-          className="w-px shrink-0 self-stretch"
-          style={{
-            backgroundImage:
-              "linear-gradient(to bottom, var(--border) 50%, transparent 50%)",
-            backgroundSize: "1px 6px",
-            backgroundRepeat: "repeat-y",
-          }}
-          aria-hidden
-        />
-        <div className="flex flex-1 flex-col justify-between gap-1 text-right">
-          <p className="text-muted-foreground text-[9px] font-medium tracking-[0.18em] uppercase">
-            Mesita 🌲 · Gift card
-          </p>
-          <div>
-            <p className="font-display text-4xl leading-none font-semibold tracking-tight">
-              $100
+
+        <p className="font-display mt-6 text-5xl leading-none font-semibold tracking-tight">
+          $100
+          <span className="ml-1.5 align-middle text-base font-semibold tracking-[0.3em] text-white/80">
+            MXN
+          </span>
+        </p>
+
+        <div className="mt-6 flex items-center justify-between gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 backdrop-blur">
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold tracking-[0.2em] text-white/70 uppercase">
+              Code
             </p>
-            <p className="text-muted-foreground mt-1 text-[9px] font-medium tracking-[0.4em]">
-              MXN
+            <p className="mt-0.5 font-mono text-[15px] font-bold tracking-wide">
+              {giftCode}
             </p>
           </div>
-          <div className="flex items-end justify-end gap-2">
-            <div>
-              <p className="text-muted-foreground text-[9px] font-medium tracking-[0.18em] uppercase">
-                Code
-              </p>
-              <p className="mt-0.5 font-mono text-[13px] font-semibold">
-                {giftCode}
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label={copied ? "Copied" : "Copy code"}
-              onClick={onCopy}
-              className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-6 w-6 items-center justify-center rounded-md"
-            >
-              {copied ? (
-                <Check className="text-secondary h-3.5 w-3.5" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            aria-label={copied ? "Copied" : "Copy code"}
+            onClick={onCopy}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/20"
+          >
+            {copied ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </button>
         </div>
       </div>
 
