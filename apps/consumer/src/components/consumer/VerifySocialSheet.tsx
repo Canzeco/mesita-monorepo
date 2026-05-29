@@ -1,67 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Instagram, Linkedin } from "lucide-react";
+import { BadgeCheck, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Bottom-sheet flow for verifying a social account (Instagram or
-// LinkedIn). Extracted from ProfileClient so the 130-line component
-// doesn't have to live alongside the rest of the profile tabs — both
-// platforms share the same five-step UX so the divergence is just copy
-// + icon, captured in the `cfg` switch below.
+// Bottom-sheet flow for verifying Instagram — the social door into Mesita
+// Premium. 1,000+ followers (and a story per visit) unlocks Premium. Extracted
+// from ProfileClient so the profile tabs stay lean.
 
-export type SocialPlatform = "instagram" | "linkedin";
+export type SocialPlatform = "instagram";
 
 export function VerifySocialSheet({
-  platform,
+  platform: _platform,
   onClose,
 }: {
   platform: SocialPlatform;
   onClose: () => void;
 }) {
   const [code, setCode] = useState("");
-  const cfg =
-    platform === "instagram"
-      ? {
-          Icon: Instagram,
-          iconBg:
-            "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]",
-          title: "Verify Instagram",
-          handle: "@mesita.bot",
-          platformLabel: "Instagram",
-          dmInstruction: (
-            <>
-              DM <span className="text-secondary">@mesita.bot</span> with the
-              word <span className="text-secondary font-mono">VERIFY</span>.
-            </>
-          ),
-          followInstruction: (
-            <>
-              Follow <span className="text-secondary">@mesita.bot</span> on
-              Instagram.
-            </>
-          ),
-        }
-      : {
-          Icon: Linkedin,
-          iconBg: "bg-[#0A66C2]",
-          title: "Verify LinkedIn",
-          handle: "Mesita",
-          platformLabel: "LinkedIn",
-          dmInstruction: (
-            <>
-              Message <span className="text-secondary">Mesita</span> on
-              LinkedIn with the word{" "}
-              <span className="text-secondary font-mono">VERIFY</span>.
-            </>
-          ),
-          followInstruction: (
-            <>
-              Connect with <span className="text-secondary">Mesita</span> on
-              LinkedIn.
-            </>
-          ),
-        };
+  const cfg = {
+    Icon: Instagram,
+    iconBg:
+      "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]",
+    title: "Verify Instagram",
+    handle: "@mesita.bot",
+    platformLabel: "Instagram",
+    dmInstruction: (
+      <>
+        DM <span className="text-secondary">@mesita.bot</span> with the word{" "}
+        <span className="text-secondary font-mono">VERIFY</span>.
+      </>
+    ),
+    followInstruction: (
+      <>
+        Follow <span className="text-secondary">@mesita.bot</span> on Instagram.
+      </>
+    ),
+  };
   const { Icon } = cfg;
   return (
     <div className="absolute inset-0 z-50 flex items-end">
@@ -99,7 +74,7 @@ export function VerifySocialSheet({
               Mesita will reply with an 8-digit verification code. Paste it
               here.
             </>,
-            <>Your class is set instantly from your follower count.</>,
+            <>1,000+ followers unlocks Mesita Premium instantly.</>,
           ].map((line, i) => (
             <li
               key={i}

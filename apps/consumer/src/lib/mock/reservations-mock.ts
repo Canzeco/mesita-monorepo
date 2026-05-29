@@ -41,7 +41,7 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     linkedCoupon: {
       id: "cp-mar-verde",
       percent: 20,
-      tierLabel: "Mesita Gold",
+      tierLabel: "Mesita Premium",
       kind: "normal",
       state: "active",
     },
@@ -59,7 +59,7 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     linkedCoupon: {
       id: "cp-neon-bar",
       percent: 20,
-      tierLabel: "Mesita Gold",
+      tierLabel: "Mesita Premium",
       kind: "normal",
       state: "active",
     },
@@ -76,7 +76,7 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     linkedCoupon: {
       id: "cp-casa-luminar",
       percent: 10,
-      tierLabel: "Mesita Gold",
+      tierLabel: "Mesita Premium",
       kind: "normal",
       state: "active",
     },

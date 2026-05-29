@@ -97,8 +97,8 @@ function LandingPane() {
           />
           <ValueProp
             Icon={Sparkles}
-            title="Tier perks"
-            blurb="Bronze → Silver → Gold → Diamond unlock priority access, higher rates, invites."
+            title="Premium perks"
+            blurb="Go Premium for better rewards, smarter recommendations, and unlimited reservations."
           />
         </ul>
       </div>

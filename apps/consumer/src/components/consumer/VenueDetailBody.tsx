@@ -518,8 +518,6 @@ function ExternalCard({
 
 // TIER_AVATAR_BG and TIER_TEXT live in @/lib/tier-styles so the venue
 // page (Rewards box + ReviewCard) shares one source for these tokens.
-// Diamond text reads as blue here even though --tier-diamond stays
-// violet — see tier-styles.ts for the rationale.
 
 function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
   // Interleave Mesita visitors and Google reviews so featured cards from
@@ -718,17 +716,15 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// ── Coupon (welcome on top + 4-up tier grid) ────────────────────────────
+// ── Coupon (welcome on top + 2-up tier grid) ────────────────────────────
 
-// Tiers render as a non-scrollable 4-column grid: Bronze · Silver · Gold ·
-// Diamond ascend left-to-right like a ladder. Welcome lives outside this
-// constant and renders as the full-width hero card above the grid.
-const TIER_ORDER: Tier[] = ["bronze", "silver", "gold", "diamond"];
+// Tiers render as a non-scrollable 2-column grid: Free · Premium ascend
+// left-to-right like a ladder. Welcome lives outside this constant and
+// renders as the full-width hero card above the grid.
+const TIER_ORDER: Tier[] = ["free", "premium"];
 const TIER_RANK: Record<Tier, number> = {
-  bronze: 0,
-  silver: 1,
-  gold: 2,
-  diamond: 3,
+  free: 0,
+  premium: 1,
 };
 
 function RewardsBox({ venue }: { venue: VenueDetail }) {
@@ -771,7 +767,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
           First visit
         </p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {TIER_ORDER.map((tier) => {
             const rank = TIER_RANK[tier];
             const relation: "lower" | "current" | "higher" =
@@ -800,7 +796,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
           Returning visits
         </p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {TIER_ORDER.map((tier) => {
             const rank = TIER_RANK[tier];
             const relation: "lower" | "current" | "higher" =

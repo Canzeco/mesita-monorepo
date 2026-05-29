@@ -273,7 +273,7 @@ function FriendsTab() {
                     <span className="font-display absolute inset-0 flex items-center justify-center text-base font-bold text-white">
                       {f.initials}
                     </span>
-                    <span className="bg-tier-gold absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full text-black shadow-sm">
+                    <span className="bg-emerald-500 absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full text-white shadow-sm">
                       <Check className="h-2.5 w-2.5" strokeWidth={3} />
                     </span>
                   </div>
@@ -373,9 +373,9 @@ const OTHER_GROUPS: PartnerGroup[] = [
     id: "models",
     title: "Modeling & talent agencies",
     blurb:
-      "Activate the models you manage on Mesita — Diamond perks, boosted cashback, priority tables. Earn on every visit.",
+      "Activate the models you manage on Mesita — Premium perks, boosted cashback, priority tables. Earn on every visit.",
     bullets: [
-      "Diamond by default — your roster skips tiers",
+      "Premium by default — your roster starts at the top",
       "Boosted cashback at partner venues",
       "Priority tables on Fri & Sat",
       "Agency dashboard for bookings + earnings",
@@ -384,7 +384,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     shareUrl: "https://www.mesita.ai/models",
     shareTitle: "Mesita for talent agencies",
     shareText:
-      "Get your talent roster Diamond access + revenue share on Mesita.",
+      "Get your talent roster Premium access + revenue share on Mesita.",
     cta: "Activate your roster",
   },
 ];

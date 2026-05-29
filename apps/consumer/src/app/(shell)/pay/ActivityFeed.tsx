@@ -85,7 +85,7 @@ const MY_ACTIVITY: Activity[] = [
     id: "m4",
     kind: "upgraded",
     verb: "You upgraded to",
-    venue: "Mesita Gold",
+    venue: "Mesita Premium",
     when: "1 week ago",
   },
 ];
@@ -115,7 +115,7 @@ const LIVE_ACTIVITY: Activity[] = [
     kind: "upgraded",
     handle: "@sofia",
     verb: "just upgraded to",
-    venue: "Mesita Diamond",
+    venue: "Mesita Premium",
     when: "8 min ago",
   },
   {

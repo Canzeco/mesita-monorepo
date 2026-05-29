@@ -6,7 +6,7 @@
 // When wiring real data, write an adapter that maps the EF response →
 // VenueDetail; the view stays untouched.
 
-export type Tier = "bronze" | "silver" | "gold" | "diamond";
+export type Tier = "free" | "premium";
 
 export type VenueDetail = {
   // Stable identifier — matches public.venues.id once the real fetch lands.
@@ -104,24 +104,20 @@ export type VenueDetail = {
     reward_value: number;
   };
 
-  // 8. Reward by class — eight per-tier promo rates (Welcome × tier on
+  // 8. Reward by class — four per-tier promo rates (Welcome × tier on
   // first visit, default × tier afterwards) + the current guest's tier
   // + whether this is their first visit at this venue. Active reward is
   // `is_first_visit ? promo_matrix.welcome[tier] : promo_matrix.default[tier]`.
-  // Mirrors mesita-supabase migration 0027 / public.venues columns. Each
+  // Mirrors mesita-supabase migration 0032 / public.venues columns. Each
   // rate is one of 10 / 20 / 50 / 70 or null (= no promo at that tier).
   promo_matrix: {
     welcome: {
-      bronze: number | null;
-      silver: number | null;
-      gold: number | null;
-      diamond: number | null;
+      free: number | null;
+      premium: number | null;
     };
     default: {
-      bronze: number | null;
-      silver: number | null;
-      gold: number | null;
-      diamond: number | null;
+      free: number | null;
+      premium: number | null;
     };
     current_tier: Tier;
     is_first_visit: boolean;
@@ -293,7 +289,7 @@ export const mockVenue: VenueDetail = {
     {
       name: "Valentina R.",
       handle: "@valenrose",
-      tier: "gold",
+      tier: "premium",
       community: "Tec",
       followers: 126000,
       quote:
@@ -309,7 +305,7 @@ export const mockVenue: VenueDetail = {
     {
       name: "Lucas M.",
       handle: "@lucasm",
-      tier: "gold",
+      tier: "premium",
       community: "Stanford",
       followers: 78400,
       quote:
@@ -325,7 +321,7 @@ export const mockVenue: VenueDetail = {
     {
       name: "Renata G.",
       handle: "@renatagomez",
-      tier: "silver",
+      tier: "free",
       community: "Ibero",
       followers: 42100,
       quote:
@@ -338,7 +334,7 @@ export const mockVenue: VenueDetail = {
     {
       name: "Andrés P.",
       handle: "@andrespv",
-      tier: "diamond",
+      tier: "premium",
       community: "Harvard",
       followers: 214000,
       quote:
@@ -379,18 +375,14 @@ export const mockVenue: VenueDetail = {
 
   promo_matrix: {
     welcome: {
-      bronze: 50,
-      silver: 50,
-      gold: 70,
-      diamond: 70,
+      free: 50,
+      premium: 70,
     },
     default: {
-      bronze: 10,
-      silver: 10,
-      gold: 20,
-      diamond: 50,
+      free: 10,
+      premium: 50,
     },
-    current_tier: "gold",
+    current_tier: "premium",
     is_first_visit: false,
   },
   reward_cap_mxn: 500,

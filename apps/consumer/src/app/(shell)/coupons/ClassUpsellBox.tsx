@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Sparkles,
   Instagram,
-  Linkedin,
   CreditCard,
   Mail,
 } from "lucide-react";
@@ -17,16 +16,11 @@ import {
 } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
-// Promo strip at the top of /coupons. Single paragraph folds the
-// class names, the coupon discount range, and the lifestyle perks
-// (exclusive venues, priority booking, table gifts) into one
-// connected pitch — the prior two-section split read as redundant
-// because all three lived under the same "why care" umbrella.
+// Promo strip at the top of /coupons. Folds the two memberships, the coupon
+// reward range, and the lifestyle perks into one connected pitch, then lists
+// the three doors into Premium as the concrete actions.
 //
-// Four ways to climb listed after as the concrete actions. CTA is
-// class-agnostic ("Upgrade your class") so the copy holds at any rung.
-//
-// Diamond holders see a maxed-out variant.
+// Premium holders see a maxed-out variant.
 
 export function ClassUpsellBox() {
   const current = CURRENT_USER.tier;
@@ -38,13 +32,13 @@ export function ClassUpsellBox() {
 
   if (isMaxedOut) {
     return (
-      <div className="bg-tier-diamond shadow-glow flex items-center gap-3 rounded-2xl p-4 text-white">
+      <div className="bg-tier-premium shadow-glow flex items-center gap-3 rounded-2xl p-4 text-white">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
           <Crown className="h-4 w-4 fill-current" />
         </div>
         <div className="flex-1 leading-tight">
           <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
-            Mesita Diamond
+            Mesita Premium
           </p>
           <p className="font-display mt-0.5 text-base font-semibold">
             Top class. Partners give you their best rates.
@@ -64,56 +58,44 @@ export function ClassUpsellBox() {
         strokeWidth={2}
       />
 
-      {/* Header row — crown badge + title, side by side. The body text
-          and everything below flow at full width so the column under
-          the crown isn't an empty rail. */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
           <Crown className="h-5 w-5 fill-current" />
         </div>
         <h3 className="font-display min-w-0 flex-1 text-xl leading-[1.1] font-semibold tracking-tight">
-          Higher class, higher cashback.
+          Go Premium, get the best rates.
         </h3>
       </div>
 
-      {/* Body — full-width paragraph. Single weight, no bold/italic
-          accents — copy stands on its own. */}
       <p className="mt-3 text-[13px] leading-snug text-white/90">
-        Mesita has four classes: Bronze, Silver, Gold, and Diamond. The
-        higher your class, the more our partners want you in the room.
-        Some compete with cashbacks up to 70%. Upgrade your class.
+        Mesita has two memberships: Free and Premium. Premium unlocks better
+        cashback and discounts, better recommendations, and unlimited
+        reservations — some partners compete with cashbacks up to 70%.
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
-        Four ways to climb
+        Three ways to unlock Premium
       </p>
 
-      {/* 2×2 grid of glassy method tiles. Each tile is read-only here
-          — tapping anywhere on the promo navigates to /profile (the
-          parent Link), where the actual Connect / Subscribe / Request
-          actions live. Keeps the promo as a single tap target while
-          still showing the four paths visually. */}
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      {/* Method tiles. Read-only here — tapping anywhere on the promo
+          navigates to /profile, where the actual Connect / Subscribe /
+          Request actions live. */}
+      <div className="mt-2 grid grid-cols-3 gap-2">
         {[
           {
             icon: Instagram,
             label: "Instagram",
-            tagline: "Post a story each visit.",
-          },
-          {
-            icon: Linkedin,
-            label: "LinkedIn",
-            tagline: "Verify role and reach.",
+            tagline: "1K+ followers + story.",
           },
           {
             icon: CreditCard,
-            label: "Subscription",
-            tagline: "Pay monthly to jump.",
+            label: "Subscribe",
+            tagline: "$200 MXN / mo.",
           },
           {
             icon: Mail,
             label: "Invitation",
-            tagline: "For models and local elites",
+            tagline: "Models & local faces.",
           },
         ].map((m) => (
           <div
@@ -124,7 +106,7 @@ export function ClassUpsellBox() {
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/20">
                 <m.icon className="h-3.5 w-3.5 text-white" strokeWidth={2} />
               </span>
-              <span className="text-[12px] font-semibold text-white">
+              <span className="text-[11px] font-semibold text-white">
                 {m.label}
               </span>
             </div>
@@ -135,8 +117,7 @@ export function ClassUpsellBox() {
         ))}
       </div>
 
-      {/* Tier ladder dots — visualizes the four classes + where the user
-          currently sits. */}
+      {/* Membership ladder dots — Free · Premium + where the user sits. */}
       <div className="mt-5 flex items-center gap-1.5">
         {TIER_ORDER.map((tier) => {
           const reached = TIER_ORDER.indexOf(tier) <= currentIdx;
@@ -157,7 +138,7 @@ export function ClassUpsellBox() {
           You&apos;re {currentLabel}
         </span>
         <span className="inline-flex items-center gap-1 text-sm font-semibold transition group-hover:gap-2">
-          Upgrade your class
+          Go Premium
           <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
         </span>
       </div>

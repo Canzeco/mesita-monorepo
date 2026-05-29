@@ -179,12 +179,63 @@ export type Database = {
           },
         ]
       }
+      consumer_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          consumer_id: string
+          created_at: string
+          currency: string
+          current_period_end: string | null
+          id: string
+          price_cents: number | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          consumer_id: string
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          price_cents?: number | null
+          status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          consumer_id?: string
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          price_cents?: number | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_subscriptions_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consumers: {
         Row: {
           avatar_url: string | null
           birthday: string | null
           cashback_balance_cents: number
           code: string | null
+          consumer_instagram_followers_count: number | null
           country: string | null
           created_at: string
           first_name: string | null
@@ -193,12 +244,17 @@ export type Database = {
           last_name: string | null
           phone: string | null
           sex: string | null
+          tier_expires_at: string | null
+          tier_granted_at: string | null
+          tier_key: string
+          tier_origin: string
         }
         Insert: {
           avatar_url?: string | null
           birthday?: string | null
           cashback_balance_cents?: number
           code?: string | null
+          consumer_instagram_followers_count?: number | null
           country?: string | null
           created_at?: string
           first_name?: string | null
@@ -207,12 +263,17 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           sex?: string | null
+          tier_expires_at?: string | null
+          tier_granted_at?: string | null
+          tier_key?: string
+          tier_origin?: string
         }
         Update: {
           avatar_url?: string | null
           birthday?: string | null
           cashback_balance_cents?: number
           code?: string | null
+          consumer_instagram_followers_count?: number | null
           country?: string | null
           created_at?: string
           first_name?: string | null
@@ -221,8 +282,247 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           sex?: string | null
+          tier_expires_at?: string | null
+          tier_granted_at?: string | null
+          tier_key?: string
+          tier_origin?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumers_tier_key_fkey"
+            columns: ["tier_key"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          cancelled_at: string | null
+          cap_cents: number
+          consumer_id: string
+          created_at: string
+          currency: string
+          expires_at: string | null
+          free_rate: number | null
+          id: string
+          issued_at: string
+          premium_rate: number | null
+          redeemed_at: string | null
+          saved_venue_id: string | null
+          status: Database["public"]["Enums"]["coupon_status"]
+          updated_at: string
+          venue_id: string
+          welcome_free_rate: number | null
+          welcome_premium_rate: number | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cap_cents?: number
+          consumer_id: string
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          free_rate?: number | null
+          id?: string
+          issued_at?: string
+          premium_rate?: number | null
+          redeemed_at?: string | null
+          saved_venue_id?: string | null
+          status?: Database["public"]["Enums"]["coupon_status"]
+          updated_at?: string
+          venue_id: string
+          welcome_free_rate?: number | null
+          welcome_premium_rate?: number | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          cap_cents?: number
+          consumer_id?: string
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          free_rate?: number | null
+          id?: string
+          issued_at?: string
+          premium_rate?: number | null
+          redeemed_at?: string | null
+          saved_venue_id?: string | null
+          status?: Database["public"]["Enums"]["coupon_status"]
+          updated_at?: string
+          venue_id?: string
+          welcome_free_rate?: number | null
+          welcome_premium_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupons_saved_venue_id_fkey"
+            columns: ["saved_venue_id"]
+            isOneToOne: false
+            referencedRelation: "saved_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupons_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_tiers: {
+        Row: {
+          created_at: string
+          currency: string
+          follower_threshold: number | null
+          key: string
+          label: string
+          monthly_reservation_limit: number | null
+          price_cents: number
+          rank: number
+          recommendation_weight: number
+          stripe_price_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          follower_threshold?: number | null
+          key: string
+          label: string
+          monthly_reservation_limit?: number | null
+          price_cents?: number
+          rank: number
+          recommendation_weight?: number
+          stripe_price_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          follower_threshold?: number | null
+          key?: string
+          label?: string
+          monthly_reservation_limit?: number | null
+          price_cents?: number
+          rank?: number
+          recommendation_weight?: number
+          stripe_price_id?: string | null
         }
         Relationships: []
+      }
+      reservations: {
+        Row: {
+          cancelled_at: string | null
+          completed_at: string | null
+          confirmed_at: string | null
+          consumer_id: string
+          coupon_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          party_size: number
+          reserved_at: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          consumer_id: string
+          coupon_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          party_size: number
+          reserved_at: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          consumer_id?: string
+          coupon_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          party_size?: number
+          reserved_at?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_venues: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          id: string
+          venue_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          id?: string
+          venue_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_venues_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_venues_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_invites: {
         Row: {
@@ -270,6 +570,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stripe_events: {
+        Row: {
+          event_id: string
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          processed_at?: string
+        }
+        Update: {
+          event_id?: string
+          processed_at?: string
+        }
+        Relationships: []
       }
       super_admins: {
         Row: {
@@ -562,7 +877,6 @@ export type Database = {
       venues: {
         Row: {
           address: string | null
-          bronze_rate: number | null
           cashback_percent: number | null
           category: string | null
           closes_at: string | null
@@ -570,14 +884,13 @@ export type Database = {
           created_at: string
           currency: string
           description: string | null
-          diamond_rate: number | null
           didi_food_url: string | null
           email: string | null
           embedding: string | null
           embedding_source_hash: string | null
           facebook_url: string | null
           fiscal_type: Database["public"]["Enums"]["venue_fiscal_type"]
-          gold_rate: number | null
+          free_rate: number | null
           google_business_url: string | null
           google_maps_url: string | null
           google_place_id: string | null
@@ -606,13 +919,13 @@ export type Database = {
           photos: string[]
           pitch: string | null
           plan: Database["public"]["Enums"]["venue_plan"]
+          premium_rate: number | null
           price_level: number | null
           rappi_url: string | null
           reddit_url: string | null
           resy_url: string | null
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
-          silver_rate: number | null
           slug: string
           status: Database["public"]["Enums"]["venue_status"]
           story: string | null
@@ -625,10 +938,8 @@ export type Database = {
           updated_at: string
           vibe: string | null
           website_url: string | null
-          welcome_bronze_rate: number | null
-          welcome_diamond_rate: number | null
-          welcome_gold_rate: number | null
-          welcome_silver_rate: number | null
+          welcome_free_rate: number | null
+          welcome_premium_rate: number | null
           whatsapp_pr_urls: string[]
           whatsapp_url: string | null
           x_url: string | null
@@ -636,7 +947,6 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          bronze_rate?: number | null
           cashback_percent?: number | null
           category?: string | null
           closes_at?: string | null
@@ -644,14 +954,13 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
-          diamond_rate?: number | null
           didi_food_url?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
           facebook_url?: string | null
           fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"]
-          gold_rate?: number | null
+          free_rate?: number | null
           google_business_url?: string | null
           google_maps_url?: string | null
           google_place_id?: string | null
@@ -680,13 +989,13 @@ export type Database = {
           photos?: string[]
           pitch?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          premium_rate?: number | null
           price_level?: number | null
           rappi_url?: string | null
           reddit_url?: string | null
           resy_url?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
-          silver_rate?: number | null
           slug: string
           status?: Database["public"]["Enums"]["venue_status"]
           story?: string | null
@@ -699,10 +1008,8 @@ export type Database = {
           updated_at?: string
           vibe?: string | null
           website_url?: string | null
-          welcome_bronze_rate?: number | null
-          welcome_diamond_rate?: number | null
-          welcome_gold_rate?: number | null
-          welcome_silver_rate?: number | null
+          welcome_free_rate?: number | null
+          welcome_premium_rate?: number | null
           whatsapp_pr_urls?: string[]
           whatsapp_url?: string | null
           x_url?: string | null
@@ -710,7 +1017,6 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          bronze_rate?: number | null
           cashback_percent?: number | null
           category?: string | null
           closes_at?: string | null
@@ -718,14 +1024,13 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
-          diamond_rate?: number | null
           didi_food_url?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
           facebook_url?: string | null
           fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"]
-          gold_rate?: number | null
+          free_rate?: number | null
           google_business_url?: string | null
           google_maps_url?: string | null
           google_place_id?: string | null
@@ -754,13 +1059,13 @@ export type Database = {
           photos?: string[]
           pitch?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          premium_rate?: number | null
           price_level?: number | null
           rappi_url?: string | null
           reddit_url?: string | null
           resy_url?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
-          silver_rate?: number | null
           slug?: string
           status?: Database["public"]["Enums"]["venue_status"]
           story?: string | null
@@ -773,10 +1078,8 @@ export type Database = {
           updated_at?: string
           vibe?: string | null
           website_url?: string | null
-          welcome_bronze_rate?: number | null
-          welcome_diamond_rate?: number | null
-          welcome_gold_rate?: number | null
-          welcome_silver_rate?: number | null
+          welcome_free_rate?: number | null
+          welcome_premium_rate?: number | null
           whatsapp_pr_urls?: string[]
           whatsapp_url?: string | null
           x_url?: string | null
@@ -796,6 +1099,7 @@ export type Database = {
     }
     Enums: {
       cashback_kind: "earn" | "redeem" | "expire" | "adjust"
+      coupon_status: "active" | "redeemed" | "expired" | "cancelled"
       listing_type: "partner" | "web" | "unclaimed"
       member_role: "owner" | "editor" | "staff" | "viewer"
       reservation_status:
@@ -979,6 +1283,7 @@ export const Constants = {
   public: {
     Enums: {
       cashback_kind: ["earn", "redeem", "expire", "adjust"],
+      coupon_status: ["active", "redeemed", "expired", "cancelled"],
       listing_type: ["partner", "web", "unclaimed"],
       member_role: ["owner", "editor", "staff", "viewer"],
       reservation_status: [

@@ -1,64 +1,33 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, Check, Sparkles } from "lucide-react";
+import { notFound, useParams } from "next/navigation";
+import { ArrowLeft, Check, Instagram, Mail, Sparkles } from "lucide-react";
 import { TIERS } from "@/lib/consumer-data";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
+import { toast } from "@/lib/toast";
 
-// Placeholder subscribe-confirmation page. The class IS the brand here —
-// "Mesita Silver" / "Mesita Gold" / "Mesita Diamond". Wires up later to
-// Stripe Checkout once recurring consumer products exist. For now this page
-// stops at the "Continue to checkout" CTA and explains what the consumer is
-// signing up for.
+// Premium subscribe page — the paid "door" into Mesita Premium ($200 MXN/mo).
+// The other two doors (Instagram, invitation) are surfaced here too so the
+// page reads as "here's how to get Premium", with Subscribe as the primary
+// action wired to real Stripe Checkout. The legacy four-tier subscribe routes
+// collapsed to this single page; the [tier] segment is kept so existing
+// /subscribe/premium links resolve, but only "premium" is valid.
 
-export const dynamic = "force-dynamic";
+const PERKS = [
+  "Better cashback & discounts at every Verified Partner.",
+  "Better, more rewarding recommendations across discovery.",
+  "Unlimited reservations every month.",
+];
 
-const PAID_TIERS = ["silver", "gold", "diamond"] as const;
-type PaidTier = (typeof PAID_TIERS)[number];
+export default function SubscribePage() {
+  const params = useParams<{ tier: string }>();
+  if (params?.tier !== "premium") notFound();
 
-const COPY: Record<
-  PaidTier,
-  {
-    tagline: string;
-    perks: string[];
-  }
-> = {
-  silver: {
-    tagline: "More cashback at every Verified Partner.",
-    perks: [
-      "Elevated cashback rate at all Formal partners.",
-      "Elevated discount at all Informal partners.",
-      "Insider perks at participating venues.",
-    ],
-  },
-  gold: {
-    tagline: "Premium rates and priority across discovery.",
-    perks: [
-      "Premium cashback / discount rate at every partner.",
-      "Priority placement in your own swipe and AI suggestions.",
-      "Early access to new partners in your city.",
-    ],
-  },
-  diamond: {
-    tagline: "VIP treatment, private events, top rates.",
-    perks: [
-      "Top cashback / discount rate at every partner.",
-      "Invitations to private partner events.",
-      "Concierge appeal channel for special requests.",
-    ],
-  },
-};
-
-export default async function SubscribePage({
-  params,
-}: {
-  params: Promise<{ tier: string }>;
-}) {
-  const { tier } = await params;
-  if (!PAID_TIERS.includes(tier as PaidTier)) notFound();
-  const paid = tier as PaidTier;
-  const meta = TIERS.find((t) => t.id === paid);
-  if (!meta) notFound();
-  const copy = COPY[paid];
-  const brand = `Mesita ${meta.label}`;
+  const premium = TIERS.find((t) => t.id === "premium");
+  if (!premium) notFound();
 
   return (
     <div className="bg-background flex flex-1 flex-col overflow-y-auto">
@@ -72,35 +41,29 @@ export default async function SubscribePage({
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-base font-semibold tracking-tight">
-            Subscribe to {brand}
+            Mesita Premium
           </h1>
           <p className="text-muted-foreground text-[11px]">
-            ${meta.priceUsd.toLocaleString()} USD / month · cancel anytime
+            ${premium.priceMxn.toLocaleString()} MXN / month · cancel anytime
           </p>
         </div>
       </header>
 
       <div className="flex flex-col gap-5 px-5 py-5">
-        <section
-          className={
-            paid === "silver"
-              ? "bg-tier-silver rounded-2xl p-5 text-zinc-900 shadow-sm"
-              : paid === "gold"
-                ? "bg-tier-gold rounded-2xl p-5 text-black shadow-sm"
-                : "bg-tier-diamond shadow-elev rounded-2xl p-5 text-white"
-          }
-        >
+        <section className="bg-tier-premium shadow-elev rounded-2xl p-5 text-white">
           <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
             Mesita Class
           </p>
           <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">
-            {brand}
+            Mesita Premium
           </h2>
-          <p className="mt-1 text-sm opacity-90">{copy.tagline}</p>
+          <p className="mt-1 text-sm opacity-90">
+            Better rewards, better recommendations, unlimited reservations.
+          </p>
           <p className="font-display mt-4 text-4xl font-bold tabular-nums">
-            ${meta.priceUsd.toLocaleString()}
+            ${premium.priceMxn.toLocaleString()}
             <span className="ml-1 text-base font-semibold opacity-80">
-              USD / mo
+              MXN / mo
             </span>
           </p>
         </section>
@@ -110,7 +73,7 @@ export default async function SubscribePage({
             What you get
           </h3>
           <ul className="mt-3 flex flex-col gap-2.5">
-            {copy.perks.map((p) => (
+            {PERKS.map((p) => (
               <li key={p} className="flex items-start gap-2.5 text-sm">
                 <span className="bg-secondary/15 text-secondary mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
                   <Check className="h-3 w-3" />
@@ -121,27 +84,86 @@ export default async function SubscribePage({
           </ul>
         </section>
 
+        <section className="border-border bg-card rounded-2xl border p-5">
+          <h3 className="font-display text-base font-semibold tracking-tight">
+            Three ways in
+          </h3>
+          <ul className="mt-3 flex flex-col gap-3 text-sm">
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white">
+                <Instagram className="h-3.5 w-3.5" />
+              </span>
+              <span>
+                <span className="font-semibold">Instagram</span> — 1,000+
+                followers and post a story. Premium, free.
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="bg-amber-500 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white">
+                <Mail className="h-3.5 w-3.5" />
+              </span>
+              <span>
+                <span className="font-semibold">Invitation</span> — for locals,
+                creators, and talent picked by Mesita.
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="bg-pink-gradient mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white">
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>
+              <span>
+                <span className="font-semibold">Subscribe</span> — ${premium.priceMxn}{" "}
+                MXN / mo, below. Cancel anytime.
+              </span>
+            </li>
+          </ul>
+        </section>
+
         <section className="border-border bg-muted/30 text-muted-foreground rounded-2xl border border-dashed p-4 text-[12px] leading-relaxed">
           <p>
-            Granted upfront — you become {brand} the moment payment clears, no
-            spend accumulation needed. Cancel anytime; your class stays through
-            the end of the current billing period.
+            You become Mesita Premium the moment payment clears — no spend
+            accumulation needed. Cancel anytime; Premium stays through the end
+            of the current billing period.
           </p>
         </section>
 
-        <button
-          type="button"
-          disabled
-          className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white disabled:opacity-70"
-        >
-          <Sparkles className="h-4 w-4" />
-          Continue to checkout (coming soon)
-        </button>
-        <p className="text-muted-foreground text-center text-[11px]">
-          Stripe Checkout for consumer subscriptions ships next. The page UI is
-          live so the rest of the app can link here.
-        </p>
+        <PremiumCheckoutButton />
       </div>
     </div>
+  );
+}
+
+function PremiumCheckoutButton() {
+  const supabase = useBrowserSupabase();
+  const [loading, setLoading] = useState(false);
+
+  async function startCheckout() {
+    setLoading(true);
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      const { checkout_url } = await apiCreateSubscriptionCheckout(supabase, {
+        successUrl: `${origin}/profile?subscription=success`,
+        cancelUrl: `${origin}/subscribe/premium?subscription=cancelled`,
+      });
+      window.location.href = checkout_url;
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't start checkout",
+      );
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={startCheckout}
+      disabled={loading}
+      className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white disabled:opacity-70"
+    >
+      <Sparkles className="h-4 w-4" />
+      {loading ? "Starting checkout…" : "Continue to checkout"}
+    </button>
   );
 }

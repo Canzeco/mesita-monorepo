@@ -23,10 +23,8 @@ import { TIER_AVATAR_BG, TIER_TEXT } from "@/lib/tier-styles";
 const LONG_QUOTE_THRESHOLD = 220;
 
 const TIER_LABEL: Record<Tier, string> = {
-  bronze: "BRONZE",
-  silver: "SILVER",
-  gold: "GOLD",
-  diamond: "DIAMOND",
+  free: "FREE",
+  premium: "PREMIUM",
 };
 
 type MesitaPayload = {

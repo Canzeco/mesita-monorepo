@@ -5,7 +5,6 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   Instagram,
-  Linkedin,
   ChevronRight,
   Check,
   User as UserIcon,
@@ -26,7 +25,6 @@ import { ShareBody } from "@/app/(shell)/share/page";
 import {
   CURRENT_USER,
   TIERS,
-  TIER_ORDER,
   tierBadgeClass,
 } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
@@ -120,41 +118,30 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // Two-card stack. Status (current tier + next-tier progress) and
-  // action (how to climb) — everything else (perks pitch, four-tier
-  // ladder) was reference content that bloated the tab without
-  // changing what a user can do on it. The /coupons promo carries
-  // the "why climb" pitch when it's needed.
+  // Two-card stack. Status (current tier + path to Premium) and action
+  // (the three doors into Premium). The /coupons promo carries the
+  // "why go Premium" pitch when it's needed.
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
-      <FourWaysToClimb onConnectSocial={onConnectSocial} />
+      <UnlockPremiumCard onConnectSocial={onConnectSocial} />
     </div>
   );
 }
 
-// Table layout for the four upgrade paths. One row per method, with
-// Silver / Gold / Diamond columns showing the threshold/price/audience
-// for that path. CTA pill at the end of each row. Earlier shape was a
-// 2×2 grid of cards — each card carried its own three-row ladder, which
-// made the same Silver/Gold/Diamond labels repeat four times. Folding
-// the ladder into shared column headers eats less vertical space and
-// makes the cross-method comparison ("$50 a month or 5K followers?")
-// readable at a glance.
-function FourWaysToClimb({
+// The three doors into Premium. One row per door (Instagram / Subscribe /
+// Invitation), each showing its single requirement + a full-width CTA.
+// With two tiers there's exactly one target (Premium), so the old
+// multi-column tier ladder collapses to a clean requirement-per-door list.
+function UnlockPremiumCard({
   onConnectSocial,
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
-  const nextTier =
-    currentIdx < TIER_ORDER.length - 1 ? TIER_ORDER[currentIdx + 1] : null;
+  const isPremium = CURRENT_USER.tier === "premium";
   const igConnected = CURRENT_USER.tierOrigin === "instagram";
   const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
-
-  const followerValues = TIERS.filter((t) => t.id !== "bronze").map((t) =>
-    formatFollowers(t.followerThreshold),
-  );
+  const premium = TIERS.find((t) => t.id === "premium")!;
 
   const rows: ClimbRow[] = [
     {
@@ -163,45 +150,32 @@ function FourWaysToClimb({
       iconBg:
         "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]",
       label: "Instagram",
-      values: followerValues,
+      requirement: `${formatFollowers(premium.followerThreshold)}+ followers · post a story`,
       state: igConnected ? "connected" : "default",
       cta: igConnected ? "Connected" : "Connect",
       onClick: () => onConnectSocial("instagram"),
-    },
-    {
-      key: "linkedin",
-      icon: Linkedin,
-      iconBg: "bg-[#0A66C2]",
-      label: "LinkedIn",
-      values: followerValues,
-      state: "default",
-      cta: "Connect",
-      onClick: () => onConnectSocial("linkedin"),
     },
     {
       key: "subscription",
       icon: CreditCard,
       iconBg: "bg-pink-gradient",
       label: "Subscribe",
-      values: TIERS.filter((t) => t.id !== "bronze").map(
-        (t) => `$${t.priceUsd}`,
-      ),
-      valueSuffix: "/mo",
+      requirement: `$${premium.priceMxn} MXN / mo · cancel anytime`,
       state: isSubscribed ? "active" : "default",
       cta: isSubscribed ? "Active" : "Subscribe",
-      href: nextTier ? `/subscribe/${nextTier}` : undefined,
+      href: "/subscribe/premium",
     },
     {
       key: "invitation",
       icon: Mail,
       iconBg: "bg-amber-500",
       label: "Invitation",
-      values: ["Locals", "Creators", "VIPs"],
+      requirement: "Locals · creators · talent, invited by Mesita",
       state: "default",
       cta: "Request",
       onClick: () =>
         toast.action(
-          "Appeal form lands soon — meanwhile email class@mesita.ai with your case",
+          "Invitations are hand-picked — meanwhile email class@mesita.ai with your case",
           {
             label: "Copy email",
             onClick: () => {
@@ -219,38 +193,9 @@ function FourWaysToClimb({
 
   return (
     <section className="border-border bg-card overflow-hidden rounded-2xl border">
-      <p className="text-foreground/70 px-4 pt-3.5 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Four ways to climb
+      <p className="text-foreground/70 px-4 pt-3.5 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
+        {isPremium ? "You're Premium" : "Three ways to unlock Premium"}
       </p>
-
-      {/* Tier column header — three labels aligned with the value cells
-          in each row below. Uses the tier badge color as a tiny dot so
-          the header reads as the rung map. The CTA moved out of the
-          row (and out of this header) — it lives below each item now,
-          full-width, so the data columns get room to breathe. */}
-      <div className="grid grid-cols-[auto_repeat(3,minmax(0,1fr))] items-center gap-2 px-3 pt-2 pb-1.5">
-        <span aria-hidden className="h-7 w-7" />
-        {(["silver", "gold", "diamond"] as const).map((tier) => (
-          <span
-            key={tier}
-            className="text-muted-foreground inline-flex items-center justify-center gap-1 text-[9px] font-bold tracking-[0.14em] uppercase"
-          >
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                tierBadgeClass(tier),
-              )}
-              aria-hidden
-            />
-            {tier === "silver"
-              ? "Silver"
-              : tier === "gold"
-                ? "Gold"
-                : "Diamond"}
-          </span>
-        ))}
-      </div>
-
       <div className="divide-border/60 border-border/60 divide-y border-t">
         {rows.map((row) => (
           <ClimbTableRow key={row.key} row={row} />
@@ -265,9 +210,8 @@ type ClimbRow = {
   icon: LucideIcon;
   iconBg: string;
   label: string;
-  values: string[];
-  /** Optional suffix appended to each value (e.g. "/mo"). */
-  valueSuffix?: string;
+  /** Single requirement line for this door into Premium. */
+  requirement: string;
   state: "default" | "connected" | "active";
   cta: string;
   href?: string;
@@ -288,40 +232,27 @@ function ClimbTableRow({ row }: { row: ClimbRow }) {
     row.cta
   );
   const Icon = row.icon;
-  // Each item is a two-row block:
-  //   1. Data row — icon + label + 3 tier values, aligned with the
-  //      column header above.
-  //   2. CTA row — full-width pill so the tap target is generous and
-  //      the data columns aren't squeezed by a 5th column.
+  // Two-row block: a label row (icon + door name + its requirement) and a
+  // full-width CTA pill so the tap target is generous.
   const body = (
     <div className="hover:bg-muted/30 flex flex-col gap-2.5 px-3 py-3 transition">
-      <div className="grid grid-cols-[auto_repeat(3,minmax(0,1fr))] items-center gap-2">
-        <span className="flex items-center gap-2">
-          <span
-            className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white",
-              row.iconBg,
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </span>
-          <span className="font-display text-[13px] font-semibold tracking-tight whitespace-nowrap">
+      <div className="flex items-center gap-2.5">
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white",
+            row.iconBg,
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="font-display block text-[13px] font-semibold tracking-tight">
             {row.label}
           </span>
-        </span>
-        {row.values.map((v, i) => (
-          <span
-            key={i}
-            className="text-foreground text-center text-[11px] font-semibold tabular-nums"
-          >
-            {v}
-            {row.valueSuffix && (
-              <span className="text-muted-foreground ml-0.5 font-normal">
-                {row.valueSuffix}
-              </span>
-            )}
+          <span className="text-muted-foreground block text-[11px]">
+            {row.requirement}
           </span>
-        ))}
+        </span>
       </div>
       <span
         className={cn(
@@ -352,24 +283,13 @@ function ClimbTableRow({ row }: { row: ClimbRow }) {
 }
 
 function CurrentClassCard() {
-  // Top of the Class tab. The class IS the brand — "Mesita Gold" reads as a
-  // proper noun, not "a Gold member". Origin determines the subtitle: who
-  // earned the tier and how (followers / subscription / appeal / default).
-  //
-  // Below the brand line we render a "next tier" affordance:
-  //   - Instagram: a progress bar from current → next threshold with the
-  //     concrete delta ("12.7K more followers to climb"). The bar gives a
-  //     dummy an immediate visual answer to "how close am I?".
-  //   - Subscription: a single line pointing at the next price tier.
-  //   - Default/appeal: a single line suggesting a path.
-  // Hidden entirely at Diamond — no more rungs to sell.
+  // Top of the Class tab. The class IS the brand — "Mesita Premium" reads as
+  // a proper noun. Origin determines the subtitle: how Premium was earned
+  // (followers / subscription / invitation / default). Free guests get a
+  // path-to-Premium affordance; Premium guests have no rung left to sell.
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier)!;
   const brand = `Mesita ${meta.label}`;
-  const currentIdx = TIER_ORDER.indexOf(CURRENT_USER.tier);
-  const nextTier =
-    currentIdx < TIER_ORDER.length - 1
-      ? TIERS.find((t) => t.id === TIER_ORDER[currentIdx + 1])!
-      : null;
+  const isPremium = CURRENT_USER.tier === "premium";
   const origin = (() => {
     switch (CURRENT_USER.tierOrigin) {
       case "instagram":
@@ -378,10 +298,10 @@ function CurrentClassCard() {
         return CURRENT_USER.tierRenewsAt
           ? `Subscribed · renews ${CURRENT_USER.tierRenewsAt}`
           : "Subscribed · renews monthly";
-      case "appeal":
-        return "Granted by Mesita on appeal";
+      case "invitation":
+        return "Invited by Mesita";
       default:
-        return "Default tier — anyone with a Mesita account starts here";
+        return "Free — anyone with a Mesita account starts here";
     }
   })();
   return (
@@ -398,65 +318,48 @@ function CurrentClassCard() {
         {brand}
       </h2>
       <p className="mt-1.5 text-[12px] opacity-90">{origin}</p>
-      {nextTier && <NextTierProgress current={meta} next={nextTier} />}
+      {!isPremium && <PathToPremium />}
     </section>
   );
 }
 
-function NextTierProgress({
-  current,
-  next,
-}: {
-  current: (typeof TIERS)[number];
-  next: (typeof TIERS)[number];
-}) {
-  const isInstagram = CURRENT_USER.tierOrigin === "instagram";
-  const isSubscription = CURRENT_USER.tierOrigin === "subscription";
-
-  if (isInstagram) {
-    const followers = CURRENT_USER.followers;
-    const span = next.followerThreshold - current.followerThreshold;
-    const within = Math.max(0, followers - current.followerThreshold);
-    const pct = span > 0 ? Math.min(100, (within / span) * 100) : 0;
-    const remaining = Math.max(0, next.followerThreshold - followers);
-    return (
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-[10px] font-semibold tracking-wide opacity-85 uppercase">
-          <span>Mesita {current.label}</span>
-          <span>Mesita {next.label}</span>
-        </div>
-        <div className="bg-current/15 mt-1.5 h-1.5 overflow-hidden rounded-full">
-          <div
-            className="bg-current/80 h-full rounded-full transition-[width] duration-500 ease-out"
-            style={{ width: `${pct}%` }}
-            aria-hidden
-          />
-        </div>
-        <p className="mt-2 text-[12px] opacity-90">
-          <span className="font-semibold">
-            {formatFollowers(remaining)} more
-          </span>{" "}
-          Instagram followers to climb.
-        </p>
-      </div>
-    );
-  }
-
-  if (isSubscription) {
-    return (
-      <p className="mt-3 text-[12px] opacity-90">
-        <span className="font-semibold">Upgrade to Mesita {next.label}</span> ·
-        ${next.priceUsd} / mo
-      </p>
-    );
-  }
-
-  // Default tier (Bronze) or appeal that landed below Diamond.
+function PathToPremium() {
+  // Free guests: show how close their Instagram following is to the Premium
+  // threshold, plus the alternative doors. The bar answers "how close am I?".
+  const premium = TIERS.find((t) => t.id === "premium")!;
+  const followers = CURRENT_USER.followers;
+  const pct =
+    premium.followerThreshold > 0
+      ? Math.min(100, (followers / premium.followerThreshold) * 100)
+      : 0;
+  const remaining = Math.max(0, premium.followerThreshold - followers);
   return (
-    <p className="mt-3 text-[12px] opacity-90">
-      <span className="font-semibold">Next: Mesita {next.label}</span> · connect
-      Instagram or subscribe to climb.
-    </p>
+    <div className="mt-4">
+      <div className="flex items-center justify-between text-[10px] font-semibold tracking-wide opacity-85 uppercase">
+        <span>Mesita Free</span>
+        <span>Mesita Premium</span>
+      </div>
+      <div className="bg-current/15 mt-1.5 h-1.5 overflow-hidden rounded-full">
+        <div
+          className="bg-current/80 h-full rounded-full transition-[width] duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+          aria-hidden
+        />
+      </div>
+      <p className="mt-2 text-[12px] opacity-90">
+        {remaining > 0 ? (
+          <>
+            <span className="font-semibold">
+              {formatFollowers(remaining)} more
+            </span>{" "}
+            Instagram followers — or subscribe for ${premium.priceMxn} MXN/mo —
+            to unlock Premium.
+          </>
+        ) : (
+          <>Post a story to claim Mesita Premium.</>
+        )}
+      </p>
+    </div>
   );
 }
 

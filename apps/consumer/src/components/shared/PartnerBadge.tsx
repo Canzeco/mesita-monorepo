@@ -24,7 +24,7 @@ export function PartnerBadge({
   const isPartner = listingType === "partner";
   const Icon = isPartner ? Sparkles : Globe;
   const tone = isPartner
-    ? "bg-tier-gold/95 text-black"
+    ? "bg-amber-400/95 text-black"
     : "bg-card/95 text-foreground border border-border";
   return (
     <span
