@@ -25,11 +25,16 @@ export function BusinessOnboardForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    const first = firstName.trim();
-    const last = lastName.trim();
+    // Read from the DOM (FormData) as the source of truth, not just React
+    // state — browser autofill can populate the inputs without firing
+    // onChange, which previously sent an empty body and got "Nothing to
+    // update". DOM values win, with state as the fallback.
+    const fd = new FormData(e.currentTarget);
+    const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
+    const last = ((fd.get("last_name") as string | null) ?? lastName).trim();
     if (!first || !last) {
       setError("Tell us your first + last name so we know who's onboarding.");
       return;
@@ -55,6 +60,7 @@ export function BusinessOnboardForm() {
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name" required>
           <input
+            name="first_name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             maxLength={60}
@@ -66,6 +72,7 @@ export function BusinessOnboardForm() {
         </Field>
         <Field label="Last name" required>
           <input
+            name="last_name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             maxLength={60}
