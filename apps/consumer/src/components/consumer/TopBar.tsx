@@ -21,10 +21,8 @@ import { DiscoverHeader } from "./DiscoverHeader";
 //   /saved         SimpleHeader title="My Saved Places"
 //   /pay           SimpleHeader title="Pay & Post"
 //   /reservations  SimpleHeader title="My Reservations"
-//   /coupons       SimpleHeader title="My Coupons" (still reachable
-//                  directly; primary entry is Profile > Coupons tab)
-//   /share         SimpleHeader title="Share Mesita" (same — Profile
-//                  > Share is the primary entry)
+//   /share         SimpleHeader title="Share Mesita" (Profile > Share is
+//                  the primary entry)
 //   /profile       SimpleHeader title=<first name + last name>
 //   everything     null — Subscribe / Venue pages ship their own
 //     else         back-arrow chrome and opt out by not matching.
@@ -37,9 +35,6 @@ export function TopBar({ userName }: { userName?: string | null }) {
   }
   if (pathname.startsWith("/reservations")) {
     return <SimpleHeader title="My Reservations" />;
-  }
-  if (pathname.startsWith("/coupons")) {
-    return <SimpleHeader title="My Coupons" />;
   }
   if (pathname.startsWith("/pay")) {
     return <SimpleHeader title="Pay & Post" />;

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 // Mesita class. Premium shows a crown (the status signal); Free shows its
 // initial. Same affordance lands on /discover (rendered by DiscoverHeader
 // inline) and on every other top-level surface (through SimpleHeader). Tap
-// routes to /coupons so the user sees their class context next to the wallet.
+// routes to the Profile Class tab where the membership context lives.
 
 export function ClassChip({ size = "md" }: { size?: "sm" | "md" }) {
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier);
@@ -17,8 +17,8 @@ export function ClassChip({ size = "md" }: { size?: "sm" | "md" }) {
   const initial = (meta?.label ?? CURRENT_USER.tier).charAt(0).toUpperCase();
   return (
     <Link
-      href="/coupons"
-      aria-label={`Coupons · Mesita ${meta?.label ?? "class"}`}
+      href="/profile"
+      aria-label={`Your class · Mesita ${meta?.label ?? "class"}`}
       className={cn(
         "font-display flex shrink-0 items-center justify-center rounded-2xl font-bold transition hover:opacity-90",
         size === "sm" ? "h-9 w-9 text-sm" : "h-10 w-10 text-base",
