@@ -2,14 +2,11 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
-import { MyQrCard } from "@/components/consumer/MyQrCard";
-import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
-import { ActivityFeed } from "./ActivityFeed";
+import { PayClient } from "./PayClient";
 
-// /pay — the scan-at-the-bill surface. Single page: the consumer's QR
-// code on top, the cashback balance card below. Split out of /coupons
-// when the BottomNav grew to six tabs and the wallet's two jobs
-// ("browse my deals" vs "scan me at the bill") earned their own homes.
+// /pay — two tabs: QR (your code + cashback balance) and Activity (your
+// rewards log). The server component fetches the profile and hands it to the
+// client tab shell.
 //
 // Top header (SimpleHeader title="Pay") is owned by the shell layout
 // via TopBar — see src/components/consumer/TopBar.tsx.
@@ -39,16 +36,9 @@ export default async function PayPage() {
   }
 
   return (
-    <div className="relative flex h-full flex-col">
-      <div className="scrollbar-hide flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-4 px-4 pt-2 pb-6">
-          <MyQrCard code={profile.code} />
-          <CashbackBalanceCard
-            cashbackBalanceCents={profile.cashback_balance_cents}
-          />
-          <ActivityFeed />
-        </div>
-      </div>
-    </div>
+    <PayClient
+      code={profile.code ?? ""}
+      cashbackBalanceCents={profile.cashback_balance_cents}
+    />
   );
 }

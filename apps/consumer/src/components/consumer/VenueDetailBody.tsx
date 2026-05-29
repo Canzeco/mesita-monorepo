@@ -712,15 +712,13 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   const requiresStory = venue.requires_story === true;
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
-      {/* Hero — names the active reward, mechanic, and cap up front. */}
-      <div className="bg-pink-gradient shadow-glow rounded-xl p-3 text-white">
-        <p className="text-[10px] font-bold tracking-wider text-white/90 uppercase">
-          Your reward
-        </p>
-        <p className="font-display mt-1 text-3xl font-semibold leading-none">
+      {/* Hero — the active reward, mechanic, and cap. The box header already
+          says "Reward", so no redundant "Your reward" eyebrow here. */}
+      <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
+        <p className="font-display text-3xl font-semibold leading-none">
           {activeValue == null ? "—" : `${activeValue}% ${mechanicWord}`}
         </p>
-        <p className="mt-1 text-xs leading-snug text-white/90">{subtitle}</p>
+        <p className="mt-1.5 text-xs leading-snug text-white/90">{subtitle}</p>
       </div>
 
       {/* One matrix instead of two ladders — First / Returning rows ×
