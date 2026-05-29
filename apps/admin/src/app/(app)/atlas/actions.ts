@@ -23,7 +23,6 @@ type SettingsResponse = {
   atlasReviewsPerSite: number;
   atlasImageVisionEnabled: boolean;
   atlasMaxImagesAnalyzed: number;
-  atlasPerSourceAiSummary: boolean;
   atlasSynthesisQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
@@ -75,7 +74,6 @@ type AtlasConfigResponse = {
   atlasReviewsPerSite: number;
   atlasImageVisionEnabled: boolean;
   atlasMaxImagesAnalyzed: number;
-  atlasPerSourceAiSummary: boolean;
   atlasSynthesisQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
@@ -99,7 +97,6 @@ export async function updateAtlasConfig(patch: {
   reviewsPerSite?: number;
   imageVisionEnabled?: boolean;
   maxImagesAnalyzed?: number;
-  perSourceAiSummary?: boolean;
   synthesisQuality?: SynthesisQuality;
   perRunCostCapUsd?: number;
 }): Promise<UpdateAtlasConfigResult> {

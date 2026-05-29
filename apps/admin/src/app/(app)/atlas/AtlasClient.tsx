@@ -148,7 +148,6 @@ export function AtlasClient(props: {
   initialReviewsPerSite: number;
   initialImageVisionEnabled: boolean;
   initialMaxImagesAnalyzed: number;
-  initialPerSourceAiSummary: boolean;
   initialSynthesisQuality: SynthesisQuality;
   initialPerRunCostCapUsd: number;
   initialUpdatedAt: string | null;
@@ -203,7 +202,6 @@ export function AtlasClient(props: {
         <AnalysisSection
           initialImageVisionEnabled={props.initialImageVisionEnabled}
           initialMaxImagesAnalyzed={props.initialMaxImagesAnalyzed}
-          initialPerSourceAiSummary={props.initialPerSourceAiSummary}
           initialSynthesisQuality={props.initialSynthesisQuality}
           initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
           onSaved={setUpdatedAt}
@@ -561,20 +559,17 @@ const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[
 function AnalysisSection({
   initialImageVisionEnabled,
   initialMaxImagesAnalyzed,
-  initialPerSourceAiSummary,
   initialSynthesisQuality,
   initialPerRunCostCapUsd,
   onSaved,
 }: {
   initialImageVisionEnabled: boolean;
   initialMaxImagesAnalyzed: number;
-  initialPerSourceAiSummary: boolean;
   initialSynthesisQuality: SynthesisQuality;
   initialPerRunCostCapUsd: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [vision, setVision] = useState(initialImageVisionEnabled);
-  const [perSource, setPerSource] = useState(initialPerSourceAiSummary);
   const [maxImages, setMaxImages] = useState(initialMaxImagesAnalyzed);
   const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
   const [costCap, setCostCap] = useState(initialPerRunCostCapUsd);
@@ -593,18 +588,14 @@ function AnalysisSection({
     quality !== saved.quality ||
     costCap !== saved.costCap;
 
-  const flip = (
-    key: "imageVisionEnabled" | "perSourceAiSummary",
-    cur: boolean,
-    setLocal: (v: boolean) => void,
-  ) => {
+  const flipVision = () => {
     setError(null);
-    const next = !cur;
-    setLocal(next);
+    const next = !vision;
+    setVision(next);
     startToggle(async () => {
-      const r = await updateAtlasConfig({ [key]: next });
+      const r = await updateAtlasConfig({ imageVisionEnabled: next });
       if (!r.ok) {
-        setLocal(!next);
+        setVision(!next);
         setError(r.error);
         return;
       }
@@ -645,7 +636,7 @@ function AnalysisSection({
         </h2>
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
+      <div className="mt-5">
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Eye className="text-muted-foreground h-4 w-4" />
@@ -655,20 +646,8 @@ function AnalysisSection({
           <Switch
             on={vision}
             pending={togglePending}
-            onClick={() => flip("imageVisionEnabled", vision, setVision)}
+            onClick={flipVision}
             label="Toggle image vision"
-          />
-        </div>
-        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="text-muted-foreground h-4 w-4" />
-            Per-source AI summary
-          </span>
-          <Switch
-            on={perSource}
-            pending={togglePending}
-            onClick={() => flip("perSourceAiSummary", perSource, setPerSource)}
-            label="Toggle per-source AI summary"
           />
         </div>
       </div>
