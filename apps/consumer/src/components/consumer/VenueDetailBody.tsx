@@ -52,14 +52,13 @@ import { useSavedVenues } from "@/lib/saved-venues";
 import { tierProperLabel } from "@/lib/consumer-data";
 import { toast } from "@/lib/toast";
 
-// Section nav order for the venue detail page. Reward sits at the END
-// of the page now (the user reads About → Reviews → Menus → Time →
-// Location → Contact → Details first; the per-tier reward is the
-// landing-pad CTA once they've made up their mind, not the lead). The
-// section id stays as "rewards" so existing anchors and analytics
+// Section nav order for the venue detail page. Reward sits right after
+// Overview — it's the reason to act, so it leads rather than hiding at the
+// bottom. The section id stays "rewards" so existing anchors and analytics
 // events keep matching — only the visible label is "Reward".
 const NAV_SECTIONS = [
   { id: "overview", label: "Overview" },
+  { id: "rewards", label: "Reward" },
   { id: "about", label: "About" },
   { id: "reviews", label: "Reviews" },
   { id: "menu", label: "Menus" },
@@ -67,7 +66,6 @@ const NAV_SECTIONS = [
   { id: "location", label: "Location" },
   { id: "contact", label: "Contact" },
   { id: "details", label: "Details" },
-  { id: "rewards", label: "Reward" },
 ] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
@@ -87,6 +85,9 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <VenueSectionNav sections={[...NAV_SECTIONS]} />
       <SectionAnchor id="overview">
         <SummaryHeader venue={venue} />
+      </SectionAnchor>
+      <SectionAnchor id="rewards">
+        <RewardsBox venue={venue} />
       </SectionAnchor>
       <SectionAnchor id="about">
         <AboutBox text={venue.long_description} />
@@ -109,9 +110,6 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       </SectionAnchor>
       <SectionAnchor id="details">
         <DetailsBox venue={venue} />
-      </SectionAnchor>
-      <SectionAnchor id="rewards">
-        <RewardsBox venue={venue} />
       </SectionAnchor>
     </div>
   );
