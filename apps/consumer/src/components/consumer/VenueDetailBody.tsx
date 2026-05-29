@@ -505,6 +505,7 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
       items.push({ kind: "google", data: venue.google_reviews[i] });
     }
   }
+  if (items.length === 0) return null;
 
   return (
     <Box title="Relevant reviews" icon={MessageCircle} iconColor="text-pink-400">
@@ -524,6 +525,7 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
 // ── Menus ───────────────────────────────────────────────────────────────
 
 function MenuBox({ venue }: { venue: VenueDetail }) {
+  if (venue.menus.length === 0) return null;
   return (
     <Box title="Menus" icon={Utensils} iconColor="text-amber-400">
       <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
@@ -650,10 +652,12 @@ function HoursBox({ venue }: { venue: VenueDetail }) {
       </div>
       <BoxHScroll>
         <HoursTableCard venue={venue} />
-        <PopularTimesCard
-          popularTimes={venue.popular_times}
-          initialDay={venue.popular_times_featured}
-        />
+        {venue.popular_times.length > 0 && (
+          <PopularTimesCard
+            popularTimes={venue.popular_times}
+            initialDay={venue.popular_times_featured}
+          />
+        )}
       </BoxHScroll>
     </Box>
   );

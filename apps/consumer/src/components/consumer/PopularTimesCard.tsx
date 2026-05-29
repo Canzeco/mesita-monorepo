@@ -22,6 +22,10 @@ export function PopularTimesCard({
     popularTimes.find((d) => d.day.toUpperCase() === selectedDay) ??
     popularTimes[0];
 
+  // Enriched venues may have no popular-times data — render nothing rather
+  // than dereferencing an undefined "featured".
+  if (!featured) return null;
+
   return (
     <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
       <div>
