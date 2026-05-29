@@ -59,7 +59,7 @@ export function ShareBody() {
         </div>
       </div>
 
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-hidden px-4 pt-3 pb-4">
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-6">
         {tab === "friends" && <FriendsTab />}
         {tab === "restaurants" && <RestaurantsTab />}
         {tab === "others" && <OthersTab />}
@@ -201,7 +201,7 @@ function FriendsTab() {
   ];
   const slots = 5;
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-[13px] leading-snug">
         You&apos;ve got {slots} $50 MXN gift cards. Share your code; the first
         friends to use it each get $50 on us.
@@ -300,7 +300,7 @@ function FriendsTab() {
         </div>
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-1">
         <PrimaryCta
           label="Send a gift to a friend"
           share={{
