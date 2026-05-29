@@ -65,6 +65,7 @@ const ATLAS_SOURCES: {
   {
     key: "mesita",
     label: "Mesita",
+    locked: true,
     steps: [
       { step: "link", tier: 1 },
       { step: "contents", tier: 1 },
