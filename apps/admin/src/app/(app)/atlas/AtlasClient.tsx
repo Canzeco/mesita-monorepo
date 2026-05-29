@@ -392,7 +392,7 @@ function SourcesSection({
         <label className="text-sm font-medium">Tier ceiling</label>
         <div className="flex items-center gap-1.5">
           <Layers className="text-muted-foreground h-4 w-4" />
-          {[1, 2, 3, 4, 5].map((t) => (
+          {[1, 2, 3, 4].map((t) => (
             <button
               key={t}
               type="button"
