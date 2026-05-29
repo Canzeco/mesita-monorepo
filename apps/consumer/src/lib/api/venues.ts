@@ -11,6 +11,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
+import { venueRowToDetail } from "@/lib/adapters/venue-to-detail";
+import type { VenueDetail } from "@/lib/mock/venue";
 
 type VenueListingType = "partner" | "web";
 type VenueStatus = "lead" | "active" | "paused" | "archived";
@@ -147,6 +149,26 @@ export async function apiFetchPublicVenues(
     { limit },
   );
   return venues.map(stripInsecurePhotos);
+}
+
+// Fetch one fully-enriched venue (by uuid or slug) and adapt it into the
+// rich VenueDetail shape the detail modal renders. Returns null on 404 so
+// callers can fall back gracefully instead of throwing.
+export async function apiFetchVenueDetail(
+  client: SupabaseClient,
+  idOrSlug: string,
+): Promise<VenueDetail | null> {
+  try {
+    const { venue } = await invokeEF<{ venue: Record<string, unknown> }>(
+      client,
+      "consumer-get-venue",
+      { id: idOrSlug },
+      "Venue not found",
+    );
+    return venue ? venueRowToDetail(venue) : null;
+  } catch {
+    return null;
+  }
 }
 export async function apiRecommendDeck(
   client: SupabaseClient,
