@@ -170,7 +170,10 @@ export function AtlasClient(props: {
       )}
 
       {/* ═══ Pipeline & snapshots ══════════════════════════════════ */}
-      <StageGroup label="Pipeline & snapshots">
+      <StageGroup
+        label="Pipeline & snapshots"
+        desc="Caching behaviour — makes re-runs cheap. Atlas reads past research before fetching, saves each run, and keeps a profile backup. Nothing here changes WHAT is gathered, only how much we reuse."
+      >
         <div className="flex flex-col gap-6">
           <SnapshotToggles
             initialPreReadEnabled={props.initialPreReadEnabled}
@@ -183,7 +186,10 @@ export function AtlasClient(props: {
       </StageGroup>
 
       {/* ═══ Data sources ══════════════════════════════════════════ */}
-      <StageGroup label="Data sources">
+      <StageGroup
+        label="Data sources"
+        desc="Which sources run, and how much non-image data to pull. The tier ceiling gates each source step (Link → resolve URL, Profile/Contents → read it). Google Business & Mesita are the spine and always run. Reviews come from Google only, via Apify (all of them — no limit)."
+      >
         <div className="flex flex-col gap-6">
           <SourcesSection
             initialTierCeiling={props.initialSourceTierCeiling}
@@ -197,7 +203,10 @@ export function AtlasClient(props: {
       </StageGroup>
 
       {/* ═══ Pre-selection (save) ══════════════════════════════════ */}
-      <StageGroup label="Pre-selection — images saved per source">
+      <StageGroup
+        label="Pre-selection — images saved per source"
+        desc="Stage 1 of the image funnel: how many images we pull & SAVE to the venue per source. This is the candidate set stored on the venue — NOT how many get AI-analyzed (that's Vision Params). Cheap; no AI here."
+      >
         <PreSelectionSection
           initialSaveGoogleImages={props.initialSaveGoogleImages}
           initialSaveWebsiteImages={props.initialSaveWebsiteImages}
@@ -208,7 +217,10 @@ export function AtlasClient(props: {
       </StageGroup>
 
       {/* ═══ Vision Params (analyze) ═══════════════════════════════ */}
-      <StageGroup label="Vision Params">
+      <StageGroup
+        label="Vision Params"
+        desc="Stage 2: AI over the saved images. Two models run in sequence — a VISION model describes each image (the analysis prompt; one call per image, the expensive part), then a TEXT model ranks them best→worst from those descriptions (the sorting prompt; no images re-sent, so it's cheap). The caps bound how many saved images get the vision pass per source — usually fewer than saved."
+      >
         <VisionParamsSection
           initialImageVisionEnabled={props.initialImageVisionEnabled}
           initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
@@ -221,7 +233,10 @@ export function AtlasClient(props: {
       </StageGroup>
 
       {/* ═══ Analysis and Cost ═════════════════════════════════════ */}
-      <StageGroup label="Analysis and Cost">
+      <StageGroup
+        label="Analysis and Cost"
+        desc="Stage 3: the final synthesis model (reads everything gathered → the canonical venue profile; OpenAI, not Perplexity, so it doesn't re-search the web and drift), plus a hard per-venue spend ceiling."
+      >
         <SynthCostSection
           initialSynthesisQuality={props.initialSynthesisQuality}
           initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
@@ -947,16 +962,23 @@ function BackupSection() {
 
 function StageGroup({
   label,
+  desc,
   children,
 }: {
   label: string;
+  desc?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-[0.14em] uppercase">
+      <h3 className="text-muted-foreground mb-1 text-xs font-semibold tracking-[0.14em] uppercase">
         {label}
       </h3>
+      {desc && (
+        <p className="text-muted-foreground/80 mb-4 max-w-3xl text-xs leading-relaxed">
+          {desc}
+        </p>
+      )}
       {children}
     </div>
   );

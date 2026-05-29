@@ -64,12 +64,19 @@ function Header() {
       <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
         Mesita Atlas
       </h1>
-      <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-        Venue profile research and enrichment operations. Atlas runs only
-        when Core asks for a venue profile (on create / update). Before
-        any external API call, it reads prior snapshots in Storage and
-        only fetches what&apos;s missing. Every run is saved permanently
-        so future updates get progressively cheaper.
+      <p className="text-muted-foreground mt-3 max-w-3xl text-sm leading-relaxed">
+        Venue profile research &amp; enrichment. Atlas runs when a venue is
+        created or updated. Before any external call it reads prior snapshots
+        and only fetches the gaps, and every run is saved — so each refresh
+        gets cheaper.
+      </p>
+      <p className="text-muted-foreground/80 mt-3 max-w-3xl text-sm leading-relaxed">
+        <span className="text-foreground font-medium">The pipeline, in order:</span>{" "}
+        ① pick the sources to run (by tier) → ② pull their data (Google is the
+        spine; reviews via Apify) → ③ pre-select &amp; save the best images per
+        source → ④ vision-analyze and rank those images → ⑤ synthesize
+        everything into the canonical profile. Each section below tunes one of
+        those steps.
       </p>
     </>
   );
