@@ -32,6 +32,7 @@ import {
   Info,
   Crown,
   Navigation,
+  QrCode,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
@@ -818,17 +819,25 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         </div>
       </div>
 
-      {/* CTA — the rewards box is the closest spot to the user's tier,
-          so this is where "upgrade my class" lands. Wired to /profile
-          once we ship a real upgrade flow; today it just routes to the
-          Class tab. */}
-      <Link
-        href="/profile"
-        className="bg-pink-gradient shadow-glow flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white"
-      >
-        <Crown className="h-4 w-4" />
-        Upgrade class
-      </Link>
+      {/* CTAs — the two things to do from the rewards box: pay the bill now
+          (scan-at-the-table QR on /pay, the "Pay & Post" surface) and upgrade
+          your class (/profile). Pay is primary; Upgrade is secondary. */}
+      <div className="flex gap-2">
+        <Link
+          href="/pay"
+          className="bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white"
+        >
+          <QrCode className="h-4 w-4" />
+          Pay &amp; post
+        </Link>
+        <Link
+          href="/profile"
+          className="border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition"
+        >
+          <Crown className="h-4 w-4" />
+          Upgrade class
+        </Link>
+      </div>
     </Box>
   );
 }
@@ -927,43 +936,19 @@ const REVIEW_DEFS = [
 ] as const;
 
 function DetailsBox({ venue }: { venue: VenueDetail }) {
-  // Order from "what is this place" → "how do I behave there" → "who
-  // runs it" → "how does Mesita relate to it":
-  //   identity         category · zone · dining style · dress code
-  //   logistics        service · reservations · payment · parking
-  //   amenities        amenities · accessibility · kid/pet friendly
-  //   people           executive chef
-  //   platform meta    participation · mechanic
+  // Just the essentials a guest decides on — dining style, dress code,
+  // reservations, payment, parking, and what it's good for. The long lists
+  // (amenities, accessibility, dietary, languages) and platform meta were
+  // noise on this surface; category and zone already show at the top.
   const d = venue.details;
   const rows: Array<[string, string]> = [
-    ["Category", d.category_full],
-    ["Zone", d.zone],
     ["Dining style", d.dining_style],
     ["Dress code", d.dress_code],
-    ["Service", d.service_options.join(" · ")],
     ["Reservations", d.reservations],
     ["Payment", d.payment_methods.join(" · ")],
     ["Parking", d.parking],
-    ["Amenities", d.amenities.join(" · ")],
-    ["Accessibility", d.accessibility.join(" · ")],
-    ["Dietary", d.dietary_options.join(" · ")],
     ["Good for", d.good_for.join(" · ")],
-    ["Languages", d.languages.join(" · ")],
   ];
-  if (d.kid_friendly !== undefined) {
-    rows.push(["Kid friendly", d.kid_friendly ? "Yes" : "No"]);
-  }
-  if (d.pet_friendly !== undefined) {
-    rows.push(["Pet friendly", d.pet_friendly ? "Yes" : "No"]);
-  }
-  if (d.established_year) {
-    rows.push(["Established", String(d.established_year)]);
-  }
-  if (d.executive_chef) {
-    rows.push(["Executive chef", d.executive_chef]);
-  }
-  rows.push(["Participation", d.participation]);
-  rows.push(["Mechanic", d.mechanic]);
   return (
     <Box title="Details" icon={Tags} iconColor="text-pink-400">
       <dl className="flex flex-col gap-3">
