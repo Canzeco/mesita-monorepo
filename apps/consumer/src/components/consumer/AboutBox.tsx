@@ -12,15 +12,18 @@ import { cn } from "@/lib/utils";
 
 const LONG_TEXT_THRESHOLD = 600;
 
-export function AboutBox({ text }: { text: string }) {
+export function AboutBox({ text, name }: { text: string; name: string }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > LONG_TEXT_THRESHOLD;
+  // Include the venue name so this header reads as "about the place", not
+  // "about the reward" sitting directly above it.
+  const heading = `About ${name}`;
 
   if (!isLong) {
     return (
       <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
         <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          About
+          {heading}
         </h3>
         <p className="text-muted-foreground text-sm leading-relaxed">{text}</p>
       </section>
@@ -35,7 +38,7 @@ export function AboutBox({ text }: { text: string }) {
       className="border-border bg-card hover:bg-card/80 flex flex-col gap-3 rounded-2xl border p-4 text-left transition"
     >
       <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-        About
+        {heading}
       </h3>
       <p
         className={cn(

@@ -90,7 +90,7 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
         <RewardsBox venue={venue} />
       </SectionAnchor>
       <SectionAnchor id="about">
-        <AboutBox text={venue.long_description} />
+        <AboutBox text={venue.long_description} name={venue.name} />
       </SectionAnchor>
       <SectionAnchor id="reviews">
         <ReviewsSummaryBox venue={venue} />
