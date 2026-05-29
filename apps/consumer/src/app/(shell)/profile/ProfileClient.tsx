@@ -216,6 +216,7 @@ type ClimbCardData = {
   via?: string;
   accent?: boolean;
   price: string;
+  priceNote?: string;
   desc: string;
   reached: boolean;
   reachedLabel: string;
@@ -239,9 +240,10 @@ function WaysToClimb({
       iconBg: "bg-muted text-foreground",
       title: "Free",
       price: "$0",
-      desc: "Your default account — base cashback, standard recs, and 2 reservations a month.",
+      priceNote: "always free",
+      desc: "Base cashback & discounts, standard recommendations, 2 reservations a month.",
       reached: isFree,
-      reachedLabel: "Current",
+      reachedLabel: "Current plan",
       note: isFree ? undefined : "Included in every account",
     },
     {
@@ -250,10 +252,11 @@ function WaysToClimb({
       iconBg:
         "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white",
       title: "Premium",
-      via: "by Instagram",
+      via: "Instagram",
       accent: true,
       price: "Free",
-      desc: `${formatFollowers(premium.followerThreshold)}+ followers and post a story each visit.`,
+      priceNote: "earned, not paid",
+      desc: `Have ${formatFollowers(premium.followerThreshold)}+ followers and post a story on each visit.`,
       reached: origin === "instagram",
       reachedLabel: "Connected",
       action: { label: "Connect", onClick: () => onConnectSocial("instagram") },
@@ -263,10 +266,11 @@ function WaysToClimb({
       icon: CreditCard,
       iconBg: "bg-pink-gradient text-white",
       title: "Premium",
-      via: "by Subscription",
+      via: "Subscription",
       accent: true,
-      price: `$${premium.priceMxn} MXN / mo`,
-      desc: "Subscribe monthly. Cancel anytime.",
+      price: `$${premium.priceMxn} MXN`,
+      priceNote: "per month · cancel anytime",
+      desc: "Pay monthly and get Premium instantly — no follower count needed.",
       reached: origin === "subscription",
       reachedLabel: "Active",
       action: { label: "Subscribe", href: "/subscribe/premium" },
@@ -285,29 +289,34 @@ function WaysToClimb({
 function ClimbCard({ data }: { data: ClimbCardData }) {
   const Icon = data.icon;
 
-  let action: ReactNode = null;
+  // Full-width footer: a CTA, the reached-state pill, or a muted note.
+  let footer: ReactNode = null;
   if (data.reached) {
-    action = (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-        <Check className="h-3 w-3" strokeWidth={3} />
+    footer = (
+      <span className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-500/15 py-2.5 text-[12px] font-semibold text-emerald-700">
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />
         {data.reachedLabel}
       </span>
     );
   } else if (data.action) {
     const cls =
-      "bg-pink-gradient inline-flex items-center justify-center rounded-full px-4 py-1.5 text-[12px] font-semibold text-white shadow-sm";
-    action = data.action.href ? (
+      "bg-pink-gradient shadow-sm flex items-center justify-center rounded-full py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]";
+    footer = data.action.href ? (
       <Link href={data.action.href} className={cls}>
         {data.action.label}
       </Link>
     ) : (
-      <button type="button" onClick={data.action.onClick} className={cls}>
+      <button
+        type="button"
+        onClick={data.action.onClick}
+        className={cn(cls, "w-full")}
+      >
         {data.action.label}
       </button>
     );
   } else if (data.note) {
-    action = (
-      <span className="text-muted-foreground text-right text-[10px] leading-tight">
+    footer = (
+      <span className="border-border bg-muted/40 text-muted-foreground flex items-center justify-center rounded-full border py-2.5 text-[12px] font-medium">
         {data.note}
       </span>
     );
@@ -316,38 +325,56 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
   return (
     <article
       className={cn(
-        "bg-card flex w-full items-center gap-3 rounded-2xl border p-4",
-        data.accent ? "border-tier-premium/40" : "border-border",
+        "relative overflow-hidden rounded-2xl border p-4",
+        data.accent
+          ? "border-tier-premium/30 bg-tier-premium/[0.03]"
+          : "border-border bg-card",
       )}
     >
-      <span
-        className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-          data.iconBg,
-        )}
-      >
-        <Icon className="h-5 w-5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-display flex items-center gap-1 text-[14px] leading-tight font-bold tracking-tight">
-          {data.accent && (
-            <Crown className="text-premium h-3.5 w-3.5 shrink-0 fill-current" />
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm",
+            data.iconBg,
           )}
-          <span className={cn(data.accent && "text-premium")}>{data.title}</span>
-          {data.via && (
-            <span className="text-muted-foreground text-[11px] font-medium">
-              · {data.via}
+        >
+          <Icon className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {data.accent && (
+              <Crown className="text-premium h-4 w-4 shrink-0 fill-current" />
+            )}
+            <span
+              className={cn(
+                "font-display text-[16px] leading-none font-bold tracking-tight",
+                data.accent && "text-premium",
+              )}
+            >
+              {data.title}
             </span>
-          )}
-        </p>
-        <p className="text-muted-foreground mt-0.5 text-[11.5px] leading-snug">
-          {data.desc}
-        </p>
-        <p className="text-foreground/80 mt-1 text-[11px] font-semibold tabular-nums">
-          {data.price}
-        </p>
+            {data.via && (
+              <span className="bg-tier-premium/10 text-premium rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
+                {data.via}
+              </span>
+            )}
+          </div>
+          <p className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="font-display text-foreground text-xl leading-none font-bold tabular-nums">
+              {data.price}
+            </span>
+            {data.priceNote && (
+              <span className="text-muted-foreground text-[11px]">
+                {data.priceNote}
+              </span>
+            )}
+          </p>
+        </div>
       </div>
-      <div className="shrink-0">{action}</div>
+      <p className="text-muted-foreground mt-3 text-[12px] leading-snug">
+        {data.desc}
+      </p>
+      <div className="mt-3">{footer}</div>
     </article>
   );
 }
