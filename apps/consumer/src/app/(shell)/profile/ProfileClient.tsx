@@ -21,8 +21,6 @@ import {
   VerifySocialSheet,
   type SocialPlatform,
 } from "@/components/consumer/VerifySocialSheet";
-import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
-import { CouponsList } from "@/app/(shell)/coupons/CouponsList";
 import { ShareBody } from "@/app/(shell)/share/page";
 import {
   CURRENT_USER,
@@ -32,16 +30,14 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
-// Four-tab Profile. Coupons and Share folded in as sub-tabs on the
-// "byebye coupons-as-entity" checkpoint: the standalone /coupons and
-// /share routes are still alive (deep links, modal interception, etc.),
-// but the BottomNav entry points for both are gone — the primary entry
-// is here now.
-type Tab = "class" | "settings" | "coupons" | "share";
+// Three-tab Profile. Share is folded in as a sub-tab; the standalone
+// /share route stays alive (deep links). The Coupons tab was removed —
+// coupons are "hidden" (users save the place, redeem a QR at the venue),
+// so the wallet surface didn't earn its spot in the Profile.
+type Tab = "class" | "settings" | "share";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "class", label: "Class" },
-  { id: "coupons", label: "Coupons" },
   { id: "share", label: "Share" },
   { id: "settings", label: "Settings" },
 ];
@@ -94,12 +90,6 @@ export function ProfileClient() {
         {tab === "settings" && (
           <div className="px-5 pt-5 pb-8">
             <SettingsTab />
-          </div>
-        )}
-        {tab === "coupons" && (
-          <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
-            <ClassUpsellBox />
-            <CouponsList />
           </div>
         )}
         {tab === "share" && <ShareBody />}
