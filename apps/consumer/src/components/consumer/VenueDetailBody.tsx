@@ -71,7 +71,6 @@ const NAV_SECTIONS = [
 ] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
-import { TIER_AVATAR_BG, TIER_TEXT } from "@/lib/tier-styles";
 
 // Pure presentation for the venue detail surface. The two callers (full
 // page at /venues/[id] and the intercepted modal at @modal/(.)venues/[id])
@@ -517,9 +516,6 @@ function ExternalCard({
 
 // ── 4. Relevant reviews (merged carousel) ───────────────────────────────
 
-// TIER_AVATAR_BG and TIER_TEXT live in @/lib/tier-styles so the venue
-// page (Rewards box + ReviewCard) shares one source for these tokens.
-
 function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
   // Interleave Mesita visitors and Google reviews so featured cards from
   // both sources sit in one carousel. Mesita leads (richer, owned data).
@@ -717,16 +713,7 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
   );
 }
 
-// ── Coupon (welcome on top + 2-up tier grid) ────────────────────────────
-
-// Tiers render as a non-scrollable 2-column grid: Free · Premium ascend
-// left-to-right like a ladder. Welcome lives outside this constant and
-// renders as the full-width hero card above the grid.
-const TIER_ORDER: Tier[] = ["free", "premium"];
-const TIER_RANK: Record<Tier, number> = {
-  free: 0,
-  premium: 1,
-};
+// ── Reward (hero + Free/Premium × first/returning matrix) ───────────────
 
 function RewardsBox({ venue }: { venue: VenueDetail }) {
   const { welcome, default: returning, current_tier, is_first_visit } =
@@ -737,7 +724,6 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   const activeValue = is_first_visit
     ? welcome[current_tier]
     : returning[current_tier];
-  const currentRank = TIER_RANK[current_tier];
   // Mechanic comes in capitalized ("Cashback" / "Discount") so it can sit
   // in a subtitle pill; lowercase it when reading inline with the
   // percentage ("20% cashback").
@@ -766,63 +752,16 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         </p>
       </div>
 
-      {/* First-visit ladder — Welcome × tier. */}
-      <div className="flex flex-col gap-1.5">
-        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          First visit
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {TIER_ORDER.map((tier) => {
-            const rank = TIER_RANK[tier];
-            const relation: "lower" | "current" | "higher" =
-              rank < currentRank
-                ? "lower"
-                : rank === currentRank
-                  ? "current"
-                  : "higher";
-            return (
-              <TierCard
-                key={`welcome-${tier}`}
-                tier={tier}
-                value={welcome[tier]}
-                suffix={mechanicShort}
-                relation={relation}
-                active={is_first_visit && tier === current_tier}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Returning-visit ladder — default × tier. "Every visit" was the
-          first label but it overlaps with the first-visit ladder above; the
-          recurring rate only applies once the guest has come back. */}
-      <div className="flex flex-col gap-1.5">
-        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          Returning visits
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {TIER_ORDER.map((tier) => {
-            const rank = TIER_RANK[tier];
-            const relation: "lower" | "current" | "higher" =
-              rank < currentRank
-                ? "lower"
-                : rank === currentRank
-                  ? "current"
-                  : "higher";
-            return (
-              <TierCard
-                key={`default-${tier}`}
-                tier={tier}
-                value={returning[tier]}
-                suffix={mechanicShort}
-                relation={relation}
-                active={!is_first_visit && tier === current_tier}
-              />
-            );
-          })}
-        </div>
-      </div>
+      {/* One matrix instead of two ladders — First / Returning rows ×
+          Free / Premium columns. The active cell is highlighted ("you are
+          here") so the hero's number isn't restated as a second big tile. */}
+      <RewardMatrix
+        welcome={welcome}
+        returning={returning}
+        currentTier={current_tier}
+        isFirstVisit={is_first_visit}
+        suffix={mechanicShort}
+      />
 
       {/* CTAs — the two things to do from the rewards box: pay the bill now
           (scan-at-the-table QR on /pay, the "Pay & Post" surface) and upgrade
@@ -847,70 +786,120 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   );
 }
 
-function TierCard({
-  tier,
-  value,
+// Compact reward matrix — First / Returning rows × Free / Premium columns.
+// Mirrors the Plan comparison table on the Profile (FreeVsPremium) for
+// visual consistency. The active cell (current tier × current visit axis)
+// is highlighted so "you are here" is obvious.
+function RewardMatrix({
+  welcome,
+  returning,
+  currentTier,
+  isFirstVisit,
   suffix,
-  relation,
-  active,
 }: {
-  tier: Tier;
-  value: number | null;
+  welcome: { free: number | null; premium: number | null };
+  returning: { free: number | null; premium: number | null };
+  currentTier: Tier;
+  isFirstVisit: boolean;
   /** Mechanic-aware unit, e.g. "back" (cashback) or "off" (discount). */
   suffix: string;
-  relation: "lower" | "current" | "higher";
-  // True when this exact card represents the guest's currently active
-  // reward (matches both current_tier AND the first-visit/returning-
-  // visit axis). The pink-gradient styling renders only on this card.
-  active: boolean;
 }) {
-  // `relation` is intentionally unused here — the previous design used
-  // it to gate a "Join <Tier>" hover overlay on higher tiers, but the
-  // overlays were removed for visual calm. We keep the prop to leave
-  // the door open if we re-add tier-targeted CTAs later.
-  void relation;
+  const rows = [
+    { key: "first", label: "First visit", vals: welcome, onAxis: isFirstVisit },
+    { key: "returning", label: "Returning", vals: returning, onAxis: !isFirstVisit },
+  ] as const;
+  return (
+    <div className="border-border overflow-hidden rounded-xl border">
+      {/* Header — Free / Premium columns. */}
+      <div className="grid grid-cols-[1.1fr_1fr_1fr] items-end gap-1 px-2 pt-2">
+        <span />
+        <span className="font-display text-center text-[13px] font-bold tracking-tight">
+          Free
+        </span>
+        <span className="text-premium bg-tier-premium/[0.06] font-display inline-flex items-center justify-center gap-1 rounded-t-lg py-1 text-[13px] font-bold tracking-tight">
+          <Crown className="h-3 w-3 fill-current" />
+          Premium
+        </span>
+      </div>
+      {rows.map((r, i) => (
+        <div
+          key={r.key}
+          className={cn(
+            "grid grid-cols-[1.1fr_1fr_1fr] items-stretch gap-1 px-2 py-1.5",
+            i > 0 && "border-border/50 border-t",
+          )}
+        >
+          <span className="text-muted-foreground self-center text-[10px] font-bold tracking-[0.14em] uppercase">
+            {r.label}
+          </span>
+          <RewardCell
+            value={r.vals.free}
+            suffix={suffix}
+            active={r.onAxis && currentTier === "free"}
+          />
+          <RewardCell
+            value={r.vals.premium}
+            suffix={suffix}
+            accent
+            active={r.onAxis && currentTier === "premium"}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RewardCell({
+  value,
+  suffix,
+  accent,
+  active,
+}: {
+  value: number | null;
+  suffix: string;
+  accent?: boolean;
+  active?: boolean;
+}) {
+  const text = value == null ? "—" : `${value}%`;
   if (active) {
     return (
-      <div className="bg-pink-gradient shadow-glow overflow-hidden rounded-xl p-2 text-center text-white">
-        <p className="text-[9px] font-bold tracking-wider text-white/90 uppercase">
-          {tierProperLabel(tier)}
-        </p>
-        <p className="mt-0.5 flex items-baseline justify-center gap-1">
-          <span className="font-display text-lg font-semibold leading-tight">
-            {value == null ? "—" : `${value}%`}
-          </span>
-          {value != null && (
-            <span className="text-[10px] text-white/85">{suffix}</span>
-          )}
-        </p>
-      </div>
+      <span className="bg-pink-gradient shadow-glow relative flex items-center justify-center gap-0.5 rounded-lg py-2 text-white">
+        <span className="font-display text-[15px] leading-none font-bold">
+          {text}
+        </span>
+        {value != null && <span className="text-[10px] text-white/85">{suffix}</span>}
+        <span className="absolute top-0.5 right-1.5 text-[7px] font-bold tracking-[0.12em] text-white/85 uppercase">
+          Now
+        </span>
+      </span>
     );
   }
   return (
-    <div className="bg-background relative overflow-hidden rounded-xl p-2 text-center">
-      <div
+    <span
+      className={cn(
+        "flex items-center justify-center gap-0.5 rounded-lg py-2",
+        accent && "bg-tier-premium/[0.06]",
+      )}
+    >
+      <span
         className={cn(
-          "absolute inset-x-0 top-0 h-1",
-          TIER_AVATAR_BG[tier],
-        )}
-      />
-      <p
-        className={cn(
-          "text-[9px] font-bold tracking-wider uppercase",
-          TIER_TEXT[tier],
+          "font-display text-[15px] leading-none font-bold",
+          accent ? "text-premium" : "text-foreground/80",
         )}
       >
-        {tierProperLabel(tier)}
-      </p>
-      <p className="mt-0.5 flex items-baseline justify-center gap-1">
-        <span className="font-display text-foreground text-lg font-semibold leading-tight">
-          {value == null ? "—" : `${value}%`}
+        {text}
+      </span>
+      {value != null && (
+        <span
+          className={cn(
+            "text-[10px]",
+            accent ? "text-premium/80" : "text-muted-foreground",
+          )}
+        >
+          {suffix}
         </span>
-        {value != null && (
-          <span className="text-muted-foreground text-[10px]">{suffix}</span>
-        )}
-      </p>
-    </div>
+      )}
+    </span>
   );
 }
 
