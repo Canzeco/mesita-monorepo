@@ -39,7 +39,11 @@ export default async function AtlasPage() {
         initialSourceOverrides={result.data.atlasSourceOverrides}
         initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
         initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
+        initialSaveGoogleImages={result.data.atlasSaveGoogleImages}
+        initialSaveWebsiteImages={result.data.atlasSaveWebsiteImages}
+        initialSaveInstagramImages={result.data.atlasSaveInstagramImages}
         initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
+        initialAnalyzeWebsiteImages={result.data.atlasAnalyzeWebsiteImages}
         initialAnalyzeInstagramImages={result.data.atlasAnalyzeInstagramImages}
         initialImageAnalysisPrompt={result.data.atlasImageAnalysisPrompt}
         initialImageSortingPrompt={result.data.atlasImageSortingPrompt}

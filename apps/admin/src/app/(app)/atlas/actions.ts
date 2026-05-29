@@ -18,7 +18,11 @@ type SettingsResponse = {
   atlasSourceOverrides: Record<string, boolean>;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
+  atlasSaveGoogleImages: number;
+  atlasSaveWebsiteImages: number;
+  atlasSaveInstagramImages: number;
   atlasAnalyzeGoogleImages: number;
+  atlasAnalyzeWebsiteImages: number;
   atlasImageAnalysisPrompt: string;
   atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
@@ -68,7 +72,11 @@ type AtlasConfigResponse = {
   atlasSourceOverrides: Record<string, boolean>;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
+  atlasSaveGoogleImages: number;
+  atlasSaveWebsiteImages: number;
+  atlasSaveInstagramImages: number;
   atlasAnalyzeGoogleImages: number;
+  atlasAnalyzeWebsiteImages: number;
   atlasImageAnalysisPrompt: string;
   atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
@@ -90,7 +98,11 @@ export async function updateAtlasConfig(patch: {
   sourceOverrides?: Record<string, boolean>;
   websiteCrawlMaxPages?: number;
   imageVisionEnabled?: boolean;
+  saveGoogleImages?: number;
+  saveWebsiteImages?: number;
+  saveInstagramImages?: number;
   analyzeGoogleImages?: number;
+  analyzeWebsiteImages?: number;
   imageAnalysisPrompt?: string;
   imageSortingPrompt?: string;
   analyzeInstagramImages?: number;

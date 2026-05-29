@@ -143,7 +143,11 @@ export function AtlasClient(props: {
   initialWebsiteCrawlMaxPages: number;
   initialInstagramPosts: number;
   initialImageVisionEnabled: boolean;
+  initialSaveGoogleImages: number;
+  initialSaveWebsiteImages: number;
+  initialSaveInstagramImages: number;
   initialAnalyzeGoogleImages: number;
+  initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
   initialImageAnalysisPrompt: string;
   initialImageSortingPrompt: string;
@@ -192,13 +196,24 @@ export function AtlasClient(props: {
         </div>
       </StageGroup>
 
-      {/* ═══ Vision Params ═════════════════════════════════════════ */}
+      {/* ═══ Pre-selection (save) ══════════════════════════════════ */}
+      <StageGroup label="Pre-selection — images saved per source">
+        <PreSelectionSection
+          initialSaveGoogleImages={props.initialSaveGoogleImages}
+          initialSaveWebsiteImages={props.initialSaveWebsiteImages}
+          initialSaveInstagramImages={props.initialSaveInstagramImages}
+          initialInstagramPosts={props.initialInstagramPosts}
+          onSaved={setUpdatedAt}
+        />
+      </StageGroup>
+
+      {/* ═══ Vision Params (analyze) ═══════════════════════════════ */}
       <StageGroup label="Vision Params">
         <VisionParamsSection
           initialImageVisionEnabled={props.initialImageVisionEnabled}
           initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+          initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
           initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-          initialInstagramPosts={props.initialInstagramPosts}
           initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
           initialImageSortingPrompt={props.initialImageSortingPrompt}
           onSaved={setUpdatedAt}
@@ -504,35 +519,124 @@ function SourceDepthSection({
   );
 }
 
-// ─── Vision Params ──────────────────────────────────────────────────────────
+// ─── Pre-selection (images saved per source) ───────────────────────────────
+
+function PreSelectionSection({
+  initialSaveGoogleImages,
+  initialSaveWebsiteImages,
+  initialSaveInstagramImages,
+  initialInstagramPosts,
+  onSaved,
+}: {
+  initialSaveGoogleImages: number;
+  initialSaveWebsiteImages: number;
+  initialSaveInstagramImages: number;
+  initialInstagramPosts: number;
+  onSaved: (updatedAt: string | null) => void;
+}) {
+  const [g, setG] = useState(initialSaveGoogleImages);
+  const [w, setW] = useState(initialSaveWebsiteImages);
+  const [ig, setIg] = useState(initialSaveInstagramImages);
+  const [posts, setPosts] = useState(initialInstagramPosts);
+  const [saved, setSaved] = useState({
+    g: initialSaveGoogleImages,
+    w: initialSaveWebsiteImages,
+    ig: initialSaveInstagramImages,
+    posts: initialInstagramPosts,
+  });
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const dirty =
+    g !== saved.g || w !== saved.w || ig !== saved.ig || posts !== saved.posts;
+
+  const save = () => {
+    if (!dirty) return;
+    setError(null);
+    setOk(false);
+    start(async () => {
+      const r = await updateAtlasConfig({
+        saveGoogleImages: g,
+        saveWebsiteImages: w,
+        saveInstagramImages: ig,
+        instagramPosts: posts,
+      });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setSaved({
+        g: r.data.atlasSaveGoogleImages,
+        w: r.data.atlasSaveWebsiteImages,
+        ig: r.data.atlasSaveInstagramImages,
+        posts: r.data.atlasResearchInstagramPosts,
+      });
+      setG(r.data.atlasSaveGoogleImages);
+      setW(r.data.atlasSaveWebsiteImages);
+      setIg(r.data.atlasSaveInstagramImages);
+      setPosts(r.data.atlasResearchInstagramPosts);
+      onSaved(r.data.updatedAt);
+      setOk(true);
+    });
+  };
+
+  return (
+    <section className="border-border bg-card rounded-2xl border p-6">
+      <div className="flex items-center gap-2">
+        <ImageIcon className="text-muted-foreground h-4 w-4" />
+        <h2 className="font-display text-base font-semibold tracking-tight">
+          Pre-selection
+        </h2>
+      </div>
+      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
+        How many images we pull &amp; SAVE to the venue per source (Google by
+        Places order, Website by size, Instagram top by likes). This is NOT how
+        many get analyzed — that&apos;s Vision Params. Ceiling 50 images/venue.
+      </p>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Save Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
+        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Save Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Save Instagram images" value={ig} min={0} max={30} onChange={setIg} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts per profile" value={posts} min={0} max={50} onChange={setPosts} disabled={pending} />
+      </div>
+
+      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
+      {error && <ErrorNote message={error} />}
+    </section>
+  );
+}
+
+// ─── Vision Params (how many saved images get analyzed) ─────────────────────
 
 function VisionParamsSection({
   initialImageVisionEnabled,
   initialAnalyzeGoogleImages,
+  initialAnalyzeWebsiteImages,
   initialAnalyzeInstagramImages,
-  initialInstagramPosts,
   initialImageAnalysisPrompt,
   initialImageSortingPrompt,
   onSaved,
 }: {
   initialImageVisionEnabled: boolean;
   initialAnalyzeGoogleImages: number;
+  initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
-  initialInstagramPosts: number;
   initialImageAnalysisPrompt: string;
   initialImageSortingPrompt: string;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [vision, setVision] = useState(initialImageVisionEnabled);
   const [g, setG] = useState(initialAnalyzeGoogleImages);
+  const [w, setW] = useState(initialAnalyzeWebsiteImages);
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
-  const [posts, setPosts] = useState(initialInstagramPosts);
   const [analysisPrompt, setAnalysisPrompt] = useState(initialImageAnalysisPrompt);
   const [sortingPrompt, setSortingPrompt] = useState(initialImageSortingPrompt);
   const [saved, setSaved] = useState({
     g: initialAnalyzeGoogleImages,
+    w: initialAnalyzeWebsiteImages,
     ig: initialAnalyzeInstagramImages,
-    posts: initialInstagramPosts,
     analysisPrompt: initialImageAnalysisPrompt,
     sortingPrompt: initialImageSortingPrompt,
   });
@@ -543,8 +647,8 @@ function VisionParamsSection({
 
   const dirty =
     g !== saved.g ||
+    w !== saved.w ||
     ig !== saved.ig ||
-    posts !== saved.posts ||
     analysisPrompt !== saved.analysisPrompt ||
     sortingPrompt !== saved.sortingPrompt;
 
@@ -570,8 +674,8 @@ function VisionParamsSection({
     startSave(async () => {
       const r = await updateAtlasConfig({
         analyzeGoogleImages: g,
+        analyzeWebsiteImages: w,
         analyzeInstagramImages: ig,
-        instagramPosts: posts,
         imageAnalysisPrompt: analysisPrompt,
         imageSortingPrompt: sortingPrompt,
       });
@@ -581,14 +685,14 @@ function VisionParamsSection({
       }
       setSaved({
         g: r.data.atlasAnalyzeGoogleImages,
+        w: r.data.atlasAnalyzeWebsiteImages,
         ig: r.data.atlasAnalyzeInstagramImages,
-        posts: r.data.atlasResearchInstagramPosts,
         analysisPrompt: r.data.atlasImageAnalysisPrompt,
         sortingPrompt: r.data.atlasImageSortingPrompt,
       });
       setG(r.data.atlasAnalyzeGoogleImages);
+      setW(r.data.atlasAnalyzeWebsiteImages);
       setIg(r.data.atlasAnalyzeInstagramImages);
-      setPosts(r.data.atlasResearchInstagramPosts);
       setAnalysisPrompt(r.data.atlasImageAnalysisPrompt);
       setSortingPrompt(r.data.atlasImageSortingPrompt);
       onSaved(r.data.updatedAt);
@@ -606,8 +710,9 @@ function VisionParamsSection({
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
         Vision describes each image (analysis prompt), then ranks them
-        best→worst (sorting prompt). Caps bound how many images get analyzed
-        per source. The expensive step.
+        best→worst (sorting prompt). These caps bound how many of the SAVED
+        images get analyzed per source — usually fewer than saved, since vision
+        is the expensive step.
       </p>
 
       <div className="mt-5">
@@ -631,9 +736,9 @@ function VisionParamsSection({
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Max num of Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max num of Instagram images" value={ig} min={0} max={20} onChange={setIg} disabled={savePending || !vision} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max num of Instagram posts" value={posts} min={0} max={50} onChange={setPosts} disabled={savePending || !vision} />
+        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
+        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze Website images" value={w} min={0} max={10} onChange={setW} disabled={savePending || !vision} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images" value={ig} min={0} max={20} onChange={setIg} disabled={savePending || !vision} />
       </div>
 
       <div className="mt-4">
