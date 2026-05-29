@@ -7,7 +7,6 @@ import {
   Instagram,
   ChevronRight,
   Check,
-  Minus,
   Crown,
   Sparkles,
   User as UserIcon,
@@ -143,7 +142,7 @@ function ClassTab({
 // Free vs Premium at a glance. The whole point of the tab: make the value of
 // Premium obvious. Each row is one promise; the Premium column is tinted +
 // emphasized so the eye lands on what you gain.
-type CompareCell = { text?: string; yes?: boolean };
+type CompareCell = { text: string };
 const COMPARE_ROWS: { label: string; free: CompareCell; premium: CompareCell }[] =
   [
     {
@@ -160,16 +159,6 @@ const COMPARE_ROWS: { label: string; free: CompareCell; premium: CompareCell }[]
       label: "Reservations / month",
       free: { text: "2" },
       premium: { text: "Unlimited" },
-    },
-    {
-      label: "Hidden coupons & cashback",
-      free: { yes: true },
-      premium: { yes: true },
-    },
-    {
-      label: "Priority tables & invites",
-      free: { yes: false },
-      premium: { yes: true },
     },
   ];
 
@@ -264,16 +253,6 @@ function PlanHeader({
 }
 
 function CompareValue({ cell, accent }: { cell: CompareCell; accent?: boolean }) {
-  if (cell.yes !== undefined) {
-    return cell.yes ? (
-      <Check
-        className={cn("h-4 w-4", accent ? "text-premium" : "text-emerald-600")}
-        strokeWidth={3}
-      />
-    ) : (
-      <Minus className="text-muted-foreground/40 h-4 w-4" strokeWidth={3} />
-    );
-  }
   return (
     <span
       className={cn(
