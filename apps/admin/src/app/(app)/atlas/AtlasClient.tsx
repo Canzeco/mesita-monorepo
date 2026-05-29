@@ -91,8 +91,8 @@ const ATLAS_SOURCES: {
     key: "facebook",
     label: "Facebook",
     steps: [
-      { step: "link", tier: 2 },
-      { step: "contents", tier: 2 },
+      { step: "link", tier: 4 },
+      { step: "contents", tier: 4 },
     ],
   },
   {
