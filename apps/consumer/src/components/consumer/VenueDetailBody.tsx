@@ -732,11 +732,14 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   // mechanic: cashback venues read "70% back", discount venues "70% off".
   const mechanicShort = mechanicWord.startsWith("cash") ? "back" : "off";
   const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
-  const subtitleParts: string[] = [`as Mesita ${tierProperLabel(current_tier)}`];
-  if (activeValue != null) {
-    subtitleParts.push(is_first_visit ? "first visit" : "on returning visits");
-    subtitleParts.push(`capped at ${capLabel} / visit`);
-  }
+  // Concise one-line context (the tier is already shown — highlighted — in
+  // the matrix below, so we don't repeat "as Mesita Premium" here).
+  const subtitle =
+    activeValue == null
+      ? `No reward at Mesita ${tierProperLabel(current_tier)} yet`
+      : `${is_first_visit ? "First visit" : "Returning visit"} · capped ${capLabel}/visit`;
+  // Story-gated venues need an Instagram story (plus the QR) to unlock.
+  const requiresStory = venue.requires_story === true;
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — names the active reward, mechanic, and cap up front. */}
@@ -747,9 +750,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         <p className="font-display mt-1 text-3xl font-semibold leading-none">
           {activeValue == null ? "—" : `${activeValue}% ${mechanicWord}`}
         </p>
-        <p className="mt-1 text-xs leading-snug text-white/90">
-          {subtitleParts.join(" · ")}
-        </p>
+        <p className="mt-1 text-xs leading-snug text-white/90">{subtitle}</p>
       </div>
 
       {/* One matrix instead of two ladders — First / Returning rows ×
@@ -763,24 +764,30 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         suffix={mechanicShort}
       />
 
-      {/* CTAs — the two things to do from the rewards box: pay the bill now
-          (scan-at-the-table QR on /pay, the "Pay & Post" surface) and upgrade
-          your class (/profile). Pay is primary; Upgrade is secondary. */}
-      <div className="flex gap-2">
-        <Link
-          href="/pay"
-          className="bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white"
-        >
-          <QrCode className="h-4 w-4" />
-          Pay &amp; post
-        </Link>
-        <Link
-          href="/profile"
-          className="border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition"
-        >
-          <Crown className="h-4 w-4" />
-          Upgrade plan
-        </Link>
+      {/* CTAs — pay with your QR to unlock the reward (story-gated venues
+          also need a story → "Pay & Post"); secondary = upgrade plan. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Link
+            href="/pay"
+            className="bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white"
+          >
+            <QrCode className="h-4 w-4" />
+            {requiresStory ? "Pay & Post" : "Pay"}
+          </Link>
+          <Link
+            href="/profile"
+            className="border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition"
+          >
+            <Crown className="h-4 w-4" />
+            Upgrade plan
+          </Link>
+        </div>
+        <p className="text-muted-foreground text-center text-[11px] leading-snug">
+          {requiresStory
+            ? "Pay with your QR and post a story to unlock this reward."
+            : "Pay with your QR to unlock this reward."}
+        </p>
       </div>
     </Box>
   );

@@ -123,6 +123,10 @@ export type VenueDetail = {
     is_first_visit: boolean;
   };
   reward_cap_mxn: number;
+  // When true, the reward unlocks only after the guest posts an Instagram
+  // story tagging the venue (in addition to paying via QR). Drives the
+  // "Pay & Post" vs "Pay" CTA on the venue Reward box.
+  requires_story?: boolean;
 
   // 9. Long description
   long_description: string;
@@ -386,6 +390,7 @@ export const mockVenue: VenueDetail = {
     is_first_visit: false,
   },
   reward_cap_mxn: 500,
+  requires_story: true,
 
   long_description:
     "Mochomos Monterrey offers a unique dining experience that combines the rich flavors of Sonoran cuisine with a modern atmosphere. Ideal for business lunches or special dinners, the venue features a diverse menu centered around grilled meats, seafood, and an extensive wine selection. Guests appreciate the attentive service and the elegant ambiance, making it a perfect spot for both corporate meetings and social gatherings.",
