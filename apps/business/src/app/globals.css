@@ -37,6 +37,10 @@
   --tier-gold: oklch(0.84 0.16 88);
   --tier-diamond: oklch(0.7 0.18 320);
 
+  /* Two-tier membership (Free / Premium). */
+  --tier-free: oklch(0.72 0.02 250);
+  --tier-premium: oklch(0.7 0.18 320);
+
   /* WhatsApp validator green — brand-matched to WhatsApp */
   --whatsapp: oklch(0.66 0.17 152);
   --whatsapp-deep: oklch(0.48 0.13 158);
@@ -80,6 +84,16 @@
     oklch(0.52 0.12 45)
   );
   --gradient-diamond: linear-gradient(
+    135deg,
+    oklch(0.92 0.1 200),
+    oklch(0.7 0.16 280)
+  );
+  --gradient-free: linear-gradient(
+    135deg,
+    oklch(0.88 0.02 250),
+    oklch(0.72 0.02 250)
+  );
+  --gradient-premium: linear-gradient(
     135deg,
     oklch(0.92 0.1 200),
     oklch(0.7 0.16 280)
@@ -252,6 +266,18 @@
   }
   .bg-tier-diamond {
     background: var(--gradient-diamond);
+  }
+  .text-free {
+    color: var(--tier-free);
+  }
+  .text-premium {
+    color: var(--tier-premium);
+  }
+  .bg-tier-free {
+    background: var(--gradient-free);
+  }
+  .bg-tier-premium {
+    background: var(--gradient-premium);
   }
   .bg-whatsapp {
     background: var(--whatsapp);

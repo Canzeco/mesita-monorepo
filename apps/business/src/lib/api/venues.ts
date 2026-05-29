@@ -66,17 +66,13 @@ type Venue = {
   story: string | null;
   description: string | null;
   cashback_percent: number | null;
-  // Eight per-tier promo rates (DB migration 0027). Welcome variants fire on
+  // Four per-tier promo rates (DB migration 0032). Welcome variants fire on
   // a guest's first visit at this venue; the unprefixed variants apply on
   // every visit afterwards. Each is one of 10 / 20 / 50 / 70 or null.
-  welcome_bronze_rate: number | null;
-  welcome_silver_rate: number | null;
-  welcome_gold_rate: number | null;
-  welcome_diamond_rate: number | null;
-  bronze_rate: number | null;
-  silver_rate: number | null;
-  gold_rate: number | null;
-  diamond_rate: number | null;
+  welcome_free_rate: number | null;
+  welcome_premium_rate: number | null;
+  free_rate: number | null;
+  premium_rate: number | null;
   photos: string[];
   menu_pdf_url: string | null;
   // Display name paired with menu_pdf_url (e.g. "Dinner menu"). Null
@@ -222,15 +218,11 @@ export type UpdateVenueInput = {
   pitch?: string | null;
   story?: string | null;
   cashback_percent?: number | null;
-  // Eight per-tier promo rates. One of 10 / 20 / 50 / 70 or null to clear.
-  welcome_bronze_rate?: number | null;
-  welcome_silver_rate?: number | null;
-  welcome_gold_rate?: number | null;
-  welcome_diamond_rate?: number | null;
-  bronze_rate?: number | null;
-  silver_rate?: number | null;
-  gold_rate?: number | null;
-  diamond_rate?: number | null;
+  // Four per-tier promo rates. One of 10 / 20 / 50 / 70 or null to clear.
+  welcome_free_rate?: number | null;
+  welcome_premium_rate?: number | null;
+  free_rate?: number | null;
+  premium_rate?: number | null;
   photos?: string[];
   website_url?: string | null;
   instagram_url?: string | null;

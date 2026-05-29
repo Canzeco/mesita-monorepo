@@ -34,33 +34,27 @@ import {
 
 // ─── Rate picker scale ────────────────────────────────────────────────────
 
-// Eight per-tier promo rates land in the venues table as smallint columns
-// constrained to this set (or null). See migration 0027. Zero is no longer
+// Four per-tier promo rates land in the venues table as smallint columns
+// constrained to this set (or null). See migration 0032. Zero is no longer
 // a legal value — to "turn off" a tier, write null.
 const RATE_CHOICES = [10, 20, 50, 70] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
 // ─── Tier ladder catalog ──────────────────────────────────────────────────
 
-type Tier = "bronze" | "silver" | "gold" | "diamond";
+type Tier = "free" | "premium";
 
-// Each cell maps to one of the eight DB columns: `welcome_<tier>_rate`
+// Each cell maps to one of the four DB columns: `welcome_<tier>_rate`
 // (first visit at the venue) or `<tier>_rate` (every visit afterwards).
 type PromoColumn =
-  | "welcome_bronze_rate"
-  | "welcome_silver_rate"
-  | "welcome_gold_rate"
-  | "welcome_diamond_rate"
-  | "bronze_rate"
-  | "silver_rate"
-  | "gold_rate"
-  | "diamond_rate";
+  | "welcome_free_rate"
+  | "welcome_premium_rate"
+  | "free_rate"
+  | "premium_rate";
 
 const TIER_LABEL: Record<Tier, string> = {
-  bronze: "Bronze",
-  silver: "Silver",
-  gold: "Gold",
-  diamond: "Diamond",
+  free: "Free",
+  premium: "Premium",
 };
 
 // ─── Subscription icons + accents ─────────────────────────────────────────
@@ -156,7 +150,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         <div className="grid grid-cols-2 gap-2">
           <ColumnHeader>First visit</ColumnHeader>
           <ColumnHeader>Returning visits</ColumnHeader>
-          {(["bronze", "silver", "gold", "diamond"] as const).flatMap((tier) => [
+          {(["free", "premium"] as const).flatMap((tier) => [
             <PromoCell
               key={`welcome-${tier}`}
               column={`welcome_${tier}_rate` as PromoColumn}
@@ -407,10 +401,9 @@ function SubscriptionCard({
 
 // One cell in the 2-column grid. Owns the local state for its DB column
 // and persists each pick through apiUpdateVenue (optimistic — reverts on
-// failure). Same tier chip colors across both columns (Bronze copper,
-// Silver cool gray, Gold warm yellow, Diamond violet) — the "First visit"
-// vs "Every visit" distinction lives in the column header above, not in
-// the chip styling.
+// failure). Same tier chip colors across both columns (Free cool gray,
+// Premium violet) — the "First visit" vs "Every visit" distinction lives
+// in the column header above, not in the chip styling.
 function PromoCell({
   column,
   tier,
@@ -511,10 +504,8 @@ function RatePill({
 }
 
 const TIER_TONE: Record<Tier, string> = {
-  bronze: "bg-tier-bronze text-white",
-  silver: "bg-tier-silver text-foreground",
-  gold: "bg-tier-gold text-black",
-  diamond: "bg-tier-diamond text-white",
+  free: "bg-tier-free text-foreground",
+  premium: "bg-tier-premium text-white",
 };
 
 function TierChip({ tier, label }: { tier: Tier; label: string }) {
