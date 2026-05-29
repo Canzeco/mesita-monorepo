@@ -17,18 +17,18 @@ export function MyQrCard({ code }: { code: string }) {
   };
 
   return (
-    <section className="border-border bg-card rounded-3xl border p-5">
+    <section className="border-border bg-card rounded-3xl border p-4">
       <div className="flex items-center gap-2">
         <Sparkles className="text-secondary h-3.5 w-3.5" />
         <p className="text-secondary text-[10px] font-bold tracking-wider uppercase">
           Your code
         </p>
       </div>
-      <div className="mt-4 flex flex-col items-center gap-3">
-        <div className="border-border bg-background rounded-2xl border p-4">
+      <div className="mt-3 flex flex-col items-center gap-3">
+        <div className="border-border bg-background rounded-2xl border p-3.5">
           <QRCodeSVG
             value={`mesita:${code}`}
-            size={184}
+            size={140}
             bgColor="transparent"
             fgColor="currentColor"
             level="M"

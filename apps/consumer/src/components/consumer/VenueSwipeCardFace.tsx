@@ -131,10 +131,15 @@ function CardOverlay({ venue }: { venue: Venue }) {
   const distanceLabel =
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const zoneLabel = venue.zone ?? null;
-  const igFollowersLabel =
-    venue.instagram_followers_count != null
-      ? formatCount(venue.instagram_followers_count)
-      : null;
+  // Instagram followers always carry one decimal (e.g. "23.0K", "1.9K") so
+  // the social-proof number reads precise, unlike the rounded rating count.
+  const igFollowersLabel = (() => {
+    const n = venue.instagram_followers_count;
+    if (n == null) return null;
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return String(n);
+  })();
 
   const statusLabel = getOpeningStatusLabel(venue);
   const isOpen = venue.open_now === true;
