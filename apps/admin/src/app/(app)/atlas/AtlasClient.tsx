@@ -99,8 +99,8 @@ const ATLAS_SOURCES: {
     key: "serp",
     label: "SERP",
     steps: [
-      { step: "contents", tier: 3 },
       { step: "summary", tier: 3 },
+      { step: "contents", tier: 5 },
     ],
   },
   {
