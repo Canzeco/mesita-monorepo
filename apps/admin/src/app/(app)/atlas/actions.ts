@@ -13,14 +13,15 @@ type SettingsResponse = {
   atlasPreReadSnapshots: boolean;
   atlasSaveSnapshots: boolean;
   atlasSnapshotOnBusinessEdit: boolean;
-  atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
   atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
-  atlasMaxImagesAnalyzed: number;
+  atlasAnalyzeGoogleImages: number;
+  atlasAnalyzeWebsiteImages: number;
+  atlasAnalyzeInstagramImages: number;
   atlasSynthesisQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
@@ -62,14 +63,15 @@ export async function setAtlasPreRead(
 type AtlasConfigResponse = {
   atlasSaveSnapshots: boolean;
   atlasSnapshotOnBusinessEdit: boolean;
-  atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
   atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
-  atlasMaxImagesAnalyzed: number;
+  atlasAnalyzeGoogleImages: number;
+  atlasAnalyzeWebsiteImages: number;
+  atlasAnalyzeInstagramImages: number;
   atlasSynthesisQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
@@ -83,14 +85,15 @@ type UpdateAtlasConfigResult =
 export async function updateAtlasConfig(patch: {
   saveSnapshots?: boolean;
   snapshotOnBusinessEdit?: boolean;
-  googleImages?: number;
   instagramPosts?: number;
   sourceTierCeiling?: number;
   sourceOverrides?: Record<string, boolean>;
   googleReviews?: number;
   websiteCrawlMaxPages?: number;
   imageVisionEnabled?: boolean;
-  maxImagesAnalyzed?: number;
+  analyzeGoogleImages?: number;
+  analyzeWebsiteImages?: number;
+  analyzeInstagramImages?: number;
   synthesisQuality?: SynthesisQuality;
   perRunCostCapUsd?: number;
 }): Promise<UpdateAtlasConfigResult> {
