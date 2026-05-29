@@ -9,6 +9,9 @@ type SettingsResponse = {
   autoVerifyAiEmail: boolean;
   autoVerifyVideo: boolean;
   atlasPreReadSnapshots: boolean;
+  atlasSaveSnapshots: boolean;
+  atlasResearchGoogleImages: number;
+  atlasResearchInstagramPosts: number;
   updatedAt: string | null;
 };
 
@@ -39,6 +42,33 @@ export async function setAtlasPreRead(
   const r = await efInvoke<SetPreReadResponse>("admin-set-atlas-pre-read", {
     enabled,
   });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}
+
+// ─── Atlas research config ─────────────────────────────────────────────────
+
+type AtlasConfigResponse = {
+  atlasSaveSnapshots: boolean;
+  atlasResearchGoogleImages: number;
+  atlasResearchInstagramPosts: number;
+  updatedAt: string | null;
+};
+
+type UpdateAtlasConfigResult =
+  | { ok: true; data: AtlasConfigResponse }
+  | { ok: false; error: string };
+
+// Partial update — pass only the fields you want to change.
+export async function updateAtlasConfig(patch: {
+  saveSnapshots?: boolean;
+  googleImages?: number;
+  instagramPosts?: number;
+}): Promise<UpdateAtlasConfigResult> {
+  const r = await efInvoke<AtlasConfigResponse>(
+    "admin-update-atlas-config",
+    patch,
+  );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
