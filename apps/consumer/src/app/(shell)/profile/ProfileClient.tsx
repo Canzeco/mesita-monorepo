@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Check,
   Crown,
+  Sparkles,
   User as UserIcon,
   CreditCard,
   Bell,
@@ -115,83 +116,88 @@ function ClassTab({
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
-      <PlanCarousel onConnectSocial={onConnectSocial} />
+      <FreeVsPremium />
+      <WaysToClimb onConnectSocial={onConnectSocial} />
     </div>
   );
 }
 
-// ─── Plan carousel ────────────────────────────────────────────────────────
+// ─── Free vs Premium ──────────────────────────────────────────────────────
 
-// Two self-contained plan cards in a horizontal scroller: Free first, then
-// Premium. Each lists its perks; Premium also carries the three doors to
-// unlock it. The user's current plan is flagged.
-function PlanCarousel({
-  onConnectSocial,
-}: {
-  onConnectSocial: (platform: SocialPlatform) => void;
-}) {
+// Quick at-a-glance comparison. The three perks that actually differ, with
+// the Premium column tinted + emphasized.
+const COMPARE_ROWS: { label: string; free: string; premium: string }[] = [
+  { label: "Cashback & discounts", free: "Base", premium: "Boosted" },
+  { label: "Recommendations", free: "Standard", premium: "Personalized" },
+  { label: "Reservations / month", free: "2", premium: "Unlimited" },
+];
+
+function FreeVsPremium() {
   const current = CURRENT_USER.tier;
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-          Plans
-        </p>
-        <p className="text-muted-foreground text-[10px]">Swipe to compare →</p>
+    <section className="border-border bg-card overflow-hidden rounded-2xl border">
+      <p className="text-foreground/70 px-4 pt-3.5 pb-2 text-[10px] font-medium tracking-[0.14em] uppercase">
+        Free vs Premium
+      </p>
+      <div className="grid grid-cols-[1.3fr_0.8fr_1fr] items-end gap-1 px-3">
+        <span />
+        <CompareHead label="Free" isCurrent={current === "free"} />
+        <CompareHead label="Premium" accent isCurrent={current === "premium"} />
       </div>
-      <div className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1">
-        <FreePlanCard isCurrent={current === "free"} />
-        <PremiumPlanCard
-          isCurrent={current === "premium"}
-          onConnectSocial={onConnectSocial}
-        />
+      <div className="mt-1">
+        {COMPARE_ROWS.map((row, i) => (
+          <div
+            key={row.label}
+            className={cn(
+              "grid grid-cols-[1.3fr_0.8fr_1fr] items-center gap-1 px-3 py-2.5",
+              i > 0 && "border-border/50 border-t",
+            )}
+          >
+            <span className="text-foreground/80 text-[12px] leading-tight font-medium">
+              {row.label}
+            </span>
+            <span className="text-foreground/70 text-center text-[12px] font-semibold">
+              {row.free}
+            </span>
+            <span className="bg-tier-premium/[0.07] text-premium rounded-md py-1.5 text-center text-[12px] font-semibold">
+              {row.premium}
+            </span>
+          </div>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }
 
-function PlanCardHeader({
+function CompareHead({
   label,
-  price,
-  priceSuffix,
-  sub,
   accent,
   isCurrent,
 }: {
   label: string;
-  price: string;
-  priceSuffix?: string;
-  sub?: string;
   accent?: boolean;
   isCurrent: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <span className="inline-flex items-center gap-1.5">
-          {accent && <Crown className="text-premium h-4 w-4 fill-current" />}
-          <span
-            className={cn(
-              "font-display text-xl font-bold tracking-tight",
-              accent && "text-premium",
-            )}
-          >
-            {label}
-          </span>
-        </span>
-        <p className="font-display text-foreground mt-1 text-lg leading-none font-bold tabular-nums">
-          {price}
-          {priceSuffix && (
-            <span className="text-muted-foreground text-[12px] font-medium">
-              {" "}
-              {priceSuffix}
-            </span>
+    <div
+      className={cn(
+        "flex flex-col items-center gap-0.5 rounded-t-lg px-1 py-1.5",
+        accent && "bg-tier-premium/[0.07]",
+      )}
+    >
+      <span className="inline-flex items-center gap-1">
+        {accent && <Crown className="text-premium h-3 w-3 fill-current" />}
+        <span
+          className={cn(
+            "font-display text-[13px] font-bold tracking-tight",
+            accent && "text-premium",
           )}
-        </p>
-        {sub && <p className="text-muted-foreground mt-1 text-[11px]">{sub}</p>}
-      </div>
+        >
+          {label}
+        </span>
+      </span>
       {isCurrent && (
-        <span className="bg-foreground text-background shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+        <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[8px] font-bold tracking-wider uppercase">
           Current
         </span>
       )}
@@ -199,212 +205,194 @@ function PlanCardHeader({
   );
 }
 
-function PerkList({ perks, accent }: { perks: string[]; accent?: boolean }) {
-  return (
-    <ul className="flex flex-col gap-2">
-      {perks.map((p) => (
-        <li key={p} className="flex items-start gap-2 text-[13px]">
-          <Check
-            className={cn(
-              "mt-0.5 h-4 w-4 shrink-0",
-              accent ? "text-premium" : "text-emerald-600",
-            )}
-            strokeWidth={3}
-          />
-          <span className="text-foreground/85 leading-snug">{p}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+// ─── Ways to climb ────────────────────────────────────────────────────────
 
-function FreePlanCard({ isCurrent }: { isCurrent: boolean }) {
-  const perks = [
-    "Base cashback & discounts",
-    "Standard recommendations",
-    "2 reservations / month",
-    "Hidden coupons, redeemed by QR at the venue",
-  ];
-  return (
-    <article className="border-border bg-card flex w-[80%] shrink-0 snap-start flex-col gap-4 rounded-2xl border p-5">
-      <PlanCardHeader
-        label="Free"
-        price="$0"
-        sub="Every Mesita account starts here"
-        isCurrent={isCurrent}
-      />
-      <PerkList perks={perks} />
-      <p className="text-muted-foreground mt-auto text-[11px] leading-snug">
-        No upgrade needed — Free is yours by default.
-      </p>
-    </article>
-  );
-}
+// Horizontal scroller, one card per path: stay Free, or reach Premium by
+// Instagram / Subscription / Invitation. Each card states the requirement +
+// its action; the user's current path is flagged.
+type ClimbCardData = {
+  key: string;
+  icon: LucideIcon;
+  iconBg: string;
+  title: string;
+  via?: string;
+  accent?: boolean;
+  price: string;
+  desc: string;
+  reached: boolean;
+  reachedLabel: string;
+  action?: { label: string; href?: string; onClick?: () => void };
+  note?: string;
+};
 
-function PremiumPlanCard({
-  isCurrent,
+function WaysToClimb({
   onConnectSocial,
 }: {
-  isCurrent: boolean;
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
   const premium = TIERS.find((t) => t.id === "premium")!;
-  const perks = [
-    "Boosted cashback & discounts",
-    "Personalized recommendations",
-    "Unlimited reservations",
-    "Everything in Free",
-  ];
-  const igConnected = CURRENT_USER.tierOrigin === "instagram";
-  const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
+  const origin = CURRENT_USER.tierOrigin;
+  const isFree = CURRENT_USER.tier === "free";
 
-  const rows: ClimbRow[] = [
+  const cards: ClimbCardData[] = [
+    {
+      key: "free",
+      icon: Sparkles,
+      iconBg: "bg-muted text-foreground",
+      title: "Free",
+      price: "$0",
+      desc: "Your default account — base cashback, standard recs, and 2 reservations a month.",
+      reached: isFree,
+      reachedLabel: "Current",
+      note: isFree ? undefined : "Included in every account",
+    },
     {
       key: "instagram",
       icon: Instagram,
       iconBg:
-        "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]",
-      label: "Instagram",
-      requirement: `${formatFollowers(premium.followerThreshold)}+ followers · post a story`,
-      state: igConnected ? "connected" : "default",
-      cta: igConnected ? "Connected" : "Connect",
-      onClick: () => onConnectSocial("instagram"),
+        "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white",
+      title: "Premium",
+      via: "by Instagram",
+      accent: true,
+      price: "Free",
+      desc: `${formatFollowers(premium.followerThreshold)}+ followers and post a story each visit.`,
+      reached: origin === "instagram",
+      reachedLabel: "Connected",
+      action: { label: "Connect", onClick: () => onConnectSocial("instagram") },
     },
     {
       key: "subscription",
       icon: CreditCard,
-      iconBg: "bg-pink-gradient",
-      label: "Subscribe",
-      requirement: `$${premium.priceMxn} MXN / mo · cancel anytime`,
-      state: isSubscribed ? "active" : "default",
-      cta: isSubscribed ? "Active" : "Subscribe",
-      href: "/subscribe/premium",
+      iconBg: "bg-pink-gradient text-white",
+      title: "Premium",
+      via: "by Subscription",
+      accent: true,
+      price: `$${premium.priceMxn} MXN / mo`,
+      desc: "Subscribe monthly. Cancel anytime.",
+      reached: origin === "subscription",
+      reachedLabel: "Active",
+      action: { label: "Subscribe", href: "/subscribe/premium" },
     },
     {
       key: "invitation",
       icon: Mail,
-      iconBg: "bg-amber-500",
-      label: "Invitation",
-      requirement: "Locals · creators · talent, invited by Mesita",
-      state: "default",
-      cta: "Request",
-      onClick: () =>
-        toast.action(
-          "Invitations are hand-picked — meanwhile email class@mesita.ai with your case",
-          {
-            label: "Copy email",
-            onClick: () => {
-              if (typeof navigator !== "undefined" && navigator.clipboard) {
-                navigator.clipboard
-                  .writeText("class@mesita.ai")
-                  .then(() => toast.success("class@mesita.ai copied"))
-                  .catch(() => toast.error("Couldn't copy"));
-              }
+      iconBg: "bg-amber-500 text-white",
+      title: "Premium",
+      via: "by Invitation",
+      accent: true,
+      price: "Invite only",
+      desc: "For locals, creators & talent invited by Mesita.",
+      reached: origin === "invitation",
+      reachedLabel: "Granted",
+      action: {
+        label: "Request",
+        onClick: () =>
+          toast.action(
+            "Invitations are hand-picked — meanwhile email class@mesita.ai with your case",
+            {
+              label: "Copy email",
+              onClick: () => {
+                if (typeof navigator !== "undefined" && navigator.clipboard) {
+                  navigator.clipboard
+                    .writeText("class@mesita.ai")
+                    .then(() => toast.success("class@mesita.ai copied"))
+                    .catch(() => toast.error("Couldn't copy"));
+                }
+              },
             },
-          },
-        ),
+          ),
+      },
     },
   ];
 
   return (
-    <article className="border-tier-premium/40 bg-card flex w-[80%] shrink-0 snap-start flex-col gap-4 rounded-2xl border-2 p-5">
-      <PlanCardHeader
-        label="Premium"
-        price={`$${premium.priceMxn} MXN`}
-        priceSuffix="/ mo"
-        sub="or earned free via Instagram / invitation"
-        accent
-        isCurrent={isCurrent}
-      />
-      <PerkList perks={perks} accent />
-      <div>
-        <p className="text-foreground/70 mb-2 text-[10px] font-medium tracking-[0.14em] uppercase">
-          {isCurrent ? "How members get Premium" : "Three ways to unlock"}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
+          Ways to climb
         </p>
-        <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-xl border">
-          {rows.map((row) => (
-            <ClimbTableRow key={row.key} row={row} />
-          ))}
-        </div>
+        <p className="text-muted-foreground text-[10px]">Swipe →</p>
       </div>
-    </article>
+      <div className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1">
+        {cards.map((c) => (
+          <ClimbCard key={c.key} data={c} />
+        ))}
+      </div>
+    </div>
   );
 }
 
-type ClimbRow = {
-  key: string;
-  icon: LucideIcon;
-  iconBg: string;
-  label: string;
-  /** Single requirement line for this door into Premium. */
-  requirement: string;
-  state: "default" | "connected" | "active";
-  cta: string;
-  href?: string;
-  onClick?: () => void;
-};
+function ClimbCard({ data }: { data: ClimbCardData }) {
+  const Icon = data.icon;
 
-function ClimbTableRow({ row }: { row: ClimbRow }) {
-  const isReached = row.state === "connected" || row.state === "active";
-  const ctaClass = isReached
-    ? "bg-emerald-500/15 text-emerald-700"
-    : "bg-pink-gradient text-white shadow-sm";
-  const ctaContent = isReached ? (
-    <span className="inline-flex items-center justify-center gap-1.5">
-      <Check className="h-3.5 w-3.5" strokeWidth={3} />
-      {row.cta}
-    </span>
-  ) : (
-    row.cta
-  );
-  const Icon = row.icon;
-  // Two-row block: a label row (icon + door name + its requirement) and a
-  // full-width CTA pill so the tap target is generous.
-  const body = (
-    <div className="hover:bg-muted/30 flex flex-col gap-2.5 px-3 py-3 transition">
+  let footer: ReactNode = null;
+  if (data.reached) {
+    footer = (
+      <span className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-500/15 py-2 text-[12px] font-semibold text-emerald-700">
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        {data.reachedLabel}
+      </span>
+    );
+  } else if (data.action) {
+    const cls =
+      "bg-pink-gradient shadow-sm block rounded-full py-2 text-center text-[12px] font-semibold text-white";
+    footer = data.action.href ? (
+      <Link href={data.action.href} className={cls}>
+        {data.action.label}
+      </Link>
+    ) : (
+      <button type="button" onClick={data.action.onClick} className={cn(cls, "w-full")}>
+        {data.action.label}
+      </button>
+    );
+  } else if (data.note) {
+    footer = (
+      <span className="text-muted-foreground block text-center text-[11px]">
+        {data.note}
+      </span>
+    );
+  }
+
+  return (
+    <article
+      className={cn(
+        "bg-card flex w-[68%] shrink-0 snap-start flex-col gap-3 rounded-2xl border p-4",
+        data.accent ? "border-tier-premium/40" : "border-border",
+      )}
+    >
       <div className="flex items-center gap-2.5">
         <span
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white",
-            row.iconBg,
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            data.iconBg,
           )}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-5 w-5" />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="font-display block text-[13px] font-semibold tracking-tight">
-            {row.label}
-          </span>
-          <span className="text-muted-foreground block text-[11px]">
-            {row.requirement}
-          </span>
-        </span>
+        <div className="min-w-0">
+          <p className="font-display flex items-center gap-1 text-[15px] leading-none font-bold tracking-tight">
+            {data.accent && (
+              <Crown className="text-premium h-3.5 w-3.5 fill-current" />
+            )}
+            <span className={cn(data.accent && "text-premium")}>
+              {data.title}
+            </span>
+          </p>
+          {data.via && (
+            <p className="text-muted-foreground mt-1 text-[10px] font-medium tracking-wider uppercase">
+              {data.via}
+            </p>
+          )}
+        </div>
       </div>
-      <span
-        className={cn(
-          "block rounded-full py-2 text-center text-[12px] font-semibold",
-          ctaClass,
-        )}
-      >
-        {ctaContent}
-      </span>
-    </div>
-  );
-  if (row.href) {
-    return (
-      <Link href={row.href} className="block">
-        {body}
-      </Link>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={row.onClick}
-      className="block w-full text-left"
-    >
-      {body}
-    </button>
+      <p className="font-display text-foreground text-base leading-none font-bold tabular-nums">
+        {data.price}
+      </p>
+      <p className="text-muted-foreground flex-1 text-[12px] leading-snug">
+        {data.desc}
+      </p>
+      {footer}
+    </article>
   );
 }
 
