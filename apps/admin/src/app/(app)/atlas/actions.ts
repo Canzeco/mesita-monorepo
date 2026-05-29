@@ -4,6 +4,8 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 // ─── Settings read ─────────────────────────────────────────────────────────
 
+export type SynthesisQuality = "economy" | "standard" | "high";
+
 type SettingsResponse = {
   autoVerifyAiCall: boolean;
   autoVerifyAiEmail: boolean;
@@ -13,6 +15,17 @@ type SettingsResponse = {
   atlasSnapshotOnBusinessEdit: boolean;
   atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
+  atlasSourceTierCeiling: number;
+  atlasSourceOverrides: Record<string, boolean>;
+  atlasSerpOnlyWhenThin: boolean;
+  atlasGoogleReviews: number;
+  atlasWebsiteCrawlMaxPages: number;
+  atlasReviewsPerSite: number;
+  atlasImageVisionEnabled: boolean;
+  atlasMaxImagesAnalyzed: number;
+  atlasPerSourceAiSummary: boolean;
+  atlasSynthesisQuality: SynthesisQuality;
+  atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
 };
 
@@ -54,6 +67,17 @@ type AtlasConfigResponse = {
   atlasSnapshotOnBusinessEdit: boolean;
   atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
+  atlasSourceTierCeiling: number;
+  atlasSourceOverrides: Record<string, boolean>;
+  atlasSerpOnlyWhenThin: boolean;
+  atlasGoogleReviews: number;
+  atlasWebsiteCrawlMaxPages: number;
+  atlasReviewsPerSite: number;
+  atlasImageVisionEnabled: boolean;
+  atlasMaxImagesAnalyzed: number;
+  atlasPerSourceAiSummary: boolean;
+  atlasSynthesisQuality: SynthesisQuality;
+  atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
 };
 
@@ -67,6 +91,17 @@ export async function updateAtlasConfig(patch: {
   snapshotOnBusinessEdit?: boolean;
   googleImages?: number;
   instagramPosts?: number;
+  sourceTierCeiling?: number;
+  sourceOverrides?: Record<string, boolean>;
+  serpOnlyWhenThin?: boolean;
+  googleReviews?: number;
+  websiteCrawlMaxPages?: number;
+  reviewsPerSite?: number;
+  imageVisionEnabled?: boolean;
+  maxImagesAnalyzed?: number;
+  perSourceAiSummary?: boolean;
+  synthesisQuality?: SynthesisQuality;
+  perRunCostCapUsd?: number;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
     "admin-update-atlas-config",

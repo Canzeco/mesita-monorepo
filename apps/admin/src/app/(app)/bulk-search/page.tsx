@@ -571,10 +571,10 @@ function csvCell(s: string): string {
 }
 
 function formatUsdEstimate(amount: number): string {
-  if (amount <= 0) return "$0.00";
-  if (amount < 0.01) return "<$0.01";
-  if (amount < 100) return `$${amount.toFixed(2)}`;
-  return `$${Math.round(amount).toLocaleString()}`;
+  if (amount <= 0) return "US$0.00";
+  if (amount < 0.01) return "<US$0.01";
+  if (amount < 100) return `US$${amount.toFixed(2)}`;
+  return `US$${Math.round(amount).toLocaleString()}`;
 }
 
 function CostCalculator({
@@ -588,22 +588,27 @@ function CostCalculator({
   totalCalls: number;
   totalCostUsd: number;
 }) {
-  const pricePerCallLabel = `$${PRICE_PER_REQUEST_USD.toFixed(3)}`;
+  const pricePerCallLabel = `US$${PRICE_PER_REQUEST_USD.toFixed(3)}`;
   const freeTierLabel = FREE_PRO_REQUESTS_PER_MONTH.toLocaleString();
   return (
     <div className="border-border bg-card shadow-elev rounded-2xl border px-5 py-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
-            Estimated cost
+            Estimated cost (USD)
           </p>
           <p className="text-muted-foreground/80 mt-1 text-xs">
             Text Search Pro SKU · 0–100K monthly tier
           </p>
         </div>
-        <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">
-          {formatUsdEstimate(totalCostUsd)}
-        </p>
+        <div className="flex items-baseline gap-1.5">
+          <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">
+            {formatUsdEstimate(totalCostUsd)}
+          </p>
+          <span className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
+            USD
+          </span>
+        </div>
       </div>
 
       <div className="border-border mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs sm:grid-cols-4">
