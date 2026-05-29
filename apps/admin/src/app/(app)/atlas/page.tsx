@@ -41,8 +41,9 @@ export default async function AtlasPage() {
         initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
         initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
         initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
-        initialAnalyzeWebsiteImages={result.data.atlasAnalyzeWebsiteImages}
         initialAnalyzeInstagramImages={result.data.atlasAnalyzeInstagramImages}
+        initialImageAnalysisPrompt={result.data.atlasImageAnalysisPrompt}
+        initialImageSortingPrompt={result.data.atlasImageSortingPrompt}
         initialSynthesisQuality={result.data.atlasSynthesisQuality}
         initialPerRunCostCapUsd={result.data.atlasPerRunCostCapUsd}
         initialUpdatedAt={result.data.updatedAt}

@@ -142,12 +142,13 @@ export function AtlasClient(props: {
   initialSourceTierCeiling: number;
   initialSourceOverrides: Record<string, boolean>;
   initialGoogleReviews: number;
-  initialWebsiteCrawlMaxPages: number; // X1
-  initialInstagramPosts: number; // X2
+  initialWebsiteCrawlMaxPages: number;
+  initialInstagramPosts: number;
   initialImageVisionEnabled: boolean;
-  initialAnalyzeGoogleImages: number; // X3
-  initialAnalyzeWebsiteImages: number; // X4
-  initialAnalyzeInstagramImages: number; // X5
+  initialAnalyzeGoogleImages: number;
+  initialAnalyzeInstagramImages: number;
+  initialImageAnalysisPrompt: string;
+  initialImageSortingPrompt: string;
   initialSynthesisQuality: SynthesisQuality;
   initialPerRunCostCapUsd: number;
   initialUpdatedAt: string | null;
@@ -188,32 +189,32 @@ export function AtlasClient(props: {
           />
           <SourceDepthSection
             initialGoogleReviews={props.initialGoogleReviews}
+            initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
             onSaved={setUpdatedAt}
           />
         </div>
       </StageGroup>
 
-      {/* ═══ Data analysis ═════════════════════════════════════════ */}
-      <StageGroup label="Data analysis">
-        <div className="flex flex-col gap-6">
-          <GatherSection
-            initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
-            initialInstagramPosts={props.initialInstagramPosts}
-            onSaved={setUpdatedAt}
-          />
-          <AnalyzeSection
-            initialImageVisionEnabled={props.initialImageVisionEnabled}
-            initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-            initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
-            initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-            onSaved={setUpdatedAt}
-          />
-          <SynthCostSection
-            initialSynthesisQuality={props.initialSynthesisQuality}
-            initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
-            onSaved={setUpdatedAt}
-          />
-        </div>
+      {/* ═══ Vision Params ═════════════════════════════════════════ */}
+      <StageGroup label="Vision Params">
+        <VisionParamsSection
+          initialImageVisionEnabled={props.initialImageVisionEnabled}
+          initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+          initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+          initialInstagramPosts={props.initialInstagramPosts}
+          initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
+          initialImageSortingPrompt={props.initialImageSortingPrompt}
+          onSaved={setUpdatedAt}
+        />
+      </StageGroup>
+
+      {/* ═══ Analysis and Cost ═════════════════════════════════════ */}
+      <StageGroup label="Analysis and Cost">
+        <SynthCostSection
+          initialSynthesisQuality={props.initialSynthesisQuality}
+          initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
+          onSaved={setUpdatedAt}
+        />
       </StageGroup>
     </div>
   );
@@ -453,30 +454,44 @@ function SourcesSection({
 
 function SourceDepthSection({
   initialGoogleReviews,
+  initialWebsiteCrawlMaxPages,
   onSaved,
 }: {
   initialGoogleReviews: number;
+  initialWebsiteCrawlMaxPages: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [googleReviews, setGoogleReviews] = useState(initialGoogleReviews);
-  const [saved, setSaved] = useState(initialGoogleReviews);
+  const [websitePages, setWebsitePages] = useState(initialWebsiteCrawlMaxPages);
+  const [saved, setSaved] = useState({
+    googleReviews: initialGoogleReviews,
+    websitePages: initialWebsiteCrawlMaxPages,
+  });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty = googleReviews !== saved;
+  const dirty =
+    googleReviews !== saved.googleReviews ||
+    websitePages !== saved.websitePages;
 
   const save = () => {
     if (!dirty) return;
     setError(null);
     setOk(false);
     start(async () => {
-      const r = await updateAtlasConfig({ googleReviews });
+      const r = await updateAtlasConfig({
+        googleReviews,
+        websiteCrawlMaxPages: websitePages,
+      });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      setSaved(r.data.atlasGoogleReviews);
+      setSaved({
+        googleReviews: r.data.atlasGoogleReviews,
+        websitePages: r.data.atlasWebsiteCrawlMaxPages,
+      });
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -492,11 +507,12 @@ function SourceDepthSection({
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
         How much non-image data to pull per source. Reviews come from Google
-        only.
+        only; website pages = the menu/content crawl depth.
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <NumberField icon={<Star className="text-muted-foreground h-4 w-4" />} label="Max Google reviews" value={googleReviews} min={0} max={5} onChange={setGoogleReviews} disabled={pending} />
+        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
@@ -505,117 +521,49 @@ function SourceDepthSection({
   );
 }
 
-// ─── Data analysis: GATHER (X1, X2) ─────────────────────────────────────────
+// ─── Vision Params ──────────────────────────────────────────────────────────
 
-function GatherSection({
-  initialWebsiteCrawlMaxPages,
-  initialInstagramPosts,
-  onSaved,
-}: {
-  initialWebsiteCrawlMaxPages: number;
-  initialInstagramPosts: number;
-  onSaved: (updatedAt: string | null) => void;
-}) {
-  const [websitePages, setWebsitePages] = useState(initialWebsiteCrawlMaxPages);
-  const [instagramPosts, setInstagramPosts] = useState(initialInstagramPosts);
-  const [saved, setSaved] = useState({
-    websitePages: initialWebsiteCrawlMaxPages,
-    instagramPosts: initialInstagramPosts,
-  });
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
-
-  const dirty =
-    websitePages !== saved.websitePages ||
-    instagramPosts !== saved.instagramPosts;
-
-  const save = () => {
-    if (!dirty) return;
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updateAtlasConfig({
-        websiteCrawlMaxPages: websitePages,
-        instagramPosts,
-      });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setSaved({
-        websitePages: r.data.atlasWebsiteCrawlMaxPages,
-        instagramPosts: r.data.atlasResearchInstagramPosts,
-      });
-      onSaved(r.data.updatedAt);
-      setOk(true);
-    });
-  };
-
-  return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-center gap-2">
-        <ImageIcon className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Gather &amp; pre-select
-        </h2>
-      </div>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        The image candidate pool per source. <span className="text-foreground font-medium">Google</span> = Places default order (fixed 10).{" "}
-        <span className="text-foreground font-medium">Website</span> = all images on{" "}
-        <span className="text-foreground font-medium">X1</span> crawled pages, ranked by size.{" "}
-        <span className="text-foreground font-medium">Instagram</span> = images from{" "}
-        <span className="text-foreground font-medium">X2</span> posts (images only), ranked by likes.{" "}
-        Selection then saves a fixed 10 / 10 / 20 (40 of 50 max) to the venue.
-      </p>
-
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="X1 · Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="X2 · Instagram posts per profile" value={instagramPosts} min={0} max={50} onChange={setInstagramPosts} disabled={pending} />
-      </div>
-
-      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
-      {error && <ErrorNote message={error} />}
-    </section>
-  );
-}
-
-// ─── Analysis ────────────────────────────────────────────────────────────
-
-const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[] = [
-  { value: "economy", label: "Economy", hint: "gpt-4o-mini" },
-  { value: "standard", label: "Standard", hint: "gpt-4o" },
-  { value: "high", label: "High", hint: "GPT-5.x" },
-];
-
-function AnalyzeSection({
+function VisionParamsSection({
   initialImageVisionEnabled,
   initialAnalyzeGoogleImages,
-  initialAnalyzeWebsiteImages,
   initialAnalyzeInstagramImages,
+  initialInstagramPosts,
+  initialImageAnalysisPrompt,
+  initialImageSortingPrompt,
   onSaved,
 }: {
   initialImageVisionEnabled: boolean;
   initialAnalyzeGoogleImages: number;
-  initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
+  initialInstagramPosts: number;
+  initialImageAnalysisPrompt: string;
+  initialImageSortingPrompt: string;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [vision, setVision] = useState(initialImageVisionEnabled);
   const [g, setG] = useState(initialAnalyzeGoogleImages);
-  const [w, setW] = useState(initialAnalyzeWebsiteImages);
-  const [i, setI] = useState(initialAnalyzeInstagramImages);
+  const [ig, setIg] = useState(initialAnalyzeInstagramImages);
+  const [posts, setPosts] = useState(initialInstagramPosts);
+  const [analysisPrompt, setAnalysisPrompt] = useState(initialImageAnalysisPrompt);
+  const [sortingPrompt, setSortingPrompt] = useState(initialImageSortingPrompt);
   const [saved, setSaved] = useState({
     g: initialAnalyzeGoogleImages,
-    w: initialAnalyzeWebsiteImages,
-    i: initialAnalyzeInstagramImages,
+    ig: initialAnalyzeInstagramImages,
+    posts: initialInstagramPosts,
+    analysisPrompt: initialImageAnalysisPrompt,
+    sortingPrompt: initialImageSortingPrompt,
   });
   const [togglePending, startToggle] = useTransition();
   const [savePending, startSave] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty = g !== saved.g || w !== saved.w || i !== saved.i;
+  const dirty =
+    g !== saved.g ||
+    ig !== saved.ig ||
+    posts !== saved.posts ||
+    analysisPrompt !== saved.analysisPrompt ||
+    sortingPrompt !== saved.sortingPrompt;
 
   const flipVision = () => {
     setError(null);
@@ -639,8 +587,10 @@ function AnalyzeSection({
     startSave(async () => {
       const r = await updateAtlasConfig({
         analyzeGoogleImages: g,
-        analyzeWebsiteImages: w,
-        analyzeInstagramImages: i,
+        analyzeInstagramImages: ig,
+        instagramPosts: posts,
+        imageAnalysisPrompt: analysisPrompt,
+        imageSortingPrompt: sortingPrompt,
       });
       if (!r.ok) {
         setError(r.error);
@@ -648,9 +598,16 @@ function AnalyzeSection({
       }
       setSaved({
         g: r.data.atlasAnalyzeGoogleImages,
-        w: r.data.atlasAnalyzeWebsiteImages,
-        i: r.data.atlasAnalyzeInstagramImages,
+        ig: r.data.atlasAnalyzeInstagramImages,
+        posts: r.data.atlasResearchInstagramPosts,
+        analysisPrompt: r.data.atlasImageAnalysisPrompt,
+        sortingPrompt: r.data.atlasImageSortingPrompt,
       });
+      setG(r.data.atlasAnalyzeGoogleImages);
+      setIg(r.data.atlasAnalyzeInstagramImages);
+      setPosts(r.data.atlasResearchInstagramPosts);
+      setAnalysisPrompt(r.data.atlasImageAnalysisPrompt);
+      setSortingPrompt(r.data.atlasImageSortingPrompt);
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -661,29 +618,48 @@ function AnalyzeSection({
       <div className="flex items-center gap-2">
         <Eye className="text-muted-foreground h-4 w-4" />
         <h2 className="font-display text-base font-semibold tracking-tight">
-          Analyze (vision)
+          Vision Params
         </h2>
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        Vision analyzes the first N saved images per source, then ranks them
-        best→worst by AI metadata. The expensive step — caps are per source.
+        Vision describes each image (analysis prompt), then ranks them
+        best→worst (sorting prompt). Caps bound how many images get analyzed
+        per source. The expensive step.
       </p>
 
       <div className="mt-5">
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Eye className="text-muted-foreground h-4 w-4" />
-            Image vision
+            Enable vision
             <span className="text-muted-foreground text-[11px]">(the cost driver)</span>
           </span>
           <Switch on={vision} pending={togglePending} onClick={flipVision} label="Toggle image vision" />
         </div>
       </div>
 
+      <div className="mt-4">
+        <TextAreaField
+          label="Image analysis prompt"
+          value={analysisPrompt}
+          onChange={setAnalysisPrompt}
+          disabled={savePending || !vision}
+        />
+      </div>
+
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="X3 · Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="X4 · Website images" value={w} min={0} max={10} onChange={setW} disabled={savePending || !vision} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="X5 · Instagram images" value={i} min={0} max={20} onChange={setI} disabled={savePending || !vision} />
+        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Max num of Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max num of Instagram images" value={ig} min={0} max={20} onChange={setIg} disabled={savePending || !vision} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max num of Instagram posts" value={posts} min={0} max={50} onChange={setPosts} disabled={savePending || !vision} />
+      </div>
+
+      <div className="mt-4">
+        <TextAreaField
+          label="Image sorting prompt"
+          value={sortingPrompt}
+          onChange={setSortingPrompt}
+          disabled={savePending || !vision}
+        />
       </div>
 
       <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
@@ -691,6 +667,12 @@ function AnalyzeSection({
     </section>
   );
 }
+
+const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[] = [
+  { value: "economy", label: "Economy", hint: "gpt-4o-mini" },
+  { value: "standard", label: "Standard", hint: "gpt-4o" },
+  { value: "high", label: "High", hint: "GPT-5.x" },
+];
 
 // ─── Data analysis: synthesis & cost ───────────────────────────────────────
 
@@ -944,6 +926,32 @@ function Switch({
         }`}
       />
     </button>
+  );
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+      <span className="text-sm font-medium">{label}</span>
+      <textarea
+        value={value}
+        disabled={disabled}
+        rows={4}
+        maxLength={4000}
+        onChange={(e) => onChange(e.target.value)}
+        className="border-border bg-card focus:border-foreground min-h-24 rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none disabled:opacity-50"
+      />
+    </label>
   );
 }
 

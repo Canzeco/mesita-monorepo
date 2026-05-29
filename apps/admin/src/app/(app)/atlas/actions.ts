@@ -20,7 +20,8 @@ type SettingsResponse = {
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
-  atlasAnalyzeWebsiteImages: number;
+  atlasImageAnalysisPrompt: string;
+  atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
   atlasSynthesisQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
@@ -70,7 +71,8 @@ type AtlasConfigResponse = {
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
-  atlasAnalyzeWebsiteImages: number;
+  atlasImageAnalysisPrompt: string;
+  atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
   atlasSynthesisQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
@@ -92,7 +94,8 @@ export async function updateAtlasConfig(patch: {
   websiteCrawlMaxPages?: number;
   imageVisionEnabled?: boolean;
   analyzeGoogleImages?: number;
-  analyzeWebsiteImages?: number;
+  imageAnalysisPrompt?: string;
+  imageSortingPrompt?: string;
   analyzeInstagramImages?: number;
   synthesisQuality?: SynthesisQuality;
   perRunCostCapUsd?: number;
