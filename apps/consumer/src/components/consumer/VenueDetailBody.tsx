@@ -742,6 +742,9 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   // in a subtitle pill; lowercase it when reading inline with the
   // percentage ("20% cashback").
   const mechanicWord = venue.details.mechanic.toLowerCase();
+  // Short suffix for the tier tiles, kept consistent with the hero's
+  // mechanic: cashback venues read "70% back", discount venues "70% off".
+  const mechanicShort = mechanicWord.startsWith("cash") ? "back" : "off";
   const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
   const subtitleParts: string[] = [`as Mesita ${tierProperLabel(current_tier)}`];
   if (activeValue != null) {
@@ -782,6 +785,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
                 key={`welcome-${tier}`}
                 tier={tier}
                 value={welcome[tier]}
+                suffix={mechanicShort}
                 relation={relation}
                 active={is_first_visit && tier === current_tier}
               />
@@ -811,6 +815,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
                 key={`default-${tier}`}
                 tier={tier}
                 value={returning[tier]}
+                suffix={mechanicShort}
                 relation={relation}
                 active={!is_first_visit && tier === current_tier}
               />
@@ -845,11 +850,14 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
 function TierCard({
   tier,
   value,
+  suffix,
   relation,
   active,
 }: {
   tier: Tier;
   value: number | null;
+  /** Mechanic-aware unit, e.g. "back" (cashback) or "off" (discount). */
+  suffix: string;
   relation: "lower" | "current" | "higher";
   // True when this exact card represents the guest's currently active
   // reward (matches both current_tier AND the first-visit/returning-
@@ -872,7 +880,7 @@ function TierCard({
             {value == null ? "—" : `${value}%`}
           </span>
           {value != null && (
-            <span className="text-[10px] text-white/85">off</span>
+            <span className="text-[10px] text-white/85">{suffix}</span>
           )}
         </p>
       </div>
@@ -899,7 +907,7 @@ function TierCard({
           {value == null ? "—" : `${value}%`}
         </span>
         {value != null && (
-          <span className="text-muted-foreground text-[10px]">off</span>
+          <span className="text-muted-foreground text-[10px]">{suffix}</span>
         )}
       </p>
     </div>
