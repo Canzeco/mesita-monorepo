@@ -54,6 +54,8 @@ function enrichForDeck(v: Venue): Venue {
       ...v,
       google_rating: v.google_rating ?? mockVenue.google.rating,
       google_count: v.google_count ?? mockVenue.google.count,
+      instagram_followers_count:
+        v.instagram_followers_count ?? mockVenue.instagram.followers,
       price_range: v.price_range ?? mockVenue.price_range,
       last_updated_label: v.last_updated_label ?? mockVenue.last_updated_label,
       open_now: v.open_now ?? mockVenue.open_now,
@@ -84,6 +86,8 @@ function enrichForCatalog(v: Venue): Venue {
     google_rating: v.google_rating ?? Number((4 + ratingTenths / 10).toFixed(1)),
     distance_km:
       v.distance_km ?? Number((0.4 + ((seed >> 4) % 50) / 10).toFixed(1)),
+    instagram_followers_count:
+      v.instagram_followers_count ?? 2000 + ((seed >> 6) % 80) * 1000,
     is_first_visit: v.is_first_visit ?? true,
   };
 }

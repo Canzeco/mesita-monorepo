@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   Clock,
   Globe,
+  Instagram,
   MapPin,
   Navigation,
   Star,
@@ -130,6 +131,10 @@ function CardOverlay({ venue }: { venue: Venue }) {
   const distanceLabel =
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const zoneLabel = venue.zone ?? null;
+  const igFollowersLabel =
+    venue.instagram_followers_count != null
+      ? formatCount(venue.instagram_followers_count)
+      : null;
 
   const statusLabel = getOpeningStatusLabel(venue);
   const isOpen = venue.open_now === true;
@@ -174,6 +179,12 @@ function CardOverlay({ venue }: { venue: Venue }) {
             <span className="font-semibold">{ratingLabel}</span>
             <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
             {ratingCountLabel && <span>({ratingCountLabel})</span>}
+          </MetaChip>
+        )}
+        {igFollowersLabel && (
+          <MetaChip>
+            <Instagram className="h-3 w-3 shrink-0 text-white/80" />
+            <span className="font-semibold">{igFollowersLabel}</span>
           </MetaChip>
         )}
         {distanceLabel && (

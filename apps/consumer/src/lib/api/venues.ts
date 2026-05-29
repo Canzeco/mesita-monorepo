@@ -81,6 +81,8 @@ export type Venue = {
   // them (sourced from Google Places + cached on the row).
   google_rating?: number | null;
   google_count?: number | null;
+  /** Venue's Instagram follower count (read-only signal). */
+  instagram_followers_count?: number | null;
   /** Pre-formatted with the currency prefix, e.g. "MX$200–300". */
   price_range?: string | null;
   /** Short relative timestamp like "2 days ago" (server-formatted). */
