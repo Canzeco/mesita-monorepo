@@ -3,8 +3,10 @@
 import { useMemo } from "react";
 import { Bookmark } from "lucide-react";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
+import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
 import { SAVED_VENUES } from "@/lib/mock/saved-venues-mock";
 import { mockVenue } from "@/lib/mock/venue";
+import { enrichVenueWithMockOverview } from "@/lib/mock/enrich-overview";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 import type { Venue } from "@/lib/api/venues";
@@ -88,10 +90,14 @@ export default function SavedPage() {
   const catalog = useMemo(() => buildVenueCatalog(), []);
   const venues = useMemo<Venue[]>(() => {
     const ids = [...savedIds];
-    if (ids.length === 0) return SAVED_VENUES as Venue[];
+    if (ids.length === 0)
+      return SAVED_VENUES.map((v) =>
+        enrichVenueWithMockOverview(v as Venue, "catalog"),
+      );
     return ids
       .map((id) => catalog.get(id))
-      .filter((v): v is Venue => v != null);
+      .filter((v): v is Venue => v != null)
+      .map((v) => enrichVenueWithMockOverview(v, "catalog"));
   }, [savedIds, catalog]);
 
   function unsaveVenue(id: string) {
@@ -101,23 +107,32 @@ export default function SavedPage() {
   }
 
   return (
-    <div className="scrollbar-hide h-full overflow-y-auto px-4 py-4">
-      {venues.length === 0 ? (
-        <div className="border-border text-muted-foreground rounded-2xl border border-dashed p-8 text-center text-sm">
-          Nothing saved yet. Swipe right on the Explore deck to bookmark a
-          venue.
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {venues.map((v) => (
-            <SavedVenueTile
-              key={v.id}
-              venue={v}
-              onUnsave={() => unsaveVenue(v.id)}
-            />
-          ))}
-        </div>
-      )}
+    <div className="scrollbar-hide h-full overflow-y-auto">
+      <div className="flex flex-col gap-4 px-4 py-4">
+        {/* "Higher class, higher cashback" promo lives on /profile >
+            Coupons, /coupons standalone, and here at the top of
+            /saved — anywhere the consumer is browsing places worth
+            spending on. Scrolls with the rest of the page; no
+            sticky behavior. */}
+        <ClassUpsellBox />
+
+        {venues.length === 0 ? (
+          <div className="border-border text-muted-foreground rounded-2xl border border-dashed p-8 text-center text-sm">
+            Nothing saved yet. Swipe right on the Explore deck to bookmark a
+            venue.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {venues.map((v) => (
+              <SavedVenueTile
+                key={v.id}
+                venue={v}
+                onUnsave={() => unsaveVenue(v.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

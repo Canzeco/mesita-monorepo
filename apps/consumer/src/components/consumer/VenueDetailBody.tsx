@@ -48,6 +48,7 @@ import {
   VenueSectionNav,
 } from "@/components/consumer/VenueSectionNav";
 import { useSavedVenues } from "@/lib/saved-venues";
+import { tierProperLabel } from "@/lib/consumer-data";
 import { toast } from "@/lib/toast";
 
 // Section nav order for the venue detail page. Coupon sits at the END
@@ -205,7 +206,7 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
     ? welcome[current_tier]
     : returning[current_tier];
   const mechanicWord = venue.details.mechanic.toLowerCase();
-  const tierLabel = TIER_PROPER[current_tier];
+  const tierLabel = tierProperLabel(current_tier);
   // Per-visit cashback ceiling. Shown on the banner so the user can't
   // misread "20% cashback" as unlimited. Currency follows the venue's
   // own setting (MXN is the default; "MX$" prefix to disambiguate from
@@ -729,12 +730,6 @@ const TIER_RANK: Record<Tier, number> = {
   gold: 2,
   diamond: 3,
 };
-const TIER_PROPER: Record<Tier, string> = {
-  bronze: "Bronze",
-  silver: "Silver",
-  gold: "Gold",
-  diamond: "Diamond",
-};
 
 function RewardsBox({ venue }: { venue: VenueDetail }) {
   const { welcome, default: returning, current_tier, is_first_visit } =
@@ -751,7 +746,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   // percentage ("20% cashback").
   const mechanicWord = venue.details.mechanic.toLowerCase();
   const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
-  const subtitleParts: string[] = [`as Mesita ${TIER_PROPER[current_tier]}`];
+  const subtitleParts: string[] = [`as Mesita ${tierProperLabel(current_tier)}`];
   if (activeValue != null) {
     subtitleParts.push(is_first_visit ? "first visit" : "on returning visits");
     subtitleParts.push(`capped at ${capLabel} / visit`);
@@ -865,7 +860,7 @@ function TierCard({
     return (
       <div className="bg-pink-gradient shadow-glow overflow-hidden rounded-xl p-2 text-center text-white">
         <p className="text-[9px] font-bold tracking-wider text-white/90 uppercase">
-          {TIER_PROPER[tier]}
+          {tierProperLabel(tier)}
         </p>
         <p className="mt-0.5 flex items-baseline justify-center gap-1">
           <span className="font-display text-lg font-semibold leading-tight">
@@ -892,7 +887,7 @@ function TierCard({
           TIER_TEXT[tier],
         )}
       >
-        {TIER_PROPER[tier]}
+        {tierProperLabel(tier)}
       </p>
       <p className="mt-0.5 flex items-baseline justify-center gap-1">
         <span className="font-display text-foreground text-lg font-semibold leading-tight">

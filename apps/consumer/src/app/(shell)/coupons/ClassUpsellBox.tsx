@@ -10,7 +10,11 @@ import {
   CreditCard,
   Mail,
 } from "lucide-react";
-import { CURRENT_USER, TIER_ORDER } from "@/lib/consumer-data";
+import {
+  CURRENT_USER,
+  TIER_ORDER,
+  tierProperLabel,
+} from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
 // Promo strip at the top of /coupons. Single paragraph folds the
@@ -24,16 +28,9 @@ import { cn } from "@/lib/utils";
 //
 // Diamond holders see a maxed-out variant.
 
-const TIER_PROPER: Record<string, string> = {
-  bronze: "Bronze",
-  silver: "Silver",
-  gold: "Gold",
-  diamond: "Diamond",
-};
-
 export function ClassUpsellBox() {
   const current = CURRENT_USER.tier;
-  const currentLabel = TIER_PROPER[current] ?? "Mesita";
+  const currentLabel = tierProperLabel(current);
   const currentIdx = TIER_ORDER.indexOf(
     current as (typeof TIER_ORDER)[number],
   );

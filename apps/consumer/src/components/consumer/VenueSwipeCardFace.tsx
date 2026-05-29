@@ -5,23 +5,16 @@ import Image from "next/image";
 import {
   BadgeCheck,
   Clock,
-  Gift,
   Globe,
   MapPin,
   Navigation,
   Star,
 } from "lucide-react";
 import { cn, firstInitial } from "@/lib/utils";
-import { CURRENT_USER } from "@/lib/consumer-data";
 import type { Venue } from "@/lib/api/venues";
+import { getOpeningStatusLabel } from "@/lib/venue-status";
 import { ImageCarousel } from "./ImageCarousel";
-
-const TIER_PROPER: Record<string, string> = {
-  bronze: "Bronze",
-  silver: "Silver",
-  gold: "Gold",
-  diamond: "Diamond",
-};
+import { PromoChip } from "./PromoChip";
 
 // The static visual "face" of a swipe card. Used by:
 //   - SwipeDeck back-card peek (frozen frame, single photo)
@@ -138,48 +131,8 @@ function CardOverlay({ venue }: { venue: Venue }) {
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const zoneLabel = venue.zone ?? null;
 
-  // Opening status — surfaces one of three things, in priority order:
-  //   open_now === true  + closes_at → "Open · until 02:00"
-  //   open_now === false + opens_at  → "Closed · opens 18:00"
-  //   only closes_at present         → "Until 02:00" (partial info)
-  // The two-fact phrasing ("Open · until …") makes the binary state
-  // legible at a glance even when the user doesn't process the time
-  // string. Day-aware ("opens tomorrow at 18:00") ships once the EF
-  // returns a date, not just an HH:MM.
-  const statusLabel = (() => {
-    if (venue.open_now === true && venue.closes_at) {
-      return `Open · until ${venue.closes_at}`;
-    }
-    if (venue.open_now === false && venue.opens_at) {
-      return `Closed · opens ${venue.opens_at}`;
-    }
-    if (venue.closes_at) return `Until ${venue.closes_at}`;
-    return null;
-  })();
+  const statusLabel = getOpeningStatusLabel(venue);
   const isOpen = venue.open_now === true;
-
-  // Promo chip always renders for now — partner or web-listed, real
-  // rate or mocked default. The chip wears a "MOCK" tag so the
-  // placeholder framing is honest; once the per-tier promo EF lands,
-  // we gate on `cashback_percent != null` and drop the fallback +
-  // the "MOCK" suffix.
-  const promoPercent =
-    venue.cashback_percent != null && venue.cashback_percent > 0
-      ? venue.cashback_percent
-      : 20;
-  // Default to first-visit framing when the EF hasn't told us either
-  // way — every consumer is a new face to most venues, so "welcome"
-  // is the safer default than "return-visit".
-  const isFirstVisit = venue.is_first_visit !== false;
-  const promoKindLabel = isFirstVisit
-    ? "welcome discount"
-    : "return-visit discount";
-  const tierLabel = TIER_PROPER[CURRENT_USER.tier] ?? "Mesita";
-  const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
-  const capLabel =
-    venue.reward_cap_mxn != null
-      ? `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`
-      : null;
 
   return (
     <div className="flex flex-col gap-2.5 bg-gradient-to-t from-black/90 via-black/65 to-transparent p-5 pt-24 text-white">
@@ -248,22 +201,7 @@ function CardOverlay({ venue }: { venue: Venue }) {
             <span className="font-semibold">{statusLabel}</span>
           </MetaChip>
         )}
-        <span
-          className="bg-pink-gradient shadow-glow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white"
-          title={capLabel ? `at Mesita ${tierLabel} · ${capLabel}` : `at Mesita ${tierLabel}`}
-        >
-          <Gift className="h-3 w-3 shrink-0" strokeWidth={2.25} />
-          <span className="font-semibold">
-            {promoPercent}% OFF {promoKindLabel}
-          </span>
-          {/* Honest tag — every promo on the deck is mocked right now;
-              the per-tier promo Edge Function hasn't shipped yet. Once
-              it does, drop this "mock" suffix + gate the chip on a
-              real rate. */}
-          <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-white/70">
-            · mock
-          </span>
-        </span>
+        <PromoChip venue={venue} size="md" />
       </div>
     </div>
   );

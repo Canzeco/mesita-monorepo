@@ -1,15 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Gift, Navigation, Star } from "lucide-react";
-import { CURRENT_USER } from "@/lib/consumer-data";
+import { Navigation, Star } from "lucide-react";
 import type { Venue } from "@/lib/api/venues";
-
-const TIER_PROPER: Record<string, string> = {
-  bronze: "Bronze",
-  silver: "Silver",
-  gold: "Gold",
-  diamond: "Diamond",
-};
+import { PromoChip } from "./PromoChip";
 
 // Catalog row card — used by /saved and /discover/catalog.
 //
@@ -45,19 +38,6 @@ export function VenueCatalogCard({
   const distanceLabel =
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const subtitleParts = [category, priceLevel].filter(Boolean) as string[];
-
-  const promoPercent =
-    venue.cashback_percent != null && venue.cashback_percent > 0
-      ? venue.cashback_percent
-      : 20;
-  const isFirstVisit = venue.is_first_visit !== false;
-  const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
-  const tierLabel = TIER_PROPER[CURRENT_USER.tier] ?? "Mesita";
-  const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
-  const capLabel =
-    venue.reward_cap_mxn != null
-      ? `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`
-      : null;
 
   const inner = (
     <>
@@ -108,22 +88,7 @@ export function VenueCatalogCard({
         </div>
 
         <div className="mt-auto">
-          <span
-            className="bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] whitespace-nowrap text-white"
-            title={
-              capLabel
-                ? `at Mesita ${tierLabel} · ${capLabel}`
-                : `at Mesita ${tierLabel}`
-            }
-          >
-            <Gift className="h-2.5 w-2.5 shrink-0" strokeWidth={2.25} />
-            <span className="font-semibold">
-              {promoPercent}% OFF {promoKindLabel}
-            </span>
-            <span className="text-[8.5px] font-bold tracking-[0.14em] uppercase text-white/70">
-              · mock
-            </span>
-          </span>
+          <PromoChip venue={venue} size="sm" />
         </div>
       </div>
     </>

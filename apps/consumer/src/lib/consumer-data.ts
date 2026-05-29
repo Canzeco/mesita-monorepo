@@ -157,5 +157,24 @@ export function tierBadgeClass(tier: Tier): string {
   }
 }
 
+// Compact Title-Case label per tier. Used by the swipe overlay, the
+// promo chip, the /coupons promo card, and the venue detail rewards
+// box — anywhere we render "Mesita Gold" / "Mesita Diamond" alongside
+// the lower-case tier id (`bronze` / `silver` / `gold` / `diamond`).
+//
+// Tier-typed and partial-typed variants both exist so callers can
+// hand us a strictly-typed Tier or a string (e.g. CURRENT_USER.tier
+// type-flowing as plain string) without an extra cast.
+const TIER_LABELS: Record<Tier, string> = {
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  diamond: "Diamond",
+};
+
+export function tierProperLabel(tier: Tier | string): string {
+  return TIER_LABELS[tier as Tier] ?? "Mesita";
+}
+
 // NOTE: The SAVED_VENUES mock catalog lives in `@/lib/mock/saved-venues-mock`
 // alongside the other entity mocks (reservations-mock, coupons-mock).
