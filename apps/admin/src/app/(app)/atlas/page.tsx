@@ -36,6 +36,7 @@ export default async function AtlasPage() {
         initialSnapshotOnBusinessEdit={result.data.atlasSnapshotOnBusinessEdit}
         initialGoogleImages={result.data.atlasResearchGoogleImages}
         initialInstagramPosts={result.data.atlasResearchInstagramPosts}
+        initialFacebookPosts={result.data.atlasResearchFacebookPosts}
         initialSourceTierCeiling={result.data.atlasSourceTierCeiling}
         initialSourceOverrides={result.data.atlasSourceOverrides}
         initialSerpOnlyWhenThin={result.data.atlasSerpOnlyWhenThin}
