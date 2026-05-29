@@ -206,11 +206,14 @@ export function venueRowToDetail(row: Row): VenueDetail {
     },
     instagram: { followers: num(row.instagram_followers_count) ?? 0 },
 
+    // Enricher (atlas-enrich-profile) stores each review as
+    // { author, rating, text, published } — map those onto the detail shape
+    // (quote/date) and keep the legacy keys as fallbacks.
     google_reviews: arr<Record<string, unknown>>(row.google_reviews).map((r) => ({
       author: str(r.author) ?? "Google reviewer",
       rating: num(r.rating) ?? 0,
-      quote: str(r.quote) ?? "",
-      date: str(r.date) ?? "",
+      quote: str(r.text) ?? str(r.quote) ?? "",
+      date: str(r.published) ?? str(r.date) ?? "",
       photo_url: str(r.photo_url),
     })),
 
