@@ -103,7 +103,11 @@ export function Sidebar({
   const { id: unitFromPath, rest: subPath } = parseUnitPath(pathname);
   const activeVenue =
     venues.find((v) => v.id === unitFromPath) ?? venues[0] ?? null;
-  const activeUnitId = activeVenue?.id ?? null;
+  // Trust the URL's unit id for navigation even when the venue list is
+  // empty (e.g. a transient overview-EF failure). Otherwise navHref would
+  // fall back to "/", which redirects authenticated operators to /central —
+  // so sidebar links would silently bounce out of a venue you're viewing.
+  const activeUnitId = unitFromPath ?? activeVenue?.id ?? null;
   const currentSlug = subPath?.split("/")[0] ?? null;
 
   const navHref = (slug: string) =>
