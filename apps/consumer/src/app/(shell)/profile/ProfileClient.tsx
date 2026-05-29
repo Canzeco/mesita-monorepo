@@ -359,16 +359,14 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
               </span>
             )}
           </div>
-          <p className="mt-2 flex items-baseline gap-1.5">
-            <span className="font-display text-foreground text-xl leading-none font-bold tabular-nums">
-              {data.price}
-            </span>
-            {data.priceNote && (
-              <span className="text-muted-foreground text-[11px]">
-                {data.priceNote}
-              </span>
-            )}
+          <p className="font-display text-foreground mt-2 text-xl leading-tight font-bold tracking-tight">
+            {data.price}
           </p>
+          {data.priceNote && (
+            <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+              {data.priceNote}
+            </p>
+          )}
         </div>
       </div>
       <p className="text-muted-foreground mt-4 text-[12.5px] leading-relaxed">
