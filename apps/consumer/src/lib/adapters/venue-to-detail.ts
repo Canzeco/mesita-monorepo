@@ -48,6 +48,97 @@ const DAY_ORDER = [
   "sunday",
 ];
 
+// Week keyed Sunday-first to match JS getDay() and let us reach "yesterday"
+// for overnight ranges that started the day before.
+const WEEK_KEYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+function parseMinutes(t: unknown): number | null {
+  if (typeof t !== "string") return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+// Derives live open/closed state from the weekly `hours` jsonb in the venue's
+// IANA timezone. Handles split shifts and overnight ranges (close <= open ⇒
+// closes the next day). Falls back to closed/empty when hours or tz are
+// missing/unparseable — never throws.
+function computeOpenState(
+  hours: unknown,
+  tz: string | undefined,
+): { open_now: boolean; opens_at: string; closes_at: string } {
+  const fallback = { open_now: false, opens_at: "", closes_at: "" };
+  const h = obj(hours);
+  if (Object.keys(h).length === 0) return fallback;
+  let dayIdx: number;
+  let nowMin: number;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz || "UTC",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date());
+    const wd = parts.find((p) => p.type === "weekday")?.value ?? "";
+    const hr = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+    const mn = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+    const wdMap: Record<string, number> = {
+      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    };
+    dayIdx = wdMap[wd] ?? 0;
+    nowMin = hr * 60 + mn;
+  } catch {
+    return fallback;
+  }
+
+  const todayKey = WEEK_KEYS[dayIdx];
+  const yKey = WEEK_KEYS[(dayIdx + 6) % 7];
+
+  // Yesterday's overnight range still in progress this morning.
+  for (const r of arr<{ open?: string; close?: string }>(h[yKey])) {
+    const o = parseMinutes(r.open);
+    const c = parseMinutes(r.close);
+    if (o == null || c == null) continue;
+    if (c <= o && nowMin < c) {
+      return { open_now: true, opens_at: "", closes_at: r.close ?? "" };
+    }
+  }
+
+  let nextOpen: { min: number; at: string } | null = null;
+  for (const r of arr<{ open?: string; close?: string }>(h[todayKey])) {
+    const o = parseMinutes(r.open);
+    const c = parseMinutes(r.close);
+    if (o == null || c == null) continue;
+    const within = c > o ? nowMin >= o && nowMin < c : nowMin >= o; // overnight
+    if (within) {
+      return { open_now: true, opens_at: "", closes_at: r.close ?? "" };
+    }
+    if (o > nowMin && (!nextOpen || o < nextOpen.min)) {
+      nextOpen = { min: o, at: r.open ?? "" };
+    }
+  }
+  if (nextOpen) return { open_now: false, opens_at: nextOpen.at, closes_at: "" };
+
+  // Closed today already — first opening of the next day with any hours.
+  for (let i = 1; i <= 7; i += 1) {
+    const k = WEEK_KEYS[(dayIdx + i) % 7];
+    const ranges = arr<{ open?: string }>(h[k]);
+    if (ranges.length > 0 && ranges[0].open) {
+      return { open_now: false, opens_at: ranges[0].open, closes_at: "" };
+    }
+  }
+  return fallback;
+}
+
 function hoursTable(hours: unknown): VenueDetail["hours_table"] {
   const h = obj(hours);
   const out: VenueDetail["hours_table"] = [];
@@ -74,6 +165,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
 
   const activePremiumRate =
     num(row.premium_rate) ?? num(row.free_rate) ?? num(row.cashback_percent) ?? 0;
+  const openState = computeOpenState(row.hours, str(row.timezone));
 
   return {
     id: str(row.id) ?? str(row.slug) ?? "",
@@ -84,9 +176,9 @@ export function venueRowToDetail(row: Row): VenueDetail {
     price_range: "$".repeat(priceLevel),
     currency,
     distance_km: 0,
-    open_now: false,
-    opens_at: "",
-    closes_at: str(row.closes_at) ?? "",
+    open_now: openState.open_now,
+    opens_at: openState.opens_at,
+    closes_at: openState.closes_at || (str(row.closes_at) ?? ""),
     timezone: str(row.timezone) ?? "",
     city: str(row.city) ?? "",
     address: str(row.address) ?? "",
