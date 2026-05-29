@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, ChevronRight, Check, Plus } from "lucide-react";
+import {
+  Copy,
+  ChevronRight,
+  Check,
+  Plus,
+  Megaphone,
+  Briefcase,
+  Star,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Top header (SimpleHeader title="Share Mesita") is owned by the shell
@@ -105,9 +114,11 @@ function UrlField({ url }: { url: string }) {
 function PrimaryCta({
   label,
   share,
+  variant = "solid",
 }: {
   label: string;
   share?: { title: string; text: string; url?: string };
+  variant?: "solid" | "outline";
 }) {
   // Three states so the button feels alive:
   //   idle    → original label + chevron
@@ -145,7 +156,12 @@ function PrimaryCta({
       type="button"
       onClick={onClick}
       disabled={!share}
-      className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-60"
+      className={cn(
+        "flex w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-60",
+        variant === "outline"
+          ? "border-border bg-card text-foreground hover:bg-muted border py-3"
+          : "bg-foreground text-background py-3.5 hover:opacity-90",
+      )}
     >
       {flash === "shared" ? (
         <>
@@ -307,6 +323,8 @@ type PartnerGroup = {
   title: string;
   blurb: string;
   bullets: string[];
+  icon: LucideIcon;
+  iconBg: string;
   url: string;
   shareUrl: string;
   shareTitle: string;
@@ -317,8 +335,9 @@ type PartnerGroup = {
 const CREATOR_GROUP: PartnerGroup = {
   id: "creators",
   title: "Creators",
-  blurb:
-    "Food, nightlife, travel, lifestyle, hotels, coffee, wine, city guides. Custom codes, revenue share, private events, equity for long-term partners.",
+  blurb: "Food, nightlife, travel & lifestyle creators.",
+  icon: Megaphone,
+  iconBg: "bg-pink-gradient text-white",
   bullets: [
     "Custom code · bigger welcome gift",
     "Revenue share on your signups",
@@ -338,8 +357,9 @@ const OTHER_GROUPS: PartnerGroup[] = [
   {
     id: "agencies",
     title: "Marketing agencies",
-    blurb:
-      "Add Mesita to the stack you sell to restaurants & bars — measurable lift, no extra hardware.",
+    blurb: "Add Mesita to the stack you sell to restaurants & bars.",
+    icon: Briefcase,
+    iconBg: "bg-sky-500 text-white",
     bullets: [
       "Recurring revenue per venue you onboard",
       "Cashback redemptions = attributable ROI",
@@ -356,8 +376,9 @@ const OTHER_GROUPS: PartnerGroup[] = [
   {
     id: "models",
     title: "Modeling & talent agencies",
-    blurb:
-      "Activate the models you manage on Mesita — Premium perks, boosted cashback, priority tables. Earn on every visit.",
+    blurb: "Activate the talent you manage — they go Premium, you earn.",
+    icon: Star,
+    iconBg: "bg-tier-premium text-white",
     bullets: [
       "Premium by default — your roster starts at the top",
       "Boosted cashback at partner venues",
@@ -375,11 +396,10 @@ const OTHER_GROUPS: PartnerGroup[] = [
 
 function OthersTab() {
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        Three lighter partner programs Mesita runs alongside venues —
-        creators, marketing agencies, and modeling talent. Pick the one that
-        fits; each has its own onboarding flow.
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-[13px] leading-relaxed">
+        Partner programs Mesita runs alongside venues. Pick the one that fits —
+        each has its own onboarding.
       </p>
       {OTHER_GROUPS.map((g) => (
         <PartnerCard key={g.id} group={g} />
@@ -389,31 +409,48 @@ function OthersTab() {
 }
 
 function PartnerCard({ group: g }: { group: PartnerGroup }) {
+  const Icon = g.icon;
   return (
-    <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-      <header>
-        <h3 className="font-display text-lg font-semibold tracking-tight">
-          {g.title}
-        </h3>
-        <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
-          {g.blurb}
-        </p>
-      </header>
-      <ul className="flex flex-col gap-1.5">
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
+            g.iconBg,
+          )}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="font-display text-[15px] leading-tight font-bold tracking-tight">
+            {g.title}
+          </h3>
+          <p className="text-muted-foreground mt-0.5 text-[11.5px] leading-snug">
+            {g.blurb}
+          </p>
+        </div>
+      </div>
+      <ul className="mt-3 flex flex-col gap-1.5">
         {g.bullets.map((b) => (
           <li
             key={b}
-            className="text-foreground before:bg-foreground/40 text-[12px] leading-snug before:mr-2 before:inline-block before:h-1 before:w-1 before:rounded-full before:align-middle"
+            className="text-foreground/85 flex items-start gap-2 text-[12px]"
           >
-            {b}
+            <Check
+              className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0"
+              strokeWidth={3}
+            />
+            <span className="leading-snug">{b}</span>
           </li>
         ))}
       </ul>
-      <UrlField url={g.url} />
-      <PrimaryCta
-        label={g.cta}
-        share={{ title: g.shareTitle, text: g.shareText, url: g.shareUrl }}
-      />
+      <div className="mt-4">
+        <PrimaryCta
+          variant="outline"
+          label={g.cta}
+          share={{ title: g.shareTitle, text: g.shareText, url: g.shareUrl }}
+        />
+      </div>
     </section>
   );
 }
