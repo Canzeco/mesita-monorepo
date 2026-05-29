@@ -375,43 +375,23 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
 }
 
 function CurrentClassCard() {
-  // Slim current-class banner. The class IS the brand — "Mesita Premium"
-  // reads as a proper noun. Origin is the one-line subtitle (how it was
-  // earned). The plan cards below carry the perks + upgrade paths.
+  // Slim current-plan banner — just the plan name. The plan IS the brand
+  // ("Mesita Premium"), and how it was earned is noise here; the plan cards
+  // below carry the detail.
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier)!;
   const brand = `Mesita ${meta.label}`;
-  const origin = (() => {
-    switch (CURRENT_USER.tierOrigin) {
-      case "instagram":
-        return `Earned via ${formatFollowers(CURRENT_USER.followers)} Instagram followers`;
-      case "subscription":
-        return CURRENT_USER.tierRenewsAt
-          ? `Subscribed · renews ${CURRENT_USER.tierRenewsAt}`
-          : "Subscribed · renews monthly";
-      case "invitation":
-        return "Invited by Mesita";
-      default:
-        return "Free — anyone with a Mesita account starts here";
-    }
-  })();
   return (
     <div
       className={cn(
-        "rounded-2xl px-4 py-3.5 shadow-sm",
+        "rounded-2xl px-4 py-4 shadow-sm",
         tierBadgeClass(CURRENT_USER.tier),
       )}
     >
       <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
         {brand}
       </h2>
-      <p className="mt-0.5 text-[11px] leading-snug opacity-90">{origin}</p>
     </div>
   );
-}
-
-function formatFollowers(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}K`;
-  return n.toString();
 }
 
 // Settings row config — each row carries the route it should drive when

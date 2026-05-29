@@ -52,12 +52,12 @@ import { useSavedVenues } from "@/lib/saved-venues";
 import { tierProperLabel } from "@/lib/consumer-data";
 import { toast } from "@/lib/toast";
 
-// Section nav order for the venue detail page. Coupon sits at the END
+// Section nav order for the venue detail page. Reward sits at the END
 // of the page now (the user reads About → Reviews → Menus → Time →
-// Location → Contact → Details first; the per-class coupon is the
+// Location → Contact → Details first; the per-tier reward is the
 // landing-pad CTA once they've made up their mind, not the lead). The
 // section id stays as "rewards" so existing anchors and analytics
-// events keep matching — only the visible label moves to "Coupon".
+// events keep matching — only the visible label is "Reward".
 const NAV_SECTIONS = [
   { id: "overview", label: "Overview" },
   { id: "about", label: "About" },
@@ -67,7 +67,7 @@ const NAV_SECTIONS = [
   { id: "location", label: "Location" },
   { id: "contact", label: "Contact" },
   { id: "details", label: "Details" },
-  { id: "rewards", label: "Coupon" },
+  { id: "rewards", label: "Reward" },
 ] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
