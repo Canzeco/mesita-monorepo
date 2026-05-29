@@ -40,6 +40,18 @@ import {
 const RATE_CHOICES = [10, 20, 50, 70] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
+// Monthly promo spend cap — venue-level ceiling persisted to
+// venues.monthly_promo_cap (DB migration 0038), denominated in the venue's
+// currency. Null means no cap.
+const CAP_CHOICES = [200, 500, 1000, 2000] as const;
+type CapChoice = (typeof CAP_CHOICES)[number];
+
+// "MX$1,000" for MXN venues; falls back to a generic "$" prefix elsewhere.
+function formatMoney(amount: number, currency: string): string {
+  const prefix = currency === "MXN" ? "MX$" : "$";
+  return `${prefix}${amount.toLocaleString("en-US")}`;
+}
+
 // ─── Tier ladder catalog ──────────────────────────────────────────────────
 
 type Tier = "free" | "premium";
@@ -170,6 +182,86 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
           ])}
         </div>
       </Section>
+
+      <Section
+        title="Monthly cap"
+        description="The most you'll spend on promos in a calendar month. Once reached, promos pause until the next month."
+      >
+        <MonthlyCapPicker
+          initial={venue.monthly_promo_cap}
+          currency={venue.currency}
+          venueId={venue.id}
+          disabled={isFree}
+        />
+      </Section>
+    </div>
+  );
+}
+
+// ─── Monthly cap picker ─────────────────────────────────────────────────────
+
+// Venue-level ceiling on monthly promo spend. Same optimistic save pattern as
+// PromoCell — persists each pick through apiUpdateVenue and reverts on
+// failure. "No cap" writes null.
+function MonthlyCapPicker({
+  initial,
+  currency,
+  venueId,
+  disabled,
+}: {
+  initial: number | null;
+  currency: string;
+  venueId: string;
+  disabled: boolean;
+}) {
+  const supabase = useBrowserSupabase();
+  const [cap, setCap] = useState<CapChoice | null>(initial as CapChoice | null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onPick = (next: CapChoice | null) => {
+    if (disabled || pending) return;
+    const previous = cap;
+    setCap(next);
+    setPending(true);
+    setError(null);
+    void apiUpdateVenue(supabase, { id: venueId, monthly_promo_cap: next })
+      .catch((err) => {
+        setCap(previous);
+        setError(errMsg(err, "Couldn't save."));
+      })
+      .finally(() => setPending(false));
+  };
+
+  const displayCap = disabled ? null : cap;
+  return (
+    <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+          Per month
+        </span>
+        <span className="font-display text-primary text-xl leading-none font-bold tabular-nums">
+          {displayCap == null ? "No cap" : formatMoney(displayCap, currency)}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        <RatePill
+          label="No cap"
+          active={displayCap == null}
+          disabled={disabled || pending}
+          onClick={() => onPick(null)}
+        />
+        {CAP_CHOICES.map((c) => (
+          <RatePill
+            key={c}
+            label={formatMoney(c, currency)}
+            active={c === displayCap}
+            disabled={disabled || pending}
+            onClick={() => onPick(c)}
+          />
+        ))}
+      </div>
+      {error && <p className="text-destructive text-[10px]">{error}</p>}
     </div>
   );
 }
@@ -490,7 +582,7 @@ function RatePill({
       disabled={disabled}
       className={cn(
         "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
-        active && label === "Off"
+        active && (label === "Off" || label === "No cap")
           ? "bg-foreground text-background"
           : active
             ? "bg-pink-gradient text-white"

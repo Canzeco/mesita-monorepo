@@ -73,6 +73,9 @@ type Venue = {
   welcome_premium_rate: number | null;
   free_rate: number | null;
   premium_rate: number | null;
+  // Venue-level monthly promo spend cap (DB migration 0038), in `currency`.
+  // One of 200 / 500 / 1000 / 2000 or null (no cap).
+  monthly_promo_cap: number | null;
   photos: string[];
   menu_pdf_url: string | null;
   // Display name paired with menu_pdf_url (e.g. "Dinner menu"). Null
@@ -223,6 +226,8 @@ export type UpdateVenueInput = {
   welcome_premium_rate?: number | null;
   free_rate?: number | null;
   premium_rate?: number | null;
+  // Monthly promo spend cap. One of 200 / 500 / 1000 / 2000 or null to clear.
+  monthly_promo_cap?: number | null;
   photos?: string[];
   website_url?: string | null;
   instagram_url?: string | null;
