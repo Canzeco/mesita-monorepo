@@ -203,8 +203,8 @@ function FriendsTab() {
   return (
     <div className="flex h-full flex-col gap-3">
       <p className="text-muted-foreground text-[13px] leading-snug">
-        You&apos;ve got {slots} $100 MXN gift cards. Share your code; the first
-        friends to use it each get $100 on us.
+        You&apos;ve got {slots} $50 MXN gift cards. Share your code; the first
+        friends to use it each get $50 on us.
       </p>
 
       {/* Gift voucher — a filled pink-gradient card. Bow + amount up top,
@@ -224,7 +224,7 @@ function FriendsTab() {
         </div>
 
         <p className="font-display mt-6 text-5xl leading-none font-semibold tracking-tight">
-          $100
+          $50
           <span className="ml-1.5 align-middle text-base font-semibold tracking-[0.3em] text-white/80">
             MXN
           </span>
@@ -305,7 +305,7 @@ function FriendsTab() {
           label="Send a gift to a friend"
           share={{
             title: "Mesita — your first visit is on me",
-            text: `Use my code ${giftCode.replace(/\s+/g, "")} for $100 MXN on your first Mesita visit.`,
+            text: `Use my code ${giftCode.replace(/\s+/g, "")} for $50 MXN on your first Mesita visit.`,
           }}
         />
       </div>
