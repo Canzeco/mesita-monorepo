@@ -40,7 +40,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
     return <SimpleHeader title="Pay" />;
   }
   if (pathname.startsWith("/share")) {
-    return <SimpleHeader title="Share Mesita" />;
+    return <SimpleHeader title="Invite" />;
   }
   if (pathname.startsWith("/profile")) {
     // Personalize the Profile chrome with the consumer's full name.

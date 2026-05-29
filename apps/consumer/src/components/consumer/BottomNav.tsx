@@ -62,7 +62,7 @@ const ITEMS: Item[] = [
   {
     href: "/share",
     Icon: Gift,
-    label: "Share",
+    label: "Invite",
     match: "/share",
   },
   { href: "/profile", Icon: User, label: "Profile", match: "/profile" },
