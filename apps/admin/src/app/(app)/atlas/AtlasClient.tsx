@@ -27,42 +27,115 @@ import {
   type SynthesisQuality,
 } from "./actions";
 
-// Atlas source catalog. The key + tier define which sources the Sourcing
-// stage attempts: a source runs when its tier <= the configured ceiling,
-// unless an explicit per-source override flips it. Google Business is the
-// spine and is always on.
+// Atlas source catalog. Each source is a sub-pipeline of distinct NODES,
+// mirroring the Atlas rows: "link" resolves the source's URL, "contents"
+// scrapes that URL, "summary" runs an AI summary over it. Each node is its
+// own togglable step with its own tier — it runs when step.tier <= the
+// configured ceiling, unless an explicit override flips it. The override key
+// is `${sourceKey}:${step}`. Google Business is the spine (always on).
 //
 // NOTE: when the enrich agent starts CONSUMING these params, it must mirror
-// this same key→tier catalog server-side (it resolves effective-enabled from
-// tier ceiling + overrides). Until then this is the config surface only.
+// this same node catalog server-side (it resolves effective-enabled from
+// tier ceiling + overrides per node). Until then this is the config surface.
+type AtlasStep = "link" | "contents" | "summary";
+
+const STEP_LABEL: Record<AtlasStep, string> = {
+  link: "Link",
+  contents: "Contents",
+  summary: "AI summary",
+};
+
 const ATLAS_SOURCES: {
   key: string;
   label: string;
-  tier: number;
   locked?: boolean;
+  steps: { step: AtlasStep; tier: number }[];
 }[] = [
-  { key: "google_business", label: "Google Business", tier: 1, locked: true },
-  { key: "website", label: "Website", tier: 1 },
-  { key: "instagram", label: "Instagram", tier: 1 },
-  { key: "mesita", label: "Mesita snapshot", tier: 1 },
-  { key: "facebook", label: "Facebook", tier: 2 },
-  { key: "serp", label: "SERP", tier: 2 },
-  { key: "tripadvisor", label: "TripAdvisor", tier: 3 },
-  { key: "yelp", label: "Yelp", tier: 3 },
-  { key: "opentable", label: "OpenTable", tier: 4 },
-  { key: "ubereats", label: "UberEats", tier: 4 },
-  { key: "tiktok", label: "TikTok", tier: 5 },
-  { key: "youtube", label: "YouTube", tier: 5 },
+  {
+    key: "google_business",
+    label: "Google Business",
+    locked: true,
+    steps: [
+      { step: "link", tier: 1 },
+      { step: "contents", tier: 1 },
+    ],
+  },
+  {
+    key: "mesita",
+    label: "Mesita",
+    steps: [
+      { step: "link", tier: 1 },
+      { step: "contents", tier: 1 },
+    ],
+  },
+  {
+    key: "website",
+    label: "Website",
+    steps: [
+      { step: "link", tier: 2 },
+      { step: "contents", tier: 2 },
+    ],
+  },
+  {
+    key: "instagram",
+    label: "Instagram",
+    steps: [
+      { step: "link", tier: 2 },
+      { step: "contents", tier: 2 },
+    ],
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    steps: [
+      { step: "link", tier: 2 },
+      { step: "contents", tier: 2 },
+    ],
+  },
+  {
+    key: "serp",
+    label: "SERP",
+    steps: [
+      { step: "contents", tier: 3 },
+      { step: "summary", tier: 3 },
+    ],
+  },
+  {
+    key: "opentable",
+    label: "OpenTable",
+    steps: [
+      { step: "link", tier: 4 },
+      { step: "contents", tier: 5 },
+    ],
+  },
+  {
+    key: "tripadvisor",
+    label: "TripAdvisor",
+    steps: [
+      { step: "link", tier: 4 },
+      { step: "contents", tier: 5 },
+    ],
+  },
+  { key: "yelp", label: "Yelp", steps: [{ step: "link", tier: 4 }] },
+  { key: "ubereats", label: "UberEats", steps: [{ step: "link", tier: 4 }] },
+  { key: "tiktok", label: "TikTok", steps: [{ step: "link", tier: 4 }] },
+  { key: "youtube", label: "YouTube", steps: [{ step: "link", tier: 4 }] },
 ];
 
-function sourceEnabled(
-  src: { key: string; tier: number; locked?: boolean },
+function overrideKey(sourceKey: string, step: AtlasStep): string {
+  return `${sourceKey}:${step}`;
+}
+
+function stepEnabled(
+  source: { key: string; locked?: boolean },
+  step: { step: AtlasStep; tier: number },
   ceiling: number,
   overrides: Record<string, boolean>,
 ): boolean {
-  if (src.locked) return true;
-  if (src.key in overrides) return overrides[src.key];
-  return src.tier <= ceiling;
+  if (source.locked) return true;
+  const k = overrideKey(source.key, step.step);
+  if (k in overrides) return overrides[k];
+  return step.tier <= ceiling;
 }
 
 export function AtlasClient(props: {
@@ -309,11 +382,14 @@ function SourcesSection({
     persist({ sourceTierCeiling: next }, () => setCeiling(prev));
   };
 
-  const toggleSource = (src: (typeof ATLAS_SOURCES)[number]) => {
+  const toggleStep = (
+    src: (typeof ATLAS_SOURCES)[number],
+    st: { step: AtlasStep; tier: number },
+  ) => {
     if (src.locked) return;
     const prev = overrides;
-    const nextOn = !sourceEnabled(src, ceiling, overrides);
-    const next = { ...overrides, [src.key]: nextOn };
+    const nextOn = !stepEnabled(src, st, ceiling, overrides);
+    const next = { ...overrides, [overrideKey(src.key, st.step)]: nextOn };
     setOverrides(next);
     persist({ sourceOverrides: next }, () => setOverrides(prev));
   };
@@ -335,8 +411,11 @@ function SourcesSection({
         {pending && <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />}
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        A source runs when its tier is at or above the ceiling. Use the toggles
-        to override individual sources. Google Business is the spine and always
+        Each source runs as steps: <span className="text-foreground font-medium">Link</span>{" "}
+        resolves its URL, <span className="text-foreground font-medium">Contents</span>{" "}
+        scrapes it, <span className="text-foreground font-medium">AI summary</span>{" "}
+        condenses it. A step runs when its tier is at or above the ceiling;
+        toggle any step to override. Google Business is the spine and always
         runs.
       </p>
 
@@ -363,39 +442,46 @@ function SourcesSection({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {ATLAS_SOURCES.map((src) => {
-          const on = sourceEnabled(src, ceiling, overrides);
-          const overridden = !src.locked && src.key in overrides;
-          return (
-            <button
-              key={src.key}
-              type="button"
-              onClick={() => toggleSource(src)}
-              disabled={pending || src.locked}
-              className={`border-border bg-background flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition disabled:cursor-default ${
-                src.locked ? "opacity-70" : "hover:border-foreground/40"
-              }`}
-            >
-              <span className="flex flex-col">
-                <span className="text-sm font-medium">{src.label}</span>
-                <span className="text-muted-foreground text-[11px]">
-                  T{src.tier}
-                  {src.locked ? " · spine" : overridden ? " · override" : ""}
-                </span>
-              </span>
-              <span
-                className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold tracking-wide uppercase ${
-                  on
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {on ? "On" : "Off"}
-              </span>
-            </button>
-          );
-        })}
+      <div className="mt-5 flex flex-col gap-2">
+        {ATLAS_SOURCES.map((src) => (
+          <div
+            key={src.key}
+            className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              {src.label}
+              {src.locked && (
+                <span className="text-muted-foreground text-[11px]">· spine</span>
+              )}
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {src.steps.map((st) => {
+                const on = stepEnabled(src, st, ceiling, overrides);
+                const overridden =
+                  !src.locked && overrideKey(src.key, st.step) in overrides;
+                return (
+                  <button
+                    key={st.step}
+                    type="button"
+                    onClick={() => toggleStep(src, st)}
+                    disabled={pending || src.locked}
+                    aria-pressed={on}
+                    title={overridden ? "Overridden" : `Tier ${st.tier}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition disabled:cursor-default ${
+                      on
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-card text-muted-foreground hover:border-foreground/40"
+                    }`}
+                  >
+                    {STEP_LABEL[st.step]}
+                    <span className="opacity-60">T{st.tier}</span>
+                    {overridden && <span className="opacity-60">·●</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="border-border mt-5 flex items-center justify-between gap-4 border-t pt-5">
