@@ -743,7 +743,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
             className="bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white"
           >
             <QrCode className="h-4 w-4" />
-            {requiresStory ? "Pay & Post" : "Pay"}
+            Pay with QR
           </Link>
           <Link
             href="/profile"
