@@ -752,11 +752,11 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
     subtitleParts.push(`capped at ${capLabel} / visit`);
   }
   return (
-    <Box title="Coupon" icon={Sparkles} iconColor="text-pink-400">
-      {/* Hero — names the active coupon, mechanic, and cap up front. */}
+    <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
+      {/* Hero — names the active reward, mechanic, and cap up front. */}
       <div className="bg-pink-gradient shadow-glow rounded-xl p-3 text-white">
         <p className="text-[10px] font-bold tracking-wider text-white/90 uppercase">
-          Your coupon
+          Your reward
         </p>
         <p className="font-display mt-1 text-3xl font-semibold leading-none">
           {activeValue == null ? "—" : `${activeValue}% ${mechanicWord}`}
