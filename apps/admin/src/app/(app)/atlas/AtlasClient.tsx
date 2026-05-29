@@ -29,14 +29,15 @@ import {
 
 // Atlas source catalog. Each source is a sub-pipeline of distinct NODES,
 // mirroring the Atlas rows: "link" resolves the source's URL, "contents"
-// scrapes that URL, "summary" runs an AI summary over it. Each node is its
-// own togglable step with its own tier — it runs when step.tier <= the
-// configured ceiling, unless an explicit override flips it. The override key
-// is `${sourceKey}:${step}`. Google Business is the spine (always on).
+// scrapes that URL, "summary" runs an AI summary over it. Each node has its
+// own tier and runs when step.tier <= the configured tier ceiling. The step
+// chips in the console are READ-ONLY indicators — selection is driven
+// indirectly by the tier ceiling, not by editing the chips. Google Business
+// is the spine (always on).
 //
 // NOTE: when the enrich agent starts CONSUMING these params, it must mirror
-// this same node catalog server-side (it resolves effective-enabled from
-// tier ceiling + overrides per node). Until then this is the config surface.
+// this same node catalog server-side (it resolves effective-enabled from the
+// tier ceiling per node). Until then this is the config surface.
 type AtlasStep = "link" | "contents" | "summary";
 
 const STEP_LABEL: Record<AtlasStep, string> = {
@@ -122,19 +123,12 @@ const ATLAS_SOURCES: {
   { key: "youtube", label: "YouTube", steps: [{ step: "link", tier: 4 }] },
 ];
 
-function overrideKey(sourceKey: string, step: AtlasStep): string {
-  return `${sourceKey}:${step}`;
-}
-
 function stepEnabled(
-  source: { key: string; locked?: boolean },
-  step: { step: AtlasStep; tier: number },
+  source: { locked?: boolean },
+  step: { tier: number },
   ceiling: number,
-  overrides: Record<string, boolean>,
 ): boolean {
   if (source.locked) return true;
-  const k = overrideKey(source.key, step.step);
-  if (k in overrides) return overrides[k];
   return step.tier <= ceiling;
 }
 
@@ -185,7 +179,6 @@ export function AtlasClient(props: {
       <StageGroup label="Sourcing — which sources run">
         <SourcesSection
           initialTierCeiling={props.initialSourceTierCeiling}
-          initialOverrides={props.initialSourceOverrides}
           initialSerpOnlyWhenThin={props.initialSerpOnlyWhenThin}
           onSaved={setUpdatedAt}
         />
@@ -341,18 +334,14 @@ function SnapshotToggles({
 
 function SourcesSection({
   initialTierCeiling,
-  initialOverrides,
   initialSerpOnlyWhenThin,
   onSaved,
 }: {
   initialTierCeiling: number;
-  initialOverrides: Record<string, boolean>;
   initialSerpOnlyWhenThin: boolean;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [ceiling, setCeiling] = useState(initialTierCeiling);
-  const [overrides, setOverrides] =
-    useState<Record<string, boolean>>(initialOverrides);
   const [serpThin, setSerpThin] = useState(initialSerpOnlyWhenThin);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -370,7 +359,6 @@ function SourcesSection({
         return;
       }
       setCeiling(r.data.atlasSourceTierCeiling);
-      setOverrides(r.data.atlasSourceOverrides ?? {});
       setSerpThin(r.data.atlasSerpOnlyWhenThin);
       onSaved(r.data.updatedAt);
     });
@@ -380,18 +368,6 @@ function SourcesSection({
     const prev = ceiling;
     setCeiling(next);
     persist({ sourceTierCeiling: next }, () => setCeiling(prev));
-  };
-
-  const toggleStep = (
-    src: (typeof ATLAS_SOURCES)[number],
-    st: { step: AtlasStep; tier: number },
-  ) => {
-    if (src.locked) return;
-    const prev = overrides;
-    const nextOn = !stepEnabled(src, st, ceiling, overrides);
-    const next = { ...overrides, [overrideKey(src.key, st.step)]: nextOn };
-    setOverrides(next);
-    persist({ sourceOverrides: next }, () => setOverrides(prev));
   };
 
   const flipSerp = () => {
@@ -411,12 +387,13 @@ function SourcesSection({
         {pending && <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />}
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        Each source runs as steps: <span className="text-foreground font-medium">Link</span>{" "}
-        resolves its URL, <span className="text-foreground font-medium">Contents</span>{" "}
+        Set the tier ceiling — each source step
+        (<span className="text-foreground font-medium">Link</span> resolves its
+        URL, <span className="text-foreground font-medium">Contents</span>{" "}
         scrapes it, <span className="text-foreground font-medium">AI summary</span>{" "}
-        condenses it. A step runs when its tier is at or above the ceiling;
-        toggle any step to override. Google Business is the spine and always
-        runs.
+        condenses it) runs when its tier is at or above the ceiling. The chips
+        below just show what&apos;s on at the current ceiling — they aren&apos;t
+        edited directly. Google Business is the spine and always runs.
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -456,27 +433,23 @@ function SourcesSection({
             </span>
             <div className="flex flex-wrap items-center gap-2">
               {src.steps.map((st) => {
-                const on = stepEnabled(src, st, ceiling, overrides);
-                const overridden =
-                  !src.locked && overrideKey(src.key, st.step) in overrides;
+                const on = stepEnabled(src, st, ceiling);
+                // Read-only indicator: the chip reflects whether this step is
+                // on at the current tier ceiling. Selection is driven by the
+                // ceiling, not by editing chips.
                 return (
-                  <button
+                  <span
                     key={st.step}
-                    type="button"
-                    onClick={() => toggleStep(src, st)}
-                    disabled={pending || src.locked}
-                    aria-pressed={on}
-                    title={overridden ? "Overridden" : `Tier ${st.tier}`}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition disabled:cursor-default ${
+                    title={`Tier ${st.tier}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
                       on
                         ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-card text-muted-foreground hover:border-foreground/40"
+                        : "border-border bg-card text-muted-foreground opacity-60"
                     }`}
                   >
                     {STEP_LABEL[st.step]}
                     <span className="opacity-60">T{st.tier}</span>
-                    {overridden && <span className="opacity-60">·●</span>}
-                  </button>
+                  </span>
                 );
               })}
             </div>
