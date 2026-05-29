@@ -141,7 +141,7 @@ function SectionEyebrow({ children }: { children: ReactNode }) {
 const COMPARE_ROWS: { label: string; free: string; premium: string }[] = [
   { label: "Cashback & discounts", free: "Base", premium: "Boosted" },
   { label: "Recommendations", free: "Standard", premium: "Personalized" },
-  { label: "Reservations / month", free: "2", premium: "Unlimited" },
+  { label: "Max monthly reservations", free: "2", premium: "Unlimited" },
 ];
 
 function FreeVsPremium() {
