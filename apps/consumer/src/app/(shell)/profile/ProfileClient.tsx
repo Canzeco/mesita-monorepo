@@ -307,13 +307,10 @@ function WaysToClimb({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-          Ways to climb
-        </p>
-        <p className="text-muted-foreground text-[10px]">Swipe →</p>
-      </div>
-      <div className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1">
+      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
+        Ways to climb
+      </p>
+      <div className="flex flex-col gap-3">
         {cards.map((c) => (
           <ClimbCard key={c.key} data={c} />
         ))}
@@ -325,29 +322,29 @@ function WaysToClimb({
 function ClimbCard({ data }: { data: ClimbCardData }) {
   const Icon = data.icon;
 
-  let footer: ReactNode = null;
+  let action: ReactNode = null;
   if (data.reached) {
-    footer = (
-      <span className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-500/15 py-2 text-[12px] font-semibold text-emerald-700">
-        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+    action = (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+        <Check className="h-3 w-3" strokeWidth={3} />
         {data.reachedLabel}
       </span>
     );
   } else if (data.action) {
     const cls =
-      "bg-pink-gradient shadow-sm block rounded-full py-2 text-center text-[12px] font-semibold text-white";
-    footer = data.action.href ? (
+      "bg-pink-gradient inline-flex items-center justify-center rounded-full px-4 py-1.5 text-[12px] font-semibold text-white shadow-sm";
+    action = data.action.href ? (
       <Link href={data.action.href} className={cls}>
         {data.action.label}
       </Link>
     ) : (
-      <button type="button" onClick={data.action.onClick} className={cn(cls, "w-full")}>
+      <button type="button" onClick={data.action.onClick} className={cls}>
         {data.action.label}
       </button>
     );
   } else if (data.note) {
-    footer = (
-      <span className="text-muted-foreground block text-center text-[11px]">
+    action = (
+      <span className="text-muted-foreground text-right text-[10px] leading-tight">
         {data.note}
       </span>
     );
@@ -356,42 +353,38 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
   return (
     <article
       className={cn(
-        "bg-card flex w-[68%] shrink-0 snap-start flex-col gap-3 rounded-2xl border p-4",
+        "bg-card flex w-full items-center gap-3 rounded-2xl border p-4",
         data.accent ? "border-tier-premium/40" : "border-border",
       )}
     >
-      <div className="flex items-center gap-2.5">
-        <span
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-            data.iconBg,
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+          data.iconBg,
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display flex items-center gap-1 text-[14px] leading-tight font-bold tracking-tight">
+          {data.accent && (
+            <Crown className="text-premium h-3.5 w-3.5 shrink-0 fill-current" />
           )}
-        >
-          <Icon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="font-display flex items-center gap-1 text-[15px] leading-none font-bold tracking-tight">
-            {data.accent && (
-              <Crown className="text-premium h-3.5 w-3.5 fill-current" />
-            )}
-            <span className={cn(data.accent && "text-premium")}>
-              {data.title}
-            </span>
-          </p>
+          <span className={cn(data.accent && "text-premium")}>{data.title}</span>
           {data.via && (
-            <p className="text-muted-foreground mt-1 text-[10px] font-medium tracking-wider uppercase">
-              {data.via}
-            </p>
+            <span className="text-muted-foreground text-[11px] font-medium">
+              · {data.via}
+            </span>
           )}
-        </div>
+        </p>
+        <p className="text-muted-foreground mt-0.5 text-[11.5px] leading-snug">
+          {data.desc}
+        </p>
+        <p className="text-foreground/80 mt-1 text-[11px] font-semibold tabular-nums">
+          {data.price}
+        </p>
       </div>
-      <p className="font-display text-foreground text-base leading-none font-bold tabular-nums">
-        {data.price}
-      </p>
-      <p className="text-muted-foreground flex-1 text-[12px] leading-snug">
-        {data.desc}
-      </p>
-      {footer}
+      <div className="shrink-0">{action}</div>
     </article>
   );
 }
