@@ -786,42 +786,50 @@ function RewardMatrix({
     { key: "returning", label: "Returning", vals: returning, onAxis: !isFirstVisit },
   ] as const;
   return (
-    <div className="border-border overflow-hidden rounded-xl border">
-      {/* Header — Free / Premium columns. */}
-      <div className="grid grid-cols-[1.1fr_1fr_1fr] items-end gap-1 px-2 pt-2">
-        <span />
-        <span className="font-display text-center text-[13px] font-bold tracking-tight">
-          Free
-        </span>
-        <span className="text-premium bg-tier-premium/[0.06] font-display inline-flex items-center justify-center gap-1 rounded-t-lg py-1 text-[13px] font-bold tracking-tight">
-          <Crown className="h-3 w-3 fill-current" />
-          Premium
-        </span>
-      </div>
-      {rows.map((r, i) => (
-        <div
-          key={r.key}
-          className={cn(
-            "grid grid-cols-[1.1fr_1fr_1fr] items-stretch gap-1 px-2 py-1.5",
-            i > 0 && "border-border/50 border-t",
-          )}
-        >
-          <span className="text-muted-foreground self-center text-[10px] font-bold tracking-[0.14em] uppercase">
-            {r.label}
+    <div className="border-border relative overflow-hidden rounded-xl border">
+      {/* Continuous tint behind the whole Premium column (right third) so it
+          reads as one column, not patched per cell. */}
+      <span
+        aria-hidden
+        className="bg-tier-premium/[0.05] pointer-events-none absolute inset-y-0 right-0 w-1/3"
+      />
+      <div className="relative">
+        {/* Header — Free / Premium columns. */}
+        <div className="grid grid-cols-3 items-center px-3 py-2.5">
+          <span />
+          <span className="font-display text-center text-[13px] font-bold tracking-tight">
+            Free
           </span>
-          <RewardCell
-            value={r.vals.free}
-            suffix={suffix}
-            active={r.onAxis && currentTier === "free"}
-          />
-          <RewardCell
-            value={r.vals.premium}
-            suffix={suffix}
-            accent
-            active={r.onAxis && currentTier === "premium"}
-          />
+          <span className="text-premium font-display flex items-center justify-center gap-1 text-[13px] font-bold tracking-tight">
+            <Crown className="h-3 w-3 fill-current" />
+            Premium
+          </span>
         </div>
-      ))}
+        {rows.map((r, i) => (
+          <div
+            key={r.key}
+            className={cn(
+              "grid grid-cols-3 items-center px-3 py-3",
+              i > 0 && "border-border/40 border-t",
+            )}
+          >
+            <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+              {r.label}
+            </span>
+            <RewardCell
+              value={r.vals.free}
+              suffix={suffix}
+              active={r.onAxis && currentTier === "free"}
+            />
+            <RewardCell
+              value={r.vals.premium}
+              suffix={suffix}
+              accent
+              active={r.onAxis && currentTier === "premium"}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -838,44 +846,45 @@ function RewardCell({
   active?: boolean;
 }) {
   const text = value == null ? "—" : `${value}%`;
+  const num = (
+    <span
+      className={cn(
+        "font-display text-[15px] leading-none font-bold",
+        active ? "text-white" : accent ? "text-premium" : "text-foreground/80",
+      )}
+    >
+      {text}
+    </span>
+  );
+  const unit =
+    value != null ? (
+      <span
+        className={cn(
+          "text-[10px]",
+          active ? "text-white/85" : accent ? "text-premium/80" : "text-muted-foreground",
+        )}
+      >
+        {suffix}
+      </span>
+    ) : null;
+
   if (active) {
     return (
-      <span className="bg-pink-gradient shadow-glow relative flex items-center justify-center gap-0.5 rounded-lg py-2 text-white">
-        <span className="font-display text-[15px] leading-none font-bold">
-          {text}
-        </span>
-        {value != null && <span className="text-[10px] text-white/85">{suffix}</span>}
-        <span className="absolute top-0.5 right-1.5 text-[7px] font-bold tracking-[0.12em] text-white/85 uppercase">
-          Now
+      <span className="flex items-center justify-center">
+        <span className="bg-pink-gradient shadow-glow relative inline-flex items-baseline gap-0.5 rounded-full py-1.5 pr-5 pl-3">
+          {num}
+          {unit}
+          <span className="absolute top-0.5 right-1.5 text-[7px] font-bold tracking-[0.1em] text-white/85 uppercase">
+            Now
+          </span>
         </span>
       </span>
     );
   }
   return (
-    <span
-      className={cn(
-        "flex items-center justify-center gap-0.5 rounded-lg py-2",
-        accent && "bg-tier-premium/[0.06]",
-      )}
-    >
-      <span
-        className={cn(
-          "font-display text-[15px] leading-none font-bold",
-          accent ? "text-premium" : "text-foreground/80",
-        )}
-      >
-        {text}
-      </span>
-      {value != null && (
-        <span
-          className={cn(
-            "text-[10px]",
-            accent ? "text-premium/80" : "text-muted-foreground",
-          )}
-        >
-          {suffix}
-        </span>
-      )}
+    <span className="flex items-baseline justify-center gap-0.5">
+      {num}
+      {unit}
     </span>
   );
 }
