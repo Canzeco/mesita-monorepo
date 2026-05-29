@@ -17,7 +17,6 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
-  Star,
 } from "lucide-react";
 import {
   setAtlasPreRead,
@@ -141,7 +140,6 @@ export function AtlasClient(props: {
   initialSnapshotOnBusinessEdit: boolean;
   initialSourceTierCeiling: number;
   initialSourceOverrides: Record<string, boolean>;
-  initialGoogleReviews: number;
   initialWebsiteCrawlMaxPages: number;
   initialInstagramPosts: number;
   initialImageVisionEnabled: boolean;
@@ -188,7 +186,6 @@ export function AtlasClient(props: {
             onSaved={setUpdatedAt}
           />
           <SourceDepthSection
-            initialGoogleReviews={props.initialGoogleReviews}
             initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
             onSaved={setUpdatedAt}
           />
@@ -453,45 +450,31 @@ function SourcesSection({
 // ─── Data sources: non-image depth ─────────────────────────────────────────
 
 function SourceDepthSection({
-  initialGoogleReviews,
   initialWebsiteCrawlMaxPages,
   onSaved,
 }: {
-  initialGoogleReviews: number;
   initialWebsiteCrawlMaxPages: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [googleReviews, setGoogleReviews] = useState(initialGoogleReviews);
   const [websitePages, setWebsitePages] = useState(initialWebsiteCrawlMaxPages);
-  const [saved, setSaved] = useState({
-    googleReviews: initialGoogleReviews,
-    websitePages: initialWebsiteCrawlMaxPages,
-  });
+  const [saved, setSaved] = useState(initialWebsiteCrawlMaxPages);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty =
-    googleReviews !== saved.googleReviews ||
-    websitePages !== saved.websitePages;
+  const dirty = websitePages !== saved;
 
   const save = () => {
     if (!dirty) return;
     setError(null);
     setOk(false);
     start(async () => {
-      const r = await updateAtlasConfig({
-        googleReviews,
-        websiteCrawlMaxPages: websitePages,
-      });
+      const r = await updateAtlasConfig({ websiteCrawlMaxPages: websitePages });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      setSaved({
-        googleReviews: r.data.atlasGoogleReviews,
-        websitePages: r.data.atlasWebsiteCrawlMaxPages,
-      });
+      setSaved(r.data.atlasWebsiteCrawlMaxPages);
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -507,11 +490,11 @@ function SourceDepthSection({
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
         How much non-image data to pull per source. Reviews come from Google
-        only; website pages = the menu/content crawl depth.
+        via Apify (all of them — no limit); website pages = the menu/content
+        crawl depth.
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <NumberField icon={<Star className="text-muted-foreground h-4 w-4" />} label="Max Google reviews" value={googleReviews} min={0} max={5} onChange={setGoogleReviews} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
       </div>
 

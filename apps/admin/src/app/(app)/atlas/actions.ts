@@ -16,7 +16,6 @@ type SettingsResponse = {
   atlasResearchInstagramPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
-  atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
@@ -67,7 +66,6 @@ type AtlasConfigResponse = {
   atlasResearchInstagramPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
-  atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
@@ -90,7 +88,6 @@ export async function updateAtlasConfig(patch: {
   instagramPosts?: number;
   sourceTierCeiling?: number;
   sourceOverrides?: Record<string, boolean>;
-  googleReviews?: number;
   websiteCrawlMaxPages?: number;
   imageVisionEnabled?: boolean;
   analyzeGoogleImages?: number;

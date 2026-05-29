@@ -37,7 +37,6 @@ export default async function AtlasPage() {
         initialInstagramPosts={result.data.atlasResearchInstagramPosts}
         initialSourceTierCeiling={result.data.atlasSourceTierCeiling}
         initialSourceOverrides={result.data.atlasSourceOverrides}
-        initialGoogleReviews={result.data.atlasGoogleReviews}
         initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
         initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
         initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
