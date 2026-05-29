@@ -191,26 +191,16 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   //     ↳ Category                       │ Google rating + count
   //     ↳ Price range                    │ Open/closed status
   //     ↳ Neighbourhood (zone)           │ Distance
-  //   row 6 (1 cell, full width)  : active reward banner
+  //
+  // The reward used to render as a full-width banner here too, but it's
+  // redundant now that the dedicated Reward section sits right below
+  // Overview — so this header is identity/commerce/place only.
   //
   // The middle 8 cells share a uniform StatCell shape — colored icon
   // circle + display-font value + muted sub — so the grid reads as one
   // legible matrix instead of seven different chip shapes piled on top.
   const isPartner = venue.listing_type === "partner";
   const googleRating = venue.google.rating.toFixed(1);
-  const { welcome, default: returning, current_tier, is_first_visit } =
-    venue.promo_matrix;
-  const activeReward = is_first_visit
-    ? welcome[current_tier]
-    : returning[current_tier];
-  const mechanicWord = venue.details.mechanic.toLowerCase();
-  const tierLabel = tierProperLabel(current_tier);
-  // Per-visit cashback ceiling. Shown on the banner so the user can't
-  // misread "20% cashback" as unlimited. Currency follows the venue's
-  // own setting (MXN is the default; "MX$" prefix to disambiguate from
-  // USD when the locale collapses both to "$").
-  const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
-  const capLabel = `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`;
   return (
     // bg-card-soft is the gradient utility (white → faint pink) — gives
     // the summary card a premium "anchor" feel against the discover
@@ -279,24 +269,6 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
           sub="from you"
         />
       </div>
-      {/* Cashback banner — the headline promo, treated as a full-width
-          gradient row rather than a tiny chip. Suppressed entirely when
-          the venue offers nothing at the user's tier. Cap appears as a
-          subordinate line so the rate stays the hero but the ceiling
-          isn't hidden. */}
-      {activeReward != null && (
-        <div className="bg-pink-gradient shadow-glow flex items-center gap-3 rounded-xl px-4 py-3 text-white">
-          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2.5} />
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="text-[15px] font-bold">
-              {activeReward}% {mechanicWord}
-            </p>
-            <p className="text-[11px] text-white/85">
-              at Mesita {tierLabel} · {capLabel}
-            </p>
-          </div>
-        </div>
-      )}
     </Box>
   );
 }
