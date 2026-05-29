@@ -149,8 +149,8 @@ const COMPARE_ROWS: { label: string; free: string; premium: string }[] = [
 
 function FreeVsPremium() {
   return (
-    <div className="border-border bg-card overflow-hidden rounded-2xl border">
-      <div className="grid grid-cols-[1.3fr_0.8fr_1fr] items-end gap-1 px-3 pt-3">
+    <div className="border-border bg-card overflow-hidden rounded-2xl border px-2 py-1.5">
+      <div className="grid grid-cols-[1.3fr_0.8fr_1fr] items-end gap-1 px-2 pt-2">
         <span />
         <CompareHead label="Free" />
         <CompareHead label="Premium" accent />
@@ -160,17 +160,17 @@ function FreeVsPremium() {
           <div
             key={row.label}
             className={cn(
-              "grid grid-cols-[1.3fr_0.8fr_1fr] items-center gap-1 px-3 py-2.5",
+              "grid grid-cols-[1.3fr_0.8fr_1fr] items-center gap-1 px-2 py-3.5",
               i > 0 && "border-border/50 border-t",
             )}
           >
-            <span className="text-foreground/80 text-[12px] leading-tight font-medium">
+            <span className="text-foreground/80 text-[12.5px] leading-tight font-medium">
               {row.label}
             </span>
-            <span className="text-foreground/70 text-center text-[12px] font-semibold">
+            <span className="text-foreground/70 text-center text-[12.5px] font-semibold">
               {row.free}
             </span>
-            <span className="bg-tier-premium/[0.07] text-premium rounded-md py-1.5 text-center text-[12px] font-semibold">
+            <span className="bg-tier-premium/[0.07] text-premium rounded-lg py-1.5 text-center text-[12.5px] font-semibold">
               {row.premium}
             </span>
           </div>
@@ -254,7 +254,7 @@ function WaysToClimb({
       title: "Premium",
       via: "Instagram",
       accent: true,
-      price: `${formatFollowers(premium.followerThreshold)}+ followers`,
+      price: `${premium.followerThreshold.toLocaleString("en-US")}+ followers`,
       priceNote: "no payment — earned with reach",
       desc: "Connect an Instagram with 1,000+ followers and post a story each time you visit. You get full Premium — boosted cashback, personalized recommendations, and unlimited reservations — without paying a peso.",
       reached: origin === "instagram",
@@ -325,13 +325,13 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
   return (
     <article
       className={cn(
-        "relative overflow-hidden rounded-2xl border p-4",
+        "relative overflow-hidden rounded-2xl border p-5",
         data.accent
           ? "border-tier-premium/30 bg-tier-premium/[0.03]"
           : "border-border bg-card",
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3.5">
         <span
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm",
@@ -359,7 +359,7 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
               </span>
             )}
           </div>
-          <p className="mt-1.5 flex items-baseline gap-1.5">
+          <p className="mt-2 flex items-baseline gap-1.5">
             <span className="font-display text-foreground text-xl leading-none font-bold tabular-nums">
               {data.price}
             </span>
@@ -371,10 +371,10 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
           </p>
         </div>
       </div>
-      <p className="text-muted-foreground mt-3 text-[12px] leading-snug">
+      <p className="text-muted-foreground mt-4 text-[12.5px] leading-relaxed">
         {data.desc}
       </p>
-      <div className="mt-3">{footer}</div>
+      <div className="mt-4">{footer}</div>
     </article>
   );
 }
