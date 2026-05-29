@@ -7,6 +7,9 @@ import {
   Instagram,
   ChevronRight,
   Check,
+  Minus,
+  Crown,
+  Sparkles,
   User as UserIcon,
   CreditCard,
   Bell,
@@ -118,14 +121,188 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // Two-card stack. Status (current tier + path to Premium) and action
-  // (the three doors into Premium). The /coupons promo carries the
-  // "why go Premium" pitch when it's needed.
+  // Three sections: where you stand (current plan), what the plans actually
+  // get you (Free vs Premium comparison), and — when you're not yet Premium —
+  // how to upgrade (the three doors).
+  const isPremium = CURRENT_USER.tier === "premium";
   return (
     <div className="flex flex-col gap-4">
       <CurrentClassCard />
-      <UnlockPremiumCard onConnectSocial={onConnectSocial} />
+      <PlanComparison />
+      {isPremium ? (
+        <PremiumActiveCard />
+      ) : (
+        <UnlockPremiumCard onConnectSocial={onConnectSocial} />
+      )}
     </div>
+  );
+}
+
+// ─── Plan comparison ──────────────────────────────────────────────────────
+
+// Free vs Premium at a glance. The whole point of the tab: make the value of
+// Premium obvious. Each row is one promise; the Premium column is tinted +
+// emphasized so the eye lands on what you gain.
+type CompareCell = { text?: string; yes?: boolean };
+const COMPARE_ROWS: { label: string; free: CompareCell; premium: CompareCell }[] =
+  [
+    {
+      label: "Cashback & discounts",
+      free: { text: "Base" },
+      premium: { text: "Boosted" },
+    },
+    {
+      label: "Recommendations",
+      free: { text: "Standard" },
+      premium: { text: "Personalized" },
+    },
+    {
+      label: "Reservations / month",
+      free: { text: "2" },
+      premium: { text: "Unlimited" },
+    },
+    {
+      label: "Hidden coupons & cashback",
+      free: { yes: true },
+      premium: { yes: true },
+    },
+    {
+      label: "Priority tables & invites",
+      free: { yes: false },
+      premium: { yes: true },
+    },
+  ];
+
+function PlanComparison() {
+  const current = CURRENT_USER.tier;
+  const premium = TIERS.find((t) => t.id === "premium")!;
+  return (
+    <section className="border-border bg-card overflow-hidden rounded-2xl border">
+      <p className="text-foreground/70 px-4 pt-3.5 pb-3 text-[10px] font-medium tracking-[0.14em] uppercase">
+        Compare plans
+      </p>
+
+      {/* Header row: plan names + price, current plan flagged. */}
+      <div className="grid grid-cols-[1.25fr_0.85fr_1fr] items-end gap-1 px-3">
+        <span />
+        <PlanHeader label="Free" price="$0" isCurrent={current === "free"} />
+        <PlanHeader
+          label="Premium"
+          price={`$${premium.priceMxn} MXN`}
+          accent
+          isCurrent={current === "premium"}
+        />
+      </div>
+
+      {/* Feature rows. Premium column carries a soft tint band so it reads as
+          the highlighted choice. */}
+      <div className="mt-2">
+        {COMPARE_ROWS.map((row, i) => (
+          <div
+            key={row.label}
+            className={cn(
+              "grid grid-cols-[1.25fr_0.85fr_1fr] items-center gap-1 px-3 py-2.5",
+              i > 0 && "border-border/50 border-t",
+            )}
+          >
+            <span className="text-foreground/80 text-[12px] leading-tight font-medium">
+              {row.label}
+            </span>
+            <span className="flex justify-center">
+              <CompareValue cell={row.free} />
+            </span>
+            <span className="bg-tier-premium/[0.07] flex justify-center rounded-md py-1.5">
+              <CompareValue cell={row.premium} accent />
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PlanHeader({
+  label,
+  price,
+  accent,
+  isCurrent,
+}: {
+  label: string;
+  price: string;
+  accent?: boolean;
+  isCurrent: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-0.5 rounded-t-xl px-1 py-2",
+        accent && "bg-tier-premium/[0.07]",
+      )}
+    >
+      <span className="inline-flex items-center gap-1">
+        {accent && <Crown className="text-premium h-3 w-3 fill-current" />}
+        <span
+          className={cn(
+            "font-display text-[13px] font-bold tracking-tight",
+            accent && "text-premium",
+          )}
+        >
+          {label}
+        </span>
+      </span>
+      <span className="text-muted-foreground text-[10px] font-medium">
+        {price}
+        {accent && <span className="opacity-70"> /mo</span>}
+      </span>
+      {isCurrent && (
+        <span className="bg-foreground text-background mt-0.5 rounded-full px-1.5 py-px text-[8px] font-bold tracking-wider uppercase">
+          Current
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CompareValue({ cell, accent }: { cell: CompareCell; accent?: boolean }) {
+  if (cell.yes !== undefined) {
+    return cell.yes ? (
+      <Check
+        className={cn("h-4 w-4", accent ? "text-premium" : "text-emerald-600")}
+        strokeWidth={3}
+      />
+    ) : (
+      <Minus className="text-muted-foreground/40 h-4 w-4" strokeWidth={3} />
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "text-center text-[12px] font-semibold tabular-nums",
+        accent ? "text-premium" : "text-foreground/70",
+      )}
+    >
+      {cell.text}
+    </span>
+  );
+}
+
+// Shown to Premium members in place of the upgrade doors — there's nothing
+// left to sell, so confirm the perks instead.
+function PremiumActiveCard() {
+  return (
+    <section className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
+      <span className="bg-tier-premium flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white">
+        <Sparkles className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1 leading-tight">
+        <p className="font-display text-[14px] font-semibold tracking-tight">
+          You&apos;re on Premium
+        </p>
+        <p className="text-muted-foreground text-[12px]">
+          Best rates, personalized picks, and unlimited reservations are on.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -138,7 +315,6 @@ function UnlockPremiumCard({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  const isPremium = CURRENT_USER.tier === "premium";
   const igConnected = CURRENT_USER.tierOrigin === "instagram";
   const isSubscribed = CURRENT_USER.tierOrigin === "subscription";
   const premium = TIERS.find((t) => t.id === "premium")!;
@@ -194,7 +370,7 @@ function UnlockPremiumCard({
   return (
     <section className="border-border bg-card overflow-hidden rounded-2xl border">
       <p className="text-foreground/70 px-4 pt-3.5 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
-        {isPremium ? "You're Premium" : "Three ways to unlock Premium"}
+        Ways to upgrade · 3 doors
       </p>
       <div className="divide-border/60 border-border/60 divide-y border-t">
         {rows.map((row) => (
