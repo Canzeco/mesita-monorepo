@@ -354,8 +354,8 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
               {data.title}
             </span>
             {data.via && (
-              <span className="bg-tier-premium/10 text-premium rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
-                {data.via}
+              <span className="text-muted-foreground text-[13px] font-medium">
+                via {data.via}
               </span>
             )}
           </div>
