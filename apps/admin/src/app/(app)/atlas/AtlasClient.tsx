@@ -141,11 +141,11 @@ export function AtlasClient(props: {
   initialSourceTierCeiling: number;
   initialSourceOverrides: Record<string, boolean>;
   initialWebsiteCrawlMaxPages: number;
-  initialInstagramPosts: number;
+  initialGatherGoogleImages: number;
+  initialGatherWebsiteImages: number;
+  initialGatherInstagramPosts: number;
   initialImageVisionEnabled: boolean;
-  initialSaveGoogleImages: number;
-  initialSaveWebsiteImages: number;
-  initialSaveInstagramImages: number;
+  initialSaveTotalImages: number;
   initialAnalyzeGoogleImages: number;
   initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
@@ -202,30 +202,30 @@ export function AtlasClient(props: {
         </div>
       </StageGroup>
 
-      {/* ═══ Pre-selection (save) ══════════════════════════════════ */}
+      {/* ═══ Gather (pull per source) ══════════════════════════════ */}
       <StageGroup
-        label="Pre-selection — images saved per source"
-        desc="Stage 1 of the image funnel: how many images we pull & SAVE to the venue per source. This is the candidate set stored on the venue — NOT how many get AI-analyzed (that's Vision Params). Cheap; no AI here."
+        label="Gather — image candidates pulled per source"
+        desc="Stage 1 of the image funnel: how many image candidates to PULL per source into the pool (≤10 each). Each source is metadata-sorted as it comes in — Google in Google's order, Website by image size, Instagram by likes. Cheap; no AI here. Fewer, higher-signal candidates = less junk downstream."
       >
-        <PreSelectionSection
-          initialSaveGoogleImages={props.initialSaveGoogleImages}
-          initialSaveWebsiteImages={props.initialSaveWebsiteImages}
-          initialSaveInstagramImages={props.initialSaveInstagramImages}
-          initialInstagramPosts={props.initialInstagramPosts}
+        <GatherSection
+          initialGatherGoogleImages={props.initialGatherGoogleImages}
+          initialGatherWebsiteImages={props.initialGatherWebsiteImages}
+          initialGatherInstagramPosts={props.initialGatherInstagramPosts}
           onSaved={setUpdatedAt}
         />
       </StageGroup>
 
-      {/* ═══ Vision Params (analyze) ═══════════════════════════════ */}
+      {/* ═══ Vision Params (analyze → sort → save) ═════════════════ */}
       <StageGroup
         label="Vision Params"
-        desc="Stage 2: AI over the saved images. Two models run in sequence — a VISION model describes each image (the analysis prompt; one call per image, the expensive part), then a TEXT model ranks them best→worst from those descriptions (the sorting prompt; no images re-sent, so it's cheap). The caps bound how many saved images get the vision pass per source — usually fewer than saved."
+        desc="Stage 2: AI over the gathered images. A VISION model describes each (the analysis prompt; one call per image, the expensive part), then a TEXT model ranks them best→worst (the sorting prompt; no images re-sent, so it's cheap). The analyze caps bound how many gathered images per source get the vision pass; the final Save cap then keeps only the best N overall — source-independent."
       >
         <VisionParamsSection
           initialImageVisionEnabled={props.initialImageVisionEnabled}
           initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
           initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
           initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+          initialSaveTotalImages={props.initialSaveTotalImages}
           initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
           initialImageSortingPrompt={props.initialImageSortingPrompt}
           onSaved={setUpdatedAt}
@@ -549,37 +549,32 @@ function SourceDepthSection({
   );
 }
 
-// ─── Pre-selection (images saved per source) ───────────────────────────────
+// ─── Gather (images pulled per source) ─────────────────────────────────────
 
-function PreSelectionSection({
-  initialSaveGoogleImages,
-  initialSaveWebsiteImages,
-  initialSaveInstagramImages,
-  initialInstagramPosts,
+function GatherSection({
+  initialGatherGoogleImages,
+  initialGatherWebsiteImages,
+  initialGatherInstagramPosts,
   onSaved,
 }: {
-  initialSaveGoogleImages: number;
-  initialSaveWebsiteImages: number;
-  initialSaveInstagramImages: number;
-  initialInstagramPosts: number;
+  initialGatherGoogleImages: number;
+  initialGatherWebsiteImages: number;
+  initialGatherInstagramPosts: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [g, setG] = useState(initialSaveGoogleImages);
-  const [w, setW] = useState(initialSaveWebsiteImages);
-  const [ig, setIg] = useState(initialSaveInstagramImages);
-  const [posts, setPosts] = useState(initialInstagramPosts);
+  const [g, setG] = useState(initialGatherGoogleImages);
+  const [w, setW] = useState(initialGatherWebsiteImages);
+  const [posts, setPosts] = useState(initialGatherInstagramPosts);
   const [saved, setSaved] = useState({
-    g: initialSaveGoogleImages,
-    w: initialSaveWebsiteImages,
-    ig: initialSaveInstagramImages,
-    posts: initialInstagramPosts,
+    g: initialGatherGoogleImages,
+    w: initialGatherWebsiteImages,
+    posts: initialGatherInstagramPosts,
   });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty =
-    g !== saved.g || w !== saved.w || ig !== saved.ig || posts !== saved.posts;
+  const dirty = g !== saved.g || w !== saved.w || posts !== saved.posts;
 
   const save = () => {
     if (!dirty) return;
@@ -587,25 +582,22 @@ function PreSelectionSection({
     setOk(false);
     start(async () => {
       const r = await updateAtlasConfig({
-        saveGoogleImages: g,
-        saveWebsiteImages: w,
-        saveInstagramImages: ig,
-        instagramPosts: posts,
+        gatherGoogleImages: g,
+        gatherWebsiteImages: w,
+        gatherInstagramPosts: posts,
       });
       if (!r.ok) {
         setError(r.error);
         return;
       }
       setSaved({
-        g: r.data.atlasSaveGoogleImages,
-        w: r.data.atlasSaveWebsiteImages,
-        ig: r.data.atlasSaveInstagramImages,
-        posts: r.data.atlasResearchInstagramPosts,
+        g: r.data.atlasGatherGoogleImages,
+        w: r.data.atlasGatherWebsiteImages,
+        posts: r.data.atlasGatherInstagramPosts,
       });
-      setG(r.data.atlasSaveGoogleImages);
-      setW(r.data.atlasSaveWebsiteImages);
-      setIg(r.data.atlasSaveInstagramImages);
-      setPosts(r.data.atlasResearchInstagramPosts);
+      setG(r.data.atlasGatherGoogleImages);
+      setW(r.data.atlasGatherWebsiteImages);
+      setPosts(r.data.atlasGatherInstagramPosts);
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -616,29 +608,22 @@ function PreSelectionSection({
       <div className="flex items-center gap-2">
         <ImageIcon className="text-muted-foreground h-4 w-4" />
         <h2 className="font-display text-base font-semibold tracking-tight">
-          Pre-selection
+          Gather
         </h2>
       </div>
       <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-relaxed">
-        How many images we pull &amp; SAVE to the venue per source. Google = Places
-        default order; Website = ranked by image size; Instagram = scrape{" "}
-        <span className="text-foreground font-medium">Instagram posts per profile</span>{" "}
-        as a candidate <span className="text-foreground font-medium">pool</span>, extract
-        their photos (images only, no video), rank by likes, and keep the top{" "}
-        <span className="text-foreground font-medium">Save Instagram images</span>.
-        So posts ≠ images: <span className="text-foreground font-medium">posts</span> = how
-        deep we scrape (the pool), <span className="text-foreground font-medium">images</span> ={" "}
-        how many we keep. The pool should be bigger than what you keep so the
-        like-ranking has something to choose from.{" "}
-        This is NOT how many get analyzed — that&apos;s Vision Params. Ceiling 50
-        images/venue.
+        How many image candidates to PULL per source — the input pool to the
+        funnel. Each source is then metadata-sorted: Google in Google&apos;s own
+        order, Website by image size (largest first), Instagram by likes (one
+        photo per post). Pulling fewer, higher-signal candidates here is the
+        first defense against junk. This is NOT how many get AI-analyzed (Vision
+        Params) or finally saved (one cap below).
       </p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Save Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Save Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Save Instagram images" value={ig} min={0} max={30} onChange={setIg} disabled={pending} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts per profile" value={posts} min={0} max={50} onChange={setPosts} disabled={pending} />
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
+        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts" value={posts} min={0} max={10} onChange={setPosts} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
@@ -654,6 +639,7 @@ function VisionParamsSection({
   initialAnalyzeGoogleImages,
   initialAnalyzeWebsiteImages,
   initialAnalyzeInstagramImages,
+  initialSaveTotalImages,
   initialImageAnalysisPrompt,
   initialImageSortingPrompt,
   onSaved,
@@ -662,6 +648,7 @@ function VisionParamsSection({
   initialAnalyzeGoogleImages: number;
   initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
+  initialSaveTotalImages: number;
   initialImageAnalysisPrompt: string;
   initialImageSortingPrompt: string;
   onSaved: (updatedAt: string | null) => void;
@@ -670,12 +657,14 @@ function VisionParamsSection({
   const [g, setG] = useState(initialAnalyzeGoogleImages);
   const [w, setW] = useState(initialAnalyzeWebsiteImages);
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
+  const [saveTotal, setSaveTotal] = useState(initialSaveTotalImages);
   const [analysisPrompt, setAnalysisPrompt] = useState(initialImageAnalysisPrompt);
   const [sortingPrompt, setSortingPrompt] = useState(initialImageSortingPrompt);
   const [saved, setSaved] = useState({
     g: initialAnalyzeGoogleImages,
     w: initialAnalyzeWebsiteImages,
     ig: initialAnalyzeInstagramImages,
+    saveTotal: initialSaveTotalImages,
     analysisPrompt: initialImageAnalysisPrompt,
     sortingPrompt: initialImageSortingPrompt,
   });
@@ -688,6 +677,7 @@ function VisionParamsSection({
     g !== saved.g ||
     w !== saved.w ||
     ig !== saved.ig ||
+    saveTotal !== saved.saveTotal ||
     analysisPrompt !== saved.analysisPrompt ||
     sortingPrompt !== saved.sortingPrompt;
 
@@ -715,6 +705,7 @@ function VisionParamsSection({
         analyzeGoogleImages: g,
         analyzeWebsiteImages: w,
         analyzeInstagramImages: ig,
+        saveTotalImages: saveTotal,
         imageAnalysisPrompt: analysisPrompt,
         imageSortingPrompt: sortingPrompt,
       });
@@ -726,12 +717,14 @@ function VisionParamsSection({
         g: r.data.atlasAnalyzeGoogleImages,
         w: r.data.atlasAnalyzeWebsiteImages,
         ig: r.data.atlasAnalyzeInstagramImages,
+        saveTotal: r.data.atlasSaveTotalImages,
         analysisPrompt: r.data.atlasImageAnalysisPrompt,
         sortingPrompt: r.data.atlasImageSortingPrompt,
       });
       setG(r.data.atlasAnalyzeGoogleImages);
       setW(r.data.atlasAnalyzeWebsiteImages);
       setIg(r.data.atlasAnalyzeInstagramImages);
+      setSaveTotal(r.data.atlasSaveTotalImages);
       setAnalysisPrompt(r.data.atlasImageAnalysisPrompt);
       setSortingPrompt(r.data.atlasImageSortingPrompt);
       onSaved(r.data.updatedAt);
@@ -748,10 +741,11 @@ function VisionParamsSection({
         </h2>
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        Vision describes each image (analysis prompt), then ranks them
-        best→worst (sorting prompt). These caps bound how many of the SAVED
-        images get analyzed per source — usually fewer than saved, since vision
-        is the expensive step.
+        Vision describes each gathered image (analysis prompt), then a text
+        model ranks them best→worst (sorting prompt). The analyze caps bound how
+        many GATHERED images per source get the vision pass. After ranking, the
+        single <span className="text-foreground font-medium">Save (final)</span>{" "}
+        cap keeps only the best N overall — source-independent.
       </p>
 
       <div className="mt-5">
@@ -777,7 +771,7 @@ function VisionParamsSection({
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze Website images" value={w} min={0} max={10} onChange={setW} disabled={savePending || !vision} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images" value={ig} min={0} max={20} onChange={setIg} disabled={savePending || !vision} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images" value={ig} min={0} max={10} onChange={setIg} disabled={savePending || !vision} />
       </div>
 
       <div className="mt-4">
@@ -786,6 +780,18 @@ function VisionParamsSection({
           value={sortingPrompt}
           onChange={setSortingPrompt}
           disabled={savePending || !vision}
+        />
+      </div>
+
+      <div className="mt-4">
+        <NumberField
+          icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
+          label="Save (final, all sources combined)"
+          value={saveTotal}
+          min={0}
+          max={20}
+          onChange={setSaveTotal}
+          disabled={savePending}
         />
       </div>
 
@@ -1110,7 +1116,7 @@ function CostSection({
           <>
             <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Google" value={g} min={0} max={10} onChange={setG} disabled={false} />
             <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={false} />
-            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={30} onChange={setIg} disabled={false} />
+            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={10} onChange={setIg} disabled={false} />
           </>
         )}
 
