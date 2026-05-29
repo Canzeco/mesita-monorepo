@@ -375,21 +375,46 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
 }
 
 function CurrentClassCard() {
-  // Slim current-plan banner — just the plan name. The plan IS the brand
-  // ("Mesita Premium"), and how it was earned is noise here; the plan cards
-  // below carry the detail.
+  // Current-plan banner — plan name + an origin icon and a short "via …"
+  // line so a Premium member sees how they got it (Instagram / subscription
+  // / invitation). No follower count — just the door.
   const meta = TIERS.find((t) => t.id === CURRENT_USER.tier)!;
   const brand = `Mesita ${meta.label}`;
+  const isPremium = CURRENT_USER.tier === "premium";
+  const { Icon, via } = (() => {
+    if (!isPremium) return { Icon: Sparkles, via: null as string | null };
+    switch (CURRENT_USER.tierOrigin) {
+      case "instagram":
+        return { Icon: Instagram, via: "via Instagram" };
+      case "subscription":
+        return { Icon: CreditCard, via: "via subscription" };
+      case "invitation":
+        return { Icon: Crown, via: "via invitation" };
+      default:
+        return { Icon: Crown, via: null as string | null };
+    }
+  })();
   return (
     <div
       className={cn(
-        "rounded-2xl px-4 py-4 shadow-sm",
+        "flex items-center gap-3 rounded-2xl px-4 py-4 shadow-sm",
         tierBadgeClass(CURRENT_USER.tier),
       )}
     >
-      <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
-        {brand}
-      </h2>
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl backdrop-blur",
+          isPremium ? "bg-white/20" : "bg-foreground/[0.06]",
+        )}
+      >
+        <Icon className={cn("h-5 w-5", !isPremium && "fill-current")} />
+      </span>
+      <div className="min-w-0">
+        <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
+          {brand}
+        </h2>
+        {via && <p className="text-[11px] leading-snug opacity-90">{via}</p>}
+      </div>
     </div>
   );
 }

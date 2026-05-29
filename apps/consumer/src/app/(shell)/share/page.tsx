@@ -333,7 +333,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     icon: Megaphone,
     iconBg: "bg-pink-gradient text-white",
     body:
-      "Do you create content about travel, food, nightlife or lifestyle? 20% of Mesita's equity is reserved for creators — let's partner.",
+      "Create content about travel, food, nightlife or lifestyle? You just found a gold mine — 20% of Mesita's equity is reserved for creators. Let's partner.",
   },
   {
     id: "agencies",
