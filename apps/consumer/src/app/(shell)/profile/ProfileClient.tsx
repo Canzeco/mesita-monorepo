@@ -133,7 +133,6 @@ const COMPARE_ROWS: { label: string; free: string; premium: string }[] = [
 ];
 
 function FreeVsPremium() {
-  const current = CURRENT_USER.tier;
   return (
     <section className="border-border bg-card overflow-hidden rounded-2xl border">
       <p className="text-foreground/70 px-4 pt-3.5 pb-2 text-[10px] font-medium tracking-[0.14em] uppercase">
@@ -141,8 +140,8 @@ function FreeVsPremium() {
       </p>
       <div className="grid grid-cols-[1.3fr_0.8fr_1fr] items-end gap-1 px-3">
         <span />
-        <CompareHead label="Free" isCurrent={current === "free"} />
-        <CompareHead label="Premium" accent isCurrent={current === "premium"} />
+        <CompareHead label="Free" />
+        <CompareHead label="Premium" accent />
       </div>
       <div className="mt-1">
         {COMPARE_ROWS.map((row, i) => (
@@ -169,19 +168,11 @@ function FreeVsPremium() {
   );
 }
 
-function CompareHead({
-  label,
-  accent,
-  isCurrent,
-}: {
-  label: string;
-  accent?: boolean;
-  isCurrent: boolean;
-}) {
+function CompareHead({ label, accent }: { label: string; accent?: boolean }) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-0.5 rounded-t-lg px-1 py-1.5",
+        "flex flex-col items-center rounded-t-lg px-1 py-1.5",
         accent && "bg-tier-premium/[0.07]",
       )}
     >
@@ -196,11 +187,6 @@ function CompareHead({
           {label}
         </span>
       </span>
-      {isCurrent && (
-        <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[8px] font-bold tracking-wider uppercase">
-          Current
-        </span>
-      )}
     </div>
   );
 }
