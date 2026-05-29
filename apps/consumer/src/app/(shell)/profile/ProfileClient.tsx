@@ -122,7 +122,7 @@ function ClassTab({
         <FreeVsPremium />
       </section>
       <section className="flex flex-col gap-2">
-        <SectionEyebrow>Join Premium</SectionEyebrow>
+        <SectionEyebrow>Plans</SectionEyebrow>
         <WaysToClimb onConnectSocial={onConnectSocial} />
       </section>
     </div>
