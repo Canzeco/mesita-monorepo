@@ -20,7 +20,7 @@ export function WhatsAppRemindersBox() {
       type="button"
       onClick={onConnect}
       aria-label="Turn on WhatsApp reminders"
-      className="hover:bg-muted/40 flex w-full items-center gap-3 px-3 py-3 text-left transition active:bg-muted/60"
+      className="hover:bg-muted/40 active:bg-muted/60 flex w-full items-center gap-3 px-4 py-3.5 text-left transition"
     >
       <WhatsAppLogo />
       <span className="flex min-w-0 flex-1 flex-col">
@@ -31,7 +31,10 @@ export function WhatsAppRemindersBox() {
           Pings on WhatsApp
         </span>
       </span>
-      <ChevronRight className="text-muted-foreground/70 h-4 w-4 shrink-0" />
+      <span className="text-primary border-primary/25 bg-primary/[0.06] inline-flex shrink-0 items-center gap-0.5 rounded-full border py-1 pr-1.5 pl-2.5 text-[11px] font-semibold">
+        Connect
+        <ChevronRight className="h-3 w-3" />
+      </span>
     </button>
   );
 }
@@ -40,7 +43,7 @@ function WhatsAppLogo() {
   return (
     <svg
       viewBox="0 0 32 32"
-      className="h-8 w-8 shrink-0"
+      className="h-10 w-10 shrink-0"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >

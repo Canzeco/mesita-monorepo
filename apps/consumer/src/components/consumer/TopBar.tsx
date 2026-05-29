@@ -31,7 +31,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
 
   if (pathname.startsWith("/discover")) return <DiscoverHeader />;
   if (pathname.startsWith("/saved")) {
-    return <SimpleHeader title="My Saved Places" />;
+    return <SimpleHeader title="Saved" />;
   }
   if (pathname.startsWith("/reservations")) {
     return <SimpleHeader title="My Reservations" />;
