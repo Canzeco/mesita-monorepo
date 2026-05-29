@@ -589,10 +589,19 @@ function PreSelectionSection({
           Pre-selection
         </h2>
       </div>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        How many images we pull &amp; SAVE to the venue per source (Google by
-        Places order, Website by size, Instagram top by likes). This is NOT how
-        many get analyzed — that&apos;s Vision Params. Ceiling 50 images/venue.
+      <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-relaxed">
+        How many images we pull &amp; SAVE to the venue per source. Google = Places
+        default order; Website = ranked by image size; Instagram = scrape{" "}
+        <span className="text-foreground font-medium">Instagram posts per profile</span>{" "}
+        as a candidate <span className="text-foreground font-medium">pool</span>, extract
+        their photos (images only, no video), rank by likes, and keep the top{" "}
+        <span className="text-foreground font-medium">Save Instagram images</span>.
+        So posts ≠ images: <span className="text-foreground font-medium">posts</span> = how
+        deep we scrape (the pool), <span className="text-foreground font-medium">images</span> ={" "}
+        how many we keep. The pool should be bigger than what you keep so the
+        like-ranking has something to choose from.{" "}
+        This is NOT how many get analyzed — that&apos;s Vision Params. Ceiling 50
+        images/venue.
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
