@@ -576,12 +576,12 @@ function ImagePreSelectionSection({
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
         The cheap candidate pool gathered before vision — how many photos to
-        pull per source. Ranking is per-source: Google by photo category
-        (Vibe / Food / By owner), Instagram by likes.
+        pull per source. Google uses the Places API&apos;s default order
+        (Google&apos;s own ranking, up to 10); Instagram ranks by likes.
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Max Google images" value={googleImages} min={0} max={20} onChange={setGoogleImages} disabled={pending} />
+        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Max Google images" value={googleImages} min={0} max={10} onChange={setGoogleImages} disabled={pending} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max Instagram posts & images" value={instagramPosts} min={0} max={50} onChange={setInstagramPosts} disabled={pending} />
       </div>
 
