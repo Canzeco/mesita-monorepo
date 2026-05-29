@@ -333,7 +333,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     icon: Megaphone,
     iconBg: "bg-pink-gradient text-white",
     body:
-      "Create content about travel, food, nightlife or lifestyle? You just found a gold mine — 20% of Mesita's equity is reserved for creators. Let's partner.",
+      "Create content about travel, food, nightlife or lifestyle? You just found a gold mine. 20% of Mesita's equity is reserved for creators. Let's partner.",
   },
   {
     id: "agencies",
@@ -349,7 +349,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     icon: Star,
     iconBg: "bg-tier-premium text-white",
     body:
-      "Our partner venues want your talent in the room. Make all your talent Mesita Premium, free — no tricks.",
+      "Our partner venues want your talent in the room to enhance the ambience. Make all your talent Mesita Premium, for free, no tricks.",
   },
 ];
 
@@ -369,7 +369,7 @@ function OthersTab() {
 function PartnerCard({ group: g }: { group: PartnerGroup }) {
   const Icon = g.icon;
   const mailto = `mailto:partners@mesita.ai?subject=${encodeURIComponent(
-    `Mesita — ${g.title}`,
+    `Mesita: ${g.title}`,
   )}`;
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
