@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   DollarSign,
   Eye,
-  Facebook,
   Globe,
   History,
   Image as ImageIcon,
@@ -143,7 +142,6 @@ export function AtlasClient(props: {
   initialSnapshotOnBusinessEdit: boolean;
   initialGoogleImages: number;
   initialInstagramPosts: number;
-  initialFacebookPosts: number;
   initialSourceTierCeiling: number;
   initialSourceOverrides: Record<string, boolean>;
   initialGoogleReviews: number;
@@ -192,7 +190,6 @@ export function AtlasClient(props: {
         <DataDepthSection
           initialGoogleImages={props.initialGoogleImages}
           initialInstagramPosts={props.initialInstagramPosts}
-          initialFacebookPosts={props.initialFacebookPosts}
           initialGoogleReviews={props.initialGoogleReviews}
           initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
           initialReviewsPerSite={props.initialReviewsPerSite}
@@ -454,7 +451,6 @@ function SourcesSection({
 function DataDepthSection({
   initialGoogleImages,
   initialInstagramPosts,
-  initialFacebookPosts,
   initialGoogleReviews,
   initialWebsiteCrawlMaxPages,
   initialReviewsPerSite,
@@ -462,7 +458,6 @@ function DataDepthSection({
 }: {
   initialGoogleImages: number;
   initialInstagramPosts: number;
-  initialFacebookPosts: number;
   initialGoogleReviews: number;
   initialWebsiteCrawlMaxPages: number;
   initialReviewsPerSite: number;
@@ -470,14 +465,12 @@ function DataDepthSection({
 }) {
   const [googleImages, setGoogleImages] = useState(initialGoogleImages);
   const [instagramPosts, setInstagramPosts] = useState(initialInstagramPosts);
-  const [facebookPosts, setFacebookPosts] = useState(initialFacebookPosts);
   const [googleReviews, setGoogleReviews] = useState(initialGoogleReviews);
   const [websitePages, setWebsitePages] = useState(initialWebsiteCrawlMaxPages);
   const [reviewsPerSite, setReviewsPerSite] = useState(initialReviewsPerSite);
   const [saved, setSaved] = useState({
     googleImages: initialGoogleImages,
     instagramPosts: initialInstagramPosts,
-    facebookPosts: initialFacebookPosts,
     googleReviews: initialGoogleReviews,
     websitePages: initialWebsiteCrawlMaxPages,
     reviewsPerSite: initialReviewsPerSite,
@@ -489,7 +482,6 @@ function DataDepthSection({
   const dirty =
     googleImages !== saved.googleImages ||
     instagramPosts !== saved.instagramPosts ||
-    facebookPosts !== saved.facebookPosts ||
     googleReviews !== saved.googleReviews ||
     websitePages !== saved.websitePages ||
     reviewsPerSite !== saved.reviewsPerSite;
@@ -502,7 +494,6 @@ function DataDepthSection({
       const r = await updateAtlasConfig({
         googleImages,
         instagramPosts,
-        facebookPosts,
         googleReviews,
         websiteCrawlMaxPages: websitePages,
         reviewsPerSite,
@@ -514,7 +505,6 @@ function DataDepthSection({
       setSaved({
         googleImages: r.data.atlasResearchGoogleImages,
         instagramPosts: r.data.atlasResearchInstagramPosts,
-        facebookPosts: r.data.atlasResearchFacebookPosts,
         googleReviews: r.data.atlasGoogleReviews,
         websitePages: r.data.atlasWebsiteCrawlMaxPages,
         reviewsPerSite: r.data.atlasReviewsPerSite,
@@ -542,7 +532,6 @@ function DataDepthSection({
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Max Google images" value={googleImages} min={0} max={20} onChange={setGoogleImages} disabled={pending} />
         <NumberField icon={<Star className="text-muted-foreground h-4 w-4" />} label="Max Google reviews" value={googleReviews} min={0} max={5} onChange={setGoogleReviews} disabled={pending} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max Instagram posts & images" value={instagramPosts} min={0} max={50} onChange={setInstagramPosts} disabled={pending} />
-        <NumberField icon={<Facebook className="text-muted-foreground h-4 w-4" />} label="Max Facebook posts & images" value={facebookPosts} min={0} max={50} onChange={setFacebookPosts} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
         <NumberField icon={<MessageSquare className="text-muted-foreground h-4 w-4" />} label="Reviews per site" value={reviewsPerSite} min={0} max={30} onChange={setReviewsPerSite} disabled={pending} />
       </div>

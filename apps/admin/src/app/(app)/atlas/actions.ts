@@ -15,7 +15,6 @@ type SettingsResponse = {
   atlasSnapshotOnBusinessEdit: boolean;
   atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
-  atlasResearchFacebookPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
   atlasGoogleReviews: number;
@@ -66,7 +65,6 @@ type AtlasConfigResponse = {
   atlasSnapshotOnBusinessEdit: boolean;
   atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
-  atlasResearchFacebookPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
   atlasGoogleReviews: number;
@@ -89,7 +87,6 @@ export async function updateAtlasConfig(patch: {
   snapshotOnBusinessEdit?: boolean;
   googleImages?: number;
   instagramPosts?: number;
-  facebookPosts?: number;
   sourceTierCeiling?: number;
   sourceOverrides?: Record<string, boolean>;
   googleReviews?: number;
