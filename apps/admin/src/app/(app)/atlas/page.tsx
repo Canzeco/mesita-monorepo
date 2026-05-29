@@ -33,6 +33,7 @@ export default async function AtlasPage() {
       <AtlasClient
         initialPreReadEnabled={result.data.atlasPreReadSnapshots}
         initialSaveSnapshots={result.data.atlasSaveSnapshots}
+        initialSnapshotOnBusinessEdit={result.data.atlasSnapshotOnBusinessEdit}
         initialGoogleImages={result.data.atlasResearchGoogleImages}
         initialInstagramPosts={result.data.atlasResearchInstagramPosts}
         initialUpdatedAt={result.data.updatedAt}

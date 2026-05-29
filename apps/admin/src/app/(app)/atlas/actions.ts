@@ -10,6 +10,7 @@ type SettingsResponse = {
   autoVerifyVideo: boolean;
   atlasPreReadSnapshots: boolean;
   atlasSaveSnapshots: boolean;
+  atlasSnapshotOnBusinessEdit: boolean;
   atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
   updatedAt: string | null;
@@ -50,6 +51,7 @@ export async function setAtlasPreRead(
 
 type AtlasConfigResponse = {
   atlasSaveSnapshots: boolean;
+  atlasSnapshotOnBusinessEdit: boolean;
   atlasResearchGoogleImages: number;
   atlasResearchInstagramPosts: number;
   updatedAt: string | null;
@@ -62,6 +64,7 @@ type UpdateAtlasConfigResult =
 // Partial update — pass only the fields you want to change.
 export async function updateAtlasConfig(patch: {
   saveSnapshots?: boolean;
+  snapshotOnBusinessEdit?: boolean;
   googleImages?: number;
   instagramPosts?: number;
 }): Promise<UpdateAtlasConfigResult> {

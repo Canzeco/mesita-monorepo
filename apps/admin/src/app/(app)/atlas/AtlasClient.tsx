@@ -6,6 +6,7 @@ import {
   Archive,
   Camera,
   CheckCircle2,
+  History,
   Image as ImageIcon,
   Instagram,
   Loader2,
@@ -21,12 +22,14 @@ import {
 export function AtlasClient({
   initialPreReadEnabled,
   initialSaveSnapshots,
+  initialSnapshotOnBusinessEdit,
   initialGoogleImages,
   initialInstagramPosts,
   initialUpdatedAt,
 }: {
   initialPreReadEnabled: boolean;
   initialSaveSnapshots: boolean;
+  initialSnapshotOnBusinessEdit: boolean;
   initialGoogleImages: number;
   initialInstagramPosts: number;
   initialUpdatedAt: string | null;
@@ -39,6 +42,12 @@ export function AtlasClient({
   const [saveSnapshots, setSaveSnapshots] = useState(initialSaveSnapshots);
   const [saveToggleError, setSaveToggleError] = useState<string | null>(null);
   const [saveTogglePending, startSaveToggle] = useTransition();
+
+  const [snapshotOnEdit, setSnapshotOnEdit] = useState(
+    initialSnapshotOnBusinessEdit,
+  );
+  const [editToggleError, setEditToggleError] = useState<string | null>(null);
+  const [editTogglePending, startEditToggle] = useTransition();
 
   const [snapshotPending, startSnapshot] = useTransition();
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
@@ -83,6 +92,23 @@ export function AtlasClient({
     });
   };
 
+  const toggleSnapshotOnEdit = () => {
+    if (editTogglePending) return;
+    setEditToggleError(null);
+    const next = !snapshotOnEdit;
+    setSnapshotOnEdit(next);
+    startEditToggle(async () => {
+      const r = await updateAtlasConfig({ snapshotOnBusinessEdit: next });
+      if (!r.ok) {
+        setSnapshotOnEdit(!next);
+        setEditToggleError(r.error);
+        return;
+      }
+      setSnapshotOnEdit(r.data.atlasSnapshotOnBusinessEdit);
+      setUpdatedAt(r.data.updatedAt);
+    });
+  };
+
   const triggerSnapshotAll = () => {
     if (snapshotPending) return;
     setSnapshotError(null);
@@ -109,7 +135,7 @@ export function AtlasClient({
             <div className="flex items-center gap-2">
               <Search className="text-muted-foreground h-4 w-4" />
               <h2 className="font-display text-base font-semibold tracking-tight">
-                Reuse past research before fetching
+                Reuse past research snapshots before fetching
               </h2>
             </div>
             <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed">
@@ -148,7 +174,7 @@ export function AtlasClient({
             <div className="flex items-center gap-2">
               <Archive className="text-muted-foreground h-4 w-4" />
               <h2 className="font-display text-base font-semibold tracking-tight">
-                Save research from every run
+                Save research snapshot from every run
               </h2>
             </div>
             <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed">
@@ -182,6 +208,39 @@ export function AtlasClient({
         initialInstagramPosts={initialInstagramPosts}
         onSaved={setUpdatedAt}
       />
+
+      {/* ─── Auto profile snapshot on business edit ──────────────── */}
+      <section className="border-border bg-card rounded-2xl border p-6 md:col-span-2">
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <History className="text-muted-foreground h-4 w-4" />
+              <h2 className="font-display text-base font-semibold tracking-tight">
+                Save a profile snapshot on every business edit
+              </h2>
+            </div>
+            <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed">
+              When <span className="text-foreground font-medium">ON</span>,
+              Atlas saves a profile snapshot every time a business user updates
+              their venue — an edit history of the canonical profile. When{" "}
+              <span className="text-foreground font-medium">OFF</span>, business
+              edits are not snapshotted.
+            </p>
+            <p className="text-muted-foreground mt-2 max-w-xl text-xs leading-relaxed italic">
+              Automatic + per-venue. The manual bulk back-up below is separate.
+            </p>
+          </div>
+
+          <Switch
+            on={snapshotOnEdit}
+            pending={editTogglePending}
+            onClick={toggleSnapshotOnEdit}
+            label="Toggle snapshot on business edit"
+          />
+        </div>
+
+        {editToggleError && <ErrorNote message={editToggleError} />}
+      </section>
 
       {/* ─── Snapshot all venues ─────────────────────────────────── */}
       <section className="border-border bg-card rounded-2xl border p-6 md:col-span-2">
