@@ -110,15 +110,31 @@ function ClassTab({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  // A slim current-class banner, then a horizontal-scroll pair of plan
-  // cards (Free, then Premium) — each self-contained with its perks, and
-  // Premium also carrying the three ways to unlock it.
+  // Three labeled sections, top to bottom: your current class, a Free-vs-
+  // Premium comparison, and the ways to join Premium.
   return (
-    <div className="flex flex-col gap-4">
-      <CurrentClassCard />
-      <FreeVsPremium />
-      <WaysToClimb onConnectSocial={onConnectSocial} />
+    <div className="flex flex-col gap-6">
+      <section className="flex flex-col gap-2">
+        <SectionEyebrow>Current class</SectionEyebrow>
+        <CurrentClassCard />
+      </section>
+      <section className="flex flex-col gap-2">
+        <SectionEyebrow>Comparison</SectionEyebrow>
+        <FreeVsPremium />
+      </section>
+      <section className="flex flex-col gap-2">
+        <SectionEyebrow>Join Premium</SectionEyebrow>
+        <WaysToClimb onConnectSocial={onConnectSocial} />
+      </section>
     </div>
+  );
+}
+
+function SectionEyebrow({ children }: { children: ReactNode }) {
+  return (
+    <p className="text-foreground/60 text-[10px] font-semibold tracking-[0.16em] uppercase">
+      {children}
+    </p>
   );
 }
 
@@ -134,11 +150,8 @@ const COMPARE_ROWS: { label: string; free: string; premium: string }[] = [
 
 function FreeVsPremium() {
   return (
-    <section className="border-border bg-card overflow-hidden rounded-2xl border">
-      <p className="text-foreground/70 px-4 pt-3.5 pb-2 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Free vs Premium
-      </p>
-      <div className="grid grid-cols-[1.3fr_0.8fr_1fr] items-end gap-1 px-3">
+    <div className="border-border bg-card overflow-hidden rounded-2xl border">
+      <div className="grid grid-cols-[1.3fr_0.8fr_1fr] items-end gap-1 px-3 pt-3">
         <span />
         <CompareHead label="Free" />
         <CompareHead label="Premium" accent />
@@ -164,7 +177,7 @@ function FreeVsPremium() {
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -292,15 +305,10 @@ function WaysToClimb({
   ];
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-foreground/70 text-[10px] font-medium tracking-[0.14em] uppercase">
-        Ways to climb
-      </p>
-      <div className="flex flex-col gap-3">
-        {cards.map((c) => (
-          <ClimbCard key={c.key} data={c} />
-        ))}
-      </div>
+    <div className="flex flex-col gap-3">
+      {cards.map((c) => (
+        <ClimbCard key={c.key} data={c} />
+      ))}
     </div>
   );
 }
@@ -396,20 +404,17 @@ function CurrentClassCard() {
     }
   })();
   return (
-    <section
+    <div
       className={cn(
         "rounded-2xl px-4 py-3.5 shadow-sm",
         tierBadgeClass(CURRENT_USER.tier),
       )}
     >
-      <p className="text-[9px] font-semibold tracking-[0.18em] uppercase opacity-80">
-        Your class
-      </p>
       <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
         {brand}
       </h2>
       <p className="mt-0.5 text-[11px] leading-snug opacity-90">{origin}</p>
-    </section>
+    </div>
   );
 }
 
