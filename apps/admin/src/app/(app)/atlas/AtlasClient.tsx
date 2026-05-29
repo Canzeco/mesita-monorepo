@@ -243,6 +243,21 @@ export function AtlasClient(props: {
           onSaved={setUpdatedAt}
         />
       </StageGroup>
+
+      {/* ═══ Cost estimate ══════════════════════════════════════════ */}
+      <StageGroup
+        label="Cost to create one venue"
+        desc="A what-if estimate of the external spend to research + enrich ONE new venue, broken down by source. Adjust the params below to see the impact. Numbers are upper-bound per-call estimates (USD) for a fresh venue with no snapshot reuse — actual runs are usually cheaper (pre-read skips sources already cached, and the per-run cost cap hard-stops spend)."
+      >
+        <CostSection
+          initialSourceTierCeiling={props.initialSourceTierCeiling}
+          initialSynthesisQuality={props.initialSynthesisQuality}
+          initialImageVisionEnabled={props.initialImageVisionEnabled}
+          initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+          initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
+          initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+        />
+      </StageGroup>
     </div>
   );
 }
@@ -959,6 +974,204 @@ function BackupSection() {
 }
 
 // ─── Shared bits ─────────────────────────────────────────────────────────
+
+// ─── Cost estimate ───────────────────────────────────────────────────────
+//
+// Per-call USD rate card. MIRRORS the cost constants in the enricher
+// (atlas-enrich-profile `COST`), plus the Google Places Details call that
+// business-create-unit makes at create time. Approximate — enough to compare
+// configurations, not for billing. Keep in sync with the enricher.
+const COST_RATES = {
+  googlePlaces: 0.017, // Places Details lookup at create (Pro SKU, ~$17/1k)
+  apifyGoogleMaps: 0.05, // compass run: all reviews + venue photos
+  firecrawlSearch: 0.002, // one channel-discovery web search
+  perplexity: 0.01, // discovery fallback (sonar)
+  apifyInstagram: 0.02, // IG profile scraper
+  apifyFacebook: 0.02, // FB pages scraper
+  firecrawlScrape: 0.01, // website content scrape
+  visionPerImage: 0.002, // gpt-4o-mini vision, one image (detail:low)
+  sort: 0.003, // gpt-4o-mini text sort
+  synthEconomy: 0.005, // gpt-4o-mini synthesis
+  synthStandard: 0.03, // gpt-4o synthesis (standard & high)
+} as const;
+
+const money = (n: number) => `$${n.toFixed(3)}`;
+
+function CostSection({
+  initialSourceTierCeiling,
+  initialSynthesisQuality,
+  initialImageVisionEnabled,
+  initialAnalyzeGoogleImages,
+  initialAnalyzeWebsiteImages,
+  initialAnalyzeInstagramImages,
+}: {
+  initialSourceTierCeiling: number;
+  initialSynthesisQuality: SynthesisQuality;
+  initialImageVisionEnabled: boolean;
+  initialAnalyzeGoogleImages: number;
+  initialAnalyzeWebsiteImages: number;
+  initialAnalyzeInstagramImages: number;
+}) {
+  const [tier, setTier] = useState(initialSourceTierCeiling);
+  const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
+  const [vision, setVision] = useState(initialImageVisionEnabled);
+  const [g, setG] = useState(initialAnalyzeGoogleImages);
+  const [w, setW] = useState(initialAnalyzeWebsiteImages);
+  const [ig, setIg] = useState(initialAnalyzeInstagramImages);
+  const [venues, setVenues] = useState(1);
+
+  const social = tier >= 2; // tier ≥ 2 unlocks IG / FB / website / discovery
+  const synthCost =
+    quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
+  const visionImgs = vision ? g + w + ig : 0;
+
+  const lines: { label: string; detail: string; cost: number; active: boolean }[] = [
+    { label: "Google Places details", detail: "create lookup", cost: COST_RATES.googlePlaces, active: true },
+    { label: "Google reviews + photos", detail: "Apify Maps run", cost: COST_RATES.apifyGoogleMaps, active: true },
+    { label: "Channel discovery — search", detail: "3 × Firecrawl search", cost: COST_RATES.firecrawlSearch * 3, active: social },
+    { label: "Channel discovery — fallback", detail: "Perplexity", cost: COST_RATES.perplexity, active: social },
+    { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, active: social },
+    { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, active: social },
+    { label: "Website content", detail: "Firecrawl scrape", cost: COST_RATES.firecrawlScrape, active: social },
+    { label: "Image analysis — vision", detail: `${visionImgs} img × ${money(COST_RATES.visionPerImage)}`, cost: visionImgs * COST_RATES.visionPerImage, active: vision && visionImgs > 0 },
+    { label: "Image sorting — text", detail: "1 call", cost: COST_RATES.sort, active: vision && visionImgs > 0 },
+    { label: `Synthesis — ${quality}`, detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o", cost: synthCost, active: true },
+  ];
+
+  const perVenue = lines.filter((l) => l.active).reduce((s, l) => s + l.cost, 0);
+  const total = perVenue * Math.max(1, venues);
+
+  return (
+    <section className="border-border bg-card rounded-2xl border p-6">
+      <div className="flex items-center gap-2">
+        <DollarSign className="text-muted-foreground h-4 w-4" />
+        <h2 className="font-display text-base font-semibold tracking-tight">
+          Per-venue cost estimate
+        </h2>
+      </div>
+
+      {/* Params */}
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Layers className="text-muted-foreground h-4 w-4" />
+            Source tier ceiling
+          </span>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTier(t)}
+                className={`h-8 w-8 rounded-lg border text-sm font-semibold transition ${
+                  tier === t
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card hover:border-foreground/40"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Sparkles className="text-muted-foreground h-4 w-4" />
+            Synthesis quality
+          </span>
+          <div className="flex gap-1">
+            {(["economy", "standard", "high"] as SynthesisQuality[]).map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setQuality(q)}
+                className={`h-8 rounded-lg border px-2.5 text-xs font-semibold capitalize transition ${
+                  quality === q
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card hover:border-foreground/40"
+                }`}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Card
+          className="md:col-span-2"
+          icon={<Eye className="text-muted-foreground h-4 w-4" />}
+          title="Vision analysis enabled"
+          desc="When off, images are saved in source order with no AI vision/sort — the vision + sort lines drop out of the estimate."
+          control={<Switch on={vision} pending={false} onClick={() => setVision(!vision)} label="Toggle vision" />}
+        />
+
+        {vision && (
+          <>
+            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Google" value={g} min={0} max={10} onChange={setG} disabled={false} />
+            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={false} />
+            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={30} onChange={setIg} disabled={false} />
+          </>
+        )}
+
+        <NumberField icon={<Layers className="text-muted-foreground h-4 w-4" />} label="Number of venues" value={venues} min={1} max={5000} onChange={setVenues} disabled={false} />
+      </div>
+
+      {/* Breakdown */}
+      <div className="border-border mt-6 overflow-hidden rounded-xl border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-border text-muted-foreground border-b text-xs uppercase tracking-wide">
+              <th className="px-4 py-2.5 text-left font-medium">Source / step</th>
+              <th className="px-4 py-2.5 text-left font-medium">Detail</th>
+              <th className="px-4 py-2.5 text-right font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => (
+              <tr
+                key={l.label}
+                className={`border-border/60 border-b last:border-0 ${l.active ? "" : "opacity-40"}`}
+              >
+                <td className="px-4 py-2.5 font-medium">{l.label}</td>
+                <td className="text-muted-foreground px-4 py-2.5">{l.detail}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {l.active ? money(l.cost) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-background border-border border-t-2">
+              <td className="px-4 py-3 font-semibold" colSpan={2}>
+                Per venue
+              </td>
+              <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                {money(perVenue)}
+              </td>
+            </tr>
+            {venues > 1 && (
+              <tr className="bg-background border-border/60 border-t">
+                <td className="text-muted-foreground px-4 py-2.5" colSpan={2}>
+                  × {venues} venues
+                </td>
+                <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
+                  ${total.toFixed(2)}
+                </td>
+              </tr>
+            )}
+          </tfoot>
+        </table>
+      </div>
+
+      <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
+        Upper bound for a fresh venue (no snapshot reuse). Rates are approximate
+        per-call estimates and mirror the enricher&apos;s cost model; the
+        per-run cost cap in “Analysis and Cost” hard-stops spend regardless.
+      </p>
+    </section>
+  );
+}
 
 function StageGroup({
   label,
