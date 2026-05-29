@@ -40,7 +40,6 @@ export default async function AtlasPage() {
         initialSourceOverrides={result.data.atlasSourceOverrides}
         initialGoogleReviews={result.data.atlasGoogleReviews}
         initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
-        initialReviewsPerSite={result.data.atlasReviewsPerSite}
         initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
         initialMaxImagesAnalyzed={result.data.atlasMaxImagesAnalyzed}
         initialSynthesisQuality={result.data.atlasSynthesisQuality}

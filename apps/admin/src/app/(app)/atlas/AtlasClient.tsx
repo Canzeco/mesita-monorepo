@@ -14,7 +14,6 @@ import {
   Instagram,
   Layers,
   Loader2,
-  MessageSquare,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -146,7 +145,6 @@ export function AtlasClient(props: {
   initialSourceOverrides: Record<string, boolean>;
   initialGoogleReviews: number;
   initialWebsiteCrawlMaxPages: number;
-  initialReviewsPerSite: number;
   initialImageVisionEnabled: boolean;
   initialMaxImagesAnalyzed: number;
   initialSynthesisQuality: SynthesisQuality;
@@ -190,7 +188,6 @@ export function AtlasClient(props: {
           <SourceDepthSection
             initialGoogleReviews={props.initialGoogleReviews}
             initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
-            initialReviewsPerSite={props.initialReviewsPerSite}
             onSaved={setUpdatedAt}
           />
         </div>
@@ -459,21 +456,17 @@ function SourcesSection({
 function SourceDepthSection({
   initialGoogleReviews,
   initialWebsiteCrawlMaxPages,
-  initialReviewsPerSite,
   onSaved,
 }: {
   initialGoogleReviews: number;
   initialWebsiteCrawlMaxPages: number;
-  initialReviewsPerSite: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [googleReviews, setGoogleReviews] = useState(initialGoogleReviews);
   const [websitePages, setWebsitePages] = useState(initialWebsiteCrawlMaxPages);
-  const [reviewsPerSite, setReviewsPerSite] = useState(initialReviewsPerSite);
   const [saved, setSaved] = useState({
     googleReviews: initialGoogleReviews,
     websitePages: initialWebsiteCrawlMaxPages,
-    reviewsPerSite: initialReviewsPerSite,
   });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -481,8 +474,7 @@ function SourceDepthSection({
 
   const dirty =
     googleReviews !== saved.googleReviews ||
-    websitePages !== saved.websitePages ||
-    reviewsPerSite !== saved.reviewsPerSite;
+    websitePages !== saved.websitePages;
 
   const save = () => {
     if (!dirty) return;
@@ -492,7 +484,6 @@ function SourceDepthSection({
       const r = await updateAtlasConfig({
         googleReviews,
         websiteCrawlMaxPages: websitePages,
-        reviewsPerSite,
       });
       if (!r.ok) {
         setError(r.error);
@@ -501,7 +492,6 @@ function SourceDepthSection({
       setSaved({
         googleReviews: r.data.atlasGoogleReviews,
         websitePages: r.data.atlasWebsiteCrawlMaxPages,
-        reviewsPerSite: r.data.atlasReviewsPerSite,
       });
       onSaved(r.data.updatedAt);
       setOk(true);
@@ -517,14 +507,13 @@ function SourceDepthSection({
         </h2>
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        How much non-image data to pull per source. Google is the only source
-        with reviews. (Photos are configured under Images.)
+        How much non-image data to pull per source. Reviews come from Google
+        only. (Photos are configured under Images.)
       </p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <NumberField icon={<Star className="text-muted-foreground h-4 w-4" />} label="Max Google reviews" value={googleReviews} min={0} max={5} onChange={setGoogleReviews} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
-        <NumberField icon={<MessageSquare className="text-muted-foreground h-4 w-4" />} label="Reviews per site" value={reviewsPerSite} min={0} max={30} onChange={setReviewsPerSite} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />

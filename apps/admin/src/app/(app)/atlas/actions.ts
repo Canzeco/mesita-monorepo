@@ -19,7 +19,6 @@ type SettingsResponse = {
   atlasSourceOverrides: Record<string, boolean>;
   atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
-  atlasReviewsPerSite: number;
   atlasImageVisionEnabled: boolean;
   atlasMaxImagesAnalyzed: number;
   atlasSynthesisQuality: SynthesisQuality;
@@ -69,7 +68,6 @@ type AtlasConfigResponse = {
   atlasSourceOverrides: Record<string, boolean>;
   atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
-  atlasReviewsPerSite: number;
   atlasImageVisionEnabled: boolean;
   atlasMaxImagesAnalyzed: number;
   atlasSynthesisQuality: SynthesisQuality;
@@ -91,7 +89,6 @@ export async function updateAtlasConfig(patch: {
   sourceOverrides?: Record<string, boolean>;
   googleReviews?: number;
   websiteCrawlMaxPages?: number;
-  reviewsPerSite?: number;
   imageVisionEnabled?: boolean;
   maxImagesAnalyzed?: number;
   synthesisQuality?: SynthesisQuality;
