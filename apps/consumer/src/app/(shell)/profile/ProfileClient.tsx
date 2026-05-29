@@ -14,7 +14,6 @@ import {
   Bell,
   Shield,
   HelpCircle,
-  Mail,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
@@ -271,36 +270,6 @@ function WaysToClimb({
       reached: origin === "subscription",
       reachedLabel: "Active",
       action: { label: "Subscribe", href: "/subscribe/premium" },
-    },
-    {
-      key: "invitation",
-      icon: Mail,
-      iconBg: "bg-amber-500 text-white",
-      title: "Premium",
-      via: "by Invitation",
-      accent: true,
-      price: "Invite only",
-      desc: "For locals, creators & talent invited by Mesita.",
-      reached: origin === "invitation",
-      reachedLabel: "Granted",
-      action: {
-        label: "Request",
-        onClick: () =>
-          toast.action(
-            "Invitations are hand-picked — meanwhile email class@mesita.ai with your case",
-            {
-              label: "Copy email",
-              onClick: () => {
-                if (typeof navigator !== "undefined" && navigator.clipboard) {
-                  navigator.clipboard
-                    .writeText("class@mesita.ai")
-                    .then(() => toast.success("class@mesita.ai copied"))
-                    .catch(() => toast.error("Couldn't copy"));
-                }
-              },
-            },
-          ),
-      },
     },
   ];
 
