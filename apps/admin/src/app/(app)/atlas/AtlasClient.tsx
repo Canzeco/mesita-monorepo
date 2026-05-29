@@ -167,50 +167,58 @@ export function AtlasClient(props: {
         </p>
       )}
 
-      {/* ═══ Snapshots & caching ═══════════════════════════════════ */}
-      <StageGroup label="Snapshots & caching">
-        <SnapshotToggles
-          initialPreReadEnabled={props.initialPreReadEnabled}
-          initialSaveSnapshots={props.initialSaveSnapshots}
-          initialSnapshotOnBusinessEdit={props.initialSnapshotOnBusinessEdit}
-          onSaved={setUpdatedAt}
-        />
+      {/* ═══ Pipeline & snapshots ══════════════════════════════════ */}
+      <StageGroup label="Pipeline & snapshots">
+        <div className="flex flex-col gap-6">
+          <SnapshotToggles
+            initialPreReadEnabled={props.initialPreReadEnabled}
+            initialSaveSnapshots={props.initialSaveSnapshots}
+            initialSnapshotOnBusinessEdit={props.initialSnapshotOnBusinessEdit}
+            onSaved={setUpdatedAt}
+          />
+          <BackupSection />
+        </div>
       </StageGroup>
 
-      {/* ═══ Sourcing ══════════════════════════════════════════════ */}
-      <StageGroup label="Sourcing — which sources run">
-        <SourcesSection
-          initialTierCeiling={props.initialSourceTierCeiling}
-          onSaved={setUpdatedAt}
-        />
+      {/* ═══ Data sources ══════════════════════════════════════════ */}
+      <StageGroup label="Data sources">
+        <div className="flex flex-col gap-6">
+          <SourcesSection
+            initialTierCeiling={props.initialSourceTierCeiling}
+            onSaved={setUpdatedAt}
+          />
+          <SourceDepthSection
+            initialGoogleReviews={props.initialGoogleReviews}
+            initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
+            initialReviewsPerSite={props.initialReviewsPerSite}
+            onSaved={setUpdatedAt}
+          />
+        </div>
       </StageGroup>
 
-      {/* ═══ Data depth ════════════════════════════════════════════ */}
-      <StageGroup label="Data — how much to pull per source">
-        <DataDepthSection
-          initialGoogleImages={props.initialGoogleImages}
-          initialInstagramPosts={props.initialInstagramPosts}
-          initialGoogleReviews={props.initialGoogleReviews}
-          initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
-          initialReviewsPerSite={props.initialReviewsPerSite}
-          onSaved={setUpdatedAt}
-        />
+      {/* ═══ Images ════════════════════════════════════════════════ */}
+      <StageGroup label="Images">
+        <div className="flex flex-col gap-6">
+          <ImagePreSelectionSection
+            initialGoogleImages={props.initialGoogleImages}
+            initialInstagramPosts={props.initialInstagramPosts}
+            onSaved={setUpdatedAt}
+          />
+          <ImageSelectionsSection
+            initialImageVisionEnabled={props.initialImageVisionEnabled}
+            initialMaxImagesAnalyzed={props.initialMaxImagesAnalyzed}
+            onSaved={setUpdatedAt}
+          />
+        </div>
       </StageGroup>
 
-      {/* ═══ Analysis ══════════════════════════════════════════════ */}
-      <StageGroup label="Analysis — AI & cost">
-        <AnalysisSection
-          initialImageVisionEnabled={props.initialImageVisionEnabled}
-          initialMaxImagesAnalyzed={props.initialMaxImagesAnalyzed}
+      {/* ═══ Analysis & cost ═══════════════════════════════════════ */}
+      <StageGroup label="Analysis & cost">
+        <AnalysisCostSection
           initialSynthesisQuality={props.initialSynthesisQuality}
           initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
           onSaved={setUpdatedAt}
         />
-      </StageGroup>
-
-      {/* ═══ Profile backup ════════════════════════════════════════ */}
-      <StageGroup label="Profile backup">
-        <BackupSection />
       </StageGroup>
     </div>
   );
@@ -446,31 +454,23 @@ function SourcesSection({
   );
 }
 
-// ─── Data depth ──────────────────────────────────────────────────────────
+// ─── Data sources: non-image depth ─────────────────────────────────────────
 
-function DataDepthSection({
-  initialGoogleImages,
-  initialInstagramPosts,
+function SourceDepthSection({
   initialGoogleReviews,
   initialWebsiteCrawlMaxPages,
   initialReviewsPerSite,
   onSaved,
 }: {
-  initialGoogleImages: number;
-  initialInstagramPosts: number;
   initialGoogleReviews: number;
   initialWebsiteCrawlMaxPages: number;
   initialReviewsPerSite: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [googleImages, setGoogleImages] = useState(initialGoogleImages);
-  const [instagramPosts, setInstagramPosts] = useState(initialInstagramPosts);
   const [googleReviews, setGoogleReviews] = useState(initialGoogleReviews);
   const [websitePages, setWebsitePages] = useState(initialWebsiteCrawlMaxPages);
   const [reviewsPerSite, setReviewsPerSite] = useState(initialReviewsPerSite);
   const [saved, setSaved] = useState({
-    googleImages: initialGoogleImages,
-    instagramPosts: initialInstagramPosts,
     googleReviews: initialGoogleReviews,
     websitePages: initialWebsiteCrawlMaxPages,
     reviewsPerSite: initialReviewsPerSite,
@@ -480,8 +480,6 @@ function DataDepthSection({
   const [ok, setOk] = useState(false);
 
   const dirty =
-    googleImages !== saved.googleImages ||
-    instagramPosts !== saved.instagramPosts ||
     googleReviews !== saved.googleReviews ||
     websitePages !== saved.websitePages ||
     reviewsPerSite !== saved.reviewsPerSite;
@@ -492,8 +490,6 @@ function DataDepthSection({
     setOk(false);
     start(async () => {
       const r = await updateAtlasConfig({
-        googleImages,
-        instagramPosts,
         googleReviews,
         websiteCrawlMaxPages: websitePages,
         reviewsPerSite,
@@ -503,8 +499,6 @@ function DataDepthSection({
         return;
       }
       setSaved({
-        googleImages: r.data.atlasResearchGoogleImages,
-        instagramPosts: r.data.atlasResearchInstagramPosts,
         googleReviews: r.data.atlasGoogleReviews,
         websitePages: r.data.atlasWebsiteCrawlMaxPages,
         reviewsPerSite: r.data.atlasReviewsPerSite,
@@ -519,21 +513,87 @@ function DataDepthSection({
       <div className="flex items-center gap-2">
         <SlidersHorizontal className="text-muted-foreground h-4 w-4" />
         <h2 className="font-display text-base font-semibold tracking-tight">
-          Data depth
+          Source depth
         </h2>
       </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        Max Atlas pulls from each source per research run. Note: Google is the
-        only source with reviews — Instagram &amp; Facebook have none, so they
-        only yield follower count + posts/images.
+        How much non-image data to pull per source. Google is the only source
+        with reviews. (Photos are configured under Images.)
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Max Google images" value={googleImages} min={0} max={20} onChange={setGoogleImages} disabled={pending} />
         <NumberField icon={<Star className="text-muted-foreground h-4 w-4" />} label="Max Google reviews" value={googleReviews} min={0} max={5} onChange={setGoogleReviews} disabled={pending} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max Instagram posts & images" value={instagramPosts} min={0} max={50} onChange={setInstagramPosts} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
         <NumberField icon={<MessageSquare className="text-muted-foreground h-4 w-4" />} label="Reviews per site" value={reviewsPerSite} min={0} max={30} onChange={setReviewsPerSite} disabled={pending} />
+      </div>
+
+      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
+      {error && <ErrorNote message={error} />}
+    </section>
+  );
+}
+
+// ─── Images: pre-selection (cheap candidate caps, before vision) ───────────
+
+function ImagePreSelectionSection({
+  initialGoogleImages,
+  initialInstagramPosts,
+  onSaved,
+}: {
+  initialGoogleImages: number;
+  initialInstagramPosts: number;
+  onSaved: (updatedAt: string | null) => void;
+}) {
+  const [googleImages, setGoogleImages] = useState(initialGoogleImages);
+  const [instagramPosts, setInstagramPosts] = useState(initialInstagramPosts);
+  const [saved, setSaved] = useState({
+    googleImages: initialGoogleImages,
+    instagramPosts: initialInstagramPosts,
+  });
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const dirty =
+    googleImages !== saved.googleImages ||
+    instagramPosts !== saved.instagramPosts;
+
+  const save = () => {
+    if (!dirty) return;
+    setError(null);
+    setOk(false);
+    start(async () => {
+      const r = await updateAtlasConfig({ googleImages, instagramPosts });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setSaved({
+        googleImages: r.data.atlasResearchGoogleImages,
+        instagramPosts: r.data.atlasResearchInstagramPosts,
+      });
+      onSaved(r.data.updatedAt);
+      setOk(true);
+    });
+  };
+
+  return (
+    <section className="border-border bg-card rounded-2xl border p-6">
+      <div className="flex items-center gap-2">
+        <ImageIcon className="text-muted-foreground h-4 w-4" />
+        <h2 className="font-display text-base font-semibold tracking-tight">
+          Pre-selection
+        </h2>
+      </div>
+      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
+        The cheap candidate pool gathered before vision — how many photos to
+        pull per source. Ranking is per-source: Google by photo category
+        (Vibe / Food / By owner), Instagram by likes.
+      </p>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Max Google images" value={googleImages} min={0} max={20} onChange={setGoogleImages} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Max Instagram posts & images" value={instagramPosts} min={0} max={50} onChange={setInstagramPosts} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
@@ -550,37 +610,24 @@ const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[
   { value: "high", label: "High", hint: "GPT-5.x" },
 ];
 
-function AnalysisSection({
+function ImageSelectionsSection({
   initialImageVisionEnabled,
   initialMaxImagesAnalyzed,
-  initialSynthesisQuality,
-  initialPerRunCostCapUsd,
   onSaved,
 }: {
   initialImageVisionEnabled: boolean;
   initialMaxImagesAnalyzed: number;
-  initialSynthesisQuality: SynthesisQuality;
-  initialPerRunCostCapUsd: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [vision, setVision] = useState(initialImageVisionEnabled);
   const [maxImages, setMaxImages] = useState(initialMaxImagesAnalyzed);
-  const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
-  const [costCap, setCostCap] = useState(initialPerRunCostCapUsd);
-  const [saved, setSaved] = useState({
-    maxImages: initialMaxImagesAnalyzed,
-    quality: initialSynthesisQuality,
-    costCap: initialPerRunCostCapUsd,
-  });
+  const [savedMax, setSavedMax] = useState(initialMaxImagesAnalyzed);
   const [togglePending, startToggle] = useTransition();
   const [savePending, startSave] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty =
-    maxImages !== saved.maxImages ||
-    quality !== saved.quality ||
-    costCap !== saved.costCap;
+  const dirty = maxImages !== savedMax;
 
   const flipVision = () => {
     setError(null);
@@ -602,20 +649,12 @@ function AnalysisSection({
     setError(null);
     setOk(false);
     startSave(async () => {
-      const r = await updateAtlasConfig({
-        maxImagesAnalyzed: maxImages,
-        synthesisQuality: quality,
-        perRunCostCapUsd: costCap,
-      });
+      const r = await updateAtlasConfig({ maxImagesAnalyzed: maxImages });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      setSaved({
-        maxImages: r.data.atlasMaxImagesAnalyzed,
-        quality: r.data.atlasSynthesisQuality,
-        costCap: r.data.atlasPerRunCostCapUsd,
-      });
+      setSavedMax(r.data.atlasMaxImagesAnalyzed);
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -624,13 +663,17 @@ function AnalysisSection({
   return (
     <section className="border-border bg-card rounded-2xl border p-6">
       <div className="flex items-center gap-2">
-        <Sparkles className="text-muted-foreground h-4 w-4" />
+        <Eye className="text-muted-foreground h-4 w-4" />
         <h2 className="font-display text-base font-semibold tracking-tight">
-          Analysis
+          Selections
         </h2>
       </div>
+      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
+        Vision scores the pre-selected candidates and ranks the final set. This
+        is the expensive step — cap how many images get analyzed.
+      </p>
 
-      <div className="mt-5">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Eye className="text-muted-foreground h-4 w-4" />
@@ -644,9 +687,6 @@ function AnalysisSection({
             label="Toggle image vision"
           />
         </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <NumberField
           icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
           label="Max images analyzed"
@@ -656,16 +696,73 @@ function AnalysisSection({
           onChange={setMaxImages}
           disabled={savePending || !vision}
         />
-        <NumberField
-          icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
-          label="Cost cap (USD / venue)"
-          value={costCap}
-          min={0}
-          max={50}
-          decimals
-          onChange={setCostCap}
-          disabled={savePending}
-        />
+      </div>
+
+      <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
+      {error && <ErrorNote message={error} />}
+    </section>
+  );
+}
+
+// ─── Analysis & cost ───────────────────────────────────────────────────────
+
+function AnalysisCostSection({
+  initialSynthesisQuality,
+  initialPerRunCostCapUsd,
+  onSaved,
+}: {
+  initialSynthesisQuality: SynthesisQuality;
+  initialPerRunCostCapUsd: number;
+  onSaved: (updatedAt: string | null) => void;
+}) {
+  const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
+  const [costCap, setCostCap] = useState(initialPerRunCostCapUsd);
+  const [saved, setSaved] = useState({
+    quality: initialSynthesisQuality,
+    costCap: initialPerRunCostCapUsd,
+  });
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const dirty = quality !== saved.quality || costCap !== saved.costCap;
+
+  const save = () => {
+    if (!dirty) return;
+    setError(null);
+    setOk(false);
+    start(async () => {
+      const r = await updateAtlasConfig({
+        synthesisQuality: quality,
+        perRunCostCapUsd: costCap,
+      });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setSaved({
+        quality: r.data.atlasSynthesisQuality,
+        costCap: r.data.atlasPerRunCostCapUsd,
+      });
+      onSaved(r.data.updatedAt);
+      setOk(true);
+    });
+  };
+
+  return (
+    <section className="border-border bg-card rounded-2xl border p-6">
+      <div className="flex items-center gap-2">
+        <Sparkles className="text-muted-foreground h-4 w-4" />
+        <h2 className="font-display text-base font-semibold tracking-tight">
+          Analysis &amp; cost
+        </h2>
+      </div>
+      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
+        The final synthesis model (Research Backbone) and the hard spend ceiling
+        per venue.
+      </p>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Sparkles className="text-muted-foreground h-4 w-4" />
@@ -673,7 +770,7 @@ function AnalysisSection({
           </span>
           <select
             value={quality}
-            disabled={savePending}
+            disabled={pending}
             onChange={(e) => setQuality(e.target.value as SynthesisQuality)}
             className="border-border bg-card focus:border-foreground h-9 rounded-lg border px-2 text-sm outline-none disabled:opacity-50"
           >
@@ -684,9 +781,19 @@ function AnalysisSection({
             ))}
           </select>
         </label>
+        <NumberField
+          icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
+          label="Cost cap (USD / venue)"
+          value={costCap}
+          min={0}
+          max={50}
+          decimals
+          onChange={setCostCap}
+          disabled={pending}
+        />
       </div>
 
-      <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
+      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
       {error && <ErrorNote message={error} />}
     </section>
   );
