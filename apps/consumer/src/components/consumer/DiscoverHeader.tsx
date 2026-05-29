@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MapPin, Calendar, Check, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassChip } from "./ClassChip";
+import { MesitaMark } from "./MesitaMark";
 
 type WhatOption = { id: string; label: string; soon: boolean };
 const WHAT_OPTIONS: WhatOption[] = [
@@ -68,10 +69,10 @@ export function DiscoverHeader() {
       <div className="flex w-full items-center gap-2">
         <Link
           href="/profile"
-          className="bg-peacock shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-lg"
-          aria-label="Profile"
+          className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
+          aria-label="Mesita — profile"
         >
-          🦚
+          <MesitaMark className="h-full w-full" />
         </Link>
         <div className="border-border bg-card/70 flex min-w-0 flex-1 items-center gap-0.5 rounded-full border p-1 backdrop-blur">
           <button

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ClassChip } from "./ClassChip";
+import { MesitaMark } from "./MesitaMark";
 
 // Shared header for every top-level surface that isn't /discover
 // (Reservations, Coupons, Pay, Share, Profile).
@@ -18,10 +19,10 @@ export function SimpleHeader({ title }: { title: string }) {
     <header className="border-border flex h-16 shrink-0 items-center gap-3 border-b px-4">
       <Link
         href="/profile"
-        className="bg-peacock shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-lg"
-        aria-label="Profile"
+        className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
+        aria-label="Mesita — profile"
       >
-        🦚
+        <MesitaMark className="h-full w-full" />
       </Link>
       <div className="flex min-w-0 flex-1 items-center justify-center">
         <h1 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">

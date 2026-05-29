@@ -68,8 +68,8 @@ export function ProfileClient() {
               className={cn(
                 "flex-1 rounded-full px-2 py-1.5 text-[12px] font-medium whitespace-nowrap transition",
                 tab === t.id
-                  ? "bg-pink-gradient text-white shadow-sm"
-                  : "text-muted-foreground",
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {t.label}

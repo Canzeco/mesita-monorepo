@@ -49,7 +49,7 @@ import {
   VenueSectionNav,
 } from "@/components/consumer/VenueSectionNav";
 import { useSavedVenues } from "@/lib/saved-venues";
-import { tierProperLabel } from "@/lib/consumer-data";
+import { tierProperLabel, CURRENT_USER } from "@/lib/consumer-data";
 import { toast } from "@/lib/toast";
 
 // Section nav order for the venue detail page. Reward sits right after
@@ -712,8 +712,15 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
     activeValue == null
       ? `No reward at Mesita ${tierProperLabel(current_tier)} yet`
       : `${is_first_visit ? "First visit" : "Returning visit"} · capped ${capLabel}/visit`;
-  // Story-gated venues need an Instagram story (plus the QR) to unlock.
-  const requiresStory = venue.requires_story === true;
+  // The claim action depends on the guest's own account, not the venue:
+  //   free            → Pay with QR + Upgrade (claim now, or unlock a bigger
+  //                     Premium reward)
+  //   Premium (paid)  → one Pay-with-QR button, reward applies automatically
+  //   Premium via IG  → one button: Pay with QR *and* post an Instagram story,
+  //                     since the story is what re-verifies the IG Premium tier
+  const isFree = CURRENT_USER.tier === "free";
+  const isPremiumViaInstagram =
+    !isFree && CURRENT_USER.tierOrigin === "instagram";
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — the active reward, mechanic, and cap. The box header already
@@ -723,6 +730,36 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
           {activeValue == null ? "—" : `${activeValue}% ${mechanicWord}`}
         </p>
         <p className="mt-1.5 text-xs leading-snug text-white/90">{subtitle}</p>
+      </div>
+
+      {/* How it works — the claim sequence, spelled out so every case is
+          unambiguous at the table. The Instagram-story step only applies to
+          guests whose Premium comes from Instagram; Free and paid-Premium
+          guests skip straight to the reward, so it's labelled rather than
+          hidden. */}
+      <div className="flex flex-col gap-3">
+        <BoxLabel>How it works</BoxLabel>
+        <ol className="flex flex-col gap-3">
+          <RewardStep
+            n={1}
+            icon={QrCode}
+            title="Pay with your QR"
+            body="Pay your bill and show your Mesita QR — the waiter scans it to start your reward."
+          />
+          <RewardStep
+            n={2}
+            icon={Instagram}
+            title="Post a story — Premium via Instagram only"
+            body="If your Premium comes from Instagram, post a story tagging the venue right after the waiter scans your QR. Free and paid-Premium guests skip this step."
+            accent
+          />
+          <RewardStep
+            n={3}
+            icon={Sparkles}
+            title={`Get your ${mechanicWord}`}
+            body={`Your ${mechanicWord} is applied automatically — up to ${capLabel} per visit.`}
+          />
+        </ol>
       </div>
 
       {/* One matrix instead of two ladders — First / Returning rows ×
@@ -736,32 +773,87 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
         suffix={mechanicShort}
       />
 
-      {/* CTAs — pay with your QR to unlock the reward (story-gated venues
-          also need a story → "Pay & Post"); secondary = upgrade plan. */}
+      {/* CTAs — tier- and source-aware so the exact action is unambiguous.
+          Free: Pay + Upgrade. Paid Premium: one Pay button. Instagram
+          Premium: one Pay-and-post-story button. */}
       <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <Link
-            href="/pay"
-            className="bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white"
-          >
+        {isFree ? (
+          <div className="flex gap-2">
+            <Link href="/pay" className={REWARD_PAY_BTN}>
+              <QrCode className="h-4 w-4" />
+              Pay with QR
+            </Link>
+            <Link href="/profile" className={REWARD_UPGRADE_BTN}>
+              <Crown className="h-4 w-4" />
+              Upgrade plan
+            </Link>
+          </div>
+        ) : (
+          <Link href="/pay" className={REWARD_PAY_BTN}>
             <QrCode className="h-4 w-4" />
-            Pay with QR
+            {isPremiumViaInstagram
+              ? "Pay with QR & post IG story"
+              : "Pay with QR to claim reward"}
           </Link>
-          <Link
-            href="/profile"
-            className="border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition"
-          >
-            <Crown className="h-4 w-4" />
-            Upgrade plan
-          </Link>
-        </div>
+        )}
         <p className="text-muted-foreground text-center text-[11px] leading-snug">
-          {requiresStory
-            ? "Pay with your QR and post a story to unlock this reward."
-            : "Pay with your QR to unlock this reward."}
+          {isFree
+            ? "Pay with your QR to claim your reward — or upgrade to Premium for a bigger one."
+            : isPremiumViaInstagram
+              ? "Pay with your QR, then post an Instagram story to unlock your Premium reward."
+              : "Just pay with your QR — your Premium reward applies automatically."}
         </p>
       </div>
     </Box>
+  );
+}
+
+// Shared CTA button classes for the Reward box. Primary = pink-gradient pill
+// (Pay with QR); secondary = outlined pill (Upgrade plan). Both grow to fill
+// their row so the single-button and two-button layouts line up.
+const REWARD_PAY_BTN =
+  "bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white";
+const REWARD_UPGRADE_BTN =
+  "border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition";
+
+// One numbered step in the "How it works" sequence. The badge carries the
+// step number; the tinted icon circle reads premium-violet for the
+// Instagram-only step and brand-pink otherwise.
+function RewardStep({
+  n,
+  icon: Icon,
+  title,
+  body,
+  accent,
+}: {
+  n: number;
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  accent?: boolean;
+}) {
+  return (
+    <li className="flex gap-3">
+      <span
+        className={cn(
+          "relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          accent ? "bg-tier-premium/10 text-premium" : "bg-secondary/10 text-secondary",
+        )}
+      >
+        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+        <span className="bg-foreground text-background absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold">
+          {n}
+        </span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-[13px] font-semibold leading-tight">
+          {title}
+        </p>
+        <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+          {body}
+        </p>
+      </div>
+    </li>
   );
 }
 
