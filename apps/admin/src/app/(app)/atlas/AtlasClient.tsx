@@ -143,7 +143,6 @@ export function AtlasClient(props: {
   initialFacebookPosts: number;
   initialSourceTierCeiling: number;
   initialSourceOverrides: Record<string, boolean>;
-  initialSerpOnlyWhenThin: boolean;
   initialGoogleReviews: number;
   initialWebsiteCrawlMaxPages: number;
   initialReviewsPerSite: number;
@@ -182,7 +181,6 @@ export function AtlasClient(props: {
       <StageGroup label="Sourcing — which sources run">
         <SourcesSection
           initialTierCeiling={props.initialSourceTierCeiling}
-          initialSerpOnlyWhenThin={props.initialSerpOnlyWhenThin}
           onSaved={setUpdatedAt}
         />
       </StageGroup>
@@ -338,47 +336,29 @@ function SnapshotToggles({
 
 function SourcesSection({
   initialTierCeiling,
-  initialSerpOnlyWhenThin,
   onSaved,
 }: {
   initialTierCeiling: number;
-  initialSerpOnlyWhenThin: boolean;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [ceiling, setCeiling] = useState(initialTierCeiling);
-  const [serpThin, setSerpThin] = useState(initialSerpOnlyWhenThin);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-
-  const persist = (
-    patch: Parameters<typeof updateAtlasConfig>[0],
-    rollback: () => void,
-  ) => {
-    setError(null);
-    start(async () => {
-      const r = await updateAtlasConfig(patch);
-      if (!r.ok) {
-        rollback();
-        setError(r.error);
-        return;
-      }
-      setCeiling(r.data.atlasSourceTierCeiling);
-      setSerpThin(r.data.atlasSerpOnlyWhenThin);
-      onSaved(r.data.updatedAt);
-    });
-  };
 
   const changeCeiling = (next: number) => {
     const prev = ceiling;
     setCeiling(next);
-    persist({ sourceTierCeiling: next }, () => setCeiling(prev));
-  };
-
-  const flipSerp = () => {
-    const prev = serpThin;
-    const next = !serpThin;
-    setSerpThin(next);
-    persist({ serpOnlyWhenThin: next }, () => setSerpThin(prev));
+    setError(null);
+    start(async () => {
+      const r = await updateAtlasConfig({ sourceTierCeiling: next });
+      if (!r.ok) {
+        setCeiling(prev);
+        setError(r.error);
+        return;
+      }
+      setCeiling(r.data.atlasSourceTierCeiling);
+      onSaved(r.data.updatedAt);
+    });
   };
 
   return (
@@ -459,19 +439,6 @@ function SourcesSection({
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="border-border mt-5 flex items-center justify-between gap-4 border-t pt-5">
-        <div className="flex items-center gap-2">
-          <Search className="text-muted-foreground h-4 w-4" />
-          <span className="text-sm font-medium">SERP only when Google is thin</span>
-        </div>
-        <Switch
-          on={serpThin}
-          pending={pending}
-          onClick={flipSerp}
-          label="Toggle SERP only when thin"
-        />
       </div>
 
       {error && <ErrorNote message={error} />}

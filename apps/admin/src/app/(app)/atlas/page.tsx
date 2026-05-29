@@ -39,7 +39,6 @@ export default async function AtlasPage() {
         initialFacebookPosts={result.data.atlasResearchFacebookPosts}
         initialSourceTierCeiling={result.data.atlasSourceTierCeiling}
         initialSourceOverrides={result.data.atlasSourceOverrides}
-        initialSerpOnlyWhenThin={result.data.atlasSerpOnlyWhenThin}
         initialGoogleReviews={result.data.atlasGoogleReviews}
         initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
         initialReviewsPerSite={result.data.atlasReviewsPerSite}

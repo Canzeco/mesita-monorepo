@@ -18,7 +18,6 @@ type SettingsResponse = {
   atlasResearchFacebookPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
-  atlasSerpOnlyWhenThin: boolean;
   atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
   atlasReviewsPerSite: number;
@@ -71,7 +70,6 @@ type AtlasConfigResponse = {
   atlasResearchFacebookPosts: number;
   atlasSourceTierCeiling: number;
   atlasSourceOverrides: Record<string, boolean>;
-  atlasSerpOnlyWhenThin: boolean;
   atlasGoogleReviews: number;
   atlasWebsiteCrawlMaxPages: number;
   atlasReviewsPerSite: number;
@@ -96,7 +94,6 @@ export async function updateAtlasConfig(patch: {
   facebookPosts?: number;
   sourceTierCeiling?: number;
   sourceOverrides?: Record<string, boolean>;
-  serpOnlyWhenThin?: boolean;
   googleReviews?: number;
   websiteCrawlMaxPages?: number;
   reviewsPerSite?: number;
