@@ -5,16 +5,11 @@ import { usePathname } from "next/navigation";
 import { Compass, Bookmark, QrCode, User, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Four top-level surfaces. Pay & Post carries a `primary` flag — its
-// icon renders inside a pink-tinted ring-circle even when the tab
-// isn't selected so it reads as the lead CTA among the four
-// (scan-to-pay + post-a-story are the moments every visit ends at,
-// and the surface deserves the extra weight). When the tab IS
-// selected, the circle fills with the full pink gradient + glow.
-//
-// Active state on ANY tab also gets a top pill indicator + ringed
-// background on the icon cell so the current surface is unmistakable
-// at a glance, not just a color change.
+// Four top-level surfaces, all styled identically: muted at rest, pink
+// only when selected. The active tab gets a top pill indicator + a soft
+// pink ring-fill behind its icon + a text-primary label, so the current
+// surface is unmistakable at a glance without any tab drawing color
+// while idle.
 //
 // Coupons, Share/Invite were dropped from the bottom row — they now
 // live inside Profile (alongside Class + Settings). Saved was promoted
@@ -26,7 +21,6 @@ type Item = {
   Icon: LucideIcon;
   label: string;
   match: string;
-  primary?: boolean;
 };
 
 const ITEMS: Item[] = [
@@ -49,7 +43,6 @@ const ITEMS: Item[] = [
     Icon: QrCode,
     label: "Pay",
     match: "/pay",
-    primary: true,
   },
   { href: "/profile", Icon: User, label: "Me", match: "/profile" },
 ];
@@ -59,7 +52,7 @@ export function BottomNav() {
   return (
     <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-1 pt-2 backdrop-blur">
       <div className="flex items-end justify-around">
-        {ITEMS.map(({ href, Icon, label, match, primary }) => {
+        {ITEMS.map(({ href, Icon, label, match }) => {
           const active = pathname.startsWith(match);
           return (
             <Link
@@ -80,31 +73,17 @@ export function BottomNav() {
               )}
 
               {/* Icon cell. Always 32×32 so the row height stays
-                  consistent. Pay gets a pink-tinted ring-fill at rest
-                  and a solid pink gradient when active. Other tabs
-                  get a soft pink ring when active (only) — the
-                  background hugs the icon to telegraph "current tab"
-                  without shouting. */}
+                  consistent. The active tab gets a soft pink ring-fill
+                  hugging the icon; idle tabs stay neutral. The icon
+                  color is inherited from the Link (text-primary when
+                  active, muted otherwise). */}
               <span
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full transition",
-                  primary
-                    ? active
-                      ? "bg-pink-gradient shadow-glow"
-                      : "bg-pink-500/15 ring-1 ring-pink-500/25"
-                    : active
-                      ? "bg-primary/10 ring-primary/20 ring-1"
-                      : "",
+                  active && "bg-primary/10 ring-primary/20 ring-1",
                 )}
               >
-                <Icon
-                  className={cn(
-                    "h-5 w-5",
-                    primary && active && "text-white",
-                    primary && !active && "text-pink-600",
-                  )}
-                  strokeWidth={active ? 2.25 : 1.75}
-                />
+                <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
               </span>
               <span className="w-full truncate text-center">{label}</span>
             </Link>
