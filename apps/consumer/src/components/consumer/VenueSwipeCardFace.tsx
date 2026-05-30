@@ -102,8 +102,8 @@ function PhotoPlaceholder({ name }: { name: string }) {
 }
 
 function CardOverlay({ venue }: { venue: Venue }) {
-  // Tight overlay: name on top, a single info strip below (partner type
-  // · category · price · stars · IG · open status · distance · zone),
+  // Tight overlay: name on top, a single info strip below (category ·
+  // price · stars · IG · open status · distance · zone · partner type),
   // then a full-width cashback ribbon. This strip mirrors the cells of
   // the venue-detail Overview grid so the card carries the same signals.
   // Each chip is independently optional so missing fields disappear
@@ -145,19 +145,11 @@ function CardOverlay({ venue }: { venue: Venue }) {
           single visual flow. Chips wrap naturally — the strip can be
           one, two or three rows tall depending on how much actually
           applies to the venue. Order matches the spec:
-          verification → category → price → stars → IG → open status →
-          distance → neighborhood → promotion. The promotion chip uses
-          the brand pink gradient so the commercial signal stays the
+          category → price → stars → IG → open status → distance →
+          neighborhood → partner status → promotion. The promotion chip
+          uses the brand pink gradient so the commercial signal stays the
           loudest pip in the strip. */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <MetaChip>
-          {isPartner ? (
-            <BadgeCheck className="h-3 w-3 shrink-0 text-sky-300" />
-          ) : (
-            <Globe className="h-3 w-3 shrink-0 text-white/70" />
-          )}
-          <span className="font-semibold">{partnerLabel}</span>
-        </MetaChip>
         {venue.category && (
           <MetaChip>
             <span className="font-semibold capitalize">
@@ -208,6 +200,14 @@ function CardOverlay({ venue }: { venue: Venue }) {
             </span>
           </MetaChip>
         )}
+        <MetaChip>
+          {isPartner ? (
+            <BadgeCheck className="h-3 w-3 shrink-0 text-sky-300" />
+          ) : (
+            <Globe className="h-3 w-3 shrink-0 text-white/70" />
+          )}
+          <span className="font-semibold">{partnerLabel}</span>
+        </MetaChip>
         <PromoChip venue={venue} size="md" />
       </div>
     </div>
