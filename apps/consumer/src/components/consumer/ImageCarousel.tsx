@@ -147,7 +147,7 @@ export function ImageCarousel({
         className={cn(
           "flex h-full w-full",
           noNativeScroll
-            ? "transition-transform duration-300 ease-out"
+            ? "transition-transform duration-500 ease-out"
             : "scrollbar-hide snap-x snap-mandatory overflow-x-auto",
         )}
         style={
