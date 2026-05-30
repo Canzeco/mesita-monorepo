@@ -51,7 +51,7 @@ export function DiscoverTabs() {
                 if (href !== pathname) setOptimisticHref(href);
               }}
               className={cn(
-                "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-[10px] font-medium whitespace-nowrap transition",
+                "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-xs font-medium whitespace-nowrap transition",
                 active
                   ? "bg-foreground text-background shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
