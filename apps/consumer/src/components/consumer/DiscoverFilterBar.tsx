@@ -79,59 +79,86 @@ export function DiscoverFilterBar() {
           type="button"
           onClick={() => setOpen(open === "what" ? null : "what")}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2 py-1.5 text-left transition",
-            open === "what" ? "bg-muted" : "hover:bg-muted/50",
+            "flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-1 py-1 text-left transition",
+            open === "what" ? "bg-secondary/5" : "hover:bg-muted/50",
           )}
         >
-          <Tag className="text-secondary h-3.5 w-3.5 shrink-0" />
+          <span
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition",
+              open === "what"
+                ? "bg-secondary/15 ring-secondary/25 ring-1"
+                : "bg-secondary/10",
+            )}
+          >
+            <Tag className="text-secondary h-3.5 w-3.5" />
+          </span>
           <div className="min-w-0 flex-1">
-            <div className="text-muted-foreground/80 text-[10px] leading-none font-medium tracking-[0.18em] uppercase">
+            <div className="text-muted-foreground text-[10px] leading-none font-semibold tracking-[0.14em] uppercase">
               What
             </div>
-            <div className="font-display text-foreground mt-0.5 truncate text-[13px] leading-none font-semibold">
+            <div className="font-display text-foreground mt-1 truncate text-[13px] leading-none font-semibold">
               {what.label}
             </div>
           </div>
         </button>
-        <div className="bg-border/70 h-6 w-px" />
+        <div className="bg-border/60 h-7 w-px" />
         <button
           type="button"
           onClick={() => setOpen(open === "city" ? null : "city")}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2 py-1.5 text-left transition",
-            open === "city" ? "bg-muted" : "hover:bg-muted/50",
+            "flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-1 py-1 text-left transition",
+            open === "city" ? "bg-secondary/5" : "hover:bg-muted/50",
           )}
         >
-          <MapPin className="text-secondary h-3.5 w-3.5 shrink-0" />
+          <span
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition",
+              open === "city"
+                ? "bg-secondary/15 ring-secondary/25 ring-1"
+                : "bg-secondary/10",
+            )}
+          >
+            <MapPin className="text-secondary h-3.5 w-3.5" />
+          </span>
           <div className="min-w-0 flex-1">
-            <div className="text-muted-foreground/80 text-[10px] leading-none font-medium tracking-[0.18em] uppercase">
+            <div className="text-muted-foreground text-[10px] leading-none font-semibold tracking-[0.14em] uppercase">
               Where
             </div>
-            <div className="font-display text-foreground mt-0.5 truncate text-[13px] leading-none font-semibold">
+            <div className="font-display text-foreground mt-1 truncate text-[13px] leading-none font-semibold">
               {city}
             </div>
           </div>
         </button>
-        <div className="bg-border/70 h-6 w-px" />
+        <div className="bg-border/60 h-7 w-px" />
         <button
           type="button"
           onClick={() => setOpen(open === "when" ? null : "when")}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2 py-1.5 text-left transition",
-            open === "when" ? "bg-muted" : "hover:bg-muted/50",
+            "flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-1 py-1 text-left transition",
+            open === "when" ? "bg-secondary/5" : "hover:bg-muted/50",
           )}
         >
-          <Calendar className="text-secondary h-3.5 w-3.5 shrink-0" />
+          <span
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition",
+              open === "when"
+                ? "bg-secondary/15 ring-secondary/25 ring-1"
+                : "bg-secondary/10",
+            )}
+          >
+            <Calendar className="text-secondary h-3.5 w-3.5" />
+          </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-1">
-              <span className="text-muted-foreground/80 text-[10px] leading-none font-medium tracking-[0.18em] uppercase">
+              <span className="text-muted-foreground text-[10px] leading-none font-semibold tracking-[0.14em] uppercase">
                 When
               </span>
-              <span className="font-display text-muted-foreground/70 truncate text-[10px] leading-none font-semibold">
+              <span className="font-display text-secondary/80 truncate text-[10px] leading-none font-semibold">
                 {formatTimeShort(whenTime)}
               </span>
             </div>
-            <div className="font-display text-foreground mt-0.5 truncate text-[13px] leading-none font-semibold">
+            <div className="font-display text-foreground mt-1 truncate text-[13px] leading-none font-semibold">
               {whenDate}
             </div>
           </div>
