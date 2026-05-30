@@ -205,7 +205,7 @@ export function AtlasClient(props: {
       {/* ═══ Gather (pull per source) ══════════════════════════════ */}
       <StageGroup
         label="Gather — image candidates pulled per source"
-        desc="Stage 1 of the image funnel: how many image candidates to PULL per source into the pool (≤10 each). Each source is metadata-sorted as it comes in — Google in Google's order, Website by image size, Instagram by likes. Cheap; no AI here. Fewer, higher-signal candidates = less junk downstream."
+        desc="Stage 1 of the image funnel: how many image candidates to PULL per source into the pool (≤10 each). Each source is pre-sorted as it comes in — Google in Google's order, Instagram by likes, and Website by a cheap text-LLM pass that reads the crawled HTML and ranks images hero-first (square-prioritised). Fewer, higher-signal candidates = less junk downstream."
       >
         <GatherSection
           initialGatherGoogleImages={props.initialGatherGoogleImages}
@@ -613,9 +613,12 @@ function GatherSection({
       </div>
       <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-relaxed">
         How many image candidates to PULL per source — the input pool to the
-        funnel. Each source is then metadata-sorted: Google in Google&apos;s own
-        order, Website by image size (largest first), Instagram by likes (one
-        photo per post). Pulling fewer, higher-signal candidates here is the
+        funnel. Each source is then pre-sorted: Google in Google&apos;s own
+        order, Instagram by likes (one photo per post), and{" "}
+        <span className="text-foreground font-medium">Website</span> by a cheap
+        text-LLM pass that reads the crawled Firecrawl HTML (across the configured
+        pages) and ranks every image hero-first — square dimensions prioritised,
+        logos/icons buried. Pulling fewer, higher-signal candidates here is the
         first defense against junk. This is NOT how many get AI-analyzed (Vision
         Params) or finally saved (one cap below).
       </p>
