@@ -5,7 +5,7 @@ import {
   type CatalogCategory,
   type Venue,
 } from "@/lib/api/venues";
-import { enrichVenueWithMockOverview } from "@/lib/mock/enrich-overview";
+import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 import { errMsg } from "@/lib/utils";
 
@@ -120,7 +120,7 @@ export default async function CatalogPage() {
   );
 }
 
-const enrich = (v: Venue) => enrichVenueWithMockOverview(v, "catalog");
+const enrich = (v: Venue) => enrichVenueOverview(v, "catalog");
 
 function Row({
   title,

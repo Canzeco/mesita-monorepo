@@ -7,7 +7,7 @@ import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
 import { ReservationsBody } from "@/app/(shell)/reservations/page";
 import { SAVED_VENUES } from "@/lib/mock/saved-venues-mock";
 import { mockVenue } from "@/lib/mock/venue";
-import { enrichVenueWithMockOverview } from "@/lib/mock/enrich-overview";
+import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -131,12 +131,12 @@ function PlacesBody() {
     const ids = [...savedIds];
     if (ids.length === 0)
       return SAVED_VENUES.map((v) =>
-        enrichVenueWithMockOverview(v as Venue, "catalog"),
+        enrichVenueOverview(v as Venue, "catalog"),
       );
     return ids
       .map((id) => catalog.get(id))
       .filter((v): v is Venue => v != null)
-      .map((v) => enrichVenueWithMockOverview(v, "catalog"));
+      .map((v) => enrichVenueOverview(v, "catalog"));
   }, [savedIds, catalog]);
 
   function unsaveVenue(id: string) {

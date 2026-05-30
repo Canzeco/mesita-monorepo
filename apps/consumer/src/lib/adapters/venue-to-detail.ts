@@ -9,6 +9,7 @@
 // until the real consumer tier is threaded through.
 
 import type { VenueDetail, Tier } from "@/lib/mock/venue";
+import { relativeLabel } from "@/lib/utils";
 
 // Loose row type — the EF returns the full venue projection; we read what we
 // need defensively.
@@ -71,7 +72,11 @@ function parseMinutes(t: unknown): number | null {
 // IANA timezone. Handles split shifts and overnight ranges (close <= open ⇒
 // closes the next day). Falls back to closed/empty when hours or tz are
 // missing/unparseable — never throws.
-function computeOpenState(
+//
+// Exported so the deck/catalog card deriver (lib/mock/enrich-overview.ts)
+// computes open/closed exactly the same way as the detail modal — one
+// implementation, card + detail always agree.
+export function computeOpenState(
   hours: unknown,
   tz: string | undefined,
 ): { open_now: boolean; opens_at: string; closes_at: string } {
@@ -92,7 +97,13 @@ function computeOpenState(
     const hr = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
     const mn = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
     const wdMap: Record<string, number> = {
-      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
     };
     dayIdx = wdMap[wd] ?? 0;
     nowMin = hr * 60 + mn;
@@ -126,7 +137,8 @@ function computeOpenState(
       nextOpen = { min: o, at: r.open ?? "" };
     }
   }
-  if (nextOpen) return { open_now: false, opens_at: nextOpen.at, closes_at: "" };
+  if (nextOpen)
+    return { open_now: false, opens_at: nextOpen.at, closes_at: "" };
 
   // Closed today already — first opening of the next day with any hours.
   for (let i = 1; i <= 7; i += 1) {
@@ -164,7 +176,10 @@ export function venueRowToDetail(row: Row): VenueDetail {
   const details = obj(row.details);
 
   const activePremiumRate =
-    num(row.premium_rate) ?? num(row.free_rate) ?? num(row.cashback_percent) ?? 0;
+    num(row.premium_rate) ??
+    num(row.free_rate) ??
+    num(row.cashback_percent) ??
+    0;
   const openState = computeOpenState(row.hours, str(row.timezone));
 
   return {
@@ -184,7 +199,11 @@ export function venueRowToDetail(row: Row): VenueDetail {
     address: str(row.address) ?? "",
     zone: str(row.zone) ?? str(row.city) ?? "",
     listing_type: listingType,
-    last_updated_label: "recently",
+    // Real freshness from the enrichment timestamp (falls back to the
+    // creation time, then to vague copy). Same formatter the card uses so
+    // "Updated 3 days ago" reads identically on the card and the detail.
+    last_updated_label:
+      relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently",
 
     photos: arr<string>(row.photos),
 
@@ -209,13 +228,15 @@ export function venueRowToDetail(row: Row): VenueDetail {
     // Enricher (atlas-enrich-profile) stores each review as
     // { author, rating, text, published } — map those onto the detail shape
     // (quote/date) and keep the legacy keys as fallbacks.
-    google_reviews: arr<Record<string, unknown>>(row.google_reviews).map((r) => ({
-      author: str(r.author) ?? "Google reviewer",
-      rating: num(r.rating) ?? 0,
-      quote: str(r.text) ?? str(r.quote) ?? "",
-      date: str(r.published) ?? str(r.date) ?? "",
-      photo_url: str(r.photo_url),
-    })),
+    google_reviews: arr<Record<string, unknown>>(row.google_reviews).map(
+      (r) => ({
+        author: str(r.author) ?? "Google reviewer",
+        rating: num(r.rating) ?? 0,
+        quote: str(r.text) ?? str(r.quote) ?? "",
+        date: str(r.published) ?? str(r.date) ?? "",
+        photo_url: str(r.photo_url),
+      }),
+    ),
 
     // No Mesita-native traffic until guests visit; the UI nulls this cleanly.
     mesita_visitors: [],
@@ -227,7 +248,8 @@ export function venueRowToDetail(row: Row): VenueDetail {
     })),
 
     promo: {
-      badge_label: listingType === "partner" ? "Verified partner" : "Web listing",
+      badge_label:
+        listingType === "partner" ? "Verified partner" : "Web listing",
       reward_kind: fiscalFormal ? "cashback" : "discount",
       reward_value: activePremiumRate,
     },

@@ -8,6 +8,7 @@ import {
   Instagram,
   MapPin,
   Navigation,
+  Pencil,
   Star,
 } from "lucide-react";
 import { cn, firstInitial } from "@/lib/utils";
@@ -103,10 +104,11 @@ function PhotoPlaceholder({ name }: { name: string }) {
 
 function CardOverlay({ venue }: { venue: Venue }) {
   // Tight overlay: name on top, a single info strip below (partner type
-  // · category · price · stars · distance), then a full-width cashback
-  // ribbon. The previous version stacked an eyebrow + two strips +
-  // partner/rate chips + a cap line — way too busy. Each chip is still
-  // independently optional so missing fields disappear cleanly.
+  // · freshness · category · price · stars · distance · zone · status),
+  // then a full-width cashback ribbon. This strip mirrors every cell of
+  // the venue-detail Overview grid so the card carries the same signals.
+  // Each chip is independently optional so missing fields disappear
+  // cleanly.
   const isPartner = venue.listing_type === "partner";
   const partnerLabel = isPartner ? "Verified partner" : "Web listed";
   const priceLevelLabel =
@@ -144,7 +146,7 @@ function CardOverlay({ venue }: { venue: Venue }) {
           single visual flow. Chips wrap naturally — the strip can be
           one, two, three or four rows tall depending on how much
           actually applies to the venue. Order matches the spec:
-          verification → category → price → stars → distance →
+          verification → freshness → category → price → stars → distance →
           neighborhood → open status → promotion. The promotion chip
           uses the brand pink gradient so the commercial signal stays
           the loudest pip in the strip. */}
@@ -157,6 +159,14 @@ function CardOverlay({ venue }: { venue: Venue }) {
           )}
           <span className="font-semibold">{partnerLabel}</span>
         </MetaChip>
+        {venue.last_updated_label && (
+          <MetaChip>
+            <Pencil className="h-3 w-3 shrink-0 text-white/70" />
+            <span className="font-semibold">
+              Updated {venue.last_updated_label}
+            </span>
+          </MetaChip>
+        )}
         {venue.category && (
           <MetaChip>
             <span className="font-semibold capitalize">
@@ -228,7 +238,7 @@ function formatCount(n: number): string {
 // own icon + value.
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="ring-white/12 inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white/90 ring-1 backdrop-blur">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white/90 ring-1 ring-white/12 backdrop-blur">
       {children}
     </span>
   );
