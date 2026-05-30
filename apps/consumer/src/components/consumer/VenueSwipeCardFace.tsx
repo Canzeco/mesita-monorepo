@@ -8,7 +8,6 @@ import {
   Instagram,
   MapPin,
   Navigation,
-  Pencil,
   Star,
 } from "lucide-react";
 import { cn, firstInitial } from "@/lib/utils";
@@ -104,8 +103,8 @@ function PhotoPlaceholder({ name }: { name: string }) {
 
 function CardOverlay({ venue }: { venue: Venue }) {
   // Tight overlay: name on top, a single info strip below (partner type
-  // · freshness · category · price · stars · distance · zone · status),
-  // then a full-width cashback ribbon. This strip mirrors every cell of
+  // · category · price · stars · IG · open status · distance · zone),
+  // then a full-width cashback ribbon. This strip mirrors the cells of
   // the venue-detail Overview grid so the card carries the same signals.
   // Each chip is independently optional so missing fields disappear
   // cleanly.
@@ -144,12 +143,12 @@ function CardOverlay({ venue }: { venue: Venue }) {
 
       {/* One inline-wrap strip carrying every overview signal in a
           single visual flow. Chips wrap naturally — the strip can be
-          one, two, three or four rows tall depending on how much
-          actually applies to the venue. Order matches the spec:
-          verification → freshness → category → price → stars → distance →
-          neighborhood → open status → promotion. The promotion chip
-          uses the brand pink gradient so the commercial signal stays
-          the loudest pip in the strip. */}
+          one, two or three rows tall depending on how much actually
+          applies to the venue. Order matches the spec:
+          verification → category → price → stars → IG → open status →
+          distance → neighborhood → promotion. The promotion chip uses
+          the brand pink gradient so the commercial signal stays the
+          loudest pip in the strip. */}
       <div className="flex flex-wrap items-center gap-1.5">
         <MetaChip>
           {isPartner ? (
@@ -159,14 +158,6 @@ function CardOverlay({ venue }: { venue: Venue }) {
           )}
           <span className="font-semibold">{partnerLabel}</span>
         </MetaChip>
-        {venue.last_updated_label && (
-          <MetaChip>
-            <Pencil className="h-3 w-3 shrink-0 text-white/70" />
-            <span className="font-semibold">
-              Updated {venue.last_updated_label}
-            </span>
-          </MetaChip>
-        )}
         {venue.category && (
           <MetaChip>
             <span className="font-semibold capitalize">
@@ -192,6 +183,17 @@ function CardOverlay({ venue }: { venue: Venue }) {
             <span className="font-semibold">{igFollowersLabel}</span>
           </MetaChip>
         )}
+        {statusLabel && (
+          <MetaChip>
+            <Clock
+              className={cn(
+                "h-3 w-3 shrink-0",
+                isOpen ? "text-emerald-300" : "text-white/55",
+              )}
+            />
+            <span className="font-semibold">{statusLabel}</span>
+          </MetaChip>
+        )}
         {distanceLabel && (
           <MetaChip>
             <Navigation className="h-3 w-3 shrink-0 text-white/70" />
@@ -204,17 +206,6 @@ function CardOverlay({ venue }: { venue: Venue }) {
             <span className="max-w-[180px] truncate font-semibold">
               {zoneLabel}
             </span>
-          </MetaChip>
-        )}
-        {statusLabel && (
-          <MetaChip>
-            <Clock
-              className={cn(
-                "h-3 w-3 shrink-0",
-                isOpen ? "text-emerald-300" : "text-white/55",
-              )}
-            />
-            <span className="font-semibold">{statusLabel}</span>
           </MetaChip>
         )}
         <PromoChip venue={venue} size="md" />
