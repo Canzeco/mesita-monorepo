@@ -9,17 +9,17 @@ import { cn } from "@/lib/utils";
 // Three Discover modes, ordered left-to-right as an ascending engagement
 // curve — lowest-effort browse → spatial → highest-effort AI tool:
 //
-//   Swipe   →   Map      →   AI-Search
+//   Swipe   →   Map      →   AI Search
 //   flick       pin-map      conversational
 //
 // Rendered in the top chrome row's center column (see DiscoverHeader),
 // flanked by the logo and class chip; discovery filters live in the BottomNav
 // "Filters" sheet. Keyword Search + Catalog were removed from the tab bar
-// (routes stay as deep links); AI-Search is the single "find" lane.
+// (routes stay as deep links); AI Search is the single "find" lane.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
-  { href: "/discover/ai", label: "AI-Search", Icon: Search },
+  { href: "/discover/ai", label: "AI Search", Icon: Search },
 ];
 
 export function DiscoverTabs() {

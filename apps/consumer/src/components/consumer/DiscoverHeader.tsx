@@ -6,7 +6,7 @@ import { DiscoverTabs } from "./DiscoverTabs";
 export function DiscoverHeader() {
   return (
     // Fixed h-16 (64px) to match SimpleHeader so the TopBar height is
-    // identical across every top-level surface. Logo + the Swipe/Map/AI-Search
+    // identical across every top-level surface. Logo + the Swipe/Map/AI Search
     // tabs + class chip all center vertically inside the strict 64px row.
     // Discovery filters live in the BottomNav "Filters" sheet, not here.
     <div className="border-border/60 relative z-30 flex h-16 shrink-0 items-center border-b px-3">
