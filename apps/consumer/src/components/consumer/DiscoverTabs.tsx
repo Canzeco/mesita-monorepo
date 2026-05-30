@@ -3,33 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  Flame,
-  LayoutGrid,
-  Map as MapIcon,
-  Search,
-  Sparkles,
-} from "lucide-react";
+import { Flame, Map as MapIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Five Discover modes, ordered left-to-right as an ascending
-// engagement curve — start with the lowest-effort browse, end with
-// the highest-effort tool:
+// Three Discover modes, ordered left-to-right as an ascending engagement
+// curve — lowest-effort browse → spatial → highest-effort AI tool:
 //
-//   default home   known target   spatial    full browse   smart catch-all
-//   Swipe       →  Search      →  Map     →  Catalog    →  Ask AI
-//   flick          keyword         pin-map    grid          conversational
+//   Swipe   →   Map      →   Ask AI
+//   flick       pin-map      conversational
 //
-// Search and Ask AI live on separate tabs again (used to be merged).
-// Keyword vs full-sentence is a real branch in user intent: the
-// keyword lookup ("Mar Verde") should resolve instantly without
-// going through a chat model, and a dummy user benefits from a clear
-// "I just want to type the name" lane.
+// Search + Catalog were removed from the tab bar (their routes stay alive
+// as deep links); Ask AI is now the single "search/find" lane.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
-  { href: "/discover/search", label: "Search", Icon: Search },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
-  { href: "/discover/catalog", label: "Catalog", Icon: LayoutGrid },
   { href: "/discover/ai", label: "Ask AI", Icon: Sparkles },
 ];
 
@@ -50,15 +37,8 @@ export function DiscoverTabs() {
 
   return (
     <div className="px-3 pt-2 pb-1">
-      {/*
-        Five tabs share equal flex-1 width; the longest label ("AI
-        Search") used to wrap to two lines inside the active pill at
-        narrow viewports. Tightening padding (px-2 from px-2.5), gap
-        (gap-1 from gap-1.5), font (11px from 12px), and icon size
-        (h-3 from h-3.5) buys back ~12px per column — enough that "AI
-        Search" fits inline. `whitespace-nowrap` is the belt-and-braces
-        guarantee against future longer labels wrapping.
-      */}
+      {/* Three tabs share equal flex-1 width; whitespace-nowrap guards
+          against any future longer label wrapping. */}
       <div className="border-border bg-card/70 flex items-center gap-0.5 rounded-full border p-1 backdrop-blur">
         {TABS.map(({ href, label, Icon }) => {
           const active = activeHref === href;
