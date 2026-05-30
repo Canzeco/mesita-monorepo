@@ -1030,6 +1030,7 @@ function CostSection({
   const synthCost =
     quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
   const visionImgs = vision ? g + w + ig : 0;
+  const visionActive = vision && visionImgs > 0;
 
   const lines: { label: string; detail: string; cost: number; active: boolean }[] = [
     { label: "Google Places details", detail: "create lookup", cost: COST_RATES.googlePlaces, active: true },
@@ -1039,8 +1040,8 @@ function CostSection({
     { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, active: social },
     { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, active: social },
     { label: "Website content", detail: "Firecrawl scrape", cost: COST_RATES.firecrawlScrape, active: social },
-    { label: "Image analysis — vision", detail: `${visionImgs} img × ${money(COST_RATES.visionPerImage)}`, cost: visionImgs * COST_RATES.visionPerImage, active: vision && visionImgs > 0 },
-    { label: "Image sorting — text", detail: "1 call", cost: COST_RATES.sort, active: vision && visionImgs > 0 },
+    { label: "Image analysis — vision", detail: `${visionImgs} img × ${money(COST_RATES.visionPerImage)}`, cost: visionImgs * COST_RATES.visionPerImage, active: visionActive },
+    { label: "Image sorting — text", detail: "1 call", cost: COST_RATES.sort, active: visionActive },
     { label: `Synthesis — ${quality}`, detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o", cost: synthCost, active: true },
   ];
 
