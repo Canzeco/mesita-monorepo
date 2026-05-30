@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import {
   BadgeCheck,
@@ -39,11 +38,6 @@ export function VenueSwipeCardFace({
   priority?: boolean;
   className?: string;
 }) {
-  // Track the active photo so the info overlay only renders on photo 1 —
-  // photos 2..N are pure imagery (the venue's gallery), per spec.
-  const [photoIdx, setPhotoIdx] = useState(0);
-  const showOverlay = !carousel || photoIdx === 0;
-
   return (
     <div
       className={cn(
@@ -61,7 +55,6 @@ export function VenueSwipeCardFace({
             priority={priority}
             mutePosition="top-right"
             noNativeScroll
-            onIdxChange={setPhotoIdx}
           />
         ) : venue.photos[0] ? (
           <VenueBackground venue={venue} />
@@ -70,13 +63,10 @@ export function VenueSwipeCardFace({
         )}
       </div>
 
-      <div
-        className={cn(
-          "absolute inset-x-0 bottom-0 z-20 transition-opacity duration-200 ease-out",
-          showOverlay ? "opacity-100" : "pointer-events-none opacity-0",
-        )}
-        aria-hidden={!showOverlay}
-      >
+      {/* Venue data overlay — stays on top of EVERY photo, not just the
+          first, so the name + signals are always visible while browsing
+          the gallery. */}
+      <div className="absolute inset-x-0 bottom-0 z-20">
         <CardOverlay venue={venue} />
       </div>
     </div>
