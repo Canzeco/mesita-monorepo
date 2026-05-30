@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { MapPin, Calendar, Check, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,12 +57,17 @@ function formatTimeShort(t: string) {
 }
 
 export function DiscoverFilterBar() {
+  const pathname = usePathname();
   const [open, setOpen] = useState<null | "what" | "city" | "when">(null);
   const [whatId, setWhatId] = useState("places");
   const [city, setCity] = useState("Monterrey");
   const [whenDate, setWhenDate] = useState("Tonight");
   const [whenTime, setWhenTime] = useState("8:00 PM");
   const what = WHAT_OPTIONS.find((o) => o.id === whatId) ?? WHAT_OPTIONS[0];
+
+  // The WHAT/WHERE/WHEN filter is a swipe-browsing control; Map and
+  // AI-Search don't use it, so the band only renders on the swipe tab.
+  if (!pathname.startsWith("/discover/swipe")) return null;
 
   return (
     // Full-width sub-band beneath the top chrome row. relative anchors the

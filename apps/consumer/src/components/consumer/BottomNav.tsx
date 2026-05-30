@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Compass,
-  Bookmark,
-  QrCode,
-  User,
-  type LucideIcon,
-} from "lucide-react";
+import { Compass, Bookmark, QrCode, User, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Four top-level surfaces. Pay & Post carries a `primary` flag — its
@@ -57,7 +51,7 @@ const ITEMS: Item[] = [
     match: "/pay",
     primary: true,
   },
-  { href: "/profile", Icon: User, label: "Profile", match: "/profile" },
+  { href: "/profile", Icon: User, label: "Me", match: "/profile" },
 ];
 
 export function BottomNav() {
@@ -99,7 +93,7 @@ export function BottomNav() {
                       ? "bg-pink-gradient shadow-glow"
                       : "bg-pink-500/15 ring-1 ring-pink-500/25"
                     : active
-                      ? "bg-primary/10 ring-1 ring-primary/20"
+                      ? "bg-primary/10 ring-primary/20 ring-1"
                       : "",
                 )}
               >

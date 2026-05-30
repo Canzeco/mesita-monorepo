@@ -327,7 +327,7 @@ function Deck({ venues }: { venues: Venue[] }) {
             aria-label="About this place"
             className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
           >
-            <Store className="h-4 w-4" /> Place
+            <Store className="h-4 w-4" /> Info
           </Link>
           <button
             type="button"
