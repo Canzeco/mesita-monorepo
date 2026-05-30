@@ -10,8 +10,10 @@ import {
   RotateCcw,
   Hand,
   Store,
+  CalendarCheck,
 } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/consumer/VenueSwipeCardFace";
+import { ReservationSheet } from "@/components/consumer/ReservationSheet";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 
@@ -55,6 +57,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [reserveOpen, setReserveOpen] = useState(false);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
   const lockedRef = useRef<null | "swipe" | "ignore">(null);
@@ -208,131 +211,147 @@ function Deck({ venues }: { venues: Venue[] }) {
   }
 
   return (
-    <div className="flex h-full flex-col px-3 pt-2 pb-3">
-      <div className="relative flex-1">
-        {next && (
-          <div
-            key={`back-${next.id}-${idx}`}
-            className="pointer-events-none absolute inset-0 transition-[transform,opacity] duration-300 ease-out"
-            style={{
-              transform: `translate3d(0, ${backOffsetY}px, 0) scale(${backScale})`,
-              opacity: backOpacity,
-            }}
-            aria-hidden
-          >
-            <VenueSwipeCardFace venue={next} className="absolute inset-0" />
-          </div>
-        )}
-
-        <div
-          key={v.id}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onLostPointerCapture={onLostPointerCapture}
-          // Block the browser's default HTML5 drag (image ghost, link drag).
-          // Even with draggable={false} on the <Image> inside, vertical
-          // pointer movement on mouse devices can still kick off a native
-          // drag from descendant elements. Cancelling at the swipe card
-          // root catches everything.
-          onDragStart={(e) => e.preventDefault()}
-          className={cn(
-            "absolute inset-0 touch-none select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]",
-            !dragging && "transition-[transform,opacity] duration-300 ease-out",
-            isSwiping && "cursor-grabbing",
-            exiting && "pointer-events-none",
+    <div className="relative flex h-full flex-col">
+      <div className="flex flex-1 flex-col px-3 pt-2 pb-3">
+        <div className="relative flex-1">
+          {next && (
+            <div
+              key={`back-${next.id}-${idx}`}
+              className="pointer-events-none absolute inset-0 transition-[transform,opacity] duration-300 ease-out"
+              style={{
+                transform: `translate3d(0, ${backOffsetY}px, 0) scale(${backScale})`,
+                opacity: backOpacity,
+              }}
+              aria-hidden
+            >
+              <VenueSwipeCardFace venue={next} className="absolute inset-0" />
+            </div>
           )}
-          style={{
-            transform: `translate3d(${visibleOffset}px, ${Math.abs(visibleOffset) * 0.04}px, 0) rotate(${rotate}deg)`,
-            opacity: exiting ? 0 : 1,
-          }}
-        >
-          <VenueSwipeCardFace
-            venue={v}
-            carousel
-            priority
-            className="absolute inset-0"
-          />
 
           <div
+            key={v.id}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onLostPointerCapture={onLostPointerCapture}
+            // Block the browser's default HTML5 drag (image ghost, link drag).
+            // Even with draggable={false} on the <Image> inside, vertical
+            // pointer movement on mouse devices can still kick off a native
+            // drag from descendant elements. Cancelling at the swipe card
+            // root catches everything.
+            onDragStart={(e) => e.preventDefault()}
             className={cn(
-              "bg-foreground/40 pointer-events-none absolute top-4 left-4 z-30 rounded-full border-2 border-white px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
-              dragX < -30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
+              "absolute inset-0 touch-none select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]",
+              !dragging &&
+                "transition-[transform,opacity] duration-300 ease-out",
+              isSwiping && "cursor-grabbing",
+              exiting && "pointer-events-none",
             )}
+            style={{
+              transform: `translate3d(${visibleOffset}px, ${Math.abs(visibleOffset) * 0.04}px, 0) rotate(${rotate}deg)`,
+              opacity: exiting ? 0 : 1,
+            }}
           >
-            Skip
-          </div>
-          <div
-            className={cn(
-              "bg-pink-gradient pointer-events-none absolute top-4 right-4 z-30 rounded-full px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
-              dragX > 30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
-            )}
-          >
-            Save
-          </div>
-        </div>
+            <VenueSwipeCardFace
+              venue={v}
+              carousel
+              priority
+              className="absolute inset-0"
+            />
 
-        {exiting === "right" && (
-          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
-            <span className="bg-pink-gradient shadow-glow animate-in fade-in zoom-in-50 inline-flex -rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] border-white px-5 py-2.5 text-2xl font-black tracking-[0.15em] text-white uppercase duration-200 ease-out">
-              <Heart className="h-6 w-6 fill-white" />
-              Saved
-            </span>
-          </div>
-        )}
-        {exiting === "left" && (
-          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
-            <span className="border-foreground/70 bg-foreground/85 text-background animate-in fade-in zoom-in-50 inline-flex rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.15em] uppercase duration-200 ease-out">
-              <X className="h-6 w-6 stroke-[3]" />
+            <div
+              className={cn(
+                "bg-foreground/40 pointer-events-none absolute top-4 left-4 z-30 rounded-full border-2 border-white px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
+                dragX < -30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
+              )}
+            >
               Skip
-            </span>
-          </div>
-        )}
-
-        {showTutorial && (
-          <div className="animate-in fade-in pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] duration-500">
-            <div className="flex flex-col items-center gap-5">
-              <div className="animate-swipe-hint">
-                <Hand
-                  className="h-20 w-20 text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
-                  strokeWidth={1.4}
-                />
-              </div>
-              <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
-                Swipe left to skip
-                <span className="mx-1.5 opacity-50">·</span>
-                right to save or reserve
-              </p>
+            </div>
+            <div
+              className={cn(
+                "bg-pink-gradient pointer-events-none absolute top-4 right-4 z-30 rounded-full px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
+                dragX > 30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
+              )}
+            >
+              Save
             </div>
           </div>
-        )}
+
+          {exiting === "right" && (
+            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+              <span className="bg-pink-gradient shadow-glow animate-in fade-in zoom-in-50 inline-flex -rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] border-white px-5 py-2.5 text-2xl font-black tracking-[0.15em] text-white uppercase duration-200 ease-out">
+                <Heart className="h-6 w-6 fill-white" />
+                Saved
+              </span>
+            </div>
+          )}
+          {exiting === "left" && (
+            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+              <span className="border-foreground/70 bg-foreground/85 text-background animate-in fade-in zoom-in-50 inline-flex rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.15em] uppercase duration-200 ease-out">
+                <X className="h-6 w-6 stroke-[3]" />
+                Skip
+              </span>
+            </div>
+          )}
+
+          {showTutorial && (
+            <div className="animate-in fade-in pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] duration-500">
+              <div className="flex flex-col items-center gap-5">
+                <div className="animate-swipe-hint">
+                  <Hand
+                    className="h-20 w-20 text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
+                    strokeWidth={1.4}
+                  />
+                </div>
+                <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
+                  Swipe left to skip
+                  <span className="mx-1.5 opacity-50">·</span>
+                  right to save
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={skip}
+            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
+          >
+            <X className="h-4 w-4" /> Skip
+          </button>
+          <Link
+            href={`/venues/${v.id}`}
+            aria-label="About this place"
+            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
+          >
+            <Store className="h-4 w-4" /> Place
+          </Link>
+          <button
+            type="button"
+            onClick={save}
+            className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border border-pink-500/40 bg-pink-500/10 text-sm font-semibold text-pink-600 transition hover:bg-pink-500/15"
+          >
+            <Bookmark className="h-4 w-4" /> Save
+          </button>
+          <button
+            type="button"
+            onClick={() => setReserveOpen(true)}
+            className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-semibold text-white"
+          >
+            <CalendarCheck className="h-4 w-4" /> Reserve
+          </button>
+        </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={skip}
-          className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
-        >
-          <X className="h-4 w-4" /> Skip
-        </button>
-        <Link
-          href={`/venues/${v.id}`}
-          aria-label="About this place"
-          className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 text-sm font-medium transition"
-        >
-          <Store className="h-4 w-4" />
-          Place
-        </Link>
-        <button
-          type="button"
-          onClick={save}
-          className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold text-white"
-        >
-          <Bookmark className="h-4 w-4" /> Save or Reserve
-        </button>
-      </div>
+      <ReservationSheet
+        venueId={v.id}
+        venueName={v.name}
+        open={reserveOpen}
+        onClose={() => setReserveOpen(false)}
+      />
     </div>
   );
 }
