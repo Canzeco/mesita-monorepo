@@ -5,16 +5,15 @@ import { usePathname } from "next/navigation";
 import {
   Compass,
   Bookmark,
-  Gift,
   QrCode,
   User,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Five top-level surfaces. Pay & Post carries a `primary` flag — its
+// Four top-level surfaces. Pay & Post carries a `primary` flag — its
 // icon renders inside a pink-tinted ring-circle even when the tab
-// isn't selected so it reads as the lead CTA among the five
+// isn't selected so it reads as the lead CTA among the four
 // (scan-to-pay + post-a-story are the moments every visit ends at,
 // and the surface deserves the extra weight). When the tab IS
 // selected, the circle fills with the full pink gradient + glow.
@@ -23,10 +22,9 @@ import { cn } from "@/lib/utils";
 // background on the icon cell so the current surface is unmistakable
 // at a glance, not just a color change.
 //
-// Coupons and Share were dropped from the bottom row on the
-// "byebye coupons-as-entity" checkpoint — they now live as Profile
-// sub-tabs (alongside Class + Settings). Saved was promoted out of
-// Discover into the bottom row — bookmarking a place is now a
+// Coupons, Share/Invite were dropped from the bottom row — they now
+// live inside Profile (alongside Class + Settings). Saved was promoted
+// out of Discover into the bottom row — bookmarking a place is now a
 // first-class action, the "Save → coupon" coupling is gone.
 
 type Item = {
@@ -58,12 +56,6 @@ const ITEMS: Item[] = [
     label: "Pay",
     match: "/pay",
     primary: true,
-  },
-  {
-    href: "/share",
-    Icon: Gift,
-    label: "Invite",
-    match: "/share",
   },
   { href: "/profile", Icon: User, label: "Profile", match: "/profile" },
 ];

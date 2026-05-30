@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Check,
   Crown,
+  Gift,
   Sparkles,
   User as UserIcon,
   CreditCard,
@@ -465,7 +466,25 @@ function SettingsTab() {
   ];
   return (
     <div className="flex flex-col">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
+      {/* Invite — promoted out of the bottom tab bar into Profile. Kept
+          prominent (pink-gradient card) since it's a growth surface. */}
+      <Link
+        href="/share"
+        className="bg-pink-gradient shadow-glow flex items-center gap-3 rounded-2xl p-4 text-white transition hover:opacity-95"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
+          <Gift className="h-5 w-5" />
+        </span>
+        <span className="flex-1">
+          <span className="block text-sm font-semibold">Invite friends</span>
+          <span className="block text-xs text-white/85">
+            Share Mesita — you both get rewards
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 text-white/80" />
+      </Link>
+
+      <p className="text-muted-foreground mt-6 text-[11px] font-medium tracking-[0.18em] uppercase">
         Account
       </p>
       <div className="divide-border border-border bg-card mt-3 divide-y overflow-hidden rounded-2xl border">
