@@ -11,9 +11,11 @@ import {
   Hand,
   Store,
   CalendarCheck,
+  SlidersHorizontal,
 } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/consumer/VenueSwipeCardFace";
 import { ReservationSheet } from "@/components/consumer/ReservationSheet";
+import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 
@@ -58,6 +60,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
   const lockedRef = useRef<null | "swipe" | "ignore">(null);
@@ -314,32 +317,43 @@ function Deck({ venues }: { venues: Venue[] }) {
           )}
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
+        {/* Five actions, Filter first. Tightened to text-xs + gap-1 so all
+            five fit one row on a phone; Filter/Skip/Info read as neutral
+            chrome, Save (soft pink) and Reserve (solid pink) as the positive
+            actions. Filter opens the discovery filter sheet. */}
+        <div className="mt-3 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
+          >
+            <SlidersHorizontal className="h-4 w-4" /> Filter
+          </button>
           <button
             type="button"
             onClick={skip}
-            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
+            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
           >
             <X className="h-4 w-4" /> Skip
           </button>
           <Link
             href={`/venues/${v.id}`}
             aria-label="About this place"
-            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition"
+            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
           >
             <Store className="h-4 w-4" /> Info
           </Link>
           <button
             type="button"
             onClick={save}
-            className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border border-pink-500/40 bg-pink-500/10 text-sm font-semibold text-pink-600 transition hover:bg-pink-500/15"
+            className="flex h-12 flex-1 items-center justify-center gap-1 rounded-full border border-pink-500/40 bg-pink-500/10 text-xs font-semibold whitespace-nowrap text-pink-600 transition hover:bg-pink-500/15"
           >
             <Bookmark className="h-4 w-4" /> Save
           </button>
           <button
             type="button"
             onClick={() => setReserveOpen(true)}
-            className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-semibold text-white"
+            className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-1 rounded-full text-xs font-semibold whitespace-nowrap text-white"
           >
             <CalendarCheck className="h-4 w-4" /> Reserve
           </button>
@@ -352,6 +366,7 @@ function Deck({ venues }: { venues: Venue[] }) {
         open={reserveOpen}
         onClose={() => setReserveOpen(false)}
       />
+      <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} />
     </div>
   );
 }

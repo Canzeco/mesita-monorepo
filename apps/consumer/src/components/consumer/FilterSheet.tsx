@@ -5,9 +5,10 @@ import { X, Tag, MapPin, Calendar, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Discovery filters, lifted out of the old inline What/Where/When band into a
-// bottom sheet opened from the BottomNav "Filters" tab. State is local and
-// presentational for now — wiring to real results lands with the search
-// backend. Kept mounted (toggled via `open`) so selections survive a close.
+// bottom sheet opened from the Filter button in the swipe action bar. State is
+// local and presentational for now — wiring to real results lands with the
+// search backend. Kept mounted (toggled via `open`) so selections survive a
+// close.
 
 type WhatOption = { id: string; label: string; soon: boolean };
 const WHAT_OPTIONS: WhatOption[] = [

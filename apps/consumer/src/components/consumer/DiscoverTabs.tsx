@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 //   flick       pin-map      conversational
 //
 // Rendered in the top chrome row's center column (see DiscoverHeader),
-// flanked by the logo and class chip; discovery filters live in the BottomNav
-// "Filters" sheet. Keyword Search + Catalog were removed from the tab bar
-// (routes stay as deep links); AI Search is the single "find" lane.
+// flanked by the logo and class chip; discovery filters open from a Filter
+// button in the swipe action bar. Keyword Search + Catalog were removed from
+// the tab bar (routes stay as deep links); AI Search is the single "find" lane.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
