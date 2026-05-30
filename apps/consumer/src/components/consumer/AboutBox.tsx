@@ -25,7 +25,9 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
         <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
           {heading}
         </h3>
-        <p className="text-muted-foreground text-sm leading-relaxed">{text}</p>
+        <p className="text-muted-foreground text-base leading-relaxed">
+          {text}
+        </p>
       </section>
     );
   }
@@ -42,7 +44,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
       </h3>
       <p
         className={cn(
-          "text-muted-foreground text-sm leading-relaxed",
+          "text-muted-foreground text-base leading-relaxed",
           !expanded && "line-clamp-10",
         )}
       >

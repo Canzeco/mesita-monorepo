@@ -12,8 +12,10 @@ import { cn } from "@/lib/utils";
 //   Swipe   →   Map      →   AI-Search
 //   flick       pin-map      conversational
 //
-// Keyword Search + Catalog were removed from the tab bar (their routes stay
-// alive as deep links); AI-Search is now the single "search/find" lane.
+// Rendered in the top chrome row's center column (see DiscoverHeader),
+// flanked by the logo and class chip; the WHAT/WHERE/WHEN picker sits in the
+// band below (DiscoverFilterBar). Keyword Search + Catalog were removed from
+// the tab bar (routes stay as deep links); AI-Search is the single "find" lane.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
@@ -36,33 +38,32 @@ export function DiscoverTabs() {
   const activeHref = optimisticHref ?? pathname;
 
   return (
-    <div className="px-3 pt-2 pb-1">
-      {/* Three tabs share equal flex-1 width; whitespace-nowrap guards
-          against any future longer label wrapping. */}
-      <div className="border-border bg-card/70 flex items-center gap-0.5 rounded-full border p-1 backdrop-blur">
-        {TABS.map(({ href, label, Icon }) => {
-          const active = activeHref === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              prefetch
-              onClick={() => {
-                if (href !== pathname) setOptimisticHref(href);
-              }}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-[10px] font-medium whitespace-nowrap transition",
-                active
-                  ? "bg-foreground text-background shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="h-3 w-3 shrink-0" />
-              {label}
-            </Link>
-          );
-        })}
-      </div>
+    // Fills the header's center column (flex-1 + min-w-0 so it shrinks on
+    // narrow phones); three tabs share equal flex-1 width and whitespace-nowrap
+    // guards against label wrapping.
+    <div className="border-border bg-card/70 flex min-w-0 flex-1 items-center gap-0.5 rounded-full border p-1 backdrop-blur">
+      {TABS.map(({ href, label, Icon }) => {
+        const active = activeHref === href;
+        return (
+          <Link
+            key={href}
+            href={href}
+            prefetch
+            onClick={() => {
+              if (href !== pathname) setOptimisticHref(href);
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-xs font-medium whitespace-nowrap transition",
+              active
+                ? "bg-foreground text-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Icon className="h-3 w-3 shrink-0" />
+            {label}
+          </Link>
+        );
+      })}
     </div>
   );
 }

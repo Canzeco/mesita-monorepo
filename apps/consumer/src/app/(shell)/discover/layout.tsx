@@ -1,9 +1,9 @@
-import { DiscoverTabs } from "@/components/consumer/DiscoverTabs";
+import { DiscoverFilterBar } from "@/components/consumer/DiscoverFilterBar";
 
-// DiscoverHeader moved up to the shell layout (rendered by TopBar) so
-// the header sits structurally outside any scroll container — same
-// pattern as the other top-level surfaces. DiscoverTabs stays here
-// because it's a discover-specific sub-band beneath the header.
+// The top chrome row (rendered by TopBar via DiscoverHeader) now hosts the
+// Swipe/Map/AI-Search tabs. The WHAT/WHERE/WHEN picker lives here as a
+// discover-specific band directly beneath that row — outside the scroll
+// container so its dropdowns overlay the surface without reflowing it.
 export default function DiscoverLayout({
   children,
 }: {
@@ -11,7 +11,7 @@ export default function DiscoverLayout({
 }) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <DiscoverTabs />
+      <DiscoverFilterBar />
       <div className="scrollbar-hide flex-1 overflow-y-auto">{children}</div>
     </div>
   );
