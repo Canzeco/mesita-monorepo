@@ -20,8 +20,8 @@ export const SWIPE_CARD_COVER_PHOTO =
 export const SWIPE_CARD_WITC_PHOTO_BAND =
   "relative min-h-0 flex-1 overflow-hidden" as const;
 
-/** WITC — solid blue fields strip below the photo band. */
-export const SWIPE_CARD_FIELDS_STRIP = "bg-swipe-panel shrink-0" as const;
+/** WITC — reflective strip below the photo band. */
+export const SWIPE_CARD_FIELDS_STRIP = "relative isolate shrink-0 overflow-hidden" as const;
 
 /** Fields padding — block flow, top-aligned (no h-full flex). */
 export const SWIPE_CARD_FIELDS_INNER =

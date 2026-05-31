@@ -32,8 +32,12 @@ export function VenueSwipeCardFace({
   const fieldsMeasureRef = useRef<HTMLDivElement>(null);
   const [settledPhotoIdx, setSettledPhotoIdx] = useState(0);
 
-  const { getPhotoLayoutMode, getPhotoLayoutResult, reportPhotoSize, fieldsHeight } =
-    useSwipeCardPhotoLayout(venue.photos, cardRef, fieldsMeasureRef);
+  const {
+    getPhotoLayoutMode,
+    getPhotoLayoutResult,
+    reportPhotoSize,
+    fieldsHeight,
+  } = useSwipeCardPhotoLayout(venue.photos, cardRef, fieldsMeasureRef);
 
   const hasPhotos = venue.photos.length > 0;
   const staticPhoto = venue.photos[0];
@@ -69,7 +73,13 @@ export function VenueSwipeCardFace({
         />
       );
     },
-    [venue.name, getPhotoLayoutMode, fieldsHeight, priority, reportPhotoSize],
+    [
+      venue.name,
+      getPhotoLayoutMode,
+      fieldsHeight,
+      priority,
+      reportPhotoSize,
+    ],
   );
 
   return (
