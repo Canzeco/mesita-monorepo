@@ -234,6 +234,7 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
         </OverviewChip>
         <OverviewChip icon={Instagram} iconClass="text-pink-200/80">
           {igFollowers}
+          <span className="text-white/70">followers</span>
         </OverviewChip>
         <OverviewChip
           icon={Clock}
