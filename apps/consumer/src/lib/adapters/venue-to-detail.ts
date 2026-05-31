@@ -30,6 +30,25 @@ function obj(v: unknown): Record<string, unknown> {
     : {};
 }
 
+// Best-effort neighborhood (colonia) pulled from a Mexican-style formatted
+// address — "Street, Colonia, NNNNN City, State" — by grabbing the segment
+// immediately before the 5-digit postal code. Any candidate containing a
+// digit is rejected, which filters out the street/building lines that
+// sometimes sit there ("Av Lázaro Cárdenas 2400-Piso 2"). US-style
+// addresses carry no colonia and yield undefined so callers fall back to
+// city. Heuristic by design — a clean value or nothing, never garbage.
+// Shared so the card (enrich-overview) and the detail page derive the
+// same neighborhood.
+export function neighborhoodFromAddress(
+  address: string | undefined,
+): string | undefined {
+  if (!address) return undefined;
+  const match = address.match(/,\s*([^,]+?),\s*\d{5}\s/);
+  const candidate = match?.[1]?.trim();
+  if (!candidate || /\d/.test(candidate)) return undefined;
+  return candidate;
+}
+
 const DAY_LABELS: Record<string, string> = {
   monday: "Monday",
   tuesday: "Tuesday",
@@ -197,7 +216,11 @@ export function venueRowToDetail(row: Row): VenueDetail {
     timezone: str(row.timezone) ?? "",
     city: str(row.city) ?? "",
     address: str(row.address) ?? "",
-    zone: str(row.zone) ?? str(row.city) ?? "",
+    zone:
+      str(row.zone) ??
+      neighborhoodFromAddress(str(row.address)) ??
+      str(row.city) ??
+      "",
     listing_type: listingType,
     // Real freshness from the enrichment timestamp (falls back to the
     // creation time, then to vague copy). Same formatter the card uses so
@@ -285,7 +308,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
 
     details: {
       category_full: str(row.category) ?? "",
-      zone: str(row.zone) ?? "",
+      zone: str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? "",
       dining_style: str(details.dining_style) ?? "",
       dress_code: str(details.dress_code) ?? "",
       service_options: arr<string>(details.service_options),

@@ -27,7 +27,10 @@
 
 import type { Venue } from "@/lib/api/venues";
 import { mockVenue } from "@/lib/mock/venue";
-import { computeOpenState } from "@/lib/adapters/venue-to-detail";
+import {
+  computeOpenState,
+  neighborhoodFromAddress,
+} from "@/lib/adapters/venue-to-detail";
 import { relativeLabel } from "@/lib/utils";
 
 const PROMO_MOCK_PERCENT = 20;
@@ -60,7 +63,14 @@ function withRealOverview(v: Venue): Venue {
   const count = num(row.google_review_count);
   const igFollowers = num(row.instagram_followers_count);
   const priceLevel = num(row.price_level);
-  const zone = str(row.zone) ?? str(row.city);
+  // Neighborhood (zone) priority: the real zone column → the colonia
+  // parsed out of the formatted address → the city. Most venues have no
+  // zone column yet but DO carry the colonia inside `address`
+  // ("…, Valle del Campestre, 66266 …"), so deriving it here lights up the
+  // neighborhood chip without a DB backfill, and degrades to city when the
+  // address has none (e.g. US venues).
+  const zone =
+    str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? str(row.city);
   const freshness = relativeLabel(str(row.enriched_at) ?? str(row.created_at));
   const rewardCapCents = num(row.reward_cap_cents);
 
