@@ -47,10 +47,8 @@ export default async function SwipePage() {
   // Derive the overview-parity fields (rating, open/closed, zone,
   // freshness, price, IG) from the raw venues columns the deck EF already
   // returns, so each card mirrors the detail Overview grid with real data.
-  // See enrich-overview.ts — "deck" mode still gives the Mochomos demo the
-  // full VenueDetail fixture and every other row the cashback +
-  // is_first_visit shim that lets the promo chip render.
-  const enriched = sorted.map((v) => enrichVenueOverview(v, "deck"));
+  // Real data only — a venue with a missing signal just shows fewer chips.
+  const enriched = sorted.map((v) => enrichVenueOverview(v));
 
   return <SwipeDeck venues={enriched} fetchError={fetchError} />;
 }

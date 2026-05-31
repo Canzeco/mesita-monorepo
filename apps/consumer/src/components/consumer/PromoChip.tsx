@@ -13,9 +13,14 @@ import type { Venue } from "@/lib/api/venues";
 //
 // The rate is REAL: it's read from the venue's per-tier promo columns
 // (welcome_/default_ × free/premium, migration 0032) for the current
-// guest's tier, falling back to the legacy single cashback_percent. When a
-// venue carries no reward at this tier (e.g. a web-listed, non-partner
-// place) the chip renders nothing — no fabricated promo.
+// guest's tier, falling back to the legacy single cashback_percent.
+//
+// Rewards are a Verified-Partner-only capability. Web-listed venues never
+// offer rewards — a hard rule the chip enforces by short-circuiting on
+// listing_type, independent of any reward columns the row might still
+// carry. A Verified Partner MAY also choose not to set a rate, in which
+// case the chip renders nothing too. Either way there is no fabricated
+// promo: only a partner with a real, non-zero rate shows a ribbon.
 //
 // `size` lets the caller pick chip vs body weight:
 //   - "sm" (default) — catalog / saved tile
@@ -27,9 +32,12 @@ export function PromoChip({
   venue: Venue;
   size?: "sm" | "md";
 }) {
+  // Hard gate: only Verified Partners can offer rewards. Web-listed venues
+  // never show a ribbon, regardless of any reward columns on the row.
+  if (venue.listing_type !== "partner") return null;
   const isFirstVisit = venue.is_first_visit !== false;
   const promoPercent = resolvePromoRate(venue, isFirstVisit);
-  // No reward at the current tier → no ribbon at all.
+  // Partner with no rate at the current tier → no ribbon at all.
   if (promoPercent == null) return null;
 
   const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";

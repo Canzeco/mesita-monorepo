@@ -120,7 +120,7 @@ export default async function CatalogPage() {
   );
 }
 
-const enrich = (v: Venue) => enrichVenueOverview(v, "catalog");
+const enrich = (v: Venue) => enrichVenueOverview(v);
 
 function Row({
   title,

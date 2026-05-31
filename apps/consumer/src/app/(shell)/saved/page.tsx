@@ -15,9 +15,11 @@ import type { Venue } from "@/lib/api/venues";
 
 type Tab = "places" | "reservations";
 
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: Tab; label: string; soon?: boolean }[] = [
   { id: "places", label: "Places" },
-  { id: "reservations", label: "Reservations" },
+  // Reservations is parked behind a "Soon" badge — the tab opens a
+  // coming-soon panel (no tickets) until the booking flow ships.
+  { id: "reservations", label: "Reservations", soon: true },
 ];
 
 // /saved is now a top-level BottomNav surface again — the "byebye
@@ -106,13 +108,25 @@ export default function SavedPage() {
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "rounded-full px-1 py-1.5 text-center text-[12px] font-medium transition",
+                "flex items-center justify-center gap-1.5 rounded-full px-1 py-1.5 text-center text-[12px] font-medium transition",
                 tab === t.id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
               {t.label}
+              {t.soon && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0 text-[9px] font-bold tracking-wide uppercase",
+                    tab === t.id
+                      ? "bg-background/20 text-background"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  Soon
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -130,13 +144,11 @@ function PlacesBody() {
   const venues = useMemo<Venue[]>(() => {
     const ids = [...savedIds];
     if (ids.length === 0)
-      return SAVED_VENUES.map((v) =>
-        enrichVenueOverview(v as Venue, "catalog"),
-      );
+      return SAVED_VENUES.map((v) => enrichVenueOverview(v as Venue));
     return ids
       .map((id) => catalog.get(id))
       .filter((v): v is Venue => v != null)
-      .map((v) => enrichVenueOverview(v, "catalog"));
+      .map((v) => enrichVenueOverview(v));
   }, [savedIds, catalog]);
 
   function unsaveVenue(id: string) {

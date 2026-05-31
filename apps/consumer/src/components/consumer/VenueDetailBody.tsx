@@ -8,6 +8,7 @@ import {
   Star,
   Sparkles,
   Globe,
+  Gift,
   Instagram,
   Facebook,
   Youtube,
@@ -86,6 +87,10 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <SectionAnchor id="overview">
         <SummaryHeader venue={venue} />
       </SectionAnchor>
+      {/* Reward always renders. Web listings and rate-less partners get a
+          "doesn't offer rewards" state inside RewardsBox rather than a hidden
+          section, so all three cases (web / partner-no-rate / partner-with-
+          reward) are explicit to the guest. */}
       <SectionAnchor id="rewards">
         <RewardsBox venue={venue} />
       </SectionAnchor>
@@ -692,6 +697,43 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
 function RewardsBox({ venue }: { venue: VenueDetail }) {
   const { welcome, default: returning, current_tier, is_first_visit } =
     venue.promo_matrix;
+
+  // Rewards are a Verified-Partner-only capability. Web-listed venues never
+  // offer one; a Verified Partner may also choose not to set any rate. Both
+  // cases render the section — but with a plain "doesn't offer rewards"
+  // state instead of the pink hero — so the guest knows where they stand
+  // rather than wondering whether a section is missing. Only a partner with
+  // a real rate at SOME tier reaches the reward UI below; when they have a
+  // rate at another tier but not the guest's own, the hero still renders
+  // ("No reward at Mesita {tier} yet") as an upgrade nudge.
+  const isPartner = venue.listing_type === "partner";
+  const hasAnyRate =
+    (welcome.free ?? 0) > 0 ||
+    (welcome.premium ?? 0) > 0 ||
+    (returning.free ?? 0) > 0 ||
+    (returning.premium ?? 0) > 0;
+  if (!isPartner || !hasAnyRate) {
+    return (
+      <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
+        <div className="flex flex-col items-center gap-3 py-3 text-center">
+          <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
+            <Gift className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="flex flex-col gap-1">
+            <p className="text-foreground text-sm font-semibold">
+              This venue doesn&apos;t offer rewards
+            </p>
+            <p className="text-muted-foreground text-xs leading-snug">
+              {isPartner
+                ? "This Verified Partner isn't running a Mesita reward right now."
+                : "Only Verified Partners run the Mesita reward program — this place is a web listing."}
+            </p>
+          </div>
+        </div>
+      </Box>
+    );
+  }
+
   // Active reward = welcome variant on a first visit, default variant
   // otherwise. Null means the venue offers nothing at this tier — the
   // hero still renders so the user knows where they stand.
