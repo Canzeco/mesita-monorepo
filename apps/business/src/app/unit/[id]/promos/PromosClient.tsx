@@ -51,6 +51,7 @@ type CapChoice = (typeof CAP_CHOICES)[number];
 
 type MesitaUserExample = {
   tier: "Free" | "Premium";
+  premiumVia: "instagram" | "subscription" | null;
   instagram: string | null;
   totalSpendMesita: string;
   avatarUrl: string;
@@ -59,60 +60,70 @@ type MesitaUserExample = {
 const MESITA_USER_EXAMPLES: MesitaUserExample[] = [
   {
     tier: "Premium",
+    premiumVia: "instagram",
     instagram: "@sofiadines",
     totalSpendMesita: "MX$18,000",
     avatarUrl: "https://i.pravatar.cc/120?img=12",
   },
   {
     tier: "Free",
+    premiumVia: null,
     instagram: null,
     totalSpendMesita: "MX$12,500",
     avatarUrl: "https://i.pravatar.cc/120?img=15",
   },
   {
     tier: "Premium",
+    premiumVia: "subscription",
     instagram: "@vale.gourmet",
     totalSpendMesita: "MX$9,800",
     avatarUrl: "https://i.pravatar.cc/120?img=31",
   },
   {
     tier: "Free",
+    premiumVia: null,
     instagram: null,
     totalSpendMesita: "MX$15,500",
     avatarUrl: "https://i.pravatar.cc/120?img=53",
   },
   {
     tier: "Premium",
+    premiumVia: "instagram",
     instagram: "@fernnightlife",
     totalSpendMesita: "MX$23,000",
     avatarUrl: "https://i.pravatar.cc/120?img=45",
   },
   {
     tier: "Free",
+    premiumVia: null,
     instagram: null,
     totalSpendMesita: "MX$19,000",
     avatarUrl: "https://i.pravatar.cc/120?img=60",
   },
   {
     tier: "Premium",
+    premiumVia: "subscription",
     instagram: "@maricuisine",
     totalSpendMesita: "MX$21,000",
     avatarUrl: "https://i.pravatar.cc/120?img=23",
   },
   {
     tier: "Free",
+    premiumVia: null,
     instagram: null,
     totalSpendMesita: "MX$11,500",
     avatarUrl: "https://i.pravatar.cc/120?img=68",
   },
   {
     tier: "Premium",
+    premiumVia: "instagram",
     instagram: "@reginaout",
     totalSpendMesita: "MX$14,200",
     avatarUrl: "https://i.pravatar.cc/120?img=5",
   },
   {
     tier: "Free",
+    premiumVia: null,
     instagram: null,
     totalSpendMesita: "MX$13,000",
     avatarUrl: "https://i.pravatar.cc/120?img=41",
@@ -398,6 +409,13 @@ function MesitaUserCard({ guest }: { guest: MesitaUserExample }) {
           )}
           {guest.tier}
         </span>
+        {guest.tier === "Premium" && guest.premiumVia && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-700">
+            {guest.premiumVia === "instagram"
+              ? "Premium by Instagram"
+              : "Premium by Subscription"}
+          </span>
+        )}
       </div>
       {guest.instagram ? (
         <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
