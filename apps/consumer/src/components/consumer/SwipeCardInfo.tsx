@@ -80,17 +80,6 @@ export function SwipeCardInfo({
             <span className="font-semibold">{igFollowersLabel}</span>
           </MetaChip>
         )}
-        {statusLabel && (
-          <MetaChip>
-            <Clock
-              className={cn(
-                "h-3 w-3 shrink-0",
-                isOpen ? "text-emerald-400" : "text-white/70",
-              )}
-            />
-            <span className="font-semibold">{statusLabel}</span>
-          </MetaChip>
-        )}
         {distanceLabel && (
           <MetaChip>
             <Navigation className="h-3 w-3 shrink-0 text-white/70" />
@@ -108,6 +97,17 @@ export function SwipeCardInfo({
             {zoneDisplay}
           </span>
         </MetaChip>
+        {statusLabel && (
+          <MetaChip>
+            <Clock
+              className={cn(
+                "h-3 w-3 shrink-0",
+                isOpen ? "text-emerald-400" : "text-white/70",
+              )}
+            />
+            <span className="font-semibold">{statusLabel}</span>
+          </MetaChip>
+        )}
         <MetaChip>
           {isPartner ? (
             <>
