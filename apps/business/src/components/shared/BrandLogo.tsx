@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 // Brand SVG logos rendered inline so they can carry the official colors —
 // Simple lucide icons render monochrome, which is fine for input adornments
 // but reads as bland on the Signals tiles where the source brand is the
@@ -43,9 +45,8 @@ export function GoogleLogo({ size = 16, className }: LogoProps) {
 // magenta→purple→orange gradient. Each instance carries its own gradient def
 // because referencing a shared id across multiple <svg> roots breaks in
 // Safari + Webpack-style hashing.
-let _igGradientId = 0;
 export function InstagramLogo({ size = 16, className }: LogoProps) {
-  const id = `ig-grad-${_igGradientId++}`;
+  const id = `ig-grad-${useId().replace(/:/g, "")}`;
   return (
     <svg
       width={size}
@@ -77,9 +78,8 @@ export function InstagramLogo({ size = 16, className }: LogoProps) {
 // InstagramLogo in the Signals tiles. Each instance carries its own gradient
 // id (Safari + Webpack hashing breaks shared ids across multiple <svg>
 // roots), same pattern as InstagramLogo above.
-let _mesitaGradId = 0;
 export function MesitaLogo({ size = 16, className }: LogoProps) {
-  const id = `mesita-grad-${_mesitaGradId++}`;
+  const id = `mesita-grad-${useId().replace(/:/g, "")}`;
   return (
     <svg
       width={size}

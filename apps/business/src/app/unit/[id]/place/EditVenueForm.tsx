@@ -91,10 +91,17 @@ type FormState = {
   instagram_pr_urls: string[];
   facebook_url: string;
   tiktok_url: string;
+  x_url: string;
+  youtube_url: string;
+  threads_url: string;
+  reddit_url: string;
   opentable_url: string;
+  resy_url: string;
   tripadvisor_url: string;
+  google_maps_url: string;
   rappi_url: string;
   uber_eats_url: string;
+  didi_food_url: string;
 };
 
 // Tier names only — the `$` count now renders as a row of DollarSign
@@ -253,10 +260,17 @@ function venueToFormState(venue: MyVenue): FormState {
     instagram_pr_urls: venue.instagram_pr_urls ?? [],
     facebook_url: venue.facebook_url ?? "",
     tiktok_url: venue.tiktok_url ?? "",
+    x_url: venue.x_url ?? "",
+    youtube_url: venue.youtube_url ?? "",
+    threads_url: venue.threads_url ?? "",
+    reddit_url: venue.reddit_url ?? "",
     opentable_url: venue.opentable_url ?? "",
+    resy_url: venue.resy_url ?? "",
     tripadvisor_url: venue.tripadvisor_url ?? "",
+    google_maps_url: venue.google_maps_url ?? "",
     rappi_url: venue.rappi_url ?? "",
     uber_eats_url: venue.uber_eats_url ?? "",
+    didi_food_url: venue.didi_food_url ?? "",
   };
 }
 
@@ -326,10 +340,17 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         .filter((u): u is string => u !== null),
       facebook_url: nullableUrl(v.facebook_url),
       tiktok_url: nullableUrl(v.tiktok_url),
+      x_url: nullableUrl(v.x_url),
+      youtube_url: nullableUrl(v.youtube_url),
+      threads_url: nullableUrl(v.threads_url),
+      reddit_url: nullableUrl(v.reddit_url),
       opentable_url: nullableUrl(v.opentable_url),
+      resy_url: nullableUrl(v.resy_url),
       tripadvisor_url: nullableUrl(v.tripadvisor_url),
+      google_maps_url: nullableUrl(v.google_maps_url),
       rappi_url: nullableUrl(v.rappi_url),
       uber_eats_url: nullableUrl(v.uber_eats_url),
+      didi_food_url: nullableUrl(v.didi_food_url),
     };
 
     startTransition(async () => {
@@ -363,6 +384,8 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         <PreviewSection venue={venue} v={v} />
         <LocationSection venue={venue} />
         <TimeSection venue={venue} v={v} set={set} />
+        <ContactSection v={v} set={set} />
+        <VenueLinksSection v={v} set={set} />
         <ProductSection v={v} set={set} />
         <SignalsSection venue={venue} />
       </div>
@@ -1073,6 +1096,196 @@ function ProductSection({
         />
       </Field>
     </Section>
+  );
+}
+
+function ContactSection({
+  v,
+  set,
+}: {
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
+  return (
+    <Section title="Contact">
+      <LinksBox title="Primary">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlField
+            label="Phone"
+            icon={<PhoneIcon className="h-4 w-4" />}
+            placeholder="+52 444 833 5050"
+            value={v.phone}
+            onChange={(val) => set("phone", val)}
+          />
+          <UrlField
+            label="WhatsApp"
+            icon={<MessageCircle className="h-4 w-4" />}
+            placeholder="https://wa.me/52…"
+            value={v.whatsapp_url}
+            onChange={(val) => set("whatsapp_url", val)}
+          />
+          <UrlField
+            label="Email"
+            icon={<Mail className="h-4 w-4" />}
+            placeholder="hola@yourplace.com"
+            value={v.email}
+            onChange={(val) => set("email", val)}
+          />
+          <UrlField
+            label="Website"
+            icon={<Globe className="h-4 w-4" />}
+            placeholder="https://yourplace.com"
+            value={v.website_url}
+            onChange={(val) => set("website_url", val)}
+          />
+        </div>
+      </LinksBox>
+
+      <LinksBox title="Social">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlField
+            label="Instagram"
+            icon={<Instagram className="h-4 w-4" />}
+            placeholder="https://instagram.com/yourplace"
+            value={v.instagram_url}
+            onChange={(val) => set("instagram_url", val)}
+          />
+          <UrlField
+            label="Facebook"
+            icon={<Facebook className="h-4 w-4" />}
+            placeholder="https://facebook.com/yourplace"
+            value={v.facebook_url}
+            onChange={(val) => set("facebook_url", val)}
+          />
+          <UrlField
+            label="TikTok"
+            icon={<Music2 className="h-4 w-4" />}
+            placeholder="https://tiktok.com/@yourplace"
+            value={v.tiktok_url}
+            onChange={(val) => set("tiktok_url", val)}
+          />
+          <UrlField
+            label="X"
+            icon={<MessageCircle className="h-4 w-4" />}
+            placeholder="https://x.com/yourplace"
+            value={v.x_url}
+            onChange={(val) => set("x_url", val)}
+          />
+          <UrlField
+            label="YouTube"
+            icon={<Globe className="h-4 w-4" />}
+            placeholder="https://youtube.com/@yourplace"
+            value={v.youtube_url}
+            onChange={(val) => set("youtube_url", val)}
+          />
+          <UrlField
+            label="Threads"
+            icon={<MessageCircle className="h-4 w-4" />}
+            placeholder="https://threads.net/@yourplace"
+            value={v.threads_url}
+            onChange={(val) => set("threads_url", val)}
+          />
+          <UrlField
+            label="Reddit"
+            icon={<MessageCircle className="h-4 w-4" />}
+            placeholder="https://reddit.com/r/yourplace"
+            value={v.reddit_url}
+            onChange={(val) => set("reddit_url", val)}
+          />
+        </div>
+      </LinksBox>
+    </Section>
+  );
+}
+
+function VenueLinksSection({
+  v,
+  set,
+}: {
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
+  return (
+    <Section title="Venue links">
+      <LinksBox title="Reservations">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlField
+            label="OpenTable"
+            icon={<UtensilsCrossed className="h-4 w-4" />}
+            placeholder="https://www.opentable.com/..."
+            value={v.opentable_url}
+            onChange={(val) => set("opentable_url", val)}
+          />
+          <UrlField
+            label="Resy"
+            icon={<UtensilsCrossed className="h-4 w-4" />}
+            placeholder="https://resy.com/cities/..."
+            value={v.resy_url}
+            onChange={(val) => set("resy_url", val)}
+          />
+        </div>
+      </LinksBox>
+
+      <LinksBox title="Delivery">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlField
+            label="Rappi"
+            icon={<ShoppingBag className="h-4 w-4" />}
+            placeholder="https://www.rappi.com/restaurants/..."
+            value={v.rappi_url}
+            onChange={(val) => set("rappi_url", val)}
+          />
+          <UrlField
+            label="Uber Eats"
+            icon={<UtensilsCrossed className="h-4 w-4" />}
+            placeholder="https://www.ubereats.com/store/..."
+            value={v.uber_eats_url}
+            onChange={(val) => set("uber_eats_url", val)}
+          />
+          <UrlField
+            label="DiDi Food"
+            icon={<ShoppingBag className="h-4 w-4" />}
+            placeholder="https://www.didiglobal.com/..."
+            value={v.didi_food_url}
+            onChange={(val) => set("didi_food_url", val)}
+          />
+        </div>
+      </LinksBox>
+
+      <LinksBox title="Reviews & maps">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <UrlField
+            label="TripAdvisor"
+            icon={<Star className="h-4 w-4" />}
+            placeholder="https://www.tripadvisor.com/..."
+            value={v.tripadvisor_url}
+            onChange={(val) => set("tripadvisor_url", val)}
+          />
+          <UrlField
+            label="Google Maps"
+            icon={<MapPin className="h-4 w-4" />}
+            placeholder="https://maps.google.com/..."
+            value={v.google_maps_url}
+            onChange={(val) => set("google_maps_url", val)}
+          />
+        </div>
+      </LinksBox>
+    </Section>
+  );
+}
+
+function LinksBox({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-border bg-background rounded-xl border p-3">
+      <p className={cn(TINY_LABEL_CLASS, "mb-2")}>{title}</p>
+      {children}
+    </div>
   );
 }
 
