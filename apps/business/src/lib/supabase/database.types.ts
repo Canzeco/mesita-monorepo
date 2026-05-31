@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
-          atlas_pre_read_snapshots: boolean
           auto_verify_ai_call: boolean
           auto_verify_ai_email: boolean
           auto_verify_video: boolean
@@ -25,7 +24,6 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          atlas_pre_read_snapshots?: boolean
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
@@ -34,7 +32,6 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
-          atlas_pre_read_snapshots?: boolean
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
