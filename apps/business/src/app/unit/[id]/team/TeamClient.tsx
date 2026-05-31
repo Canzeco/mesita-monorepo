@@ -46,8 +46,9 @@ const ROLE_LABEL: Record<BusinessRole, string> = {
 };
 
 const ROLE_CHOICES: BusinessRole[] = ["owner", "editor", "viewer"];
+const MANAGER_ROLE_CHOICES: BusinessRole[] = ["owner", "editor"];
 
-type InviteOpen = null | "editor" | "waiter";
+type InviteOpen = null | "manager" | "waiter" | "pr";
 
 export function TeamClient({
   venueId,
@@ -81,6 +82,13 @@ export function TeamClient({
 
   const isOwner =
     snapshot.myRole === "owner" || snapshot.myRole === "super_admin";
+  const managers = snapshot.businesses.filter((m) => m.role !== "viewer");
+  const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
+    (inv) => inv.role !== "viewer",
+  );
+  const pendingPrWhatsappInvites = snapshot.pendingWaiterInvites.filter(
+    (inv) => inv.channel === "whatsapp",
+  );
 
   // Wrap any mutating action in the shared busy/error/refresh frame.
   async function runAction(
@@ -100,9 +108,9 @@ export function TeamClient({
     }
   }
 
-  const handleInviteEditor = (email: string, role: BusinessRole) =>
+  const handleInviteManager = (email: string, role: BusinessRole) =>
     runAction(
-      "invite-editor",
+      "invite-manager",
       async () => {
         await apiInviteEditor(supabase, {
           venueId,
@@ -112,7 +120,22 @@ export function TeamClient({
         });
         setInviteOpen(null);
       },
-      "Couldn't send that invite.",
+      "Couldn't send that manager invite.",
+    );
+
+  const handleInvitePr = (phone: string) =>
+    runAction(
+      "invite-pr",
+      async () => {
+        await apiInviteWaiter(supabase, {
+          venueId,
+          channel: "whatsapp",
+          phone: phone || undefined,
+          redirectBase: window.location.origin,
+        });
+        setInviteOpen(null);
+      },
+      "Couldn't connect that PR WhatsApp.",
     );
 
   const handleInviteWaiter = (channel: "whatsapp" | "sms", phone: string) =>
@@ -196,34 +219,37 @@ export function TeamClient({
     <div className="flex flex-col gap-6">
       {error && <div className={ERROR_BOX_CLASS}>{error}</div>}
 
-      {/* ── Editors ──────────────────────────────────────────────── */}
+      {/* ── Managers ─────────────────────────────────────────────── */}
       <Section
-        title="Editors"
-        description="Sign in with email. Owners can invite or remove anyone."
+        title="Managers"
+        description="Core team with dashboard access."
         right={
           isOwner && (
             <InviteButton
-              label="Invite editor"
-              open={inviteOpen === "editor"}
+              label="Invite manager"
+              open={inviteOpen === "manager"}
               onClick={() =>
-                setInviteOpen(inviteOpen === "editor" ? null : "editor")
+                setInviteOpen(inviteOpen === "manager" ? null : "manager")
               }
             />
           )
         }
       >
-        {inviteOpen === "editor" && (
+        {inviteOpen === "manager" && (
           <EditorInviteForm
-            busy={busy === "invite-editor"}
-            onSubmit={handleInviteEditor}
+            busy={busy === "invite-manager"}
+            onSubmit={handleInviteManager}
+            roleChoices={MANAGER_ROLE_CHOICES}
+            defaultRole="editor"
+            submitLabel="Send manager invite"
           />
         )}
 
-        {snapshot.businesses.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No editors yet.</p>
+        {managers.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No managers yet.</p>
         ) : (
           <ul className="divide-border/60 divide-y">
-            {snapshot.businesses.map((m) => (
+            {managers.map((m) => (
               <li key={m.memberId} className="flex items-center gap-3 py-2.5">
                 <Avatar
                   initial={initialOf(m.fullName, m.email)}
@@ -244,6 +270,7 @@ export function TeamClient({
                 </div>
                 <RoleSelect
                   role={(m.role as BusinessRole) ?? "editor"}
+                  choices={ROLE_CHOICES}
                   disabled={
                     !isOwner ||
                     busy === `role-${m.memberId}` ||
@@ -279,14 +306,14 @@ export function TeamClient({
           </ul>
         )}
 
-        {snapshot.pendingBusinessInvites.length > 0 && (
+        {pendingManagerInvites.length > 0 && (
           <PendingGroup>
-            {snapshot.pendingBusinessInvites.map((inv) => (
+            {pendingManagerInvites.map((inv) => (
               <PendingRow
                 key={inv.id}
                 icon={<Mail className="text-muted-foreground h-3.5 w-3.5" />}
                 title={inv.email}
-                subtitle={`Invited as ${ROLE_LABEL[(inv.role as BusinessRole) ?? "editor"]} · expires ${formatRelative(inv.expiresAt)}`}
+                subtitle={`Invited as ${teamRoleLabel((inv.role as BusinessRole) ?? "editor")} · expires ${formatRelative(inv.expiresAt)}`}
               >
                 <CopyButton
                   text={buildAcceptUrl(inv.token)}
@@ -314,7 +341,7 @@ export function TeamClient({
       {/* ── Waiters ──────────────────────────────────────────────── */}
       <Section
         title="Waiters"
-        description="Validate consumer tickets from their own phone via WhatsApp or SMS."
+        description="Floor team that validates tickets from their phone."
         right={
           <InviteButton
             label="Invite waiter"
@@ -419,6 +446,115 @@ export function TeamClient({
         )}
       </Section>
 
+      {/* ── PRs ──────────────────────────────────────────────────── */}
+      <Section
+        title="PRs"
+        description="Connect the WhatsApp numbers that handle reservations."
+        right={
+          isOwner && (
+            <InviteButton
+              label="Connect WhatsApp"
+              open={inviteOpen === "pr"}
+              onClick={() => setInviteOpen(inviteOpen === "pr" ? null : "pr")}
+            />
+          )
+        }
+      >
+        {inviteOpen === "pr" && (
+          <PrWhatsAppForm
+            busy={busy === "invite-pr"}
+            onSubmit={handleInvitePr}
+          />
+        )}
+
+        {snapshot.waiters.length === 0 &&
+        pendingPrWhatsappInvites.length === 0 &&
+        inviteOpen !== "pr" ? (
+          <p className="text-muted-foreground text-sm">No PR WhatsApps yet.</p>
+        ) : (
+          <>
+            {snapshot.waiters.length > 0 && (
+              <ul className="divide-border/60 divide-y">
+                {snapshot.waiters.map((w) => (
+                  <li
+                    key={`${w.userId}:${venueId}:pr`}
+                    className="flex items-center gap-3 py-2.5"
+                  >
+                    <Avatar
+                      initial={(w.phone ?? "?").slice(-2)}
+                      tint="bg-whatsapp/15 text-whatsapp-deep"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-[13px] font-semibold">
+                        {w.phone ?? "—"}
+                      </p>
+                      <p className="text-muted-foreground text-[11px]">
+                        Connected {formatRelative(w.createdAt)}
+                      </p>
+                    </div>
+                    {w.phone && (
+                      <PingButton
+                        busy={busy === `ping-${w.phone}`}
+                        onClick={() => handleTestPing("whatsapp", w.phone!)}
+                      />
+                    )}
+                    {isOwner && w.phone && (
+                      <RemoveButton
+                        busy={busy === `remove-${w.userId}`}
+                        label={`Remove ${w.phone}`}
+                        onClick={() =>
+                          handleRemove(
+                            `${w.userId}:${venueId}`,
+                            "waiter",
+                            "Remove this PR WhatsApp?",
+                          )
+                        }
+                      />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {pendingPrWhatsappInvites.length > 0 && (
+              <PendingGroup>
+                {pendingPrWhatsappInvites.map((inv) => (
+                  <PendingRow
+                    key={inv.id}
+                    icon={<ChannelIcon channel="whatsapp" />}
+                    title={inv.phone ?? "WhatsApp link"}
+                    titleClassName="font-mono"
+                    subtitle={`PR WhatsApp invite · expires ${formatRelative(inv.expiresAt)}`}
+                  >
+                    <CopyButton
+                      text={buildAcceptUrl(inv.token, "waiter")}
+                      label="Copy invite link"
+                    />
+                    {isOwner && (
+                      <RemoveButton
+                        busy={busy === `remove-${inv.id}`}
+                        label="Revoke WhatsApp invite"
+                        onClick={() =>
+                          handleRemove(
+                            inv.id,
+                            "waiterInvite",
+                            "Revoke this invite?",
+                          )
+                        }
+                      />
+                    )}
+                  </PendingRow>
+                ))}
+              </PendingGroup>
+            )}
+          </>
+        )}
+
+        <p className={cn(INFO_BOX_CLASS, "mt-2")}>
+          AI PR can be added here later as an additional assistant seat.
+        </p>
+      </Section>
+
       <p className={cn(INFO_BOX_CLASS, "text-center")}>
         WhatsApp / SMS delivery is mocked until Twilio is wired up — invites
         still create real tokens you can share manually.
@@ -489,12 +625,18 @@ function PendingRow({
 function EditorInviteForm({
   busy,
   onSubmit,
+  roleChoices = ROLE_CHOICES,
+  defaultRole = "editor",
+  submitLabel = "Send invite",
 }: {
   busy: boolean;
   onSubmit: (email: string, role: BusinessRole) => void | Promise<void>;
+  roleChoices?: BusinessRole[];
+  defaultRole?: BusinessRole;
+  submitLabel?: string;
 }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<BusinessRole>("editor");
+  const [role, setRole] = useState<BusinessRole>(defaultRole);
 
   return (
     <form
@@ -523,7 +665,7 @@ function EditorInviteForm({
         onChange={(e) => setRole(e.target.value as BusinessRole)}
         className="border-border bg-background w-full rounded-full border px-3 py-2 text-[13px] outline-none sm:w-auto"
       >
-        {ROLE_CHOICES.map((r) => (
+        {roleChoices.map((r) => (
           <option key={r} value={r}>
             {ROLE_LABEL[r]}
           </option>
@@ -539,7 +681,93 @@ function EditorInviteForm({
         ) : (
           <Send className="h-3 w-3" />
         )}
-        Send invite
+        {submitLabel}
+      </button>
+    </form>
+  );
+}
+
+function PrInviteForm({
+  busy,
+  onSubmit,
+}: {
+  busy: boolean;
+  onSubmit: (email: string) => void | Promise<void>;
+}) {
+  const [email, setEmail] = useState("");
+  return (
+    <form
+      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const trimmed = email.trim();
+        if (!trimmed) return;
+        onSubmit(trimmed);
+      }}
+    >
+      <div className="relative flex-1">
+        <Mail className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
+        <input
+          type="email"
+          required
+          autoFocus
+          placeholder="pr@company.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border-border bg-background focus:border-foreground/40 w-full rounded-full py-2 pr-3 pl-8 text-[13px] outline-none"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={busy || email.trim().length === 0}
+        className={cn(PILL_BUTTON_CLASS, "px-4 py-2 disabled:opacity-50")}
+      >
+        {busy ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Send className="h-3 w-3" />
+        )}
+        Send PR invite
+      </button>
+    </form>
+  );
+}
+
+function PrWhatsAppForm({
+  busy,
+  onSubmit,
+}: {
+  busy: boolean;
+  onSubmit: (phone: string) => void | Promise<void>;
+}) {
+  const [phone, setPhone] = useState("");
+  return (
+    <form
+      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const trimmed = phone.trim();
+        if (!trimmed) return;
+        onSubmit(trimmed);
+      }}
+    >
+      <PhonePicker
+        value={phone}
+        onChange={setPhone}
+        placeholder="33 1234 5678"
+        className="flex-1"
+      />
+      <button
+        type="submit"
+        disabled={busy || phone.trim().length === 0}
+        className={cn(PILL_BUTTON_CLASS, "px-4 py-2 disabled:opacity-50")}
+      >
+        {busy ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Send className="h-3 w-3" />
+        )}
+        Connect WhatsApp
       </button>
     </form>
   );
@@ -566,6 +794,24 @@ function WaiterInviteForm({
         onSubmit(channel, phone.trim());
       }}
     >
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+            channel === "whatsapp"
+              ? "bg-whatsapp/15 text-whatsapp-deep"
+              : "bg-sky-500/15 text-sky-700",
+          )}
+        >
+          {channel === "whatsapp" ? (
+            <MessageCircle className="h-3.5 w-3.5" />
+          ) : (
+            <PhoneIcon className="h-3.5 w-3.5" />
+          )}
+          Sending via {channel === "whatsapp" ? "WhatsApp" : "SMS"}
+        </span>
+      </div>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="border-border bg-background flex items-center overflow-hidden rounded-full border p-0.5 text-[12px] font-semibold">
           {(["whatsapp", "sms"] as const).map((c) => (
@@ -574,14 +820,19 @@ function WaiterInviteForm({
               type="button"
               onClick={() => setChannel(c)}
               className={cn(
-                "rounded-full px-3 py-1 transition",
+                "inline-flex min-w-[108px] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition",
                 channel === c
                   ? c === "whatsapp"
-                    ? "bg-whatsapp/20 text-whatsapp-deep"
-                    : "bg-foreground text-background"
-                  : "text-muted-foreground",
+                    ? "bg-whatsapp text-white shadow-sm"
+                    : "bg-sky-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
+              {c === "whatsapp" ? (
+                <MessageCircle className="h-3.5 w-3.5" />
+              ) : (
+                <PhoneIcon className="h-3.5 w-3.5" />
+              )}
               {c === "whatsapp" ? "WhatsApp" : "SMS"}
             </button>
           ))}
@@ -606,8 +857,9 @@ function WaiterInviteForm({
         </button>
       </div>
       <p className="text-muted-foreground text-[11px]">
-        Phone is optional. With it, the invite is bound so only that number can
-        claim. Without it, anyone with the link can join as waiter.
+        {channel === "whatsapp"
+          ? "Invite is sent by WhatsApp. Phone is optional: with phone, only that number can claim; without it, anyone with the link can join."
+          : "Invite is sent by SMS. Phone is optional: with phone, only that number can claim; without it, anyone with the link can join."}
       </p>
     </form>
   );
@@ -615,10 +867,12 @@ function WaiterInviteForm({
 
 function RoleSelect({
   role,
+  choices,
   disabled,
   onChange,
 }: {
   role: BusinessRole;
+  choices: BusinessRole[];
   disabled: boolean;
   onChange: (r: BusinessRole) => void;
 }) {
@@ -629,7 +883,7 @@ function RoleSelect({
       onChange={(e) => onChange(e.target.value as BusinessRole)}
       className="border-border bg-background text-foreground hidden rounded-full border px-2.5 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 sm:block"
     >
-      {ROLE_CHOICES.map((r) => (
+      {choices.map((r) => (
         <option key={r} value={r}>
           {ROLE_LABEL[r]}
         </option>
@@ -771,4 +1025,10 @@ function formatRelative(iso: string): string {
   }
   const d = Math.round(abs / day);
   return ms >= 0 ? `in ${d}d` : `${d}d ago`;
+}
+
+function teamRoleLabel(role: BusinessRole): string {
+  if (role === "viewer") return "PR";
+  if (role === "editor") return "Manager";
+  return ROLE_LABEL[role];
 }

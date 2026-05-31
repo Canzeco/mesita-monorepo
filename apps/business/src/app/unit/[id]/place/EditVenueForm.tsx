@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -9,6 +10,7 @@ import {
   Instagram,
   MessageCircle,
   MapPin,
+  Navigation,
   Star,
   Mail,
   Phone as PhoneIcon,
@@ -27,6 +29,15 @@ import {
   ArrowLeft,
   ArrowRight,
   ImagePlus,
+  Users,
+  BadgeCheck,
+  ShieldAlert,
+  ChevronUp,
+  CheckCircle2,
+  AlertTriangle,
+  Cloud,
+  HardDrive,
+  FolderOpen,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -39,7 +50,6 @@ import {
   Field,
   GoogleLogo,
   InstagramLogo,
-  MesitaLogo,
   Section,
 } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
@@ -119,7 +129,7 @@ const SAVED_TOAST_MS = 2200;
 const VENUE_NAME_MAX = 120;
 const DESCRIPTION_MAX = 600;
 const TAG_MAX = 40;
-const MAX_PHOTOS = 30;
+const MAX_PHOTOS = 10;
 
 const NOT_FOUND_NOTE = "Not found yet — pipeline still searching.";
 
@@ -249,7 +259,7 @@ function venueToFormState(venue: MyVenue): FormState {
     hours: venueHoursToForm(venue.hours),
     menu_pdf_url: venue.menu_pdf_url ?? "",
     menu_pdf_name: venue.menu_pdf_name ?? "",
-    photos: venue.photos ?? [],
+    photos: (venue.photos ?? []).slice(0, MAX_PHOTOS),
     tags: venue.tags ?? [],
     phone: venue.phone ?? "",
     whatsapp_url: venue.whatsapp_url ?? "",
@@ -368,26 +378,22 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {/* 2-column grid:
-            Row 1: Basics      | Preview
-            Row 2: Location    | Time
-            Row 3: Product     | Signals
-            Row 4: Media (full width — photo grid wants the whole row)
-
-          Description + Tags now live inside Basics (no separate
-          Details section). ChannelsSection (primary/PR/secondary)
-          is still scoped out — its `_` prefix keeps the helper
-          defined for an easy re-enable. Mobile collapses every row
-          to single column. */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <BasicsSection venue={venue} v={v} set={set} />
+      {/* Consumer-style vertical flow (same sequence as venue detail). */}
+      <div className="flex flex-col gap-4">
         <PreviewSection venue={venue} v={v} />
+        <BasicsSection venue={venue} v={v} set={set} />
+        <ReviewsSummarySection venue={venue} />
+        <RelevantReviewsSection venue={venue} />
+        <MenuSection v={v} set={set} />
         <LocationSection venue={venue} />
         <TimeSection venue={venue} v={v} set={set} />
-        <ContactSection v={v} set={set} />
-        <VenueLinksSection v={v} set={set} />
-        <ProductSection v={v} set={set} />
-        <SignalsSection venue={venue} />
+        <ChannelsSection
+          venue={venue}
+          v={v}
+          set={set}
+          teamHref={`/unit/${venue.id}/team`}
+        />
+        <DetailsSection venue={venue} />
       </div>
 
       <MediaSection
@@ -480,11 +486,7 @@ function BasicsSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  // Five-field identity block: Name, Category, Price level, Tags,
-  // Description. Description + Tags used to live in their own Details
-  // section but the grid layout looks tighter when they're folded into
-  // Basics, which leaves Preview free to sit next to it in the first
-  // row of the 2-col grid.
+  // Keep identity + about copy together as requested.
   return (
     <Section title="Basics">
       <Field label="Name" required>
@@ -511,7 +513,7 @@ function BasicsSection({
         <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
       </Field>
 
-      <Field label="Description">
+      <Field label="About">
         <textarea
           value={v.description}
           onChange={(e) => set("description", e.target.value)}
@@ -626,11 +628,9 @@ function VenueMapEmbed({
   // /maps/embed/v1/place endpoint once we wire up the env var.
   const src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
   return (
-    // Grow to fill the Location card so the map matches the height of
-    // whatever's paired with it in the grid row (typically Time, which
-    // is 7 day rows tall). `min-h-[280px]` floors it so on short rows
-    // (everything closed) the embed still has presence.
-    <div className="border-border bg-card relative min-h-[280px] flex-1 overflow-hidden rounded-xl border">
+    // Use a real height (not min-height) so the iframe can resolve `h-full`
+    // and fully occupy the map box without leaving a blank area below.
+    <div className="border-border bg-card relative h-[320px] overflow-hidden rounded-xl border">
       <iframe
         src={src}
         title={`Map of ${name ?? "this venue"}`}
@@ -672,164 +672,212 @@ function OpenInGoogleMaps({
   );
 }
 
-type PreviewView = "swipe" | "catalog";
-
 function PreviewSection({ venue, v }: { venue: MyVenue; v: FormState }) {
-  // Mirrors the two card surfaces the consumer app actually renders for a
-  // place: `VenueSwipeCardFace` (full-bleed photo card with overlay) on
-  // /discover/swipe and `VenueCatalogCard` (4:3 photo + row of meta) on
-  // /discover/catalog. Both repos define those components but they
-  // can't be cross-imported, and the business's MyVenue shape differs
-  // slightly from the consumer's Venue (no closes_at, listing_type,
-  // cashback_percent here). So this section reproduces the visuals in
-  // place, pulling live `v` state so the preview reacts as the business
-  // types in Basics.
-  //
-  // Both views render in hard-coded dark zinc colors instead of the
-  // business's tokens (bg-card etc.) so they look like the consumer's
-  // actual dark theme even though we're inside the light business UI.
-  // Per the theme-strategy memory: consumer is dark, business is light,
-  // and we don't unify — so previews bring their own dark.
-  const [view, setView] = useState<PreviewView>("swipe");
   return (
-    <Section
-      title="Preview"
-      className="h-full"
-      right={
-        <div className="bg-muted inline-flex items-center rounded-full p-0.5 text-[11px] font-semibold">
-          <PreviewTab
-            active={view === "swipe"}
-            onClick={() => setView("swipe")}
-          >
-            Swipe
-          </PreviewTab>
-          <PreviewTab
-            active={view === "catalog"}
-            onClick={() => setView("catalog")}
-          >
-            Catalog
-          </PreviewTab>
-        </div>
-      }
-    >
-      <div className="-mx-1 -mb-1 flex flex-1 items-center justify-center rounded-xl bg-zinc-950 p-3">
-        {view === "swipe" ? (
-          <PreviewSwipeCard venue={venue} v={v} />
-        ) : (
-          <PreviewCatalogCard venue={venue} v={v} />
-        )}
+    <Section title="Preview" className="h-full">
+      <div className="flex justify-center py-1">
+        <PreviewSwipeCard venue={venue} v={v} />
       </div>
     </Section>
   );
 }
 
-function PreviewTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-full px-3 py-1 transition",
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
-  // Compact mirror of VenueSwipeCardFace in the consumer repo: full-bleed
-  // cover, bottom overlay with category + name + price meta. No drag
-  // logic — just the visual face.
-  const cover = v.photos[0] ?? null;
-  const name = v.name || venue.name || "Venue name";
-  const category = (v.category || venue.category || "").toLowerCase();
-  const price =
-    venue.price_level != null ? "$".repeat(venue.price_level) : null;
-  return (
-    <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-xl">
-      {cover ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={cover}
-          alt={name}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      ) : (
-        <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/70">
-          <span className="font-display text-7xl font-bold tracking-tight">
-            {name.trim().slice(0, 1).toUpperCase() || "·"}
-          </span>
-        </div>
-      )}
-      <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4 pt-20 text-white">
-        {category && (
-          <p className="text-[10px] font-medium tracking-[0.18em] text-white/75 uppercase">
-            {category}
-          </p>
-        )}
-        <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight drop-shadow-sm">
-          {name}
-        </h2>
-        {price && (
-          <p className="text-[11px] font-medium text-white/85">{price}</p>
-        )}
-      </div>
-    </div>
-  );
-}
+  // Consumer-like swipe fields overlay, but framed in a neutral white box.
+  const photos = v.photos.slice(0, MAX_PHOTOS);
+  const [photoIdx, setPhotoIdx] = useState(0);
+  useEffect(() => {
+    if (photoIdx > photos.length - 1) setPhotoIdx(0);
+  }, [photoIdx, photos.length]);
+  const cover = photos[photoIdx] ?? null;
+  const meta = previewMeta(venue, v);
+  const canSlide = photos.length > 1;
 
-function PreviewCatalogCard({ venue, v }: { venue: MyVenue; v: FormState }) {
-  // Compact mirror of VenueCatalogCard in the consumer repo: 4:3 photo,
-  // then a name + category + price meta block underneath. Constrained
-  // width so the proportions read like a row in a 2-col catalog list.
-  const cover = v.photos[0] ?? null;
-  const name = v.name || venue.name || "Venue name";
-  const category = (v.category || venue.category || "").toLowerCase();
-  const price =
-    venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  const prevPhoto = () =>
+    setPhotoIdx((idx) => (idx === 0 ? photos.length - 1 : idx - 1));
+  const nextPhoto = () =>
+    setPhotoIdx((idx) => (idx === photos.length - 1 ? 0 : idx + 1));
   return (
-    <div className="mx-auto w-full max-w-[260px] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 text-white shadow-md">
-      <div className="relative aspect-square w-full bg-zinc-800">
+    <div className="bg-card mx-auto w-full max-w-[360px] overflow-hidden rounded-3xl border shadow-sm lg:max-w-[460px]">
+      <div className="relative aspect-[4/5] w-full bg-muted">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={cover}
-            alt={name}
+            alt={meta.name}
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/70">
-            <span className="font-display text-4xl font-bold tracking-tight">
-              {name.trim().slice(0, 1).toUpperCase() || "·"}
+            <span className="font-display text-7xl font-bold tracking-tight">
+              {meta.name.trim().slice(0, 1).toUpperCase() || "·"}
             </span>
           </div>
         )}
-      </div>
-      <div className="flex flex-col gap-1 p-3">
-        <h3 className="font-display text-base leading-tight font-semibold tracking-tight">
-          {name}
-        </h3>
-        {category && (
-          <p className="truncate text-[11px] text-zinc-400">{category}</p>
+
+        {canSlide && (
+          <div className="absolute inset-x-0 top-3 z-20 flex items-center justify-between px-3">
+            <button
+              type="button"
+              onClick={prevPhoto}
+              aria-label="Previous preview photo"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/65"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
+              {photoIdx + 1} / {photos.length}
+            </span>
+            <button
+              type="button"
+              onClick={nextPhoto}
+              aria-label="Next preview photo"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/65"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
-        {price && (
-          <p className="text-[11px] font-medium text-zinc-500">{price}</p>
+
+        <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/86 via-black/58 to-transparent p-4 pt-20 text-white">
+          <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
+            {meta.name}
+          </h2>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {meta.category && <PreviewMetaChip>{meta.category}</PreviewMetaChip>}
+            {meta.price && <PreviewMetaChip>{meta.price}</PreviewMetaChip>}
+            {meta.googleRating && (
+              <PreviewMetaChip>
+                {meta.googleRating}
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" strokeWidth={0} />
+                {meta.googleCount && (
+                  <span className="text-white/75">({meta.googleCount})</span>
+                )}
+              </PreviewMetaChip>
+            )}
+            {meta.instagramFollowers && (
+              <PreviewMetaChip>
+                <Instagram className="h-3 w-3 text-pink-200/80" />
+                {meta.instagramFollowers}
+              </PreviewMetaChip>
+            )}
+            <PreviewMetaChip>
+              <MapPin className="h-3 w-3 text-white/75" />
+              {meta.zone}
+            </PreviewMetaChip>
+            {meta.distance && (
+              <PreviewMetaChip>
+                <Navigation className="h-3 w-3 text-white/75" />
+                {meta.distance}
+              </PreviewMetaChip>
+            )}
+            {meta.status && (
+              <PreviewMetaChip>
+                <Clock className="h-3 w-3 text-emerald-300" />
+                {meta.status}
+              </PreviewMetaChip>
+            )}
+            <PreviewMetaChip>
+              {meta.isPartner ? (
+                <>
+                  <BadgeCheck className="h-3.5 w-3.5 fill-sky-500 text-white" />
+                  Verified Partner
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="h-3.5 w-3.5 text-amber-300" />
+                  Not Verified
+                </>
+              )}
+            </PreviewMetaChip>
+            <PreviewMetaChip>{meta.promoLabel}</PreviewMetaChip>
+          </div>
+        </div>
+
+        {canSlide && (
+          <div className="absolute inset-x-0 bottom-2 z-20 flex justify-center gap-1">
+            {photos.map((_, idx) => (
+              <button
+                key={`preview-dot-${idx}`}
+                type="button"
+                onClick={() => setPhotoIdx(idx)}
+                aria-label={`Go to preview photo ${idx + 1}`}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  idx === photoIdx
+                    ? "w-5 bg-white"
+                    : "w-1.5 bg-white/55 hover:bg-white/75",
+                )}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
   );
+}
+
+
+function PreviewMetaChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]">
+      {children}
+    </span>
+  );
+}
+
+function PreviewLightChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="bg-muted text-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium">
+      {children}
+    </span>
+  );
+}
+
+
+function previewMeta(venue: MyVenue, v: FormState) {
+  const name = v.name || venue.name || "Venue name";
+  const category = (v.category || venue.category || "").toLowerCase() || null;
+  const price = venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  const googleRating =
+    venue.google_stars_overall != null ? venue.google_stars_overall.toFixed(1) : null;
+  const googleCount =
+    venue.google_review_count != null ? formatCount(venue.google_review_count) : null;
+  const instagramFollowers =
+    venue.instagram_followers_count != null
+      ? formatCount(venue.instagram_followers_count)
+      : null;
+  const zone = venue.address ? shortLocationFromAddress(venue.address) : "Neighborhood";
+  const distance = null; // business payload doesn't include distance yet.
+  const status = venue.closes_at ? `Open · until ${venue.closes_at}` : null;
+  const isPartner = venue.listing_type === "partner";
+  const promoLabel =
+    venue.cashback_percent != null
+      ? "X% Cashback"
+      : "No promo yet";
+
+  return {
+    name,
+    category,
+    price,
+    googleRating,
+    googleCount,
+    instagramFollowers,
+    zone,
+    distance,
+    status,
+    isPartner,
+    promoLabel,
+  };
+}
+
+function shortLocationFromAddress(address: string): string {
+  const parts = address
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) return parts[parts.length - 2];
+  return parts[0] ?? "Neighborhood";
 }
 
 function TimeSection({
@@ -850,7 +898,10 @@ function TimeSection({
   // it) — surfacing it as a stub here was adding noise, so we drop it
   // until the scraper pipeline lands real data.
   return (
-    <Section title="Time">
+    <Section
+      title="Time"
+      description="Set opening hours by day. Use +1d for overnight ranges (e.g. 23:00 → 02:00)."
+    >
       <ReadOnly
         label="Timezone"
         value={venue.timezone}
@@ -858,6 +909,7 @@ function TimeSection({
       />
 
       <HoursEditor hours={v.hours} onChange={(hours) => set("hours", hours)} />
+      <PopularTimesMock venueName={v.name || venue.name || "Venue"} />
     </Section>
   );
 }
@@ -929,7 +981,7 @@ function MediaSection({
           No photos yet.
         </p>
       ) : (
-        <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {photos.map((src, idx) => (
             <li
               key={`${src}-${idx}`}
@@ -1067,17 +1119,41 @@ function PhotoLightbox({
   );
 }
 
-function ProductSection({
+function MenuSection({
   v,
   set,
 }: {
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  // Lives in its own section so it can grow: today it's just the menu PDF,
-  // tomorrow it's product photos, signature dishes, drink list, etc.
+  const menuMeta = describeMenuUrl(v.menu_pdf_url);
+  const activeKind = menuMeta?.kind ?? "other";
   return (
-    <Section title="Product">
+    <Section
+      title="Menu"
+      description="Use one public URL. Google Drive, direct hosting, or any other cloud link works."
+    >
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <MenuHostCard
+          title="Google Drive"
+          subtitle="Shared file link"
+          active={activeKind === "drive"}
+          icon={<Cloud className="h-3.5 w-3.5" />}
+        />
+        <MenuHostCard
+          title="Hosted directly"
+          subtitle="Your domain / CDN"
+          active={activeKind === "hosted"}
+          icon={<HardDrive className="h-3.5 w-3.5" />}
+        />
+        <MenuHostCard
+          title="Other storage"
+          subtitle="Dropbox / custom host"
+          active={activeKind === "other"}
+          icon={<FolderOpen className="h-3.5 w-3.5" />}
+        />
+      </div>
+
       <Field label="Menu name">
         <input
           type="text"
@@ -1095,197 +1171,310 @@ function ProductSection({
           placeholder="https://yourplace.com/menu.pdf"
         />
       </Field>
+
+      {menuMeta ? (
+        menuMeta.valid ? (
+          <div className="bg-secondary/10 border-secondary/25 flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-2">
+              <span className="bg-secondary/15 text-secondary mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-secondary text-sm font-semibold">
+                  {menuMeta.provider} link detected
+                </p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {menuMeta.note}
+                </p>
+              </div>
+            </div>
+            <a
+              href={menuMeta.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-foreground text-background inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Open link
+            </a>
+          </div>
+        ) : (
+          <div className="bg-destructive/10 border-destructive/25 text-destructive flex items-start gap-2 rounded-xl border px-3 py-2.5 text-xs">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <p>
+              Link looks invalid. Paste a full public URL (for example
+              `https://.../menu.pdf`).
+            </p>
+          </div>
+        )
+      ) : null}
     </Section>
   );
 }
 
-function ContactSection({
-  v,
-  set,
-}: {
-  v: FormState;
-  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-}) {
-  return (
-    <Section title="Contact">
-      <LinksBox title="Primary">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <UrlField
-            label="Phone"
-            icon={<PhoneIcon className="h-4 w-4" />}
-            placeholder="+52 444 833 5050"
-            value={v.phone}
-            onChange={(val) => set("phone", val)}
-          />
-          <UrlField
-            label="WhatsApp"
-            icon={<MessageCircle className="h-4 w-4" />}
-            placeholder="https://wa.me/52…"
-            value={v.whatsapp_url}
-            onChange={(val) => set("whatsapp_url", val)}
-          />
-          <UrlField
-            label="Email"
-            icon={<Mail className="h-4 w-4" />}
-            placeholder="hola@yourplace.com"
-            value={v.email}
-            onChange={(val) => set("email", val)}
-          />
-          <UrlField
-            label="Website"
-            icon={<Globe className="h-4 w-4" />}
-            placeholder="https://yourplace.com"
-            value={v.website_url}
-            onChange={(val) => set("website_url", val)}
-          />
-        </div>
-      </LinksBox>
-
-      <LinksBox title="Social">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <UrlField
-            label="Instagram"
-            icon={<Instagram className="h-4 w-4" />}
-            placeholder="https://instagram.com/yourplace"
-            value={v.instagram_url}
-            onChange={(val) => set("instagram_url", val)}
-          />
-          <UrlField
-            label="Facebook"
-            icon={<Facebook className="h-4 w-4" />}
-            placeholder="https://facebook.com/yourplace"
-            value={v.facebook_url}
-            onChange={(val) => set("facebook_url", val)}
-          />
-          <UrlField
-            label="TikTok"
-            icon={<Music2 className="h-4 w-4" />}
-            placeholder="https://tiktok.com/@yourplace"
-            value={v.tiktok_url}
-            onChange={(val) => set("tiktok_url", val)}
-          />
-          <UrlField
-            label="X"
-            icon={<MessageCircle className="h-4 w-4" />}
-            placeholder="https://x.com/yourplace"
-            value={v.x_url}
-            onChange={(val) => set("x_url", val)}
-          />
-          <UrlField
-            label="YouTube"
-            icon={<Globe className="h-4 w-4" />}
-            placeholder="https://youtube.com/@yourplace"
-            value={v.youtube_url}
-            onChange={(val) => set("youtube_url", val)}
-          />
-          <UrlField
-            label="Threads"
-            icon={<MessageCircle className="h-4 w-4" />}
-            placeholder="https://threads.net/@yourplace"
-            value={v.threads_url}
-            onChange={(val) => set("threads_url", val)}
-          />
-          <UrlField
-            label="Reddit"
-            icon={<MessageCircle className="h-4 w-4" />}
-            placeholder="https://reddit.com/r/yourplace"
-            value={v.reddit_url}
-            onChange={(val) => set("reddit_url", val)}
-          />
-        </div>
-      </LinksBox>
-    </Section>
-  );
-}
-
-function VenueLinksSection({
-  v,
-  set,
-}: {
-  v: FormState;
-  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-}) {
-  return (
-    <Section title="Venue links">
-      <LinksBox title="Reservations">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <UrlField
-            label="OpenTable"
-            icon={<UtensilsCrossed className="h-4 w-4" />}
-            placeholder="https://www.opentable.com/..."
-            value={v.opentable_url}
-            onChange={(val) => set("opentable_url", val)}
-          />
-          <UrlField
-            label="Resy"
-            icon={<UtensilsCrossed className="h-4 w-4" />}
-            placeholder="https://resy.com/cities/..."
-            value={v.resy_url}
-            onChange={(val) => set("resy_url", val)}
-          />
-        </div>
-      </LinksBox>
-
-      <LinksBox title="Delivery">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <UrlField
-            label="Rappi"
-            icon={<ShoppingBag className="h-4 w-4" />}
-            placeholder="https://www.rappi.com/restaurants/..."
-            value={v.rappi_url}
-            onChange={(val) => set("rappi_url", val)}
-          />
-          <UrlField
-            label="Uber Eats"
-            icon={<UtensilsCrossed className="h-4 w-4" />}
-            placeholder="https://www.ubereats.com/store/..."
-            value={v.uber_eats_url}
-            onChange={(val) => set("uber_eats_url", val)}
-          />
-          <UrlField
-            label="DiDi Food"
-            icon={<ShoppingBag className="h-4 w-4" />}
-            placeholder="https://www.didiglobal.com/..."
-            value={v.didi_food_url}
-            onChange={(val) => set("didi_food_url", val)}
-          />
-        </div>
-      </LinksBox>
-
-      <LinksBox title="Reviews & maps">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <UrlField
-            label="TripAdvisor"
-            icon={<Star className="h-4 w-4" />}
-            placeholder="https://www.tripadvisor.com/..."
-            value={v.tripadvisor_url}
-            onChange={(val) => set("tripadvisor_url", val)}
-          />
-          <UrlField
-            label="Google Maps"
-            icon={<MapPin className="h-4 w-4" />}
-            placeholder="https://maps.google.com/..."
-            value={v.google_maps_url}
-            onChange={(val) => set("google_maps_url", val)}
-          />
-        </div>
-      </LinksBox>
-    </Section>
-  );
-}
-
-function LinksBox({
+function MenuHostCard({
   title,
-  children,
+  subtitle,
+  active,
+  icon,
 }: {
   title: string;
-  children: React.ReactNode;
+  subtitle: string;
+  active: boolean;
+  icon: React.ReactNode;
 }) {
   return (
-    <div className="border-border bg-background rounded-xl border p-3">
-      <p className={cn(TINY_LABEL_CLASS, "mb-2")}>{title}</p>
-      {children}
+    <div
+      className={cn(
+        "border-border/70 bg-muted/20 flex items-start gap-2 rounded-xl border px-3 py-2.5",
+        active && "border-foreground/25 bg-foreground/[0.04]",
+      )}
+    >
+      <span
+        className={cn(
+          "text-muted-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+          active && "bg-foreground text-background",
+        )}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-foreground text-xs font-semibold">{title}</p>
+        <p className="text-muted-foreground text-[11px]">{subtitle}</p>
+      </div>
     </div>
+  );
+}
+
+function DetailsSection({ venue }: { venue: MyVenue }) {
+  const details = [
+    ["Listing type", humanizeToken(venue.listing_type)],
+    ["Status", humanizeToken(venue.status)],
+    ["Plan", humanizeToken(venue.plan)],
+    ["Fiscal type", humanizeToken(venue.fiscal_type)],
+    ["Currency", venue.currency],
+    ["Updated at", venue.updated_at ? formatDateTime(venue.updated_at) : null],
+  ] as const;
+
+  return (
+    <Section
+      title="Details"
+      right={<span className={TINY_LABEL_CLASS}>Read-only</span>}
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {details.map(([label, value]) => (
+          <ReadOnly
+            key={label}
+            label={label}
+            value={value}
+            empty="Not available yet."
+          />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function ChannelsSection({
+  venue,
+  v,
+  set,
+  teamHref,
+}: {
+  venue: MyVenue;
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  teamHref: string;
+}) {
+  const primaryFields = [v.website_url, v.phone, v.whatsapp_url, v.instagram_url];
+  const prFields = [v.phone, v.whatsapp_pr_urls[0] ?? "", v.instagram_pr_urls[0] ?? ""];
+  const secondaryFields = [
+    v.email,
+    v.facebook_url,
+    v.tiktok_url,
+    v.x_url,
+    v.youtube_url,
+    v.opentable_url,
+    v.rappi_url,
+    v.uber_eats_url,
+    v.didi_food_url,
+    v.google_maps_url,
+  ];
+  const fields = [...primaryFields, ...prFields, ...secondaryFields];
+  const filled = fields.filter((f) => f.trim() !== "").length;
+
+  const prWhatsapp = v.whatsapp_pr_urls[0] ?? "";
+  const prInstagram = v.instagram_pr_urls[0] ?? "";
+  const setPrWhatsapp = (value: string) =>
+    set("whatsapp_pr_urls", value.trim() ? [value.trim()] : []);
+  const setPrInstagram = (value: string) =>
+    set("instagram_pr_urls", value.trim() ? [value.trim()] : []);
+
+  return (
+    <Section
+      title="Channels"
+      right={
+        <span className={TINY_LABEL_CLASS}>
+          {filled} / {fields.length}
+        </span>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <div className="border-border bg-background rounded-xl border p-3">
+          <p className={cn(TINY_LABEL_CLASS, "mb-2")}>Primary Channels</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <UrlField
+              label="Website"
+              icon={<Globe className="h-4 w-4" />}
+              placeholder="https://yourplace.com"
+              value={v.website_url}
+              onChange={(val) => set("website_url", val)}
+            />
+            <UrlField
+              label="Phone"
+              icon={<PhoneIcon className="h-4 w-4" />}
+              placeholder="+52 444 833 5050"
+              value={v.phone}
+              onChange={(val) => set("phone", val)}
+            />
+            <UrlField
+              label="WhatsApp"
+              icon={<MessageCircle className="h-4 w-4" />}
+              placeholder="https://wa.me/52…"
+              value={v.whatsapp_url}
+              onChange={(val) => set("whatsapp_url", val)}
+            />
+            <UrlField
+              label="Instagram"
+              icon={<Instagram className="h-4 w-4" />}
+              placeholder="https://instagram.com/yourplace"
+              value={v.instagram_url}
+              onChange={(val) => set("instagram_url", val)}
+            />
+          </div>
+        </div>
+
+        <div className="border-border bg-background rounded-xl border p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className={TINY_LABEL_CLASS}>PR Channels</p>
+            <Link
+              href={teamHref}
+              className="bg-muted text-foreground hover:bg-foreground hover:text-background inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition"
+            >
+              Team page
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <UrlField
+              label="Phone"
+              icon={<PhoneIcon className="h-4 w-4" />}
+              placeholder="+52 444 833 5050"
+              value={v.phone}
+              onChange={(val) => set("phone", val)}
+            />
+            <UrlField
+              label="WhatsApp"
+              icon={<MessageCircle className="h-4 w-4" />}
+              placeholder="https://wa.me/52…"
+              value={prWhatsapp}
+              onChange={setPrWhatsapp}
+            />
+            <UrlField
+              label="Instagram"
+              icon={<Instagram className="h-4 w-4" />}
+              placeholder="https://instagram.com/…"
+              value={prInstagram}
+              onChange={setPrInstagram}
+            />
+          </div>
+        </div>
+
+        <div className="border-border bg-background rounded-xl border p-3">
+          <p className={cn(TINY_LABEL_CLASS, "mb-2")}>Secundary Channels</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <UrlField
+              label="Email"
+              icon={<Mail className="h-4 w-4" />}
+              placeholder="hola@yourplace.com"
+              value={v.email}
+              onChange={(val) => set("email", val)}
+            />
+            <UrlField
+              label="Facebook"
+              icon={<Facebook className="h-4 w-4" />}
+              placeholder="https://facebook.com/yourplace"
+              value={v.facebook_url}
+              onChange={(val) => set("facebook_url", val)}
+            />
+            <UrlField
+              label="TikTok"
+              icon={<Music2 className="h-4 w-4" />}
+              placeholder="https://tiktok.com/@yourplace"
+              value={v.tiktok_url}
+              onChange={(val) => set("tiktok_url", val)}
+            />
+            <UrlField
+              label="X"
+              icon={<MessageCircle className="h-4 w-4" />}
+              placeholder="https://x.com/yourplace"
+              value={v.x_url}
+              onChange={(val) => set("x_url", val)}
+            />
+            <UrlField
+              label="YouTube"
+              icon={<Globe className="h-4 w-4" />}
+              placeholder="https://youtube.com/@yourplace"
+              value={v.youtube_url}
+              onChange={(val) => set("youtube_url", val)}
+            />
+            <UrlField
+              label="OpenTable"
+              icon={<UtensilsCrossed className="h-4 w-4" />}
+              placeholder="https://www.opentable.com/..."
+              value={v.opentable_url}
+              onChange={(val) => set("opentable_url", val)}
+            />
+            <UrlField
+              label="Rappi"
+              icon={<ShoppingBag className="h-4 w-4" />}
+              placeholder="https://www.rappi.com/restaurants/..."
+              value={v.rappi_url}
+              onChange={(val) => set("rappi_url", val)}
+            />
+            <UrlField
+              label="Uber Eats"
+              icon={<UtensilsCrossed className="h-4 w-4" />}
+              placeholder="https://www.ubereats.com/store/..."
+              value={v.uber_eats_url}
+              onChange={(val) => set("uber_eats_url", val)}
+            />
+            <UrlField
+              label="DiDi Food"
+              icon={<ShoppingBag className="h-4 w-4" />}
+              placeholder="https://www.didiglobal.com/..."
+              value={v.didi_food_url}
+              onChange={(val) => set("didi_food_url", val)}
+            />
+            <UrlField
+              label="Google Maps"
+              icon={<MapPin className="h-4 w-4" />}
+              placeholder="https://maps.google.com/..."
+              value={v.google_maps_url}
+              onChange={(val) => set("google_maps_url", val)}
+            />
+            <div className="sm:col-span-2">
+              <ReadOnly
+                label="Google business profile (auto)"
+                value={venue.google_business_url}
+                icon={<Sparkles className="h-4 w-4" />}
+                empty="Not available yet (auto-detected)."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Section>
   );
 }
 
@@ -1424,109 +1613,462 @@ function _ChannelsSection({
   );
 }
 
-function SignalsSection({ venue }: { venue: MyVenue }) {
-  const stars: {
+function ReviewsSummarySection({ venue }: { venue: MyVenue }) {
+  const externalMetrics: {
     label: string;
-    value: number | null;
+    value: string | null;
+    meta: string;
+    icon: "star" | "users";
     logo: React.ReactNode;
   }[] = [
     {
       label: "Google",
-      value: venue.google_stars_overall,
+      value:
+        venue.google_stars_overall == null
+          ? null
+          : venue.google_stars_overall.toFixed(1),
+      meta:
+        venue.google_review_count == null
+          ? "reviews"
+          : `${formatCount(venue.google_review_count)} reviews`,
+      icon: "star",
       logo: <GoogleLogo size={12} />,
-    },
-    {
-      label: "Overall",
-      value: venue.mesita_stars_overall,
-      logo: <MesitaLogo size={12} />,
-    },
-    {
-      label: "Food",
-      value: venue.mesita_stars_food,
-      logo: <MesitaLogo size={12} />,
-    },
-    {
-      label: "Service",
-      value: venue.mesita_stars_service,
-      logo: <MesitaLogo size={12} />,
-    },
-    {
-      label: "Ambience",
-      value: venue.mesita_stars_ambience,
-      logo: <MesitaLogo size={12} />,
-    },
-  ];
-  const counts: {
-    label: string;
-    value: string;
-    logo: React.ReactNode;
-  }[] = [
-    {
-      label: "Google",
-      value: visitorReview(
-        venue.google_visitor_count,
-        venue.google_review_count,
-      ),
-      logo: <GoogleLogo size={12} />,
-    },
-    {
-      label: "Mesita",
-      value: visitorReview(
-        venue.mesita_visitor_count,
-        venue.mesita_review_count,
-      ),
-      logo: <MesitaLogo size={12} />,
     },
     {
       label: "Instagram",
       value:
         venue.instagram_followers_count == null
-          ? "—"
+          ? null
           : formatCount(venue.instagram_followers_count),
+      meta: "followers",
+      icon: "users",
       logo: <InstagramLogo size={12} />,
+    },
+    {
+      label: "Facebook",
+      value: null,
+      meta: "followers",
+      icon: "users",
+      logo: <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />,
     },
   ];
 
+  // Consumer behavior: Mesita defaults to 5.0 for unrated venues.
+  const overallMesita = venue.mesita_stars_overall ?? 5;
+  const overallCount = venue.mesita_review_count ?? 0;
+  const bars = [
+    ["Food", venue.mesita_stars_food ?? 5],
+    ["Service", venue.mesita_stars_service ?? 5],
+    ["Ambience", venue.mesita_stars_ambience ?? 5],
+  ] as const;
+
   return (
-    <Section
-      title="Signals"
-      right={<span className={TINY_LABEL_CLASS}>Read-only</span>}
-    >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        {stars.map((s) => (
-          <div
-            key={s.label}
-            className="border-border bg-muted/40 flex flex-col rounded-xl border p-2.5"
-          >
-            <p className={cn(TINY_LABEL_CLASS, "flex items-center gap-1")}>
-              {s.logo}
-              {s.label}
-            </p>
-            <p className="font-display mt-1 flex items-baseline gap-1 text-lg font-semibold tabular-nums">
-              <Star className="text-secondary h-3 w-3" />
-              {s.value == null ? "—" : s.value.toFixed(1)}
-            </p>
+    <Section title="Reviews summary" right={<span className={TINY_LABEL_CLASS}>Read-only</span>}>
+      <div className="bg-background border-border flex flex-col gap-4 rounded-xl border p-4">
+        <div className="flex items-center gap-2">
+          <BadgeCheck className="h-4 w-4 text-pink-500" />
+          <p className="text-sm font-semibold">Mesita</p>
+          <span className="text-muted-foreground ml-auto text-[11px]">
+            {overallCount} reviews
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="bg-pink-500/10 ring-pink-500/30 flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl ring-1">
+            <div className="flex items-baseline gap-1">
+              <span className="font-display text-2xl leading-none font-semibold">
+                {overallMesita.toFixed(1)}
+              </span>
+              <Star
+                className="h-3 w-3 fill-amber-400 text-amber-400"
+                strokeWidth={0}
+              />
+            </div>
+            <span className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
+              Overall
+            </span>
           </div>
-        ))}
+          <div className="flex flex-1 flex-col gap-2">
+            {bars.map(([label, value]) => (
+              <RatingBar key={label} label={label} value={value} />
+            ))}
+          </div>
+        </div>
       </div>
+
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {counts.map((c) => (
-          <div
-            key={c.label}
-            className="border-border bg-muted/40 rounded-xl border p-2.5"
-          >
-            <p className={cn(TINY_LABEL_CLASS, "flex items-center gap-1")}>
-              {c.logo}
-              {c.label}
-            </p>
-            <p className="font-display mt-1 text-sm font-semibold tabular-nums">
-              {c.value}
-            </p>
-          </div>
+        {externalMetrics.map((m) => (
+          <ExternalMetricCard
+            key={m.label}
+            logo={m.logo}
+            icon={m.icon}
+            value={m.value}
+            meta={m.meta}
+            label={m.label}
+          />
         ))}
       </div>
     </Section>
   );
+}
+
+function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
+  const items = extractRelevantReviews(venue);
+  return (
+    <Section
+      title="Relevant reviews"
+      right={<span className={TINY_LABEL_CLASS}>{items.length} shown</span>}
+    >
+      {items.length === 0 ? (
+        <p className="bg-muted text-muted-foreground rounded-xl px-3 py-3 text-xs">
+          No review snippets available yet for this venue.
+        </p>
+      ) : (
+        <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {items.map((item) => (
+            <article
+              key={item.id}
+              className="bg-background border-border w-[320px] shrink-0 rounded-xl border p-3"
+            >
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">{item.author}</p>
+                <span className="text-muted-foreground text-[11px]">{item.source}</span>
+              </div>
+              <div className="mb-2 flex items-center gap-0.5">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      i < item.rating
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-muted-foreground/35",
+                    )}
+                    strokeWidth={0}
+                  />
+                ))}
+              </div>
+              <p className="text-muted-foreground line-clamp-4 text-[13px] leading-snug">
+                "{item.text}"
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function RatingBar({ label, value }: { label: string; value: number }) {
+  const pct = Math.min(100, (value / 5) * 100);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground w-14 shrink-0 truncate text-[11px]">{label}</span>
+      <div className="bg-muted relative h-1.5 flex-1 overflow-hidden rounded-full">
+        <div
+          className="bg-pink-gradient absolute inset-y-0 left-0 rounded-full"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-16 shrink-0 text-right text-[11px] font-semibold tabular-nums">
+        {value.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+function ExternalMetricCard({
+  logo,
+  icon,
+  value,
+  meta,
+  label,
+}: {
+  logo: React.ReactNode;
+  icon: "star" | "users";
+  value: string | null;
+  meta: string;
+  label: string;
+}) {
+  return (
+    <div className="bg-background border-border flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3">
+      <div className="mb-1">{logo}</div>
+      <div className="flex items-center gap-1 text-sm font-semibold">
+        {icon === "star" ? (
+          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={0} />
+        ) : (
+          <Users className="text-muted-foreground h-3.5 w-3.5" />
+        )}
+        {value ?? "Not found"}
+      </div>
+      <p className="text-muted-foreground text-[10px] leading-tight">
+        {value == null ? "Not found yet" : meta}
+      </p>
+      <p className="text-muted-foreground text-[10px] leading-tight">{label}</p>
+    </div>
+  );
+}
+
+function PopularTimesMock({ venueName }: { venueName: string }) {
+  const [selectedDay, setSelectedDay] = useState<DayKey>("fri");
+  const byDay = mockPopularTimesByDay(venueName);
+  const bars = byDay[selectedDay];
+  const max = Math.max(...bars, 1);
+  const peakIdx = bars.findIndex((v) => v === max);
+  return (
+    <div className="bg-muted/30 border-border rounded-[26px] border p-4 sm:p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <p className="text-foreground text-2xl/[1.1] font-semibold tracking-tight">
+          Popular times
+        </p>
+        <ChevronUp className="text-muted-foreground ml-auto h-5 w-5" />
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {DAYS.map((d) => (
+          <button
+            key={d.key}
+            type="button"
+            onClick={() => setSelectedDay(d.key)}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
+              selectedDay === d.key
+                ? "bg-foreground text-background"
+                : "bg-background text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {d.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-2.5 flex items-end gap-3 px-1.5">
+        {bars.map((v, idx) => {
+          const h = Math.max(8, Math.round((v / max) * 62));
+          if (v <= 0) {
+            return (
+              <span
+                key={`dash-${idx}`}
+                className="bg-muted-foreground/40 mb-1 block h-[1.5px] w-3.5 rounded-full"
+                aria-hidden
+              />
+            );
+          }
+          return (
+            <span
+              key={`bar-${idx}`}
+              className={cn(
+                "block w-3.5 rounded-full transition-all",
+                idx === peakIdx ? "bg-red-700" : "bg-muted-foreground/45",
+              )}
+              style={{ height: `${h}px` }}
+              aria-hidden
+            />
+          );
+        })}
+      </div>
+
+      <div className="text-foreground/85 flex items-center justify-between px-1.5 text-[18px] font-medium">
+        <span>6AM</span>
+        <span>10PM</span>
+      </div>
+    </div>
+  );
+}
+
+function mockPopularTimesByDay(seedBase: string): Record<DayKey, number[]> {
+  const seed = Array.from(seedBase).reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const template: number[] = [0, 0, 18, 34, 52, 62, 54, 42, 28, 0, 0, 0, 0, 0, 0, 0, 0];
+  const out = {} as Record<DayKey, number[]>;
+  DAYS.forEach((d, dayIdx) => {
+    const shift = (seed + dayIdx) % 3;
+    out[d.key] = template.map((v, idx) => {
+      if (v === 0) return 0;
+      const sourceIdx = Math.min(template.length - 1, idx + shift);
+      const source = template[sourceIdx];
+      const jitter = ((seed + dayIdx * 23 + idx * 11) % 12) - 6;
+      return Math.max(10, source + jitter);
+    });
+  });
+  return out;
+}
+
+function extractRelevantReviews(venue: MyVenue): Array<{
+  id: string;
+  source: "Mesita" | "Google";
+  author: string;
+  rating: number;
+  text: string;
+}> {
+  const raw = venue as unknown as Record<string, unknown>;
+  const out: Array<{
+    id: string;
+    source: "Mesita" | "Google";
+    author: string;
+    rating: number;
+    text: string;
+  }> = [];
+
+  const mesita = toReviewItems(raw["mesita_visitors"], "Mesita");
+  const google = toReviewItems(raw["google_reviews"], "Google");
+  const max = Math.max(mesita.length, google.length);
+  for (let i = 0; i < max; i += 1) {
+    if (mesita[i]) out.push(mesita[i]);
+    if (google[i]) out.push(google[i]);
+  }
+  return out.slice(0, 12);
+}
+
+function toReviewItems(
+  input: unknown,
+  source: "Mesita" | "Google",
+): Array<{
+  id: string;
+  source: "Mesita" | "Google";
+  author: string;
+  rating: number;
+  text: string;
+}> {
+  if (!Array.isArray(input)) return [];
+  const items: Array<{
+    id: string;
+    source: "Mesita" | "Google";
+    author: string;
+    rating: number;
+    text: string;
+  }> = [];
+
+  input.forEach((rawItem, idx) => {
+    if (!rawItem || typeof rawItem !== "object") return;
+    const row = rawItem as Record<string, unknown>;
+    const author = firstNonEmptyString([
+      row["author"],
+      row["author_name"],
+      row["name"],
+      row["user_name"],
+      row["username"],
+    ]);
+    const text = firstNonEmptyString([
+      row["text"],
+      row["review"],
+      row["body"],
+      row["comment"],
+      row["quote"],
+    ]);
+    const rating = normalizeRating(row["rating"]);
+    if (!text) return;
+    items.push({
+      id: `${source.toLowerCase()}-${idx}-${author ?? "guest"}`,
+      source,
+      author: author ?? "Guest",
+      rating,
+      text,
+    });
+  });
+
+  return items;
+}
+
+function firstNonEmptyString(candidates: unknown[]): string | null {
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
+function normalizeRating(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return Math.min(5, Math.max(1, Math.round(v)));
+  }
+  if (typeof v === "string") {
+    const num = Number.parseFloat(v);
+    if (Number.isFinite(num)) return Math.min(5, Math.max(1, Math.round(num)));
+  }
+  return 5;
+}
+
+function humanizeToken(v: string | null): string | null {
+  if (!v) return null;
+  return v
+    .split("_")
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ");
+}
+
+function formatDateTime(v: string): string {
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function describeMenuUrl(raw: string): {
+  valid: boolean;
+  href?: string;
+  kind?: "drive" | "hosted" | "other";
+  provider?: string;
+  note?: string;
+} | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const withProtocol = /^[a-z]+:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(withProtocol);
+  } catch {
+    return { valid: false };
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host.includes("drive.google.com") || host.includes("docs.google.com")) {
+    return {
+      valid: true,
+      kind: "drive",
+      href: parsed.toString(),
+      provider: "Google Drive",
+      note: "Make sure sharing is public so guests can open it.",
+    };
+  }
+  if (host.includes("dropbox.com")) {
+    return {
+      valid: true,
+      kind: "other",
+      href: parsed.toString(),
+      provider: "Dropbox",
+      note: "Use a public share link.",
+    };
+  }
+  if (
+    host.includes("s3.") ||
+    host.includes("cloudfront.net") ||
+    host.includes("supabase.co")
+  ) {
+    return {
+      valid: true,
+      kind: "hosted",
+      href: parsed.toString(),
+      provider: "Hosted storage",
+      note: "Great for direct hosted files.",
+    };
+  }
+
+  return {
+    valid: true,
+    kind: "other",
+    href: parsed.toString(),
+    provider: "Custom host",
+    note: "Any public URL is supported.",
+  };
 }
 
 // ── Primitives ──────────────────────────────────────────────────────────
@@ -1629,14 +2171,10 @@ function HoursEditor({
   const reopen = (key: DayKey) =>
     setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
 
-  // Compact density: no outer card chrome (the parent Section already
-  // provides it). Hairline `divide-y` separates days. Each row is a
-  // single line:
-  //   [DAY]  [shift 1]  [· shift 2 ×]?  [+ shift]?            [Close/Reopen]
-  // Closed days collapse to italic "Closed" text, dim the row background,
-  // and swap the right-edge button to the filled "Reopen" action.
+  // Cleaner schedule table: day label + time inputs + lightweight actions.
+  // Closed rows are visually muted; open rows stay flat and scannable.
   return (
-    <div className="divide-border/60 divide-y">
+    <div className="border-border bg-background divide-border/70 divide-y rounded-2xl border">
       {DAYS.map(({ key, label }) => {
         const d = hours[key];
         const isClosed = d.closed;
@@ -1644,24 +2182,24 @@ function HoursEditor({
           <div
             key={key}
             className={cn(
-              "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-2.5 transition",
-              isClosed && "bg-muted/30 rounded-md",
+              "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition",
+              isClosed ? "bg-muted/20" : "hover:bg-muted/10",
             )}
           >
-            <span className="text-muted-foreground w-10 shrink-0 text-[11px] font-bold tracking-[0.14em] uppercase">
+            <span className="text-foreground/75 w-10 shrink-0 text-[11px] font-semibold tracking-[0.14em] uppercase">
               {label}
             </span>
 
             {isClosed ? (
-              <span className="text-muted-foreground/80 flex-1 text-[12px] italic">
-                Closed all day
+              <span className="text-muted-foreground flex-1 text-[12px]">
+                Closed
               </span>
             ) : (
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-2">
                 {d.ranges.map((r, idx) => (
                   <div key={idx} className="flex items-center gap-1.5">
                     {idx > 0 && (
-                      <span className="text-muted-foreground/50 mr-0.5 text-[11px] select-none">
+                      <span className="text-muted-foreground/60 mr-0.5 text-[11px] select-none">
                         ·
                       </span>
                     )}
@@ -1672,9 +2210,9 @@ function HoursEditor({
                       }
                       placeholder="13:00"
                       aria-label={`${label} shift ${idx + 1} opens at`}
-                      className="bg-background border-border focus:border-foreground/40 h-8 w-[68px] rounded-md border px-1.5 text-center text-[12px] tabular-nums outline-none"
+                      className="bg-muted/45 border-border/80 focus:border-foreground/40 h-9 w-[82px] rounded-lg border px-2 text-center text-[14px] tabular-nums outline-none"
                     />
-                    <span className="text-muted-foreground/70 text-[11px]">
+                    <span className="text-muted-foreground/70 text-[12px]">
                       →
                     </span>
                     <input
@@ -1684,13 +2222,13 @@ function HoursEditor({
                       }
                       placeholder="00:00"
                       aria-label={`${label} shift ${idx + 1} closes at`}
-                      className="bg-background border-border focus:border-foreground/40 h-8 w-[68px] rounded-md border px-1.5 text-center text-[12px] tabular-nums outline-none"
+                      className="bg-muted/45 border-border/80 focus:border-foreground/40 h-9 w-[82px] rounded-lg border px-2 text-center text-[14px] tabular-nums outline-none"
                     />
                     {isOvernight(r.open, r.close) && (
                       <span
                         title="Closes the next day"
                         aria-label="Closes the next day"
-                        className="text-muted-foreground/80 -ml-0.5 text-[9px] font-semibold tracking-wider uppercase select-none"
+                        className="text-muted-foreground/80 -ml-0.5 text-[10px] font-semibold tracking-wider uppercase select-none"
                       >
                         +1d
                       </span>
@@ -1700,7 +2238,7 @@ function HoursEditor({
                         type="button"
                         onClick={() => removeShift(key, idx)}
                         aria-label="Remove this shift"
-                        className="text-muted-foreground/70 hover:text-destructive ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                        className="text-muted-foreground/70 hover:text-destructive ml-0.5 flex h-6 w-6 items-center justify-center rounded-full transition"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1711,7 +2249,7 @@ function HoursEditor({
                   <button
                     type="button"
                     onClick={() => addShift(key)}
-                    className="text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium"
+                    className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium"
                   >
                     <Plus className="h-3 w-3" />
                     shift
@@ -1725,10 +2263,10 @@ function HoursEditor({
               onClick={() => (isClosed ? reopen(key) : markClosed(key))}
               aria-label={isClosed ? "Reopen this day" : "Mark this day closed"}
               className={cn(
-                "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase transition",
+                "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide uppercase transition",
                 isClosed
                   ? "bg-foreground text-background hover:opacity-90"
-                  : "text-muted-foreground/70 hover:text-foreground",
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               {isClosed ? "Reopen" : "Close"}
@@ -1931,14 +2469,4 @@ function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toLocaleString();
-}
-
-function visitorReview(
-  visitors: number | null,
-  reviews: number | null,
-): string {
-  if (visitors == null && reviews == null) return "—";
-  const v = visitors == null ? "—" : formatCount(visitors);
-  const r = reviews == null ? "—" : formatCount(reviews);
-  return `${v} · ${r} reviews`;
 }
