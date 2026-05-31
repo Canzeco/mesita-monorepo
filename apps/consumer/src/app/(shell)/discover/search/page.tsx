@@ -60,12 +60,7 @@ export default function DiscoverSearchPage() {
   // 2-char threshold. Cancellable via the cancelled flag so an
   // older response can't clobber a newer query's state.
   useEffect(() => {
-    if (trimmed.length < 2) {
-      setPredictions([]);
-      setSearching(false);
-      setError(null);
-      return;
-    }
+    if (trimmed.length < 2) return;
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       setSearching(true);
@@ -105,7 +100,15 @@ export default function DiscoverSearchPage() {
             inputMode="search"
             autoFocus
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setQuery(next);
+              if (next.trim().length < 2) {
+                setPredictions([]);
+                setSearching(false);
+                setError(null);
+              }
+            }}
             placeholder="Search places by name"
             // The trailing utilities suppress the browser's native
             // search-clear "X" (Webkit + legacy IE/Edge) — we already
@@ -118,7 +121,12 @@ export default function DiscoverSearchPage() {
           {!searching && trimmed && (
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setPredictions([]);
+                setSearching(false);
+                setError(null);
+              }}
               className="text-muted-foreground hover:text-foreground text-[11px] font-medium"
             >
               Clear
@@ -221,7 +229,7 @@ function NoMatches({ query }: { query: string }) {
 
 // Per-status meta. Reach into the same vocabulary the business picker
 // uses but the badge copy is consumer-facing — businesses get "Verified
-// partner / Web listed / You own this", consumers get "On Mesita /
+// partner / Unverified / You own this", consumers get "On Mesita /
 // Unclaimed / Not on Mesita yet / You own this".
 type Meta = {
   label: string;

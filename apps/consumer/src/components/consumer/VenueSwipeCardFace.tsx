@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 import { ImageCarousel, type CarouselMediaItem } from "./ImageCarousel";
-import { SwipeListingBadge } from "./SwipeCardInfo";
 import {
   CarouselPhotoSlide,
   StaticPhotoSlide,
@@ -30,7 +29,7 @@ export function VenueSwipeCardFace({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const fieldsMeasureRef = useRef<HTMLDivElement>(null);
-  const [settledPhotoIdx, setSettledPhotoIdx] = useState(0);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
   const {
     getPhotoLayoutMode,
@@ -41,15 +40,10 @@ export function VenueSwipeCardFace({
 
   const hasPhotos = venue.photos.length > 0;
   const staticPhoto = venue.photos[0];
-  const activePhoto = venue.photos[settledPhotoIdx] ?? staticPhoto;
+  const activePhoto = venue.photos[activePhotoIdx] ?? staticPhoto;
   const activeMode: SwipeCardLayoutMode = activePhoto
     ? getPhotoLayoutMode(activePhoto)
     : "tiwc";
-  const layoutDebug = activePhoto ? getPhotoLayoutResult(activePhoto) : null;
-
-  useEffect(() => {
-    setSettledPhotoIdx(0);
-  }, [venue.id]);
 
   const reportPhotoSizeAt = useCallback(
     (idx: number, size: { width: number; height: number }) => {
@@ -103,7 +97,7 @@ export function VenueSwipeCardFace({
                 priority={priority}
                 mutePosition="top-right"
                 noNativeScroll
-                onIdxSettled={setSettledPhotoIdx}
+                onIdxChange={setActivePhotoIdx}
                 onImageNaturalSize={reportPhotoSizeAt}
                 renderSlide={renderCarouselSlide}
               />
@@ -132,46 +126,6 @@ export function VenueSwipeCardFace({
         <PhotoPlaceholder name={venue.name} />
       )}
 
-      {hasPhotos && (
-        <div className="pointer-events-none absolute top-3 left-3 z-20">
-          <SwipeListingBadge venue={venue} />
-        </div>
-      )}
-
-      {hasPhotos && (
-        <SwipeCardLayoutDebug layout={layoutDebug} mode={activeMode} />
-      )}
-    </div>
-  );
-}
-
-function SwipeCardLayoutDebug({
-  layout,
-  mode,
-}: {
-  layout: {
-    cardRatio: number;
-    imageRatio: number;
-    imageCardRatio: number;
-  } | null;
-  mode: SwipeCardLayoutMode;
-}) {
-  const fmt = (n: number) => n.toFixed(2);
-  return (
-    <div className="pointer-events-none absolute inset-x-2 top-2 z-30 flex justify-center">
-      <div className="rounded-md bg-black/75 px-2 py-1 font-mono text-[10px] leading-snug text-white shadow-lg backdrop-blur-sm">
-        {layout ? (
-          <span>
-            cardRatio {fmt(layout.cardRatio)} · imageRatio {fmt(layout.imageRatio)} ·
-            imageCardRatio {fmt(layout.imageCardRatio)} ·{" "}
-            <span className="font-bold uppercase">{mode}</span>
-          </span>
-        ) : (
-          <span>
-            ratios pending… · <span className="font-bold uppercase">{mode}</span>
-          </span>
-        )}
-      </div>
     </div>
   );
 }

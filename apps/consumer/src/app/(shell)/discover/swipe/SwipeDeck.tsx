@@ -214,15 +214,6 @@ function Deck({ venues }: { venues: Venue[] }) {
     [beginExit, releaseCapture, resetGesture],
   );
 
-  // Defensive reset whenever the visible card changes. Lingering pointer /
-  // exit state was leaving the next card unable to accept gestures.
-  useEffect(() => {
-    clearAdvanceTimer();
-    exitingRef.current = null;
-    resetGesture();
-    setExiting(null);
-  }, [idx, clearAdvanceTimer, resetGesture]);
-
   const restart = () => {
     clearAdvanceTimer();
     exitingRef.current = null;

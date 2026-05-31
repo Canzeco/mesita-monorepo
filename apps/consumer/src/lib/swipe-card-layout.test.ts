@@ -1,6 +1,5 @@
 import {
   computeWitcCoverLayout,
-  computeWitcCoverPlacement,
   computeWitcCoverPlacementFromRatios,
   resolveSwipeCardLayout,
   WITC_THRESHOLD,

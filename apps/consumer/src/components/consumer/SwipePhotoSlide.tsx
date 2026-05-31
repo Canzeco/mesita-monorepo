@@ -128,8 +128,9 @@ function WitcPhotoSlide({
         style={{ height: stripHeight }}
         aria-hidden
       >
-        <div className="absolute inset-0 bg-black/20" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/15 to-black/55" />
+        <div className="absolute inset-0 backdrop-blur-[1.5px]" />
+        <div className="absolute inset-0 bg-black/18" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/12 to-black/48" />
       </div>
     </div>
   );

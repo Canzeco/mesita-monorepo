@@ -1,7 +1,6 @@
 "use client";
 
 import type { RefObject } from "react";
-import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 import { isSplitLayout, type SwipeCardLayoutMode } from "@/lib/swipe-card-layout";
 import { SwipeCardInfo } from "./SwipeCardInfo";
@@ -29,8 +28,9 @@ export function SwipeCardFieldsMeasure({
 
 /**
  * One fields tree for TIWC and WITC.
- * WITC — text over the blue strip (blue is in the photo slide).
- * TIWC — gradient scrim over the full-bleed photo.
+ * Same bottom-anchored fields in both modes.
+ * - TIWC: bottom box background is a subtle dark gradient for readability.
+ * - WITC: bottom box background comes from the reflection in the photo layer.
  */
 export function SwipeCardFieldsLayer({
   venue,
@@ -41,18 +41,21 @@ export function SwipeCardFieldsLayer({
   mode: SwipeCardLayoutMode;
   fieldsHeight: number;
 }) {
+  const contentHeight = Math.max(fieldsHeight, 1);
   const split = isSplitLayout(mode);
 
   return (
     <div
-      className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-0 z-10",
-        !split && "bg-gradient-to-t from-black/70 via-black/35 to-transparent pt-16",
-      )}
-      style={split ? { height: Math.max(fieldsHeight, 1) } : undefined}
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
+      style={{ height: contentHeight }}
     >
-      <div className={SWIPE_CARD_FIELDS_INNER}>
-        <SwipeCardInfo venue={venue} compact />
+      {!split && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/58 via-black/34 to-transparent" />
+      )}
+      <div className="absolute inset-x-0 bottom-0">
+        <div className={SWIPE_CARD_FIELDS_INNER}>
+          <SwipeCardInfo venue={venue} compact />
+        </div>
       </div>
     </div>
   );

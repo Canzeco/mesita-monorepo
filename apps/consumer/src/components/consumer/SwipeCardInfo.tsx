@@ -32,6 +32,7 @@ export function SwipeCardInfo({
   const igFollowersLabel = formatFollowers(venue.instagram_followers_count);
   const statusLabel = getOpeningStatusLabel(venue);
   const isOpen = venue.open_now === true;
+  const isPartner = venue.listing_type === "partner";
 
   return (
     <div
@@ -42,8 +43,8 @@ export function SwipeCardInfo({
     >
       <h2
         className={cn(
-          "font-display leading-[1.15] font-semibold tracking-tight text-white",
-          compact ? "text-[1.35rem]" : "text-2xl",
+          "leading-[1.15] font-semibold tracking-[-0.01em] text-rose-50 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]",
+          compact ? "text-[1.3rem]" : "text-[1.95rem]",
         )}
       >
         {venue.name}
@@ -102,37 +103,31 @@ export function SwipeCardInfo({
             </span>
           </MetaChip>
         )}
+        <MetaChip>
+          {isPartner ? (
+            <>
+              <BadgeCheck
+                className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white"
+                strokeWidth={2}
+              />
+              <span className="font-semibold">Verified Partner</span>
+            </>
+          ) : (
+            <>
+              <Globe className="h-3.5 w-3.5 shrink-0 text-white/80" />
+              <span className="font-semibold">Not Verified</span>
+            </>
+          )}
+        </MetaChip>
         <PromoChip venue={venue} size="md" showWhenEmpty />
       </div>
     </div>
   );
 }
 
-export function SwipeListingBadge({ venue }: { venue: Venue }) {
-  const isPartner = venue.listing_type === "partner";
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-black/45 py-1 pr-2.5 pl-1.5 text-[11px] font-semibold text-white shadow-sm backdrop-blur-md">
-      {isPartner ? (
-        <>
-          <BadgeCheck
-            className="h-4 w-4 shrink-0 fill-sky-500 text-white"
-            strokeWidth={2}
-          />
-          Verified
-        </>
-      ) : (
-        <>
-          <Globe className="h-3.5 w-3.5 shrink-0 text-white/80" />
-          Web listed
-        </>
-      )}
-    </span>
-  );
-}
-
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white backdrop-blur-md">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]">
       {children}
     </span>
   );
