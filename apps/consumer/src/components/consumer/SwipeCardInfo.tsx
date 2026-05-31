@@ -6,6 +6,7 @@ import {
   Navigation,
   ShieldAlert,
   Star,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
@@ -77,6 +78,7 @@ export function SwipeCardInfo({
         {igFollowersLabel && (
           <MetaChip>
             <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
+            <Users className="h-3 w-3 shrink-0 text-white/70" />
             <span className="font-semibold">{igFollowersLabel}</span>
           </MetaChip>
         )}
