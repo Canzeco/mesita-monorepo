@@ -1,7 +1,6 @@
 "use client";
 
 import { useSelectedLayoutSegment } from "next/navigation";
-import { Loader2 } from "lucide-react";
 
 // Wraps the (shell)/layout.tsx `children` slot so we can hide it whenever
 // the @modal slot is actively intercepting a route.
@@ -31,14 +30,10 @@ import { Loader2 } from "lucide-react";
 // The children unmount/remount cost is fine — the modal close path is
 // router.back() which restores children from cache anyway.
 //
-// Slide-in placeholder: while the modal is active, we also render a
-// centered spinner in the body wrapper as a sibling of the hidden
-// children. The body wrapper is `relative`; the spinner is `absolute
-// inset-0`. The modal lives at z-50 inside the outer wrapper that
-// contains body + nav, so the moment it finishes sliding in over the
-// body it covers the spinner. The spinner is only visible during the
-// ~300ms slide-in — without it, the part of the body not yet covered
-// by the modal showed as a white flash.
+// During modal transitions we keep children hidden to avoid duplicate
+// hard-page + modal rendering. We intentionally DO NOT add an extra
+// spinner here, because route loading boundaries already provide one
+// and stacking both reads as a double-loader flash.
 
 export function ShellChildrenSlot({ children }: { children: React.ReactNode }) {
   const modalSegment = useSelectedLayoutSegment("modal");
@@ -50,16 +45,6 @@ export function ShellChildrenSlot({ children }: { children: React.ReactNode }) {
             hard-nav /venues/[id]/page.tsx doesn't render alongside the
             modal (same venue duplicated would read as janky overlap). */}
         <div className="hidden">{children}</div>
-        {/* Visible loading placeholder behind the sliding-in modal. */}
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          aria-hidden
-        >
-          <Loader2
-            className="text-muted-foreground h-5 w-5 animate-spin"
-            aria-label="Loading"
-          />
-        </div>
       </>
     );
   }

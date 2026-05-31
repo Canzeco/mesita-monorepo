@@ -33,7 +33,6 @@ export function VenueSwipeCardFace({
 
   const {
     getPhotoLayoutMode,
-    getPhotoLayoutResult,
     reportPhotoSize,
     fieldsHeight,
   } = useSwipeCardPhotoLayout(venue.photos, cardRef, fieldsMeasureRef);

@@ -1,14 +1,15 @@
 import {
   BadgeCheck,
   Clock,
-  Globe,
   Instagram,
   MapPin,
   Navigation,
+  ShieldAlert,
   Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
+import { neighborhoodFromAddress } from "@/lib/adapters/venue-to-detail";
 import { getOpeningStatusLabel } from "@/lib/venue-status";
 import { PromoChip } from "./PromoChip";
 
@@ -28,7 +29,8 @@ export function SwipeCardInfo({
     venue.google_count != null ? formatCount(venue.google_count) : null;
   const distanceLabel =
     venue.distance_km != null ? `${venue.distance_km} km` : null;
-  const zoneLabel = venue.zone ?? null;
+  const zoneLabel = resolveZoneLabel(venue);
+  const zoneDisplay = zoneLabel ?? "Neighborhood";
   const igFollowersLabel = formatFollowers(venue.instagram_followers_count);
   const statusLabel = getOpeningStatusLabel(venue);
   const isOpen = venue.open_now === true;
@@ -43,7 +45,7 @@ export function SwipeCardInfo({
     >
       <h2
         className={cn(
-          "leading-[1.15] font-semibold tracking-[-0.01em] text-rose-50 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]",
+          "leading-[1.15] font-semibold tracking-[-0.01em] text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]",
           compact ? "text-[1.3rem]" : "text-[1.95rem]",
         )}
       >
@@ -74,7 +76,7 @@ export function SwipeCardInfo({
         )}
         {igFollowersLabel && (
           <MetaChip>
-            <Instagram className="h-3 w-3 shrink-0 text-white/70" />
+            <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
             <span className="font-semibold">{igFollowersLabel}</span>
           </MetaChip>
         )}
@@ -95,14 +97,17 @@ export function SwipeCardInfo({
             <span className="font-semibold">{distanceLabel}</span>
           </MetaChip>
         )}
-        {zoneLabel && (
-          <MetaChip>
-            <MapPin className="h-3 w-3 shrink-0 text-white/70" />
-            <span className="max-w-[180px] truncate font-semibold">
-              {zoneLabel}
-            </span>
-          </MetaChip>
-        )}
+        <MetaChip>
+          <MapPin className="h-3 w-3 shrink-0 text-white/70" />
+          <span
+            className={cn(
+              "max-w-[180px] truncate font-semibold",
+              !zoneLabel && "text-white/75",
+            )}
+          >
+            {zoneDisplay}
+          </span>
+        </MetaChip>
         <MetaChip>
           {isPartner ? (
             <>
@@ -114,7 +119,7 @@ export function SwipeCardInfo({
             </>
           ) : (
             <>
-              <Globe className="h-3.5 w-3.5 shrink-0 text-white/80" />
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-300" />
               <span className="font-semibold">Not Verified</span>
             </>
           )}
@@ -144,4 +149,26 @@ function formatFollowers(n: number | null | undefined): string | null {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+function resolveZoneLabel(venue: Venue): string | null {
+  if (venue.zone && venue.zone.trim().length > 0) return venue.zone;
+  const fromNeighborhood = neighborhoodFromAddress(venue.address ?? undefined);
+  if (fromNeighborhood) return fromNeighborhood;
+  return cityFromAddress(venue.address ?? undefined);
+}
+
+function cityFromAddress(address: string | undefined): string | null {
+  if (!address) return null;
+  const postCodeCityMatch = address.match(/\d{5}\s+([^,]+)/);
+  const direct = postCodeCityMatch?.[1]?.trim();
+  if (direct && !/\d/.test(direct)) return direct;
+
+  const parts = address
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const fallback = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  if (!fallback || /\d/.test(fallback)) return null;
+  return fallback;
 }

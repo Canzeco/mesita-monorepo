@@ -87,6 +87,36 @@ function parseMinutes(t: unknown): number | null {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+function currencyPrefix(code: string): string {
+  if (code === "MXN") return "MX$";
+  if (code === "USD") return "$";
+  if (code === "EUR") return "€";
+  return `${code} `;
+}
+
+function fallbackPriceRange(priceLevel: 1 | 2 | 3 | 4, currency: string): string {
+  const prefix = currencyPrefix(currency);
+  const ranges: Record<1 | 2 | 3 | 4, [number, number]> = {
+    1: [100, 200],
+    2: [200, 300],
+    3: [300, 500],
+    4: [500, 800],
+  };
+  const [min, max] = ranges[priceLevel];
+  return `${prefix}${min}-${max}`;
+}
+
+function derivePriceRange(
+  row: Row,
+  priceLevel: 1 | 2 | 3 | 4,
+  currency: string,
+): string {
+  const raw = str(row.price_range);
+  // Keep explicit numeric ranges from the backend when present.
+  if (raw && /\d/.test(raw)) return raw;
+  return fallbackPriceRange(priceLevel, currency);
+}
+
 // Derives live open/closed state from the weekly `hours` jsonb in the venue's
 // IANA timezone. Handles split shifts and overnight ranges (close <= open ⇒
 // closes the next day). Falls back to closed/empty when hours or tz are
@@ -207,7 +237,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
     category: str(row.category) ?? "Place",
     vibe: str(row.vibe) ?? "",
     price_level: priceLevel,
-    price_range: "$".repeat(priceLevel),
+    price_range: derivePriceRange(row, priceLevel, currency),
     currency,
     distance_km: 0,
     open_now: openState.open_now,

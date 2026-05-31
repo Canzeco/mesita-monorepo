@@ -23,12 +23,12 @@ import {
   Users,
   Bookmark,
   Clock,
-  Tag,
   Tags,
   Link2,
   Car,
   Phone,
   BadgeCheck,
+  ShieldAlert,
   Pencil,
   Info,
   Crown,
@@ -206,6 +206,10 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   // legible matrix instead of seven different chip shapes piled on top.
   const isPartner = venue.listing_type === "partner";
   const googleRating = venue.google.rating.toFixed(1);
+  const igFollowers = formatCount(venue.instagram.followers, false);
+  const statusValue = venue.open_now
+    ? `Open · until ${venue.closes_at}`
+    : `Closed · opens ${venue.opens_at}`;
   return (
     // bg-card-soft is the gradient utility (white → faint pink) — gives
     // the summary card a premium "anchor" feel against the discover
@@ -214,118 +218,79 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
       <h1 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight break-words">
         {venue.name}
       </h1>
-      <div className="grid grid-cols-2 gap-3">
-        <StatCell
-          icon={isPartner ? BadgeCheck : Globe}
-          iconBg={isPartner ? "bg-sky-500/10" : "bg-muted"}
-          iconColor={isPartner ? "text-sky-600" : "text-muted-foreground"}
-          value={isPartner ? "Verified partner" : "Web listing"}
-          sub={isPartner ? "vouched for" : "auto-discovered"}
-        />
-        <StatCell
-          icon={Pencil}
-          iconBg="bg-muted"
-          iconColor="text-muted-foreground"
-          value={`Updated ${venue.last_updated_label}`}
-          sub="freshness"
-        />
-        <StatCell
-          icon={Tag}
-          iconBg="bg-amber-500/10"
-          iconColor="text-amber-600"
-          value={venue.category}
-          sub="category"
-          capitalize
-        />
-        <StatCell
+      <div className="flex flex-wrap items-center gap-2">
+        <OverviewChip capitalize>
+          {venue.category}
+        </OverviewChip>
+        <OverviewChip>{formatPerPersonPrice(venue.price_range)}</OverviewChip>
+        <OverviewChip
           icon={Star}
-          iconBg="bg-amber-500/10"
-          iconColor="text-amber-500"
-          starIcon
-          value={googleRating}
-          sub={`${formatCount(venue.google.count, false)} on Google`}
-        />
-        <StatCell
-          icon={Tags}
-          iconBg="bg-emerald-500/10"
-          iconColor="text-emerald-600"
-          value={venue.price_range}
-          sub="per person"
-        />
-        <StatCell
+          iconClass="text-amber-400 fill-amber-400"
+          iconStrokeWidth={0}
+        >
+          {googleRating}
+          <span className="text-white/70">({formatCount(venue.google.count, false)})</span>
+        </OverviewChip>
+        <OverviewChip icon={Instagram} iconClass="text-pink-200/80">
+          {igFollowers}
+        </OverviewChip>
+        <OverviewChip
           icon={Clock}
-          iconBg={venue.open_now ? "bg-emerald-500/10" : "bg-muted"}
-          iconColor={venue.open_now ? "text-emerald-600" : "text-muted-foreground"}
-          value={venue.open_now ? `Until ${venue.closes_at}` : `Opens ${venue.opens_at}`}
-          sub={venue.open_now ? "open now" : "closed now"}
-        />
-        <StatCell
-          icon={MapPin}
-          iconBg="bg-pink-500/10"
-          iconColor="text-pink-500"
-          value={venue.zone}
-          sub="zone"
-        />
-        <StatCell
-          icon={Navigation}
-          iconBg="bg-sky-500/10"
-          iconColor="text-sky-600"
-          value={`${venue.distance_km} km`}
-          sub="from you"
-        />
+          iconClass={venue.open_now ? "text-emerald-400" : "text-white/70"}
+        >
+          {statusValue}
+        </OverviewChip>
+        <OverviewChip icon={Navigation} iconClass="text-white/70">
+          {venue.distance_km} km
+        </OverviewChip>
+        <OverviewChip icon={MapPin} iconClass="text-white/70">
+          {venue.zone}
+        </OverviewChip>
+        <OverviewChip
+          icon={isPartner ? BadgeCheck : ShieldAlert}
+          iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-300"}
+        >
+          {isPartner ? "Verified Partner" : "Not Verified"}
+        </OverviewChip>
+        <OverviewChip icon={Pencil} iconClass="text-white/70">
+          Updated {venue.last_updated_label}
+        </OverviewChip>
       </div>
     </Box>
   );
 }
 
-// Uniform stat tile for the 8 middle cells of the Summary grid. Icon
-// circle on the left, display-font value + muted sub on the right.
-// `starIcon` swaps the normal stroke for a filled lucide star so the
-// rating cell reads as a graphic, not a glyph.
-function StatCell({
+function OverviewChip({
   icon: Icon,
-  value,
-  sub,
-  capitalize,
-  iconBg,
-  iconColor,
-  starIcon,
+  children,
+  capitalize = false,
+  iconClass,
+  iconStrokeWidth = 2.25,
 }: {
-  icon: LucideIcon;
-  value: string;
-  sub: string;
+  icon?: LucideIcon;
+  children: React.ReactNode;
   capitalize?: boolean;
-  iconBg: string;
-  iconColor: string;
-  starIcon?: boolean;
+  iconClass?: string;
+  iconStrokeWidth?: number;
 }) {
   return (
-    <div className="border-border/40 bg-card/60 flex items-center gap-2.5 rounded-xl border p-2.5">
-      <div
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-          iconBg,
-        )}
-      >
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]",
+        capitalize && "capitalize",
+      )}
+    >
+      {Icon && (
         <Icon
-          className={cn("h-4 w-4", iconColor, starIcon && "fill-current")}
-          strokeWidth={starIcon ? 0 : 2.25}
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p
           className={cn(
-            "font-display text-foreground truncate text-[13px] font-semibold leading-tight",
-            capitalize && "capitalize",
+            "h-4 w-4 shrink-0",
+            iconClass ?? "text-white/80",
           )}
-        >
-          {value}
-        </p>
-        <p className="text-muted-foreground mt-0.5 truncate text-[10px] leading-tight">
-          {sub}
-        </p>
-      </div>
-    </div>
+          strokeWidth={iconStrokeWidth}
+        />
+      )}
+      {children}
+    </span>
   );
 }
 
@@ -1222,4 +1187,10 @@ function formatCount(n: number, exact: boolean): string {
   if (exact && n >= 1000) return n.toLocaleString("en-US");
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+function formatPerPersonPrice(priceRange: string): string {
+  if (!priceRange) return "Price unavailable";
+  if (/per person/i.test(priceRange)) return priceRange;
+  return `${priceRange} per person`;
 }

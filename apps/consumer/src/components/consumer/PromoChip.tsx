@@ -21,8 +21,9 @@ import type { Venue } from "@/lib/api/venues";
 // carry. A Verified Partner MAY also choose not to set a rate. Either way
 // there is no fabricated promo: only a partner with a real, non-zero rate
 // shows a pink ribbon. When there's no reward the chip renders nothing by
-// default, or — if the caller passes `showWhenEmpty` — a muted "No reward
-// for you" pill so the absence is stated rather than silently hidden.
+// default, or — if the caller passes `showWhenEmpty` — a neutral dark
+// "No reward for you" pill so the absence is stated rather than silently
+// hidden.
 //
 // `size` lets the caller pick chip vs body weight:
 //   - "sm" (default) — catalog / saved tile
@@ -34,7 +35,7 @@ export function PromoChip({
 }: {
   venue: Venue;
   size?: "sm" | "md";
-  /** When the venue has no reward, render a muted "No reward for you" pill
+  /** When the venue has no reward, render a neutral "No reward for you" pill
    *  instead of nothing. Off by default so the catalog/saved tile stays
    *  clean; the swipe card opts in to state the absence explicitly. */
   showWhenEmpty?: boolean;
@@ -50,16 +51,16 @@ export function PromoChip({
   const promoPercent = isPartner ? resolvePromoRate(venue, isFirstVisit) : null;
 
   // No reward at the current tier. Hidden by default; when the caller opts
-  // in, the absence is stated with a muted pill rather than vanishing — the
+  // in, the absence is stated with a neutral pill rather than vanishing — the
   // same "mention it" treatment as the venue-detail Reward section.
   if (promoPercent == null) {
     if (!showWhenEmpty) return null;
     return (
       <span
-        className={`border-border bg-muted text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-full border whitespace-nowrap ${sizing}`}
+        className={`inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/35 bg-black/45 whitespace-nowrap text-white ${sizing}`}
       >
         <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
-        <span className="font-semibold">No reward for you</span>
+        <span className="font-semibold">No Reward for You</span>
       </span>
     );
   }
