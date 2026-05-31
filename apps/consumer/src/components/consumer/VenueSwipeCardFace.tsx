@@ -60,6 +60,14 @@ export function VenueSwipeCardFace({
         ) : (
           <PhotoPlaceholder name={venue.name} />
         )}
+
+        {/* Listing-trust badge, Instagram-style, pinned to the top-left
+            corner over the photo (the carousel keeps its dots/mute/counter
+            top-center & top-right, so this corner stays clear). It rides
+            above every carousel photo since it sits outside the gallery. */}
+        <div className="absolute top-3 left-3 z-10">
+          <ListingBadge venue={venue} />
+        </div>
       </div>
 
       {/* Box 2 — the place info, on a white card below the image. */}
@@ -98,12 +106,11 @@ function PhotoPlaceholder({ name }: { name: string }) {
 
 function CardInfo({ venue }: { venue: Venue }) {
   // Light info box: name on top, a single wrap-strip of signal chips below
-  // (category · price · stars · IG · open status · distance · zone · partner
-  // type), then the promo ribbon. Mirrors the venue-detail Overview signals
-  // so the card and detail page stay in sync. Each chip is independently
-  // optional so missing fields disappear cleanly.
-  const isPartner = venue.listing_type === "partner";
-  const partnerLabel = isPartner ? "Verified partner" : "Web listed";
+  // (category · price · stars · IG · open status · distance · zone), then the
+  // reward ribbon. Mirrors the venue-detail Overview signals so the card and
+  // detail page stay in sync. Each chip is independently optional so missing
+  // fields disappear cleanly. (Listing trust — Verified / Web listed — now
+  // lives as a corner badge on the photo, not as a chip here.)
   const priceLevelLabel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   // Rating always renders with exactly one decimal ("4.3", "4.0") so it
@@ -137,9 +144,10 @@ function CardInfo({ venue }: { venue: Venue }) {
 
       {/* One inline-wrap strip carrying every overview signal in a single
           visual flow. Chips wrap naturally. Order: category → price → stars →
-          IG → open status → distance → neighborhood → partner status →
-          promotion. The promo chip keeps the brand pink gradient so the
-          commercial signal stays the loudest pip in the strip. */}
+          IG → open status → distance → neighborhood → reward. The reward chip
+          keeps the brand pink gradient so the commercial signal stays the
+          loudest pip in the strip; when there's no reward it falls back to a
+          muted "No reward for you" pill rather than vanishing. */}
       <div className="flex flex-wrap items-center gap-1.5">
         {venue.category && (
           <MetaChip>
@@ -195,17 +203,36 @@ function CardInfo({ venue }: { venue: Venue }) {
             </span>
           </MetaChip>
         )}
-        <MetaChip>
-          {isPartner ? (
-            <BadgeCheck className="h-3 w-3 shrink-0 text-sky-500" />
-          ) : (
-            <Globe className="text-muted-foreground h-3 w-3 shrink-0" />
-          )}
-          <span className="font-semibold">{partnerLabel}</span>
-        </MetaChip>
-        <PromoChip venue={venue} size="md" />
+        <PromoChip venue={venue} size="md" showWhenEmpty />
       </div>
     </div>
+  );
+}
+
+// Instagram-style listing-trust badge for the photo's top-left corner.
+// Verified Partners get the iconic blue check seal (BadgeCheck filled
+// sky-blue with a white tick); web-listed venues get a neutral globe. This
+// used to be a chip in the info strip — promoting it onto the image makes
+// trust legible at a glance, the way a verified badge reads on a profile.
+function ListingBadge({ venue }: { venue: Venue }) {
+  const isPartner = venue.listing_type === "partner";
+  return (
+    <span className="bg-background/90 inline-flex items-center gap-1 rounded-full py-1 pr-2.5 pl-1.5 text-[11px] font-semibold shadow-sm backdrop-blur">
+      {isPartner ? (
+        <>
+          <BadgeCheck
+            className="h-4 w-4 shrink-0 fill-sky-500 text-white"
+            strokeWidth={2}
+          />
+          <span className="text-foreground">Verified</span>
+        </>
+      ) : (
+        <>
+          <Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+          <span className="text-muted-foreground">Web listed</span>
+        </>
+      )}
+    </span>
   );
 }
 

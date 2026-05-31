@@ -18,9 +18,11 @@ import type { Venue } from "@/lib/api/venues";
 // Rewards are a Verified-Partner-only capability. Web-listed venues never
 // offer rewards — a hard rule the chip enforces by short-circuiting on
 // listing_type, independent of any reward columns the row might still
-// carry. A Verified Partner MAY also choose not to set a rate, in which
-// case the chip renders nothing too. Either way there is no fabricated
-// promo: only a partner with a real, non-zero rate shows a ribbon.
+// carry. A Verified Partner MAY also choose not to set a rate. Either way
+// there is no fabricated promo: only a partner with a real, non-zero rate
+// shows a pink ribbon. When there's no reward the chip renders nothing by
+// default, or — if the caller passes `showWhenEmpty` — a muted "No reward
+// for you" pill so the absence is stated rather than silently hidden.
 //
 // `size` lets the caller pick chip vs body weight:
 //   - "sm" (default) — catalog / saved tile
@@ -28,17 +30,39 @@ import type { Venue } from "@/lib/api/venues";
 export function PromoChip({
   venue,
   size = "sm",
+  showWhenEmpty = false,
 }: {
   venue: Venue;
   size?: "sm" | "md";
+  /** When the venue has no reward, render a muted "No reward for you" pill
+   *  instead of nothing. Off by default so the catalog/saved tile stays
+   *  clean; the swipe card opts in to state the absence explicitly. */
+  showWhenEmpty?: boolean;
 }) {
+  const sizing =
+    size === "md" ? "px-2.5 py-1 text-[11.5px]" : "px-2.5 py-1 text-[10.5px]";
+  const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
+
   // Hard gate: only Verified Partners can offer rewards. Web-listed venues
-  // never show a ribbon, regardless of any reward columns on the row.
-  if (venue.listing_type !== "partner") return null;
+  // never resolve a rate; a Verified Partner may also choose not to set one.
+  const isPartner = venue.listing_type === "partner";
   const isFirstVisit = venue.is_first_visit !== false;
-  const promoPercent = resolvePromoRate(venue, isFirstVisit);
-  // Partner with no rate at the current tier → no ribbon at all.
-  if (promoPercent == null) return null;
+  const promoPercent = isPartner ? resolvePromoRate(venue, isFirstVisit) : null;
+
+  // No reward at the current tier. Hidden by default; when the caller opts
+  // in, the absence is stated with a muted pill rather than vanishing — the
+  // same "mention it" treatment as the venue-detail Reward section.
+  if (promoPercent == null) {
+    if (!showWhenEmpty) return null;
+    return (
+      <span
+        className={`border-border bg-muted text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-full border whitespace-nowrap ${sizing}`}
+      >
+        <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
+        <span className="font-semibold">No reward for you</span>
+      </span>
+    );
+  }
 
   const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
   const tierLabel = tierProperLabel(CURRENT_USER.tier);
@@ -47,10 +71,6 @@ export function PromoChip({
     venue.reward_cap_mxn != null
       ? `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`
       : null;
-
-  const sizing =
-    size === "md" ? "px-2.5 py-1 text-[11.5px]" : "px-2.5 py-1 text-[10.5px]";
-  const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
 
   return (
     <span
