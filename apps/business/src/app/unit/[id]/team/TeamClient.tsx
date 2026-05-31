@@ -101,9 +101,8 @@ export function TeamClient({
   const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
     (inv) => inv.role !== "viewer",
   );
-  const pendingPrChannelInvites = snapshot.pendingWaiterInvites;
   const waiterCount = snapshot.waiters.length;
-  const prCount = snapshot.waiters.length;
+  const prCount = snapshot.waiters.length + mockPrInstagrams.length;
 
   // Wrap any mutating action in the shared busy/error/refresh frame.
   async function runAction(
@@ -294,12 +293,12 @@ export function TeamClient({
         <TeamStatPill
           label="Waiters"
           value={waiterCount}
-          hint={`${snapshot.pendingWaiterInvites.length} pending`}
+          hint={`${waiterCount} active`}
         />
         <TeamStatPill
           label="PR channels"
           value={prCount}
-          hint={`${pendingPrChannelInvites.length} pending`}
+          hint={`${prCount} active`}
         />
       </div>
 
@@ -448,7 +447,6 @@ export function TeamClient({
         )}
 
         {snapshot.waiters.length === 0 &&
-        snapshot.pendingWaiterInvites.length === 0 &&
         inviteOpen !== "waiter" ? (
           <EmptyState
             icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
@@ -501,37 +499,6 @@ export function TeamClient({
           </ul>
         )}
 
-        {snapshot.pendingWaiterInvites.length > 0 && (
-          <PendingGroup>
-            {snapshot.pendingWaiterInvites.map((inv) => (
-              <PendingRow
-                key={inv.id}
-                icon={<ChannelIcon channel={inv.channel} />}
-                title={inv.phone ?? "Link only (no phone)"}
-                titleClassName="font-mono"
-                subtitle={`via ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · expires ${formatRelative(inv.expiresAt)}`}
-              >
-                <CopyButton
-                  text={buildAcceptUrl(inv.token, "waiter")}
-                  label="Copy invite link"
-                />
-                {inv.phone && (
-                  <PingButton
-                    busy={busy === `ping-${inv.phone}`}
-                    onClick={() => handleTestPing(inv.channel, inv.phone!)}
-                  />
-                )}
-                <RemoveButton
-                  busy={busy === `remove-${inv.id}`}
-                  label="Revoke invite"
-                  onClick={() =>
-                    handleRemove(inv.id, "waiterInvite", "Revoke this invite?")
-                  }
-                />
-              </PendingRow>
-            ))}
-          </PendingGroup>
-        )}
       </Section>
 
       {/* ── PRs ──────────────────────────────────────────────────── */}
@@ -557,7 +524,6 @@ export function TeamClient({
         )}
 
         {snapshot.waiters.length === 0 &&
-        pendingPrChannelInvites.length === 0 &&
         mockPrInstagrams.length === 0 &&
         inviteOpen !== "pr" ? (
           <EmptyState
@@ -644,37 +610,6 @@ export function TeamClient({
               </ul>
             )}
 
-            {pendingPrChannelInvites.length > 0 && (
-              <PendingGroup>
-                {pendingPrChannelInvites.map((inv) => (
-                  <PendingRow
-                    key={inv.id}
-                    icon={<ChannelIcon channel={inv.channel} />}
-                    title={inv.phone ?? `${inv.channel} link`}
-                    titleClassName="font-mono"
-                    subtitle={`via ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · expires ${formatRelative(inv.expiresAt)}`}
-                  >
-                    <CopyButton
-                      text={buildAcceptUrl(inv.token, "waiter")}
-                      label="Copy invite link"
-                    />
-                    {isOwner && (
-                      <RemoveButton
-                        busy={busy === `remove-${inv.id}`}
-                        label="Revoke WhatsApp invite"
-                        onClick={() =>
-                          handleRemove(
-                            inv.id,
-                            "waiterInvite",
-                            "Revoke this invite?",
-                          )
-                        }
-                      />
-                    )}
-                  </PendingRow>
-                ))}
-              </PendingGroup>
-            )}
           </>
         )}
       </Section>
@@ -1080,7 +1015,7 @@ function WaiterInviteForm({
             ) : (
               <Send className="h-3 w-3" />
             )}
-            Create invite
+            Add
           </button>
           <button
             type="button"

@@ -529,15 +529,21 @@ function BasicsSection({
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   // Keep identity + about copy together as requested.
+  const aboutLabel = `About ${v.name.trim() || "Venue"}`;
   return (
     <Section title="Basics">
       <Field label="Name" required>
-        <input
-          value={v.name}
-          onChange={(e) => set("name", e.target.value)}
-          maxLength={VENUE_NAME_MAX}
-          className={INPUT}
-        />
+        <div className="flex flex-col gap-1.5">
+          <input
+            value={v.name}
+            readOnly
+            maxLength={VENUE_NAME_MAX}
+            className={cn(INPUT, "bg-muted/35 text-foreground/85")}
+          />
+          <p className="text-muted-foreground text-[11px]">
+            Inferred from Google. This field cannot be changed here.
+          </p>
+        </div>
       </Field>
 
       <Field label="Category">
@@ -551,7 +557,7 @@ function BasicsSection({
 
       <PriceLevelDisplay level={venue.price_level} />
 
-      <Field label="About + Venue name">
+      <Field label={aboutLabel}>
         <textarea
           value={v.description}
           onChange={(e) => set("description", e.target.value)}
