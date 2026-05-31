@@ -14,7 +14,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/consumer/VenueSwipeCardFace";
-import { ReservationSheet } from "@/components/consumer/ReservationSheet";
 import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn, haversineKm } from "@/lib/utils";
 import { useUserLocation, type Coords } from "@/lib/use-user-location";
@@ -60,7 +59,6 @@ function Deck({ venues }: { venues: Venue[] }) {
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [reserveOpen, setReserveOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
@@ -332,8 +330,10 @@ function Deck({ venues }: { venues: Venue[] }) {
 
         {/* Five actions, Filter first. Tightened to text-xs + gap-1 so all
             five fit one row on a phone; Filter/Skip/Info read as neutral
-            chrome, Save (soft pink) and Reserve (solid pink) as the positive
-            actions. Filter opens the discovery filter sheet. */}
+            chrome, Save (soft pink) is the positive action. Reserve is
+            parked while booking ships — rendered disabled + muted (the row
+            is too tight for a "Soon" tag; the detail page CTA carries it).
+            Filter opens the discovery filter sheet. */}
         <div className="mt-3 flex items-center gap-1.5">
           <button
             type="button"
@@ -365,20 +365,15 @@ function Deck({ venues }: { venues: Venue[] }) {
           </button>
           <button
             type="button"
-            onClick={() => setReserveOpen(true)}
-            className="bg-pink-gradient shadow-glow flex h-12 flex-1 items-center justify-center gap-1 rounded-full text-xs font-semibold whitespace-nowrap text-white"
+            disabled
+            aria-disabled="true"
+            className="border-border bg-muted text-muted-foreground flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap"
           >
             <CalendarCheck className="h-4 w-4" /> Reserve
           </button>
         </div>
       </div>
 
-      <ReservationSheet
-        venueId={v.id}
-        venueName={v.name}
-        open={reserveOpen}
-        onClose={() => setReserveOpen(false)}
-      />
       <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} />
     </div>
   );

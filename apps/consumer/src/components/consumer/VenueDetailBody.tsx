@@ -1145,21 +1145,19 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
 //     store. Place-only since the "byebye coupons-as-entity" checkpoint:
 //     saving no longer mints a coupon as a side effect. Toast confirms;
 //     tap "View" to jump to /saved.
-//   • Reserve table — opens the ReservationSheet via onReserve. Also
-//     silently ensures the venue is saved so the bookmark sticks if the
-//     user reserves without an explicit Save tap. No toast — implicit
-//     side-effect the user would find confusing to confirm explicitly.
+//   • Reserve table — parked while the booking flow ships. Rendered
+//     disabled + muted so the action bar still reads complete, but it
+//     opens nothing (the ReservationSheet wiring was removed). Un-park by
+//     restoring an onReserve handler when reservations go live.
 export function VenueDetailActionBar({
   venueId,
   venueName,
-  onReserve,
 }: {
   venueId: string;
   venueName: string;
-  onReserve: () => void;
 }) {
   const router = useRouter();
-  const { isSaved, toggle, setSaved } = useSavedVenues();
+  const { isSaved, toggle } = useSavedVenues();
   const saved = isSaved(venueId);
 
   function onSavePlace() {
@@ -1174,16 +1172,6 @@ export function VenueDetailActionBar({
     } else {
       toast(`Removed ${venueName} from saved`);
     }
-  }
-
-  function onReserveTable() {
-    // Silently save the venue if it isn't already — the bookmark sticks
-    // so the user can find this place later from /saved without an
-    // extra explicit Save tap. No toast: the user's mental model is
-    // "I'm reserving", saving is an implicit side-effect they'd find
-    // confusing to confirm explicitly.
-    if (!saved) setSaved(venueId, true);
-    onReserve();
   }
 
   return (
@@ -1205,13 +1193,21 @@ export function VenueDetailActionBar({
         />
         {saved ? "Saved" : "Save place"}
       </button>
+      {/* Parked: reservations aren't live yet, so this is a disabled,
+          muted CTA (no onClick, cursor-not-allowed) sitting beside the
+          live Save button. The "Soon" tag tells the user it's upcoming
+          rather than broken. */}
       <button
         type="button"
-        onClick={onReserveTable}
-        className="bg-pink-gradient shadow-glow inline-flex flex-1 items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99]"
+        disabled
+        aria-disabled="true"
+        className="border-border bg-muted text-muted-foreground inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full border py-3 text-sm font-semibold"
       >
         <CalendarCheck className="h-4 w-4" strokeWidth={2} />
         Reserve table
+        <span className="bg-foreground/10 text-muted-foreground rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+          Soon
+        </span>
       </button>
     </div>
   );

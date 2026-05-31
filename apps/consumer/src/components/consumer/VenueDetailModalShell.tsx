@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Share2, Bookmark } from "lucide-react";
 import { VenueDetailActionBar } from "./VenueDetailBody";
-import { ReservationSheet } from "./ReservationSheet";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -34,17 +33,14 @@ export function VenueDetailModalShell({
   const router = useRouter();
   const { isSaved, toggle } = useSavedVenues();
   const saved = isSaved(venueId);
-  const [reserveOpen, setReserveOpen] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      // Reservation sheet owns its own Escape handler, so only dismiss
-      // the venue modal when the sheet isn't open.
-      if (e.key === "Escape" && !reserveOpen) router.back();
+      if (e.key === "Escape") router.back();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [router, reserveOpen]);
+  }, [router]);
 
   function onShare() {
     const shareData = {
@@ -140,17 +136,7 @@ export function VenueDetailModalShell({
         the modal header and the (mis-pinned) section nav.
       */}
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-      <VenueDetailActionBar
-        venueId={venueId}
-        venueName={venueName}
-        onReserve={() => setReserveOpen(true)}
-      />
-      <ReservationSheet
-        venueId={venueId}
-        venueName={venueName}
-        open={reserveOpen}
-        onClose={() => setReserveOpen(false)}
-      />
+      <VenueDetailActionBar venueId={venueId} venueName={venueName} />
     </div>
   );
 }
