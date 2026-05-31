@@ -103,6 +103,8 @@
   );
   --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.4);
   --shadow-elev: 0 25px 60px -15px oklch(0.18 0.06 15 / 0.18);
+  --swipe-card-panel: oklch(0.52 0.14 250);
+  --swipe-card-panel-foreground: oklch(0.99 0.005 250);
 
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -236,6 +238,10 @@
   }
   .shadow-elev {
     box-shadow: var(--shadow-elev);
+  }
+  .bg-swipe-panel {
+    background-color: var(--swipe-card-panel);
+    color: var(--swipe-card-panel-foreground);
   }
   .text-gold {
     color: var(--tier-gold);

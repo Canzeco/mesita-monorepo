@@ -9,6 +9,10 @@ type MediaItem =
   | { type: "image"; src: string }
   | { type: "video"; src: string; poster?: string };
 
+export type CarouselMediaItem = MediaItem;
+
+const TRANSFORM_PAGE_MS = 500;
+
 export function ImageCarousel({
   photos,
   media,
@@ -19,7 +23,13 @@ export function ImageCarousel({
   sizes = "(max-width: 768px) 100vw, 420px",
   mutePosition = "bottom-right",
   noNativeScroll = false,
+  objectFit = "cover",
   onIdxChange,
+  onIdxSettled,
+  onImageNaturalSize,
+  hideSlides = false,
+  className,
+  renderSlide,
 }: {
   photos: string[];
   media?: MediaItem[];
@@ -29,6 +39,7 @@ export function ImageCarousel({
   priority?: boolean;
   sizes?: string;
   mutePosition?: "bottom-right" | "top-right";
+  objectFit?: "cover" | "contain";
   /**
    * When true, the inner track uses CSS transform paging instead of
    * native overflow-x scrolling. Required when this carousel sits inside
@@ -42,6 +53,17 @@ export function ImageCarousel({
    * carousel position (e.g. fade out an overlay past the first photo).
    */
   onIdxChange?: (idx: number) => void;
+  onIdxSettled?: (idx: number) => void;
+  /** Reports natural pixel size once a slide's image finishes loading. */
+  onImageNaturalSize?: (
+    idx: number,
+    size: { width: number; height: number },
+  ) => void;
+  /** Invisible slides — keeps paging + indicators while visuals live elsewhere. */
+  hideSlides?: boolean;
+  className?: string;
+  /** Replaces the default full-bleed slide when the parent owns layout (e.g. swipe card). */
+  renderSlide?: (idx: number, item: MediaItem) => React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -54,13 +76,17 @@ export function ImageCarousel({
       : photos.map((src) => ({ type: "image" as const, src }));
 
   const hasVideo = items.some((m) => m.type === "video");
+  const fitClass =
+    objectFit === "contain" ? "object-contain" : "object-cover";
 
-  // Surface idx changes upward so a parent (e.g. VenueSwipeCardFace) can
-  // react to the active photo — used to hide the info overlay past the
-  // first slide.
+  // Surface idx immediately for indicators; defer chrome/layout reactions until
+  // the slide transform finishes so wide/tall chrome does not flip mid-transition.
   useEffect(() => {
     onIdxChange?.(idx);
-  }, [idx, onIdxChange]);
+    if (!noNativeScroll || !onIdxSettled) return;
+    const t = window.setTimeout(() => onIdxSettled(idx), TRANSFORM_PAGE_MS);
+    return () => window.clearTimeout(t);
+  }, [idx, onIdxChange, onIdxSettled, noNativeScroll]);
 
   const goTo = (i: number) => {
     if (noNativeScroll) {
@@ -132,7 +158,9 @@ export function ImageCarousel({
   }, [idx, muted]);
 
   return (
-    <div className={cn("relative w-full overflow-hidden", aspect, rounded)}>
+    <div
+      className={cn("relative w-full overflow-hidden", aspect, rounded, className)}
+    >
       <div
         ref={ref}
         onScroll={
@@ -161,7 +189,9 @@ export function ImageCarousel({
             key={`${m.src}-${i}`}
             className="relative h-full w-full flex-shrink-0 snap-center"
           >
-            {m.type === "video" ? (
+            {renderSlide ? (
+              renderSlide(i, m)
+            ) : m.type === "video" ? (
               <video
                 ref={(el) => {
                   videoRefs.current[i] = el;
@@ -173,7 +203,7 @@ export function ImageCarousel({
                 loop
                 playsInline
                 preload="metadata"
-                className="h-full w-full object-cover"
+                className={cn("h-full w-full", fitClass, hideSlides && "opacity-0")}
               />
             ) : (
               <Image
@@ -192,7 +222,20 @@ export function ImageCarousel({
                       : "lazy"
                 }
                 draggable={false}
-                className="object-cover select-none [-webkit-user-drag:none]"
+                onLoad={(event) => {
+                  const img = event.currentTarget;
+                  if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                    onImageNaturalSize?.(i, {
+                      width: img.naturalWidth,
+                      height: img.naturalHeight,
+                    });
+                  }
+                }}
+                className={cn(
+                  fitClass,
+                  hideSlides && "opacity-0",
+                  "select-none [-webkit-user-drag:none]",
+                )}
               />
             )}
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   X,
@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { VenueSwipeCardFace } from "@/components/consumer/VenueSwipeCardFace";
+import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
 import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn, haversineKm } from "@/lib/utils";
 import { useUserLocation, type Coords } from "@/lib/use-user-location";
@@ -22,6 +23,7 @@ import type { Venue } from "@/lib/api/venues";
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
 const MIN_FLICK_DISTANCE = 16;
+const EXIT_ANIMATION_MS = 300;
 const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
 const TUTORIAL_AUTO_DISMISS_MS = 5500;
 
@@ -60,9 +62,50 @@ function Deck({ venues }: { venues: Venue[] }) {
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const cardElRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
   const lockedRef = useRef<null | "swipe" | "ignore">(null);
+  const draggingRef = useRef(false);
+  const dragXRef = useRef(0);
+  const exitingRef = useRef<null | "left" | "right">(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const advanceTimerRef = useRef<number | null>(null);
+
+  const syncDragX = useCallback((x: number) => {
+    dragXRef.current = x;
+    setDragX(x);
+  }, []);
+
+  const releaseCapture = useCallback(
+    (el: HTMLElement | null, pointerId: number | null) => {
+      if (!el || pointerId == null) return;
+      try {
+        if (el.hasPointerCapture(pointerId)) {
+          el.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // Some browsers throw if capture was already released.
+      }
+    },
+    [],
+  );
+
+  const resetGesture = useCallback(() => {
+    draggingRef.current = false;
+    dragXRef.current = 0;
+    lockedRef.current = null;
+    activePointerIdRef.current = null;
+    setDragging(false);
+    setDragX(0);
+  }, []);
+
+  const clearAdvanceTimer = useCallback(() => {
+    if (advanceTimerRef.current != null) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  }, []);
 
   // First-visit gesture hint. Persisted in localStorage so it shows
   // exactly once per browser. Dismissed on first swipe or after a
@@ -108,53 +151,130 @@ function Deck({ venues }: { venues: Venue[] }) {
   const v = exhausted ? null : located[idx];
   const next = idx + 1 < located.length ? located[idx + 1] : null;
 
-  const advance = () => {
+  const advance = useCallback(() => {
+    clearAdvanceTimer();
+    exitingRef.current = null;
+    resetGesture();
     setIdx((i) => i + 1);
-    setDragX(0);
     setExiting(null);
-  };
+  }, [clearAdvanceTimer, resetGesture]);
 
-  // Defensive reset whenever the visible card changes. Refs that lingered
-  // across an advance (locked, capture, drag offset) were a plausible
-  // source of "the next card doesn't accept gestures" reports.
+  const beginExit = useCallback(
+    (dir: "left" | "right") => {
+      if (exitingRef.current) return;
+      releaseCapture(cardElRef.current, activePointerIdRef.current);
+      exitingRef.current = dir;
+      resetGesture();
+      setExiting(dir);
+    },
+    [releaseCapture, resetGesture],
+  );
+
+  const finishPointerGesture = useCallback(
+    (el: HTMLElement | null, pointerId: number | null) => {
+      if (!draggingRef.current) return;
+      if (
+        pointerId != null &&
+        activePointerIdRef.current != null &&
+        pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+
+      releaseCapture(el, pointerId);
+
+      if (exitingRef.current) {
+        resetGesture();
+        return;
+      }
+
+      const dx = dragXRef.current;
+
+      if (lockedRef.current === "swipe") {
+        const now = performance.now();
+        const dt = Math.max(1, now - lastRef.current.t);
+        const recentDx = lastRef.current.x - startRef.current.x;
+        const totalDt = Math.max(1, now - startRef.current.t);
+        const velocity = recentDx / totalDt;
+        const isFlick =
+          Math.abs(velocity) >= SWIPE_VELOCITY &&
+          Math.abs(dx) >= MIN_FLICK_DISTANCE &&
+          dt < 250;
+
+        if (Math.abs(dx) > SWIPE_THRESHOLD || isFlick) {
+          const dir =
+            (Math.abs(velocity) > 0.05 ? velocity : dx) > 0 ? "right" : "left";
+          beginExit(dir);
+          return;
+        }
+      }
+
+      resetGesture();
+    },
+    [beginExit, releaseCapture, resetGesture],
+  );
+
+  // Defensive reset whenever the visible card changes. Lingering pointer /
+  // exit state was leaving the next card unable to accept gestures.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDragX(0);
-    setDragging(false);
-    lockedRef.current = null;
-  }, [idx]);
+    clearAdvanceTimer();
+    exitingRef.current = null;
+    resetGesture();
+    setExiting(null);
+  }, [idx, clearAdvanceTimer, resetGesture]);
 
   const restart = () => {
+    clearAdvanceTimer();
+    exitingRef.current = null;
+    resetGesture();
     setIdx(0);
-    setDragX(0);
     setExiting(null);
-    lockedRef.current = null;
   };
+
+  // Carousel photo taps call stopPropagation on pointerup, which prevents
+  // the card from seeing the event in the bubble phase. Capture on window
+  // runs first so deck drag state always clears when the pointer lifts.
+  useEffect(() => {
+    const onGlobalPointerEnd = (e: PointerEvent) => {
+      if (!draggingRef.current) return;
+      finishPointerGesture(cardElRef.current, e.pointerId);
+    };
+    window.addEventListener("pointerup", onGlobalPointerEnd, true);
+    window.addEventListener("pointercancel", onGlobalPointerEnd, true);
+    return () => {
+      window.removeEventListener("pointerup", onGlobalPointerEnd, true);
+      window.removeEventListener("pointercancel", onGlobalPointerEnd, true);
+    };
+  }, [finishPointerGesture]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("[data-no-swipe]")) return;
-    if (exiting) return;
+    if (exitingRef.current) return;
     const t = performance.now();
     startRef.current = { x: e.clientX, y: e.clientY, t };
     lastRef.current = { x: e.clientX, t };
-    setDragging(true);
+    activePointerIdRef.current = e.pointerId;
+    draggingRef.current = true;
+    dragXRef.current = 0;
     lockedRef.current = null;
+    setDragging(true);
+    setDragX(0);
     dismissTutorial();
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragging) return;
+    if (!draggingRef.current) return;
+    if (
+      activePointerIdRef.current != null &&
+      e.pointerId !== activePointerIdRef.current
+    ) {
+      return;
+    }
     const dx = e.clientX - startRef.current.x;
     const dy = e.clientY - startRef.current.y;
     if (lockedRef.current == null) {
       const adx = Math.abs(dx);
       const ady = Math.abs(dy);
-      // Wait for one axis to clearly dominate before locking. The old
-      // "lock on first 6px crossing to whichever is bigger" logic
-      // poisoned natural thumb-arc swipes into "ignore" forever the
-      // moment dy briefly led at the start. Now horizontal locks fast
-      // (low threshold, mild dominance) while vertical only locks on a
-      // clearer, larger commit — so brief jitters don't kill the swipe.
       if (adx > 8 && adx > ady * 1.1) {
         lockedRef.current = "swipe";
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -163,49 +283,36 @@ function Deck({ venues }: { venues: Venue[] }) {
       }
     }
     if (lockedRef.current === "swipe") {
-      setDragX(dx);
+      syncDragX(dx);
       lastRef.current = { x: e.clientX, t: performance.now() };
     }
   };
 
-  const onPointerUp = () => {
-    if (!dragging) return;
-    setDragging(false);
-    if (lockedRef.current === "swipe") {
-      const now = performance.now();
-      const dt = Math.max(1, now - lastRef.current.t);
-      const recentDx = lastRef.current.x - startRef.current.x;
-      const totalDt = Math.max(1, now - startRef.current.t);
-      const velocity = recentDx / totalDt;
-      const isFlick =
-        Math.abs(velocity) >= SWIPE_VELOCITY &&
-        Math.abs(dragX) >= MIN_FLICK_DISTANCE &&
-        dt < 250;
-      if (Math.abs(dragX) > SWIPE_THRESHOLD || isFlick) {
-        const dir =
-          (Math.abs(velocity) > 0.05 ? velocity : dragX) > 0 ? "right" : "left";
-        setExiting(dir);
-      } else {
-        setDragX(0);
-      }
-    } else {
-      setDragX(0);
-    }
-    lockedRef.current = null;
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    finishPointerGesture(e.currentTarget, e.pointerId);
   };
 
-  const onLostPointerCapture = () => {
-    if (!dragging) return;
-    setDragging(false);
-    setDragX(0);
-    lockedRef.current = null;
+  const onLostPointerCapture = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (
+      activePointerIdRef.current != null &&
+      e.pointerId !== activePointerIdRef.current
+    ) {
+      return;
+    }
+    finishPointerGesture(e.currentTarget, e.pointerId);
   };
 
   useEffect(() => {
     if (!exiting) return;
-    const t = window.setTimeout(advance, 260);
-    return () => window.clearTimeout(t);
-  }, [exiting]);
+    clearAdvanceTimer();
+    advanceTimerRef.current = window.setTimeout(() => {
+      advanceTimerRef.current = null;
+      advance();
+    }, EXIT_ANIMATION_MS);
+    return clearAdvanceTimer;
+  }, [exiting, advance, clearAdvanceTimer]);
+
+  useEffect(() => () => clearAdvanceTimer(), [clearAdvanceTimer]);
 
   const exitOffset = exiting === "right" ? 600 : exiting === "left" ? -600 : 0;
   const visibleOffset = exiting ? exitOffset : dragX;
@@ -217,8 +324,8 @@ function Deck({ venues }: { venues: Venue[] }) {
   const backOffsetY = 14 - 14 * progress;
   const backOpacity = 0.7 + 0.3 * progress;
 
-  const skip = () => setExiting("left");
-  const save = () => setExiting("right");
+  const skip = () => beginExit("left");
+  const save = () => beginExit("right");
 
   if (exhausted || !v) {
     return <ExhaustedDeck onRestart={restart} />;
@@ -227,11 +334,14 @@ function Deck({ venues }: { venues: Venue[] }) {
   return (
     <div className="relative flex h-full flex-col">
       <div className="flex flex-1 flex-col px-3 pt-2 pb-3">
-        <div className="relative flex-1">
+        <div className={cn("relative flex-1", SWIPE_CARD_CLIP)}>
           {next && (
             <div
               key={`back-${next.id}-${idx}`}
-              className="pointer-events-none absolute inset-0 transition-[transform,opacity] duration-300 ease-out"
+              className={cn(
+                "pointer-events-none absolute inset-0 transition-[transform,opacity] duration-300 ease-out",
+                SWIPE_CARD_CLIP,
+              )}
               style={{
                 transform: `translate3d(0, ${backOffsetY}px, 0) scale(${backScale})`,
                 opacity: backOpacity,
@@ -243,6 +353,7 @@ function Deck({ venues }: { venues: Venue[] }) {
           )}
 
           <div
+            ref={cardElRef}
             key={v.id}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -257,6 +368,7 @@ function Deck({ venues }: { venues: Venue[] }) {
             onDragStart={(e) => e.preventDefault()}
             className={cn(
               "absolute inset-0 touch-none select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]",
+              SWIPE_CARD_CLIP,
               !dragging &&
                 "transition-[transform,opacity] duration-300 ease-out",
               isSwiping && "cursor-grabbing",
