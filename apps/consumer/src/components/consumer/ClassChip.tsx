@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Crown, Instagram, CreditCard, Smile } from "lucide-react";
+import { Crown, Instagram, Smile } from "lucide-react";
 import { TIERS, tierBadgeClass } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
 
 // Top-right header chip — tier-colored avatar. For Premium it shows HOW the
-// member earned it (Instagram or subscription icon; crown for invitation /
-// default Premium); Free shows the Mesita Free smile. Tap routes to the
+// member earned it (Instagram icon; crown for subscription/invitation/default
+// Premium); Free shows the Mesita Free smile. Tap routes to the
 // Profile Plan tab. Rendered inline by DiscoverHeader and through
 // SimpleHeader elsewhere.
 
@@ -31,8 +31,6 @@ export function ClassChip({ size = "md" }: { size?: "sm" | "md" }) {
         <Smile className={iconCls} />
       ) : origin === "instagram" ? (
         <Instagram className={iconCls} />
-      ) : origin === "subscription" ? (
-        <CreditCard className={iconCls} />
       ) : (
         <Crown className={cn("fill-current", iconCls)} />
       )}

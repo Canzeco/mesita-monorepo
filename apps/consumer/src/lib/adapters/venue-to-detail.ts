@@ -341,7 +341,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
       str(arr<Record<string, unknown>>(row.popular_times)[0]?.day) ?? "",
 
     details: {
-      category_full: str(row.category) ?? "",
+      category_full: str(row.category_label) ?? str(row.category) ?? "",
       zone: str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? "",
       dining_style: str(details.dining_style) ?? "",
       dress_code: str(details.dress_code) ?? "",

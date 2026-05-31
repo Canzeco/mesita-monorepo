@@ -9,24 +9,26 @@ import {
   Megaphone,
   Briefcase,
   Star,
+  UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Top header (SimpleHeader title="Share Mesita") is owned by the shell
+// Top header (SimpleHeader title="Invite") is owned by the shell
 // layout via TopBar — see src/components/consumer/TopBar.tsx.
 //
 // The body is exported separately as `ShareBody` so the Profile page
 // can mount it as its "Share" sub-tab without duplicating the
 // Friends/Restaurants/Others tab logic (the "byebye coupons-as-entity"
 // checkpoint folded Share + Coupons into Profile sub-tabs while
-// keeping the standalone /share + /coupons routes reachable).
+// keeping the standalone /invite route primary while /share stays as
+// a deep-link alias).
 
 type Tab = "friends" | "restaurants" | "others";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "friends", label: "Friends" },
-  { id: "restaurants", label: "Restaurants" },
+  { id: "restaurants", label: "Restaurantes" },
   { id: "others", label: "Others" },
 ];
 
@@ -64,17 +66,6 @@ export function ShareBody() {
         {tab === "restaurants" && <RestaurantsTab />}
         {tab === "others" && <OthersTab />}
       </div>
-    </div>
-  );
-}
-
-function FeatureCard({ title, sub }: { title: string; sub: string }) {
-  return (
-    <div className="border-border bg-card rounded-2xl border p-3.5">
-      <p className="text-sm leading-tight font-semibold">{title}</p>
-      <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-        {sub}
-      </p>
     </div>
   );
 }
@@ -324,6 +315,7 @@ type PartnerGroup = {
   icon: LucideIcon;
   iconBg: string;
   body: string;
+  websiteUrl: string;
 };
 
 const OTHER_GROUPS: PartnerGroup[] = [
@@ -334,6 +326,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     iconBg: "bg-pink-gradient text-white",
     body:
       "Create content about travel, food, nightlife or lifestyle? You just found a gold mine. 20% of Mesita's equity is reserved for creators. Let's partner.",
+    websiteUrl: "https://www.mesita.ai",
   },
   {
     id: "agencies",
@@ -342,6 +335,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     iconBg: "bg-sky-500 text-white",
     body:
       "Do you manage marketing for restaurants or bars? Add Mesita to your stack.",
+    websiteUrl: "https://www.mesita.ai",
   },
   {
     id: "models",
@@ -350,8 +344,107 @@ const OTHER_GROUPS: PartnerGroup[] = [
     iconBg: "bg-tier-premium text-white",
     body:
       "Our partner venues want your talent in the room to enhance the ambience. Make all your talent Mesita Premium, for free, no tricks.",
+    websiteUrl: "https://www.mesita.ai",
   },
 ];
+
+const RESTAURANTS_GROUP: PartnerGroup = {
+  id: "restaurants",
+  title: "Restaurants & bars",
+  icon: UtensilsCrossed,
+  iconBg: "bg-pink-gradient text-white",
+  body:
+    "More customers from priority placement on swipe, map, and catalog. Better customers with higher spend and repeat visits. Setup takes ~8 minutes in any browser.",
+};
+
+function RestaurantsTab() {
+  const group = RESTAURANTS_GROUP;
+  const Icon = group.icon;
+  const websiteUrl = "https://www.mesita.ai";
+  const contactMailto =
+    "mailto:partners@mesita.ai?subject=" +
+    encodeURIComponent(`Mesita: ${group.title}`);
+  const [inviteFlash, setInviteFlash] = useState<null | "shared" | "copied">(
+    null,
+  );
+  const onInvite = async () => {
+    const share = {
+      title: "Mesita for restaurants",
+      text: "I think you'd love Mesita — setup is ~8 min and free to start.",
+      url: websiteUrl,
+    };
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(share);
+        setInviteFlash("shared");
+        window.setTimeout(() => setInviteFlash(null), 1600);
+        return;
+      } catch {
+        // fall through to clipboard copy
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${share.text} ${share.url}`);
+      setInviteFlash("copied");
+      window.setTimeout(() => setInviteFlash(null), 1600);
+    } catch {
+      // clipboard unavailable — keep idle
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-[13px] leading-relaxed">
+        Know someone who runs a restaurant, bar, nightclub, cafe, or lounge?
+      </p>
+      <section className="border-border bg-card rounded-2xl border p-4">
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
+              group.iconBg,
+            )}
+          >
+            <Icon className="h-5 w-5" />
+          </span>
+          <h3 className="font-display text-[15px] font-bold tracking-tight">
+            {group.title}
+          </h3>
+        </div>
+        <p className="text-muted-foreground mt-3 text-[13px] leading-relaxed">
+          {group.body}
+        </p>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <a
+            href={websiteUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[12.5px] font-semibold transition"
+          >
+            Website
+          </a>
+          <button
+            type="button"
+            onClick={onInvite}
+            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[12.5px] font-semibold transition"
+          >
+            {inviteFlash === "shared"
+              ? "Shared"
+              : inviteFlash === "copied"
+                ? "Copied"
+                : "Invite"}
+          </button>
+          <a
+            href={contactMailto}
+            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[12.5px] font-semibold transition"
+          >
+            Contact
+          </a>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 function OthersTab() {
   return (
@@ -389,63 +482,23 @@ function PartnerCard({ group: g }: { group: PartnerGroup }) {
       <p className="text-muted-foreground mt-3 text-[13px] leading-relaxed">
         {g.body}
       </p>
-      <a
-        href={mailto}
-        className="border-border bg-card text-foreground hover:bg-muted mt-4 flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-[13px] font-semibold transition"
-      >
-        Contact
-        <ChevronRight className="h-4 w-4" />
-      </a>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <a
+          href={g.websiteUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[13px] font-semibold transition"
+        >
+          Website
+        </a>
+        <a
+          href={mailto}
+          className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-[13px] font-semibold transition"
+        >
+          Contact
+          <ChevronRight className="h-4 w-4" />
+        </a>
+      </div>
     </section>
-  );
-}
-
-function RestaurantsTab() {
-  return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="font-display text-3xl leading-tight font-semibold tracking-tight">
-          Know someone who runs a restaurant or bar?
-        </h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Invite them to set up on Mesita — free, ~8 min.
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        <FeatureCard
-          title="More customers"
-          sub="Priority placement on swipe, map, catalog, AI planner."
-        />
-        <FeatureCard
-          title="Better customers"
-          sub="Socially-magnetic, higher-spend, repeat consumers."
-        />
-        <FeatureCard
-          title="Instagram Stories"
-          sub="Each visit becomes organic reach, AI-verified."
-        />
-        <FeatureCard
-          title="Easier reservations"
-          sub="AI books through your existing channel — no new tools."
-        />
-        <FeatureCard
-          title="Marketing intelligence"
-          sub="Influenced spend, repeat rate, ROAS in one dashboard."
-        />
-        <FeatureCard
-          title="Setup in 8 minutes"
-          sub="All from a browser — no app, no hardware, no POS."
-        />
-      </div>
-      <UrlField url="www.mesita.ai" />
-      <PrimaryCta
-        label="Send invitation"
-        share={{
-          title: "Mesita for restaurants",
-          text: "I think you'd love Mesita — setup is ~8 min and free to start.",
-          url: "https://www.mesita.ai",
-        }}
-      />
-    </div>
   );
 }

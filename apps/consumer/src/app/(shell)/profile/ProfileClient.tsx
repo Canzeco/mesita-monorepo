@@ -9,7 +9,7 @@ import {
   Check,
   BadgeCheck,
   Crown,
-  Gift,
+  Share2,
   Smile,
   User as UserIcon,
   CreditCard,
@@ -27,8 +27,9 @@ import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
-// Three-tab Profile. Share is folded in as a sub-tab; the standalone
-// /share route stays alive (deep links). The Coupons tab was removed —
+// Three-tab Profile. Invite is folded in as a sub-tab; the standalone
+// /invite route is primary and /share stays as a legacy deep link alias.
+// The Coupons tab was removed —
 // coupons are "hidden" (users save the place, redeem a QR at the venue),
 // so the wallet surface didn't earn its spot in the Profile.
 type Tab = "plan" | "settings";
@@ -446,7 +447,7 @@ function CurrentClassCard() {
       case "instagram":
         return { Icon: Instagram, via: "via Instagram" };
       case "subscription":
-        return { Icon: CreditCard, via: "via subscription" };
+        return { Icon: Crown, via: "via subscription" };
       case "invitation":
         return { Icon: Crown, via: "via invitation" };
       default:
@@ -469,10 +470,14 @@ function CurrentClassCard() {
         <Icon className="h-5 w-5" />
       </span>
       <div className="min-w-0">
-        <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
+        <h2 className="font-display [text-shadow:0_1px_6px_rgba(0,0,0,0.35)] text-2xl leading-tight font-semibold tracking-tight">
           {brand}
         </h2>
-        {via && <p className="text-[11px] leading-snug opacity-90">{via}</p>}
+        {via && (
+          <p className="[text-shadow:0_1px_4px_rgba(0,0,0,0.3)] text-[11px] leading-snug opacity-100">
+            {via}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -529,11 +534,11 @@ function SettingsTab() {
       {/* Invite — promoted out of the bottom tab bar into Profile. Kept
           prominent (pink-gradient card) since it's a growth surface. */}
       <Link
-        href="/share"
+        href="/invite"
         className="bg-pink-gradient shadow-glow flex items-center gap-3 rounded-2xl p-4 text-white transition hover:opacity-95"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
-          <Gift className="h-5 w-5" />
+          <Share2 className="h-5 w-5" />
         </span>
         <span className="flex-1">
           <span className="block text-sm font-semibold">Invite friends</span>

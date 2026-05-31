@@ -21,8 +21,8 @@ import { DiscoverHeader } from "./DiscoverHeader";
 //   /saved         SimpleHeader title="My Saved Places"
 //   /pay           SimpleHeader title="Pay & Post"
 //   /reservations  SimpleHeader title="My Reservations"
-//   /share         SimpleHeader title="Share Mesita" (Profile > Share is
-//                  the primary entry)
+//   /invite        SimpleHeader title="Invite" (primary entry)
+//   /share         legacy deep-link alias to the same Invite surface
 //   /profile       SimpleHeader title=<first name + last name>
 //   everything     null — Subscribe / Venue pages ship their own
 //     else         back-arrow chrome and opt out by not matching.
@@ -31,15 +31,15 @@ export function TopBar({ userName }: { userName?: string | null }) {
 
   if (pathname.startsWith("/discover")) return <DiscoverHeader />;
   if (pathname.startsWith("/saved")) {
-    return <SimpleHeader title="Saved" />;
+    return <SimpleHeader title="Saved" rightAction="invite-and-class" />;
   }
   if (pathname.startsWith("/reservations")) {
     return <SimpleHeader title="My Reservations" />;
   }
   if (pathname.startsWith("/pay")) {
-    return <SimpleHeader title="Pay" />;
+    return <SimpleHeader title="Pay" rightAction="invite-and-class" />;
   }
-  if (pathname.startsWith("/share")) {
+  if (pathname.startsWith("/invite") || pathname.startsWith("/share")) {
     return <SimpleHeader title="Invite" />;
   }
   if (pathname.startsWith("/profile")) {
@@ -47,7 +47,12 @@ export function TopBar({ userName }: { userName?: string | null }) {
     // Layout passes the prop after fetching the consumer profile —
     // falls back to the literal "Profile" if the name isn't available
     // (legacy rows without first/last set, or the EF failed).
-    return <SimpleHeader title={userName?.trim() || "Profile"} />;
+    return (
+      <SimpleHeader
+        title={userName?.trim() || "Profile"}
+        rightAction="invite-and-class"
+      />
+    );
   }
   return null;
 }

@@ -30,7 +30,7 @@ export function VenueCatalogCard({
   href?: string | null;
 }) {
   const photo = venue.photos[0];
-  const category = venue.category?.toLowerCase() ?? null;
+  const category = venue.category_label ?? venue.category ?? null;
   const priceLevel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const ratingLabel =
@@ -67,7 +67,7 @@ export function VenueCatalogCard({
           {(subtitleParts.length > 0 || ratingLabel || distanceLabel) && (
             <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-[11.5px]">
               {subtitleParts.length > 0 && (
-                <span className="capitalize">{subtitleParts.join(" · ")}</span>
+                <span>{subtitleParts.join(" · ")}</span>
               )}
               {ratingLabel && (
                 <span className="inline-flex items-center gap-1">

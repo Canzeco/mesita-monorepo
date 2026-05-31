@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Share2 } from "lucide-react";
 import { ClassChip } from "./ClassChip";
 import { MesitaMark } from "./MesitaMark";
 
@@ -14,22 +15,55 @@ import { MesitaMark } from "./MesitaMark";
 // pill bar, etc.) drops in here without breaking the column model.
 // `h-16` (64px) is shared with DiscoverHeader so the body band gets a
 // consistent reservation across every route.
-export function SimpleHeader({ title }: { title: string }) {
+export function SimpleHeader({
+  title,
+  rightAction = "class",
+}: {
+  title: string;
+  rightAction?: "class" | "invite" | "invite-and-class";
+}) {
+  const doubleRight = rightAction === "invite-and-class";
   return (
     <header className="border-border flex h-16 shrink-0 items-center gap-3 border-b px-4">
-      <Link
-        href="/profile"
-        className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
-        aria-label="Mesita — profile"
-      >
-        <MesitaMark className="h-full w-full" />
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link
+          href="/profile"
+          className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
+          aria-label="Mesita — profile"
+        >
+          <MesitaMark className="h-full w-full" />
+        </Link>
+        {doubleRight && (
+          <span aria-hidden className="h-10 w-10 shrink-0 opacity-0" />
+        )}
+      </div>
       <div className="flex min-w-0 flex-1 items-center justify-center">
         <h1 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
           {title}
         </h1>
       </div>
-      <ClassChip />
+      {rightAction === "invite-and-class" ? (
+        <div className="flex items-center gap-2">
+          <Link
+            href="/invite"
+            aria-label="Invite friends"
+            className="bg-pink-gradient shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white transition hover:opacity-95 active:scale-[0.98]"
+          >
+            <Share2 className="h-5 w-5" />
+          </Link>
+          <ClassChip />
+        </div>
+      ) : rightAction === "invite" ? (
+        <Link
+          href="/invite"
+          aria-label="Invite friends"
+          className="bg-pink-gradient shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white transition hover:opacity-95 active:scale-[0.98]"
+        >
+          <Share2 className="h-5 w-5" />
+        </Link>
+      ) : (
+        <ClassChip />
+      )}
     </header>
   );
 }

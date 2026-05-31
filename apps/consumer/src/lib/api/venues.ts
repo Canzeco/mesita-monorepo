@@ -31,6 +31,7 @@ export type Venue = {
   slug: string;
   name: string;
   category: string | null;
+  category_label?: string | null;
   vibe: string | null;
   price_level: number | null;
   // ISO 4217 code from public.venues.currency (default "MXN"). Every

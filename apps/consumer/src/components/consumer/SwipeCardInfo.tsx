@@ -32,6 +32,7 @@ export function SwipeCardInfo({
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const zoneLabel = resolveZoneLabel(venue);
   const zoneDisplay = zoneLabel ?? "Neighborhood";
+  const categoryLabel = venue.category_label ?? venue.category;
   const igFollowersLabel = formatFollowers(venue.instagram_followers_count);
   const statusLabel = getOpeningStatusLabel(venue);
   const isOpen = venue.open_now === true;
@@ -54,11 +55,9 @@ export function SwipeCardInfo({
       </h2>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        {venue.category && (
+        {categoryLabel && (
           <MetaChip>
-            <span className="font-semibold capitalize">
-              {venue.category.toLowerCase()}
-            </span>
+            <span className="font-semibold">{categoryLabel}</span>
           </MetaChip>
         )}
         {priceLevelLabel && (

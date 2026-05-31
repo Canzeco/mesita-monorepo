@@ -87,9 +87,9 @@
     oklch(0.72 0.02 250)
   );
   --gradient-premium: linear-gradient(
-    135deg,
-    oklch(0.92 0.1 200),
-    oklch(0.7 0.16 280)
+    to right,
+    oklch(0.62 0.18 292),
+    oklch(0.83 0.12 252)
   );
   --gradient-card: linear-gradient(
     180deg,
