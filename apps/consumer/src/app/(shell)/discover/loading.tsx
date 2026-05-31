@@ -8,12 +8,12 @@ import { Loader2 } from "lucide-react";
 // only this fallback swaps in for the page body until streaming
 // completes.
 //
-// Absolute-positioned for the same reason as (shell)/loading.tsx: a
-// flow-positioned flex-1 would briefly displace BottomNav during the
-// children unmount/remount cycle on mobile Safari.
+// Full-height flex centering inside the discover body region keeps the
+// spinner exactly centered in the visible content area while tabs stay
+// mounted above.
 export default function DiscoverLoading() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center">
+    <div className="flex h-full min-h-0 w-full items-center justify-center">
       <Loader2
         className="text-muted-foreground h-5 w-5 animate-spin"
         aria-label="Loading"
