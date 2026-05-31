@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Check,
   Copy,
   Crown,
+  Instagram,
   Loader2,
   Mail,
   MessageCircle,
@@ -51,6 +52,16 @@ const MANAGER_ROLE_CHOICES: BusinessRole[] = ["owner", "editor"];
 
 type InviteOpen = null | "manager" | "waiter" | "pr";
 
+// In-app confirmation, replacing native window.confirm so destructive
+// actions get a styled dialog instead of the browser's gray box.
+type ConfirmState = {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  tone: "default" | "destructive";
+  onConfirm: () => void;
+};
+
 export function TeamClient({
   venueId,
   currentUserId,
@@ -68,6 +79,9 @@ export function TeamClient({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState<InviteOpen>(null);
+  const [mockPrInstagrams, setMockPrInstagrams] = useState<string[]>([]);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -87,9 +101,9 @@ export function TeamClient({
   const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
     (inv) => inv.role !== "viewer",
   );
-  const pendingPrWhatsappInvites = snapshot.pendingWaiterInvites.filter(
-    (inv) => inv.channel === "whatsapp",
-  );
+  const pendingPrChannelInvites = snapshot.pendingWaiterInvites;
+  const waiterCount = snapshot.waiters.length;
+  const prCount = snapshot.waiters.length;
 
   // Wrap any mutating action in the shared busy/error/refresh frame.
   async function runAction(
@@ -99,6 +113,7 @@ export function TeamClient({
   ) {
     setBusy(key);
     setError(null);
+    setNotice(null);
     try {
       await fn();
       await refresh();
@@ -124,20 +139,34 @@ export function TeamClient({
       "Couldn't send that manager invite.",
     );
 
-  const handleInvitePr = (phone: string) =>
-    runAction(
+  const handleInvitePr = (
+    channel: "whatsapp" | "sms" | "instagram",
+    value: string,
+  ) => {
+    if (channel === "instagram") {
+      const raw = value.trim();
+      if (!raw) return;
+      const normalized = `@${raw.replace(/^@+/, "")}`;
+      setMockPrInstagrams((prev) =>
+        prev.includes(normalized) ? prev : [...prev, normalized],
+      );
+      setInviteOpen(null);
+      return;
+    }
+    return runAction(
       "invite-pr",
       async () => {
         await apiInviteWaiter(supabase, {
           venueId,
-          channel: "whatsapp",
-          phone: phone || undefined,
+          channel,
+          phone: value || undefined,
           redirectBase: window.location.origin,
         });
         setInviteOpen(null);
       },
-      "Couldn't connect that PR WhatsApp.",
+      `Couldn't connect that PR ${channel === "whatsapp" ? "WhatsApp" : "SMS"}.`,
     );
+  };
 
   const handleInviteWaiter = (channel: "whatsapp" | "sms", phone: string) =>
     runAction(
@@ -161,13 +190,18 @@ export function TeamClient({
     name: string,
   ) => {
     if (role === currentRole) return;
-    const message = `Change ${name}'s role from ${ROLE_LABEL[currentRole]} to ${ROLE_LABEL[role]}?`;
-    if (!window.confirm(message)) return;
-    return runAction(
-      `role-${memberId}`,
-      () => apiUpdateMemberRole(supabase, { memberId, role }),
-      "Couldn't change that role.",
-    );
+    setConfirmState({
+      title: "Change role",
+      body: `Change ${name}'s role from ${ROLE_LABEL[currentRole]} to ${ROLE_LABEL[role]}?`,
+      confirmLabel: "Change role",
+      tone: "default",
+      onConfirm: () =>
+        runAction(
+          `role-${memberId}`,
+          () => apiUpdateMemberRole(supabase, { memberId, role }),
+          "Couldn't change that role.",
+        ),
+    });
   };
 
   const handleRemoveEditor = (
@@ -175,50 +209,99 @@ export function TeamClient({
     name: string,
     isSelf: boolean,
   ) => {
-    const message = isSelf
-      ? "Leave this venue?"
-      : `Remove ${name} from this venue?`;
-    if (!window.confirm(message)) return;
-    return runAction(
-      `remove-${memberId}`,
-      () => apiRemoveMember(supabase, { id: memberId, kind: "editor" }),
-      "Couldn't remove that member.",
-    );
+    setConfirmState({
+      title: isSelf ? "Leave venue" : "Remove member",
+      body: isSelf
+        ? "Leave this venue? You'll lose dashboard access."
+        : `Remove ${name} from this venue? They'll lose dashboard access.`,
+      confirmLabel: isSelf ? "Leave" : "Remove",
+      tone: "destructive",
+      onConfirm: () =>
+        runAction(
+          `remove-${memberId}`,
+          () => apiRemoveMember(supabase, { id: memberId, kind: "editor" }),
+          "Couldn't remove that member.",
+        ),
+    });
   };
 
   const handleRemove = (id: string, kind: RemoveKind, confirmText: string) => {
-    if (!window.confirm(confirmText)) return;
-    return runAction(
-      `remove-${id}`,
-      () => apiRemoveMember(supabase, { id, kind }),
-      "Couldn't remove that entry.",
-    );
+    const isRevoke = /^revoke/i.test(confirmText);
+    setConfirmState({
+      title: isRevoke ? "Revoke invite" : "Remove",
+      body: confirmText,
+      confirmLabel: isRevoke ? "Revoke" : "Remove",
+      tone: "destructive",
+      onConfirm: () =>
+        runAction(
+          `remove-${id}`,
+          () => apiRemoveMember(supabase, { id, kind }),
+          "Couldn't remove that entry.",
+        ),
+    });
   };
 
   const handleTestPing = (channel: "whatsapp" | "sms", phone: string) => {
     const label = channel === "whatsapp" ? "WhatsApp" : "SMS";
-    if (!window.confirm(`Send a test ${label} message to ${phone}?`)) return;
-    return runAction(
-      `ping-${phone}`,
-      async () => {
-        const res = await apiTestWaiterChannel(supabase, {
-          venueId,
-          channel,
-          phone,
-        });
-        window.alert(
-          res.mock
-            ? `Test ping queued — ${res.note}`
-            : `Test ${res.channel} sent to ${res.to}.`,
-        );
-      },
-      "Couldn't send a test ping.",
-    );
+    setConfirmState({
+      title: "Send test message",
+      body: `Send a test ${label} message to ${phone}?`,
+      confirmLabel: "Send",
+      tone: "default",
+      onConfirm: () =>
+        runAction(
+          `ping-${phone}`,
+          async () => {
+            const res = await apiTestWaiterChannel(supabase, {
+              venueId,
+              channel,
+              phone,
+            });
+            setNotice(
+              res.mock
+                ? `Test ping queued — ${res.note}`
+                : `Test ${res.channel} sent to ${res.to}.`,
+            );
+          },
+          "Couldn't send a test ping.",
+        ),
+    });
   };
 
   return (
     <div className="flex flex-col gap-6">
       {error && <div className={ERROR_BOX_CLASS}>{error}</div>}
+      {notice && <div className={INFO_BOX_CLASS}>{notice}</div>}
+
+      {confirmState && (
+        <ConfirmDialog
+          {...confirmState}
+          onCancel={() => setConfirmState(null)}
+          onConfirm={() => {
+            const run = confirmState.onConfirm;
+            setConfirmState(null);
+            run();
+          }}
+        />
+      )}
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <TeamStatPill
+          label="Managers"
+          value={managers.length}
+          hint={`${pendingManagerInvites.length} pending`}
+        />
+        <TeamStatPill
+          label="Waiters"
+          value={waiterCount}
+          hint={`${snapshot.pendingWaiterInvites.length} pending`}
+        />
+        <TeamStatPill
+          label="PR channels"
+          value={prCount}
+          hint={`${pendingPrChannelInvites.length} pending`}
+        />
+      </div>
 
       {/* ── Managers ─────────────────────────────────────────────── */}
       <Section
@@ -251,7 +334,10 @@ export function TeamClient({
         ) : (
           <ul className="divide-border/60 divide-y">
             {managers.map((m) => (
-              <li key={m.memberId} className="flex items-center gap-3 py-2.5">
+              <li
+                key={m.memberId}
+                className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
+              >
                 <Avatar
                   initial={initialOf(m.fullName, m.email)}
                   tint="bg-pink-gradient"
@@ -345,7 +431,7 @@ export function TeamClient({
         description="Floor team that validates tickets from their phone."
         right={
           <InviteButton
-            label="Invite waiter"
+            label="Add waiter"
             open={inviteOpen === "waiter"}
             onClick={() =>
               setInviteOpen(inviteOpen === "waiter" ? null : "waiter")
@@ -357,6 +443,7 @@ export function TeamClient({
           <WaiterInviteForm
             busy={busy === "invite-waiter"}
             onSubmit={handleInviteWaiter}
+            onPing={handleTestPing}
           />
         )}
 
@@ -367,7 +454,7 @@ export function TeamClient({
             icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
             title="No waiters yet"
             description="Invite your floor staff so they can validate tickets from their own phone."
-            className="border-none bg-transparent p-6"
+            className="border-border/60 bg-muted/20 rounded-xl border p-7"
           />
         ) : snapshot.waiters.length === 0 ? (
           <p className="text-muted-foreground text-sm">No waiters yet.</p>
@@ -376,7 +463,7 @@ export function TeamClient({
             {snapshot.waiters.map((w) => (
               <li
                 key={`${w.userId}:${venueId}`}
-                className="flex items-center gap-3 py-2.5"
+                className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
               >
                 <Avatar
                   initial={(w.phone ?? "?").slice(-2)}
@@ -450,11 +537,11 @@ export function TeamClient({
       {/* ── PRs ──────────────────────────────────────────────────── */}
       <Section
         title="PRs"
-        description="Connect the WhatsApp numbers that handle reservations."
+        description="Connect WhatsApp, SMS, or Instagram PR channels that handle reservations."
         right={
           isOwner && (
             <InviteButton
-              label="Connect WhatsApp"
+              label="Add WhatsApp"
               open={inviteOpen === "pr"}
               onClick={() => setInviteOpen(inviteOpen === "pr" ? null : "pr")}
             />
@@ -462,16 +549,25 @@ export function TeamClient({
         }
       >
         {inviteOpen === "pr" && (
-          <PrWhatsAppForm
+          <PrChannelForm
             busy={busy === "invite-pr"}
             onSubmit={handleInvitePr}
+            onPing={handleTestPing}
           />
         )}
 
         {snapshot.waiters.length === 0 &&
-        pendingPrWhatsappInvites.length === 0 &&
+        pendingPrChannelInvites.length === 0 &&
+        mockPrInstagrams.length === 0 &&
         inviteOpen !== "pr" ? (
-          <p className="text-muted-foreground text-sm">No PR WhatsApps yet.</p>
+          <EmptyState
+            icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
+            title="No PRs yet"
+            description="Connect PR WhatsApp numbers so they can handle reservations from their phone."
+            className="border-border/60 bg-muted/20 rounded-xl border p-7"
+          />
+        ) : snapshot.waiters.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No PRs yet.</p>
         ) : (
           <>
             {snapshot.waiters.length > 0 && (
@@ -479,7 +575,7 @@ export function TeamClient({
                 {snapshot.waiters.map((w) => (
                   <li
                     key={`${w.userId}:${venueId}:pr`}
-                    className="flex items-center gap-3 py-2.5"
+                    className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
                   >
                     <Avatar
                       initial={(w.phone ?? "?").slice(-2)}
@@ -490,7 +586,7 @@ export function TeamClient({
                         {w.phone ?? "—"}
                       </p>
                       <p className="text-muted-foreground text-[11px]">
-                        Connected {formatRelative(w.createdAt)}
+                        Joined {formatRelative(w.createdAt)}
                       </p>
                     </div>
                     {w.phone && (
@@ -517,15 +613,46 @@ export function TeamClient({
               </ul>
             )}
 
-            {pendingPrWhatsappInvites.length > 0 && (
+            {mockPrInstagrams.length > 0 && (
+              <ul className="divide-border/60 divide-y">
+                {mockPrInstagrams.map((handle) => (
+                  <li
+                    key={`pr-ig-${handle}`}
+                    className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
+                  >
+                    <Avatar initial={handle.slice(1, 2)} tint="bg-pink-gradient" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold">{handle}</p>
+                      <p className="text-muted-foreground text-[11px]">
+                        Instagram PR (mock for now)
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
+                      <Instagram className="h-3 w-3" />
+                      Instagram
+                    </span>
+                    <RemoveButton
+                      busy={false}
+                      hidden={!isOwner}
+                      label={`Remove ${handle}`}
+                      onClick={() =>
+                        setMockPrInstagrams((prev) => prev.filter((x) => x !== handle))
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {pendingPrChannelInvites.length > 0 && (
               <PendingGroup>
-                {pendingPrWhatsappInvites.map((inv) => (
+                {pendingPrChannelInvites.map((inv) => (
                   <PendingRow
                     key={inv.id}
-                    icon={<ChannelIcon channel="whatsapp" />}
-                    title={inv.phone ?? "WhatsApp link"}
+                    icon={<ChannelIcon channel={inv.channel} />}
+                    title={inv.phone ?? `${inv.channel} link`}
                     titleClassName="font-mono"
-                    subtitle={`PR WhatsApp invite · expires ${formatRelative(inv.expiresAt)}`}
+                    subtitle={`via ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · expires ${formatRelative(inv.expiresAt)}`}
                   >
                     <CopyButton
                       text={buildAcceptUrl(inv.token, "waiter")}
@@ -550,10 +677,6 @@ export function TeamClient({
             )}
           </>
         )}
-
-        <p className={cn(INFO_BOX_CLASS, "mt-2")}>
-          AI PR can be added here later as an additional assistant seat.
-        </p>
       </Section>
 
       <p className={cn(INFO_BOX_CLASS, "text-center")}>
@@ -566,6 +689,64 @@ export function TeamClient({
 
 // ── Sub-components ───────────────────────────────────────────────────
 
+// Styled replacement for window.confirm — backdrop + card, Escape and
+// backdrop-click both cancel. Destructive actions get a red confirm button.
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  tone,
+  onConfirm,
+  onCancel,
+}: ConfirmState & { onCancel: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+    >
+      <div
+        className="border-border bg-card w-full max-w-sm rounded-2xl border p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-display text-lg font-semibold tracking-tight">
+          {title}
+        </h2>
+        <p className="text-muted-foreground mt-1.5 text-sm">{body}</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center rounded-full border px-4 text-[13px] font-semibold transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            autoFocus
+            onClick={onConfirm}
+            className={cn(
+              "inline-flex h-10 items-center rounded-full px-5 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90",
+              tone === "destructive" ? "bg-destructive" : "bg-pink-gradient",
+            )}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InviteButton({
   open,
   onClick,
@@ -576,7 +757,17 @@ function InviteButton({
   label: string;
 }) {
   return (
-    <button type="button" onClick={onClick} className={PILL_BUTTON_CLASS}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        PILL_BUTTON_CLASS,
+        "shadow-sm",
+        open
+          ? "bg-muted text-foreground hover:bg-muted/80"
+          : "bg-pink-gradient text-white hover:opacity-90",
+      )}
+    >
       {open ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
       {open ? "Cancel" : label}
     </button>
@@ -587,7 +778,7 @@ function InviteButton({
 // Used identically by both Editors and Waiters sections.
 function PendingGroup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-border/60 flex flex-col gap-2 border-t pt-3">
+    <div className="border-border/60 mt-1 flex flex-col gap-2 border-t pt-3">
       <p className={TINY_LABEL_CLASS}>Pending invites</p>
       <ul className="flex flex-col gap-2">{children}</ul>
     </div>
@@ -608,7 +799,7 @@ function PendingRow({
   children: React.ReactNode;
 }) {
   return (
-    <li className="bg-muted/40 flex items-center gap-3 rounded-xl px-3 py-2">
+    <li className="bg-muted/25 border-border/50 flex items-center gap-3 rounded-xl border px-3 py-2.5">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center">
         {icon}
       </span>
@@ -688,42 +879,118 @@ function EditorInviteForm({
   );
 }
 
-function PrWhatsAppForm({
+function PrChannelForm({
   busy,
   onSubmit,
+  onPing,
 }: {
   busy: boolean;
-  onSubmit: (phone: string) => void | Promise<void>;
+  onSubmit: (
+    channel: "whatsapp" | "sms" | "instagram",
+    value: string,
+  ) => void | Promise<void>;
+  onPing: (channel: "whatsapp" | "sms", phone: string) => void | Promise<void>;
 }) {
-  const [phone, setPhone] = useState("");
+  const [channel, setChannel] = useState<"whatsapp" | "sms" | "instagram">(
+    "whatsapp",
+  );
+  const [value, setValue] = useState("");
   return (
     <form
-      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
+      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3"
       onSubmit={(e) => {
         e.preventDefault();
-        const trimmed = phone.trim();
+        const trimmed = value.trim();
         if (!trimmed) return;
-        onSubmit(trimmed);
+        onSubmit(channel, trimmed);
       }}
     >
-      <PhonePicker
-        value={phone}
-        onChange={setPhone}
-        placeholder="33 1234 5678"
-        className="flex-1"
-      />
-      <button
-        type="submit"
-        disabled={busy || phone.trim().length === 0}
-        className={cn(PILL_BUTTON_CLASS, "px-4 py-2 disabled:opacity-50")}
-      >
-        {busy ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
+      <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="border-border bg-background flex items-center overflow-hidden rounded-full border p-0.5 text-[12px] font-semibold">
+          {(["whatsapp", "sms", "instagram"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setChannel(c)}
+              className={cn(
+                "inline-flex min-w-[98px] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition",
+                channel === c
+                  ? c === "whatsapp"
+                    ? "bg-whatsapp text-white shadow-sm"
+                    : c === "sms"
+                      ? "bg-sky-600 text-white shadow-sm"
+                      : "bg-pink-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {c === "whatsapp" ? (
+                <MessageCircle className="h-3.5 w-3.5" />
+              ) : c === "sms" ? (
+                <PhoneIcon className="h-3.5 w-3.5" />
+              ) : (
+                <Instagram className="h-3.5 w-3.5" />
+              )}
+              {c === "whatsapp"
+                ? "WhatsApp"
+                : c === "sms"
+                  ? "SMS"
+                  : "Instagram"}
+            </button>
+          ))}
+        </div>
+        {channel === "instagram" ? (
+          <div className="border-border bg-background flex w-full min-w-0 items-center gap-2 rounded-full border px-3 py-2 lg:flex-1">
+            <Instagram className="text-muted-foreground h-4 w-4" />
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="@yourprhandle"
+              className="w-full bg-transparent text-[13px] outline-none"
+              spellCheck={false}
+              autoCapitalize="none"
+            />
+          </div>
         ) : (
-          <Send className="h-3 w-3" />
+          <PhonePicker
+            value={value}
+            onChange={setValue}
+            placeholder="33 1234 5678"
+            className="w-full min-w-0 lg:flex-1"
+          />
         )}
-        Connect WhatsApp
-      </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="submit"
+          disabled={busy || value.trim().length === 0}
+          className={cn(PILL_BUTTON_CLASS, "shrink-0 px-4 py-2 disabled:opacity-50")}
+        >
+          {busy ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Send className="h-3 w-3" />
+          )}
+          Connect{" "}
+          {channel === "whatsapp"
+            ? "WhatsApp"
+            : channel === "sms"
+              ? "SMS"
+              : "Instagram"}
+        </button>
+        {channel !== "instagram" && (
+          <button
+            type="button"
+            disabled={busy || value.trim().length === 0}
+            onClick={() => onPing(channel, value.trim())}
+            className={cn(
+              "border-border bg-background text-foreground inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition hover:bg-muted disabled:opacity-50",
+            )}
+          >
+            <Send className="h-3.5 w-3.5" />
+            Ping
+          </button>
+        )}
+      </div>
     </form>
   );
 }
@@ -731,12 +998,14 @@ function PrWhatsAppForm({
 function WaiterInviteForm({
   busy,
   onSubmit,
+  onPing,
 }: {
   busy: boolean;
   onSubmit: (
     channel: "whatsapp" | "sms",
     phone: string,
   ) => void | Promise<void>;
+  onPing: (channel: "whatsapp" | "sms", phone: string) => void | Promise<void>;
 }) {
   const [channel, setChannel] = useState<"whatsapp" | "sms">("whatsapp");
   const [phone, setPhone] = useState("");
@@ -767,49 +1036,62 @@ function WaiterInviteForm({
         </span>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="border-border bg-background flex items-center overflow-hidden rounded-full border p-0.5 text-[12px] font-semibold">
-          {(["whatsapp", "sms"] as const).map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setChannel(c)}
-              className={cn(
-                "inline-flex min-w-[108px] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition",
-                channel === c
-                  ? c === "whatsapp"
-                    ? "bg-whatsapp text-white shadow-sm"
-                    : "bg-sky-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {c === "whatsapp" ? (
-                <MessageCircle className="h-3.5 w-3.5" />
-              ) : (
-                <PhoneIcon className="h-3.5 w-3.5" />
-              )}
-              {c === "whatsapp" ? "WhatsApp" : "SMS"}
-            </button>
-          ))}
+      <div className="flex w-full flex-col gap-3">
+        <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="border-border bg-background flex items-center overflow-hidden rounded-full border p-0.5 text-[12px] font-semibold">
+            {(["whatsapp", "sms"] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setChannel(c)}
+                className={cn(
+                  "inline-flex min-w-[108px] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition",
+                  channel === c
+                    ? c === "whatsapp"
+                      ? "bg-whatsapp text-white shadow-sm"
+                      : "bg-sky-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {c === "whatsapp" ? (
+                  <MessageCircle className="h-3.5 w-3.5" />
+                ) : (
+                  <PhoneIcon className="h-3.5 w-3.5" />
+                )}
+                {c === "whatsapp" ? "WhatsApp" : "SMS"}
+              </button>
+            ))}
+          </div>
+          <PhonePicker
+            value={phone}
+            onChange={setPhone}
+            placeholder="33 1234 5678 (optional)"
+            className="w-full min-w-0 lg:flex-1"
+          />
         </div>
-        <PhonePicker
-          value={phone}
-          onChange={setPhone}
-          placeholder="33 1234 5678 (optional)"
-          className="flex-1"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className={cn(PILL_BUTTON_CLASS, "px-4 py-2 disabled:opacity-50")}
-        >
-          {busy ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Send className="h-3 w-3" />
-          )}
-          Create invite
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            disabled={busy}
+            className={cn(PILL_BUTTON_CLASS, "shrink-0 px-4 py-2 disabled:opacity-50")}
+          >
+            {busy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Send className="h-3 w-3" />
+            )}
+            Create invite
+          </button>
+          <button
+            type="button"
+            disabled={busy || phone.trim().length === 0}
+            onClick={() => onPing(channel, phone.trim())}
+            className="border-border bg-background text-foreground inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition hover:bg-muted disabled:opacity-50"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Ping
+          </button>
+        </div>
       </div>
       <p className="text-muted-foreground text-[11px]">
         {channel === "whatsapp"
@@ -930,13 +1212,33 @@ function Avatar({ initial, tint }: { initial: string; tint: string }) {
   return (
     <span
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold uppercase",
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[11px] font-bold uppercase shadow-sm",
         tint,
         tint.includes("gradient") && "text-white",
       )}
     >
       {initial.trim() || "·"}
     </span>
+  );
+}
+
+function TeamStatPill({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+}) {
+  return (
+    <div className="border-border bg-card rounded-xl border px-3 py-2.5">
+      <p className={TINY_LABEL_CLASS}>{label}</p>
+      <div className="mt-1 flex items-baseline justify-between gap-2">
+        <p className="font-display text-xl font-semibold tracking-tight">{value}</p>
+        <p className="text-muted-foreground text-[11px]">{hint}</p>
+      </div>
+    </div>
   );
 }
 

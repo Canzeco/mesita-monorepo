@@ -32,7 +32,6 @@ import {
   Users,
   BadgeCheck,
   ShieldAlert,
-  ChevronUp,
   CheckCircle2,
   AlertTriangle,
   Cloud,
@@ -46,7 +45,6 @@ import {
   type UpdateVenueInput,
   type VenueHours,
 } from "@/lib/api/venues";
-import { visibilityForPlan } from "@/lib/business/plans";
 import { Field, GoogleLogo, InstagramLogo, Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import {
@@ -66,6 +64,7 @@ import {
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 type HoursRange = { open: string; close: string };
 type DayShifts = { ranges: HoursRange[]; closed: boolean };
+type MenuEntry = { name: string; url: string };
 
 const DAYS: { key: DayKey; label: string; long: keyof VenueHours }[] = [
   { key: "mon", label: "Mon", long: "monday" },
@@ -84,8 +83,7 @@ type FormState = {
   category: string;
   description: string;
   hours: Record<DayKey, DayShifts>;
-  menu_pdf_url: string;
-  menu_pdf_name: string;
+  menu_links: MenuEntry[];
   photos: string[];
   tags: string[];
   phone: string;
@@ -122,7 +120,7 @@ const PRICE_TIER_LABEL: Record<number, string> = {
 
 const SAVED_TOAST_MS = 2200;
 const VENUE_NAME_MAX = 120;
-const DESCRIPTION_MAX = 600;
+const DESCRIPTION_MAX = 2000;
 const TAG_MAX = 40;
 const MAX_PHOTOS = 10;
 
@@ -252,8 +250,9 @@ function venueToFormState(venue: MyVenue): FormState {
     category: venue.category ?? "",
     description: venue.description ?? "",
     hours: venueHoursToForm(venue.hours),
-    menu_pdf_url: venue.menu_pdf_url ?? "",
-    menu_pdf_name: venue.menu_pdf_name ?? "",
+    menu_links: venue.menu_pdf_url
+      ? [{ name: venue.menu_pdf_name ?? "", url: venue.menu_pdf_url }]
+      : [{ name: "", url: "" }],
     photos: (venue.photos ?? []).slice(0, MAX_PHOTOS),
     tags: venue.tags ?? [],
     phone: venue.phone ?? "",
@@ -286,6 +285,8 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [atlasMockRunning, setAtlasMockRunning] = useState(false);
+  const [atlasMockNotice, setAtlasMockNotice] = useState<string | null>(null);
   // Dirty when the user has touched any field since the last save (or
   // since Discard reset). Drives whether the SaveBar shows at all —
   // when clean, the form has no save chrome cluttering the page.
@@ -305,6 +306,18 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
     setSaved(false);
   };
 
+  const handleMockAtlasRefresh = () => {
+    if (atlasMockRunning) return;
+    setAtlasMockNotice(null);
+    setAtlasMockRunning(true);
+    window.setTimeout(() => {
+      setAtlasMockRunning(false);
+      setAtlasMockNotice(
+        "Mock only: Atlas profile refresh queued. Real function wiring next.",
+      );
+    }, 950);
+  };
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -316,6 +329,10 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       return;
     }
 
+    const firstMenu =
+      v.menu_links.find((m) => m.url.trim() !== "") ??
+      v.menu_links[0] ?? { name: "", url: "" };
+
     const payload: UpdateVenueInput = {
       id: venue.id,
       name: trimmedName.slice(0, VENUE_NAME_MAX),
@@ -325,8 +342,8 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           ? null
           : v.description.trim().slice(0, DESCRIPTION_MAX),
       hours: formHoursToVenue(v.hours),
-      menu_pdf_url: nullableUrl(v.menu_pdf_url),
-      menu_pdf_name: nullable(v.menu_pdf_name),
+      menu_pdf_url: nullableUrl(firstMenu.url),
+      menu_pdf_name: nullable(firstMenu.name),
       photos: v.photos.slice(0, MAX_PHOTOS),
       tags: v.tags
         .map((t) => t.trim().toLowerCase().slice(0, TAG_MAX))
@@ -376,9 +393,6 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         <div className="col-span-full">
           <ProfileCompletionBar v={v} />
         </div>
-        <div className="col-span-full">
-          <MesitaVisibilityBar plan={venue.plan} />
-        </div>
         <PreviewSection venue={venue} v={v} />
         <BasicsSection venue={venue} v={v} set={set} />
         <ReviewsSummarySection venue={venue} />
@@ -399,6 +413,36 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           venueName={v.name}
           onError={setError}
         />
+
+        <div className="col-span-full">
+          <div className="border-border bg-card flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold">Need fresh profile data?</p>
+              <p className="text-muted-foreground text-xs">
+                Re-run Atlas profile enrichment to refresh channels, reviews, and
+                metadata.
+              </p>
+              {atlasMockNotice && (
+                <p className="text-secondary mt-1 text-[11px] font-medium">
+                  {atlasMockNotice}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleMockAtlasRefresh}
+              disabled={atlasMockRunning}
+              className="bg-foreground text-background hover:opacity-90 inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition disabled:opacity-60"
+            >
+              {atlasMockRunning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {atlasMockRunning ? "Calling Atlas…" : "Re-update profile"}
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -507,7 +551,7 @@ function BasicsSection({
 
       <PriceLevelDisplay level={venue.price_level} />
 
-      <Field label="About">
+      <Field label="About + Venue name">
         <textarea
           value={v.description}
           onChange={(e) => set("description", e.target.value)}
@@ -532,6 +576,9 @@ function PriceLevelDisplay({ level }: { level: number | null }) {
         <DollarSign className="text-foreground/60 h-4 w-4" />
         Price level
       </span>
+      <p className="text-muted-foreground/80 mb-2 text-[11px]">
+        From Google. This field is auto-detected and cannot be changed here.
+      </p>
       <div className="border-border rounded-xl border bg-gradient-to-r from-fuchsia-50/70 via-rose-50/60 to-orange-50/70 p-2.5">
         <div
           className="grid grid-cols-4 gap-1"
@@ -728,66 +775,6 @@ function ProfileCompletionBar({ v }: { v: FormState }) {
   );
 }
 
-function MesitaVisibilityBar({ plan }: { plan: MyVenue["plan"] }) {
-  const current = visibilityForPlan(plan);
-  const levels = ["Low", "Medium", "High", "Extra high", "Max"] as const;
-  const currentIdx = levels.findIndex((level) => level === current);
-
-  return (
-    <div className="border-border bg-card rounded-2xl border p-4">
-      <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold">Visibility on Mesita</p>
-        <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Step {currentIdx + 1} of {levels.length}
-        </span>
-      </div>
-      <p className="text-foreground text-xl leading-none font-semibold tracking-tight">
-        {current}
-      </p>
-
-      <div className="mt-4 flex items-center">
-        {levels.map((level, idx) => {
-          const reached = idx < currentIdx;
-          const isCurrent = idx === currentIdx;
-          return (
-            <div key={level} className="flex flex-1 items-center">
-              {idx > 0 && (
-                <div
-                  className={cn(
-                    "h-1 flex-1 rounded-full",
-                    idx <= currentIdx ? "bg-pink-gradient" : "bg-muted",
-                  )}
-                />
-              )}
-              <div
-                className={cn(
-                  "shrink-0 rounded-full transition",
-                  isCurrent
-                    ? "bg-pink-gradient h-4 w-4 ring-4 ring-pink-500/30"
-                    : reached
-                      ? "bg-pink-gradient h-3 w-3"
-                      : "bg-muted h-3 w-3",
-                )}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="text-muted-foreground mt-2 flex justify-between text-[10px] font-semibold tracking-wider uppercase">
-        {levels.map((level, idx) => (
-          <span
-            key={level}
-            className={cn(idx === currentIdx && "text-foreground")}
-          >
-            {level}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
   // Consumer-like swipe fields overlay, but framed in a neutral white box.
   const photos = v.photos.slice(0, MAX_PHOTOS);
@@ -907,7 +894,7 @@ function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
         </div>
 
         {canSlide && (
-          <div className="absolute inset-x-0 bottom-2 z-20 flex justify-center gap-1">
+          <div className="absolute inset-x-0 top-12 z-20 flex justify-center gap-1">
             {photos.map((_, idx) => (
               <button
                 key={`preview-dot-${idx}`}
@@ -993,7 +980,10 @@ function profileCompletionChecks(v: FormState): Array<{ label: string; done: boo
     { label: "Tags", done: hasAnyTag },
     { label: "Photos", done: hasAnyPhoto },
     { label: "Hours", done: hasHours },
-    { label: "Menu link", done: v.menu_pdf_url.trim() !== "" },
+    {
+      label: "Menu link",
+      done: v.menu_links.some((m) => m.url.trim() !== ""),
+    },
     { label: "Website", done: v.website_url.trim() !== "" },
     { label: "Phone", done: v.phone.trim() !== "" },
     { label: "WhatsApp", done: v.whatsapp_url.trim() !== "" },
@@ -1260,12 +1250,30 @@ function MenuSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  const menuMeta = describeMenuUrl(v.menu_pdf_url);
+  const links = v.menu_links.length > 0 ? v.menu_links : [{ name: "", url: "" }];
+  const primary =
+    links.find((m) => m.url.trim() !== "") ?? links[0] ?? { name: "", url: "" };
+  const menuMeta = describeMenuUrl(primary.url);
   const activeKind = menuMeta?.kind ?? "other";
+  const setLink = (idx: number, patch: Partial<MenuEntry>) => {
+    const next = links.map((entry, i) =>
+      i === idx ? { ...entry, ...patch } : entry,
+    );
+    set("menu_links", next);
+  };
+  const addLink = () => {
+    if (links.length >= 10) return;
+    set("menu_links", [...links, { name: "", url: "" }]);
+  };
+  const removeLink = (idx: number) => {
+    const next = links.filter((_, i) => i !== idx);
+    set("menu_links", next.length > 0 ? next : [{ name: "", url: "" }]);
+  };
+
   return (
     <Section
       title="Menu"
-      description="Use one public URL. Google Drive, direct hosting, or any other cloud link works."
+      description="Add one or more public menu links. The first link with a URL is used as the primary menu."
     >
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <MenuHostCard
@@ -1288,23 +1296,65 @@ function MenuSection({
         />
       </div>
 
-      <Field label="Menu name">
-        <input
-          type="text"
-          value={v.menu_pdf_name}
-          onChange={(e) => set("menu_pdf_name", e.target.value.slice(0, 80))}
-          placeholder="Dinner menu"
-          className="border-border bg-card focus:border-foreground/40 w-full rounded-xl border px-3 py-2.5 text-sm transition outline-none"
-        />
-      </Field>
-      <Field label="Menu PDF link">
-        <UrlInput
-          icon={<FileText className="h-4 w-4" />}
-          value={v.menu_pdf_url}
-          onChange={(val) => set("menu_pdf_url", val)}
-          placeholder="https://yourplace.com/menu.pdf"
-        />
-      </Field>
+      <div className="flex flex-col gap-2">
+        {links.map((link, idx) => (
+          <div
+            key={`menu-link-${idx}`}
+            className="border-border bg-background rounded-xl border p-3"
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className={TINY_LABEL_CLASS}>
+                Menu {idx + 1}
+                {idx === 0 && " (primary)"}
+              </p>
+              <button
+                type="button"
+                onClick={() => removeLink(idx)}
+                disabled={links.length === 1}
+                className="text-muted-foreground hover:text-destructive rounded-full px-2 py-1 text-[11px] font-semibold disabled:opacity-40"
+              >
+                Remove
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div>
+                <p className="text-muted-foreground mb-1 text-[11px] font-medium">
+                  Menu name
+                </p>
+                <input
+                  type="text"
+                  value={link.name}
+                  onChange={(e) =>
+                    setLink(idx, { name: e.target.value.slice(0, 80) })
+                  }
+                  placeholder="Dinner menu"
+                  className="border-border bg-card focus:border-foreground/40 w-full rounded-xl border px-3 py-2.5 text-sm transition outline-none"
+                />
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1 text-[11px] font-medium">
+                  Menu PDF link
+                </p>
+                <UrlInput
+                  icon={<FileText className="h-4 w-4" />}
+                  value={link.url}
+                  onChange={(val) => setLink(idx, { url: val })}
+                  placeholder="https://yourplace.com/menu.pdf"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addLink}
+          disabled={links.length >= 10}
+          className="border-border bg-card hover:bg-muted inline-flex h-10 items-center justify-center gap-1 rounded-full border px-4 text-[12px] font-semibold transition disabled:opacity-50"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add another menu
+        </button>
+      </div>
 
       {menuMeta ? (
         menuMeta.valid ? (
@@ -1558,13 +1608,22 @@ function ChannelsSection({
         <div className="border-border bg-background rounded-xl border p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className={TINY_LABEL_CLASS}>PR Channels</p>
-            <Link
-              href={teamHref}
-              className="bg-muted text-foreground hover:bg-foreground hover:text-background inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition"
-            >
-              Team page
-              <ExternalLink className="h-3 w-3" />
-            </Link>
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={teamHref}
+                className="bg-pink-gradient text-white inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition hover:opacity-90"
+              >
+                Connect your PRs
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+              <Link
+                href={teamHref}
+                className="bg-muted text-foreground hover:bg-foreground hover:text-background inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition"
+              >
+                Team page
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <UrlField
@@ -1992,9 +2051,7 @@ function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
             >
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold">{item.author}</p>
-                <span className="text-muted-foreground text-[11px]">
-                  {item.source}
-                </span>
+                <ReviewSourceBadge source={item.source} />
               </div>
               <div className="mb-2 flex items-center gap-0.5">
                 {Array.from({ length: 5 }, (_, i) => (
@@ -2020,6 +2077,21 @@ function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
         </div>
       )}
     </Section>
+  );
+}
+
+function ReviewSourceBadge({ source }: { source: "Mesita" | "Google" }) {
+  const isGoogle = source === "Google";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+        isGoogle ? "bg-blue-500/10 text-blue-700" : "bg-pink-500/10 text-pink-700",
+      )}
+    >
+      {isGoogle ? <GoogleLogo size={10} /> : <Sparkles className="h-3 w-3" />}
+      {isGoogle ? "From Google" : "From Mesita"}
+    </span>
   );
 }
 
@@ -2084,14 +2156,17 @@ function PopularTimesMock({ venueName }: { venueName: string }) {
   const bars = byDay[selectedDay];
   const max = Math.max(...bars, 1);
   const peakIdx = bars.findIndex((v) => v === max);
+  const peakHour = hourLabelFromOffset(peakIdx);
   return (
     <div className="bg-muted/30 border-border rounded-[26px] border p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-2">
         <p className="text-foreground text-2xl/[1.1] font-semibold tracking-tight">
           Popular times
         </p>
-        <ChevronUp className="text-muted-foreground ml-auto h-5 w-5" />
       </div>
+      <p className="text-muted-foreground -mt-1 mb-3 text-[11px] font-medium">
+        From Google
+      </p>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         {DAYS.map((d) => (
@@ -2111,14 +2186,14 @@ function PopularTimesMock({ venueName }: { venueName: string }) {
         ))}
       </div>
 
-      <div className="mb-2.5 flex items-end gap-3 px-1.5">
+      <div className="mb-2.5 grid grid-cols-[repeat(17,minmax(0,1fr))] items-end gap-1.5 px-1.5">
         {bars.map((v, idx) => {
           const h = Math.max(8, Math.round((v / max) * 62));
           if (v <= 0) {
             return (
               <span
                 key={`dash-${idx}`}
-                className="bg-muted-foreground/40 mb-1 block h-[1.5px] w-3.5 rounded-full"
+                className="bg-muted-foreground/35 mx-auto mb-1 block h-[1.5px] w-full max-w-4 rounded-full"
                 aria-hidden
               />
             );
@@ -2127,7 +2202,7 @@ function PopularTimesMock({ venueName }: { venueName: string }) {
             <span
               key={`bar-${idx}`}
               className={cn(
-                "block w-3.5 rounded-full transition-all",
+                "mx-auto block w-full max-w-4 rounded-full transition-all",
                 idx === peakIdx ? "bg-red-700" : "bg-muted-foreground/45",
               )}
               style={{ height: `${h}px` }}
@@ -2137,12 +2212,25 @@ function PopularTimesMock({ venueName }: { venueName: string }) {
         })}
       </div>
 
-      <div className="text-foreground/85 flex items-center justify-between px-1.5 text-[18px] font-medium">
-        <span>6AM</span>
-        <span>10PM</span>
+      <div className="text-foreground/85 grid grid-cols-[repeat(17,minmax(0,1fr))] px-1.5 text-[13px] font-semibold">
+        <span className="col-start-1 text-left">6AM</span>
+        <span className="col-start-5 text-center">10AM</span>
+        <span className="col-start-9 text-center">2PM</span>
+        <span className="col-start-13 text-center">6PM</span>
+        <span className="col-start-17 text-right">10PM</span>
       </div>
+      <p className="text-muted-foreground mt-1.5 px-1.5 text-[11px]">
+        Peak around <span className="text-foreground font-semibold">{peakHour}</span>
+      </p>
     </div>
   );
+}
+
+function hourLabelFromOffset(idx: number): string {
+  const hour24 = Math.max(6, Math.min(22, 6 + idx));
+  const suffix = hour24 >= 12 ? "PM" : "AM";
+  const h12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${h12}${suffix}`;
 }
 
 function mockPopularTimesByDay(seedBase: string): Record<DayKey, number[]> {

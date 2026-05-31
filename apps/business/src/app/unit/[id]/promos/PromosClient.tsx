@@ -4,9 +4,12 @@ import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CreditCard,
+  Crown,
+  Instagram,
   Loader2,
   Lock,
   Percent,
+  Smile,
   type LucideIcon,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -40,11 +43,81 @@ import {
 const RATE_CHOICES = [10, 20, 50, 70] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
-// Monthly promo spend cap — venue-level ceiling persisted to
-// venues.monthly_promo_cap (DB migration 0038), denominated in the venue's
-// currency. Null means no cap.
+// Ticket cap amount — persisted to venues.monthly_promo_cap for now
+// (legacy column name), denominated in the venue's currency. Null means
+// no cap. Semantics in product/UI: applies per ticket, not per month.
 const CAP_CHOICES = [200, 500, 1000, 2000] as const;
 type CapChoice = (typeof CAP_CHOICES)[number];
+
+type MesitaUserExample = {
+  tier: "Free" | "Premium";
+  instagram: string | null;
+  totalSpendMesita: string;
+  avatarUrl: string;
+};
+
+const MESITA_USER_EXAMPLES: MesitaUserExample[] = [
+  {
+    tier: "Premium",
+    instagram: "@sofiadines",
+    totalSpendMesita: "MX$18,000",
+    avatarUrl: "https://i.pravatar.cc/120?img=12",
+  },
+  {
+    tier: "Free",
+    instagram: null,
+    totalSpendMesita: "MX$12,500",
+    avatarUrl: "https://i.pravatar.cc/120?img=15",
+  },
+  {
+    tier: "Premium",
+    instagram: "@vale.gourmet",
+    totalSpendMesita: "MX$9,800",
+    avatarUrl: "https://i.pravatar.cc/120?img=31",
+  },
+  {
+    tier: "Free",
+    instagram: null,
+    totalSpendMesita: "MX$15,500",
+    avatarUrl: "https://i.pravatar.cc/120?img=53",
+  },
+  {
+    tier: "Premium",
+    instagram: "@fernnightlife",
+    totalSpendMesita: "MX$23,000",
+    avatarUrl: "https://i.pravatar.cc/120?img=45",
+  },
+  {
+    tier: "Free",
+    instagram: null,
+    totalSpendMesita: "MX$19,000",
+    avatarUrl: "https://i.pravatar.cc/120?img=60",
+  },
+  {
+    tier: "Premium",
+    instagram: "@maricuisine",
+    totalSpendMesita: "MX$21,000",
+    avatarUrl: "https://i.pravatar.cc/120?img=23",
+  },
+  {
+    tier: "Free",
+    instagram: null,
+    totalSpendMesita: "MX$11,500",
+    avatarUrl: "https://i.pravatar.cc/120?img=68",
+  },
+  {
+    tier: "Premium",
+    instagram: "@reginaout",
+    totalSpendMesita: "MX$14,200",
+    avatarUrl: "https://i.pravatar.cc/120?img=5",
+  },
+  {
+    tier: "Free",
+    instagram: null,
+    totalSpendMesita: "MX$13,000",
+    avatarUrl: "https://i.pravatar.cc/120?img=41",
+  },
+];
 
 // "MX$1,000" for MXN venues; falls back to a generic "$" prefix elsewhere.
 function formatMoney(amount: number, currency: string): string {
@@ -122,10 +195,13 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   const isFree = currentSub === "free";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <VisibilityRail plan={venue.plan} />
 
-      <Section title="Subscription">
+      <Section
+        title="Subscription"
+        className="shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]"
+      >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {SUBSCRIPTIONS.map((s) => {
             const v = SUB_VISUAL[s.id];
@@ -158,7 +234,10 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         )}
       </Section>
 
-      <Section title="Promos">
+      <Section
+        title="Promos"
+        className="bg-gradient-to-b from-white to-fuchsia-50/[0.25]"
+      >
         <div className="grid grid-cols-2 gap-2">
           <ColumnHeader>First visit</ColumnHeader>
           <ColumnHeader>Returning visits</ColumnHeader>
@@ -184,26 +263,95 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
       </Section>
 
       <Section
-        title="Monthly cap"
-        description="The most you'll spend on promos in a calendar month. Once reached, promos pause until the next month."
+        title="Ticket cap"
+        description="Discount applies only to the first X amount of each ticket. Example: 20% on the first MX$500, then no discount on the rest."
+        className="bg-gradient-to-b from-white to-rose-50/[0.2]"
       >
-        <MonthlyCapPicker
+        <TicketCapPicker
           initial={venue.monthly_promo_cap}
           currency={venue.currency}
           venueId={venue.id}
           disabled={isFree}
         />
       </Section>
+
+      <Section
+        title="Mesita user examples"
+        description="Includes Free and Premium users."
+        className="bg-gradient-to-b from-white to-zinc-50/70"
+      >
+        <div className="bg-muted/20 border-border/50 mb-3 rounded-xl border px-3 py-2">
+          <p className="text-muted-foreground text-xs">
+            Illustrative Mesita users across Free and Premium tiers. Most Free
+            users typically have no Instagram linked yet.
+          </p>
+        </div>
+        <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {MESITA_USER_EXAMPLES.map((guest) => (
+            <MesitaUserCard
+              key={`${guest.tier}-${guest.instagram ?? guest.totalSpendMesita}`}
+              guest={guest}
+            />
+          ))}
+        </div>
+      </Section>
     </div>
   );
 }
 
-// ─── Monthly cap picker ─────────────────────────────────────────────────────
+function MesitaUserCard({ guest }: { guest: MesitaUserExample }) {
+  return (
+    <article className="bg-background border-border w-[240px] shrink-0 rounded-xl border p-3 shadow-[0_12px_30px_-24px_rgba(0,0,0,0.6)]">
+      <div className="mb-2 flex items-center gap-2.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={guest.avatarUrl}
+          alt={`${guest.instagram} avatar`}
+          className="h-11 w-11 rounded-full object-cover"
+          loading="lazy"
+        />
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            guest.tier === "Premium"
+              ? "bg-pink-500/10 text-pink-700"
+              : "bg-slate-500/10 text-slate-700",
+          )}
+        >
+          {guest.tier === "Premium" ? (
+            <Crown className="h-3 w-3" />
+          ) : (
+            <Smile className="h-3 w-3" />
+          )}
+          {guest.tier}
+        </span>
+      </div>
+      {guest.instagram ? (
+        <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
+          <Instagram className="h-3 w-3" />
+          {guest.instagram}
+        </div>
+      ) : (
+        <div className="text-muted-foreground mb-2 inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold">
+          <Instagram className="h-3 w-3" />
+          Instagram not linked
+        </div>
+      )}
+      <p className="mt-1 text-[11px] font-semibold tracking-wide uppercase">
+        Total spend on Mesita:{" "}
+        <span className="text-primary">{guest.totalSpendMesita}</span>
+      </p>
+    </article>
+  );
+}
 
-// Venue-level ceiling on monthly promo spend. Same optimistic save pattern as
+// ─── Ticket cap picker ──────────────────────────────────────────────────────
+
+// Per-ticket eligible amount ceiling. Same optimistic save pattern as
 // PromoCell — persists each pick through apiUpdateVenue and reverts on
-// failure. "No cap" writes null.
-function MonthlyCapPicker({
+// failure. "No cap" writes null. Backed by venues.monthly_promo_cap until
+// we run the column rename migration.
+function TicketCapPicker({
   initial,
   currency,
   venueId,
@@ -235,22 +383,16 @@ function MonthlyCapPicker({
 
   const displayCap = disabled ? null : cap;
   return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3">
+    <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          Per month
+          Per ticket
         </span>
-        <span className="font-display text-primary text-xl leading-none font-bold tabular-nums">
+        <span className="font-display bg-pink-gradient rounded-full px-2.5 py-0.5 text-xl leading-none font-bold text-white tabular-nums shadow-sm">
           {displayCap == null ? "No cap" : formatMoney(displayCap, currency)}
         </span>
       </div>
       <div className="flex flex-wrap gap-1">
-        <RatePill
-          label="No cap"
-          active={displayCap == null}
-          disabled={disabled || pending}
-          onClick={() => onPick(null)}
-        />
         {CAP_CHOICES.map((c) => (
           <RatePill
             key={c}
@@ -260,6 +402,12 @@ function MonthlyCapPicker({
             onClick={() => onPick(c)}
           />
         ))}
+        <RatePill
+          label="No cap"
+          active={displayCap == null}
+          disabled={disabled || pending}
+          onClick={() => onPick(null)}
+        />
       </div>
       {error && <p className="text-destructive text-[10px]">{error}</p>}
     </div>
@@ -299,7 +447,7 @@ function VisibilityRail({
   const currentIdx = levels.findIndex((l) => l.real === current);
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-4">
+    <section className="border-border bg-card rounded-2xl border p-4 shadow-[0_10px_30px_-22px_rgba(236,72,153,0.6)]">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="font-display text-sm font-semibold tracking-tight">
           Visibility
@@ -321,8 +469,8 @@ function VisibilityRail({
               {i > 0 && (
                 <div
                   className={cn(
-                    "h-1 flex-1 rounded-full",
-                    i <= currentIdx ? "bg-pink-gradient" : "bg-muted",
+                    "h-1.5 flex-1 rounded-full",
+                    i <= currentIdx ? "bg-pink-gradient" : "bg-muted/80",
                   )}
                 />
               )}
@@ -333,7 +481,7 @@ function VisibilityRail({
                     ? "bg-pink-gradient shadow-glow ring-pink-500/30 h-4 w-4 ring-4"
                     : reached
                       ? "bg-pink-gradient h-3 w-3"
-                      : "bg-muted h-3 w-3",
+                      : "bg-muted/80 h-3 w-3",
                 )}
               />
             </Fragment>
@@ -400,9 +548,12 @@ function SubscriptionCard({
       aria-disabled={comingSoon || undefined}
       title={comingSoon ? "Coming soon" : undefined}
       className={cn(
-        "border-border bg-card relative flex flex-col gap-2 rounded-2xl border p-4 text-left transition disabled:cursor-default",
+        "border-border bg-card relative flex flex-col gap-2 rounded-2xl border p-4 text-left shadow-[0_12px_26px_-24px_rgba(0,0,0,0.7)] transition disabled:cursor-default",
         !isCurrent && !comingSoon && "hover:border-foreground/30",
-        isCurrent && "border-foreground shadow-elev",
+        !isCurrent &&
+          !comingSoon &&
+          "hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-22px_rgba(236,72,153,0.55)]",
+        isCurrent && "border-foreground shadow-elev ring-1 ring-foreground/10",
         featured && !isCurrent && "bg-pink-gradient/[0.04]",
         comingSoon && "cursor-not-allowed",
       )}
@@ -581,12 +732,12 @@ function RatePill({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
+        "rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
         active && (label === "Off" || label === "No cap")
-          ? "bg-foreground text-background"
+          ? "bg-foreground text-background shadow-sm"
           : active
-            ? "bg-pink-gradient text-white"
-            : "border-border bg-background text-muted-foreground hover:text-foreground border",
+            ? "bg-pink-gradient text-white shadow-sm"
+            : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/20 border",
         disabled && "cursor-not-allowed opacity-60 hover:text-muted-foreground",
       )}
     >
