@@ -9,7 +9,7 @@ import {
   Check,
   Crown,
   Gift,
-  Sparkles,
+  Smile,
   User as UserIcon,
   CreditCard,
   Bell,
@@ -248,7 +248,7 @@ function WaysToClimb({
   const cards: ClimbCardData[] = [
     {
       key: "free",
-      icon: Sparkles,
+      icon: Smile,
       iconBg: "bg-muted text-foreground",
       title: "Free",
       price: "$0",
@@ -398,7 +398,7 @@ function CurrentClassCard() {
   const brand = `Mesita ${meta.label}`;
   const isPremium = tier === "premium";
   const { Icon, via } = (() => {
-    if (!isPremium) return { Icon: Sparkles, via: null as string | null };
+    if (!isPremium) return { Icon: Smile, via: null as string | null };
     switch (origin) {
       case "instagram":
         return { Icon: Instagram, via: "via Instagram" };
@@ -423,7 +423,7 @@ function CurrentClassCard() {
           isPremium ? "bg-white/20" : "bg-foreground/[0.06]",
         )}
       >
-        <Icon className={cn("h-5 w-5", !isPremium && "fill-current")} />
+        <Icon className="h-5 w-5" />
       </span>
       <div className="min-w-0">
         <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
@@ -464,13 +464,15 @@ function SettingsTab() {
       Icon: Bell,
       label: "Notifications",
       sub: "Push, email",
-      stubReason: "Notification preferences land with the push-token integration.",
+      stubReason:
+        "Notification preferences land with the push-token integration.",
     },
     {
       Icon: Shield,
       label: "Privacy & data",
       sub: "Permissions, export",
-      stubReason: "Privacy controls + data export land before launch — email privacy@mesita.ai.",
+      stubReason:
+        "Privacy controls + data export land before launch — email privacy@mesita.ai.",
     },
     {
       Icon: HelpCircle,
@@ -555,7 +557,11 @@ function SettingsRowButton({ row }: { row: SettingsRow }) {
     );
   }
   return (
-    <button type="button" onClick={() => toast(row.stubReason)} className={className}>
+    <button
+      type="button"
+      onClick={() => toast(row.stubReason)}
+      className={className}
+    >
       {inner}
     </button>
   );
