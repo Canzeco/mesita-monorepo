@@ -322,9 +322,10 @@ export function venueRowToDetail(row: Row): VenueDetail {
       },
       is_first_visit: true,
     },
-    reward_cap_mxn: num(row.reward_cap_cents)
-      ? Math.round((num(row.reward_cap_cents) ?? 0) / 100)
-      : 0,
+    // Ticket cap — the promo applies to the first `monthly_promo_cap` of the
+    // bill (a peso amount in the venue's currency), then full price. 0 = no
+    // cap. Reads the same column the business sets on the Promos page.
+    reward_cap_mxn: num(row.monthly_promo_cap) ?? 0,
     requires_story: row.requires_story === true,
 
     long_description:

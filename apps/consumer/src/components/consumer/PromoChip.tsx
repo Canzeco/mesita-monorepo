@@ -72,9 +72,11 @@ export function PromoChip({
   const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
   const tierLabel = tierProperLabel(tier);
   const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
+  // Ticket cap: the reward applies to the first N of the bill, then full
+  // price — not a ceiling on the reward itself. 0/null means no cap.
   const capLabel =
-    venue.reward_cap_mxn != null
-      ? `Capped ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")} / visit`
+    venue.reward_cap_mxn != null && venue.reward_cap_mxn > 0
+      ? `applies to your first ${capPrefix}${venue.reward_cap_mxn.toLocaleString("en-US")}`
       : null;
 
   return (

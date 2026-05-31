@@ -720,13 +720,22 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   // Short suffix for the tier tiles, kept consistent with the hero's
   // mechanic: cashback venues read "70% back", discount venues "70% off".
   const mechanicShort = mechanicWord.startsWith("cash") ? "back" : "off";
-  const capLabel = `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`;
+  // Ticket cap (pesos): the reward applies to the first N of the bill, then
+  // full price — it is not a ceiling on the reward. 0/null means no cap, so
+  // the clause is dropped entirely.
+  const capLabel =
+    venue.reward_cap_mxn != null && venue.reward_cap_mxn > 0
+      ? `MX$${venue.reward_cap_mxn.toLocaleString("en-US")}`
+      : null;
   // Concise one-line context (the tier is already shown — highlighted — in
   // the matrix below, so we don't repeat "as Mesita Premium" here).
+  const visitLabel = is_first_visit ? "First visit" : "Returning visit";
   const subtitle =
     activeValue == null
       ? `No reward at Mesita ${tierProperLabel(tier)} yet`
-      : `${is_first_visit ? "First visit" : "Returning visit"} · capped ${capLabel}/visit`;
+      : capLabel
+        ? `${visitLabel} · on your first ${capLabel}`
+        : visitLabel;
   // The claim action depends on the guest's own account, not the venue:
   //   free            → Pay with QR + Upgrade (claim now, or unlock a bigger
   //                     Premium reward)
@@ -771,7 +780,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
             n={3}
             icon={Sparkles}
             title={`Get your ${mechanicWord}`}
-            body={`Your ${mechanicWord} is applied automatically — up to ${capLabel} per visit.`}
+            body={`Your ${mechanicWord} is applied automatically${capLabel ? ` — on the first ${capLabel} of your bill` : ""}.`}
           />
         </ol>
       </div>

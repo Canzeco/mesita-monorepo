@@ -49,7 +49,9 @@ export function enrichVenueOverview(v: Venue): Venue {
   const zone =
     str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? str(row.city);
   const freshness = relativeLabel(str(row.enriched_at) ?? str(row.created_at));
-  const rewardCapCents = num(row.reward_cap_cents);
+  // Ticket cap, in pesos — the promo applies to the first `monthly_promo_cap`
+  // of the bill, the same column the business sets on the Promos page.
+  const rewardCapMxn = num(row.monthly_promo_cap);
 
   // Only trust the live open/closed math when the row actually carries an
   // hours table — otherwise leave the fields null so the status chip hides.
@@ -74,13 +76,11 @@ export function enrichVenueOverview(v: Venue): Venue {
     closes_at: (open?.closes_at || null) ?? v.closes_at ?? null,
     zone: v.zone ?? zone ?? null,
     last_updated_label: v.last_updated_label ?? freshness ?? null,
-    // The per-visit cashback ceiling (stored in cents) backs the promo
-    // chip's "Capped MX$… / visit" tooltip. The per-tier rate itself is
-    // resolved in PromoChip straight off the raw row columns — and only for
-    // Verified Partners (web-listed venues never offer rewards).
-    reward_cap_mxn:
-      v.reward_cap_mxn ??
-      (rewardCapCents != null ? Math.round(rewardCapCents / 100) : null),
+    // The ticket cap (pesos) backs the promo chip's "first MX$… / visit"
+    // tooltip. The per-tier rate itself is resolved in PromoChip straight off
+    // the raw row columns — and only for Verified Partners (web-listed venues
+    // never offer rewards).
+    reward_cap_mxn: v.reward_cap_mxn ?? rewardCapMxn ?? null,
   };
 }
 
