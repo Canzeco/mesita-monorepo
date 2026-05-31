@@ -1,7 +1,8 @@
 "use client";
 
 import { Gift } from "lucide-react";
-import { CURRENT_USER, tierProperLabel } from "@/lib/consumer-data";
+import { tierProperLabel } from "@/lib/consumer-data";
+import { useMembership } from "@/lib/membership-context";
 import type { Venue } from "@/lib/api/venues";
 
 // Tiny shared building block for the venue-card promo callout.
@@ -40,6 +41,7 @@ export function PromoChip({
    *  clean; the swipe card opts in to state the absence explicitly. */
   showWhenEmpty?: boolean;
 }) {
+  const { tier } = useMembership();
   const sizing =
     size === "md" ? "px-2.5 py-1 text-[11.5px]" : "px-2.5 py-1 text-[10.5px]";
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
@@ -48,7 +50,9 @@ export function PromoChip({
   // never resolve a rate; a Verified Partner may also choose not to set one.
   const isPartner = venue.listing_type === "partner";
   const isFirstVisit = venue.is_first_visit !== false;
-  const promoPercent = isPartner ? resolvePromoRate(venue, isFirstVisit) : null;
+  const promoPercent = isPartner
+    ? resolvePromoRate(venue, isFirstVisit, tier === "premium")
+    : null;
 
   // No reward at the current tier. Hidden by default; when the caller opts
   // in, the absence is stated with a neutral pill rather than vanishing — the
@@ -66,7 +70,7 @@ export function PromoChip({
   }
 
   const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
-  const tierLabel = tierProperLabel(CURRENT_USER.tier);
+  const tierLabel = tierProperLabel(tier);
   const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
   const capLabel =
     venue.reward_cap_mxn != null
@@ -97,13 +101,16 @@ export function PromoChip({
 // back across visit buckets, then to the legacy single cashback_percent.
 // Returns null when the venue has no promo at this tier so the caller can
 // hide the ribbon entirely.
-function resolvePromoRate(venue: Venue, isFirstVisit: boolean): number | null {
+function resolvePromoRate(
+  venue: Venue,
+  isFirstVisit: boolean,
+  premium: boolean,
+): number | null {
   const row = venue as unknown as Record<string, unknown>;
   const rate = (key: string): number | null => {
     const n = row[key];
     return typeof n === "number" && n > 0 ? n : null;
   };
-  const premium = CURRENT_USER.tier === "premium";
   const welcome = premium
     ? rate("welcome_premium_rate")
     : rate("welcome_free_rate");

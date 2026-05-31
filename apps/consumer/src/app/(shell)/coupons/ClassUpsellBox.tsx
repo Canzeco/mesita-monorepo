@@ -9,11 +9,8 @@ import {
   CreditCard,
   Mail,
 } from "lucide-react";
-import {
-  CURRENT_USER,
-  TIER_ORDER,
-  tierProperLabel,
-} from "@/lib/consumer-data";
+import { TIER_ORDER, tierProperLabel } from "@/lib/consumer-data";
+import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
 
 // Promo strip at the top of /coupons. Folds the two memberships, the coupon
@@ -23,7 +20,7 @@ import { cn } from "@/lib/utils";
 // Premium holders see a maxed-out variant.
 
 export function ClassUpsellBox() {
-  const current = CURRENT_USER.tier;
+  const { tier: current } = useMembership();
   const currentLabel = tierProperLabel(current);
   const currentIdx = TIER_ORDER.indexOf(
     current as (typeof TIER_ORDER)[number],

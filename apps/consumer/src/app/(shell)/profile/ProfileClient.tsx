@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -21,11 +21,8 @@ import {
   VerifySocialSheet,
   type SocialPlatform,
 } from "@/components/consumer/VerifySocialSheet";
-import {
-  CURRENT_USER,
-  TIERS,
-  tierBadgeClass,
-} from "@/lib/consumer-data";
+import { TIERS, tierBadgeClass } from "@/lib/consumer-data";
+import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
@@ -56,6 +53,23 @@ export function ProfileClient() {
   const [verifyPlatform, setVerifyPlatform] = useState<SocialPlatform | null>(
     null,
   );
+
+  // Post-checkout landing. The subscribe flow redirects to
+  // /profile?subscription=success once the membership grant lands (instant in
+  // the demo mock, post-webhook with real Stripe). Confirm it with a toast;
+  // the full page load already re-seeded the real Premium membership upstream.
+  // Read straight off the URL (client-only, fires once) rather than
+  // useSearchParams, so the page carries no prerender-bailout requirement.
+  useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get(
+      "subscription",
+    );
+    if (status === "success") {
+      toast.success("You're Mesita Premium — welcome in.");
+    } else if (status === "cancelled") {
+      toast("Checkout cancelled — you can subscribe anytime.");
+    }
+  }, []);
 
   return (
     <div className="flex h-full flex-col">
@@ -228,8 +242,8 @@ function WaysToClimb({
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
   const premium = TIERS.find((t) => t.id === "premium")!;
-  const origin = CURRENT_USER.tierOrigin;
-  const isFree = CURRENT_USER.tier === "free";
+  const { tier, origin } = useMembership();
+  const isFree = tier === "free";
 
   const cards: ClimbCardData[] = [
     {
@@ -379,12 +393,13 @@ function CurrentClassCard() {
   // Current-plan banner — plan name + an origin icon and a short "via …"
   // line so a Premium member sees how they got it (Instagram / subscription
   // / invitation). No follower count — just the door.
-  const meta = TIERS.find((t) => t.id === CURRENT_USER.tier)!;
+  const { tier, origin } = useMembership();
+  const meta = TIERS.find((t) => t.id === tier)!;
   const brand = `Mesita ${meta.label}`;
-  const isPremium = CURRENT_USER.tier === "premium";
+  const isPremium = tier === "premium";
   const { Icon, via } = (() => {
     if (!isPremium) return { Icon: Sparkles, via: null as string | null };
-    switch (CURRENT_USER.tierOrigin) {
+    switch (origin) {
       case "instagram":
         return { Icon: Instagram, via: "via Instagram" };
       case "subscription":
@@ -399,7 +414,7 @@ function CurrentClassCard() {
     <div
       className={cn(
         "flex items-center gap-3 rounded-2xl px-4 py-4 shadow-sm",
-        tierBadgeClass(CURRENT_USER.tier),
+        tierBadgeClass(tier),
       )}
     >
       <span

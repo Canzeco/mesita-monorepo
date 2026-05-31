@@ -22,7 +22,7 @@ export default async function PayPage() {
 
   let profile;
   try {
-    profile = await apiFetchConsumerProfile(supabase);
+    ({ consumer: profile } = await apiFetchConsumerProfile(supabase));
   } catch (err) {
     return (
       <div className="flex h-full flex-col">

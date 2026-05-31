@@ -27,6 +27,30 @@ export type ConsumerProfile = {
   cashback_balance_cents: number;
 };
 
+// Membership payload returned alongside the profile by consumer-get-profile.
+// The real tier/origin/subscription state for the signed-in consumer — what
+// the (shell) layout feeds into the MembershipProvider so every client
+// surface renders the consumer's actual plan instead of a hardcoded mock.
+export type ConsumerMembership = {
+  tier: "free" | "premium";
+  origin: "default" | "instagram" | "subscription" | "invitation";
+  label: string;
+  followers: number | null;
+  /** consumers.tier_expires_at — when a non-default tier lapses. */
+  expires_at: string | null;
+  subscription: {
+    status: string;
+    price_cents: number;
+    currency: string;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean;
+  } | null;
+  usage: {
+    reservations_used: number;
+    reservations_limit: number | null;
+  };
+};
+
 type ConsumerOnboardingInput = {
   first_name: string;
   last_name: string;
@@ -52,13 +76,12 @@ export async function apiUpdateConsumerProfile(
 
 export async function apiFetchConsumerProfile(
   client: SupabaseClient,
-): Promise<ConsumerProfile> {
-  const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
-    client,
-    "consumer-get-profile",
-    {},
-  );
-  return consumer;
+): Promise<{ consumer: ConsumerProfile; membership: ConsumerMembership }> {
+  const { consumer, membership } = await invokeEF<{
+    consumer: ConsumerProfile;
+    membership: ConsumerMembership;
+  }>(client, "consumer-get-profile", {});
+  return { consumer, membership };
 }
 
 // ─── Display helpers ─────────────────────────────────────────────────────

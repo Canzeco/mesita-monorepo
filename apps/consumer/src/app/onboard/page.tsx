@@ -27,7 +27,7 @@ export default async function ConsumerOnboardPage() {
   //   onboard → discover/swipe (full_name truthy) → shell sees missing
   //   country/birthday/sex → bounces back to onboard. Strict here too.
   try {
-    const profile = await apiFetchConsumerProfile(supabase);
+    const { consumer: profile } = await apiFetchConsumerProfile(supabase);
     const onboarded =
       !!profile.full_name &&
       !!profile.country &&

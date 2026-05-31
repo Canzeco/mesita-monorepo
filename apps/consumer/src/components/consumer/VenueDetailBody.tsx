@@ -50,7 +50,8 @@ import {
   VenueSectionNav,
 } from "@/components/consumer/VenueSectionNav";
 import { useSavedVenues } from "@/lib/saved-venues";
-import { tierProperLabel, CURRENT_USER } from "@/lib/consumer-data";
+import { tierProperLabel } from "@/lib/consumer-data";
+import { useMembership } from "@/lib/membership-context";
 import { toast } from "@/lib/toast";
 
 // Section nav order for the venue detail page. Reward sits right after
@@ -660,6 +661,7 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
 // ── Reward (hero + Free/Premium × first/returning matrix) ───────────────
 
 function RewardsBox({ venue }: { venue: VenueDetail }) {
+  const membership = useMembership();
   const { welcome, default: returning, current_tier, is_first_visit } =
     venue.promo_matrix;
 
@@ -725,9 +727,9 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   //   Premium (paid)  → one Pay-with-QR button, reward applies automatically
   //   Premium via IG  → one button: Pay with QR *and* post an Instagram story,
   //                     since the story is what re-verifies the IG Premium tier
-  const isFree = CURRENT_USER.tier === "free";
+  const isFree = membership.tier === "free";
   const isPremiumViaInstagram =
-    !isFree && CURRENT_USER.tierOrigin === "instagram";
+    !isFree && membership.origin === "instagram";
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — the active reward, mechanic, and cap. The box header already

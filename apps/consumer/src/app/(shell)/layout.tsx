@@ -6,7 +6,11 @@ import { BottomNav } from "@/components/consumer/BottomNav";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
+import {
+  apiFetchConsumerProfile,
+  type ConsumerMembership,
+} from "@/lib/api/profile";
+import { MembershipProvider } from "@/lib/membership-context";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -45,14 +49,17 @@ export default async function ConsumerShellLayout({
   // Also captures the consumer's display name so the /profile TopBar can
   // render it instead of the literal word "Profile".
   let userName: string | null = null;
+  let membership: ConsumerMembership | null = null;
   try {
-    const profile = await apiFetchConsumerProfile(supabase);
+    const { consumer: profile, membership: m } =
+      await apiFetchConsumerProfile(supabase);
     const onboarded =
       !!profile.full_name &&
       !!profile.country &&
       !!profile.birthday &&
       !!profile.sex;
     if (!onboarded) redirect("/onboard");
+    membership = m;
     userName =
       profile.first_name && profile.last_name
         ? `${profile.first_name} ${profile.last_name}`
@@ -76,14 +83,16 @@ export default async function ConsumerShellLayout({
   return (
     <MobileFrame>
       <StatusBar />
-      <div className="relative flex flex-1 flex-col overflow-hidden">
-        <TopBar userName={userName} />
+      <MembershipProvider membership={membership}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
-          <ShellChildrenSlot>{children}</ShellChildrenSlot>
+          <TopBar userName={userName} />
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            <ShellChildrenSlot>{children}</ShellChildrenSlot>
+          </div>
+          <BottomNav />
+          {modal}
         </div>
-        <BottomNav />
-        {modal}
-      </div>
+      </MembershipProvider>
       <Toaster />
     </MobileFrame>
   );

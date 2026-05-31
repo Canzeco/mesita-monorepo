@@ -68,25 +68,6 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
   COUNTRIES.map((c) => [c.code, c]),
 );
 
-// How the current tier was granted. The Class tab shows different copy
-// depending on origin (e.g. "earned via 7.3K Instagram followers" vs
-// "subscribed · renews Dec 12"), and `subscription` is the only origin
-// that allows a downgrade/cancel action.
-type TierOrigin = "default" | "instagram" | "subscription" | "invitation";
-
-// Mock consumer used by the Profile + Discover header until real
-// consumer-side reads are wired up. Only carries the fields the UI
-// actually reads. The real cashback balance comes from the consumer
-// profile EF (`apiFetchConsumerProfile().cashback_balance_cents`); the
-// mock no longer carries a duplicate `balance` field.
-export const CURRENT_USER = {
-  tier: "premium" as Tier,
-  tierOrigin: "instagram" as TierOrigin,
-  /** Only meaningful when `tierOrigin === "subscription"`. ISO date string. */
-  tierRenewsAt: null as string | null,
-  followers: 7320,
-};
-
 export const TIERS: {
   id: Tier;
   label: string;
@@ -139,9 +120,9 @@ export function tierBadgeClass(tier: Tier): string {
 // box — anywhere we render "Mesita Free" / "Mesita Premium" alongside
 // the lower-case tier id (`free` / `premium`).
 //
-// Tier-typed and partial-typed variants both exist so callers can
-// hand us a strictly-typed Tier or a string (e.g. CURRENT_USER.tier
-// type-flowing as plain string) without an extra cast.
+// Accepts a strictly-typed Tier or a plain string so callers can hand us
+// either (e.g. a server-sourced tier_key that flows as string) without an
+// extra cast; unknown values fall back to the "Mesita" brand word.
 const TIER_LABELS: Record<Tier, string> = {
   free: "Free",
   premium: "Premium",
