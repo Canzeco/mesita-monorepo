@@ -13,7 +13,7 @@ import { TIER_ORDER, tierProperLabel } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
 
-// Promo strip at the top of /coupons. Folds the two memberships, the coupon
+// Promo strip at the top of /coupons. Folds the two plans, the coupon
 // reward range, and the lifestyle perks into one connected pitch, then lists
 // the three doors into Premium as the concrete actions.
 //
@@ -65,9 +65,9 @@ export function ClassUpsellBox() {
       </div>
 
       <p className="mt-3 text-[13px] leading-snug text-white/90">
-        Mesita has two memberships: Free and Premium. Premium unlocks better
-        cashback and discounts, better recommendations, and unlimited
-        reservations — some partners compete with cashbacks up to 70%.
+        Mesita has two plans: Free and Premium. Premium unlocks better cashback
+        and discounts, better recommendations, and unlimited reservations — some
+        partners compete with cashbacks up to 70%.
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
@@ -114,7 +114,7 @@ export function ClassUpsellBox() {
         ))}
       </div>
 
-      {/* Membership ladder dots — Free · Premium + where the user sits. */}
+      {/* Plan ladder dots — Free · Premium + where the user sits. */}
       <div className="mt-5 flex items-center gap-1.5">
         {TIER_ORDER.map((tier) => {
           const reached = TIER_ORDER.indexOf(tier) <= currentIdx;

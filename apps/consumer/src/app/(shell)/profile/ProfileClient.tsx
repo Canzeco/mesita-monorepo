@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   Instagram,
   ChevronRight,
   Check,
+  BadgeCheck,
   Crown,
   Gift,
   Smile,
@@ -242,7 +243,7 @@ function WaysToClimb({
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
   const premium = TIERS.find((t) => t.id === "premium")!;
-  const { tier, origin } = useMembership();
+  const { tier, origin, followers } = useMembership();
   const isFree = tier === "free";
 
   const cards: ClimbCardData[] = [
@@ -292,8 +293,46 @@ function WaysToClimb({
   return (
     <div className="flex flex-col gap-3">
       {cards.map((c) => (
-        <ClimbCard key={c.key} data={c} />
+        <Fragment key={c.key}>
+          <ClimbCard data={c} />
+          {c.key === "instagram" && origin === "instagram" && (
+            <InstagramConnectedSummary followers={followers} />
+          )}
+        </Fragment>
       ))}
+    </div>
+  );
+}
+
+// Instagram "profile connected" summary — rendered directly under the
+// Instagram path card once the consumer's Premium is actually sourced from
+// Instagram (origin === "instagram"). Surfaces the connected account at a
+// glance: the verified follower reach that cleared the threshold plus the
+// live "post a story each visit" reminder that keeps the perk. The verify
+// flow only captures follower count (no handle is stored), so the summary
+// leads with reach instead of a @handle.
+function InstagramConnectedSummary({ followers }: { followers: number }) {
+  return (
+    <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-4">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white shadow-sm">
+        <Instagram className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-display text-[14px] leading-none font-bold tracking-tight">
+            Profile connected
+          </span>
+          <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+        </div>
+        <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
+          {followers > 0
+            ? `${followers.toLocaleString("en-US")} followers · Premium active`
+            : "Premium active"}
+        </p>
+        <p className="text-muted-foreground/80 mt-0.5 text-[11px] leading-snug">
+          Post a story each visit to keep Premium.
+        </p>
+      </div>
     </div>
   );
 }
