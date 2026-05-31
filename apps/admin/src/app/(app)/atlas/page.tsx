@@ -4,11 +4,6 @@ import { AtlasClient } from "./AtlasClient";
 
 // Atlas admin page.
 // Mesita Atlas — Venue profile research and enrichment operations.
-//
-// Single toggle (pre-read snapshots) plus a "snapshot all venues" button.
-// The toggle controls whether Atlas EFs read prior research snapshots
-// before fetching anything new during a venue create/update. Snapshots
-// are written EITHER WAY — the toggle only gates pre-read behavior.
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +26,6 @@ export default async function AtlasPage() {
     <div className="mx-auto max-w-6xl px-8 pt-12 pb-14">
       <Header />
       <AtlasClient
-        initialPreReadEnabled={result.data.atlasPreReadSnapshots}
-        initialSaveSnapshots={result.data.atlasSaveSnapshots}
-        initialSnapshotOnBusinessEdit={result.data.atlasSnapshotOnBusinessEdit}
         initialSourceTierCeiling={result.data.atlasSourceTierCeiling}
         initialSourceOverrides={result.data.atlasSourceOverrides}
         initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
@@ -66,9 +58,7 @@ function Header() {
       </h1>
       <p className="text-muted-foreground mt-3 max-w-3xl text-sm leading-relaxed">
         Venue profile research &amp; enrichment. Atlas runs when a venue is
-        created or updated. Before any external call it reads prior snapshots
-        and only fetches the gaps, and every run is saved — so each refresh
-        gets cheaper.
+        created or updated, fetching fresh from every configured source.
       </p>
       <p className="text-muted-foreground/80 mt-3 max-w-3xl text-sm leading-relaxed">
         <span className="text-foreground font-medium">The pipeline, in order:</span>{" "}

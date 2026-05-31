@@ -10,9 +10,6 @@ type SettingsResponse = {
   autoVerifyAiCall: boolean;
   autoVerifyAiEmail: boolean;
   autoVerifyVideo: boolean;
-  atlasPreReadSnapshots: boolean;
-  atlasSaveSnapshots: boolean;
-  atlasSnapshotOnBusinessEdit: boolean;
   atlasGatherGoogleImages: number;
   atlasGatherWebsiteImages: number;
   atlasGatherInstagramPosts: number;
@@ -41,32 +38,9 @@ export async function getAtlasSettings(): Promise<GetSettingsResult> {
   return { ok: true, data: r.data };
 }
 
-// ─── Atlas pre-read toggle ─────────────────────────────────────────────────
-
-type SetPreReadResponse = {
-  atlasPreReadSnapshots: boolean;
-  updatedAt: string | null;
-};
-
-type SetPreReadResult =
-  | { ok: true; data: SetPreReadResponse }
-  | { ok: false; error: string };
-
-export async function setAtlasPreRead(
-  enabled: boolean,
-): Promise<SetPreReadResult> {
-  const r = await efInvoke<SetPreReadResponse>("admin-set-atlas-pre-read", {
-    enabled,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
 // ─── Atlas research config ─────────────────────────────────────────────────
 
 type AtlasConfigResponse = {
-  atlasSaveSnapshots: boolean;
-  atlasSnapshotOnBusinessEdit: boolean;
   atlasGatherGoogleImages: number;
   atlasGatherWebsiteImages: number;
   atlasGatherInstagramPosts: number;
@@ -91,8 +65,6 @@ type UpdateAtlasConfigResult =
 
 // Partial update — pass only the fields you want to change.
 export async function updateAtlasConfig(patch: {
-  saveSnapshots?: boolean;
-  snapshotOnBusinessEdit?: boolean;
   sourceTierCeiling?: number;
   sourceOverrides?: Record<string, boolean>;
   websiteCrawlMaxPages?: number;
@@ -113,31 +85,6 @@ export async function updateAtlasConfig(patch: {
     "admin-update-atlas-config",
     patch,
   );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-// ─── Mesita snapshot trigger ───────────────────────────────────────────────
-
-type SnapshotResult = {
-  snapshotsWritten: number;
-  snapshotsFailed: number;
-  results: Array<{
-    venueId: string;
-    path: string;
-    ok: boolean;
-    error?: string;
-  }>;
-};
-
-type TriggerSnapshotResult =
-  | { ok: true; data: SnapshotResult }
-  | { ok: false; error: string };
-
-export async function snapshotAllVenues(): Promise<TriggerSnapshotResult> {
-  const r = await efInvoke<SnapshotResult>("admin-snapshot-mesita", {
-    all: true,
-  });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }

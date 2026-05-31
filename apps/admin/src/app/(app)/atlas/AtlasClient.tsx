@@ -3,27 +3,18 @@
 import { useState, useTransition } from "react";
 import {
   AlertTriangle,
-  Archive,
-  Camera,
   CheckCircle2,
   DollarSign,
   Eye,
   Globe,
-  History,
   Image as ImageIcon,
   Instagram,
   Layers,
   Loader2,
-  Search,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
-import {
-  setAtlasPreRead,
-  snapshotAllVenues,
-  updateAtlasConfig,
-  type SynthesisQuality,
-} from "./actions";
+import { updateAtlasConfig, type SynthesisQuality } from "./actions";
 
 // Atlas source catalog. Each source is a sub-pipeline of distinct NODES,
 // mirroring the Atlas rows: "link" resolves the source's URL, "contents"
@@ -135,9 +126,6 @@ function stepEnabled(
 }
 
 export function AtlasClient(props: {
-  initialPreReadEnabled: boolean;
-  initialSaveSnapshots: boolean;
-  initialSnapshotOnBusinessEdit: boolean;
   initialSourceTierCeiling: number;
   initialSourceOverrides: Record<string, boolean>;
   initialWebsiteCrawlMaxPages: number;
@@ -168,22 +156,6 @@ export function AtlasClient(props: {
           })}
         </p>
       )}
-
-      {/* ═══ Pipeline & snapshots ══════════════════════════════════ */}
-      <StageGroup
-        label="Pipeline & snapshots"
-        desc="Caching behaviour — makes re-runs cheap. Atlas reads past research before fetching, saves each run, and keeps a profile backup. Nothing here changes WHAT is gathered, only how much we reuse."
-      >
-        <div className="flex flex-col gap-6">
-          <SnapshotToggles
-            initialPreReadEnabled={props.initialPreReadEnabled}
-            initialSaveSnapshots={props.initialSaveSnapshots}
-            initialSnapshotOnBusinessEdit={props.initialSnapshotOnBusinessEdit}
-            onSaved={setUpdatedAt}
-          />
-          <BackupSection />
-        </div>
-      </StageGroup>
 
       {/* ═══ Data sources ══════════════════════════════════════════ */}
       <StageGroup
@@ -247,7 +219,7 @@ export function AtlasClient(props: {
       {/* ═══ Cost estimate ══════════════════════════════════════════ */}
       <StageGroup
         label="Cost to create one venue"
-        desc="A what-if estimate of the external spend to research + enrich ONE new venue, broken down by source. Adjust the params below to see the impact. Numbers are upper-bound per-call estimates (USD) for a fresh venue with no snapshot reuse — actual runs are usually cheaper (pre-read skips sources already cached, and the per-run cost cap hard-stops spend)."
+        desc="A what-if estimate of the external spend to research + enrich ONE new venue, broken down by source. Adjust the params below to see the impact. Numbers are upper-bound per-call estimates (USD) for a fresh venue — actual runs are usually cheaper, and the per-run cost cap hard-stops spend."
       >
         <CostSection
           initialSourceTierCeiling={props.initialSourceTierCeiling}
@@ -258,120 +230,6 @@ export function AtlasClient(props: {
           initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
         />
       </StageGroup>
-    </div>
-  );
-}
-
-// ─── Snapshots & caching ─────────────────────────────────────────────────
-
-function SnapshotToggles({
-  initialPreReadEnabled,
-  initialSaveSnapshots,
-  initialSnapshotOnBusinessEdit,
-  onSaved,
-}: {
-  initialPreReadEnabled: boolean;
-  initialSaveSnapshots: boolean;
-  initialSnapshotOnBusinessEdit: boolean;
-  onSaved: (updatedAt: string | null) => void;
-}) {
-  const [preRead, setPreRead] = useState(initialPreReadEnabled);
-  const [save, setSave] = useState(initialSaveSnapshots);
-  const [onEdit, setOnEdit] = useState(initialSnapshotOnBusinessEdit);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  const flipPreRead = () => {
-    setError(null);
-    const next = !preRead;
-    setPreRead(next);
-    start(async () => {
-      const r = await setAtlasPreRead(next);
-      if (!r.ok) {
-        setPreRead(!next);
-        setError(r.error);
-        return;
-      }
-      setPreRead(r.data.atlasPreReadSnapshots);
-      onSaved(r.data.updatedAt);
-    });
-  };
-
-  const flip = (
-    key: "saveSnapshots" | "snapshotOnBusinessEdit",
-    cur: boolean,
-    setLocal: (v: boolean) => void,
-    read: (d: {
-      atlasSaveSnapshots: boolean;
-      atlasSnapshotOnBusinessEdit: boolean;
-    }) => boolean,
-  ) => {
-    setError(null);
-    const next = !cur;
-    setLocal(next);
-    start(async () => {
-      const r = await updateAtlasConfig({ [key]: next });
-      if (!r.ok) {
-        setLocal(!next);
-        setError(r.error);
-        return;
-      }
-      setLocal(read(r.data));
-      onSaved(r.data.updatedAt);
-    });
-  };
-
-  return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card
-        icon={<Search className="text-muted-foreground h-4 w-4" />}
-        title="Reuse past research snapshots before fetching"
-        desc="When ON, Atlas reads the research it saved for this venue before calling any external API, and only fetches what's missing. When OFF, every run fetches from scratch."
-        control={
-          <Switch on={preRead} pending={pending} onClick={flipPreRead} label="Toggle pre-read" />
-        }
-      />
-      <Card
-        icon={<Archive className="text-muted-foreground h-4 w-4" />}
-        title="Save research snapshot from every run"
-        desc="When ON, each run's research is saved to Storage as append-only history, so pre-read can reuse it. When OFF, research is used once and not persisted."
-        control={
-          <Switch
-            on={save}
-            pending={pending}
-            onClick={() =>
-              flip("saveSnapshots", save, setSave, (d) => d.atlasSaveSnapshots)
-            }
-            label="Toggle save research"
-          />
-        }
-      />
-      <Card
-        className="md:col-span-2"
-        icon={<History className="text-muted-foreground h-4 w-4" />}
-        title="Save a profile snapshot on every business edit"
-        desc="When ON, Atlas saves a profile snapshot every time a business user updates their venue — an edit history of the canonical profile. Automatic + per-venue; the manual bulk back-up below is separate."
-        control={
-          <Switch
-            on={onEdit}
-            pending={pending}
-            onClick={() =>
-              flip(
-                "snapshotOnBusinessEdit",
-                onEdit,
-                setOnEdit,
-                (d) => d.atlasSnapshotOnBusinessEdit,
-              )
-            }
-            label="Toggle snapshot on business edit"
-          />
-        }
-      />
-      {error && (
-        <div className="md:col-span-2">
-          <ErrorNote message={error} />
-        </div>
-      )}
     </div>
   );
 }
@@ -905,83 +763,6 @@ function SynthCostSection({
   );
 }
 
-// ─── Profile backup (manual bulk) ────────────────────────────────────────
-
-function BackupSection() {
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ written: number; failed: number } | null>(
-    null,
-  );
-
-  const run = () => {
-    setError(null);
-    setResult(null);
-    start(async () => {
-      const r = await snapshotAllVenues();
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setResult({ written: r.data.snapshotsWritten, failed: r.data.snapshotsFailed });
-    });
-  };
-
-  return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <Camera className="text-muted-foreground h-4 w-4" />
-            <h2 className="font-display text-base font-semibold tracking-tight">
-              Back up venue profiles now
-            </h2>
-          </div>
-          <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-            Writes a backup of every venue&apos;s{" "}
-            <span className="text-foreground font-medium">finished profile</span>{" "}
-            (the canonical{" "}
-            <code className="text-foreground bg-muted rounded px-1 text-[11px]">
-              public.venues
-            </code>{" "}
-            state) to Storage. This is the output, not the research inputs above.
-            Routine backups will run nightly via cron (future PR).
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={run}
-          disabled={pending}
-          className="bg-foreground text-background inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-        >
-          {pending ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Backing up…
-            </>
-          ) : (
-            <>
-              <Camera className="h-3.5 w-3.5" />
-              Back up all
-            </>
-          )}
-        </button>
-      </div>
-
-      {result && (
-        <div className="border-foreground/20 bg-muted text-foreground mt-4 flex items-start gap-2 rounded-xl border p-3 text-xs">
-          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <p className="font-medium">
-            {result.written} snapshot{result.written === 1 ? "" : "s"} written
-            {result.failed > 0 ? `, ${result.failed} failed` : ""}.
-          </p>
-        </div>
-      )}
-      {error && <ErrorNote message={error} />}
-    </section>
-  );
-}
-
 // ─── Shared bits ─────────────────────────────────────────────────────────
 
 // ─── Cost estimate ───────────────────────────────────────────────────────
@@ -1175,9 +956,9 @@ function CostSection({
       </div>
 
       <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
-        Upper bound for a fresh venue (no snapshot reuse). Rates are approximate
-        per-call estimates and mirror the enricher&apos;s cost model; the
-        per-run cost cap in “Analysis and Cost” hard-stops spend regardless.
+        Upper bound for a fresh venue. Rates are approximate per-call estimates
+        and mirror the enricher&apos;s cost model; the per-run cost cap in
+        “Analysis and Cost” hard-stops spend regardless.
       </p>
     </section>
   );

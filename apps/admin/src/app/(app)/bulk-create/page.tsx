@@ -119,8 +119,8 @@ export default function BulkCreateUnitsPage() {
       <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
         Paste Google Place IDs (one per line) or upload a CSV. Each runs the
         full create pipeline — Google spine → catalog synthesis → unclaimed web
-        listing → Atlas research &amp; image funnel. Research behaviour (pre-read
-        snapshots, caps, vision) is configured in{" "}
+        listing → Atlas research &amp; image funnel. Research behaviour (caps,
+        vision) is configured in{" "}
         <a
           href="/atlas"
           className="text-foreground font-medium underline underline-offset-2"
