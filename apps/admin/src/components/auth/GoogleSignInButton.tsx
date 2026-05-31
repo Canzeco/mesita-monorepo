@@ -4,6 +4,12 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 
+function getAuthBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const rawBase = configured && configured.length > 0 ? configured : window.location.origin;
+  return rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
+}
+
 // Single "Sign in with Google" button. The OAuth redirectTo is the bare
 // `/auth/callback` so it matches the Supabase allow-list verbatim —
 // stashing extra state in query params would force every operator to
@@ -18,7 +24,7 @@ export function GoogleSignInButton() {
     setError(null);
     try {
       const supabase = createBrowserSupabase();
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      const redirectTo = `${getAuthBaseUrl()}/auth/callback`;
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
