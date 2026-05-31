@@ -105,9 +105,12 @@ export type VenueDetail = {
   };
 
   // 8. Reward by class — four per-tier promo rates (Welcome × tier on
-  // first visit, default × tier afterwards) + the current guest's tier
-  // + whether this is their first visit at this venue. Active reward is
-  // `is_first_visit ? promo_matrix.welcome[tier] : promo_matrix.default[tier]`.
+  // first visit, default × tier afterwards) + whether this is the guest's
+  // first visit at this venue. Active reward is
+  // `is_first_visit ? promo_matrix.welcome[tier] : promo_matrix.default[tier]`,
+  // where `tier` is the guest's live membership tier, resolved at render time
+  // from the membership context — not baked into the row, since the server
+  // adapter can't know who's viewing.
   // Mirrors mesita-supabase migration 0032 / public.venues columns. Each
   // rate is one of 10 / 20 / 50 / 70 or null (= no promo at that tier).
   promo_matrix: {
@@ -119,7 +122,6 @@ export type VenueDetail = {
       free: number | null;
       premium: number | null;
     };
-    current_tier: Tier;
     is_first_visit: boolean;
   };
   reward_cap_mxn: number;
@@ -386,7 +388,6 @@ export const mockVenue: VenueDetail = {
       free: 10,
       premium: 50,
     },
-    current_tier: "premium",
     is_first_visit: false,
   },
   reward_cap_mxn: 500,

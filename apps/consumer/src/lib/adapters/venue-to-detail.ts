@@ -5,10 +5,11 @@
 //
 // Derived / not-stored fields (distance_km, open_now, price_range) get
 // sensible neutral defaults — distance is geolocation-dependent and computed
-// client-side later; the current_tier on the reward matrix defaults to "free"
-// until the real consumer tier is threaded through.
+// client-side later. The reward matrix carries only the raw per-tier rates;
+// the active tier is resolved at render time from the live membership context,
+// so this adapter never bakes in a current_tier.
 
-import type { VenueDetail, Tier } from "@/lib/mock/venue";
+import type { VenueDetail } from "@/lib/mock/venue";
 import { relativeLabel } from "@/lib/utils";
 
 // Loose row type — the EF returns the full venue projection; we read what we
@@ -94,7 +95,10 @@ function currencyPrefix(code: string): string {
   return `${code} `;
 }
 
-function fallbackPriceRange(priceLevel: 1 | 2 | 3 | 4, currency: string): string {
+function fallbackPriceRange(
+  priceLevel: 1 | 2 | 3 | 4,
+  currency: string,
+): string {
   const prefix = currencyPrefix(currency);
   const ranges: Record<1 | 2 | 3 | 4, [number, number]> = {
     1: [100, 200],
@@ -316,7 +320,6 @@ export function venueRowToDetail(row: Row): VenueDetail {
         free: num(row.free_rate) ?? null,
         premium: num(row.premium_rate) ?? null,
       },
-      current_tier: "free" as Tier,
       is_first_visit: true,
     },
     reward_cap_mxn: num(row.reward_cap_cents)

@@ -220,9 +220,7 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
         {venue.name}
       </h1>
       <div className="flex flex-wrap items-center gap-2">
-        <OverviewChip capitalize>
-          {venue.category}
-        </OverviewChip>
+        <OverviewChip capitalize>{venue.category}</OverviewChip>
         <OverviewChip>{formatPerPersonPrice(venue.price_range)}</OverviewChip>
         <OverviewChip
           icon={Star}
@@ -230,7 +228,9 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
           iconStrokeWidth={0}
         >
           {googleRating}
-          <span className="text-white/70">({formatCount(venue.google.count, false)})</span>
+          <span className="text-white/70">
+            ({formatCount(venue.google.count, false)})
+          </span>
         </OverviewChip>
         <OverviewChip icon={Instagram} iconClass="text-pink-200/80">
           {igFollowers}
@@ -277,16 +277,13 @@ function OverviewChip({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]",
+        "inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
         capitalize && "capitalize",
       )}
     >
       {Icon && (
         <Icon
-          className={cn(
-            "h-4 w-4 shrink-0",
-            iconClass ?? "text-white/80",
-          )}
+          className={cn("h-4 w-4 shrink-0", iconClass ?? "text-white/80")}
           strokeWidth={iconStrokeWidth}
         />
       )}
@@ -353,7 +350,7 @@ function ReviewsSummaryBox({ venue }: { venue: VenueDetail }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="bg-pink-500/10 ring-pink-500/30 flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl ring-1">
+          <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-pink-500/10 ring-1 ring-pink-500/30">
             <div className="flex items-baseline gap-1">
               <span className="font-display text-foreground text-2xl leading-none font-semibold">
                 {overall.toFixed(1)}
@@ -479,7 +476,11 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
   if (items.length === 0) return null;
 
   return (
-    <Box title="Relevant reviews" icon={MessageCircle} iconColor="text-pink-400">
+    <Box
+      title="Relevant reviews"
+      icon={MessageCircle}
+      iconColor="text-pink-400"
+    >
       <BoxHScroll>
         {items.map((item, i) => (
           <ReviewCard key={`${item.kind}-${i}`} {...item} />
@@ -500,7 +501,10 @@ function MenuBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Menus" icon={Utensils} iconColor="text-amber-400">
       <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
-        <Info className="h-3.5 w-3.5 shrink-0 text-amber-600" strokeWidth={2.25} />
+        <Info
+          className="h-3.5 w-3.5 shrink-0 text-amber-600"
+          strokeWidth={2.25}
+        />
         <p className="text-[11px] leading-snug font-medium text-amber-900">
           Reference only — current menu prices may differ at the venue.
         </p>
@@ -535,7 +539,7 @@ function MenuRow({ menu }: { menu: VenueDetail["menus"][number] }) {
       <button
         type="button"
         onClick={onView}
-        className="bg-foreground text-background hover:opacity-90 inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-[0.97]"
+        className="bg-foreground text-background inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.97]"
       >
         View
         <ChevronRight className="h-3.5 w-3.5" />
@@ -662,8 +666,12 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
 
 function RewardsBox({ venue }: { venue: VenueDetail }) {
   const membership = useMembership();
-  const { welcome, default: returning, current_tier, is_first_visit } =
-    venue.promo_matrix;
+  const { welcome, default: returning, is_first_visit } = venue.promo_matrix;
+  // Resolve the reward against the guest's REAL tier from the shared
+  // membership context — the server adapter can't know who's viewing, so the
+  // active cell is picked here, keeping the detail hero in lock-step with the
+  // per-tier rate the swipe/catalog PromoChip already resolves.
+  const tier = membership.tier;
 
   // Rewards are a Verified-Partner-only capability. Web-listed venues never
   // offer one; a Verified Partner may also choose not to set any rate. Both
@@ -704,9 +712,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   // Active reward = welcome variant on a first visit, default variant
   // otherwise. Null means the venue offers nothing at this tier — the
   // hero still renders so the user knows where they stand.
-  const activeValue = is_first_visit
-    ? welcome[current_tier]
-    : returning[current_tier];
+  const activeValue = is_first_visit ? welcome[tier] : returning[tier];
   // Mechanic comes in capitalized ("Cashback" / "Discount") so it can sit
   // in a subtitle pill; lowercase it when reading inline with the
   // percentage ("20% cashback").
@@ -719,7 +725,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   // the matrix below, so we don't repeat "as Mesita Premium" here).
   const subtitle =
     activeValue == null
-      ? `No reward at Mesita ${tierProperLabel(current_tier)} yet`
+      ? `No reward at Mesita ${tierProperLabel(tier)} yet`
       : `${is_first_visit ? "First visit" : "Returning visit"} · capped ${capLabel}/visit`;
   // The claim action depends on the guest's own account, not the venue:
   //   free            → Pay with QR + Upgrade (claim now, or unlock a bigger
@@ -728,14 +734,13 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   //   Premium via IG  → one button: Pay with QR *and* post an Instagram story,
   //                     since the story is what re-verifies the IG Premium tier
   const isFree = membership.tier === "free";
-  const isPremiumViaInstagram =
-    !isFree && membership.origin === "instagram";
+  const isPremiumViaInstagram = !isFree && membership.origin === "instagram";
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — the active reward, mechanic, and cap. The box header already
           says "Reward", so no redundant "Your reward" eyebrow here. */}
       <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
-        <p className="font-display text-3xl font-semibold leading-none">
+        <p className="font-display text-3xl leading-none font-semibold">
           {activeValue == null ? "—" : `${activeValue}% ${mechanicWord}`}
         </p>
         <p className="mt-1.5 text-xs leading-snug text-white/90">{subtitle}</p>
@@ -777,7 +782,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
       <RewardMatrix
         welcome={welcome}
         returning={returning}
-        currentTier={current_tier}
+        currentTier={tier}
         isFirstVisit={is_first_visit}
         suffix={mechanicShort}
       />
@@ -846,7 +851,9 @@ function RewardStep({
       <span
         className={cn(
           "relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-          accent ? "bg-tier-premium/10 text-premium" : "bg-secondary/10 text-secondary",
+          accent
+            ? "bg-tier-premium/10 text-premium"
+            : "bg-secondary/10 text-secondary",
         )}
       >
         <Icon className="h-3.5 w-3.5" strokeWidth={2} />
@@ -855,7 +862,7 @@ function RewardStep({
         </span>
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-foreground text-[13px] font-semibold leading-tight">
+        <p className="text-foreground text-[13px] leading-tight font-semibold">
           {title}
         </p>
         <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
@@ -886,7 +893,12 @@ function RewardMatrix({
 }) {
   const rows = [
     { key: "first", label: "First visit", vals: welcome, onAxis: isFirstVisit },
-    { key: "returning", label: "Returning", vals: returning, onAxis: !isFirstVisit },
+    {
+      key: "returning",
+      label: "Returning",
+      vals: returning,
+      onAxis: !isFirstVisit,
+    },
   ] as const;
   return (
     <div className="border-border relative overflow-hidden rounded-xl border">
@@ -964,7 +976,11 @@ function RewardCell({
       <span
         className={cn(
           "text-[10px]",
-          active ? "text-white/85" : accent ? "text-premium/80" : "text-muted-foreground",
+          active
+            ? "text-white/85"
+            : accent
+              ? "text-premium/80"
+              : "text-muted-foreground",
         )}
       >
         {suffix}
@@ -1058,8 +1074,12 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
   // Flatten every link source into a single chip set — no subgroups.
   // Phone leads since calling is the most direct contact action; the
   // rest follow channel / reservation / review order.
-  const chips: { key: string; label: string; Icon: typeof Globe; url: string }[] =
-    [];
+  const chips: {
+    key: string;
+    label: string;
+    Icon: typeof Globe;
+    url: string;
+  }[] = [];
   if (venue.phone) {
     chips.push({
       key: "phone",
@@ -1070,15 +1090,18 @@ function LinksBox({ venue }: { venue: VenueDetail }) {
   }
   for (const def of CHANNEL_DEFS) {
     const url = venue.channels[def.key];
-    if (url) chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+    if (url)
+      chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
   }
   for (const def of RESERVATION_DEFS) {
     const url = venue.reservations[def.key];
-    if (url) chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+    if (url)
+      chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
   }
   for (const def of REVIEW_DEFS) {
     const url = venue.reviews_maps[def.key];
-    if (url) chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+    if (url)
+      chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
   }
   if (chips.length === 0) return null;
   return (
