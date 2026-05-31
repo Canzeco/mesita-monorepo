@@ -3,9 +3,8 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import type { ConsumerMembership } from "@/lib/api/profile";
@@ -58,6 +57,37 @@ const MembershipContext = createContext<Membership>(FREE_MEMBERSHIP);
 // the MOCK_SUBSCRIPTION path in subscribe/[tier] once real billing ships.
 export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 
+// Client-side mock Instagram verification. The Verify Instagram sheet sets this
+// flag instead of calling a real social-graph check, so the "connect Instagram
+// → instant Premium" door is demoable before the verification backend ships.
+// Premium sourced this way reports origin === "instagram" with a follower count
+// safely above the 1,000 threshold. Remove with the sheet's mock once the real
+// verify flow lands.
+export const MOCK_INSTAGRAM_KEY = "mesita:mock-instagram";
+
+// Mocked follower reach reported once Instagram is "connected" — comfortably
+// past the premium followerThreshold (1,000) so the unlocked perk reads true.
+const MOCK_INSTAGRAM_FOLLOWERS = 4200;
+
+// SSR-safe localStorage flag read. useSyncExternalStore returns the server
+// snapshot (always false) for the hydration render so server and client markup
+// match, then swaps in the real localStorage value — no cascading effect render
+// and no hydration mismatch. The `storage` subscription keeps other tabs in
+// sync; the mock flows full-navigate after writing, so the new load reads fresh
+// regardless.
+function subscribeToStorage(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  return () => window.removeEventListener("storage", onChange);
+}
+
+function useLocalStorageFlag(key: string): boolean {
+  return useSyncExternalStore(
+    subscribeToStorage,
+    () => window.localStorage.getItem(key) === "1",
+    () => false,
+  );
+}
+
 export function MembershipProvider({
   membership,
   children,
@@ -67,24 +97,39 @@ export function MembershipProvider({
 }) {
   const base = useMemo(() => normalize(membership), [membership]);
 
-  // Read the mock flag after mount (localStorage is client-only); the first
-  // render matches the server-seeded value, so there's no hydration mismatch.
-  const [mockPremium, setMockPremium] = useState(false);
-  useEffect(() => {
-    setMockPremium(window.localStorage.getItem(MOCK_PREMIUM_KEY) === "1");
-  }, []);
+  // Client-only mock flags, read SSR-safe so the upgrade UX is demoable. The
+  // first (hydration) render sees the server-seeded membership; the real
+  // localStorage values fold in immediately after.
+  const mockPremium = useLocalStorageFlag(MOCK_PREMIUM_KEY);
+  const mockInstagram = useLocalStorageFlag(MOCK_INSTAGRAM_KEY);
 
   const value = useMemo<Membership>(() => {
-    if (!mockPremium || base.tier === "premium") return base;
-    const renews = new Date();
-    renews.setMonth(renews.getMonth() + 1);
-    return {
-      ...base,
-      tier: "premium",
-      origin: "subscription",
-      renewsAt: renews.toISOString(),
-    };
-  }, [base, mockPremium]);
+    // A real server-seeded Premium always wins — never downgrade or relabel it.
+    if (base.tier === "premium") return base;
+    // Instagram verification takes precedence over the subscription mock: it's
+    // the more specific door (origin + follower reach), and the verify sheet is
+    // the only thing that sets it.
+    if (mockInstagram) {
+      return {
+        ...base,
+        tier: "premium",
+        origin: "instagram",
+        renewsAt: null,
+        followers: MOCK_INSTAGRAM_FOLLOWERS,
+      };
+    }
+    if (mockPremium) {
+      const renews = new Date();
+      renews.setMonth(renews.getMonth() + 1);
+      return {
+        ...base,
+        tier: "premium",
+        origin: "subscription",
+        renewsAt: renews.toISOString(),
+      };
+    }
+    return base;
+  }, [base, mockPremium, mockInstagram]);
 
   return (
     <MembershipContext.Provider value={value}>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Instagram } from "lucide-react";
+import { BadgeCheck, Instagram, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MOCK_INSTAGRAM_KEY } from "@/lib/membership-context";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
 // Premium. 1,000+ followers (and a story per visit) unlocks Premium. Extracted
@@ -18,6 +19,21 @@ export function VerifySocialSheet({
   onClose: () => void;
 }) {
   const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+
+  // Mock verification: any 8-digit code "connects" Instagram and grants Premium
+  // via the instagram origin. Flips the localStorage flag the membership
+  // provider reads, then hard-navigates so the shell re-seeds with the unlocked
+  // membership and the Profile lands on its success toast. Mirrors the
+  // MOCK_SUBSCRIPTION path in subscribe/[tier]; swap for the real verify call
+  // once the social-graph check ships.
+  function mockVerify() {
+    if (code.length < 8 || verifying) return;
+    setVerifying(true);
+    window.localStorage.setItem(MOCK_INSTAGRAM_KEY, "1");
+    window.location.href = "/profile?instagram=success";
+  }
+
   const cfg = {
     Icon: Instagram,
     iconBg:
@@ -104,11 +120,16 @@ export function VerifySocialSheet({
           </button>
           <button
             type="button"
-            disabled={code.length < 8}
+            onClick={mockVerify}
+            disabled={code.length < 8 || verifying}
             className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white transition disabled:opacity-60"
           >
-            <BadgeCheck className="h-4 w-4" />
-            Verify
+            {verifying ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <BadgeCheck className="h-4 w-4" />
+            )}
+            {verifying ? "Connecting…" : "Verify"}
           </button>
         </div>
         <p className="text-muted-foreground mt-3 text-center text-[11px]">

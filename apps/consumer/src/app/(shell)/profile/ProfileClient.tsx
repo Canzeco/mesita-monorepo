@@ -62,13 +62,17 @@ export function ProfileClient() {
   // Read straight off the URL (client-only, fires once) rather than
   // useSearchParams, so the page carries no prerender-bailout requirement.
   useEffect(() => {
-    const status = new URLSearchParams(window.location.search).get(
-      "subscription",
-    );
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("subscription");
     if (status === "success") {
       toast.success("You're Mesita Premium — welcome in.");
     } else if (status === "cancelled") {
       toast("Checkout cancelled — you can subscribe anytime.");
+    }
+    // Instagram verify lands here too — the verify sheet redirects with
+    // ?instagram=success once the account is connected and Premium is granted.
+    if (params.get("instagram") === "success") {
+      toast.success("Instagram connected — Mesita Premium unlocked.");
     }
   }, []);
 
