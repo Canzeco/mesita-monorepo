@@ -8,6 +8,7 @@ import {
   Loader2,
   Mail,
   MessageCircle,
+  Phone as PhoneIcon,
   Plus,
   Send,
   Trash2,
@@ -682,52 +683,6 @@ function EditorInviteForm({
           <Send className="h-3 w-3" />
         )}
         {submitLabel}
-      </button>
-    </form>
-  );
-}
-
-function PrInviteForm({
-  busy,
-  onSubmit,
-}: {
-  busy: boolean;
-  onSubmit: (email: string) => void | Promise<void>;
-}) {
-  const [email, setEmail] = useState("");
-  return (
-    <form
-      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = email.trim();
-        if (!trimmed) return;
-        onSubmit(trimmed);
-      }}
-    >
-      <div className="relative flex-1">
-        <Mail className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
-        <input
-          type="email"
-          required
-          autoFocus
-          placeholder="pr@company.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border-border bg-background focus:border-foreground/40 w-full rounded-full py-2 pr-3 pl-8 text-[13px] outline-none"
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={busy || email.trim().length === 0}
-        className={cn(PILL_BUTTON_CLASS, "px-4 py-2 disabled:opacity-50")}
-      >
-        {busy ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        ) : (
-          <Send className="h-3 w-3" />
-        )}
-        Send PR invite
       </button>
     </form>
   );

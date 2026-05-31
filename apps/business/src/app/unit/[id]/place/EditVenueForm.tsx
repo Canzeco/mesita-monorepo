@@ -46,12 +46,8 @@ import {
   type UpdateVenueInput,
   type VenueHours,
 } from "@/lib/api/venues";
-import {
-  Field,
-  GoogleLogo,
-  InstagramLogo,
-  Section,
-} from "@/components/shared";
+import { visibilityForPlan } from "@/lib/business/plans";
+import { Field, GoogleLogo, InstagramLogo, Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import {
   INPUT_CLASS as INPUT,
@@ -101,7 +97,6 @@ type FormState = {
   instagram_pr_urls: string[];
   facebook_url: string;
   tiktok_url: string;
-  x_url: string;
   youtube_url: string;
   threads_url: string;
   reddit_url: string;
@@ -270,7 +265,6 @@ function venueToFormState(venue: MyVenue): FormState {
     instagram_pr_urls: venue.instagram_pr_urls ?? [],
     facebook_url: venue.facebook_url ?? "",
     tiktok_url: venue.tiktok_url ?? "",
-    x_url: venue.x_url ?? "",
     youtube_url: venue.youtube_url ?? "",
     threads_url: venue.threads_url ?? "",
     reddit_url: venue.reddit_url ?? "",
@@ -350,7 +344,6 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         .filter((u): u is string => u !== null),
       facebook_url: nullableUrl(v.facebook_url),
       tiktok_url: nullableUrl(v.tiktok_url),
-      x_url: nullableUrl(v.x_url),
       youtube_url: nullableUrl(v.youtube_url),
       threads_url: nullableUrl(v.threads_url),
       reddit_url: nullableUrl(v.reddit_url),
@@ -378,8 +371,14 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {/* Consumer-style vertical flow (same sequence as venue detail). */}
-      <div className="flex flex-col gap-4">
+      {/* Responsive place layout: single column on mobile, two columns on wide screens. */}
+      <div className="grid grid-cols-1 gap-4 min-[1700px]:grid-cols-2">
+        <div className="col-span-full">
+          <ProfileCompletionBar v={v} />
+        </div>
+        <div className="col-span-full">
+          <MesitaVisibilityBar plan={venue.plan} />
+        </div>
         <PreviewSection venue={venue} v={v} />
         <BasicsSection venue={venue} v={v} set={set} />
         <ReviewsSummarySection venue={venue} />
@@ -393,15 +392,14 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
           set={set}
           teamHref={`/unit/${venue.id}/team`}
         />
-        <DetailsSection venue={venue} />
+        <DetailsSection venue={venue} v={v} set={set} />
+        <MediaSection
+          photos={v.photos}
+          onChange={(photos) => set("photos", photos)}
+          venueName={v.name}
+          onError={setError}
+        />
       </div>
-
-      <MediaSection
-        photos={v.photos}
-        onChange={(photos) => set("photos", photos)}
-        venueName={v.name}
-        onError={setError}
-      />
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
@@ -509,10 +507,6 @@ function BasicsSection({
 
       <PriceLevelDisplay level={venue.price_level} />
 
-      <Field label="Tags">
-        <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
-      </Field>
-
       <Field label="About">
         <textarea
           value={v.description}
@@ -527,55 +521,63 @@ function BasicsSection({
 }
 
 function PriceLevelDisplay({ level }: { level: number | null }) {
-  // Renders the Google price tier as a row of `$` icons (1-PRICE_LEVEL_MAX
-  // filled, the rest dimmed) plus the tier name. Visually parses faster
-  // than the old "$$ · Casual" string and gives the field a real shape
-  // among the rest of the readonly cards.
-  const isEmpty = level == null;
+  // Segmented 4-step bar (25% each) so price tier is readable at a glance.
+  const normalizedLevel =
+    level == null ? null : Math.max(1, Math.min(PRICE_LEVEL_MAX, level));
+  const isEmpty = normalizedLevel == null;
+
   return (
     <div>
       <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
         <DollarSign className="text-foreground/60 h-4 w-4" />
         Price level
       </span>
-      <div
-        className={cn(
-          "border-border flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm break-words",
-          isEmpty
-            ? "bg-muted/20 text-muted-foreground/80 italic"
-            : "bg-muted/40 text-muted-foreground",
-        )}
-      >
-        {isEmpty ? (
-          <span className="flex items-start gap-2">
-            <Sparkles className="text-muted-foreground/60 mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>Not listed on Google.</span>
-          </span>
-        ) : (
-          <>
-            <div
-              className="flex items-center gap-0.5"
-              aria-label={`Price level ${level} of ${PRICE_LEVEL_MAX}`}
-            >
-              {Array.from({ length: PRICE_LEVEL_MAX }, (_, i) => i + 1).map(
-                (i) => (
-                  <DollarSign
-                    key={i}
-                    className={cn(
-                      "h-4 w-4",
-                      i <= level
-                        ? "text-foreground/55"
-                        : "text-muted-foreground/20",
-                    )}
-                  />
-                ),
-              )}
-            </div>
-            <span className="text-muted-foreground/80 text-[12px]">
-              {PRICE_TIER_LABEL[level] ?? "—"}
+      <div className="border-border rounded-xl border bg-gradient-to-r from-fuchsia-50/70 via-rose-50/60 to-orange-50/70 p-2.5">
+        <div
+          className="grid grid-cols-4 gap-1"
+          aria-label={
+            normalizedLevel == null
+              ? "Price level not available"
+              : `Price level ${normalizedLevel} of ${PRICE_LEVEL_MAX}`
+          }
+        >
+          {Array.from({ length: PRICE_LEVEL_MAX }, (_, idx) => {
+            const segment = idx + 1;
+            const active = normalizedLevel != null && segment <= normalizedLevel;
+            const current = normalizedLevel === segment;
+            return (
+              <div
+                key={segment}
+                className={cn(
+                  "flex h-10 items-center justify-center rounded-lg border text-[12px] font-semibold tabular-nums transition",
+                  active
+                    ? "bg-pink-gradient border-transparent text-white shadow-sm"
+                    : "border-border/60 bg-white/90 text-muted-foreground/80",
+                  current && "ring-2 ring-fuchsia-300/70",
+                )}
+              >
+                {"$".repeat(segment)}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <p
+            className={cn(
+              "text-[12px]",
+              isEmpty ? "text-muted-foreground italic" : "text-muted-foreground/90",
+            )}
+          >
+            {isEmpty
+              ? "Not listed on Google yet."
+              : `Level ${normalizedLevel} of ${PRICE_LEVEL_MAX}`}
+          </p>
+          {!isEmpty && (
+            <span className="bg-pink-gradient rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white uppercase">
+              {PRICE_TIER_LABEL[normalizedLevel] ?? "—"}
             </span>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -682,24 +684,129 @@ function PreviewSection({ venue, v }: { venue: MyVenue; v: FormState }) {
   );
 }
 
+function ProfileCompletionBar({ v }: { v: FormState }) {
+  const checks = profileCompletionChecks(v);
+  const completed = checks.filter((check) => check.done).length;
+  const total = checks.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const pending = checks.filter((check) => !check.done).slice(0, 3);
+
+  return (
+    <div className="border-border bg-card rounded-2xl border p-4">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold">Profile completeness</p>
+        <span className="text-muted-foreground text-xs font-medium">
+          {completed}/{total} completed
+        </span>
+      </div>
+      <div className="bg-muted h-2.5 overflow-hidden rounded-full">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            pct >= 90
+              ? "bg-emerald-500"
+              : pct >= 60
+                ? "bg-amber-500"
+                : "bg-foreground/75",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-2.5 flex items-center justify-between gap-3">
+        <p className="text-foreground text-[12px] font-semibold">{pct}% complete</p>
+        {pending.length > 0 ? (
+          <p className="text-muted-foreground text-[11px]">
+            Next up: {pending.map((item) => item.label).join(" · ")}
+          </p>
+        ) : (
+          <p className="text-emerald-700 text-[11px] font-medium">
+            Profile looks complete.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MesitaVisibilityBar({ plan }: { plan: MyVenue["plan"] }) {
+  const current = visibilityForPlan(plan);
+  const levels = ["Low", "Medium", "High", "Extra high", "Max"] as const;
+  const currentIdx = levels.findIndex((level) => level === current);
+
+  return (
+    <div className="border-border bg-card rounded-2xl border p-4">
+      <div className="mb-2.5 flex items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold">Visibility on Mesita</p>
+        <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          Step {currentIdx + 1} of {levels.length}
+        </span>
+      </div>
+      <p className="text-foreground text-xl leading-none font-semibold tracking-tight">
+        {current}
+      </p>
+
+      <div className="mt-4 flex items-center">
+        {levels.map((level, idx) => {
+          const reached = idx < currentIdx;
+          const isCurrent = idx === currentIdx;
+          return (
+            <div key={level} className="flex flex-1 items-center">
+              {idx > 0 && (
+                <div
+                  className={cn(
+                    "h-1 flex-1 rounded-full",
+                    idx <= currentIdx ? "bg-pink-gradient" : "bg-muted",
+                  )}
+                />
+              )}
+              <div
+                className={cn(
+                  "shrink-0 rounded-full transition",
+                  isCurrent
+                    ? "bg-pink-gradient h-4 w-4 ring-4 ring-pink-500/30"
+                    : reached
+                      ? "bg-pink-gradient h-3 w-3"
+                      : "bg-muted h-3 w-3",
+                )}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="text-muted-foreground mt-2 flex justify-between text-[10px] font-semibold tracking-wider uppercase">
+        {levels.map((level, idx) => (
+          <span
+            key={level}
+            className={cn(idx === currentIdx && "text-foreground")}
+          >
+            {level}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
   // Consumer-like swipe fields overlay, but framed in a neutral white box.
   const photos = v.photos.slice(0, MAX_PHOTOS);
   const [photoIdx, setPhotoIdx] = useState(0);
-  useEffect(() => {
-    if (photoIdx > photos.length - 1) setPhotoIdx(0);
-  }, [photoIdx, photos.length]);
-  const cover = photos[photoIdx] ?? null;
+  // Clamp during render rather than in an effect: when photos shrink below
+  // the current index, fall back to the first photo without a cascading
+  // setState-in-effect.
+  const safeIdx = photoIdx > photos.length - 1 ? 0 : photoIdx;
+  const cover = photos[safeIdx] ?? null;
   const meta = previewMeta(venue, v);
   const canSlide = photos.length > 1;
 
   const prevPhoto = () =>
-    setPhotoIdx((idx) => (idx === 0 ? photos.length - 1 : idx - 1));
+    setPhotoIdx(safeIdx === 0 ? photos.length - 1 : safeIdx - 1);
   const nextPhoto = () =>
-    setPhotoIdx((idx) => (idx === photos.length - 1 ? 0 : idx + 1));
+    setPhotoIdx(safeIdx === photos.length - 1 ? 0 : safeIdx + 1);
   return (
     <div className="bg-card mx-auto w-full max-w-[360px] overflow-hidden rounded-3xl border shadow-sm lg:max-w-[460px]">
-      <div className="relative aspect-[4/5] w-full bg-muted">
+      <div className="bg-muted relative aspect-[4/5] w-full">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -726,7 +833,7 @@ function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
               <ArrowLeft className="h-3.5 w-3.5" />
             </button>
             <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
-              {photoIdx + 1} / {photos.length}
+              {safeIdx + 1} / {photos.length}
             </span>
             <button
               type="button"
@@ -744,12 +851,17 @@ function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
             {meta.name}
           </h2>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {meta.category && <PreviewMetaChip>{meta.category}</PreviewMetaChip>}
+            {meta.category && (
+              <PreviewMetaChip>{meta.category}</PreviewMetaChip>
+            )}
             {meta.price && <PreviewMetaChip>{meta.price}</PreviewMetaChip>}
             {meta.googleRating && (
               <PreviewMetaChip>
                 {meta.googleRating}
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" strokeWidth={0} />
+                <Star
+                  className="h-3 w-3 fill-amber-400 text-amber-400"
+                  strokeWidth={0}
+                />
                 {meta.googleCount && (
                   <span className="text-white/75">({meta.googleCount})</span>
                 )}
@@ -804,7 +916,7 @@ function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
                 aria-label={`Go to preview photo ${idx + 1}`}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
-                  idx === photoIdx
+                  idx === safeIdx
                     ? "w-5 bg-white"
                     : "w-1.5 bg-white/55 hover:bg-white/75",
                 )}
@@ -817,44 +929,40 @@ function PreviewSwipeCard({ venue, v }: { venue: MyVenue; v: FormState }) {
   );
 }
 
-
 function PreviewMetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md">
       {children}
     </span>
   );
 }
-
-function PreviewLightChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="bg-muted text-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium">
-      {children}
-    </span>
-  );
-}
-
 
 function previewMeta(venue: MyVenue, v: FormState) {
   const name = v.name || venue.name || "Venue name";
   const category = (v.category || venue.category || "").toLowerCase() || null;
-  const price = venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  const price =
+    venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const googleRating =
-    venue.google_stars_overall != null ? venue.google_stars_overall.toFixed(1) : null;
+    venue.google_stars_overall != null
+      ? venue.google_stars_overall.toFixed(1)
+      : null;
   const googleCount =
-    venue.google_review_count != null ? formatCount(venue.google_review_count) : null;
+    venue.google_review_count != null
+      ? formatCount(venue.google_review_count)
+      : null;
   const instagramFollowers =
     venue.instagram_followers_count != null
       ? formatCount(venue.instagram_followers_count)
       : null;
-  const zone = venue.address ? shortLocationFromAddress(venue.address) : "Neighborhood";
+  const zone = venue.address
+    ? shortLocationFromAddress(venue.address)
+    : "Neighborhood";
   const distance = null; // business payload doesn't include distance yet.
   const status = venue.closes_at ? `Open · until ${venue.closes_at}` : null;
-  const isPartner = venue.listing_type === "partner";
+  // In business console previews, venues are always shown as verified.
+  const isPartner = true;
   const promoLabel =
-    venue.cashback_percent != null
-      ? "X% Cashback"
-      : "No promo yet";
+    venue.cashback_percent != null ? "X% Cashback" : "No promo yet";
 
   return {
     name,
@@ -869,6 +977,32 @@ function previewMeta(venue: MyVenue, v: FormState) {
     isPartner,
     promoLabel,
   };
+}
+
+function profileCompletionChecks(v: FormState): Array<{ label: string; done: boolean }> {
+  const hasAnyPhoto = v.photos.length > 0;
+  const hasAnyTag = v.tags.length > 0;
+  const hasHours = DAYS.some(({ key }) =>
+    v.hours[key].ranges.some((range) => range.open.trim() && range.close.trim()),
+  );
+
+  const checks: Array<{ label: string; done: boolean }> = [
+    { label: "Name", done: v.name.trim() !== "" },
+    { label: "Category", done: v.category.trim() !== "" },
+    { label: "About", done: v.description.trim() !== "" },
+    { label: "Tags", done: hasAnyTag },
+    { label: "Photos", done: hasAnyPhoto },
+    { label: "Hours", done: hasHours },
+    { label: "Menu link", done: v.menu_pdf_url.trim() !== "" },
+    { label: "Website", done: v.website_url.trim() !== "" },
+    { label: "Phone", done: v.phone.trim() !== "" },
+    { label: "WhatsApp", done: v.whatsapp_url.trim() !== "" },
+    { label: "Instagram", done: v.instagram_url.trim() !== "" },
+    { label: "Email", done: v.email.trim() !== "" },
+    { label: "Google Maps", done: v.google_maps_url.trim() !== "" },
+  ];
+
+  return checks;
 }
 
 function shortLocationFromAddress(address: string): string {
@@ -1160,7 +1294,7 @@ function MenuSection({
           value={v.menu_pdf_name}
           onChange={(e) => set("menu_pdf_name", e.target.value.slice(0, 80))}
           placeholder="Dinner menu"
-          className="border-border bg-card focus:border-foreground/40 w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
+          className="border-border bg-card focus:border-foreground/40 w-full rounded-xl border px-3 py-2.5 text-sm transition outline-none"
         />
       </Field>
       <Field label="Menu PDF link">
@@ -1246,7 +1380,15 @@ function MenuHostCard({
   );
 }
 
-function DetailsSection({ venue }: { venue: MyVenue }) {
+function DetailsSection({
+  venue,
+  v,
+  set,
+}: {
+  venue: MyVenue;
+  v: FormState;
+  set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
   const details = [
     ["Listing type", humanizeToken(venue.listing_type)],
     ["Status", humanizeToken(venue.status)],
@@ -1261,6 +1403,9 @@ function DetailsSection({ venue }: { venue: MyVenue }) {
       title="Details"
       right={<span className={TINY_LABEL_CLASS}>Read-only</span>}
     >
+      <Field label="Tags">
+        <TagsEditor tags={v.tags} onChange={(tags) => set("tags", tags)} />
+      </Field>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {details.map(([label, value]) => (
           <ReadOnly
@@ -1286,13 +1431,49 @@ function ChannelsSection({
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   teamHref: string;
 }) {
-  const primaryFields = [v.website_url, v.phone, v.whatsapp_url, v.instagram_url];
-  const prFields = [v.phone, v.whatsapp_pr_urls[0] ?? "", v.instagram_pr_urls[0] ?? ""];
+  type SecondaryChannelKey =
+    | "email"
+    | "facebook_url"
+    | "tiktok_url"
+    | "youtube_url"
+    | "opentable_url"
+    | "rappi_url"
+    | "uber_eats_url"
+    | "didi_food_url"
+    | "google_maps_url";
+
+  const [secondaryNotAvailable, setSecondaryNotAvailable] = useState<
+    Record<SecondaryChannelKey, boolean>
+  >({
+    email: false,
+    facebook_url: false,
+    tiktok_url: false,
+    youtube_url: false,
+    opentable_url: false,
+    rappi_url: false,
+    uber_eats_url: false,
+    didi_food_url: false,
+    google_maps_url: false,
+  });
+
+  const setSecondaryMissing = (key: SecondaryChannelKey, missing: boolean) =>
+    setSecondaryNotAvailable((prev) => ({ ...prev, [key]: missing }));
+
+  const primaryFields = [
+    v.website_url,
+    v.phone,
+    v.whatsapp_url,
+    v.instagram_url,
+  ];
+  const prFields = [
+    v.phone,
+    v.whatsapp_pr_urls[0] ?? "",
+    v.instagram_pr_urls[0] ?? "",
+  ];
   const secondaryFields = [
     v.email,
     v.facebook_url,
     v.tiktok_url,
-    v.x_url,
     v.youtube_url,
     v.opentable_url,
     v.rappi_url,
@@ -1300,8 +1481,23 @@ function ChannelsSection({
     v.didi_food_url,
     v.google_maps_url,
   ];
-  const fields = [...primaryFields, ...prFields, ...secondaryFields];
-  const filled = fields.filter((f) => f.trim() !== "").length;
+  const primaryCompleted = primaryFields.filter((f) => f.trim() !== "").length;
+  const prCompleted = prFields.filter((f) => f.trim() !== "").length;
+  const secondaryCompletionMap: Record<SecondaryChannelKey, boolean> = {
+    email: v.email.trim() !== "" || secondaryNotAvailable.email,
+    facebook_url: v.facebook_url.trim() !== "" || secondaryNotAvailable.facebook_url,
+    tiktok_url: v.tiktok_url.trim() !== "" || secondaryNotAvailable.tiktok_url,
+    youtube_url: v.youtube_url.trim() !== "" || secondaryNotAvailable.youtube_url,
+    opentable_url: v.opentable_url.trim() !== "" || secondaryNotAvailable.opentable_url,
+    rappi_url: v.rappi_url.trim() !== "" || secondaryNotAvailable.rappi_url,
+    uber_eats_url: v.uber_eats_url.trim() !== "" || secondaryNotAvailable.uber_eats_url,
+    didi_food_url: v.didi_food_url.trim() !== "" || secondaryNotAvailable.didi_food_url,
+    google_maps_url:
+      v.google_maps_url.trim() !== "" || secondaryNotAvailable.google_maps_url,
+  };
+  const secondaryCompleted = Object.values(secondaryCompletionMap).filter(Boolean).length;
+  const filled = primaryCompleted + prCompleted + secondaryCompleted;
+  const totalFields = primaryFields.length + prFields.length + secondaryFields.length;
 
   const prWhatsapp = v.whatsapp_pr_urls[0] ?? "";
   const prInstagram = v.instagram_pr_urls[0] ?? "";
@@ -1309,13 +1505,14 @@ function ChannelsSection({
     set("whatsapp_pr_urls", value.trim() ? [value.trim()] : []);
   const setPrInstagram = (value: string) =>
     set("instagram_pr_urls", value.trim() ? [value.trim()] : []);
+  const completed = (value: string) => value.trim() !== "";
 
   return (
     <Section
       title="Channels"
       right={
         <span className={TINY_LABEL_CLASS}>
-          {filled} / {fields.length}
+          {filled} / {totalFields}
         </span>
       }
     >
@@ -1329,6 +1526,7 @@ function ChannelsSection({
               placeholder="https://yourplace.com"
               value={v.website_url}
               onChange={(val) => set("website_url", val)}
+              completed={completed(v.website_url)}
             />
             <UrlField
               label="Phone"
@@ -1336,6 +1534,7 @@ function ChannelsSection({
               placeholder="+52 444 833 5050"
               value={v.phone}
               onChange={(val) => set("phone", val)}
+              completed={completed(v.phone)}
             />
             <UrlField
               label="WhatsApp"
@@ -1343,6 +1542,7 @@ function ChannelsSection({
               placeholder="https://wa.me/52…"
               value={v.whatsapp_url}
               onChange={(val) => set("whatsapp_url", val)}
+              completed={completed(v.whatsapp_url)}
             />
             <UrlField
               label="Instagram"
@@ -1350,6 +1550,7 @@ function ChannelsSection({
               placeholder="https://instagram.com/yourplace"
               value={v.instagram_url}
               onChange={(val) => set("instagram_url", val)}
+              completed={completed(v.instagram_url)}
             />
           </div>
         </div>
@@ -1372,6 +1573,7 @@ function ChannelsSection({
               placeholder="+52 444 833 5050"
               value={v.phone}
               onChange={(val) => set("phone", val)}
+              completed={completed(v.phone)}
             />
             <UrlField
               label="WhatsApp"
@@ -1379,6 +1581,7 @@ function ChannelsSection({
               placeholder="https://wa.me/52…"
               value={prWhatsapp}
               onChange={setPrWhatsapp}
+              completed={completed(prWhatsapp)}
             />
             <UrlField
               label="Instagram"
@@ -1386,6 +1589,7 @@ function ChannelsSection({
               placeholder="https://instagram.com/…"
               value={prInstagram}
               onChange={setPrInstagram}
+              completed={completed(prInstagram)}
             />
           </div>
         </div>
@@ -1398,77 +1602,129 @@ function ChannelsSection({
               icon={<Mail className="h-4 w-4" />}
               placeholder="hola@yourplace.com"
               value={v.email}
-              onChange={(val) => set("email", val)}
+              onChange={(val) => {
+                set("email", val);
+                if (val.trim()) setSecondaryMissing("email", false);
+              }}
+              completed={secondaryCompletionMap.email}
+              missing={secondaryNotAvailable.email}
+              onToggleMissing={(missing) => setSecondaryMissing("email", missing)}
             />
             <UrlField
               label="Facebook"
               icon={<Facebook className="h-4 w-4" />}
               placeholder="https://facebook.com/yourplace"
               value={v.facebook_url}
-              onChange={(val) => set("facebook_url", val)}
+              onChange={(val) => {
+                set("facebook_url", val);
+                if (val.trim()) setSecondaryMissing("facebook_url", false);
+              }}
+              completed={secondaryCompletionMap.facebook_url}
+              missing={secondaryNotAvailable.facebook_url}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("facebook_url", missing)
+              }
             />
             <UrlField
               label="TikTok"
               icon={<Music2 className="h-4 w-4" />}
               placeholder="https://tiktok.com/@yourplace"
               value={v.tiktok_url}
-              onChange={(val) => set("tiktok_url", val)}
-            />
-            <UrlField
-              label="X"
-              icon={<MessageCircle className="h-4 w-4" />}
-              placeholder="https://x.com/yourplace"
-              value={v.x_url}
-              onChange={(val) => set("x_url", val)}
+              onChange={(val) => {
+                set("tiktok_url", val);
+                if (val.trim()) setSecondaryMissing("tiktok_url", false);
+              }}
+              completed={secondaryCompletionMap.tiktok_url}
+              missing={secondaryNotAvailable.tiktok_url}
+              onToggleMissing={(missing) => setSecondaryMissing("tiktok_url", missing)}
             />
             <UrlField
               label="YouTube"
               icon={<Globe className="h-4 w-4" />}
               placeholder="https://youtube.com/@yourplace"
               value={v.youtube_url}
-              onChange={(val) => set("youtube_url", val)}
+              onChange={(val) => {
+                set("youtube_url", val);
+                if (val.trim()) setSecondaryMissing("youtube_url", false);
+              }}
+              completed={secondaryCompletionMap.youtube_url}
+              missing={secondaryNotAvailable.youtube_url}
+              onToggleMissing={(missing) => setSecondaryMissing("youtube_url", missing)}
             />
             <UrlField
               label="OpenTable"
               icon={<UtensilsCrossed className="h-4 w-4" />}
               placeholder="https://www.opentable.com/..."
               value={v.opentable_url}
-              onChange={(val) => set("opentable_url", val)}
+              onChange={(val) => {
+                set("opentable_url", val);
+                if (val.trim()) setSecondaryMissing("opentable_url", false);
+              }}
+              completed={secondaryCompletionMap.opentable_url}
+              missing={secondaryNotAvailable.opentable_url}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("opentable_url", missing)
+              }
             />
             <UrlField
               label="Rappi"
               icon={<ShoppingBag className="h-4 w-4" />}
               placeholder="https://www.rappi.com/restaurants/..."
               value={v.rappi_url}
-              onChange={(val) => set("rappi_url", val)}
+              onChange={(val) => {
+                set("rappi_url", val);
+                if (val.trim()) setSecondaryMissing("rappi_url", false);
+              }}
+              completed={secondaryCompletionMap.rappi_url}
+              missing={secondaryNotAvailable.rappi_url}
+              onToggleMissing={(missing) => setSecondaryMissing("rappi_url", missing)}
             />
             <UrlField
               label="Uber Eats"
               icon={<UtensilsCrossed className="h-4 w-4" />}
               placeholder="https://www.ubereats.com/store/..."
               value={v.uber_eats_url}
-              onChange={(val) => set("uber_eats_url", val)}
+              onChange={(val) => {
+                set("uber_eats_url", val);
+                if (val.trim()) setSecondaryMissing("uber_eats_url", false);
+              }}
+              completed={secondaryCompletionMap.uber_eats_url}
+              missing={secondaryNotAvailable.uber_eats_url}
+              onToggleMissing={(missing) => setSecondaryMissing("uber_eats_url", missing)}
             />
             <UrlField
               label="DiDi Food"
               icon={<ShoppingBag className="h-4 w-4" />}
               placeholder="https://www.didiglobal.com/..."
               value={v.didi_food_url}
-              onChange={(val) => set("didi_food_url", val)}
+              onChange={(val) => {
+                set("didi_food_url", val);
+                if (val.trim()) setSecondaryMissing("didi_food_url", false);
+              }}
+              completed={secondaryCompletionMap.didi_food_url}
+              missing={secondaryNotAvailable.didi_food_url}
+              onToggleMissing={(missing) => setSecondaryMissing("didi_food_url", missing)}
             />
             <UrlField
               label="Google Maps"
               icon={<MapPin className="h-4 w-4" />}
               placeholder="https://maps.google.com/..."
               value={v.google_maps_url}
-              onChange={(val) => set("google_maps_url", val)}
+              onChange={(val) => {
+                set("google_maps_url", val);
+                if (val.trim()) setSecondaryMissing("google_maps_url", false);
+              }}
+              completed={secondaryCompletionMap.google_maps_url}
+              missing={secondaryNotAvailable.google_maps_url}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("google_maps_url", missing)
+              }
             />
             <div className="sm:col-span-2">
               <ReadOnly
-                label="Google business profile (auto)"
-                value={venue.google_business_url}
+                label="Google business profile id (Mesita spine)"
+                value={venue.id}
                 icon={<Sparkles className="h-4 w-4" />}
-                empty="Not available yet (auto-detected)."
               />
             </div>
           </div>
@@ -1657,13 +1913,18 @@ function ReviewsSummarySection({ venue }: { venue: MyVenue }) {
   const overallMesita = venue.mesita_stars_overall ?? 5;
   const overallCount = venue.mesita_review_count ?? 0;
   const bars = [
+    ["Overall", overallMesita],
     ["Food", venue.mesita_stars_food ?? 5],
     ["Service", venue.mesita_stars_service ?? 5],
     ["Ambience", venue.mesita_stars_ambience ?? 5],
+    ["Value", overallMesita],
   ] as const;
 
   return (
-    <Section title="Reviews summary" right={<span className={TINY_LABEL_CLASS}>Read-only</span>}>
+    <Section
+      title="Reviews summary"
+      right={<span className={TINY_LABEL_CLASS}>Read-only</span>}
+    >
       <div className="bg-background border-border flex flex-col gap-4 rounded-xl border p-4">
         <div className="flex items-center gap-2">
           <BadgeCheck className="h-4 w-4 text-pink-500" />
@@ -1673,7 +1934,7 @@ function ReviewsSummarySection({ venue }: { venue: MyVenue }) {
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="bg-pink-500/10 ring-pink-500/30 flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl ring-1">
+          <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-pink-500/10 ring-1 ring-pink-500/30">
             <div className="flex items-baseline gap-1">
               <span className="font-display text-2xl leading-none font-semibold">
                 {overallMesita.toFixed(1)}
@@ -1723,15 +1984,17 @@ function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
           No review snippets available yet for this venue.
         </p>
       ) : (
-        <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <div className="scrollbar-hide -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1">
           {items.map((item) => (
             <article
               key={item.id}
-              className="bg-background border-border w-[320px] shrink-0 rounded-xl border p-3"
+              className="bg-background border-border w-[280px] shrink-0 snap-start rounded-xl border p-3 sm:w-[320px]"
             >
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold">{item.author}</p>
-                <span className="text-muted-foreground text-[11px]">{item.source}</span>
+                <span className="text-muted-foreground text-[11px]">
+                  {item.source}
+                </span>
               </div>
               <div className="mb-2 flex items-center gap-0.5">
                 {Array.from({ length: 5 }, (_, i) => (
@@ -1747,9 +2010,11 @@ function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
                   />
                 ))}
               </div>
-              <p className="text-muted-foreground line-clamp-4 text-[13px] leading-snug">
-                "{item.text}"
-              </p>
+              <div className="bg-muted/20 scrollbar-thin mt-2 max-h-44 min-h-36 overflow-y-auto rounded-lg p-2.5">
+                <p className="text-muted-foreground text-[13px] leading-snug">
+                  &ldquo;{item.text}&rdquo;
+                </p>
+              </div>
             </article>
           ))}
         </div>
@@ -1762,7 +2027,9 @@ function RatingBar({ label, value }: { label: string; value: number }) {
   const pct = Math.min(100, (value / 5) * 100);
   return (
     <div className="flex items-center gap-2">
-      <span className="text-muted-foreground w-14 shrink-0 truncate text-[11px]">{label}</span>
+      <span className="text-muted-foreground w-14 shrink-0 truncate text-[11px]">
+        {label}
+      </span>
       <div className="bg-muted relative h-1.5 flex-1 overflow-hidden rounded-full">
         <div
           className="bg-pink-gradient absolute inset-y-0 left-0 rounded-full"
@@ -1794,7 +2061,10 @@ function ExternalMetricCard({
       <div className="mb-1">{logo}</div>
       <div className="flex items-center gap-1 text-sm font-semibold">
         {icon === "star" ? (
-          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={0} />
+          <Star
+            className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+            strokeWidth={0}
+          />
         ) : (
           <Users className="text-muted-foreground h-3.5 w-3.5" />
         )}
@@ -1876,8 +2146,13 @@ function PopularTimesMock({ venueName }: { venueName: string }) {
 }
 
 function mockPopularTimesByDay(seedBase: string): Record<DayKey, number[]> {
-  const seed = Array.from(seedBase).reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const template: number[] = [0, 0, 18, 34, 52, 62, 54, 42, 28, 0, 0, 0, 0, 0, 0, 0, 0];
+  const seed = Array.from(seedBase).reduce(
+    (acc, c) => acc + c.charCodeAt(0),
+    0,
+  );
+  const template: number[] = [
+    0, 0, 18, 34, 52, 62, 54, 42, 28, 0, 0, 0, 0, 0, 0, 0, 0,
+  ];
   const out = {} as Record<DayKey, number[]>;
   DAYS.forEach((d, dayIdx) => {
     const shift = (seed + dayIdx) % 3;
@@ -1915,7 +2190,8 @@ function extractRelevantReviews(venue: MyVenue): Array<{
     if (mesita[i]) out.push(mesita[i]);
     if (google[i]) out.push(google[i]);
   }
-  return out.slice(0, 12);
+  // Show every review we have in the business console (no preview cap).
+  return out;
 }
 
 function toReviewItems(
@@ -2079,18 +2355,27 @@ function UrlField({
   placeholder,
   value,
   onChange,
+  completed,
+  missing,
+  onToggleMissing,
 }: {
   label: string;
   icon: React.ReactNode;
   placeholder?: string;
   value: string;
   onChange: (v: string) => void;
+  completed?: boolean;
+  missing?: boolean;
+  onToggleMissing?: (missing: boolean) => void;
 }) {
   return (
     <label className="block">
       <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
         <span className="text-foreground/70">{icon}</span>
         {label}
+        {typeof completed === "boolean" && (
+          <FieldStatusBadge completed={completed} missing={missing} />
+        )}
       </span>
       <input
         value={value}
@@ -2098,9 +2383,59 @@ function UrlField({
         placeholder={placeholder}
         spellCheck={false}
         autoCapitalize="none"
-        className={INPUT}
+        disabled={!!missing}
+        className={cn(
+          INPUT,
+          missing && "bg-muted/35 text-muted-foreground cursor-not-allowed",
+        )}
       />
+      {onToggleMissing && (
+        <button
+          type="button"
+          onClick={() => onToggleMissing(!missing)}
+          className={cn(
+            "mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase transition",
+            missing
+              ? "bg-muted text-foreground hover:bg-muted/80"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          {missing ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+          {missing ? "Has channel" : "I don't have this"}
+        </button>
+      )}
     </label>
+  );
+}
+
+function FieldStatusBadge({
+  completed,
+  missing,
+}: {
+  completed: boolean;
+  missing?: boolean;
+}) {
+  const isMissing = !!missing;
+  return (
+    <span
+      className={cn(
+        "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+        isMissing
+          ? "bg-slate-500/10 text-slate-700"
+          : completed
+          ? "bg-emerald-500/10 text-emerald-700"
+          : "bg-amber-500/10 text-amber-700",
+      )}
+    >
+      {isMissing ? (
+        <Sparkles className="h-3 w-3" />
+      ) : completed ? (
+        <CheckCircle2 className="h-3 w-3" />
+      ) : (
+        <Clock className="h-3 w-3" />
+      )}
+      {isMissing ? "N/A" : completed ? "Completed" : "Pending"}
+    </span>
   );
 }
 
