@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Instagram, Mail, Sparkles } from "lucide-react";
 import { TIERS } from "@/lib/consumer-data";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
+import { MOCK_PREMIUM_KEY } from "@/lib/membership-context";
 import { toast } from "@/lib/toast";
 
 // Premium subscribe page — the paid "door" into Mesita Premium ($200 MXN/mo).
@@ -133,6 +134,11 @@ export default function SubscribePage() {
   );
 }
 
+// While billing is mocked, the button skips Stripe and flips the client-side
+// Premium flag instead. Set false to restore the real
+// consumer-create-subscription → Stripe Checkout flow below.
+const MOCK_SUBSCRIPTION = true;
+
 function PremiumCheckoutButton() {
   const supabase = useBrowserSupabase();
   const [loading, setLoading] = useState(false);
@@ -155,15 +161,23 @@ function PremiumCheckoutButton() {
     }
   }
 
+  // Mock path: no Stripe, no DB write. Persist the Premium flag and hard-reload
+  // into the profile success state so the membership provider re-seeds Premium.
+  function mockSubscribe() {
+    setLoading(true);
+    window.localStorage.setItem(MOCK_PREMIUM_KEY, "1");
+    window.location.href = "/profile?subscription=success";
+  }
+
   return (
     <button
       type="button"
-      onClick={startCheckout}
+      onClick={MOCK_SUBSCRIPTION ? mockSubscribe : startCheckout}
       disabled={loading}
       className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white disabled:opacity-70"
     >
       <Sparkles className="h-4 w-4" />
-      {loading ? "Starting checkout…" : "Continue to checkout"}
+      {loading ? "Activating Premium…" : "Continue to checkout"}
     </button>
   );
 }

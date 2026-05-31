@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { ConsumerMembership } from "@/lib/api/profile";
 
 // Real, server-sourced membership for the signed-in consumer, shared with
@@ -45,6 +52,12 @@ function normalize(m: ConsumerMembership | null | undefined): Membership {
 
 const MembershipContext = createContext<Membership>(FREE_MEMBERSHIP);
 
+// Client-side mock upgrade. The Premium "Continue to checkout" button sets this
+// localStorage flag instead of running Stripe, so the full upgrade UX is
+// demoable before consumer-create-subscription is live. Remove together with
+// the MOCK_SUBSCRIPTION path in subscribe/[tier] once real billing ships.
+export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
+
 export function MembershipProvider({
   membership,
   children,
@@ -52,7 +65,27 @@ export function MembershipProvider({
   membership: ConsumerMembership | null;
   children: ReactNode;
 }) {
-  const value = useMemo(() => normalize(membership), [membership]);
+  const base = useMemo(() => normalize(membership), [membership]);
+
+  // Read the mock flag after mount (localStorage is client-only); the first
+  // render matches the server-seeded value, so there's no hydration mismatch.
+  const [mockPremium, setMockPremium] = useState(false);
+  useEffect(() => {
+    setMockPremium(window.localStorage.getItem(MOCK_PREMIUM_KEY) === "1");
+  }, []);
+
+  const value = useMemo<Membership>(() => {
+    if (!mockPremium || base.tier === "premium") return base;
+    const renews = new Date();
+    renews.setMonth(renews.getMonth() + 1);
+    return {
+      ...base,
+      tier: "premium",
+      origin: "subscription",
+      renewsAt: renews.toISOString(),
+    };
+  }, [base, mockPremium]);
+
   return (
     <MembershipContext.Provider value={value}>
       {children}

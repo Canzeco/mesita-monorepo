@@ -78,8 +78,8 @@ export function SwipeCardInfo({
         {igFollowersLabel && (
           <MetaChip>
             <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
-            <Users className="h-3 w-3 shrink-0 text-white/70" />
             <span className="font-semibold">{igFollowersLabel}</span>
+            <Users className="h-3 w-3 shrink-0 text-white/70" />
           </MetaChip>
         )}
         {distanceLabel && (
