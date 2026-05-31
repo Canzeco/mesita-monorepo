@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { isSplitLayout, type SwipeCardLayoutMode } from "@/lib/swipe-card-layout";
-import { readPhotoNaturalSize, type ImageNaturalSize } from "@/lib/use-swipe-card-layout";
+import {
+  readPhotoNaturalSize,
+  type ImageNaturalSize,
+} from "@/lib/use-swipe-card-layout";
 import {
   SWIPE_CARD_COVER_PHOTO,
   SWIPE_CARD_WITC_PHOTO_BAND,
@@ -106,10 +108,14 @@ function WitcPhotoSlide({
   onNaturalSize?: (size: ImageNaturalSize) => void;
 }) {
   const stripHeight = Math.max(fieldsHeight, 1);
+  const reflectStyle: CSSProperties = {
+    WebkitBoxReflect:
+      "below 0px linear-gradient(to bottom, rgba(0,0,0,0.58), rgba(0,0,0,0.9))",
+  };
 
   return (
     <div className={cn("flex h-full w-full flex-col overflow-hidden", className)}>
-      <div className={SWIPE_CARD_WITC_PHOTO_BAND}>
+      <div className={SWIPE_CARD_WITC_PHOTO_BAND} style={reflectStyle}>
         <CoverImage
           src={src}
           alt={alt}
@@ -122,11 +128,6 @@ function WitcPhotoSlide({
         style={{ height: stripHeight }}
         aria-hidden
       >
-        <CoverImage
-          src={src}
-          alt=""
-          className="absolute inset-0 h-full w-full scale-y-[-1] object-bottom opacity-70 blur-[1px]"
-        />
         <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/15 to-black/55" />
       </div>
@@ -172,57 +173,9 @@ function CoverImage({
   style?: CSSProperties;
 }) {
   return (
-    <ResilientImage
-      src={src}
-      alt={alt}
-      className={className}
-      style={style}
-      onNaturalSize={onNaturalSize}
-    />
-  );
-}
-
-function ResilientImage({
-  src,
-  alt,
-  className,
-  style,
-  onNaturalSize,
-}: {
-  src: string;
-  alt: string;
-  className?: string;
-  style?: CSSProperties;
-  onNaturalSize?: (size: ImageNaturalSize) => void;
-}) {
-  const candidates = useMemo(() => buildImageCandidates(src), [src]);
-  const [idx, setIdx] = useState(0);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setIdx(0);
-    setFailed(false);
-  }, [src]);
-
-  const activeSrc = candidates[idx] ?? src;
-
-  if (failed || !activeSrc) {
-    return (
-      <div
-        aria-hidden
-        className={cn(
-          "bg-muted/70 h-full w-full select-none bg-gradient-to-b from-zinc-200 to-zinc-400",
-          className,
-        )}
-        style={style}
-      />
-    );
-  }
-
-  return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={activeSrc}
+      src={src}
       alt={alt}
       draggable={false}
       loading="eager"
@@ -235,13 +188,6 @@ function ResilientImage({
             }
           : undefined
       }
-      onError={() => {
-        if (idx + 1 < candidates.length) {
-          setIdx((n) => n + 1);
-          return;
-        }
-        setFailed(true);
-      }}
       className={cn(
         "h-full w-full select-none [-webkit-user-drag:none]",
         SWIPE_CARD_COVER_PHOTO,
@@ -250,38 +196,4 @@ function ResilientImage({
       style={style}
     />
   );
-}
-
-function buildImageCandidates(src: string): string[] {
-  const raw = src.trim();
-  if (!raw) return [];
-
-  const normalized = normalizeImageSrc(raw);
-  const encoded = tryEncodeUrl(normalized);
-
-  const variants = [normalized, encoded].filter(
-    (v): v is string => Boolean(v && v.length > 0),
-  );
-
-  if (normalized.startsWith("http://")) {
-    variants.push(`https://${normalized.slice("http://".length)}`);
-  }
-  if (encoded?.startsWith("http://")) {
-    variants.push(`https://${encoded.slice("http://".length)}`);
-  }
-
-  return Array.from(new Set(variants));
-}
-
-function normalizeImageSrc(src: string): string {
-  if (src.startsWith("//")) return `https:${src}`;
-  return src;
-}
-
-function tryEncodeUrl(src: string): string | null {
-  try {
-    return encodeURI(src);
-  } catch {
-    return null;
-  }
 }
