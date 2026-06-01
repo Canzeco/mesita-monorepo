@@ -1,7 +1,4 @@
-import { VenueDetailPageBody } from "@/components/consumer/VenueDetailPageBody";
-import { mockVenue } from "@/lib/mock/venue";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchVenueDetail } from "@/lib/api/venues";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +8,5 @@ export default async function SavedVenuePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
-  const venue = (await apiFetchVenueDetail(supabase, id)) ?? mockVenue;
-  return <VenueDetailPageBody venue={venue} backHref="/saved" />;
+  redirect(`/place/${id}`);
 }

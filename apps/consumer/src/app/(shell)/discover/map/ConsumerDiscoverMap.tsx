@@ -279,7 +279,7 @@ function MapView({
         <VenuePreview
           venue={selected}
           onDismiss={() => setSelected(null)}
-          onOpen={() => router.push(`/discover/${selected.id}`)}
+          onOpen={() => router.push(`/place/${selected.id}`)}
         />
       )}
     </div>

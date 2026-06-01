@@ -352,8 +352,8 @@ export default function AiPage() {
                   venue={resultVenue}
                   href={
                     resultVenue.slug
-                      ? `/discover/${resultVenue.slug}`
-                      : `/discover/${resultVenue.id}`
+                      ? `/place/${resultVenue.slug}`
+                      : `/place/${resultVenue.id}`
                   }
                 />
               </div>

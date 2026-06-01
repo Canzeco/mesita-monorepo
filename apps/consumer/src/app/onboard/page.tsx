@@ -10,7 +10,7 @@ import { OnboardForm } from "./OnboardForm";
 // between sign-up and the actual app, so it has its own checks:
 //
 //   - signed out          → / (with next=/onboard)
-//   - already onboarded   → /discover/swipe (don't re-collect data)
+//   - already onboarded   → /discover/discover (don't re-collect data)
 //   - signed in, no name  → render the form
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function ConsumerOnboardPage() {
       !!profile.country &&
       !!profile.birthday &&
       !!profile.sex;
-    if (onboarded) redirect("/discover/swipe");
+    if (onboarded) redirect("/discover/discover");
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.

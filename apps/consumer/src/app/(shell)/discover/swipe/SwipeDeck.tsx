@@ -45,7 +45,7 @@ export function SwipeDeck({
       <EmptyDeck
         title="Couldn't load venues"
         body={fetchError}
-        actionHref="/discover/swipe"
+        actionHref="/discover/discover"
         actionLabel="Try again"
       />
     );
@@ -376,12 +376,11 @@ function Deck({ venues }: { venues: Venue[] }) {
   const skip = () => beginExit("left");
   const save = () => beginExit("right");
   const saved = isSaved(v.id);
-  const isOpeningInfo = infoOpeningVenueId === v.id;
 
   const openInfo = () => {
-    if (isOpeningInfo) return;
+    if (infoOpeningVenueId === v.id) return;
     setInfoOpeningVenueId(v.id);
-    router.push(`/discover/${v.id}`);
+    router.push(`/place/${v.id}`);
   };
 
   return (
@@ -517,17 +516,10 @@ function Deck({ venues }: { venues: Venue[] }) {
           <button
             type="button"
             onClick={openInfo}
-            disabled={isOpeningInfo}
-            aria-label={isOpeningInfo ? "Opening venue details" : "About this place"}
-            className="border-border bg-card text-foreground/75 hover:text-foreground disabled:text-muted-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition disabled:cursor-default"
+            aria-label="About this place"
+            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
           >
-            {isOpeningInfo ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <>
-                <Store className="h-4 w-4" /> Info
-              </>
-            )}
+            <Store className="h-4 w-4" /> Info
           </button>
           <button
             type="button"

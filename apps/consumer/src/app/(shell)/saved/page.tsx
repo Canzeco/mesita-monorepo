@@ -218,7 +218,7 @@ function SavedVenueTile({
   return (
     <div className="relative">
       <Link
-        href={`/saved/${venue.slug || venue.id}`}
+        href={`/place/${venue.slug || venue.id}`}
         className="border-border bg-card hover:shadow-md flex min-h-[118px] w-full overflow-hidden rounded-xl border transition"
       >
         <div className="bg-muted relative w-[42%] shrink-0">

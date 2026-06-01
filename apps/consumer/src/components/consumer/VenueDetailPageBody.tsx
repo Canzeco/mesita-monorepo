@@ -4,15 +4,15 @@ import { VenueDetailActionBar, VenueDetailBody } from "./VenueDetailBody";
 import { VenueDetailPageHeader } from "./VenueDetailPageHeader";
 import type { VenueDetail } from "@/lib/mock/venue";
 
-// Client wrapper for the hard-nav /venues/[id] page. Mirrors the modal
+// Client wrapper for the hard-nav /place/[id] page. Mirrors the modal
 // shell's three-row layout so the action bar sits as a sibling of the
 // scroll body rather than inside it. The outer server page
-// (venues/[id]/page.tsx) stays server-rendered and just hands the venue
+// (place/[id]/page.tsx) stays server-rendered and just hands the venue
 // prop down. (Reservations are parked, so the booking sheet is no longer
 // mounted here — see VenueDetailActionBar.)
 export function VenueDetailPageBody({
   venue,
-  backHref = "/discover/swipe",
+  backHref = "/discover/discover",
 }: {
   venue: VenueDetail;
   backHref?: string;

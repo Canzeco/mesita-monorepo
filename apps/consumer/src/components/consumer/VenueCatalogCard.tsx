@@ -105,7 +105,7 @@ export function VenueCatalogCard({
     return <div className={className}>{inner}</div>;
   }
   return (
-    <Link href={href ?? `/discover/${venue.id}`} className={className}>
+    <Link href={href ?? `/place/${venue.id}`} className={className}>
       {inner}
     </Link>
   );

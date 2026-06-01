@@ -25,7 +25,7 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    href: "/discover/swipe",
+    href: "/discover/discover",
     Icon: Compass,
     label: "Explore",
     match: "/discover",

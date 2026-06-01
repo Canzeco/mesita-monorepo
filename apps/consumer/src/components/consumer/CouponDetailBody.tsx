@@ -235,7 +235,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
           redemption happens at the venue via QR scan. */}
       <section className="flex flex-col gap-2">
         <Link
-          href={`/discover/${c.venueId}`}
+          href={`/place/${c.venueId}`}
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
         >
           <span className="flex items-center gap-3">
