@@ -23,6 +23,7 @@ import {
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { apiFetchPublicVenues, type Venue } from "@/lib/api/venues";
+import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 type Tab = "places" | "reservations";
@@ -194,7 +195,10 @@ function SavedVenueTile({
   onUnsave: () => void;
 }) {
   const photo = venue.photos[0];
-  const category = venue.category_label ?? venue.category ?? null;
+  const category = resolveVenueCategoryName({
+    categoryLabel: venue.category_label,
+    category: venue.category,
+  });
   const priceLevel = venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const ratingLabel =
     venue.google_rating != null ? venue.google_rating.toFixed(1) : null;

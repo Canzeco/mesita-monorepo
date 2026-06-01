@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Navigation, Star } from "lucide-react";
 import type { Venue } from "@/lib/api/venues";
+import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { PromoChip } from "./PromoChip";
 
 // Catalog row card — used by /saved and /discover/catalog.
@@ -30,7 +31,10 @@ export function VenueCatalogCard({
   href?: string | null;
 }) {
   const photo = venue.photos[0];
-  const category = venue.category_label ?? venue.category ?? null;
+  const category = resolveVenueCategoryName({
+    categoryLabel: venue.category_label,
+    category: venue.category,
+  });
   const priceLevel =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const ratingLabel =

@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 import { neighborhoodFromAddress } from "@/lib/adapters/venue-to-detail";
+import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { getOpeningStatusLabel } from "@/lib/venue-status";
 import { PromoChip } from "./PromoChip";
 
@@ -32,7 +33,10 @@ export function SwipeCardInfo({
     venue.distance_km != null ? `${venue.distance_km} km` : null;
   const zoneLabel = resolveZoneLabel(venue);
   const zoneDisplay = zoneLabel ?? "Neighborhood";
-  const categoryLabel = venue.category_label ?? venue.category;
+  const categoryLabel = resolveVenueCategoryName({
+    categoryLabel: venue.category_label,
+    category: venue.category,
+  });
   const igFollowersLabel = formatFollowers(venue.instagram_followers_count);
   const statusLabel = getOpeningStatusLabel(venue);
   const isOpen = venue.open_now === true;

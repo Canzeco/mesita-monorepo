@@ -10,6 +10,7 @@
 // so this adapter never bakes in a current_tier.
 
 import type { VenueDetail } from "@/lib/mock/venue";
+import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { relativeLabel } from "@/lib/utils";
 
 // Loose row type — the EF returns the full venue projection; we read what we
@@ -222,6 +223,11 @@ function hoursTable(hours: unknown): VenueDetail["hours_table"] {
 }
 
 export function venueRowToDetail(row: Row): VenueDetail {
+  const categoryName =
+    resolveVenueCategoryName({
+      categoryLabel: str(row.category_label),
+      category: str(row.category),
+    }) ?? "Place";
   const currency = str(row.currency) ?? "MXN";
   const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
   const listingType = row.listing_type === "partner" ? "partner" : "web";
@@ -238,7 +244,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
   return {
     id: str(row.id) ?? str(row.slug) ?? "",
     name: str(row.name) ?? "Venue",
-    category: str(row.category_label) ?? str(row.category) ?? "Place",
+    category: categoryName,
     vibe: str(row.vibe) ?? "",
     price_level: priceLevel,
     price_range: derivePriceRange(row, priceLevel, currency),
@@ -348,7 +354,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
       str(arr<Record<string, unknown>>(row.popular_times)[0]?.day) ?? "",
 
     details: {
-      category_full: str(row.category_label) ?? str(row.category) ?? "",
+      category_full: categoryName,
       zone: str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? "",
       dining_style: str(details.dining_style) ?? "",
       dress_code: str(details.dress_code) ?? "",
