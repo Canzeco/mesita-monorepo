@@ -326,6 +326,10 @@ function Deck({ venues }: { venues: Venue[] }) {
   const backOffsetY = 14 - 14 * progress;
   const backOpacity = 0.7 + 0.3 * progress;
 
+  if (exhausted || !v) {
+    return <ExhaustedDeck onRestart={restart} />;
+  }
+
   const skip = () => beginExit("left");
   const save = () => beginExit("right");
   const isOpeningInfo = infoOpeningVenueId === v.id;
@@ -335,10 +339,6 @@ function Deck({ venues }: { venues: Venue[] }) {
     setInfoOpeningVenueId(v.id);
     router.push(`/venues/${v.id}`);
   };
-
-  if (exhausted || !v) {
-    return <ExhaustedDeck onRestart={restart} />;
-  }
 
   return (
     <div className="relative flex h-full flex-col">
