@@ -209,6 +209,10 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
   const isPartner = venue.listing_type === "partner";
   const googleRating = venue.google.rating.toFixed(1);
   const igFollowers = formatCount(venue.instagram.followers, false);
+  const fullCategory = venue.details.category_full.trim();
+  const showFullCategory =
+    fullCategory.length > 0 &&
+    fullCategory.toLowerCase() !== venue.category.toLowerCase();
   const statusValue = venue.open_now
     ? `Open · until ${venue.closes_at}`
     : `Closed · opens ${venue.opens_at}`;
@@ -222,6 +226,7 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
       </h1>
       <div className="flex flex-wrap items-center gap-2">
         <OverviewChip capitalize>{venue.category}</OverviewChip>
+        {showFullCategory && <OverviewChip capitalize>{fullCategory}</OverviewChip>}
         <OverviewChip>{formatPerPersonPrice(venue.price_range)}</OverviewChip>
         <OverviewChip
           icon={Star}
