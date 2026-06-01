@@ -7,12 +7,9 @@ import {
   BadgeCheck,
   Bookmark,
   Clock,
-  Instagram,
-  MapPin,
   Navigation,
   ShieldAlert,
   Star,
-  Users,
 } from "lucide-react";
 import { PromoChip } from "@/components/consumer/PromoChip";
 import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
@@ -254,7 +251,6 @@ function SavedVenueTile({
   const ratingCountLabel =
     venue.google_count != null ? formatCompactCount(venue.google_count) : null;
   const distanceLabel = venue.distance_km != null ? `${venue.distance_km} km` : null;
-  const zoneLabel = resolveSavedZoneLabel(venue);
   const isPartner = venue.listing_type === "partner";
   const isOpen = venue.open_now === true;
   const statusLabel = venue.opens_at
@@ -264,10 +260,6 @@ function SavedVenueTile({
       : venue.open_now === false
         ? "Closed now"
         : null;
-  const igFollowersLabel =
-    venue.instagram_followers_count != null
-      ? formatCompactCount(venue.instagram_followers_count)
-      : null;
 
   return (
     <div className="relative">
@@ -324,27 +316,12 @@ function SavedVenueTile({
                 <span className="font-semibold">{distanceLabel}</span>
               </SavedMetaTag>
             )}
-            {zoneLabel && (
-              <SavedMetaTag>
-                <MapPin className="h-3 w-3 shrink-0 text-white/70" />
-                <span className="max-w-[110px] truncate font-semibold">
-                  {zoneLabel}
-                </span>
-              </SavedMetaTag>
-            )}
             {statusLabel && (
               <SavedMetaTag>
                 <Clock
                   className={isOpen ? "h-3 w-3 shrink-0 text-emerald-400" : "h-3 w-3 shrink-0 text-white/70"}
                 />
                 <span className="font-semibold">{statusLabel}</span>
-              </SavedMetaTag>
-            )}
-            {igFollowersLabel && (
-              <SavedMetaTag>
-                <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
-                <span className="font-semibold">{igFollowersLabel}</span>
-                <Users className="h-3 w-3 shrink-0 text-white/70" />
               </SavedMetaTag>
             )}
             <SavedMetaTag>
@@ -366,6 +343,9 @@ function SavedVenueTile({
           </div>
 
           <div className="mt-auto flex items-center gap-2">
+            <span className="text-muted-foreground text-[10.5px] font-semibold uppercase">
+              Current reward
+            </span>
             <PromoChip venue={venue} size="sm" showWhenEmpty />
           </div>
         </div>
@@ -399,16 +379,4 @@ function formatCompactCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
   return String(n);
-}
-
-function resolveSavedZoneLabel(venue: Venue): string | null {
-  if (venue.zone && venue.zone.trim().length > 0) return venue.zone;
-  if (!venue.address) return null;
-  const parts = venue.address
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return null;
-  const candidate = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-  return /\d/.test(candidate) ? null : candidate;
 }
