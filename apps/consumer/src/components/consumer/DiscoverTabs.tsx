@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, Map as MapIcon, Search, Sparkles } from "lucide-react";
+import { Flame, Map as MapIcon, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Four Discover modes, ordered left-to-right as an ascending engagement
 // curve — lowest-effort browse → map → direct lookup → AI tool:
 //
-//   Swipe   →   Map      →   Search     →   AI Search
-//   flick       pin-map      place-name      conversational
+//   Swipe   →   Map      →   Search     →   Add
+//   flick       pin-map      place-name      new venue
 //
 // Rendered in the top chrome row's center column (see DiscoverHeader),
 // flanked by the logo and class chip; discovery filters open from a Filter
@@ -19,7 +19,7 @@ const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
   { href: "/discover/search", label: "Search", Icon: Search },
-  { href: "/discover/ai", label: "AI Search", Icon: Sparkles },
+  { href: "/discover/ai", label: "Add", Icon: Plus },
 ];
 
 export function DiscoverTabs() {

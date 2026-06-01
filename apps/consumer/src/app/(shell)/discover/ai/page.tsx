@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import Link from "next/link";
 import { CheckCircle2, Loader2, Plus, Search } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -24,7 +23,7 @@ export default function AiPage() {
   const supabase = useBrowserSupabase();
   const sessionTokenRef = useRef(newSessionToken());
 
-  const [showAddVenue, setShowAddVenue] = useState(false);
+  const [showAddVenue, setShowAddVenue] = useState(true);
   const [query, setQuery] = useState("");
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
@@ -108,12 +107,14 @@ export default function AiPage() {
           🦚
         </div>
         <h1 className="font-display mt-5 text-3xl font-semibold tracking-tight">
-          Hola, soy Don Memo,
+          Add new venues
         </h1>
-        <p className="text-foreground/80 mt-1 text-sm font-medium">la IA de Mesita</p>
+        <p className="text-foreground/80 mt-1 text-sm font-medium">
+          Help grow Mesita from your phone
+        </p>
         <p className="text-muted-foreground mt-4 max-w-xs text-sm leading-relaxed">
-          Mientras termina mi modo conversacional, ya puedes buscar lugares y ayudar
-          a crecer el mapa agregando venues nuevos.
+          Search a place, select it, and add it as an unclaimed listing so it becomes
+          visible to all users.
         </p>
 
         <div className="mt-6 flex w-full flex-col gap-2">
@@ -126,15 +127,8 @@ export default function AiPage() {
             className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-white"
           >
             <Plus className="h-4 w-4" />
-            Add a venue
+            {showAddVenue ? "Hide add form" : "Add a venue"}
           </button>
-          <Link
-            href="/discover/search"
-            className="border-border bg-card text-foreground hover:bg-muted inline-flex h-12 items-center justify-center gap-2 rounded-full border px-5 text-sm font-semibold transition"
-          >
-            <Search className="h-4 w-4" />
-            Use AI Search
-          </Link>
         </div>
 
         {showAddVenue && (
