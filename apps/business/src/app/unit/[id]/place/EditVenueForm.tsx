@@ -1012,7 +1012,7 @@ function profileCompletionChecks(v: FormState): Array<{ label: string; done: boo
     { label: "Photos", done: hasAnyPhoto },
     { label: "Hours", done: hasHours },
     {
-      label: "Menu link",
+      label: "Product link",
       done: v.menu_links.some((m) => m.url.trim() !== ""),
     },
     { label: "Website", done: v.website_url.trim() !== "" },
@@ -1303,13 +1303,13 @@ function MenuSection({
 
   return (
     <Section
-      title="Menu"
-      description="Add one or more public menu links. The first link with a URL is used as the primary menu."
+      title="Products"
+      description="Add one or more public product/catalog links. The first link with a URL is used as the primary catalog."
     >
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <MenuHostCard
           title="Google Drive"
-          subtitle="Shared file link"
+          subtitle="Shared catalog file"
           active={activeKind === "drive"}
           icon={<Cloud className="h-3.5 w-3.5" />}
         />
@@ -1335,7 +1335,7 @@ function MenuSection({
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className={TINY_LABEL_CLASS}>
-                Menu {idx + 1}
+                Product {idx + 1}
                 {idx === 0 && " (primary)"}
               </p>
               <button
@@ -1350,7 +1350,7 @@ function MenuSection({
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div>
                 <p className="text-muted-foreground mb-1 text-[11px] font-medium">
-                  Menu name
+                  Product name
                 </p>
                 <input
                   type="text"
@@ -1364,7 +1364,7 @@ function MenuSection({
               </div>
               <div>
                 <p className="text-muted-foreground mb-1 text-[11px] font-medium">
-                  Menu PDF link
+                  Product catalog link
                 </p>
                 <UrlInput
                   icon={<FileText className="h-4 w-4" />}
@@ -1383,7 +1383,7 @@ function MenuSection({
           className="border-border bg-card hover:bg-muted inline-flex h-10 items-center justify-center gap-1 rounded-full border px-4 text-[12px] font-semibold transition disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" />
-          Add another menu
+          Add another product
         </button>
       </div>
 

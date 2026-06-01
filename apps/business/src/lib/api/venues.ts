@@ -82,6 +82,8 @@ type Venue = {
   // Display name paired with menu_pdf_url (e.g. "Dinner menu"). Null
   // means the consumer falls back to the generic "Full menu" copy.
   menu_pdf_name: string | null;
+  // Generic products payload. Menus are carried in products.menu.
+  products: Record<string, unknown> | null;
   tags: string[];
   whatsapp_pr_urls: string[];
   instagram_pr_urls: string[];
@@ -251,6 +253,10 @@ export type UpdateVenueInput = {
   description?: string | null;
   menu_pdf_url?: string | null;
   menu_pdf_name?: string | null;
+  // Products-first aliases (mapped server-side to menu_pdf_* for now).
+  product_catalog_url?: string | null;
+  product_catalog_name?: string | null;
+  products?: { menu?: unknown[] | null } | null;
   tags?: string[];
   whatsapp_pr_urls?: string[];
   instagram_pr_urls?: string[];
