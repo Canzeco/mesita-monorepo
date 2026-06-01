@@ -178,7 +178,7 @@ function ResultsEmptyPrompt() {
       <p className="text-muted-foreground text-[11.5px] leading-relaxed">
         Looking for a vibe, a price, or a neighborhood? Try{" "}
         <Link
-          href="/discover/ai"
+          href="/discover/add"
           className="text-foreground font-semibold hover:underline"
         >
           Ask AI

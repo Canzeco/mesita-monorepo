@@ -19,7 +19,7 @@ const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
   { href: "/discover/search", label: "Search", Icon: Search },
-  { href: "/discover/ai", label: "Add", Icon: Plus },
+  { href: "/discover/add", label: "Add", Icon: Plus },
 ];
 
 export function DiscoverTabs() {

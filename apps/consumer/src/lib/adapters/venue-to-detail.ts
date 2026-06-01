@@ -238,7 +238,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
   return {
     id: str(row.id) ?? str(row.slug) ?? "",
     name: str(row.name) ?? "Venue",
-    category: str(row.category) ?? "Place",
+    category: str(row.category_label) ?? str(row.category) ?? "Place",
     vibe: str(row.vibe) ?? "",
     price_level: priceLevel,
     price_range: derivePriceRange(row, priceLevel, currency),

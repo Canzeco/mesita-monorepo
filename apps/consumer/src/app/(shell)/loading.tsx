@@ -10,11 +10,16 @@ import { Loader2 } from "lucide-react";
 // and bottom chrome) during route transitions.
 export default function ConsumerShellLoading() {
   return (
-    <div className="flex h-full min-h-0 w-full items-center justify-center">
-      <Loader2
-        className="text-muted-foreground h-5 w-5 animate-spin"
-        aria-label="Loading"
-      />
+    <div className="bg-background flex h-full min-h-0 w-full items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2
+          className="text-foreground h-8 w-8 animate-spin"
+          aria-label="Loading"
+        />
+        <p className="text-muted-foreground text-xs font-medium">
+          Loading...
+        </p>
+      </div>
     </div>
   );
 }

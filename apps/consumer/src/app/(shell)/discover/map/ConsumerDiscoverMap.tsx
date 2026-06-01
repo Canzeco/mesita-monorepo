@@ -311,7 +311,7 @@ function VenuePreview({
   // Category is the single classification (one-of, mapped to a Google
   // primary type). Vibe is a tag and belongs in the future tag-chip
   // strip, not stacked next to the category in this subtitle.
-  const subtitle = venue.category?.toLowerCase() ?? "";
+  const subtitle = venue.category_label ?? venue.category ?? "";
   const meta = [
     venue.price_level != null ? "$".repeat(venue.price_level) : null,
     venue.closes_at ? `until ${venue.closes_at}` : null,
