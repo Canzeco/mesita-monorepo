@@ -28,7 +28,7 @@ export const SWIPE_CARD_FIELDS_STRIP =
  * WITC fields target height.
  * We clamp to this so the bottom panel stays compact (title + ~3 tag rows).
  */
-export const SWIPE_CARD_WITC_FIELDS_TARGET_H = 168;
+export const SWIPE_CARD_WITC_FIELDS_TARGET_H = 152;
 
 /** Fields padding — block flow, top-aligned (no h-full flex). */
 export const SWIPE_CARD_FIELDS_INNER =
