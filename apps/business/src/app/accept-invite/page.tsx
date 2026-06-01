@@ -10,8 +10,8 @@ export default function AcceptInvitePage() {
       <div className="border-border bg-card w-full max-w-md rounded-2xl border p-6">
         <Suspense
           fallback={
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" aria-label="Loading" />
             </div>
           }
         >
