@@ -231,7 +231,7 @@ export default function AiPage() {
               </p>
             )}
             {addSuccess && (
-              <p className="bg-secondary/10 text-secondary mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-medium">
+              <p className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 {addSuccess}
               </p>
