@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, Plus, Search } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCreateVenueAsConsumerResult,
+  apiFetchPublicVenues,
   apiSuggestPlaces,
   type PlacePrediction,
   type Venue,
@@ -252,6 +253,21 @@ export default function AiPage() {
     }, 800);
     return () => window.clearInterval(id);
   }, [isAdding]);
+
+  // Replace the temporary draft card with the real venue row as soon as it
+  // is available so the preview shows real photos and metadata.
+  useEffect(() => {
+    if (!resultVenue?.id) return;
+    if (resultVenue.photos.length > 0) return;
+    let cancelled = false;
+    void (async () => {
+      const hydrated = await hydrateResultVenue(supabase, resultVenue);
+      if (!cancelled && hydrated) setResultVenue(hydrated);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, resultVenue?.id, resultVenue?.slug, resultVenue?.photos.length]);
 
   const trimmed = query.trim();
   const hasStartedSearch =
@@ -561,4 +577,20 @@ function venueCardFromDraft(
     email: null,
     created_at: nowIso,
   };
+}
+
+async function hydrateResultVenue(
+  supabase: ReturnType<typeof useBrowserSupabase>,
+  draft: Venue,
+): Promise<Venue | null> {
+  try {
+    const venues = await apiFetchPublicVenues(supabase, 400);
+    const match = venues.find(
+      (venue) => venue.id === draft.id || venue.slug === draft.slug,
+    );
+    if (!match || match.photos.length === 0) return null;
+    return match;
+  } catch {
+    return null;
+  }
 }
