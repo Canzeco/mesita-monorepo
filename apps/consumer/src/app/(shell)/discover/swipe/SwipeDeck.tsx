@@ -383,7 +383,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   const openInfo = () => {
     if (infoOpeningVenueId === v.id) return;
     setInfoOpeningVenueId(v.id);
-    router.push(`/place/${v.id}`);
+    router.push(`/place/${v.id}`, { scroll: false });
   };
 
   return (
@@ -549,6 +549,12 @@ function Deck({ venues }: { venues: Venue[] }) {
       </div>
 
       <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+
+      {infoOpeningVenueId === v.id && (
+        <div className="pointer-events-none absolute inset-0 z-[60]">
+          <div className="absolute inset-0 bg-black/35 backdrop-blur-[1.5px]" />
+        </div>
+      )}
     </div>
   );
 }
