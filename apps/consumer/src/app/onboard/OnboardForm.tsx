@@ -59,7 +59,7 @@ export function OnboardForm() {
           birthday,
           country,
         });
-        router.push("/discover/discover");
+        router.push("/discover/swipe");
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));

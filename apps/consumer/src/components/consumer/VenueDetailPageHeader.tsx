@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 
 // Header for the hard-nav /place/[id] page (refresh / direct URL / new
 // tab). Mirrors the modal shell's header but with an ArrowLeft Link back
-// to /discover/discover instead of a router.back() X close — the modal can
+// to /discover/swipe instead of a router.back() X close — the modal can
 // route home because there's always a previous shell route; the hard-nav
 // page can't trust browser history.
 
 export function VenueDetailPageHeader({
   venueId,
   venueName,
-  backHref = "/discover/discover",
+  backHref = "/discover/swipe",
 }: {
   venueId: string;
   venueName: string;

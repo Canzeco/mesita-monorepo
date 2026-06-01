@@ -45,7 +45,7 @@ export function SwipeDeck({
       <EmptyDeck
         title="Couldn't load venues"
         body={fetchError}
-        actionHref="/discover/discover"
+        actionHref="/discover/swipe"
         actionLabel="Try again"
       />
     );

@@ -13,5 +13,5 @@ export default async function PlaceDetailPage({
   const { id } = await params;
   const supabase = await createServerSupabase();
   const venue = (await apiFetchVenueDetail(supabase, id)) ?? mockVenue;
-  return <VenueDetailPageBody venue={venue} backHref="/discover/discover" />;
+  return <VenueDetailPageBody venue={venue} backHref="/discover/swipe" />;
 }
