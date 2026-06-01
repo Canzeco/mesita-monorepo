@@ -424,7 +424,7 @@ function EmptyUnitTrigger({ isAuthenticated }: { isAuthenticated: boolean }) {
 }
 
 function venueSubtitle(v: MyVenue): string {
-  const parts = [v.vibe, v.category].filter(Boolean) as string[];
+  const parts = [v.vibe, v.category_label ?? v.category].filter(Boolean) as string[];
   if (parts.length > 0) return parts.join(" · ");
   return v.address ?? "—";
 }

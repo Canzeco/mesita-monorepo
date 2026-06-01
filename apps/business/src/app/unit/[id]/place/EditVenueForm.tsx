@@ -247,7 +247,7 @@ function formHoursToVenue(form: Record<DayKey, DayShifts>): VenueHours {
 function venueToFormState(venue: MyVenue): FormState {
   return {
     name: venue.name ?? "",
-    category: venue.category ?? "",
+    category: venue.category_label ?? venue.category ?? "",
     description: venue.description ?? "",
     hours: venueHoursToForm(venue.hours),
     menu_links: venue.menu_pdf_url
@@ -943,7 +943,7 @@ function PreviewMetaChip({ children }: { children: React.ReactNode }) {
 
 function previewMeta(venue: MyVenue, v: FormState) {
   const name = v.name || venue.name || "Venue name";
-  const category = (v.category || venue.category || "").toLowerCase() || null;
+  const category = v.category || venue.category_label || venue.category || null;
   const price =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const googleRating =
