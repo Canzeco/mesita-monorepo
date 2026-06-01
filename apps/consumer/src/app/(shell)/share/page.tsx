@@ -355,12 +355,13 @@ const RESTAURANTS_GROUP: PartnerGroup = {
   iconBg: "bg-pink-gradient text-white",
   body:
     "More customers from priority placement on swipe, map, and catalog. Better customers with higher spend and repeat visits. Setup takes ~8 minutes in any browser.",
+  websiteUrl: "https://www.mesita.ai",
 };
 
 function RestaurantsTab() {
   const group = RESTAURANTS_GROUP;
   const Icon = group.icon;
-  const websiteUrl = "https://www.mesita.ai";
+  const websiteUrl = group.websiteUrl;
   const contactMailto =
     "mailto:partners@mesita.ai?subject=" +
     encodeURIComponent(`Mesita: ${group.title}`);
