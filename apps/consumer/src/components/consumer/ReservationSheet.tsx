@@ -135,7 +135,7 @@ function ReservationSheetContent({
       })();
       toast.action(
         `Reserved ${venueName} · ${prettyDate} · ${time} · ${partySize} guests`,
-        { label: "View", onClick: () => router.push("/saved") },
+        { label: "View", onClick: () => router.push("/saved/reservations") },
         { tone: "success" },
       );
       onClose();

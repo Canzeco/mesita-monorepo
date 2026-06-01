@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 // flanked by the logo and class chip; discovery filters open from a Filter
 // button in the swipe action bar.
 const TABS = [
-  { href: "/swipe", label: "Swipe", Icon: Flame },
-  { href: "/map", label: "Map", Icon: MapIcon },
+  { href: "/explore/swipe", label: "Swipe", Icon: Flame },
+  { href: "/explore/map", label: "Map", Icon: MapIcon },
 ];
 
 export function DiscoverTabs() {

@@ -45,7 +45,7 @@ export function SwipeDeck({
       <EmptyDeck
         title="Couldn't load venues"
         body={fetchError}
-        actionHref="/swipe"
+        actionHref="/explore/swipe"
         actionLabel="Try again"
       />
     );
@@ -186,7 +186,7 @@ function Deck({ venues }: { venues: Venue[] }) {
         if (!alreadySaved) {
           toast.action(
             `Saved ${v.name}`,
-            { label: "View", onClick: () => router.push("/saved") },
+            { label: "View", onClick: () => router.push("/saved/places") },
             { tone: "success" },
           );
         }
@@ -354,7 +354,10 @@ function Deck({ venues }: { venues: Venue[] }) {
   useEffect(() => () => clearAdvanceTimer(), [clearAdvanceTimer]);
 
   useEffect(() => {
-    if (pathname.startsWith("/discover/")) {
+    // Clear the in-flight "opening info" guard once the user is back on
+    // any non-place route (e.g. /swipe after dismissing the modal), so
+    // the same card can open again.
+    if (!pathname.startsWith("/place/")) {
       setInfoOpeningVenueId(null);
     }
   }, [pathname]);

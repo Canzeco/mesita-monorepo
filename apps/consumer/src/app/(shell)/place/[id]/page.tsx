@@ -13,12 +13,12 @@ export default async function PlaceDetailPage({
 }) {
   const { id } = await params;
   if (!toCanonicalPlaceHrefOrNull(id)) {
-    redirect("/swipe");
+    redirect("/explore/swipe");
   }
   const supabase = await createServerSupabase();
   const venue = await apiFetchVenueDetail(supabase, id);
   if (!venue) {
-    redirect("/swipe");
+    redirect("/explore/swipe");
   }
-  return <VenueDetailPageBody venue={venue} backHref="/swipe" />;
+  return <VenueDetailPageBody venue={venue} backHref="/explore/swipe" />;
 }

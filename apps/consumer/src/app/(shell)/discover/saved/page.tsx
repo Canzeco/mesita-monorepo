@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
 // stub so any DiscoverTabs link, bookmark, or share image that still
 // targets /discover/saved soft-lands on the new home.
 export default function DiscoverSavedRedirect() {
-  redirect("/saved");
+  redirect("/saved/places");
 }

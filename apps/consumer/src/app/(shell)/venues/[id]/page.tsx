@@ -12,5 +12,5 @@ export default async function VenueDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(toCanonicalPlaceHrefOrNull(id) ?? "/swipe");
+  redirect(toCanonicalPlaceHrefOrNull(id) ?? "/explore/swipe");
 }

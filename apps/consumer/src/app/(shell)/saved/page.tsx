@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   BadgeCheck,
   Bookmark,
@@ -48,16 +49,18 @@ const TABS: { id: Tab; label: string; soon?: boolean }[] = [
 export const dynamic = "force-dynamic";
 
 export default function SavedPage() {
-  const [tab, setTab] = useState<Tab>("places");
+  const pathname = usePathname() ?? "";
+  const tab: Tab = pathname.startsWith("/saved/reservations")
+    ? "reservations"
+    : "places";
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4">
         <div className="border-border bg-card grid grid-cols-2 gap-0 rounded-2xl border p-1">
           {TABS.map((t) => (
-            <button
+            <Link
               key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
+              href={t.id === "places" ? "/saved/places" : "/saved/reservations"}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-xl px-1 py-1.5 text-center text-[12px] font-medium transition",
                 tab === t.id
@@ -78,7 +81,7 @@ export default function SavedPage() {
                   Soon
                 </span>
               )}
-            </button>
+            </Link>
           ))}
         </div>
       </div>

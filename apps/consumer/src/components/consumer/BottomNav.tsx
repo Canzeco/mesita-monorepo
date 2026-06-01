@@ -25,15 +25,15 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    href: "/swipe",
+    href: "/explore/swipe",
     Icon: Compass,
     label: "Explore",
-    match: "/swipe",
+    match: "/explore",
   },
   {
     // Saved now covers both saved places and reservations (sub-tabs on
     // the Saved page); /reservations stays reachable as a deep link.
-    href: "/saved",
+    href: "/saved/places",
     Icon: Bookmark,
     label: "Saved",
     match: "/saved",
@@ -55,9 +55,7 @@ export function BottomNav() {
         {ITEMS.map(({ href, Icon, label, match }) => {
           const active =
             label === "Explore"
-              ? pathname.startsWith("/swipe") ||
-                pathname.startsWith("/map") ||
-                pathname.startsWith("/discover")
+              ? pathname.startsWith("/explore") || pathname.startsWith("/discover")
               : pathname.startsWith(match);
           return (
             <Link

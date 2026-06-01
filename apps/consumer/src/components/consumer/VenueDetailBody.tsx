@@ -1199,7 +1199,7 @@ export function VenueDetailActionBar({
     if (nowSaved) {
       toast.action(
         `Saved ${venueName}`,
-        { label: "View", onClick: () => router.push("/saved") },
+        { label: "View", onClick: () => router.push("/saved/places") },
         { tone: "success" },
       );
     } else {

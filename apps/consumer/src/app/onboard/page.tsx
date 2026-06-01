@@ -33,7 +33,7 @@ export default async function ConsumerOnboardPage() {
       !!profile.country &&
       !!profile.birthday &&
       !!profile.sex;
-    if (onboarded) redirect("/swipe");
+    if (onboarded) redirect("/explore/swipe");
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.

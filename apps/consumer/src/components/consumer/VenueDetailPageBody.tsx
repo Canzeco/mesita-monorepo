@@ -12,7 +12,7 @@ import type { VenueDetail } from "@/lib/mock/venue";
 // mounted here — see VenueDetailActionBar.)
 export function VenueDetailPageBody({
   venue,
-  backHref = "/swipe",
+  backHref = "/explore/swipe",
 }: {
   venue: VenueDetail;
   backHref?: string;

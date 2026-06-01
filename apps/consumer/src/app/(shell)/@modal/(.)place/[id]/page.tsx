@@ -14,12 +14,12 @@ export default async function PlaceDetailModalPage({
 }) {
   const { id } = await params;
   if (!toCanonicalPlaceHrefOrNull(id)) {
-    redirect("/swipe");
+    redirect("/explore/swipe");
   }
   const supabase = await createServerSupabase();
   const venue = await apiFetchVenueDetail(supabase, id);
   if (!venue) {
-    redirect("/swipe");
+    redirect("/explore/swipe");
   }
   return (
     <VenueDetailModalShell venueId={venue.id} venueName={venue.name}>

@@ -1,5 +1,6 @@
 const RESERVED_PLACE_SEGMENTS = new Set([
   "discover",
+  "explore",
   "swipe",
   "map",
   "search",

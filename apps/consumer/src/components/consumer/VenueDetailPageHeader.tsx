@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 export function VenueDetailPageHeader({
   venueId,
   venueName,
-  backHref = "/swipe",
+  backHref = "/explore/swipe",
 }: {
   venueId: string;
   venueName: string;
@@ -57,7 +57,7 @@ export function VenueDetailPageHeader({
     if (nowSaved) {
       toast.action(
         `Saved ${venueName}`,
-        { label: "View", onClick: () => router.push("/saved") },
+        { label: "View", onClick: () => router.push("/saved/places") },
         { tone: "success" },
       );
     } else {
