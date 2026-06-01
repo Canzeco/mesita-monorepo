@@ -46,31 +46,37 @@ export function SwipeCardInfo({
     <div
       className={cn(
         "flex flex-col",
-        compact ? "gap-2" : "gap-2.5 p-4 pt-3",
+        compact ? "gap-1.5" : "gap-2.5 p-4 pt-3",
       )}
     >
       <h2
         className={cn(
           "leading-[1.15] font-semibold tracking-[-0.01em] text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]",
-          compact ? "text-[1.3rem]" : "text-[1.95rem]",
+          compact ? "line-clamp-1 text-[1.3rem]" : "text-[1.95rem]",
         )}
       >
         {venue.name}
       </h2>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-1.5",
+          // Keep compact swipe overlays to: venue name + up to 3 lines of tags.
+          compact && "max-h-[102px] overflow-hidden",
+        )}
+      >
         {categoryLabel && (
-          <MetaChip>
+          <MetaChip compact={compact}>
             <span className="font-semibold">{categoryLabel}</span>
           </MetaChip>
         )}
         {priceLevelLabel && (
-          <MetaChip>
+          <MetaChip compact={compact}>
             <span className="font-semibold">{priceLevelLabel}</span>
           </MetaChip>
         )}
         {ratingLabel && (
-          <MetaChip>
+          <MetaChip compact={compact}>
             <span className="font-semibold">{ratingLabel}</span>
             <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
             {ratingCountLabel && (
@@ -79,19 +85,19 @@ export function SwipeCardInfo({
           </MetaChip>
         )}
         {igFollowersLabel && (
-          <MetaChip>
+          <MetaChip compact={compact}>
             <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
             <span className="font-semibold">{igFollowersLabel}</span>
             <Users className="h-3 w-3 shrink-0 text-white/70" />
           </MetaChip>
         )}
         {distanceLabel && (
-          <MetaChip>
+          <MetaChip compact={compact}>
             <Navigation className="h-3 w-3 shrink-0 text-white/70" />
             <span className="font-semibold">{distanceLabel}</span>
           </MetaChip>
         )}
-        <MetaChip>
+        <MetaChip compact={compact}>
           <MapPin className="h-3 w-3 shrink-0 text-white/70" />
           <span
             className={cn(
@@ -103,7 +109,7 @@ export function SwipeCardInfo({
           </span>
         </MetaChip>
         {statusLabel && (
-          <MetaChip>
+          <MetaChip compact={compact}>
             <Clock
               className={cn(
                 "h-3 w-3 shrink-0",
@@ -113,7 +119,7 @@ export function SwipeCardInfo({
             <span className="font-semibold">{statusLabel}</span>
           </MetaChip>
         )}
-        <MetaChip>
+        <MetaChip compact={compact}>
           {isPartner ? (
             <>
               <BadgeCheck
@@ -135,9 +141,20 @@ export function SwipeCardInfo({
   );
 }
 
-function MetaChip({ children }: { children: React.ReactNode }) {
+function MetaChip({
+  children,
+  compact = false,
+}: {
+  children: React.ReactNode;
+  compact?: boolean;
+}) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-2.5 py-1 text-[11.5px] whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]">
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]",
+        compact ? "px-[9px] py-[3px] text-[11px]" : "px-2.5 py-1 text-[11.5px]",
+      )}
+    >
       {children}
     </span>
   );

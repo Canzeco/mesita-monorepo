@@ -26,4 +26,4 @@ export const SWIPE_CARD_FIELDS_STRIP =
 
 /** Fields padding — block flow, top-aligned (no h-full flex). */
 export const SWIPE_CARD_FIELDS_INNER =
-  "box-border px-3.5 pt-3.5 pb-4" as const;
+  "box-border px-3.5 pt-2.5 pb-2.5" as const;
