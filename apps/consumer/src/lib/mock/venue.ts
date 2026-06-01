@@ -90,12 +90,15 @@ export type VenueDetail = {
     photo_aspect?: "square" | "portrait" | "landscape";
   }>;
 
-  // 6. Menu — multiple menus per venue (dinner, wine, cocktails, etc.)
-  menus: Array<{
-    name: string;
-    pages: number;
-    updated_label: string;
-  }>;
+  // 6. Products — generic commercial catalog. For restaurants, menu lives
+  // under products.menu.
+  products: {
+    menu: Array<{
+      name: string;
+      pages: number;
+      updated_label: string;
+    }>;
+  };
 
   // 7. Promotion
   promo: {
@@ -355,23 +358,25 @@ export const mockVenue: VenueDetail = {
     },
   ],
 
-  menus: [
-    {
-      name: "Dinner menu",
-      pages: 6,
-      updated_label: "updated last week",
-    },
-    {
-      name: "Wine list",
-      pages: 12,
-      updated_label: "updated 2 weeks ago",
-    },
-    {
-      name: "Cocktail list",
-      pages: 4,
-      updated_label: "updated last week",
-    },
-  ],
+  products: {
+    menu: [
+      {
+        name: "Dinner menu",
+        pages: 6,
+        updated_label: "updated last week",
+      },
+      {
+        name: "Wine list",
+        pages: 12,
+        updated_label: "updated 2 weeks ago",
+      },
+      {
+        name: "Cocktail list",
+        pages: 4,
+        updated_label: "updated last week",
+      },
+    ],
+  },
 
   promo: {
     badge_label: "Verified partner",

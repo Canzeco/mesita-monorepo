@@ -298,11 +298,18 @@ export function venueRowToDetail(row: Row): VenueDetail {
     // No Mesita-native traffic until guests visit; the UI nulls this cleanly.
     mesita_visitors: [],
 
-    menus: arr<Record<string, unknown>>(row.menus).map((m) => ({
-      name: str(m.name) ?? "Menu",
-      pages: arr(m.items).length,
-      updated_label: "",
-    })),
+    products: {
+      menu: (() => {
+        const menuItems = arr<Record<string, unknown>>(obj(row.products).menu);
+        const legacyMenus = arr<Record<string, unknown>>(row.menus);
+        const source = menuItems.length > 0 ? menuItems : legacyMenus;
+        return source.map((m) => ({
+          name: str(m.name) ?? "Product catalog",
+          pages: arr(m.items).length,
+          updated_label: "",
+        }));
+      })(),
+    },
 
     promo: {
       badge_label:

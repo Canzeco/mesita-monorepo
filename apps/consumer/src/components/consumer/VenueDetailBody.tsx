@@ -63,7 +63,7 @@ const NAV_SECTIONS = [
   { id: "rewards", label: "Reward" },
   { id: "about", label: "About" },
   { id: "reviews", label: "Reviews" },
-  { id: "menu", label: "Menus" },
+  { id: "menu", label: "Products" },
   { id: "hours", label: "Time" },
   { id: "location", label: "Location" },
   { id: "contact", label: "Contact" },
@@ -103,7 +103,7 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       </SectionAnchor>
       <IndividualReviewsBox venue={venue} />
       <SectionAnchor id="menu">
-        <MenuBox venue={venue} />
+        <ProductsBox venue={venue} />
       </SectionAnchor>
       <SectionAnchor id="hours">
         <HoursBox venue={venue} />
@@ -496,34 +496,39 @@ function IndividualReviewsBox({ venue }: { venue: VenueDetail }) {
 //    (client) — taller layout, optional photo thumbnail, "Read more"
 //    toggle when the quote runs long.
 
-// ── Menus ───────────────────────────────────────────────────────────────
+// ── Products ────────────────────────────────────────────────────────────
 
-function MenuBox({ venue }: { venue: VenueDetail }) {
-  if (venue.menus.length === 0) return null;
+function ProductsBox({ venue }: { venue: VenueDetail }) {
+  const menus = venue.products.menu;
+  if (menus.length === 0) return null;
   return (
-    <Box title="Menus" icon={Utensils} iconColor="text-amber-400">
+    <Box title="Products" icon={Utensils} iconColor="text-amber-400">
       <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
         <Info
           className="h-3.5 w-3.5 shrink-0 text-amber-600"
           strokeWidth={2.25}
         />
         <p className="text-[11px] leading-snug font-medium text-amber-900">
-          Reference only — current menu prices may differ at the venue.
+          Reference only — current product prices may differ at the venue.
         </p>
       </div>
-      {venue.menus.map((m) => (
-        <MenuRow key={m.name} menu={m} />
+      {menus.map((m) => (
+        <ProductRow key={m.name} product={m} />
       ))}
     </Box>
   );
 }
 
-function MenuRow({ menu }: { menu: VenueDetail["menus"][number] }) {
+function ProductRow({
+  product,
+}: {
+  product: VenueDetail["products"]["menu"][number];
+}) {
   function onView() {
-    // Once menu_pdf_url is wired through VenueDetail this becomes a
+    // Once product_catalog_url is wired through VenueDetail this becomes a
     // direct <a target="_blank" /> link. For now there's nothing to open
     // so we surface that explicitly instead of silently doing nothing.
-    toast(`${menu.name} viewer ships once the venue uploads a PDF`);
+    toast(`${product.name} viewer ships once the venue uploads a catalog`);
   }
   return (
     <div className="bg-background flex items-center gap-3 rounded-xl p-3">
@@ -532,10 +537,10 @@ function MenuRow({ menu }: { menu: VenueDetail["menus"][number] }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-display truncate text-base font-semibold">
-          {menu.name}
+          {product.name}
         </p>
         <p className="text-muted-foreground truncate text-xs">
-          {menu.pages} pages · {menu.updated_label}
+          {product.pages} pages · {product.updated_label}
         </p>
       </div>
       <button

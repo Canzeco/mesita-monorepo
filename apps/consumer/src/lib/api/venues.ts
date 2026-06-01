@@ -96,6 +96,8 @@ export type Venue = {
   zone?: string | null;
   /** Per-visit cashback ceiling in the venue's currency. */
   reward_cap_mxn?: number | null;
+  // Generic product payload. Menus are carried in products.menu.
+  products?: Record<string, unknown> | null;
   /**
    * Whether this is the guest's first visit at this venue. Drives the
    * ribbon copy:
