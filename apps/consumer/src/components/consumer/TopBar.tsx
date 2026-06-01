@@ -29,7 +29,7 @@ import { DiscoverHeader } from "./DiscoverHeader";
 export function TopBar({ userName }: { userName?: string | null }) {
   const pathname = usePathname() ?? "";
 
-  if (pathname.startsWith("/explore") || pathname.startsWith("/discover")) {
+  if (pathname.startsWith("/explore")) {
     return <DiscoverHeader />;
   }
   if (pathname.startsWith("/saved")) {
