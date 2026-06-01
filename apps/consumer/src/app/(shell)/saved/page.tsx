@@ -14,8 +14,6 @@ import {
 import { PromoChip } from "@/components/consumer/PromoChip";
 import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
 import { ReservationsBody } from "@/app/(shell)/reservations/page";
-import { SAVED_VENUES } from "@/lib/mock/saved-venues-mock";
-import { mockVenue } from "@/lib/mock/venue";
 import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
 import {
   readSavedVenuePreviews,
@@ -47,68 +45,6 @@ const TABS: { id: Tab; label: string; soon?: boolean }[] = [
 // TopBar renders the "Saved" title above this page.
 
 export const dynamic = "force-dynamic";
-
-function buildVenueCatalog(): Map<string, Venue> {
-  const cat = new Map<string, Venue>();
-  for (const v of SAVED_VENUES) cat.set(v.id, v as Venue);
-  const mvAsVenue: Venue = {
-    id: mockVenue.id,
-    slug: mockVenue.id,
-    name: mockVenue.name,
-    category: mockVenue.category,
-    vibe: mockVenue.vibe,
-    price_level: mockVenue.price_level,
-    currency: mockVenue.currency,
-    listing_type: mockVenue.listing_type,
-    status: "active",
-    fiscal_type: "formal",
-    plan: "formal_pro",
-    lat: null,
-    lng: null,
-    address: mockVenue.address,
-    closes_at: mockVenue.closes_at,
-    phone: null,
-    pitch: null,
-    story: null,
-    cashback_percent: 20,
-    photos: mockVenue.photos.slice(0, 1),
-    website_url: null,
-    instagram_url: null,
-    tiktok_url: null,
-    facebook_url: null,
-    whatsapp_url: null,
-    opentable_url: null,
-    resy_url: null,
-    uber_eats_url: null,
-    rappi_url: null,
-    x_url: null,
-    youtube_url: null,
-    threads_url: null,
-    reddit_url: null,
-    didi_food_url: null,
-    tripadvisor_url: null,
-    google_maps_url: null,
-    email: null,
-    created_at: new Date(0).toISOString(),
-    // Overview parity — same fields the swipe card relies on so the
-    // catalog/saved tile can surface rating, distance, zone, opening
-    // status, and the promo chip. Sourced from the VenueDetail mock
-    // fixture; will collapse to optional EF-returned fields once the
-    // recommend/list EFs widen their response.
-    google_rating: mockVenue.google.rating,
-    google_count: mockVenue.google.count,
-    price_range: mockVenue.price_range,
-    last_updated_label: mockVenue.last_updated_label,
-    open_now: mockVenue.open_now,
-    opens_at: mockVenue.opens_at,
-    distance_km: mockVenue.distance_km,
-    zone: mockVenue.zone,
-    reward_cap_mxn: mockVenue.reward_cap_mxn,
-    is_first_visit: mockVenue.promo_matrix.is_first_visit,
-  };
-  cat.set(mvAsVenue.id, mvAsVenue);
-  return cat;
-}
 
 export default function SavedPage() {
   const [tab, setTab] = useState<Tab>("places");
@@ -172,7 +108,10 @@ function PlacesBody() {
         }
         setLiveCatalog(next);
       } catch {
-        if (active) setLiveCatalog(new Map());
+        if (!active) return;
+        // Reset-safety: if we cannot read server venues, fall back to an
+        // empty live catalog so stale local saved IDs/previews get purged.
+        setLiveCatalog(new Map());
       }
     })();
     return () => {
@@ -181,7 +120,7 @@ function PlacesBody() {
   }, [supabase]);
 
   const catalog = useMemo(() => {
-    const merged = buildVenueCatalog();
+    const merged = new Map<string, Venue>();
     for (const [id, venue] of previewCatalog) merged.set(id, venue);
     if (liveCatalog) {
       for (const [id, venue] of liveCatalog) merged.set(id, venue);
@@ -190,13 +129,24 @@ function PlacesBody() {
   }, [liveCatalog, previewCatalog]);
   const venues = useMemo<Venue[]>(() => {
     const ids = [...savedIds];
-    if (ids.length === 0)
-      return SAVED_VENUES.map((v) => enrichVenueOverview(v as Venue));
+    if (ids.length === 0) return [];
     return ids
       .map((id) => catalog.get(id))
       .filter((v): v is Venue => v != null)
       .map((v) => enrichVenueOverview(v));
   }, [savedIds, catalog]);
+
+  // If DB reset removed venues, purge stale local bookmarks so Saved truly
+  // reflects server reality after reset.
+  useEffect(() => {
+    if (!liveCatalog) return;
+    for (const id of savedIds) {
+      if (!liveCatalog.has(id)) {
+        setSaved(id, false);
+        removeSavedVenuePreview(id);
+      }
+    }
+  }, [liveCatalog, removeSavedVenuePreview, savedIds, setSaved]);
 
   function unsaveVenue(id: string) {
     const v = catalog.get(id);
