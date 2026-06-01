@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, Map as MapIcon, Plus, Search } from "lucide-react";
+import { Flame, Map as MapIcon, Search, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Four Discover modes, ordered left-to-right as an ascending engagement
@@ -19,7 +19,7 @@ const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
   { href: "/discover/search", label: "Search", Icon: Search },
-  { href: "/discover/add", label: "Add", Icon: Plus },
+  { href: "/discover/add", label: "Add", Icon: Sparkles },
 ];
 
 export function DiscoverTabs() {

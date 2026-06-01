@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bookmark } from "lucide-react";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
@@ -8,10 +8,15 @@ import { ReservationsBody } from "@/app/(shell)/reservations/page";
 import { SAVED_VENUES } from "@/lib/mock/saved-venues-mock";
 import { mockVenue } from "@/lib/mock/venue";
 import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
-import { useSavedVenues } from "@/lib/saved-venues";
+import {
+  readSavedVenuePreviews,
+  removeSavedVenuePreview,
+  useSavedVenues,
+} from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import type { Venue } from "@/lib/api/venues";
+import { apiFetchPublicVenues, type Venue } from "@/lib/api/venues";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 type Tab = "places" | "reservations";
 
@@ -139,8 +144,41 @@ export default function SavedPage() {
 }
 
 function PlacesBody() {
+  const supabase = useBrowserSupabase();
   const { savedIds, setSaved } = useSavedVenues();
-  const catalog = useMemo(() => buildVenueCatalog(), []);
+  const [previewCatalog] = useState<Map<string, Venue>>(() =>
+    readSavedVenuePreviews<Venue>(),
+  );
+  const [liveCatalog, setLiveCatalog] = useState<Map<string, Venue> | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const venues = await apiFetchPublicVenues(supabase, 400);
+        if (!active) return;
+        const next = new Map<string, Venue>();
+        for (const venue of venues) {
+          next.set(venue.id, enrichVenueOverview(venue));
+        }
+        setLiveCatalog(next);
+      } catch {
+        if (active) setLiveCatalog(new Map());
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
+
+  const catalog = useMemo(() => {
+    const merged = buildVenueCatalog();
+    for (const [id, venue] of previewCatalog) merged.set(id, venue);
+    if (liveCatalog) {
+      for (const [id, venue] of liveCatalog) merged.set(id, venue);
+    }
+    return merged;
+  }, [liveCatalog, previewCatalog]);
   const venues = useMemo<Venue[]>(() => {
     const ids = [...savedIds];
     if (ids.length === 0)
@@ -154,6 +192,7 @@ function PlacesBody() {
   function unsaveVenue(id: string) {
     const v = catalog.get(id);
     setSaved(id, false);
+    removeSavedVenuePreview(id);
     if (v) toast(`Removed ${v.name} from saved`);
   }
 

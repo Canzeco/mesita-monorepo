@@ -21,6 +21,8 @@ import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn, haversineKm } from "@/lib/utils";
 import { useUserLocation, type Coords } from "@/lib/use-user-location";
 import type { Venue } from "@/lib/api/venues";
+import { upsertSavedVenuePreview, useSavedVenues } from "@/lib/saved-venues";
+import { toast } from "@/lib/toast";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -60,6 +62,7 @@ export function SwipeDeck({
 function Deck({ venues }: { venues: Venue[] }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { isSaved, setSaved } = useSavedVenues();
   const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -167,12 +170,24 @@ function Deck({ venues }: { venues: Venue[] }) {
   const beginExit = useCallback(
     (dir: "left" | "right") => {
       if (exitingRef.current) return;
+      if (dir === "right" && v) {
+        const alreadySaved = isSaved(v.id);
+        upsertSavedVenuePreview(v);
+        setSaved(v.id, true);
+        if (!alreadySaved) {
+          toast.action(
+            `Saved ${v.name}`,
+            { label: "View", onClick: () => router.push("/saved") },
+            { tone: "success" },
+          );
+        }
+      }
       releaseCapture(cardElRef.current, activePointerIdRef.current);
       exitingRef.current = dir;
       resetGesture();
       setExiting(dir);
     },
-    [releaseCapture, resetGesture],
+    [isSaved, releaseCapture, resetGesture, router, setSaved, v],
   );
 
   const finishPointerGesture = useCallback(

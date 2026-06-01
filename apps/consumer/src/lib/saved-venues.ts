@@ -10,6 +10,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "mesita:saved-venues";
+const PREVIEW_STORAGE_KEY = "mesita:saved-venue-previews";
 
 type Listener = () => void;
 
@@ -81,6 +82,37 @@ function getServerSnapshot(): ReadonlySet<string> {
 
 const EMPTY: ReadonlySet<string> = new Set();
 
+function readPreviewStorage<T extends { id: string }>(): Map<string, T> {
+  if (typeof window === "undefined") return new Map();
+  try {
+    const raw = window.localStorage.getItem(PREVIEW_STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return new Map();
+    }
+    const map = new Map<string, T>();
+    for (const [id, value] of Object.entries(parsed)) {
+      if (value && typeof value === "object") {
+        map.set(id, value as T);
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function writePreviewStorage<T extends { id: string }>(map: Map<string, T>) {
+  if (typeof window === "undefined") return;
+  try {
+    const obj = Object.fromEntries(map.entries());
+    window.localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(obj));
+  } catch {
+    /* quota / private mode — degrade silently */
+  }
+}
+
 function toggleSavedVenue(venueId: string): boolean {
   ensureHydrated();
   const next = new Set(cache);
@@ -108,6 +140,24 @@ function setVenueSaved(venueId: string, saved: boolean): void {
   cache = next;
   writeToStorage(cache);
   emit();
+}
+
+export function upsertSavedVenuePreview<T extends { id: string }>(venue: T): void {
+  if (typeof window === "undefined") return;
+  const map = readPreviewStorage<T>();
+  map.set(venue.id, venue);
+  writePreviewStorage(map);
+}
+
+export function removeSavedVenuePreview(venueId: string): void {
+  if (typeof window === "undefined") return;
+  const map = readPreviewStorage<{ id: string }>();
+  if (!map.delete(venueId)) return;
+  writePreviewStorage(map);
+}
+
+export function readSavedVenuePreviews<T extends { id: string }>(): Map<string, T> {
+  return readPreviewStorage<T>();
 }
 
 // React hook — returns the live set + helpers. Re-renders whenever any
