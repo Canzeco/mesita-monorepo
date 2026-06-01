@@ -25,7 +25,7 @@ export default async function SwipePage() {
     // Try the curated path first. If consumer-recommend-deck isn't deployed yet
     // (or returns an error), fall back to the flat list. Either way the
     // SwipeDeck UI gets a Venue[].
-    const result = await apiRecommendDeck(supabase, { limit: 20 });
+    const result = await apiRecommendDeck(supabase, { limit: 50 });
     venues = result.deck;
   } catch (err) {
     console.warn("[swipe] consumer-recommend-deck failed, falling back:", err);
