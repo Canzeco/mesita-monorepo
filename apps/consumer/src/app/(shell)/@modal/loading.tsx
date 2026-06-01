@@ -5,11 +5,13 @@ import { Loader2 } from "lucide-react";
 // (blank screen) while the detail payload is still loading.
 export default function ModalLoading() {
   return (
-    <div className="bg-background absolute inset-0 z-50 flex items-center justify-center">
-      <Loader2
-        className="text-muted-foreground h-5 w-5 animate-spin"
-        aria-label="Loading venue"
-      />
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center pb-24">
+      <div className="bg-card/92 border-border rounded-full border px-3 py-2 shadow-sm backdrop-blur">
+        <Loader2
+          className="text-muted-foreground h-5 w-5 animate-spin"
+          aria-label="Loading venue"
+        />
+      </div>
     </div>
   );
 }
