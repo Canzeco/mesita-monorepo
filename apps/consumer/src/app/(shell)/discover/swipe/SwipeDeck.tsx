@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   X,
   Bookmark,
@@ -10,6 +11,7 @@ import {
   RotateCcw,
   Hand,
   Store,
+  Loader2,
   CalendarCheck,
   SlidersHorizontal,
 } from "lucide-react";
@@ -56,12 +58,15 @@ export function SwipeDeck({
 }
 
 function Deck({ venues }: { venues: Venue[] }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [infoOpeningVenueId, setInfoOpeningVenueId] = useState<string | null>(null);
   const cardElRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
@@ -305,6 +310,12 @@ function Deck({ venues }: { venues: Venue[] }) {
 
   useEffect(() => () => clearAdvanceTimer(), [clearAdvanceTimer]);
 
+  useEffect(() => {
+    if (pathname.startsWith("/discover/")) {
+      setInfoOpeningVenueId(null);
+    }
+  }, [pathname]);
+
   const exitOffset = exiting === "right" ? 600 : exiting === "left" ? -600 : 0;
   const visibleOffset = exiting ? exitOffset : dragX;
   const rotate = visibleOffset * 0.06;
@@ -317,6 +328,13 @@ function Deck({ venues }: { venues: Venue[] }) {
 
   const skip = () => beginExit("left");
   const save = () => beginExit("right");
+  const isOpeningInfo = infoOpeningVenueId === v.id;
+
+  const openInfo = () => {
+    if (isOpeningInfo) return;
+    setInfoOpeningVenueId(v.id);
+    router.push(`/venues/${v.id}`);
+  };
 
   if (exhausted || !v) {
     return <ExhaustedDeck onRestart={restart} />;
@@ -452,13 +470,23 @@ function Deck({ venues }: { venues: Venue[] }) {
           >
             <X className="h-4 w-4" /> Skip
           </button>
-          <Link
-            href={`/venues/${v.id}`}
+          <button
+            type="button"
+            onClick={openInfo}
+            disabled={isOpeningInfo}
             aria-label="About this place"
-            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
+            className="border-border bg-card text-foreground/75 hover:text-foreground disabled:text-muted-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition disabled:cursor-wait"
           >
-            <Store className="h-4 w-4" /> Info
-          </Link>
+            {isOpeningInfo ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading
+              </>
+            ) : (
+              <>
+                <Store className="h-4 w-4" /> Info
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={save}
