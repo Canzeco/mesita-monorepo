@@ -20,9 +20,11 @@ import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
 import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn, haversineKm } from "@/lib/utils";
 import { useUserLocation, type Coords } from "@/lib/use-user-location";
-import type { Venue } from "@/lib/api/venues";
+import { apiRecommendDeck, type Venue } from "@/lib/api/venues";
 import { upsertSavedVenuePreview, useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -62,7 +64,10 @@ export function SwipeDeck({
 function Deck({ venues }: { venues: Venue[] }) {
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = useBrowserSupabase();
   const { isSaved, setSaved } = useSavedVenues();
+  const [runtimeDeck, setRuntimeDeck] = useState<Venue[]>(venues);
+  const [restarting, setRestarting] = useState(false);
   const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -79,6 +84,10 @@ function Deck({ venues }: { venues: Venue[] }) {
   const exitingRef = useRef<null | "left" | "right">(null);
   const activePointerIdRef = useRef<number | null>(null);
   const advanceTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setRuntimeDeck(venues);
+  }, [venues]);
 
   const syncDragX = useCallback((x: number) => {
     dragXRef.current = x;
@@ -146,8 +155,8 @@ function Deck({ venues }: { venues: Venue[] }) {
   // to a "0 km" placeholder so the chip never just vanishes.
   const coords = useUserLocation();
   const located = useMemo(
-    () => venues.map((v) => withUserDistance(v, coords)),
-    [venues, coords],
+    () => runtimeDeck.map((v) => withUserDistance(v, coords)),
+    [runtimeDeck, coords],
   );
 
   // Past the last card the deck is exhausted — no silent wrap. Looping
@@ -234,12 +243,31 @@ function Deck({ venues }: { venues: Venue[] }) {
     [beginExit, releaseCapture, resetGesture],
   );
 
-  const restart = () => {
+  const restart = async () => {
+    if (restarting) return;
+    setRestarting(true);
     clearAdvanceTimer();
     exitingRef.current = null;
     resetGesture();
-    setIdx(0);
     setExiting(null);
+    try {
+      const result = await apiRecommendDeck(supabase, { limit: 50 });
+      const sorted = [...result.deck].sort((a, b) => {
+        const aRank = a.listing_type === "partner" ? 0 : 1;
+        const bRank = b.listing_type === "partner" ? 0 : 1;
+        return aRank - bRank;
+      });
+      const enriched = sorted.map((v) => enrichVenueOverview(v));
+      const fresh = shuffleDeck(enriched);
+      setRuntimeDeck(fresh);
+      setIdx(0);
+    } catch {
+      // Fallback to server re-fetch path if client call fails.
+      router.refresh();
+      setIdx(0);
+    } finally {
+      setRestarting(false);
+    }
   };
 
   // Carousel photo taps call stopPropagation on pointerup, which prevents
@@ -342,7 +370,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   const backOpacity = 0.7 + 0.3 * progress;
 
   if (exhausted || !v) {
-    return <ExhaustedDeck onRestart={restart} />;
+    return <ExhaustedDeck onRestart={restart} restarting={restarting} />;
   }
 
   const skip = () => beginExit("left");
@@ -556,7 +584,13 @@ function toCoord(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function ExhaustedDeck({ onRestart }: { onRestart: () => void }) {
+function ExhaustedDeck({
+  onRestart,
+  restarting,
+}: {
+  onRestart: () => void;
+  restarting: boolean;
+}) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
       <div className="bg-muted flex h-14 w-14 items-center justify-center rounded-2xl">
@@ -572,13 +606,32 @@ function ExhaustedDeck({ onRestart }: { onRestart: () => void }) {
       <button
         type="button"
         onClick={onRestart}
-        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90"
+        disabled={restarting}
+        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
       >
-        <RotateCcw className="h-4 w-4" />
-        Start over
+        {restarting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading...
+          </>
+        ) : (
+          <>
+            <RotateCcw className="h-4 w-4" />
+            Start over
+          </>
+        )}
       </button>
     </div>
   );
+}
+
+function shuffleDeck(input: Venue[]): Venue[] {
+  const out = [...input];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 function EmptyDeck({

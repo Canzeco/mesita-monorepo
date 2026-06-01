@@ -15,7 +15,6 @@ import { cn, errMsg } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 220;
 const ADD_STATUS_ROTATE_MS = 2_000;
-const ADD_DRAFT_STORAGE_KEY = "mesita:add-venue:draft";
 const ADD_PROGRESS_STAGES = [
   "Preparing venue draft...",
   "Reading place profile...",
@@ -100,28 +99,6 @@ function predictionLabel(prediction: PlacePrediction): string {
   return `${prediction.mainText}${prediction.secondaryText ? ` · ${prediction.secondaryText}` : ""}`;
 }
 
-type PersistedAddDraft = {
-  status: "pending" | "success" | "error" | "exists";
-  startedAt: number;
-  query: string;
-  selected: PlacePrediction;
-  message?: string;
-  venueId?: string;
-  venueSlug?: string;
-  venueName?: string;
-  venueListingType?: "partner" | "web";
-};
-
-function persistAddDraft(draft: PersistedAddDraft) {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(ADD_DRAFT_STORAGE_KEY, JSON.stringify(draft));
-}
-
-function clearAddDraft() {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.removeItem(ADD_DRAFT_STORAGE_KEY);
-}
-
 export default function AiPage() {
   const supabase = useBrowserSupabase();
   const sessionTokenRef = useRef(newSessionToken());
@@ -144,115 +121,6 @@ export default function AiPage() {
       mountedRef.current = false;
     };
   }, []);
-
-  // Recover in-flight / completed add state when user leaves and returns to Add.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = window.sessionStorage.getItem(ADD_DRAFT_STORAGE_KEY);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as PersistedAddDraft;
-      setSelected(draft.selected);
-      setQuery(draft.query || predictionLabel(draft.selected));
-      if (draft.status === "pending") {
-        setIsAdding(true);
-        setAddError(null);
-        setAddSuccess(null);
-        const elapsed = Math.max(0, Date.now() - draft.startedAt);
-        const baseIdx =
-          Math.floor(elapsed / ADD_STATUS_ROTATE_MS) % ADD_PROGRESS_STAGES.length;
-        setAddStageIdx(baseIdx);
-        return;
-      }
-      setIsAdding(false);
-      setAddStageIdx(0);
-      if (draft.status === "success") {
-        setAddSuccess(draft.message ?? null);
-        setAddError(null);
-        setResultVenue(
-          draft.venueId
-            ? venueCardFromDraft(
-                draft.venueId,
-                draft.venueSlug,
-                draft.venueName,
-                draft.venueListingType ?? "web",
-              )
-            : null,
-        );
-      } else if (draft.status === "exists") {
-        setAddError(draft.message ?? null);
-        setAddSuccess(null);
-        setResultVenue(
-          draft.venueId
-            ? venueCardFromDraft(
-                draft.venueId,
-                draft.venueSlug,
-                draft.venueName,
-                draft.venueListingType ?? "web",
-              )
-            : null,
-        );
-      } else {
-        setAddError(draft.message ?? "Could not add venue.");
-        setAddSuccess(null);
-        setResultVenue(null);
-      }
-    } catch {
-      clearAddDraft();
-    }
-  }, []);
-
-  // If the user navigates away and comes back while generation is running,
-  // keep checking the shared session draft until it flips to success/error.
-  useEffect(() => {
-    if (!isAdding || typeof window === "undefined") return;
-    const id = window.setInterval(() => {
-      const raw = window.sessionStorage.getItem(ADD_DRAFT_STORAGE_KEY);
-      if (!raw) return;
-      try {
-        const draft = JSON.parse(raw) as PersistedAddDraft;
-        if (draft.status === "pending") return;
-        setIsAdding(false);
-        setAddStageIdx(0);
-        if (draft.status === "success") {
-          setAddSuccess(draft.message ?? null);
-          setAddError(null);
-          setResultVenue(
-            draft.venueId
-              ? venueCardFromDraft(
-                  draft.venueId,
-                  draft.venueSlug,
-                  draft.venueName,
-                  draft.venueListingType ?? "web",
-                )
-              : null,
-          );
-        } else if (draft.status === "exists") {
-          setAddError(draft.message ?? null);
-          setAddSuccess(null);
-          setResultVenue(
-            draft.venueId
-              ? venueCardFromDraft(
-                  draft.venueId,
-                  draft.venueSlug,
-                  draft.venueName,
-                  draft.venueListingType ?? "web",
-                )
-              : null,
-          );
-        } else {
-          setAddError(draft.message ?? "Could not add venue.");
-          setAddSuccess(null);
-          setResultVenue(null);
-        }
-      } catch {
-        clearAddDraft();
-        setIsAdding(false);
-        setResultVenue(null);
-      }
-    }, 800);
-    return () => window.clearInterval(id);
-  }, [isAdding]);
 
   // Replace the temporary draft card with the real venue row as soon as it
   // is available so the preview shows real photos and metadata.
@@ -326,28 +194,10 @@ export default function AiPage() {
     setResultVenue(null);
     setAddStageIdx(0);
     setIsAdding(true);
-    const startedAt = Date.now();
-    persistAddDraft({
-      status: "pending",
-      startedAt,
-      query: predictionLabel(selected),
-      selected,
-    });
     void (async () => {
       try {
         const result = await apiCreateVenueAsConsumerResult(supabase, selected.placeId);
         if (result.kind === "already_exists") {
-          persistAddDraft({
-            status: "exists",
-            startedAt,
-            query: predictionLabel(selected),
-            selected,
-            message: result.message,
-            venueId: result.existing?.id,
-            venueSlug: result.existing?.slug ?? undefined,
-            venueName: result.existing?.name ?? selected.mainText,
-            venueListingType: result.existing?.listing_type ?? "web",
-          });
           if (!mountedRef.current) return;
           setAddError(result.message);
           setAddSuccess(null);
@@ -363,17 +213,6 @@ export default function AiPage() {
           );
           return;
         }
-        persistAddDraft({
-          status: "success",
-          startedAt,
-          query: predictionLabel(selected),
-          selected,
-          message: result.message,
-          venueId: result.venue.id,
-          venueSlug: result.venue.slug,
-          venueName: result.venue.name,
-          venueListingType: "web",
-        });
         if (!mountedRef.current) return;
         setAddSuccess(result.message);
         setAddError(null);
@@ -382,13 +221,6 @@ export default function AiPage() {
         );
       } catch (err) {
         const errorMessage = errMsg(err, "Could not add venue.");
-        persistAddDraft({
-          status: "error",
-          startedAt,
-          query: predictionLabel(selected),
-          selected,
-          message: errorMessage,
-        });
         if (!mountedRef.current) return;
         setAddError(errorMessage);
         setAddSuccess(null);
@@ -417,7 +249,6 @@ export default function AiPage() {
                   setAddError(null);
                   setAddSuccess(null);
                   setResultVenue(null);
-                  if (!isAdding) clearAddDraft();
                   if (next.trim().length < 2) {
                     setPredictions([]);
                     setSearching(false);
