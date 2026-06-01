@@ -123,6 +123,14 @@ const VENUE_NAME_MAX = 120;
 const DESCRIPTION_MAX = 2000;
 const TAG_MAX = 40;
 const MAX_PHOTOS = 10;
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+]);
+const ALLOWED_IMAGE_ACCEPT = Array.from(ALLOWED_IMAGE_MIME_TYPES).join(",");
 
 const NOT_FOUND_NOTE = "Not found yet — pipeline still searching.";
 
@@ -147,6 +155,42 @@ function nullableUrl(v: string): string | null {
 function nullable(v: string): string | null {
   const t = v.trim();
   return t === "" ? null : t;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function extForFile(file: File): string {
+  const fromMime = (() => {
+    switch (file.type) {
+      case "image/jpeg":
+        return "jpg";
+      case "image/png":
+        return "png";
+      case "image/webp":
+        return "webp";
+      case "image/avif":
+        return "avif";
+      default:
+        return null;
+    }
+  })();
+  if (fromMime) return fromMime;
+  const raw = file.name.trim().toLowerCase();
+  const fromName = raw.includes(".") ? raw.split(".").pop() : null;
+  return fromName && /^[a-z0-9]+$/.test(fromName) ? fromName : "jpg";
+}
+
+function validateUploadFile(file: File): string | null {
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+    return "Unsupported file type. Use JPG, PNG, WEBP, or AVIF.";
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return `File is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_UPLOAD_BYTES)}.`;
+  }
+  return null;
 }
 
 // Belt-and-suspenders for legacy data: any row that still carries the
@@ -410,6 +454,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
         <MediaSection
           photos={v.photos}
           onChange={(photos) => set("photos", photos)}
+          venueId={venue.id}
           venueName={v.name}
           onError={setError}
         />
@@ -1072,15 +1117,18 @@ function TimeSection({
 function MediaSection({
   photos,
   onChange,
+  venueId,
   venueName,
   onError,
 }: {
   photos: string[];
   onChange: (next: string[]) => void;
+  venueId: string;
   venueName: string;
   onError: (msg: string | null) => void;
 }) {
-  const [draft, setDraft] = useState("");
+  const supabase = useBrowserSupabase();
+  const [uploading, setUploading] = useState(false);
   // Index of the photo currently shown in the lightbox, or null if
   // closed. Tiny thumbnails get the user a dense overview; clicking
   // pops the full-resolution image in a modal so they can actually
@@ -1095,36 +1143,66 @@ function MediaSection({
     onChange(next);
   };
   const remove = (idx: number) => onChange(photos.filter((_, i) => i !== idx));
-  const add = () => {
-    const url = draft.trim();
-    if (!url) return;
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      onError("Photo URL must be a valid https:// link.");
-      return;
-    }
-    if (parsed.protocol !== "https:") {
-      onError("Photo URL must use https:// (Next.js Image refuses http://).");
-      return;
-    }
-    if (photos.includes(url)) {
-      onError("That photo is already in the list.");
-      return;
-    }
+  const onFilesPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0 || uploading) return;
     if (photos.length >= MAX_PHOTOS) {
       onError(`At most ${MAX_PHOTOS} photos.`);
       return;
     }
+    const slots = Math.max(0, MAX_PHOTOS - photos.length);
+    const nextBatch = files.slice(0, slots);
+    if (nextBatch.length === 0) {
+      onError(`At most ${MAX_PHOTOS} photos.`);
+      return;
+    }
+    for (const file of nextBatch) {
+      const fileError = validateUploadFile(file);
+      if (fileError) {
+        onError(`${file.name}: ${fileError}`);
+        return;
+      }
+    }
+    setUploading(true);
     onError(null);
-    onChange([...photos, url]);
-    setDraft("");
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of nextBatch) {
+        const ext = extForFile(file);
+        const path = `business/${venueId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("venue-images")
+          .upload(path, file, {
+            upsert: false,
+            contentType: file.type,
+            cacheControl: "31536000",
+          });
+        if (uploadError) {
+          throw new Error(`Couldn't upload ${file.name}: ${uploadError.message}`);
+        }
+        const { data } = supabase.storage.from("venue-images").getPublicUrl(path);
+        if (data?.publicUrl) uploadedUrls.push(data.publicUrl);
+      }
+      if (uploadedUrls.length > 0) {
+        onChange([...photos, ...uploadedUrls].slice(0, MAX_PHOTOS));
+      }
+      if (files.length > slots) {
+        onError(`Uploaded ${uploadedUrls.length} image(s). Max is ${MAX_PHOTOS} total.`);
+      } else {
+        onError(null);
+      }
+    } catch (err) {
+      onError(errMsg(err, "Couldn't upload images right now."));
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <Section
       title="Media"
+      description={`Upload images directly. Accepted: JPG, PNG, WEBP, AVIF. Max ${formatBytes(MAX_UPLOAD_BYTES)} each.`}
       right={
         <span className={TINY_LABEL_CLASS}>
           {photos.length} / {MAX_PHOTOS}
@@ -1192,23 +1270,39 @@ function MediaSection({
           ))}
         </ul>
       )}
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <UrlInput
-            icon={<ImagePlus className="h-4 w-4" />}
-            value={draft}
-            onChange={setDraft}
-            placeholder="https://…"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={add}
-          className="border-border bg-card hover:bg-muted inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition"
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          id={`venue-image-upload-${venueId}`}
+          type="file"
+          accept={ALLOWED_IMAGE_ACCEPT}
+          multiple
+          onChange={onFilesPicked}
+          disabled={uploading || photos.length >= MAX_PHOTOS}
+          className="hidden"
+        />
+        <label
+          htmlFor={`venue-image-upload-${venueId}`}
+          className={cn(
+            "border-border bg-card hover:bg-muted inline-flex h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition",
+            (uploading || photos.length >= MAX_PHOTOS) &&
+              "pointer-events-none cursor-not-allowed opacity-55",
+          )}
         >
-          <Plus className="h-4 w-4" />
-          Add
-        </button>
+          {uploading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <ImagePlus className="h-4 w-4" />
+              Upload images
+            </>
+          )}
+        </label>
+        <p className="text-muted-foreground text-xs">
+          Post links removed. Upload files directly from your device.
+        </p>
       </div>
 
       {zoomIdx != null && photos[zoomIdx] && (
