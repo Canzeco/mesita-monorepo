@@ -394,11 +394,11 @@ function RestaurantsTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-[13px] leading-relaxed">
-        Know someone who runs a restaurant, bar, nightclub, cafe, or lounge?
-      </p>
       <section className="border-border bg-card rounded-2xl border p-4">
-        <div className="flex items-center gap-3">
+        <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight">
+          Know someone who runs a restaurant, bar, nightclub, cafe, or lounge?
+        </h2>
+        <div className="mt-3 flex items-center gap-3">
           <span
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
@@ -449,9 +449,6 @@ function RestaurantsTab() {
 function OthersTab() {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-[13px] leading-relaxed">
-        Other ways to partner with Mesita.
-      </p>
       {OTHER_GROUPS.map((g) => (
         <PartnerCard key={g.id} group={g} />
       ))}
