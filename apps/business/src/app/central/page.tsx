@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   CalendarDays,
-  LayoutGrid,
   MapPin,
   Package,
   Sparkles,
@@ -67,7 +66,7 @@ export default async function CentralPage() {
 }
 
 // Entity types operators can list on Mesita. Place is live today (claims
-// an existing venue or creates a new one via /add); the other five are
+// an existing venue or creates a new one via /add); the other four are
 // scaffolded as "Soon" tiles so the surface signals where the roadmap
 // is headed without enabling backends that don't exist yet.
 type EntityOption = {
@@ -82,7 +81,6 @@ const ENTITY_OPTIONS: EntityOption[] = [
   { label: "Community", Icon: Users, href: null },
   { label: "Products", Icon: Package, href: null },
   { label: "Services", Icon: Wrench, href: null },
-  { label: "Micro-app", Icon: LayoutGrid, href: null },
 ];
 
 // Authenticated + no venues. Empty home — Place is the live CTA, the
@@ -105,8 +103,7 @@ function VenuelessHub({ email }: { email: string | null }) {
             <p className="text-muted-foreground mt-2 max-w-[44ch] text-sm leading-[1.55]">
               Mesita lists every place on the open internet. Claim the one you
               operate (or create a brand new listing) and your dashboard shows
-              up here. Events, communities, products, services and micro-apps
-              are next.
+              up here. Events, communities, products and services are next.
             </p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
@@ -126,18 +123,18 @@ function AddEntityTile({ option }: { option: EntityOption }) {
     return (
       <Link
         href={href}
-        className="bg-pink-gradient shadow-glow flex h-full flex-col items-center justify-center gap-1.5 rounded-[14px] px-3 py-4 text-sm font-semibold text-white transition hover:brightness-105"
+        className="bg-pink-gradient shadow-glow relative flex h-24 flex-col items-center justify-center rounded-[14px] px-3 py-4 text-sm font-semibold text-white transition hover:brightness-105"
       >
         <Icon className="h-4 w-4" />
         {label}
-        <ArrowRight className="h-3.5 w-3.5 opacity-90" />
+        <ArrowRight className="absolute bottom-2.5 h-3.5 w-3.5 opacity-90" />
       </Link>
     );
   }
   return (
     <div
       aria-disabled
-      className="border-border text-muted-foreground/70 bg-card relative flex h-full flex-col items-center justify-center gap-1.5 rounded-[14px] border px-3 py-4 text-sm font-medium"
+      className="border-border text-muted-foreground/70 bg-card relative flex h-24 flex-col items-center justify-center rounded-[14px] border px-3 py-4 text-sm font-medium"
     >
       <Icon className="h-4 w-4" />
       {label}
@@ -149,7 +146,7 @@ function AddEntityTile({ option }: { option: EntityOption }) {
 }
 
 // Authenticated + at least one venue. The "Your places" hub — venue
-// cards link into their unit dashboard, plus the same 6-tile entity
+// cards link into their unit dashboard, plus the same 5-tile entity
 // picker under an "Add another" eyebrow. Post-signin lands users here.
 function VenueHub({
   email,
