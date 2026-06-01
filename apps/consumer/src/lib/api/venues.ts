@@ -235,6 +235,24 @@ type ConsumerCreateVenueResponse = {
   };
 };
 
+export type ConsumerCreateVenueResult =
+  | {
+      kind: "created";
+      venue: { id: string; slug: string; name: string; status: VenueStatus };
+      message: string;
+    }
+  | {
+      kind: "already_exists";
+      message: string;
+      existing: {
+        id: string;
+        slug: string | null;
+        name: string | null;
+        status: VenueStatus | null;
+        listing_type: VenueListingType | null;
+      } | null;
+    };
+
 /**
  * Google Places autocomplete + Mesita merge for the consumer
  * /discover/search picker. Calls consumer-suggest-places, which
@@ -276,8 +294,114 @@ export async function apiCreateVenueAsConsumer(
   );
 }
 
+export async function apiCreateVenueAsConsumerResult(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<ConsumerCreateVenueResult> {
+  const { data, error } = await client.functions.invoke<
+    | ({ ok: true } & ConsumerCreateVenueResponse)
+    | {
+        ok: false;
+        error?: string;
+        code?: string | null;
+        existing?: {
+          id: string;
+          slug?: string | null;
+          name?: string | null;
+          status?: VenueStatus | null;
+          listing_type?: VenueListingType | null;
+        } | null;
+      }
+  >("business-create-unit", { body: { placeId } });
+
+  if (error) {
+    const body = await readInvokeErrorBody(error);
+    if (body?.code === "venue_already_exists") {
+      return {
+        kind: "already_exists",
+        message:
+          body.error ??
+          "This venue is already on Mesita. If you manage it, contact support to claim ownership.",
+        existing: body.existing
+          ? {
+              id: body.existing.id,
+              slug: body.existing.slug ?? null,
+              name: body.existing.name ?? null,
+              status: body.existing.status ?? null,
+              listing_type: body.existing.listing_type ?? null,
+            }
+          : null,
+      };
+    }
+    throw new Error(body?.error ?? error.message);
+  }
+
+  if (!data) throw new Error("Couldn't add that venue right now.");
+  if (!data.ok) {
+    if (data.code === "venue_already_exists") {
+      return {
+        kind: "already_exists",
+        message:
+          data.error ??
+          "This venue is already on Mesita. If you manage it, contact support to claim ownership.",
+        existing: data.existing
+          ? {
+              id: data.existing.id,
+              slug: data.existing.slug ?? null,
+              name: data.existing.name ?? null,
+              status: data.existing.status ?? null,
+              listing_type: data.existing.listing_type ?? null,
+            }
+          : null,
+      };
+    }
+    throw new Error(data.error ?? "Couldn't add that venue right now.");
+  }
+
+  return {
+    kind: "created",
+    venue: data.venue,
+    message: `${data.venue.name} is now listed on Mesita and visible to everyone.`,
+  };
+}
+
 // Legacy rows may carry http:// photos. Next.js Image rejects them and
 // would crash the whole page; filter to https before render.
 function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
   return { ...v, photos: v.photos.filter((p) => p.startsWith("https://")) };
+}
+
+async function readInvokeErrorBody(error: unknown): Promise<{
+  error?: string;
+  code?: string | null;
+  existing?: {
+    id: string;
+    slug?: string | null;
+    name?: string | null;
+    status?: VenueStatus | null;
+    listing_type?: VenueListingType | null;
+  } | null;
+} | null> {
+  try {
+    const res = (error as { context?: Response }).context;
+    if (!res || typeof res.clone !== "function") return null;
+    const body = await res
+      .clone()
+      .json()
+      .catch(() => null);
+    if (!body || typeof body !== "object") return null;
+    return body as {
+      error?: string;
+      code?: string | null;
+      existing?: {
+        id: string;
+        slug?: string | null;
+        name?: string | null;
+        status?: VenueStatus | null;
+        listing_type?: VenueListingType | null;
+      } | null;
+    };
+  } catch {
+    return null;
+  }
 }

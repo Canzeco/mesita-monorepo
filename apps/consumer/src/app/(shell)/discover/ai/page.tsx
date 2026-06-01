@@ -1,14 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Plus, Search } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiCreateVenueAsConsumer,
+  apiCreateVenueAsConsumerResult,
   apiSuggestPlaces,
   type PlacePrediction,
+  type Venue,
 } from "@/lib/api/venues";
+import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 import { cn, errMsg } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 220;
@@ -99,7 +100,7 @@ function predictionLabel(prediction: PlacePrediction): string {
 }
 
 type PersistedAddDraft = {
-  status: "pending" | "success" | "error";
+  status: "pending" | "success" | "error" | "exists";
   startedAt: number;
   query: string;
   selected: PlacePrediction;
@@ -107,6 +108,7 @@ type PersistedAddDraft = {
   venueId?: string;
   venueSlug?: string;
   venueName?: string;
+  venueListingType?: "partner" | "web";
 };
 
 function persistAddDraft(draft: PersistedAddDraft) {
@@ -131,7 +133,7 @@ export default function AiPage() {
   const [selected, setSelected] = useState<PlacePrediction | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
-  const [createdVenueHref, setCreatedVenueHref] = useState<string | null>(null);
+  const [resultVenue, setResultVenue] = useState<Venue | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [addStageIdx, setAddStageIdx] = useState(0);
 
@@ -166,17 +168,33 @@ export default function AiPage() {
       if (draft.status === "success") {
         setAddSuccess(draft.message ?? null);
         setAddError(null);
-        setCreatedVenueHref(
-          draft.venueSlug
-            ? `/venues/${draft.venueSlug}`
-            : draft.venueId
-              ? `/venues/${draft.venueId}`
-              : null,
+        setResultVenue(
+          draft.venueId
+            ? venueCardFromDraft(
+                draft.venueId,
+                draft.venueSlug,
+                draft.venueName,
+                draft.venueListingType ?? "web",
+              )
+            : null,
+        );
+      } else if (draft.status === "exists") {
+        setAddError(draft.message ?? null);
+        setAddSuccess(null);
+        setResultVenue(
+          draft.venueId
+            ? venueCardFromDraft(
+                draft.venueId,
+                draft.venueSlug,
+                draft.venueName,
+                draft.venueListingType ?? "web",
+              )
+            : null,
         );
       } else {
         setAddError(draft.message ?? "Could not add venue.");
         setAddSuccess(null);
-        setCreatedVenueHref(null);
+        setResultVenue(null);
       }
     } catch {
       clearAddDraft();
@@ -198,22 +216,38 @@ export default function AiPage() {
         if (draft.status === "success") {
           setAddSuccess(draft.message ?? null);
           setAddError(null);
-          setCreatedVenueHref(
-            draft.venueSlug
-              ? `/venues/${draft.venueSlug}`
-              : draft.venueId
-                ? `/venues/${draft.venueId}`
-                : null,
+          setResultVenue(
+            draft.venueId
+              ? venueCardFromDraft(
+                  draft.venueId,
+                  draft.venueSlug,
+                  draft.venueName,
+                  draft.venueListingType ?? "web",
+                )
+              : null,
+          );
+        } else if (draft.status === "exists") {
+          setAddError(draft.message ?? null);
+          setAddSuccess(null);
+          setResultVenue(
+            draft.venueId
+              ? venueCardFromDraft(
+                  draft.venueId,
+                  draft.venueSlug,
+                  draft.venueName,
+                  draft.venueListingType ?? "web",
+                )
+              : null,
           );
         } else {
           setAddError(draft.message ?? "Could not add venue.");
           setAddSuccess(null);
-          setCreatedVenueHref(null);
+          setResultVenue(null);
         }
       } catch {
         clearAddDraft();
         setIsAdding(false);
-        setCreatedVenueHref(null);
+        setResultVenue(null);
       }
     }, 800);
     return () => window.clearInterval(id);
@@ -271,13 +305,9 @@ export default function AiPage() {
 
   const onAddVenue = () => {
     if (!selected || isAdding) return;
-    if (selected.status !== "not_in_mesita") {
-      setAddError("That place is already on Mesita, so it doesn't need to be added.");
-      return;
-    }
     setAddError(null);
     setAddSuccess(null);
-    setCreatedVenueHref(null);
+    setResultVenue(null);
     setAddStageIdx(0);
     setIsAdding(true);
     const startedAt = Date.now();
@@ -289,25 +319,51 @@ export default function AiPage() {
     });
     void (async () => {
       try {
-        const created = await apiCreateVenueAsConsumer(supabase, selected.placeId);
-        const successMessage = `${created.venue.name} is now listed on Mesita and visible to everyone.`;
-        const venueHref = created.venue.slug
-          ? `/venues/${created.venue.slug}`
-          : `/venues/${created.venue.id}`;
+        const result = await apiCreateVenueAsConsumerResult(supabase, selected.placeId);
+        if (result.kind === "already_exists") {
+          persistAddDraft({
+            status: "exists",
+            startedAt,
+            query: predictionLabel(selected),
+            selected,
+            message: result.message,
+            venueId: result.existing?.id,
+            venueSlug: result.existing?.slug ?? undefined,
+            venueName: result.existing?.name ?? selected.mainText,
+            venueListingType: result.existing?.listing_type ?? "web",
+          });
+          if (!mountedRef.current) return;
+          setAddError(result.message);
+          setAddSuccess(null);
+          setResultVenue(
+            result.existing?.id
+              ? venueCardFromDraft(
+                  result.existing.id,
+                  result.existing.slug ?? undefined,
+                  result.existing.name ?? selected.mainText,
+                  result.existing.listing_type ?? "web",
+                )
+              : null,
+          );
+          return;
+        }
         persistAddDraft({
           status: "success",
           startedAt,
           query: predictionLabel(selected),
           selected,
-          message: successMessage,
-          venueId: created.venue.id,
-          venueSlug: created.venue.slug,
-          venueName: created.venue.name,
+          message: result.message,
+          venueId: result.venue.id,
+          venueSlug: result.venue.slug,
+          venueName: result.venue.name,
+          venueListingType: "web",
         });
         if (!mountedRef.current) return;
-        setAddSuccess(successMessage);
+        setAddSuccess(result.message);
         setAddError(null);
-        setCreatedVenueHref(venueHref);
+        setResultVenue(
+          venueCardFromDraft(result.venue.id, result.venue.slug, result.venue.name, "web"),
+        );
       } catch (err) {
         const errorMessage = errMsg(err, "Could not add venue.");
         persistAddDraft({
@@ -320,7 +376,7 @@ export default function AiPage() {
         if (!mountedRef.current) return;
         setAddError(errorMessage);
         setAddSuccess(null);
-        setCreatedVenueHref(null);
+        setResultVenue(null);
       } finally {
         if (!mountedRef.current) return;
         setIsAdding(false);
@@ -335,7 +391,7 @@ export default function AiPage() {
             <label className="border-border bg-background focus-within:border-foreground/40 flex items-center gap-2 rounded-full border px-4 py-3 transition">
               <Search className="text-muted-foreground h-4 w-4 shrink-0" />
               <input
-                type="search"
+                type="text"
                 value={query}
                 disabled={isAdding}
                 onChange={(e) => {
@@ -344,7 +400,7 @@ export default function AiPage() {
                   setSelected(null);
                   setAddError(null);
                   setAddSuccess(null);
-                  setCreatedVenueHref(null);
+                  setResultVenue(null);
                   if (!isAdding) clearAddDraft();
                   if (next.trim().length < 2) {
                     setPredictions([]);
@@ -399,7 +455,7 @@ export default function AiPage() {
 
             <button
               type="button"
-              disabled={!selected || isAdding || selected.status !== "not_in_mesita"}
+              disabled={!selected || isAdding}
               onClick={onAddVenue}
               className="bg-foreground text-background mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold disabled:opacity-50"
             >
@@ -441,18 +497,68 @@ export default function AiPage() {
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   {addSuccess}
                 </p>
-                {createdVenueHref && (
-                  <Link
-                    href={createdVenueHref}
-                    className="border-border bg-background text-foreground mt-2 inline-flex h-10 w-full items-center justify-center rounded-full border text-xs font-semibold transition hover:bg-muted/50"
-                  >
-                    Open created venue profile
-                  </Link>
-                )}
               </>
+            )}
+            {resultVenue && (
+              <div className="mx-auto mt-3 w-full max-w-[280px]">
+                <VenueCatalogCard
+                  venue={resultVenue}
+                  href={resultVenue.slug ? `/venues/${resultVenue.slug}` : `/venues/${resultVenue.id}`}
+                />
+              </div>
             )}
         </section>
       </div>
     </div>
   );
+}
+
+function venueCardFromDraft(
+  id: string,
+  slug: string | undefined,
+  name: string | undefined,
+  listingType: "partner" | "web",
+): Venue {
+  const nowIso = new Date().toISOString();
+  return {
+    id,
+    slug: slug ?? id,
+    name: name ?? "Venue",
+    category: null,
+    category_label: null,
+    vibe: null,
+    price_level: null,
+    currency: "MXN",
+    listing_type: listingType,
+    status: "active",
+    fiscal_type: "formal",
+    plan: "free",
+    lat: null,
+    lng: null,
+    address: null,
+    closes_at: null,
+    phone: null,
+    pitch: null,
+    story: null,
+    cashback_percent: null,
+    photos: [],
+    website_url: null,
+    instagram_url: null,
+    tiktok_url: null,
+    facebook_url: null,
+    whatsapp_url: null,
+    opentable_url: null,
+    resy_url: null,
+    uber_eats_url: null,
+    rappi_url: null,
+    x_url: null,
+    youtube_url: null,
+    threads_url: null,
+    reddit_url: null,
+    didi_food_url: null,
+    tripadvisor_url: null,
+    google_maps_url: null,
+    email: null,
+    created_at: nowIso,
+  };
 }
