@@ -3,23 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, Map as MapIcon, Search } from "lucide-react";
+import { Flame, Map as MapIcon, Search, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Three Discover modes, ordered left-to-right as an ascending engagement
-// curve — lowest-effort browse → spatial → highest-effort AI tool:
+// Four Discover modes, ordered left-to-right as an ascending engagement
+// curve — lowest-effort browse → map → direct lookup → AI tool:
 //
-//   Swipe   →   Map      →   AI Search
-//   flick       pin-map      conversational
+//   Swipe   →   Map      →   Search     →   AI Search
+//   flick       pin-map      place-name      conversational
 //
 // Rendered in the top chrome row's center column (see DiscoverHeader),
 // flanked by the logo and class chip; discovery filters open from a Filter
-// button in the swipe action bar. Keyword Search + Catalog were removed from
-// the tab bar (routes stay as deep links); AI Search is the single "find" lane.
+// button in the swipe action bar.
 const TABS = [
   { href: "/discover/swipe", label: "Swipe", Icon: Flame },
   { href: "/discover/map", label: "Map", Icon: MapIcon },
-  { href: "/discover/ai", label: "AI Search", Icon: Search },
+  { href: "/discover/search", label: "Search", Icon: Search },
+  { href: "/discover/ai", label: "AI Search", Icon: Sparkles },
 ];
 
 export function DiscoverTabs() {
