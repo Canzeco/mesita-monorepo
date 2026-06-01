@@ -144,7 +144,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
           their own surfaces; we just link out. */}
       <section className="flex flex-col gap-2">
         <Link
-          href={`/venues/${r.venueId}`}
+          href={`/discover/swipe/${r.venueId}`}
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
         >
           <span className="flex items-center gap-3">

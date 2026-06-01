@@ -10,10 +10,20 @@ import type { VenueDetail } from "@/lib/mock/venue";
 // (venues/[id]/page.tsx) stays server-rendered and just hands the venue
 // prop down. (Reservations are parked, so the booking sheet is no longer
 // mounted here — see VenueDetailActionBar.)
-export function VenueDetailPageBody({ venue }: { venue: VenueDetail }) {
+export function VenueDetailPageBody({
+  venue,
+  backHref = "/discover/swipe",
+}: {
+  venue: VenueDetail;
+  backHref?: string;
+}) {
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <VenueDetailPageHeader venueId={venue.id} venueName={venue.name} />
+      <VenueDetailPageHeader
+        venueId={venue.id}
+        venueName={venue.name}
+        backHref={backHref}
+      />
       {/*
         `min-h-0` mirrors VenueDetailModalShell — without it the flex-1
         scroll container grows to fit content, `overflow-y-auto` never

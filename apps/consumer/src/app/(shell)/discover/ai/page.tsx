@@ -350,7 +350,11 @@ export default function AiPage() {
               <div className="mx-auto mt-3 w-full max-w-[280px]">
                 <VenueCatalogCard
                   venue={resultVenue}
-                  href={resultVenue.slug ? `/venues/${resultVenue.slug}` : `/venues/${resultVenue.id}`}
+                  href={
+                    resultVenue.slug
+                      ? `/discover/swipe/${resultVenue.slug}`
+                      : `/discover/swipe/${resultVenue.id}`
+                  }
                 />
               </div>
             )}

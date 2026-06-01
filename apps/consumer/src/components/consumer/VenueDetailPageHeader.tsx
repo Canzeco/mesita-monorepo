@@ -16,9 +16,11 @@ import { cn } from "@/lib/utils";
 export function VenueDetailPageHeader({
   venueId,
   venueName,
+  backHref = "/discover/swipe",
 }: {
   venueId: string;
   venueName: string;
+  backHref?: string;
 }) {
   const router = useRouter();
   const { isSaved, toggle } = useSavedVenues();
@@ -66,7 +68,7 @@ export function VenueDetailPageHeader({
   return (
     <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
       <Link
-        href="/discover/swipe"
+        href={backHref}
         aria-label="Back"
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground border-border border transition hover:bg-muted"
       >
