@@ -11,6 +11,29 @@ import {
 import { cn, errMsg } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 220;
+const ADD_STATUS_ROTATE_MS = 9_000;
+const ADD_PROGRESS_STAGES = [
+  "Preparing venue draft...",
+  "Reading place profile...",
+  "Collecting core fields...",
+  "Normalizing address...",
+  "Synthesizing summary...",
+  "Synthesizing vibe...",
+  "Generating SEO copy...",
+  "Classifying category...",
+  "Searching website...",
+  "Searching Facebook...",
+  "Searching Instagram...",
+  "Searching TikTok...",
+  "Searching Google Maps...",
+  "Extracting social links...",
+  "Extracting contact data...",
+  "Checking photos...",
+  "Ranking photos...",
+  "Finalizing listing fields...",
+  "Saving venue record...",
+  "Publishing to Mesita...",
+];
 
 function newSessionToken(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -31,10 +54,25 @@ export default function AiPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
   const [isAdding, startAdd] = useTransition();
+  const [addStageIdx, setAddStageIdx] = useState(0);
 
   const trimmed = query.trim();
   const hasStartedSearch =
     trimmed.length > 0 || searching || predictions.length > 0 || selected !== null;
+
+  // Simulated progress ticker while the create call is inflight. We don't
+  // receive server-side stage events yet, so this keeps users informed and
+  // discourages bailing early during the 3-5 minute processing window.
+  useEffect(() => {
+    if (!isAdding) {
+      setAddStageIdx(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setAddStageIdx((prev) => (prev + 1) % ADD_PROGRESS_STAGES.length);
+    }, ADD_STATUS_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [isAdding]);
 
   useEffect(() => {
     if (trimmed.length < 2) return;
@@ -78,6 +116,7 @@ export default function AiPage() {
     }
     setAddError(null);
     setAddSuccess(null);
+    setAddStageIdx(0);
     startAdd(async () => {
       try {
         const created = await apiCreateVenueAsConsumer(supabase, selected.placeId);
@@ -99,6 +138,7 @@ export default function AiPage() {
               <input
                 type="search"
                 value={query}
+                disabled={isAdding}
                 onChange={(e) => {
                   const next = e.target.value;
                   setQuery(next);
@@ -136,6 +176,7 @@ export default function AiPage() {
                   <li key={p.placeId}>
                     <button
                       type="button"
+                      disabled={isAdding}
                       onClick={() => onPick(p)}
                       className={cn(
                         "border-border bg-background hover:bg-muted/50 flex w-full flex-col rounded-xl border px-3 py-2 text-left transition",
@@ -163,7 +204,7 @@ export default function AiPage() {
               {isAdding ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Adding venue...
+                  {ADD_PROGRESS_STAGES[addStageIdx]}
                 </>
               ) : (
                 <>
@@ -173,9 +214,16 @@ export default function AiPage() {
               )}
             </button>
 
-            <p className="text-muted-foreground mt-2 text-center text-[11px]">
-              The venue is created as unclaimed and becomes visible for all users.
-            </p>
+            {isAdding ? (
+              <p className="text-muted-foreground mt-2 text-center text-[11px] leading-relaxed">
+                This process can take around 3 to 5 minutes. Please stay on this
+                screen while we finish creating the venue.
+              </p>
+            ) : (
+              <p className="text-muted-foreground mt-2 text-center text-[11px]">
+                The venue is created as unclaimed and becomes visible for all users.
+              </p>
+            )}
 
             {addError && (
               <p className="bg-destructive/10 text-destructive mt-3 rounded-xl px-3 py-2 text-xs">
