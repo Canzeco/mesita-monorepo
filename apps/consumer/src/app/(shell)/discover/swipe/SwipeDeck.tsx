@@ -347,6 +347,7 @@ function Deck({ venues }: { venues: Venue[] }) {
 
   const skip = () => beginExit("left");
   const save = () => beginExit("right");
+  const saved = isSaved(v.id);
   const isOpeningInfo = infoOpeningVenueId === v.id;
 
   const openInfo = () => {
@@ -505,9 +506,15 @@ function Deck({ venues }: { venues: Venue[] }) {
           <button
             type="button"
             onClick={save}
-            className="flex h-12 flex-1 items-center justify-center gap-1 rounded-full border border-pink-500/40 bg-pink-500/10 text-xs font-semibold whitespace-nowrap text-pink-600 transition hover:bg-pink-500/15"
+            className={cn(
+              "flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-semibold whitespace-nowrap transition",
+              saved
+                ? "border-pink-500/50 bg-pink-500/20 text-pink-700"
+                : "border-pink-500/40 bg-pink-500/10 text-pink-600 hover:bg-pink-500/15",
+            )}
           >
-            <Bookmark className="h-4 w-4" /> Save
+            <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+            {saved ? "Saved" : "Save"}
           </button>
           <button
             type="button"

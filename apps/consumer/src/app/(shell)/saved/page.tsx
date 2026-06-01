@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Bookmark } from "lucide-react";
-import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
+import { Bookmark, Navigation, Star } from "lucide-react";
+import { PromoChip } from "@/components/consumer/PromoChip";
 import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
 import { ReservationsBody } from "@/app/(shell)/reservations/page";
 import { SAVED_VENUES } from "@/lib/mock/saved-venues-mock";
@@ -212,7 +214,7 @@ function PlacesBody() {
             venue.
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             {venues.map((v) => (
               <SavedVenueTile
                 key={v.id}
@@ -234,9 +236,73 @@ function SavedVenueTile({
   venue: Venue;
   onUnsave: () => void;
 }) {
+  const photo = venue.photos[0];
+  const category = venue.category_label ?? venue.category ?? null;
+  const priceLevel = venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  const ratingLabel =
+    venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
+  const distanceLabel =
+    venue.distance_km != null ? `${venue.distance_km} km` : null;
+  const subtitleParts = [category, priceLevel].filter(Boolean) as string[];
+
   return (
     <div className="relative">
-      <VenueCatalogCard venue={venue} />
+      <Link
+        href={`/venues/${venue.slug || venue.id}`}
+        className="border-border bg-card hover:shadow-md flex min-h-[118px] w-full overflow-hidden rounded-2xl border transition"
+      >
+        <div className="bg-muted relative w-[42%] shrink-0">
+          {photo ? (
+            <Image
+              src={photo}
+              alt={venue.name}
+              fill
+              sizes="(max-width: 768px) 40vw, 240px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/80">
+              <span className="font-display text-3xl font-bold tracking-tight">
+                {venue.name[0]?.toUpperCase() ?? "·"}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2.5 pr-10">
+          <h3 className="font-display truncate text-[19px] leading-tight font-semibold tracking-tight">
+            {venue.name}
+          </h3>
+
+          {(subtitleParts.length > 0 || ratingLabel || distanceLabel) && (
+            <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-[13px]">
+              {subtitleParts.length > 0 && <span>{subtitleParts.join(" · ")}</span>}
+              {ratingLabel && (
+                <span className="inline-flex items-center gap-1">
+                  {subtitleParts.length > 0 && <span>·</span>}
+                  <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+                  <span>{ratingLabel}</span>
+                </span>
+              )}
+              {distanceLabel && (
+                <span className="inline-flex items-center gap-1">
+                  {(subtitleParts.length > 0 || ratingLabel) && <span>·</span>}
+                  <Navigation className="h-3 w-3 shrink-0" />
+                  <span>{distanceLabel}</span>
+                </span>
+              )}
+            </p>
+          )}
+
+          <div className="mt-auto flex items-center gap-2">
+            <span className="text-muted-foreground text-[10.5px] font-semibold uppercase">
+              Current reward
+            </span>
+            <PromoChip venue={venue} size="sm" showWhenEmpty />
+          </div>
+        </div>
+      </Link>
+
       <button
         type="button"
         aria-label="Remove from saved"
@@ -245,7 +311,7 @@ function SavedVenueTile({
           e.stopPropagation();
           onUnsave();
         }}
-        className="bg-background/95 text-foreground hover:bg-background absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow-sm backdrop-blur transition"
+        className="bg-background/95 text-foreground hover:bg-background absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow-sm backdrop-blur transition"
       >
         <Bookmark className="h-3.5 w-3.5 fill-current" />
       </button>
