@@ -25,10 +25,10 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    href: "/discover/swipe",
+    href: "/swipe",
     Icon: Compass,
     label: "Explore",
-    match: "/discover",
+    match: "/swipe",
   },
   {
     // Saved now covers both saved places and reservations (sub-tabs on
@@ -53,7 +53,12 @@ export function BottomNav() {
     <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-1 pt-2 backdrop-blur">
       <div className="flex items-end justify-around">
         {ITEMS.map(({ href, Icon, label, match }) => {
-          const active = pathname.startsWith(match);
+          const active =
+            label === "Explore"
+              ? pathname.startsWith("/swipe") ||
+                pathname.startsWith("/map") ||
+                pathname.startsWith("/discover")
+              : pathname.startsWith(match);
           return (
             <Link
               key={href}

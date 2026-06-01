@@ -1,1 +1,5 @@
-export { default } from "../ai/page";
+import { redirect } from "next/navigation";
+
+export default function DiscoverAddRedirect() {
+  redirect("/swipe");
+}

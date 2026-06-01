@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +11,5 @@ export default async function VenueModalPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/place/${id}`);
+  redirect(toCanonicalPlaceHrefOrNull(id) ?? "/swipe");
 }

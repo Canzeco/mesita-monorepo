@@ -7,7 +7,7 @@ import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 //
 //   no session              → render auth (this page)
 //   session + no profile    → /onboard
-//   session + onboarded     → /discover/swipe   (the actual app)
+  //   session + onboarded     → /swipe   (the actual app)
 //
 // Phone OTP collapses sign-in and create-account into one flow — the
 // first verify creates the user, every subsequent verify signs them in.

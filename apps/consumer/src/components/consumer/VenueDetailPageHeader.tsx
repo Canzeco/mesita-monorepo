@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 export function VenueDetailPageHeader({
   venueId,
   venueName,
-  backHref = "/discover/swipe",
+  backHref = "/swipe",
 }: {
   venueId: string;
   venueName: string;
