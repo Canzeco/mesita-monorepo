@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Plus, Search } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -103,6 +104,9 @@ type PersistedAddDraft = {
   query: string;
   selected: PlacePrediction;
   message?: string;
+  venueId?: string;
+  venueSlug?: string;
+  venueName?: string;
 };
 
 function persistAddDraft(draft: PersistedAddDraft) {
@@ -127,6 +131,7 @@ export default function AiPage() {
   const [selected, setSelected] = useState<PlacePrediction | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [createdVenueHref, setCreatedVenueHref] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [addStageIdx, setAddStageIdx] = useState(0);
 
@@ -161,9 +166,17 @@ export default function AiPage() {
       if (draft.status === "success") {
         setAddSuccess(draft.message ?? null);
         setAddError(null);
+        setCreatedVenueHref(
+          draft.venueSlug
+            ? `/venues/${draft.venueSlug}`
+            : draft.venueId
+              ? `/venues/${draft.venueId}`
+              : null,
+        );
       } else {
         setAddError(draft.message ?? "Could not add venue.");
         setAddSuccess(null);
+        setCreatedVenueHref(null);
       }
     } catch {
       clearAddDraft();
@@ -185,13 +198,22 @@ export default function AiPage() {
         if (draft.status === "success") {
           setAddSuccess(draft.message ?? null);
           setAddError(null);
+          setCreatedVenueHref(
+            draft.venueSlug
+              ? `/venues/${draft.venueSlug}`
+              : draft.venueId
+                ? `/venues/${draft.venueId}`
+                : null,
+          );
         } else {
           setAddError(draft.message ?? "Could not add venue.");
           setAddSuccess(null);
+          setCreatedVenueHref(null);
         }
       } catch {
         clearAddDraft();
         setIsAdding(false);
+        setCreatedVenueHref(null);
       }
     }, 800);
     return () => window.clearInterval(id);
@@ -255,6 +277,7 @@ export default function AiPage() {
     }
     setAddError(null);
     setAddSuccess(null);
+    setCreatedVenueHref(null);
     setAddStageIdx(0);
     setIsAdding(true);
     const startedAt = Date.now();
@@ -268,16 +291,23 @@ export default function AiPage() {
       try {
         const created = await apiCreateVenueAsConsumer(supabase, selected.placeId);
         const successMessage = `${created.venue.name} is now listed on Mesita and visible to everyone.`;
+        const venueHref = created.venue.slug
+          ? `/venues/${created.venue.slug}`
+          : `/venues/${created.venue.id}`;
         persistAddDraft({
           status: "success",
           startedAt,
           query: predictionLabel(selected),
           selected,
           message: successMessage,
+          venueId: created.venue.id,
+          venueSlug: created.venue.slug,
+          venueName: created.venue.name,
         });
         if (!mountedRef.current) return;
         setAddSuccess(successMessage);
         setAddError(null);
+        setCreatedVenueHref(venueHref);
       } catch (err) {
         const errorMessage = errMsg(err, "Could not add venue.");
         persistAddDraft({
@@ -290,6 +320,7 @@ export default function AiPage() {
         if (!mountedRef.current) return;
         setAddError(errorMessage);
         setAddSuccess(null);
+        setCreatedVenueHref(null);
       } finally {
         if (!mountedRef.current) return;
         setIsAdding(false);
@@ -313,6 +344,7 @@ export default function AiPage() {
                   setSelected(null);
                   setAddError(null);
                   setAddSuccess(null);
+                  setCreatedVenueHref(null);
                   if (!isAdding) clearAddDraft();
                   if (next.trim().length < 2) {
                     setPredictions([]);
@@ -404,10 +436,20 @@ export default function AiPage() {
               </p>
             )}
             {addSuccess && (
-              <p className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {addSuccess}
-              </p>
+              <>
+                <p className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {addSuccess}
+                </p>
+                {createdVenueHref && (
+                  <Link
+                    href={createdVenueHref}
+                    className="border-border bg-background text-foreground mt-2 inline-flex h-10 w-full items-center justify-center rounded-full border text-xs font-semibold transition hover:bg-muted/50"
+                  >
+                    Open created venue profile
+                  </Link>
+                )}
+              </>
             )}
         </section>
       </div>
