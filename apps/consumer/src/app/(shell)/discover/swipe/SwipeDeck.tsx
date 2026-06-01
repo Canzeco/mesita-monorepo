@@ -381,7 +381,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   const openInfo = () => {
     if (isOpeningInfo) return;
     setInfoOpeningVenueId(v.id);
-    router.push(`/discover/swipe/${v.id}`);
+    router.push(`/discover/${v.id}`);
   };
 
   return (

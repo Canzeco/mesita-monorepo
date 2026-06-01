@@ -10,5 +10,5 @@ export default async function VenueModalPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/discover/swipe/${id}`);
+  redirect(`/discover/${id}`);
 }

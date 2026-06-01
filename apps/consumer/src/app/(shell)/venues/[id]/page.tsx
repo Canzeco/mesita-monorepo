@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 // Legacy compatibility path. Venue detail now lives on contextual routes:
-// /discover/swipe/[id], /discover/map/[id], and /saved/[id].
+// /discover/[id] and /saved/[id].
 
 export default async function VenueDetailPage({
   params,
@@ -11,5 +11,5 @@ export default async function VenueDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/discover/swipe/${id}`);
+  redirect(`/discover/${id}`);
 }
