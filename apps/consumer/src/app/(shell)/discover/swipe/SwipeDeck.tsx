@@ -519,7 +519,7 @@ function Deck({ venues }: { venues: Venue[] }) {
             onClick={openInfo}
             disabled={isOpeningInfo}
             aria-label={isOpeningInfo ? "Opening venue details" : "About this place"}
-            className="border-border bg-card text-foreground/75 hover:text-foreground disabled:text-muted-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition disabled:cursor-wait"
+            className="border-border bg-card text-foreground/75 hover:text-foreground disabled:text-muted-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition disabled:cursor-default"
           >
             {isOpeningInfo ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -607,7 +607,7 @@ function ExhaustedDeck({
         type="button"
         onClick={onRestart}
         disabled={restarting}
-        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
+        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:cursor-default disabled:opacity-70"
       >
         {restarting ? (
           <>
