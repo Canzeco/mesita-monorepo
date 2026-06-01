@@ -117,6 +117,7 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
       <SectionAnchor id="details">
         <DetailsBox venue={venue} />
       </SectionAnchor>
+      <OwnershipClaimBox venue={venue} />
     </div>
   );
 }
@@ -1076,6 +1077,28 @@ function DetailsBox({ venue }: { venue: VenueDetail }) {
           </div>
         ))}
       </dl>
+    </Box>
+  );
+}
+
+function OwnershipClaimBox({ venue }: { venue: VenueDetail }) {
+  // Only unverified web listings can be claimed. Verified partners already
+  // have an owner on record, so the claim CTA would be redundant.
+  if (venue.listing_type === "partner") return null;
+  return (
+    <Box title="Ownership" icon={ShieldAlert} iconColor="text-amber-400">
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        This venue is currently listed as not verified.
+      </p>
+      <a
+        href="https://business.mesita.ai/add"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-amber-500/10 text-amber-800 ring-amber-500/30 hover:bg-amber-500/15 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold ring-1 transition"
+      >
+        Are you the owner of this venue? Claim ownership
+        <ChevronRight className="h-3.5 w-3.5" />
+      </a>
     </Box>
   );
 }
