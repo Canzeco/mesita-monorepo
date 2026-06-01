@@ -222,6 +222,17 @@ export type PlacePrediction = {
   status: PlacePredictionStatus;
 };
 
+type ConsumerCreateVenueResponse = {
+  venue: { id: string; slug: string; name: string; status: VenueStatus };
+  enrichment: {
+    google: boolean;
+    photoCount: number;
+    firecrawl: boolean;
+    perplexity: boolean;
+    openai: boolean;
+  };
+};
+
 /**
  * Google Places autocomplete + Mesita merge for the consumer
  * /discover/search picker. Calls consumer-suggest-places, which
@@ -242,6 +253,25 @@ export async function apiSuggestPlaces(
     { input: trimmed, sessionToken },
   );
   return predictions;
+}
+
+/**
+ * Consumer-triggered venue add.
+ *
+ * Intentionally reuses the same create pipeline as business onboarding,
+ * but does NOT claim ownership: the function inserts a public web listing
+ * (`listing_type=web`) with no venue_members owner row.
+ */
+export async function apiCreateVenueAsConsumer(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<ConsumerCreateVenueResponse> {
+  return invokeEF<ConsumerCreateVenueResponse>(
+    client,
+    "business-create-unit",
+    { placeId },
+    "Couldn't add that venue right now.",
+  );
 }
 
 // Legacy rows may carry http:// photos. Next.js Image rejects them and
