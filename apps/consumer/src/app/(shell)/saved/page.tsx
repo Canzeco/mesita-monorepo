@@ -3,7 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Bookmark, Navigation, Star } from "lucide-react";
+import {
+  BadgeCheck,
+  Bookmark,
+  Clock,
+  Instagram,
+  MapPin,
+  Navigation,
+  ShieldAlert,
+  Star,
+  Users,
+} from "lucide-react";
 import { PromoChip } from "@/components/consumer/PromoChip";
 import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
 import { ReservationsBody } from "@/app/(shell)/reservations/page";
@@ -108,14 +118,14 @@ export default function SavedPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4">
-        <div className="border-border bg-card grid grid-cols-2 gap-0 rounded-full border p-1">
+        <div className="border-border bg-card grid grid-cols-2 gap-0 rounded-2xl border p-1">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-full px-1 py-1.5 text-center text-[12px] font-medium transition",
+                "flex items-center justify-center gap-1.5 rounded-xl px-1 py-1.5 text-center text-[12px] font-medium transition",
                 tab === t.id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
@@ -125,7 +135,7 @@ export default function SavedPage() {
               {t.soon && (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0 text-[9px] font-bold tracking-wide uppercase",
+                    "rounded-md px-1.5 py-0 text-[9px] font-bold tracking-wide uppercase",
                     tab === t.id
                       ? "bg-background/20 text-background"
                       : "bg-muted text-muted-foreground",
@@ -209,7 +219,7 @@ function PlacesBody() {
         <ClassUpsellBox />
 
         {venues.length === 0 ? (
-          <div className="border-border text-muted-foreground rounded-2xl border border-dashed p-8 text-center text-sm">
+          <div className="border-border text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
             Nothing saved yet. Swipe right on the Explore deck to bookmark a
             venue.
           </div>
@@ -241,15 +251,29 @@ function SavedVenueTile({
   const priceLevel = venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const ratingLabel =
     venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
-  const distanceLabel =
-    venue.distance_km != null ? `${venue.distance_km} km` : null;
-  const subtitleParts = [category, priceLevel].filter(Boolean) as string[];
+  const ratingCountLabel =
+    venue.google_count != null ? formatCompactCount(venue.google_count) : null;
+  const distanceLabel = venue.distance_km != null ? `${venue.distance_km} km` : null;
+  const zoneLabel = resolveSavedZoneLabel(venue);
+  const isPartner = venue.listing_type === "partner";
+  const isOpen = venue.open_now === true;
+  const statusLabel = venue.opens_at
+    ? `Open · until ${venue.opens_at}`
+    : venue.closes_at
+      ? `Open · until ${venue.closes_at}`
+      : venue.open_now === false
+        ? "Closed now"
+        : null;
+  const igFollowersLabel =
+    venue.instagram_followers_count != null
+      ? formatCompactCount(venue.instagram_followers_count)
+      : null;
 
   return (
     <div className="relative">
       <Link
         href={`/venues/${venue.slug || venue.id}`}
-        className="border-border bg-card hover:shadow-md flex min-h-[118px] w-full overflow-hidden rounded-2xl border transition"
+        className="border-border bg-card hover:shadow-md flex min-h-[118px] w-full overflow-hidden rounded-xl border transition"
       >
         <div className="bg-muted relative w-[42%] shrink-0">
           {photo ? (
@@ -274,25 +298,72 @@ function SavedVenueTile({
             {venue.name}
           </h3>
 
-          {(subtitleParts.length > 0 || ratingLabel || distanceLabel) && (
-            <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-[13px]">
-              {subtitleParts.length > 0 && <span>{subtitleParts.join(" · ")}</span>}
-              {ratingLabel && (
-                <span className="inline-flex items-center gap-1">
-                  {subtitleParts.length > 0 && <span>·</span>}
-                  <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
-                  <span>{ratingLabel}</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {category && (
+              <SavedMetaTag>
+                <span className="font-semibold">{category}</span>
+              </SavedMetaTag>
+            )}
+            {priceLevel && (
+              <SavedMetaTag>
+                <span className="font-semibold">{priceLevel}</span>
+              </SavedMetaTag>
+            )}
+            {ratingLabel && (
+              <SavedMetaTag>
+                <span className="font-semibold">{ratingLabel}</span>
+                <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+                {ratingCountLabel && (
+                  <span className="text-white/70">({ratingCountLabel})</span>
+                )}
+              </SavedMetaTag>
+            )}
+            {distanceLabel && (
+              <SavedMetaTag>
+                <Navigation className="h-3 w-3 shrink-0 text-white/70" />
+                <span className="font-semibold">{distanceLabel}</span>
+              </SavedMetaTag>
+            )}
+            {zoneLabel && (
+              <SavedMetaTag>
+                <MapPin className="h-3 w-3 shrink-0 text-white/70" />
+                <span className="max-w-[110px] truncate font-semibold">
+                  {zoneLabel}
                 </span>
+              </SavedMetaTag>
+            )}
+            {statusLabel && (
+              <SavedMetaTag>
+                <Clock
+                  className={isOpen ? "h-3 w-3 shrink-0 text-emerald-400" : "h-3 w-3 shrink-0 text-white/70"}
+                />
+                <span className="font-semibold">{statusLabel}</span>
+              </SavedMetaTag>
+            )}
+            {igFollowersLabel && (
+              <SavedMetaTag>
+                <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
+                <span className="font-semibold">{igFollowersLabel}</span>
+                <Users className="h-3 w-3 shrink-0 text-white/70" />
+              </SavedMetaTag>
+            )}
+            <SavedMetaTag>
+              {isPartner ? (
+                <>
+                  <BadgeCheck
+                    className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white"
+                    strokeWidth={2}
+                  />
+                  <span className="font-semibold">Verified</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+                  <span className="font-semibold">Not Verified</span>
+                </>
               )}
-              {distanceLabel && (
-                <span className="inline-flex items-center gap-1">
-                  {(subtitleParts.length > 0 || ratingLabel) && <span>·</span>}
-                  <Navigation className="h-3 w-3 shrink-0" />
-                  <span>{distanceLabel}</span>
-                </span>
-              )}
-            </p>
-          )}
+            </SavedMetaTag>
+          </div>
 
           <div className="mt-auto flex items-center gap-2">
             <span className="text-muted-foreground text-[10.5px] font-semibold uppercase">
@@ -311,10 +382,36 @@ function SavedVenueTile({
           e.stopPropagation();
           onUnsave();
         }}
-        className="bg-background/95 text-foreground hover:bg-background absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow-sm backdrop-blur transition"
+        className="bg-background/95 text-foreground hover:bg-background absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-lg shadow-sm backdrop-blur transition"
       >
         <Bookmark className="h-3.5 w-3.5 fill-current" />
       </button>
     </div>
   );
+}
+
+function SavedMetaTag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-2.5 py-1 text-[11px] whitespace-nowrap text-white backdrop-blur-md">
+      {children}
+    </span>
+  );
+}
+
+function formatCompactCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return String(n);
+}
+
+function resolveSavedZoneLabel(venue: Venue): string | null {
+  if (venue.zone && venue.zone.trim().length > 0) return venue.zone;
+  if (!venue.address) return null;
+  const parts = venue.address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  const candidate = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  return /\d/.test(candidate) ? null : candidate;
 }

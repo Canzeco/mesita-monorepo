@@ -490,13 +490,11 @@ function Deck({ venues }: { venues: Venue[] }) {
             type="button"
             onClick={openInfo}
             disabled={isOpeningInfo}
-            aria-label="About this place"
+            aria-label={isOpeningInfo ? "Opening venue details" : "About this place"}
             className="border-border bg-card text-foreground/75 hover:text-foreground disabled:text-muted-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition disabled:cursor-wait"
           >
             {isOpeningInfo ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
               <>
                 <Store className="h-4 w-4" /> Info
