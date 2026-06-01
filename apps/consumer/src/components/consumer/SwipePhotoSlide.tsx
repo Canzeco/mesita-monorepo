@@ -11,6 +11,7 @@ import {
   SWIPE_CARD_COVER_PHOTO,
   SWIPE_CARD_WITC_PHOTO_BAND,
   SWIPE_CARD_FIELDS_STRIP,
+  SWIPE_CARD_WITC_FIELDS_TARGET_H,
 } from "./swipe-card-styles";
 
 /**
@@ -107,7 +108,10 @@ function WitcPhotoSlide({
   className?: string;
   onNaturalSize?: (size: ImageNaturalSize) => void;
 }) {
-  const stripHeight = Math.max(fieldsHeight, 1);
+  const stripHeight = Math.max(
+    Math.min(fieldsHeight, SWIPE_CARD_WITC_FIELDS_TARGET_H),
+    1,
+  );
   const reflectStyle: CSSProperties = {
     WebkitBoxReflect:
       "below 0px linear-gradient(to bottom, rgba(0,0,0,0.58), rgba(0,0,0,0.9))",

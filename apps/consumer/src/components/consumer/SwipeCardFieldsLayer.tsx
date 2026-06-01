@@ -4,7 +4,10 @@ import type { RefObject } from "react";
 import type { Venue } from "@/lib/api/venues";
 import { isSplitLayout, type SwipeCardLayoutMode } from "@/lib/swipe-card-layout";
 import { SwipeCardInfo } from "./SwipeCardInfo";
-import { SWIPE_CARD_FIELDS_INNER } from "./swipe-card-styles";
+import {
+  SWIPE_CARD_FIELDS_INNER,
+  SWIPE_CARD_WITC_FIELDS_TARGET_H,
+} from "./swipe-card-styles";
 
 /** Hidden sizing clone — same inner node as SwipeCardFieldsLayer. */
 export function SwipeCardFieldsMeasure({
@@ -41,12 +44,14 @@ export function SwipeCardFieldsLayer({
   mode: SwipeCardLayoutMode;
   fieldsHeight: number;
 }) {
-  const contentHeight = Math.max(fieldsHeight, 1);
   const split = isSplitLayout(mode);
+  const contentHeight = split
+    ? Math.max(Math.min(fieldsHeight, SWIPE_CARD_WITC_FIELDS_TARGET_H), 1)
+    : Math.max(fieldsHeight, 1);
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 overflow-hidden rounded-b-3xl"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 rounded-b-3xl"
       style={{ height: contentHeight }}
     >
       {!split && (

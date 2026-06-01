@@ -24,6 +24,12 @@ export const SWIPE_CARD_WITC_PHOTO_BAND =
 export const SWIPE_CARD_FIELDS_STRIP =
   "relative isolate shrink-0 overflow-hidden rounded-b-3xl" as const;
 
+/**
+ * WITC fields target height.
+ * We clamp to this so the bottom panel stays compact (title + ~3 tag rows).
+ */
+export const SWIPE_CARD_WITC_FIELDS_TARGET_H = 168;
+
 /** Fields padding — block flow, top-aligned (no h-full flex). */
 export const SWIPE_CARD_FIELDS_INNER =
   "box-border px-3.5 pt-2.5 pb-2.5" as const;
