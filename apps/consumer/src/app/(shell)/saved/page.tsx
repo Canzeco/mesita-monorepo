@@ -366,9 +366,6 @@ function SavedVenueTile({
           </div>
 
           <div className="mt-auto flex items-center gap-2">
-            <span className="text-muted-foreground text-[10.5px] font-semibold uppercase">
-              Current reward
-            </span>
             <PromoChip venue={venue} size="sm" showWhenEmpty />
           </div>
         </div>
