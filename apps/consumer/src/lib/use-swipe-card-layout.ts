@@ -16,7 +16,7 @@ export type ImageNaturalSize = { width: number; height: number };
 
 // Keep fields chrome identical between TIWC and WITC and avoid
 // post-render seam drift when webfonts finish loading.
-export const SWIPE_CARD_FALLBACK_FIELDS_H = 160;
+export const SWIPE_CARD_FALLBACK_FIELDS_H = 200;
 
 const imageSizeCache = new Map<string, ImageNaturalSize>();
 
@@ -175,8 +175,13 @@ export function useSwipeCardPhotoLayout(
   fieldsRef: RefObject<HTMLElement | null>,
 ) {
   const cardSize = useObservedSize(cardRef);
-  void fieldsRef;
-  const fieldsHeight = SWIPE_CARD_FALLBACK_FIELDS_H;
+  const fieldsSize = useObservedSize(fieldsRef);
+  // The hidden sizing clone mirrors SwipeCardInfo exactly; use its observed
+  // height so long tag rows never clip the venue title in the live overlay.
+  const fieldsHeight = Math.max(
+    Math.ceil(fieldsSize?.height ?? SWIPE_CARD_FALLBACK_FIELDS_H),
+    SWIPE_CARD_FALLBACK_FIELDS_H,
+  );
   const [sizesEpoch, setSizesEpoch] = useState(0);
 
   // Preload all photo dimensions before paint so slides never start as "unknown".
