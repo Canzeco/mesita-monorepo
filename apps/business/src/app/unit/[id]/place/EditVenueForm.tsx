@@ -558,13 +558,24 @@ function BasicsSection({
       <PriceLevelDisplay level={venue.price_level} />
 
       <Field label={aboutLabel}>
-        <textarea
-          value={v.description}
-          onChange={(e) => set("description", e.target.value)}
-          maxLength={DESCRIPTION_MAX}
-          placeholder={DESCRIPTION_PLACEHOLDER}
-          className={TEXTAREA}
-        />
+        <div className="flex flex-col gap-1.5">
+          <textarea
+            value={v.description}
+            onChange={(e) => set("description", e.target.value)}
+            maxLength={DESCRIPTION_MAX}
+            placeholder={DESCRIPTION_PLACEHOLDER}
+            className={TEXTAREA}
+          />
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-muted-foreground text-[11px]">
+              Atlas AI writes up to 1000 characters. You can expand it manually up to
+              2000.
+            </p>
+            <span className="text-muted-foreground shrink-0 text-[11px] font-medium tabular-nums">
+              {v.description.length} / {DESCRIPTION_MAX}
+            </span>
+          </div>
+        </div>
       </Field>
     </Section>
   );
