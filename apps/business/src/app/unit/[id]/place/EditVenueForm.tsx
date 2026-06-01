@@ -47,6 +47,7 @@ import {
 } from "@/lib/api/venues";
 import { Field, GoogleLogo, InstagramLogo, Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
+import { resolveVenueCategoryName } from "@/lib/venue-category";
 import {
   INPUT_CLASS as INPUT,
   TEXTAREA_CLASS as TEXTAREA,
@@ -291,7 +292,11 @@ function formHoursToVenue(form: Record<DayKey, DayShifts>): VenueHours {
 function venueToFormState(venue: MyVenue): FormState {
   return {
     name: venue.name ?? "",
-    category: venue.category_label ?? venue.category ?? "",
+    category:
+      resolveVenueCategoryName({
+        categoryLabel: venue.category_label,
+        category: venue.category,
+      }) ?? "",
     description: venue.description ?? "",
     hours: venueHoursToForm(venue.hours),
     menu_links: venue.menu_pdf_url
@@ -988,7 +993,13 @@ function PreviewMetaChip({ children }: { children: React.ReactNode }) {
 
 function previewMeta(venue: MyVenue, v: FormState) {
   const name = v.name || venue.name || "Venue name";
-  const category = v.category || venue.category_label || venue.category || null;
+  const category =
+    v.category ||
+    resolveVenueCategoryName({
+      categoryLabel: venue.category_label,
+      category: venue.category,
+    }) ||
+    null;
   const price =
     venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const googleRating =

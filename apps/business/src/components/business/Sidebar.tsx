@@ -20,6 +20,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import type { MyVenue } from "@/lib/api/venues";
 
@@ -424,7 +425,13 @@ function EmptyUnitTrigger({ isAuthenticated }: { isAuthenticated: boolean }) {
 }
 
 function venueSubtitle(v: MyVenue): string {
-  const parts = [v.vibe, v.category_label ?? v.category].filter(Boolean) as string[];
+  const parts = [
+    v.vibe,
+    resolveVenueCategoryName({
+      categoryLabel: v.category_label,
+      category: v.category,
+    }),
+  ].filter(Boolean) as string[];
   if (parts.length > 0) return parts.join(" · ");
   return v.address ?? "—";
 }
