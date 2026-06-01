@@ -23,7 +23,6 @@ export default function AiPage() {
   const supabase = useBrowserSupabase();
   const sessionTokenRef = useRef(newSessionToken());
 
-  const [showAddVenue, setShowAddVenue] = useState(true);
   const [query, setQuery] = useState("");
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
@@ -34,9 +33,11 @@ export default function AiPage() {
   const [isAdding, startAdd] = useTransition();
 
   const trimmed = query.trim();
+  const hasStartedSearch =
+    trimmed.length > 0 || searching || predictions.length > 0 || selected !== null;
 
   useEffect(() => {
-    if (!showAddVenue || trimmed.length < 2) return;
+    if (trimmed.length < 2) return;
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       setSearching(true);
@@ -57,18 +58,7 @@ export default function AiPage() {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [showAddVenue, supabase, trimmed]);
-
-  const resetAddVenue = () => {
-    setQuery("");
-    setPredictions([]);
-    setSearching(false);
-    setSearchError(null);
-    setSelected(null);
-    setAddError(null);
-    setAddSuccess(null);
-    sessionTokenRef.current = newSessionToken();
-  };
+  }, [supabase, trimmed]);
 
   const onPick = (prediction: PlacePrediction) => {
     setSelected(prediction);
@@ -101,38 +91,9 @@ export default function AiPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-6">
-      <div className="mx-auto flex w-full max-w-xl flex-col items-center text-center">
-        <div className="bg-peacock shadow-glow flex h-16 w-16 items-center justify-center rounded-full text-2xl">
-          🦚
-        </div>
-        <h1 className="font-display mt-5 text-3xl font-semibold tracking-tight">
-          Add new venues
-        </h1>
-        <p className="text-foreground/80 mt-1 text-sm font-medium">
-          Help grow Mesita from your phone
-        </p>
-        <p className="text-muted-foreground mt-4 max-w-xs text-sm leading-relaxed">
-          Search a place, select it, and add it as an unclaimed listing so it becomes
-          visible to all users.
-        </p>
-
-        <div className="mt-6 flex w-full flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setShowAddVenue((v) => !v);
-              if (showAddVenue) resetAddVenue();
-            }}
-            className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-white"
-          >
-            <Plus className="h-4 w-4" />
-            {showAddVenue ? "Hide add form" : "Add a venue"}
-          </button>
-        </div>
-
-        {showAddVenue && (
-          <section className="border-border bg-card mt-4 w-full rounded-2xl border p-3 text-left">
+    <div className="h-full overflow-y-auto px-4 pt-3 pb-6">
+      <div className="mx-auto flex w-full max-w-xl flex-col text-center">
+        <section className="border-border bg-card w-full rounded-2xl border p-3 text-left">
             <label className="border-border bg-background focus-within:border-foreground/40 flex items-center gap-2 rounded-full border px-4 py-3 transition">
               <Search className="text-muted-foreground h-4 w-4 shrink-0" />
               <input
@@ -155,6 +116,13 @@ export default function AiPage() {
               />
               {searching && <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />}
             </label>
+
+            {!hasStartedSearch && (
+              <p className="text-muted-foreground mt-3 px-1 text-center text-[12px] leading-relaxed">
+                Add places that are not on Mesita yet. They are created as unclaimed
+                venues and become visible to all users.
+              </p>
+            )}
 
             {searchError && (
               <p className="bg-destructive/10 text-destructive mt-3 rounded-xl px-3 py-2 text-xs">
@@ -220,8 +188,7 @@ export default function AiPage() {
                 {addSuccess}
               </p>
             )}
-          </section>
-        )}
+        </section>
       </div>
     </div>
   );
