@@ -112,6 +112,7 @@ type InviteWaiterResult = {
   expiresAt: string;
   shareUrl: string | null;
   sent: boolean;
+  resent?: boolean;
   sendError?: string | null;
   messageSid?: string | null;
   sendMode?: "template" | "session" | null;

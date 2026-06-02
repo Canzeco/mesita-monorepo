@@ -50,6 +50,11 @@ const ROLE_LABEL: Record<BusinessRole, string> = {
 const ROLE_CHOICES: BusinessRole[] = ["owner", "editor", "viewer"];
 const MANAGER_ROLE_CHOICES: BusinessRole[] = ["owner", "editor"];
 
+function waiterInvitePhoneKey(phone: string | null | undefined): string {
+  if (!phone) return "";
+  return phone.replace(/\D/g, "");
+}
+
 type InviteOpen = null | "manager" | "waiter" | "pr";
 
 // In-app confirmation, replacing native window.confirm so destructive
@@ -168,6 +173,48 @@ export function TeamClient({
     );
   };
 
+  const applyWaiterInviteResult = (
+    res: Awaited<ReturnType<typeof apiInviteWaiter>>,
+    channel: "whatsapp" | "sms",
+  ) => {
+    const phoneKey = waiterInvitePhoneKey(res.phone);
+    setSnapshot((prev) => ({
+      ...prev,
+      pendingWaiterInvites: [
+        {
+          id: res.inviteId,
+          phone: res.phone,
+          channel: res.channel,
+          token: res.token,
+          createdAt: new Date().toISOString(),
+          expiresAt: res.expiresAt,
+        },
+        ...(prev.pendingWaiterInvites ?? []).filter(
+          (p) =>
+            p.id !== res.inviteId &&
+            waiterInvitePhoneKey(p.phone) !== phoneKey,
+        ),
+      ],
+    }));
+    if (res.sent) {
+      setNotice(
+        res.resent
+          ? `Invitación reenviada por WhatsApp a ${res.phone}.`
+          : `Invitación enviada por WhatsApp a ${res.phone}. Queda pendiente hasta que respondan sí.`,
+      );
+    } else {
+      setNotice(
+        res.sendError
+          ? res.resent
+            ? `No se pudo reenviar por WhatsApp: ${res.sendError}`
+            : `Invitación pendiente — no se envió por WhatsApp: ${res.sendError}`
+          : channel === "whatsapp"
+            ? "Invitación pendiente — agrega el teléfono y usa Reenviar en la fila."
+            : "Invitación pendiente — usa WhatsApp; el mesero acepta respondiendo sí en Mesita Ops.",
+      );
+    }
+  };
+
   const handleInviteWaiter = (channel: "whatsapp" | "sms", phone: string) =>
     runAction(
       "invite-waiter",
@@ -177,38 +224,27 @@ export function TeamClient({
           channel,
           phone: phone || undefined,
         });
-        setSnapshot((prev) => ({
-          ...prev,
-          pendingWaiterInvites: [
-            {
-              id: res.inviteId,
-              phone: res.phone,
-              channel: res.channel,
-              token: res.token,
-              createdAt: new Date().toISOString(),
-              expiresAt: res.expiresAt,
-            },
-            ...(prev.pendingWaiterInvites ?? []).filter(
-              (p) => p.id !== res.inviteId,
-            ),
-          ],
-        }));
-        if (res.sent) {
-          setNotice(
-            `WhatsApp invite sent to ${res.phone}. Pending until they reply SI.`,
-          );
-        } else {
-          setNotice(
-            res.sendError
-              ? `Invite pending — WhatsApp didn’t send: ${res.sendError}`
-              : channel === "whatsapp"
-                ? "Invite pending — add a phone number and use Ping to resend WhatsApp."
-                : "Invite pending — use WhatsApp; staff accept by replying SI in Ops chat.",
-          );
-        }
+        applyWaiterInviteResult(res, channel);
         setInviteOpen(null);
       },
       "Couldn't create that waiter invite.",
+    );
+
+  const handleResendWaiterInvite = (
+    channel: "whatsapp" | "sms",
+    phone: string,
+  ) =>
+    runAction(
+      `resend-waiter-${phone}`,
+      async () => {
+        const res = await apiInviteWaiter(supabase, {
+          venueId,
+          channel,
+          phone,
+        });
+        applyWaiterInviteResult(res, channel);
+      },
+      "Couldn't resend that waiter invite.",
     );
 
   const handleChangeRole = (
@@ -533,14 +569,15 @@ export function TeamClient({
                   )
                 }
                 title={inv.phone ?? "—"}
-                subtitle={`Invited · ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · waiting for SI · expires ${formatRelative(inv.expiresAt)}`}
+                subtitle={`Invitado · ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · esperando que respondan sí · vence ${formatRelative(inv.expiresAt)}`}
               >
                 {inv.phone && (
                   <PingButton
-                    busy={busy === `ping-${inv.phone}`}
+                    busy={busy === `resend-waiter-${inv.phone}`}
                     onClick={() =>
-                      handleTestPing(inv.channel, inv.phone!)
+                      handleResendWaiterInvite(inv.channel, inv.phone!)
                     }
+                    label="Resend invite"
                   />
                 )}
                 {isOwner && (
@@ -677,8 +714,8 @@ export function TeamClient({
       </Section>
 
       <p className={cn(INFO_BOX_CLASS, "text-center")}>
-        WhatsApp / SMS delivery is mocked until Twilio is wired up — invites
-        still create real tokens you can share manually.
+        Las invitaciones por WhatsApp se envían desde Mesita Ops cuando el
+        número está cargado. Si falla el envío, puedes reintentar con Ping.
       </p>
     </div>
   );
@@ -1092,8 +1129,8 @@ function WaiterInviteForm({
       </div>
       <p className="text-muted-foreground text-[11px]">
         {channel === "whatsapp"
-          ? "Sends a WhatsApp invite. They reply SI in Mesita Ops to join."
-          : "Use WhatsApp. Staff reply SI to join."}
+          ? "Les llega un WhatsApp en lenguaje natural; para unirse responden sí en Mesita Ops."
+          : "Usa WhatsApp. El mesero acepta respondiendo sí en el chat de Ops."}
       </p>
     </form>
   );
@@ -1159,14 +1196,22 @@ function RemoveButton({
   );
 }
 
-function PingButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
+function PingButton({
+  busy,
+  onClick,
+  label = "Send test ping",
+}: {
+  busy: boolean;
+  onClick: () => void;
+  label?: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={busy}
-      aria-label="Send test ping"
-      title="Send test ping"
+      aria-label={label}
+      title={label}
       className={ICON_BUTTON_CLASS}
     >
       {busy ? (
