@@ -386,6 +386,12 @@ function Deck({ venues }: { venues: Venue[] }) {
     router.push(`/place/${v.id}`, { scroll: false });
   };
 
+  useEffect(() => {
+    if (!v) return;
+    router.prefetch(`/place/${v.id}`);
+    if (next) router.prefetch(`/place/${next.id}`);
+  }, [router, v, next]);
+
   return (
     <div className="relative flex h-full flex-col">
       <div className="flex flex-1 flex-col px-3 pt-2 pb-3">

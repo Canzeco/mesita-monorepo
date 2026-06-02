@@ -5,16 +5,15 @@ import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
 import { ActivityFeed } from "./ActivityFeed";
-import { PayNotifications } from "@/components/consumer/PayNotifications";
+import { PayTickets } from "@/components/consumer/PayTickets";
 
-// Two-tab Pay surface:
-//   QR        — your code to show the waiter + cashback balance below.
-//   Activity  — your rewards/redemptions log (earns, redemptions, and any
-//               story still pending verification), like the old coupons wallet.
-type Tab = "qr" | "activity";
+// Pay surface:
+//   QR and Tickets — show QR to waiter, cashback, and active tickets (pay + review steps).
+//   Activity       — rewards / redemptions history.
+type Tab = "qr_tickets" | "activity";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "qr", label: "QR" },
+  { id: "qr_tickets", label: "QR and Tickets" },
   { id: "activity", label: "Activity" },
 ];
 
@@ -27,7 +26,7 @@ export function PayClient({
   code: string;
   cashbackBalanceCents: number;
 }) {
-  const [tab, setTab] = useState<Tab>("qr");
+  const [tab, setTab] = useState<Tab>("qr_tickets");
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4">
@@ -38,7 +37,7 @@ export function PayClient({
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "rounded-full px-1 py-1.5 text-center text-[12px] font-medium transition",
+                "rounded-full px-1 py-1.5 text-center text-[11px] font-medium leading-tight transition sm:text-[12px]",
                 tab === t.id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
@@ -51,9 +50,9 @@ export function PayClient({
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-6">
-        {tab === "qr" ? (
+        {tab === "qr_tickets" ? (
           <div className="flex flex-col gap-4">
-            <PayNotifications userId={userId} />
+            <PayTickets userId={userId} />
             <MyQrCard code={code} />
             <CashbackBalanceCard cashbackBalanceCents={cashbackBalanceCents} />
           </div>

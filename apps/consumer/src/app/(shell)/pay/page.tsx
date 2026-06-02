@@ -4,9 +4,8 @@ import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
 import { PayClient } from "./PayClient";
 
-// /pay — two tabs: QR (your code + cashback balance) and Activity (your
-// rewards log). The server component fetches the profile and hands it to the
-// client tab shell.
+// /pay — QR and Tickets (code, cashback, open tickets) + Activity history.
+// Server component fetches profile and hands it to the client tab shell.
 //
 // Top header (SimpleHeader title="Pay") is owned by the shell layout
 // via TopBar — see src/components/consumer/TopBar.tsx.
