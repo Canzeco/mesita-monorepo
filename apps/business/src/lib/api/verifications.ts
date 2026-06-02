@@ -107,8 +107,9 @@ export type SendPhoneOtpResult = {
   // confirmation correctly ("We called …" vs. "We texted …").
   channel: "call" | "sms";
   phoneDialed: string;
-  // Populated only when Twilio env vars are missing (mock mode). Lets
-  // the operator complete the loop without an actual call/SMS.
+  /** True until VENUE_OTP_PLACE_CALLS=true — no real outbound call yet. */
+  mockMode?: boolean;
+  // Populated in mock mode so the operator can complete the loop without a call.
   mockCode: string | null;
 };
 
@@ -147,7 +148,7 @@ export async function apiBusinessVerifiesPhone(
 export type SendEmailOtpResult = {
   verificationId: string;
   sentTo: string;
-  // Populated only when the email provider isn't configured (mock mode).
+  mockMode?: boolean;
   mockCode: string | null;
 };
 

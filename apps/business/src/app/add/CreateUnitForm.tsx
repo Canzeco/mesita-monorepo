@@ -751,8 +751,20 @@ function MethodChip({
 type CallState =
   | { kind: "idle" }
   | { kind: "placing" }
-  | { kind: "awaiting_code"; verificationId: string; mockCode: string | null }
-  | { kind: "verifying"; verificationId: string; mockCode: string | null };
+  | {
+      kind: "awaiting_code";
+      verificationId: string;
+      mockCode: string | null;
+      phoneDialed: string;
+      mockMode: boolean;
+    }
+  | {
+      kind: "verifying";
+      verificationId: string;
+      mockCode: string | null;
+      phoneDialed: string;
+      mockMode: boolean;
+    };
 
 function PhoneBody({
   venue,
@@ -787,6 +799,8 @@ function PhoneBody({
           kind: "awaiting_code",
           verificationId: r.verificationId,
           mockCode: r.mockCode,
+          phoneDialed: r.phoneDialed,
+          mockMode: r.mockMode ?? !!r.mockCode,
         });
       } catch (err) {
         setError(errMsg(err, "Could not place call."));
@@ -803,9 +817,9 @@ function PhoneBody({
       setError("Code must be 6 digits.");
       return;
     }
-    const { verificationId, mockCode } = state;
+    const { verificationId, mockCode, phoneDialed, mockMode } = state;
     setError(null);
-    setState({ kind: "verifying", verificationId, mockCode });
+    setState({ kind: "verifying", verificationId, mockCode, phoneDialed, mockMode });
     void (async () => {
       try {
         const { venueId: vId, awaitingAdmin } = await apiBusinessVerifiesPhone(
@@ -817,7 +831,13 @@ function PhoneBody({
         else onApproved(vId);
       } catch (err) {
         setError(errMsg(err, "Could not verify."));
-        setState({ kind: "awaiting_code", verificationId, mockCode });
+        setState({
+          kind: "awaiting_code",
+          verificationId,
+          mockCode,
+          phoneDialed,
+          mockMode,
+        });
       }
     })();
   };
@@ -827,12 +847,13 @@ function PhoneBody({
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted-foreground text-[13px] leading-relaxed">
-          We&apos;ll dial{" "}
+          We&apos;ll dial the number on file and read out a 6-digit code. In test
+          mode you&apos;ll see a Mesita mock line and the code on screen — we
+          don&apos;t call{" "}
           <span className="text-foreground font-mono font-semibold">
             {phoneDisplay}
           </span>{" "}
-          and read out a 6-digit code. Pick up at the venue and type it in right
-          here.
+          yet.
         </p>
         <button
           type="button"
@@ -861,6 +882,15 @@ function PhoneBody({
   }
 
   const verifying = state.kind === "verifying";
+  const dialed =
+    state.kind === "awaiting_code" || state.kind === "verifying"
+      ? state.phoneDialed
+      : phoneDisplay;
+  const mockMode =
+    state.kind === "awaiting_code" || state.kind === "verifying"
+      ? state.mockMode
+      : false;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="text-muted-foreground flex items-center gap-2 text-[12.5px] leading-snug">
@@ -868,11 +898,24 @@ function PhoneBody({
           <Phone className="h-3.5 w-3.5" />
         </span>
         <p>
-          Called{" "}
-          <span className="text-foreground font-mono font-semibold">
-            {phoneDisplay}
-          </span>
-          . Pick up and type the 6-digit code we read out.
+          {mockMode ? (
+            <>
+              Mock line{" "}
+              <span className="text-foreground font-mono font-semibold">
+                {dialed}
+              </span>
+              {" "}
+              — we didn&apos;t call the venue. Type the 6-digit code below.
+            </>
+          ) : (
+            <>
+              Called{" "}
+              <span className="text-foreground font-mono font-semibold">
+                {dialed}
+              </span>
+              . Pick up and type the 6-digit code we read out.
+            </>
+          )}
         </p>
       </div>
 
@@ -927,8 +970,20 @@ function PhoneBody({
 type EmailState =
   | { kind: "idle" }
   | { kind: "sending" }
-  | { kind: "awaiting_code"; verificationId: string; mockCode: string | null }
-  | { kind: "verifying"; verificationId: string; mockCode: string | null };
+  | {
+      kind: "awaiting_code";
+      verificationId: string;
+      mockCode: string | null;
+      sentTo: string;
+      mockMode: boolean;
+    }
+  | {
+      kind: "verifying";
+      verificationId: string;
+      mockCode: string | null;
+      sentTo: string;
+      mockMode: boolean;
+    };
 
 function EmailBody({
   venue,
@@ -963,6 +1018,8 @@ function EmailBody({
           kind: "awaiting_code",
           verificationId: r.verificationId,
           mockCode: r.mockCode,
+          sentTo: r.sentTo,
+          mockMode: r.mockMode ?? !!r.mockCode,
         });
       } catch (err) {
         setError(errMsg(err, "Could not send code."));
@@ -979,9 +1036,9 @@ function EmailBody({
       setError("Code must be 6 digits.");
       return;
     }
-    const { verificationId, mockCode } = state;
+    const { verificationId, mockCode, sentTo, mockMode } = state;
     setError(null);
-    setState({ kind: "verifying", verificationId, mockCode });
+    setState({ kind: "verifying", verificationId, mockCode, sentTo, mockMode });
     void (async () => {
       try {
         const { venueId: vId, awaitingAdmin } = await apiBusinessVerifiesEmail(
@@ -993,7 +1050,13 @@ function EmailBody({
         else onApproved(vId);
       } catch (err) {
         setError(errMsg(err, "Could not verify."));
-        setState({ kind: "awaiting_code", verificationId, mockCode });
+        setState({
+          kind: "awaiting_code",
+          verificationId,
+          mockCode,
+          sentTo,
+          mockMode,
+        });
       }
     })();
   };
@@ -1003,12 +1066,13 @@ function EmailBody({
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted-foreground text-[13px] leading-relaxed">
-          We&apos;ll email a 6-digit code to{" "}
+          We&apos;ll email a 6-digit code to the on-domain address on file. In
+          test mode you&apos;ll see a mock inbox and the code on screen — we
+          don&apos;t email{" "}
           <span className="text-foreground font-mono font-semibold break-all">
             {emailDisplay}
           </span>{" "}
-          — the address we found on the venue&apos;s own website. Open it and
-          type the code in right here.
+          yet.
         </p>
         <button
           type="button"
@@ -1037,6 +1101,15 @@ function EmailBody({
   }
 
   const verifying = state.kind === "verifying";
+  const sentTo =
+    state.kind === "awaiting_code" || state.kind === "verifying"
+      ? state.sentTo
+      : emailDisplay;
+  const mockMode =
+    state.kind === "awaiting_code" || state.kind === "verifying"
+      ? state.mockMode
+      : false;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="text-muted-foreground flex items-center gap-2 text-[12.5px] leading-snug">
@@ -1044,11 +1117,24 @@ function EmailBody({
           <Mail className="h-3.5 w-3.5" />
         </span>
         <p>
-          Code sent to{" "}
-          <span className="text-foreground font-mono font-semibold break-all">
-            {emailDisplay}
-          </span>
-          . Check the inbox and type it below.
+          {mockMode ? (
+            <>
+              Mock inbox{" "}
+              <span className="text-foreground font-mono font-semibold break-all">
+                {sentTo}
+              </span>
+              {" "}
+              — we didn&apos;t email the venue. Type the 6-digit code below.
+            </>
+          ) : (
+            <>
+              Code sent to{" "}
+              <span className="text-foreground font-mono font-semibold break-all">
+                {sentTo}
+              </span>
+              . Check the inbox and type it below.
+            </>
+          )}
         </p>
       </div>
 

@@ -101,7 +101,9 @@ export function TeamClient({
   const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
     (inv) => inv.role !== "viewer",
   );
-  const waiterCount = snapshot.waiters.length;
+  const pendingWaiterInvites = snapshot.pendingWaiterInvites;
+  const waiterCount =
+    snapshot.waiters.length + pendingWaiterInvites.length;
   const prCount = snapshot.waiters.length + mockPrInstagrams.length;
 
   // Wrap any mutating action in the shared busy/error/refresh frame.
@@ -171,12 +173,35 @@ export function TeamClient({
     runAction(
       "invite-waiter",
       async () => {
-        await apiInviteWaiter(supabase, {
+        const res = await apiInviteWaiter(supabase, {
           venueId,
           channel,
           phone: phone || undefined,
           redirectBase: window.location.origin,
         });
+        const link =
+          res.shareUrl ?? buildAcceptUrl(res.token, "waiter");
+        if (res.sent) {
+          setNotice(
+            `WhatsApp invite sent to ${res.phone}. They should open the link on that phone and sign in.`,
+          );
+        } else {
+          setNotice(
+            res.sendError
+              ? `Invite saved, but WhatsApp didn’t send: ${res.sendError}${link ? " Copy the link below." : ""}`
+              : `Waiter invite created — copy the link and send it on ${channel === "whatsapp" ? "WhatsApp" : "SMS"}.`,
+          );
+          if (link && typeof navigator !== "undefined" && navigator.clipboard) {
+            try {
+              await navigator.clipboard.writeText(link);
+              setNotice((prev) =>
+                prev ? `${prev} Link copied to clipboard.` : prev,
+              );
+            } catch {
+              // clipboard blocked — link still visible in pending row
+            }
+          }
+        }
         setInviteOpen(null);
       },
       "Couldn't create that waiter invite.",
@@ -446,17 +471,16 @@ export function TeamClient({
           />
         )}
 
-        {snapshot.waiters.length === 0 &&
-        inviteOpen !== "waiter" ? (
+        {waiterCount === 0 && inviteOpen !== "waiter" ? (
           <EmptyState
             icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
             title="No waiters yet"
             description="Invite your floor staff so they can validate tickets from their own phone."
             className="border-border/60 bg-muted/20 rounded-xl border p-7"
           />
-        ) : snapshot.waiters.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No waiters yet.</p>
         ) : (
+          <>
+          {snapshot.waiters.length > 0 && (
           <ul className="divide-border/60 divide-y">
             {snapshot.waiters.map((w) => (
               <li
@@ -497,6 +521,59 @@ export function TeamClient({
               </li>
             ))}
           </ul>
+          )}
+
+        {pendingWaiterInvites.length > 0 && (
+          <PendingGroup>
+            {pendingWaiterInvites.map((inv) => (
+              <PendingRow
+                key={inv.id}
+                icon={
+                  inv.channel === "whatsapp" ? (
+                    <MessageCircle className="text-whatsapp-deep h-3.5 w-3.5" />
+                  ) : (
+                    <PhoneIcon className="text-muted-foreground h-3.5 w-3.5" />
+                  )
+                }
+                title={inv.phone ?? "Open invite (any phone)"}
+                subtitle={`Pending ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} invite · expires ${formatRelative(inv.expiresAt)}`}
+              >
+                <CopyButton
+                  text={buildAcceptUrl(inv.token, "waiter")}
+                  label="Copy invite link"
+                />
+                {inv.phone && (
+                  <PingButton
+                    busy={busy === `ping-${inv.phone}`}
+                    onClick={() =>
+                      handleTestPing(inv.channel, inv.phone!)
+                    }
+                  />
+                )}
+                {isOwner && (
+                  <RemoveButton
+                    busy={busy === `remove-${inv.id}`}
+                    label="Revoke invite"
+                    onClick={() =>
+                      handleRemove(
+                        inv.id,
+                        "waiterInvite",
+                        "Revoke this waiter invite?",
+                      )
+                    }
+                  />
+                )}
+              </PendingRow>
+            ))}
+          </PendingGroup>
+        )}
+
+        {snapshot.waiters.length === 0 &&
+          pendingWaiterInvites.length === 0 &&
+          inviteOpen === "waiter" && (
+            <p className="text-muted-foreground text-sm">No waiters yet.</p>
+          )}
+          </>
         )}
 
       </Section>
@@ -1030,8 +1107,8 @@ function WaiterInviteForm({
       </div>
       <p className="text-muted-foreground text-[11px]">
         {channel === "whatsapp"
-          ? "Invite is sent by WhatsApp. Phone is optional: with phone, only that number can claim; without it, anyone with the link can join."
-          : "Invite is sent by SMS. Phone is optional: with phone, only that number can claim; without it, anyone with the link can join."}
+          ? "Add sends one WhatsApp from Mesita Ops with the accept link. Phone required for auto-send; that number must claim the invite."
+          : "SMS auto-send coming soon. Phone optional: with phone, only that number can claim."}
       </p>
     </form>
   );

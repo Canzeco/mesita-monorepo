@@ -112,6 +112,8 @@ type InviteWaiterResult = {
   expiresAt: string;
   shareUrl: string | null;
   sent: boolean;
+  sendError?: string | null;
+  messageSid?: string | null;
 };
 
 export async function apiInviteWaiter(
