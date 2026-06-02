@@ -101,9 +101,8 @@ export function TeamClient({
   const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
     (inv) => inv.role !== "viewer",
   );
-  const pendingWaiterInvites = snapshot.pendingWaiterInvites;
-  const waiterCount =
-    snapshot.waiters.length + pendingWaiterInvites.length;
+  const pendingWaiterInvites = snapshot.pendingWaiterInvites ?? [];
+  const activeWaiterCount = snapshot.waiters.length;
   const prCount = snapshot.waiters.length + mockPrInstagrams.length;
 
   // Wrap any mutating action in the shared busy/error/refresh frame.
@@ -177,30 +176,35 @@ export function TeamClient({
           venueId,
           channel,
           phone: phone || undefined,
-          redirectBase: window.location.origin,
         });
-        const link =
-          res.shareUrl ?? buildAcceptUrl(res.token, "waiter");
+        setSnapshot((prev) => ({
+          ...prev,
+          pendingWaiterInvites: [
+            {
+              id: res.inviteId,
+              phone: res.phone,
+              channel: res.channel,
+              token: res.token,
+              createdAt: new Date().toISOString(),
+              expiresAt: res.expiresAt,
+            },
+            ...(prev.pendingWaiterInvites ?? []).filter(
+              (p) => p.id !== res.inviteId,
+            ),
+          ],
+        }));
         if (res.sent) {
           setNotice(
-            `WhatsApp invite sent to ${res.phone}. They should open the link on that phone and sign in.`,
+            `WhatsApp invite sent to ${res.phone}. Pending until they reply SI in Mesita Ops.`,
           );
         } else {
           setNotice(
             res.sendError
-              ? `Invite saved, but WhatsApp didn’t send: ${res.sendError}${link ? " Copy the link below." : ""}`
-              : `Waiter invite created — copy the link and send it on ${channel === "whatsapp" ? "WhatsApp" : "SMS"}.`,
+              ? `Invite pending — WhatsApp didn’t send: ${res.sendError}`
+              : channel === "whatsapp"
+                ? "Invite pending — add a phone number and use Ping to resend WhatsApp."
+                : "Invite pending — use WhatsApp; staff accept by replying SI in Ops chat.",
           );
-          if (link && typeof navigator !== "undefined" && navigator.clipboard) {
-            try {
-              await navigator.clipboard.writeText(link);
-              setNotice((prev) =>
-                prev ? `${prev} Link copied to clipboard.` : prev,
-              );
-            } catch {
-              // clipboard blocked — link still visible in pending row
-            }
-          }
         }
         setInviteOpen(null);
       },
@@ -317,8 +321,8 @@ export function TeamClient({
         />
         <TeamStatPill
           label="Waiters"
-          value={waiterCount}
-          hint={`${waiterCount} active`}
+          value={activeWaiterCount}
+          hint={`${pendingWaiterInvites.length} pending`}
         />
         <TeamStatPill
           label="PR channels"
@@ -471,16 +475,9 @@ export function TeamClient({
           />
         )}
 
-        {waiterCount === 0 && inviteOpen !== "waiter" ? (
-          <EmptyState
-            icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
-            title="No waiters yet"
-            description="Invite your floor staff so they can validate tickets from their own phone."
-            className="border-border/60 bg-muted/20 rounded-xl border p-7"
-          />
+        {activeWaiterCount === 0 ? (
+          <p className="text-muted-foreground text-sm">No waiters yet.</p>
         ) : (
-          <>
-          {snapshot.waiters.length > 0 && (
           <ul className="divide-border/60 divide-y">
             {snapshot.waiters.map((w) => (
               <li
@@ -521,7 +518,7 @@ export function TeamClient({
               </li>
             ))}
           </ul>
-          )}
+        )}
 
         {pendingWaiterInvites.length > 0 && (
           <PendingGroup>
@@ -535,13 +532,9 @@ export function TeamClient({
                     <PhoneIcon className="text-muted-foreground h-3.5 w-3.5" />
                   )
                 }
-                title={inv.phone ?? "Open invite (any phone)"}
-                subtitle={`Pending ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} invite · expires ${formatRelative(inv.expiresAt)}`}
+                title={inv.phone ?? "—"}
+                subtitle={`Invited · ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · waiting for SI · expires ${formatRelative(inv.expiresAt)}`}
               >
-                <CopyButton
-                  text={buildAcceptUrl(inv.token, "waiter")}
-                  label="Copy invite link"
-                />
                 {inv.phone && (
                   <PingButton
                     busy={busy === `ping-${inv.phone}`}
@@ -566,14 +559,6 @@ export function TeamClient({
               </PendingRow>
             ))}
           </PendingGroup>
-        )}
-
-        {snapshot.waiters.length === 0 &&
-          pendingWaiterInvites.length === 0 &&
-          inviteOpen === "waiter" && (
-            <p className="text-muted-foreground text-sm">No waiters yet.</p>
-          )}
-          </>
         )}
 
       </Section>
@@ -1077,14 +1062,14 @@ function WaiterInviteForm({
           <PhonePicker
             value={phone}
             onChange={setPhone}
-            placeholder="33 1234 5678 (optional)"
+            placeholder="33 1234 5678"
             className="w-full min-w-0 lg:flex-1"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || (channel === "whatsapp" && phone.trim().length === 0)}
             className={cn(PILL_BUTTON_CLASS, "shrink-0 px-4 py-2 disabled:opacity-50")}
           >
             {busy ? (
@@ -1107,8 +1092,8 @@ function WaiterInviteForm({
       </div>
       <p className="text-muted-foreground text-[11px]">
         {channel === "whatsapp"
-          ? "Add sends one WhatsApp from Mesita Ops with the accept link. Phone required for auto-send; that number must claim the invite."
-          : "SMS auto-send coming soon. Phone optional: with phone, only that number can claim."}
+          ? "Add sends one WhatsApp from Mesita Ops. The waiter replies SI in that chat to join — no links, they stay in WhatsApp."
+          : "Use WhatsApp for waiter invites. Staff accept by replying SI in Mesita Ops."}
       </p>
     </form>
   );
