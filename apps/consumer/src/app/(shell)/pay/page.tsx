@@ -37,6 +37,7 @@ export default async function PayPage() {
 
   return (
     <PayClient
+      userId={user.id}
       code={profile.code ?? ""}
       cashbackBalanceCents={profile.cashback_balance_cents}
     />

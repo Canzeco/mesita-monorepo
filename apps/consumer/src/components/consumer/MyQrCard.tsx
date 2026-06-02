@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Copy, Check, Sparkles } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { displayConsumerCode } from "@/lib/consumer-code";
 
 export function MyQrCard({ code }: { code: string }) {
+  const displayCode = displayConsumerCode(code);
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(displayCode);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
     } catch {
@@ -27,7 +29,7 @@ export function MyQrCard({ code }: { code: string }) {
       <div className="mt-3 flex flex-col items-center gap-3">
         <div className="border-border bg-background rounded-2xl border p-3.5">
           <QRCodeSVG
-            value={`mesita:${code}`}
+            value={`mesita:${displayCode}`}
             size={140}
             bgColor="transparent"
             fgColor="currentColor"
@@ -41,7 +43,7 @@ export function MyQrCard({ code }: { code: string }) {
           aria-label={copied ? "Code copied" : "Copy code"}
           className="border-border bg-background text-foreground hover:bg-muted flex items-center gap-2 rounded-full border px-4 py-2 text-base font-medium tracking-[0.16em] tabular-nums transition"
         >
-          {code}
+          {displayCode}
           {copied ? (
             <Check className="text-secondary h-3.5 w-3.5" />
           ) : (

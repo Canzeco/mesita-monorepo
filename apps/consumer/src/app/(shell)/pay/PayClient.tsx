@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
 import { ActivityFeed } from "./ActivityFeed";
+import { PayNotifications } from "@/components/consumer/PayNotifications";
 
 // Two-tab Pay surface:
 //   QR        — your code to show the waiter + cashback balance below.
@@ -18,9 +19,11 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function PayClient({
+  userId,
   code,
   cashbackBalanceCents,
 }: {
+  userId: string;
   code: string;
   cashbackBalanceCents: number;
 }) {
@@ -50,6 +53,7 @@ export function PayClient({
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-6">
         {tab === "qr" ? (
           <div className="flex flex-col gap-4">
+            <PayNotifications userId={userId} />
             <MyQrCard code={code} />
             <CashbackBalanceCard cashbackBalanceCents={cashbackBalanceCents} />
           </div>

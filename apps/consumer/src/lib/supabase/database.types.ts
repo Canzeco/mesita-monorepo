@@ -12,10 +12,50 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       app_settings: {
         Row: {
+          atlas_analyze_google_images: number
+          atlas_analyze_instagram_images: number
+          atlas_analyze_website_images: number
+          atlas_gather_google_images: number
+          atlas_gather_instagram_posts: number
+          atlas_gather_website_images: number
+          atlas_image_analysis_prompt: string
+          atlas_image_sorting_prompt: string
+          atlas_image_vision_enabled: boolean
+          atlas_per_run_cost_cap_usd: number
+          atlas_save_total_images: number
+          atlas_source_overrides: Json
+          atlas_source_tier_ceiling: number
+          atlas_synthesis_quality: string
+          atlas_website_crawl_max_pages: number
           auto_verify_ai_call: boolean
           auto_verify_ai_email: boolean
           auto_verify_video: boolean
@@ -24,6 +64,21 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          atlas_analyze_google_images?: number
+          atlas_analyze_instagram_images?: number
+          atlas_analyze_website_images?: number
+          atlas_gather_google_images?: number
+          atlas_gather_instagram_posts?: number
+          atlas_gather_website_images?: number
+          atlas_image_analysis_prompt?: string
+          atlas_image_sorting_prompt?: string
+          atlas_image_vision_enabled?: boolean
+          atlas_per_run_cost_cap_usd?: number
+          atlas_save_total_images?: number
+          atlas_source_overrides?: Json
+          atlas_source_tier_ceiling?: number
+          atlas_synthesis_quality?: string
+          atlas_website_crawl_max_pages?: number
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
@@ -32,6 +87,21 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          atlas_analyze_google_images?: number
+          atlas_analyze_instagram_images?: number
+          atlas_analyze_website_images?: number
+          atlas_gather_google_images?: number
+          atlas_gather_instagram_posts?: number
+          atlas_gather_website_images?: number
+          atlas_image_analysis_prompt?: string
+          atlas_image_sorting_prompt?: string
+          atlas_image_vision_enabled?: boolean
+          atlas_per_run_cost_cap_usd?: number
+          atlas_save_total_images?: number
+          atlas_source_overrides?: Json
+          atlas_source_tier_ceiling?: number
+          atlas_synthesis_quality?: string
+          atlas_website_crawl_max_pages?: number
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
@@ -172,6 +242,69 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consumer_code_counter: {
+        Row: {
+          id: number
+          next_value: number
+        }
+        Insert: {
+          id?: number
+          next_value?: number
+        }
+        Update: {
+          id?: number
+          next_value?: number
+        }
+        Relationships: []
+      }
+      consumer_pay_notifications: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          resolved_at: string | null
+          status: string
+          ticket_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          resolved_at?: string | null
+          status?: string
+          ticket_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          resolved_at?: string | null
+          status?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_pay_notifications_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumer_pay_notifications_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -568,6 +701,70 @@ export type Database = {
           },
         ]
       }
+      staff_whatsapp_sessions: {
+        Row: {
+          consumer_id: string | null
+          context: Json
+          created_at: string
+          id: string
+          pending_consumer_code: string | null
+          phone_e164: string
+          staff_user_id: string
+          state: string
+          ticket_id: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          consumer_id?: string | null
+          context?: Json
+          created_at?: string
+          id?: string
+          pending_consumer_code?: string | null
+          phone_e164: string
+          staff_user_id: string
+          state?: string
+          ticket_id?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          consumer_id?: string | null
+          context?: Json
+          created_at?: string
+          id?: string
+          pending_consumer_code?: string | null
+          phone_e164?: string
+          staff_user_id?: string
+          state?: string
+          ticket_id?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_whatsapp_sessions_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_sessions_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_sessions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_events: {
         Row: {
           event_id: string
@@ -607,6 +804,67 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_reviews: {
+        Row: {
+          ambiance: number
+          comments: string | null
+          consumer_id: string
+          created_at: string
+          food: number
+          id: string
+          overall: number
+          service: number
+          ticket_id: string
+          venue_id: string
+        }
+        Insert: {
+          ambiance: number
+          comments?: string | null
+          consumer_id: string
+          created_at?: string
+          food: number
+          id?: string
+          overall: number
+          service: number
+          ticket_id: string
+          venue_id: string
+        }
+        Update: {
+          ambiance?: number
+          comments?: string | null
+          consumer_id?: string
+          created_at?: string
+          food?: number
+          id?: string
+          overall?: number
+          service?: number
+          ticket_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_reviews_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_reviews_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_reviews_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           cancel_reason: string | null
@@ -615,6 +873,7 @@ export type Database = {
           cashback_percent: number
           check_subtotal_cents: number | null
           consumer_id: string
+          consumer_payment_confirmed_at: string | null
           created_at: string
           currency: string
           discount_cents: number | null
@@ -622,6 +881,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["ticket_kind"]
           opened_by: string
+          opened_by_staff_user_id: string | null
           paid_at: string | null
           redeem_cents: number | null
           reservation_at: string | null
@@ -632,6 +892,7 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at: string | null
+          staff_payment_confirmed_at: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason: string | null
           story_screenshot_url: string | null
@@ -651,6 +912,7 @@ export type Database = {
           cashback_percent: number
           check_subtotal_cents?: number | null
           consumer_id: string
+          consumer_payment_confirmed_at?: string | null
           created_at?: string
           currency?: string
           discount_cents?: number | null
@@ -658,6 +920,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["ticket_kind"]
           opened_by: string
+          opened_by_staff_user_id?: string | null
           paid_at?: string | null
           redeem_cents?: number | null
           reservation_at?: string | null
@@ -668,6 +931,7 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at?: string | null
+          staff_payment_confirmed_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason?: string | null
           story_screenshot_url?: string | null
@@ -687,6 +951,7 @@ export type Database = {
           cashback_percent?: number
           check_subtotal_cents?: number | null
           consumer_id?: string
+          consumer_payment_confirmed_at?: string | null
           created_at?: string
           currency?: string
           discount_cents?: number | null
@@ -694,6 +959,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["ticket_kind"]
           opened_by?: string
+          opened_by_staff_user_id?: string | null
           paid_at?: string | null
           redeem_cents?: number | null
           reservation_at?: string | null
@@ -704,6 +970,7 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at?: string | null
+          staff_payment_confirmed_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason?: string | null
           story_screenshot_url?: string | null
@@ -725,13 +992,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tickets_opened_by_fkey"
-            columns: ["opened_by"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "tickets_story_verified_by_fkey"
             columns: ["story_verified_by"]
             isOneToOne: false
@@ -740,6 +1000,95 @@ export type Database = {
           },
           {
             foreignKeyName: "tickets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_categories: {
+        Row: {
+          created_at: string
+          label: string
+          section: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          label: string
+          section: string
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          label?: string
+          section?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      venue_media_assets: {
+        Row: {
+          analysis_text: string | null
+          bytes: number | null
+          caption: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          likes_count: number | null
+          mime_type: string | null
+          public_url: string | null
+          source: string
+          source_metadata: Json | null
+          source_url: string
+          status: string
+          storage_path: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          analysis_text?: string | null
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          likes_count?: number | null
+          mime_type?: string | null
+          public_url?: string | null
+          source: string
+          source_metadata?: Json | null
+          source_url: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          analysis_text?: string | null
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          likes_count?: number | null
+          mime_type?: string | null
+          public_url?: string | null
+          source?: string
+          source_metadata?: Json | null
+          source_url?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_media_assets_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -876,15 +1225,25 @@ export type Database = {
           address: string | null
           cashback_percent: number | null
           category: string | null
+          category_label: string | null
+          city: string | null
           closes_at: string | null
           country: string | null
           created_at: string
           currency: string
           description: string | null
+          details: Json | null
           didi_food_url: string | null
+          editorial_summary: string | null
           email: string | null
           embedding: string | null
           embedding_source_hash: string | null
+          enriched_at: string | null
+          enrichment_sources: Json | null
+          established_year: number | null
+          executive_chef: string | null
+          facebook_followers: number | null
+          facebook_rating: number | null
           facebook_url: string | null
           fiscal_type: Database["public"]["Enums"]["venue_fiscal_type"]
           free_rate: number | null
@@ -892,6 +1251,7 @@ export type Database = {
           google_maps_url: string | null
           google_place_id: string | null
           google_review_count: number | null
+          google_reviews: Json | null
           google_stars_overall: number | null
           google_visitor_count: number | null
           hours: Json | null
@@ -904,23 +1264,30 @@ export type Database = {
           lng: number | null
           menu_pdf_name: string | null
           menu_pdf_url: string | null
+          menus: Json | null
           mesita_review_count: number | null
           mesita_stars_ambience: number | null
           mesita_stars_food: number | null
           mesita_stars_overall: number | null
           mesita_stars_service: number | null
+          mesita_stars_value: number | null
           mesita_visitor_count: number | null
+          monthly_promo_cap: number | null
           name: string
           opentable_url: string | null
           phone: string | null
           photos: string[]
           pitch: string | null
           plan: Database["public"]["Enums"]["venue_plan"]
+          popular_times: Json | null
           premium_rate: number | null
           price_level: number | null
+          products: Json | null
           rappi_url: string | null
           reddit_url: string | null
+          requires_story: boolean
           resy_url: string | null
+          reward_cap_cents: number | null
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
           slug: string
@@ -941,20 +1308,31 @@ export type Database = {
           whatsapp_url: string | null
           x_url: string | null
           youtube_url: string | null
+          zone: string | null
         }
         Insert: {
           address?: string | null
           cashback_percent?: number | null
           category?: string | null
+          category_label?: string | null
+          city?: string | null
           closes_at?: string | null
           country?: string | null
           created_at?: string
           currency?: string
           description?: string | null
+          details?: Json | null
           didi_food_url?: string | null
+          editorial_summary?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
+          enriched_at?: string | null
+          enrichment_sources?: Json | null
+          established_year?: number | null
+          executive_chef?: string | null
+          facebook_followers?: number | null
+          facebook_rating?: number | null
           facebook_url?: string | null
           fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"]
           free_rate?: number | null
@@ -962,6 +1340,7 @@ export type Database = {
           google_maps_url?: string | null
           google_place_id?: string | null
           google_review_count?: number | null
+          google_reviews?: Json | null
           google_stars_overall?: number | null
           google_visitor_count?: number | null
           hours?: Json | null
@@ -974,23 +1353,30 @@ export type Database = {
           lng?: number | null
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
+          menus?: Json | null
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
           mesita_stars_food?: number | null
           mesita_stars_overall?: number | null
           mesita_stars_service?: number | null
+          mesita_stars_value?: number | null
           mesita_visitor_count?: number | null
+          monthly_promo_cap?: number | null
           name: string
           opentable_url?: string | null
           phone?: string | null
           photos?: string[]
           pitch?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          popular_times?: Json | null
           premium_rate?: number | null
           price_level?: number | null
+          products?: Json | null
           rappi_url?: string | null
           reddit_url?: string | null
+          requires_story?: boolean
           resy_url?: string | null
+          reward_cap_cents?: number | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug: string
@@ -1011,20 +1397,31 @@ export type Database = {
           whatsapp_url?: string | null
           x_url?: string | null
           youtube_url?: string | null
+          zone?: string | null
         }
         Update: {
           address?: string | null
           cashback_percent?: number | null
           category?: string | null
+          category_label?: string | null
+          city?: string | null
           closes_at?: string | null
           country?: string | null
           created_at?: string
           currency?: string
           description?: string | null
+          details?: Json | null
           didi_food_url?: string | null
+          editorial_summary?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
+          enriched_at?: string | null
+          enrichment_sources?: Json | null
+          established_year?: number | null
+          executive_chef?: string | null
+          facebook_followers?: number | null
+          facebook_rating?: number | null
           facebook_url?: string | null
           fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"]
           free_rate?: number | null
@@ -1032,6 +1429,7 @@ export type Database = {
           google_maps_url?: string | null
           google_place_id?: string | null
           google_review_count?: number | null
+          google_reviews?: Json | null
           google_stars_overall?: number | null
           google_visitor_count?: number | null
           hours?: Json | null
@@ -1044,23 +1442,30 @@ export type Database = {
           lng?: number | null
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
+          menus?: Json | null
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
           mesita_stars_food?: number | null
           mesita_stars_overall?: number | null
           mesita_stars_service?: number | null
+          mesita_stars_value?: number | null
           mesita_visitor_count?: number | null
+          monthly_promo_cap?: number | null
           name?: string
           opentable_url?: string | null
           phone?: string | null
           photos?: string[]
           pitch?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          popular_times?: Json | null
           premium_rate?: number | null
           price_level?: number | null
+          products?: Json | null
           rappi_url?: string | null
           reddit_url?: string | null
+          requires_story?: boolean
           resy_url?: string | null
+          reward_cap_cents?: number | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug?: string
@@ -1081,6 +1486,7 @@ export type Database = {
           whatsapp_url?: string | null
           x_url?: string | null
           youtube_url?: string | null
+          zone?: string | null
         }
         Relationships: []
       }
@@ -1090,9 +1496,13 @@ export type Database = {
     }
     Functions: {
       admin_reset_database: { Args: never; Returns: Json }
+      find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
+      format_consumer_code: { Args: { n: number }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
       generate_invite_token: { Args: never; Returns: string }
       jwt_role: { Args: never; Returns: string }
+      normalize_consumer_code_input: { Args: { raw: string }; Returns: string }
+      seed_venue_categories: { Args: never; Returns: undefined }
     }
     Enums: {
       cashback_kind: "earn" | "redeem" | "expire" | "adjust"
@@ -1130,6 +1540,7 @@ export type Database = {
         | "cancelled"
         | "revealed"
         | "awaiting_story"
+        | "awaiting_payment_confirm"
       venue_fiscal_type: "formal" | "informal"
       venue_plan:
         | "free"
@@ -1277,6 +1688,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       cashback_kind: ["earn", "redeem", "expire", "adjust"],
@@ -1317,6 +1731,7 @@ export const Constants = {
         "cancelled",
         "revealed",
         "awaiting_story",
+        "awaiting_payment_confirm",
       ],
       venue_fiscal_type: ["formal", "informal"],
       venue_plan: [
