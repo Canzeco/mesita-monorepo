@@ -34,13 +34,40 @@ type RawTicket = {
   cancelled_at: string | null;
   cancel_reason: string | null;
   consumer:
-    | { id: string; code: string | null; full_name: string | null }
-    | Array<{ id: string; code: string | null; full_name: string | null }>
+    | {
+        id: string;
+        code: string | null;
+        full_name: string | null;
+        birthday: string | null;
+        sex: string | null;
+        country: string | null;
+        tier_key: string | null;
+        tier_origin: string | null;
+      }
+    | Array<{
+        id: string;
+        code: string | null;
+        full_name: string | null;
+        birthday: string | null;
+        sex: string | null;
+        country: string | null;
+        tier_key: string | null;
+        tier_origin: string | null;
+      }>
     | null;
 };
 
 export type BusinessTicket = Omit<RawTicket, "consumer"> & {
-  consumer: { id: string; code: string | null; full_name: string | null } | null;
+  consumer: {
+    id: string;
+    code: string | null;
+    full_name: string | null;
+    birthday: string | null;
+    sex: string | null;
+    country: string | null;
+    tier_key: string | null;
+    tier_origin: string | null;
+  } | null;
 };
 
 function normalizeTicketConsumer(row: RawTicket): BusinessTicket {
@@ -95,10 +122,13 @@ export async function apiCreateTicket(
     checkSubtotalCents: number;
     tipCents?: number;
     redeemCents?: number;
-    fiscalType: FiscalType;
+    fiscalType?: FiscalType;
+    kind?: TicketKind;
   },
 ): Promise<{ ticket: BusinessTicket }> {
-  const kind = input.fiscalType === "formal" ? "p_c" : "dp";
+  const kind =
+    input.kind ??
+    (input.fiscalType === "formal" ? "p_c" : "dp");
   return invokeEF<{ ticket: BusinessTicket }>(
     client,
     "business-create-ticket",

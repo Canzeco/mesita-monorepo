@@ -91,7 +91,6 @@ export default async function ScanPage({
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
           <TicketsClient
             venueId={active.id}
-            venueFiscalType={active.fiscal_type}
             venueCurrency={active.currency}
             initialTickets={initialTickets}
           />

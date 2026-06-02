@@ -27,21 +27,31 @@ export function OAuthButtons({ next }: { next: string }) {
   const signIn = async (provider: Provider) => {
     setBusy(provider);
     setError(null);
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo,
-        // Force Google's account chooser. Without this, Google reuses
-        // the active browser session and the user can't switch identities
-        // after landing on an "Not authorised" / wrong-account state.
-        queryParams: { prompt: "select_account" },
-      },
-    });
-    if (error) {
-      setError(error.message);
-      setBusy(null);
+    const callbackPath = `/auth/callback?next=${encodeURIComponent(next)}`;
+    const origin = window.location.origin;
+    const fallbackOrigin = localOriginAlias(origin);
+    const redirectCandidates = fallbackOrigin
+      ? [`${origin}${callbackPath}`, `${fallbackOrigin}${callbackPath}`]
+      : [`${origin}${callbackPath}`];
+
+    let lastError: string | null = null;
+    for (const redirectTo of redirectCandidates) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          // Force Google's account chooser. Without this, Google reuses
+          // the active browser session and the user can't switch identities
+          // after landing on an "Not authorised" / wrong-account state.
+          queryParams: { prompt: "select_account" },
+        },
+      });
+      if (!error) return;
+      lastError = error.message;
+      // Continue to the next candidate if local origin aliases differ.
     }
+    setError(lastError ?? "Could not start Google sign in.");
+    setBusy(null);
     // On success the browser is navigating away — no need to clear `busy`.
   };
 
@@ -66,6 +76,23 @@ export function OAuthButtons({ next }: { next: string }) {
       )}
     </div>
   );
+}
+
+function localOriginAlias(origin: string): string | null {
+  try {
+    const u = new URL(origin);
+    if (u.hostname === "127.0.0.1") {
+      u.hostname = "localhost";
+      return u.toString().replace(/\/$/, "");
+    }
+    if (u.hostname === "localhost") {
+      u.hostname = "127.0.0.1";
+      return u.toString().replace(/\/$/, "");
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function GoogleIcon({ className }: { className?: string }) {
