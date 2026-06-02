@@ -713,7 +713,7 @@ export type Database = {
           state: string
           ticket_id: string | null
           updated_at: string
-          venue_id: string
+          venue_id: string | null
         }
         Insert: {
           consumer_id?: string | null
@@ -726,7 +726,7 @@ export type Database = {
           state?: string
           ticket_id?: string | null
           updated_at?: string
-          venue_id: string
+          venue_id?: string | null
         }
         Update: {
           consumer_id?: string | null
@@ -739,7 +739,7 @@ export type Database = {
           state?: string
           ticket_id?: string | null
           updated_at?: string
-          venue_id?: string
+          venue_id?: string | null
         }
         Relationships: [
           {
