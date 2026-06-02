@@ -26,17 +26,18 @@ import { TIERS, tierBadgeClass } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Three-tab Profile. Invite is folded in as a sub-tab; the standalone
 // /invite route is primary and /share stays as a legacy deep link alias.
 // The Coupons tab was removed —
 // coupons are "hidden" (users save the place, redeem a QR at the venue),
 // so the wallet surface didn't earn its spot in the Profile.
-type Tab = "plan" | "settings";
+export type ProfileTab = "plan" | "settings";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "plan", label: "Plan" },
-  { id: "settings", label: "Settings" },
+const TABS: { id: ProfileTab; label: string; href: string }[] = [
+  { id: "plan", label: "Plan", href: CONSUMER_ROUTES.me.plan },
+  { id: "settings", label: "Settings", href: CONSUMER_ROUTES.me.settings },
 ];
 
 // Profile shell. The previous large avatar + name + "country · age ·
@@ -50,14 +51,14 @@ const TABS: { id: Tab; label: string }[] = [
 // this page renders, so all identity fields are already guaranteed
 // real upstream.
 
-export function ProfileClient() {
-  const [tab, setTab] = useState<Tab>("plan");
+export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
+  const tab = initialTab;
   const [verifyPlatform, setVerifyPlatform] = useState<SocialPlatform | null>(
     null,
   );
 
   // Post-checkout landing. The subscribe flow redirects to
-  // /profile?subscription=success once the membership grant lands (instant in
+  // /me/plan?subscription=success once the membership grant lands (instant in
   // the demo mock, post-webhook with real Stripe). Confirm it with a toast;
   // the full page load already re-seeded the real Premium membership upstream.
   // Read straight off the URL (client-only, fires once) rather than
@@ -82,10 +83,10 @@ export function ProfileClient() {
       <div className="px-4 pt-4">
         <div className="border-border bg-card flex rounded-full border p-1">
           {TABS.map((t) => (
-            <button
+            <Link
               key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
+              href={t.href}
+              scroll={false}
               className={cn(
                 "flex-1 rounded-full px-2 py-1.5 text-[12px] font-medium whitespace-nowrap transition",
                 tab === t.id
@@ -94,7 +95,7 @@ export function ProfileClient() {
               )}
             >
               {t.label}
-            </button>
+            </Link>
           ))}
         </div>
       </div>
@@ -534,7 +535,7 @@ function SettingsTab() {
       {/* Invite — promoted out of the bottom tab bar into Profile. Kept
           prominent (pink-gradient card) since it's a growth surface. */}
       <Link
-        href="/invite"
+        href={CONSUMER_ROUTES.share}
         className="bg-pink-gradient shadow-glow flex items-center gap-3 rounded-2xl p-4 text-white transition hover:opacity-95"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">

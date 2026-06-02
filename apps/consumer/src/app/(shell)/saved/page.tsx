@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { apiFetchPublicVenues, type Venue } from "@/lib/api/venues";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { placeHref } from "@/lib/place-route";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 type Tab = "places" | "reservations";
 
@@ -50,7 +52,7 @@ export const dynamic = "force-dynamic";
 
 export default function SavedPage() {
   const pathname = usePathname() ?? "";
-  const tab: Tab = pathname.startsWith("/saved/reservations")
+  const tab: Tab = pathname.startsWith(CONSUMER_ROUTES.saved.reservations)
     ? "reservations"
     : "places";
   return (
@@ -60,7 +62,11 @@ export default function SavedPage() {
           {TABS.map((t) => (
             <Link
               key={t.id}
-              href={t.id === "places" ? "/saved/places" : "/saved/reservations"}
+              href={
+                t.id === "places"
+                  ? CONSUMER_ROUTES.saved.places
+                  : CONSUMER_ROUTES.saved.reservations
+              }
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-xl px-1 py-1.5 text-center text-[12px] font-medium transition",
                 tab === t.id
@@ -221,7 +227,7 @@ function SavedVenueTile({
   return (
     <div className="relative">
       <Link
-        href={`/place/${venue.slug || venue.id}`}
+        href={placeHref(venue.slug || venue.id, "saved")}
         className="border-border bg-card hover:shadow-md flex min-h-[118px] w-full overflow-hidden rounded-xl border transition"
       >
         <div className="bg-muted relative w-[42%] shrink-0">

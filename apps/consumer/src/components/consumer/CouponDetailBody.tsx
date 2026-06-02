@@ -23,6 +23,8 @@ import type {
 } from "@/lib/mock/coupons-mock";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { placeHref } from "@/lib/place-route";
+import { reservationPath } from "@/lib/consumer-route-contract";
 
 // Shared body for /coupon/[id]. Used by both the intercepted modal
 // (CouponDetailModalShell) and the hard-nav page. Same pattern as
@@ -235,7 +237,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
           redemption happens at the venue via QR scan. */}
       <section className="flex flex-col gap-2">
         <Link
-          href={`/place/${c.venueId}`}
+          href={placeHref(c.venueId, "saved")}
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
         >
           <span className="flex items-center gap-3">
@@ -364,7 +366,7 @@ function LinkedReservationCard({
   const isBooking = reservation.state === "booking";
   return (
     <Link
-      href={`/reservation/${reservation.id}`}
+      href={reservationPath(reservation.id)}
       className="hover:bg-emerald-500/[0.06] flex items-center gap-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-3.5 transition"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/20">

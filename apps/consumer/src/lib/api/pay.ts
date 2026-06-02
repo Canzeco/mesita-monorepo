@@ -10,16 +10,61 @@ export type TicketBillPayload = {
   venue_slug?: string | null;
   venue_name?: string;
   venue_photo_url?: string | null;
+  ticket_kind?: string;
   check_subtotal_cents?: number;
   tip_cents?: number;
   total_cents?: number;
   discount_cents?: number;
   discount_percent?: number | null;
+  cashback_percent?: number | null;
+  cashback_cents?: number | null;
   redeem_cents?: number;
   total_reward_cents?: number;
+  /** Per-visit promo cap in major currency units (e.g. 500 MXN). */
+  reward_cap_mxn?: number | null;
+  monthly_promo_cap?: number | null;
   amount_due_cents?: number;
   currency?: string;
 };
+
+function formatRewardCapLabel(
+  capMxn: number | null | undefined,
+  currency = "MXN",
+): string | null {
+  if (capMxn == null || capMxn <= 0) return null;
+  const prefix = currency === "MXN" ? "MX$" : "$";
+  return `${prefix}${capMxn.toLocaleString("en-US")}`;
+}
+
+export function formatTicketRewardLabel(
+  p: TicketBillPayload,
+  opts?: { capMxn?: number | null },
+): string {
+  const capMxn =
+    opts?.capMxn ?? p.reward_cap_mxn ?? p.monthly_promo_cap ?? null;
+  const capLabel = formatRewardCapLabel(capMxn, p.currency);
+  const capSuffix = capLabel ? `, cap at ${capLabel}` : "";
+
+  if (p.discount_percent != null && p.discount_percent > 0) {
+    return `Reward of ${p.discount_percent}% discount${capSuffix}`;
+  }
+  if (p.cashback_percent != null && p.cashback_percent > 0) {
+    return `Reward of ${p.cashback_percent}% cashback${capSuffix}`;
+  }
+
+  const rewardCents =
+    p.total_reward_cents ??
+    (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+  if (rewardCents > 0) {
+    return `Reward of ${formatPayMx(rewardCents, p.currency)}${capSuffix}`;
+  }
+
+  if (capLabel) {
+    return `Reward pending, cap at ${capLabel}`;
+  }
+
+  return "Reward pending";
+}
 
 export function formatPayMx(
   cents: number | undefined | null,

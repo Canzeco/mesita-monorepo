@@ -17,6 +17,7 @@ import type {
   LinkedCouponSummary,
 } from "@/lib/mock/reservations-mock";
 import { cn } from "@/lib/utils";
+import { reservationPath } from "@/lib/consumer-route-contract";
 
 // Reservation card. Booking metadata only. When the reservation has a
 // linked coupon (the wallet entry tied to the visit), a small "ticket
@@ -60,7 +61,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
   // inside the same link so the whole ticket is one tap target.
   return (
     <Link
-      href={`/reservation/${r.id}`}
+      href={reservationPath(r.id)}
       aria-label={`Open reservation at ${r.venueName}`}
       className={cn(
         "border-border bg-card hover:bg-muted/40 flex flex-col gap-3 overflow-hidden rounded-2xl border p-3 transition active:scale-[0.995]",

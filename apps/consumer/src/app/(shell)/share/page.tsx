@@ -17,13 +17,6 @@ import { cn } from "@/lib/utils";
 // Top header (SimpleHeader title="Invite") is owned by the shell
 // layout via TopBar — see src/components/consumer/TopBar.tsx.
 //
-// The body is exported separately as `ShareBody` so the Profile page
-// can mount it as its "Share" sub-tab without duplicating the
-// Friends/Restaurants/Others tab logic (the "byebye coupons-as-entity"
-// checkpoint folded Share + Coupons into Profile sub-tabs while
-// keeping the standalone /invite route primary while /share stays as
-// a deep-link alias).
-
 type Tab = "friends" | "restaurants" | "others";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -33,10 +26,10 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export default function SharePage() {
-  return <ShareBody />;
+  return <ShareBodyContent />;
 }
 
-export function ShareBody() {
+function ShareBodyContent() {
   const [tab, setTab] = useState<Tab>("friends");
 
   return (

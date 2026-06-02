@@ -6,6 +6,7 @@ import { ArrowLeft, Share2, Bookmark } from "lucide-react";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Header for the hard-nav /place/[id] page (refresh / direct URL / new
 // tab). Mirrors the modal shell's header but with an ArrowLeft Link back
@@ -57,7 +58,10 @@ export function VenueDetailPageHeader({
     if (nowSaved) {
       toast.action(
         `Saved ${venueName}`,
-        { label: "View", onClick: () => router.push("/saved/places") },
+        {
+          label: "View",
+          onClick: () => router.push(CONSUMER_ROUTES.saved.places),
+        },
         { tone: "success" },
       );
     } else {

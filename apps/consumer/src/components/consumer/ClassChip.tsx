@@ -5,11 +5,12 @@ import { Crown, Instagram, Smile } from "lucide-react";
 import { TIERS, tierBadgeClass } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Top-right header chip — tier-colored avatar. For Premium it shows HOW the
 // member earned it (Instagram icon; crown for subscription/invitation/default
 // Premium); Free shows the Mesita Free smile. Tap routes to the
-// Profile Plan tab. Rendered inline by DiscoverHeader and through
+// Me > Plan tab. Rendered inline by DiscoverHeader and through
 // SimpleHeader elsewhere.
 
 export function ClassChip({ size = "md" }: { size?: "sm" | "md" }) {
@@ -19,7 +20,7 @@ export function ClassChip({ size = "md" }: { size?: "sm" | "md" }) {
   const iconCls = size === "sm" ? "h-4 w-4" : "h-5 w-5";
   return (
     <Link
-      href="/profile"
+      href={CONSUMER_ROUTES.me.plan}
       aria-label={`Your plan · Mesita ${meta?.label ?? "plan"}`}
       className={cn(
         "font-display flex shrink-0 items-center justify-center rounded-2xl font-bold transition hover:opacity-90",

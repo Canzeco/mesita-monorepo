@@ -16,6 +16,7 @@ import {
 import type { Venue } from "@/lib/api/venues";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { PartnerBadge, RatePill } from "@/components/shared";
+import { placeHref } from "@/lib/place-route";
 
 // Default map centre — Monterrey, since that's the city the project is
 // shipping in first. If the geolocation permission lands we re-centre on
@@ -279,7 +280,7 @@ function MapView({
         <VenuePreview
           venue={selected}
           onDismiss={() => setSelected(null)}
-          onOpen={() => router.push(`/place/${selected.id}`)}
+          onOpen={() => router.push(placeHref(selected.id, "explore"))}
         />
       )}
     </div>

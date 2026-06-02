@@ -6,10 +6,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Gift, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TicketFlowStepper } from "@/components/consumer/TicketFlowStepper";
+import {
+  resolveTicketFlowSteps,
+  ticketProgressFromBundle,
+} from "@/lib/ticket-flow-steps";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   confirmTicketPayment,
   formatPayMx,
+  formatTicketRewardLabel,
   payloadFromNotification,
   submitTicketReview,
   type PayNotificationRow,
@@ -17,6 +23,7 @@ import {
 } from "@/lib/api/pay";
 import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
+import { ticketPath } from "@/lib/consumer-route-contract";
 
 type TicketStep = "pay" | "review" | "done";
 
@@ -66,27 +73,6 @@ function StarRow({
         ))}
       </div>
     </div>
-  );
-}
-
-function StepPill({
-  label,
-  state,
-}: {
-  label: string;
-  state: "done" | "active" | "upcoming";
-}) {
-  return (
-    <span
-      className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
-        state === "done" && "bg-secondary/15 text-secondary",
-        state === "active" && "bg-foreground text-background",
-        state === "upcoming" && "bg-muted text-muted-foreground",
-      )}
-    >
-      {label}
-    </span>
   );
 }
 
@@ -275,74 +261,89 @@ function TicketModalBody({
   );
 }
 
+type TicketMeta = {
+  kind?: string;
+  status?: string;
+  story_status?: string;
+  story_submitted_at?: string | null;
+  total_cents?: number | null;
+  consumer_payment_confirmed_at?: string | null;
+  discount_percent?: number | null;
+  cashback_percent?: number | null;
+  capMxn?: number | null;
+};
+
 function TicketPreviewCard({
   bundle,
+  ticketMeta,
   onOpen,
 }: {
   bundle: TicketBundle;
+  ticketMeta?: TicketMeta;
   onOpen: () => void;
 }) {
   const p = bundle.payload;
-  const rewardCents =
-    p.total_reward_cents ??
-    (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
-  const steps = ticketSteps(bundle);
-  const payState =
-    steps.current === "pay"
-      ? "active"
-      : steps.current === "review" || steps.current === "done"
-        ? "done"
-        : "upcoming";
-  const reviewState =
-    steps.current === "review"
-      ? "active"
-      : steps.current === "done"
-        ? "done"
-        : "upcoming";
-  const statusLabel =
-    steps.current === "pay"
-      ? "Pending payment"
-      : steps.current === "review"
-        ? "Pending review"
-        : "Completed";
+  const enriched: TicketBillPayload = {
+    ...p,
+    discount_percent: p.discount_percent ?? ticketMeta?.discount_percent,
+    cashback_percent: p.cashback_percent ?? ticketMeta?.cashback_percent,
+  };
+  const capMxn =
+    p.reward_cap_mxn ?? p.monthly_promo_cap ?? ticketMeta?.capMxn ?? null;
+  const flowSteps = resolveTicketFlowSteps(
+    ticketProgressFromBundle({
+      kind: ticketMeta?.kind ?? p.ticket_kind,
+      status: ticketMeta?.status,
+      story_status: ticketMeta?.story_status,
+      story_submitted_at: ticketMeta?.story_submitted_at,
+      total_cents: ticketMeta?.total_cents ?? p.total_cents,
+      consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
+      payment: bundle.payment,
+      review: bundle.review,
+    }),
+  );
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="border-border bg-card w-full rounded-2xl border p-3 text-left transition hover:bg-white/70"
+      className="border-border bg-card w-full rounded-lg border p-3 text-left transition hover:bg-white/70"
     >
-      <div className="bg-muted relative h-28 w-full overflow-hidden rounded-2xl">
-        {p.venue_photo_url ? (
-          <Image
-            src={p.venue_photo_url}
-            alt={p.venue_name ?? "Venue"}
-            fill
-            className="object-cover"
-            sizes="(max-width: 430px) 100vw, 430px"
-          />
-        ) : (
-          <div className="text-muted-foreground flex h-full items-center justify-center">
-            <MapPin className="h-7 w-7 opacity-40" />
-          </div>
-        )}
-      </div>
-
-      <div className="border-border bg-background mt-2 rounded-2xl border px-3 py-2.5">
-        <p className="text-foreground truncate text-base font-semibold">
-          {p.venue_name ?? "Partner venue"}
-        </p>
-        <p className="text-muted-foreground mt-1 text-[12px]">{statusLabel}</p>
-      </div>
-
-      <div className="border-border bg-background mt-2 rounded-2xl border px-3 py-2.5">
-        <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <StepPill label="Pay" state={payState} />
-          <StepPill label="Review" state={reviewState} />
+      {/* Top: image left, name + reward stacked right */}
+      <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
+        <div className="bg-muted border-border relative h-[88px] overflow-hidden rounded-md border">
+          {p.venue_photo_url ? (
+            <Image
+              src={p.venue_photo_url}
+              alt={p.venue_name ?? "Venue"}
+              fill
+              className="object-cover"
+              sizes="88px"
+            />
+          ) : (
+            <div className="text-muted-foreground flex h-full items-center justify-center">
+              <MapPin className="h-6 w-6 opacity-40" />
+            </div>
+          )}
         </div>
-        <span className="bg-secondary/10 text-secondary inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold">
-          Reward {formatPayMx(rewardCents, p.currency)}
-        </span>
+
+        <div className="flex h-[88px] min-w-0 flex-col gap-2">
+          <div className="border-border bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
+            <p className="text-foreground truncate text-sm font-semibold">
+              {p.venue_name ?? "Partner venue"}
+            </p>
+          </div>
+          <div className="border-border bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
+            <p className="text-secondary line-clamp-2 text-sm leading-snug font-semibold">
+              {formatTicketRewardLabel(enriched, { capMxn })}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom: steps */}
+      <div className="border-border bg-background mt-2 rounded-md border px-3 py-2.5">
+        <TicketFlowStepper steps={flowSteps} />
       </div>
     </button>
   );
@@ -353,6 +354,9 @@ export function PayTickets({ userId }: { userId: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<PayNotificationRow[]>([]);
+  const [ticketMetaById, setTicketMetaById] = useState<Map<string, TicketMeta>>(
+    new Map(),
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState({
@@ -369,7 +373,59 @@ export function PayTickets({ userId }: { userId: string }) {
       .select("*")
       .eq("consumer_id", userId)
       .order("created_at", { ascending: false });
-    if (!qErr && data) setRows(data);
+    if (qErr || !data) return;
+
+    setRows(data);
+
+    const ticketIds = [...new Set(data.map((n) => n.ticket_id))];
+    if (ticketIds.length === 0) {
+      setTicketMetaById(new Map());
+      return;
+    }
+
+    const { data: ticketRows } = await supabase
+      .from("tickets")
+      .select(
+        "id, kind, status, story_status, story_submitted_at, discount_percent, cashback_percent, venue_id, total_cents, consumer_payment_confirmed_at",
+      )
+      .in("id", ticketIds);
+
+    const venueIds = [
+      ...new Set(
+        (ticketRows ?? [])
+          .map((t) => t.venue_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    const venueCapById = new Map<string, number>();
+    if (venueIds.length > 0) {
+      const { data: venueRows } = await supabase
+        .from("venues")
+        .select("id, monthly_promo_cap")
+        .in("id", venueIds);
+      for (const v of venueRows ?? []) {
+        if (v.monthly_promo_cap != null && v.monthly_promo_cap > 0) {
+          venueCapById.set(v.id, v.monthly_promo_cap);
+        }
+      }
+    }
+
+    const meta = new Map<string, TicketMeta>();
+    for (const t of ticketRows ?? []) {
+      meta.set(t.id, {
+        kind: t.kind,
+        status: t.status,
+        story_status: t.story_status,
+        story_submitted_at: t.story_submitted_at,
+        total_cents: t.total_cents,
+        consumer_payment_confirmed_at: t.consumer_payment_confirmed_at,
+        discount_percent: t.discount_percent,
+        cashback_percent: t.cashback_percent,
+        capMxn: t.venue_id ? venueCapById.get(t.venue_id) ?? null : null,
+      });
+    }
+    setTicketMetaById(meta);
   }, [supabase, userId]);
 
   useEffect(() => {
@@ -467,7 +523,8 @@ export function PayTickets({ userId }: { userId: string }) {
           <TicketPreviewCard
             key={b.ticketId}
             bundle={b}
-            onOpen={() => router.push(`/pay/tickets/${b.ticketId}`, { scroll: false })}
+            ticketMeta={ticketMetaById.get(b.ticketId)}
+            onOpen={() => router.push(ticketPath(b.ticketId), { scroll: false })}
           />
         ))
       )}

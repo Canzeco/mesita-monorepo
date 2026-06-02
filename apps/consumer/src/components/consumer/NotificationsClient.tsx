@@ -1,10 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Bell, ChevronRight, MapPin, Star } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { Bell, MapPin, Star } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   fetchConsumerNotifications,
@@ -21,12 +20,13 @@ import {
   ConsumerActivityList,
   InboxSegmentTabs,
 } from "@/components/consumer/ConsumerActivityList";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-type InboxTab = "mine" | "global";
+export type InboxTab = "mine" | "global";
 
 function kindLabel(kind: string): string {
-  if (kind === "payment_confirm") return "Confirm payment";
-  if (kind === "review") return "Rate your visit";
+  if (kind === "payment_confirm") return "Payment update";
+  if (kind === "review") return "Review update";
   return "Update";
 }
 
@@ -37,20 +37,13 @@ function kindIcon(kind: string) {
 
 function NotificationRow({ n }: { n: ConsumerNotification }) {
   const Icon = kindIcon(n.kind);
-  const pending = n.status === "pending";
   const p = n.bill;
   const reward =
     p.total_reward_cents ??
     (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
 
   return (
-    <Link
-      href={payTabHref("tickets")}
-      className={cn(
-        "border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3 transition active:scale-[0.99]",
-        pending && "border-secondary/35 bg-secondary/5",
-      )}
-    >
+    <article className="border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3">
       <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
         {p.venue_photo_url ? (
           <Image
@@ -71,11 +64,6 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
           <p className="text-foreground text-sm font-semibold leading-snug">
             {p.venue_name ?? "Mesita partner"}
           </p>
-          {pending ? (
-            <span className="bg-secondary text-background shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase">
-              New
-            </span>
-          ) : null}
         </div>
         <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[12px]">
           <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -95,14 +83,20 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
           })}
         </p>
       </div>
-      <ChevronRight className="text-muted-foreground mt-1 h-5 w-5 shrink-0" />
-    </Link>
+    </article>
   );
 }
 
-export function NotificationsClient({ userId }: { userId: string }) {
+export function NotificationsClient({
+  userId,
+  initialTab,
+}: {
+  userId: string;
+  initialTab: InboxTab;
+}) {
+  const router = useRouter();
   const supabase = useBrowserSupabase();
-  const [tab, setTab] = useState<InboxTab>("mine");
+  const [tab, setTab] = useState<InboxTab>(initialTab);
   const [rows, setRows] = useState<ConsumerNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +112,10 @@ export function NotificationsClient({ userId }: { userId: string }) {
       setLoading(false);
     }
   }, [supabase, userId]);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     void load();
@@ -141,10 +139,18 @@ export function NotificationsClient({ userId }: { userId: string }) {
     };
   }, [supabase, userId, load]);
 
-  const pending = rows.filter((r) => r.status === "pending");
-  const done = rows.filter((r) => r.status !== "pending");
   const myCount = rows.length + MY_ACTIVITY.length;
   const globalCount = GLOBAL_ACTIVITY.length;
+
+  const onTabChange = (next: InboxTab) => {
+    setTab(next);
+    router.push(
+      next === "mine"
+        ? CONSUMER_ROUTES.inbox.mine
+        : CONSUMER_ROUTES.inbox.global,
+      { scroll: false },
+    );
+  };
 
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
@@ -160,7 +166,7 @@ export function NotificationsClient({ userId }: { userId: string }) {
       <div className="mt-3">
         <InboxSegmentTabs
           active={tab}
-          onChange={setTab}
+          onChange={onTabChange}
           myCount={myCount}
           globalCount={globalCount}
         />
@@ -179,55 +185,24 @@ export function NotificationsClient({ userId }: { userId: string }) {
       ) : loading ? (
         <p className="text-muted-foreground mt-8 text-center text-sm">Loading…</p>
       ) : (
-        <div className="mt-4 flex flex-col gap-6">
-          {rows.length === 0 && pending.length === 0 && done.length === 0 ? (
+        <div className="mt-4 flex flex-col gap-4">
+          {rows.length === 0 && MY_ACTIVITY.length === 0 ? (
             <div className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-8 text-center text-sm">
               <Bell className="text-muted-foreground/50 mx-auto mb-3 h-10 w-10" />
-              No open tickets. When a restaurant opens one for you, it appears
-              here and in{" "}
-              <Link
-                href={payTabHref("tickets")}
-                className="text-secondary font-medium underline-offset-2 hover:underline"
-              >
-                Pay
-              </Link>
-              .
+              No notifications yet.
             </div>
           ) : (
             <>
-              {pending.length > 0 ? (
-                <section>
-                  <h3 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
-                    Action needed
-                  </h3>
-                  <div className="flex flex-col gap-2">
-                    {pending.map((n) => (
-                      <NotificationRow key={n.id} n={n} />
-                    ))}
-                  </div>
-                </section>
+              {rows.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {rows.map((n) => (
+                    <NotificationRow key={n.id} n={n} />
+                  ))}
+                </div>
               ) : null}
-              {done.length > 0 ? (
-                <section>
-                  <h3 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
-                    Tickets
-                  </h3>
-                  <div className="flex flex-col gap-2">
-                    {done.map((n) => (
-                      <NotificationRow key={n.id} n={n} />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
+              {MY_ACTIVITY.length > 0 ? <ConsumerActivityList items={MY_ACTIVITY} /> : null}
             </>
           )}
-
-          <section>
-            <h3 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
-              Activity
-            </h3>
-            <ConsumerActivityList items={MY_ACTIVITY} />
-          </section>
         </div>
       )}
     </div>

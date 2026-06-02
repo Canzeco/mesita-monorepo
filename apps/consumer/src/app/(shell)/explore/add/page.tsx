@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/venues";
 import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
 import { cn, errMsg } from "@/lib/utils";
+import { placeHref } from "@/lib/place-route";
 
 const SEARCH_DEBOUNCE_MS = 220;
 const ADD_STATUS_ROTATE_MS = 2_000;
@@ -345,11 +346,7 @@ export default function ExploreAddPage() {
             <div className="mx-auto mt-3 w-full max-w-[280px]">
               <VenueCatalogCard
                 venue={resultVenue}
-                href={
-                  resultVenue.slug
-                    ? `/place/${resultVenue.slug}`
-                    : `/place/${resultVenue.id}`
-                }
+                href={placeHref(resultVenue.slug || resultVenue.id, "explore")}
               />
             </div>
           )}

@@ -1,11 +1,13 @@
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+
 export type PayTab = "qr" | "tickets" | "balance";
 
 export const PAY_TABS: readonly PayTab[] = ["qr", "tickets", "balance"];
 
 const TAB_PATHS: Record<PayTab, string> = {
-  qr: "/pay/qr",
-  tickets: "/pay/tickets",
-  balance: "/pay/balance",
+  qr: CONSUMER_ROUTES.pay.qr,
+  tickets: CONSUMER_ROUTES.pay.tickets,
+  balance: CONSUMER_ROUTES.pay.balance,
 };
 
 /** Canonical href for a Pay tab. */
@@ -22,7 +24,9 @@ export function payTabFromSegment(segment: string | undefined): PayTab | null {
 
 /** Resolve active tab from the current pathname (incl. legacy /pay/wallet). */
 export function payTabFromPathname(pathname: string): PayTab {
-  if (pathname.startsWith("/pay/tickets")) return "tickets";
+  if (pathname.startsWith("/pay/tickets") || pathname.startsWith("/pay/ticket")) {
+    return "tickets";
+  }
   if (
     pathname.startsWith("/pay/balance") ||
     pathname.startsWith("/pay/wallet")

@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
+import {
+  CONSUMER_ROUTES,
+  CONSUMER_ROUTE_PREFIX,
+} from "@/lib/consumer-route-contract";
 
 // Five top-level surfaces: Explore, Saved, Pay, Inbox, Me.
 
@@ -25,31 +29,36 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    href: "/explore/swipe",
+    href: CONSUMER_ROUTES.explore.swipe,
     Icon: Compass,
     label: "Explore",
-    match: "/explore",
+    match: CONSUMER_ROUTE_PREFIX.explore,
   },
   {
-    href: "/saved/places",
+    href: CONSUMER_ROUTES.saved.places,
     Icon: Bookmark,
     label: "Saved",
-    match: "/saved",
+    match: CONSUMER_ROUTE_PREFIX.saved,
   },
   {
-    href: "/pay/qr",
+    href: CONSUMER_ROUTES.pay.qr,
     Icon: QrCode,
     label: "Pay",
-    match: "/pay",
+    match: CONSUMER_ROUTE_PREFIX.pay,
   },
   {
-    href: "/inbox",
+    href: CONSUMER_ROUTES.inbox.mine,
     Icon: Bell,
     label: "Inbox",
-    match: "/inbox",
+    match: CONSUMER_ROUTE_PREFIX.inbox,
     badge: true,
   },
-  { href: "/profile", Icon: User, label: "Me", match: "/profile" },
+  {
+    href: CONSUMER_ROUTES.me.plan,
+    Icon: User,
+    label: "Me",
+    match: CONSUMER_ROUTE_PREFIX.me,
+  },
 ];
 
 export function BottomNav({ userId }: { userId?: string }) {
@@ -60,7 +69,12 @@ export function BottomNav({ userId }: { userId?: string }) {
     <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-0.5 pt-2 backdrop-blur">
       <div className="flex items-end justify-around">
         {ITEMS.map(({ href, Icon, label, match, badge }) => {
-          const active = pathname.startsWith(match);
+          const active =
+            pathname.startsWith(match) ||
+            // Legacy deep links still hit /profile; keep the Me tab lit while
+            // those routes redirect.
+            (match === CONSUMER_ROUTE_PREFIX.me &&
+              pathname.startsWith(CONSUMER_ROUTES.legacy.profile));
           const showBadge = badge && pending > 0;
           return (
             <Link

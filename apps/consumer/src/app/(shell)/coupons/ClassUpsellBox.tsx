@@ -12,6 +12,7 @@ import {
 import { TIER_ORDER, tierProperLabel } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Promo strip at the top of /coupons. Folds the two plans, the coupon
 // reward range, and the lifestyle perks into one connected pitch, then lists
@@ -47,7 +48,7 @@ export function ClassUpsellBox() {
 
   return (
     <Link
-      href="/profile"
+      href={CONSUMER_ROUTES.me.plan}
       className="bg-pink-gradient shadow-glow group relative block overflow-hidden rounded-2xl p-5 text-white transition active:scale-[0.99]"
     >
       <Sparkles

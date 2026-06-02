@@ -1,7 +1,5 @@
-import { notFound } from "next/navigation";
-import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBody";
-import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
-import { getMockReservationById } from "@/lib/mock/reservations-mock";
+import { redirect } from "next/navigation";
+import { reservationPath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +18,5 @@ export default async function ReservationModalPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const reservation = getMockReservationById(id);
-  if (!reservation) notFound();
-
-  return (
-    <ReservationDetailModalShell venueName={reservation.venueName}>
-      <ReservationDetailBody r={reservation} />
-    </ReservationDetailModalShell>
-  );
+  redirect(reservationPath(id));
 }

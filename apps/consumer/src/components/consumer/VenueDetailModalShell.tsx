@@ -7,12 +7,12 @@ import { VenueDetailActionBar } from "./VenueDetailBody";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Modal chrome for the intercepted /venues/[id] route. Sits as an absolute
-// layer inside the shell's content area (between StatusBar and BottomNav).
-// The wrapped VenueDetailBody scrolls in a dedicated middle band; dismiss
-// is router.back(), so the URL restores to whichever surface the user
-// came from with its state intact.
+// Modal chrome for the intercepted /place/[id] route.
+// Renders as a full-shell absolute overlay; dismiss is router.back(), so
+// the URL restores to whichever surface the user came from with its state
+// intact.
 //
 // Layout is three rigid rows in a flex-col so the action bar can never
 // occlude the body's last visible content:
@@ -76,7 +76,10 @@ export function VenueDetailModalShell({
     if (nowSaved) {
       toast.action(
         `Saved ${venueName}`,
-        { label: "View", onClick: () => router.push("/saved/places") },
+        {
+          label: "View",
+          onClick: () => router.push(CONSUMER_ROUTES.saved.places),
+        },
         { tone: "success" },
       );
     } else {
@@ -87,7 +90,7 @@ export function VenueDetailModalShell({
   return (
     // Immediate overlay (no slide animation) to keep transitions stable
     // when opening from swipe/info actions.
-    <div className="bg-background absolute inset-0 z-50 flex flex-col overflow-hidden">
+    <div className="bg-background pointer-events-auto absolute inset-0 z-50 flex flex-col overflow-hidden">
       <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
         <button
           type="button"

@@ -4,6 +4,7 @@ import { Navigation, Star } from "lucide-react";
 import type { Venue } from "@/lib/api/venues";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { PromoChip } from "./PromoChip";
+import { placeHref } from "@/lib/place-route";
 
 // Catalog row card — used by /saved and /discover/catalog.
 //
@@ -105,7 +106,7 @@ export function VenueCatalogCard({
     return <div className={className}>{inner}</div>;
   }
   return (
-    <Link href={href ?? `/place/${venue.id}`} className={className}>
+    <Link href={href ?? placeHref(venue.id, "explore")} className={className}>
       {inner}
     </Link>
   );

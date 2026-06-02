@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Share2 } from "lucide-react";
 import { ClassChip } from "./ClassChip";
 import { MesitaMark } from "./MesitaMark";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Shared header for Saved, Pay, Inbox, Me (profile), Invite, Reservations, etc.
 //
@@ -17,7 +18,7 @@ export function SimpleHeader({
   return (
     <header className="border-border flex h-16 shrink-0 items-center gap-2 border-b px-4">
       <Link
-        href="/profile"
+        href={CONSUMER_ROUTES.me.plan}
         className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
         aria-label="Mesita — profile"
       >
@@ -33,7 +34,7 @@ export function SimpleHeader({
       {rightAction === "share" ? (
         <div className="flex shrink-0 items-center gap-2">
           <Link
-            href="/invite"
+            href={CONSUMER_ROUTES.share}
             aria-label="Invite friends"
             className="bg-pink-gradient shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white transition hover:opacity-95 active:scale-[0.98]"
           >

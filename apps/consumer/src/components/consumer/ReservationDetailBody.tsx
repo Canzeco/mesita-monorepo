@@ -21,6 +21,7 @@ import type {
 } from "@/lib/mock/reservations-mock";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { placeHref } from "@/lib/place-route";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
@@ -144,7 +145,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
           their own surfaces; we just link out. */}
       <section className="flex flex-col gap-2">
         <Link
-          href={`/place/${r.venueId}`}
+          href={placeHref(r.venueId, "saved")}
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
         >
           <span className="flex items-center gap-3">

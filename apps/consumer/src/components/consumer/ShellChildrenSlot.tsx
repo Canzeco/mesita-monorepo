@@ -5,5 +5,5 @@
 // screen, not replace/unmount the underlying surface.
 
 export function ShellChildrenSlot({ children }: { children: React.ReactNode }) {
-  return <div className="contents">{children}</div>;
+  return <>{children}</>;
 }

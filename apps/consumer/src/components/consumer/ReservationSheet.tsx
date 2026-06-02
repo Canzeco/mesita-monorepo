@@ -6,6 +6,7 @@ import { X, Minus, Plus, Check } from "lucide-react";
 import { useReservationActions } from "@/lib/reservations";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Mock reservation sheet — opens from the venue ActionBar's Reserve table
 // (and Save+reserve) and lets the consumer pick a date, a time, and a
@@ -135,7 +136,10 @@ function ReservationSheetContent({
       })();
       toast.action(
         `Reserved ${venueName} · ${prettyDate} · ${time} · ${partySize} guests`,
-        { label: "View", onClick: () => router.push("/saved/reservations") },
+        {
+          label: "View",
+          onClick: () => router.push(CONSUMER_ROUTES.saved.reservations),
+        },
         { tone: "success" },
       );
       onClose();

@@ -6,8 +6,10 @@ import { ChevronLeft } from "lucide-react";
 
 export function TicketDetailModalShell({
   children,
+  title = "Ticket details",
 }: {
   children: React.ReactNode;
+  title?: string;
 }) {
   const router = useRouter();
 
@@ -20,7 +22,7 @@ export function TicketDetailModalShell({
   }, [router]);
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col overflow-hidden bg-background">
+    <div className="pointer-events-auto absolute inset-0 z-50 flex flex-col overflow-hidden bg-background">
       <header className="bg-background/90 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
         <button
           type="button"
@@ -31,7 +33,7 @@ export function TicketDetailModalShell({
           <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
         </button>
         <p className="font-display flex-1 truncate text-center text-sm font-semibold">
-          Ticket details
+          {title}
         </p>
         <span className="h-9 w-9 shrink-0" />
       </header>

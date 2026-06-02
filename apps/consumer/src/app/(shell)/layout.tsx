@@ -12,6 +12,7 @@ import {
   type ConsumerMembership,
 } from "@/lib/api/profile";
 import { MembershipProvider } from "@/lib/membership-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -38,12 +39,12 @@ export default async function ConsumerShellLayout({
   children: React.ReactNode;
   modal: React.ReactNode;
 }) {
+  const pathname = (await headers()).get("x-pathname") ?? "";
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    const pathname = (await headers()).get("x-pathname");
     redirect(pathname ? `/?next=${encodeURIComponent(pathname)}` : "/");
   }
 
@@ -78,9 +79,11 @@ export default async function ConsumerShellLayout({
   //   - Middle: the body — flex-1, overflows internally via the page's
   //     own scroll container; never affects the chrome bands.
   //
-  // The modal slot lives inside the body band only (between TopBar and
-  // BottomNav). Its `absolute inset-0` covers the current surface — not
-  // the chrome — so place info stays bright and the bottom nav stays crisp.
+  const showBottomNav = pathname !== CONSUMER_ROUTES.share;
+
+  // The modal slot is rendered last in this relative shell wrapper.
+  // Section-scoped modal routes mount absolute overlays that intentionally
+  // cover BOTH top bar and bottom nav while preserving the underlying shell.
   return (
     <MobileFrame>
       <StatusBar />
@@ -90,8 +93,13 @@ export default async function ConsumerShellLayout({
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>
           </div>
-          <BottomNav userId={user.id} />
-          {modal}
+          {showBottomNav ? <BottomNav userId={user.id} /> : null}
+          {/* Single modal host layer above shell chrome. Keeping this as the
+              only stacking context avoids "menu peeking through" races while
+              intercepted routes resolve/loading UI mounts. */}
+          <div className="pointer-events-none absolute inset-0 z-[120]">
+            {modal}
+          </div>
         </div>
       </MembershipProvider>
       <Toaster />

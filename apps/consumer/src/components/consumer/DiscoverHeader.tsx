@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClassChip } from "./ClassChip";
 import { MesitaMark } from "./MesitaMark";
 import { DiscoverTabs } from "./DiscoverTabs";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export function DiscoverHeader() {
   return (
@@ -12,7 +13,7 @@ export function DiscoverHeader() {
     <div className="border-border/60 relative z-30 flex h-16 shrink-0 items-center border-b px-3">
       <div className="flex w-full items-center gap-2">
         <Link
-          href="/profile"
+          href={CONSUMER_ROUTES.me.plan}
           className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
           aria-label="Mesita — profile"
         >

@@ -55,7 +55,7 @@ export function ReservationDetailModalShell({
   }
 
   return (
-    <div className="animate-in slide-in-from-right bg-background absolute inset-0 z-50 flex flex-col overflow-hidden shadow-[-12px_0_32px_rgba(0,0,0,0.4)] duration-300 ease-out">
+    <div className="animate-in slide-in-from-right bg-background pointer-events-auto absolute inset-0 z-50 flex flex-col overflow-hidden shadow-[-12px_0_32px_rgba(0,0,0,0.4)] duration-300 ease-out">
       <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
         <button
           type="button"

@@ -1,3 +1,8 @@
+import {
+  placePath,
+  type PlaceSurface,
+} from "@/lib/consumer-route-contract";
+
 const RESERVED_PLACE_SEGMENTS = new Set([
   "discover",
   "explore",
@@ -11,12 +16,18 @@ const RESERVED_PLACE_SEGMENTS = new Set([
   "venue",
 ]);
 
-export function toCanonicalPlaceHrefOrNull(idOrSlug: string): string | null {
+export function toCanonicalPlaceHrefOrNull(
+  idOrSlug: string,
+  surface: PlaceSurface = "explore",
+): string | null {
   const normalized = idOrSlug.trim().toLowerCase();
   if (!normalized || RESERVED_PLACE_SEGMENTS.has(normalized)) return null;
-  return placeHref(idOrSlug);
+  return placeHref(idOrSlug, surface);
 }
 
-export function placeHref(idOrSlug: string): string {
-  return `/place/${idOrSlug}`;
+export function placeHref(
+  idOrSlug: string,
+  surface: PlaceSurface = "explore",
+): string {
+  return placePath(idOrSlug, surface);
 }

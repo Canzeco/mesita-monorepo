@@ -25,6 +25,8 @@ import { upsertSavedVenuePreview, useSavedVenues } from "@/lib/saved-venues";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
+import { placeHref } from "@/lib/place-route";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -32,6 +34,7 @@ const MIN_FLICK_DISTANCE = 16;
 const EXIT_ANIMATION_MS = 300;
 const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
 const TUTORIAL_AUTO_DISMISS_MS = 5500;
+const SWIPE_STATE_STORAGE_KEY = "mesita_explore_swipe_state_v1";
 
 export function SwipeDeck({
   venues,
@@ -45,7 +48,7 @@ export function SwipeDeck({
       <EmptyDeck
         title="Couldn't load venues"
         body={fetchError}
-        actionHref="/explore/swipe"
+        actionHref={CONSUMER_ROUTES.explore.swipe}
         actionLabel="Try again"
       />
     );
@@ -61,14 +64,54 @@ export function SwipeDeck({
   return <Deck venues={venues} />;
 }
 
+type SwipeDeckSnapshot = {
+  runtimeDeck: Venue[];
+  idx: number;
+};
+
+function readSwipeSnapshot(): SwipeDeckSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(SWIPE_STATE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SwipeDeckSnapshot;
+    if (!Array.isArray(parsed.runtimeDeck)) return null;
+    if (typeof parsed.idx !== "number") return null;
+    return {
+      runtimeDeck: parsed.runtimeDeck,
+      idx: Math.max(0, Math.floor(parsed.idx)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSwipeSnapshot(snapshot: SwipeDeckSnapshot) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      SWIPE_STATE_STORAGE_KEY,
+      JSON.stringify(snapshot),
+    );
+  } catch {
+    // ignore storage failures
+  }
+}
+
 function Deck({ venues }: { venues: Venue[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = useBrowserSupabase();
   const { isSaved, setSaved } = useSavedVenues();
-  const [runtimeDeck, setRuntimeDeck] = useState<Venue[]>(venues);
+  const initialSnapshot = useMemo(() => readSwipeSnapshot(), []);
+  const [runtimeDeck, setRuntimeDeck] = useState<Venue[]>(
+    initialSnapshot?.runtimeDeck?.length ? initialSnapshot.runtimeDeck : venues,
+  );
   const [restarting, setRestarting] = useState(false);
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx] = useState(() => {
+    if (!initialSnapshot?.runtimeDeck?.length) return 0;
+    return Math.min(initialSnapshot.idx, initialSnapshot.runtimeDeck.length - 1);
+  });
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
@@ -86,8 +129,8 @@ function Deck({ venues }: { venues: Venue[] }) {
   const advanceTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setRuntimeDeck(venues);
-  }, [venues]);
+    writeSwipeSnapshot({ runtimeDeck, idx });
+  }, [runtimeDeck, idx]);
 
   const syncDragX = useCallback((x: number) => {
     dragXRef.current = x;
@@ -354,7 +397,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   useEffect(() => () => clearAdvanceTimer(), [clearAdvanceTimer]);
 
   useEffect(() => {
-    if (!pathname.startsWith("/place/")) {
+    if (!pathname.startsWith(CONSUMER_ROUTES.explore.placePrefix)) {
       infoOpeningRef.current = false;
     }
   }, [pathname]);
@@ -371,8 +414,8 @@ function Deck({ venues }: { venues: Venue[] }) {
 
   useEffect(() => {
     if (!v) return;
-    router.prefetch(`/place/${v.id}`);
-    if (next) router.prefetch(`/place/${next.id}`);
+    router.prefetch(placeHref(v.id, "explore"));
+    if (next) router.prefetch(placeHref(next.id, "explore"));
   }, [router, v, next]);
 
   if (exhausted || !v) {
@@ -386,7 +429,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   const openInfo = () => {
     if (infoOpeningRef.current) return;
     infoOpeningRef.current = true;
-    router.push(`/place/${v.id}`, { scroll: false });
+    router.push(placeHref(v.id, "explore"), { scroll: false });
   };
 
   return (

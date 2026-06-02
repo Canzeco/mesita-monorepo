@@ -45,30 +45,13 @@ import {
   InstagramLogo,
   MesitaMark,
 } from "@/components/consumer/BrandLogos";
-import {
-  SectionAnchor,
-  VenueSectionNav,
-} from "@/components/consumer/VenueSectionNav";
+import { SectionAnchor } from "@/components/consumer/VenueSectionNav";
 import { useSavedVenues } from "@/lib/saved-venues";
 import { tierProperLabel } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { toast } from "@/lib/toast";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Section nav order for the venue detail page. Reward sits right after
-// Overview — it's the reason to act, so it leads rather than hiding at the
-// bottom. The section id stays "rewards" so existing anchors and analytics
-// events keep matching — only the visible label is "Reward".
-const NAV_SECTIONS = [
-  { id: "overview", label: "Overview" },
-  { id: "rewards", label: "Reward" },
-  { id: "about", label: "About" },
-  { id: "reviews", label: "Reviews" },
-  { id: "menu", label: "Products" },
-  { id: "hours", label: "Time" },
-  { id: "location", label: "Location" },
-  { id: "contact", label: "Contact" },
-  { id: "details", label: "Details" },
-] as const;
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
 
@@ -84,7 +67,6 @@ export function VenueDetailBody({ venue }: { venue: VenueDetail }) {
     // (action bar / nav) the parent layout renders below the scroll area.
     <div className="flex flex-col gap-3 px-4 pb-4">
       <MediaBox venue={venue} />
-      <VenueSectionNav sections={[...NAV_SECTIONS]} />
       <SectionAnchor id="overview">
         <SummaryHeader venue={venue} />
       </SectionAnchor>
@@ -818,7 +800,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
               <QrCode className="h-4 w-4" />
               Pay with QR
             </Link>
-            <Link href="/profile" className={REWARD_UPGRADE_BTN}>
+            <Link href={CONSUMER_ROUTES.me.plan} className={REWARD_UPGRADE_BTN}>
               <Crown className="h-4 w-4" />
               Upgrade plan
             </Link>
@@ -1199,7 +1181,10 @@ export function VenueDetailActionBar({
     if (nowSaved) {
       toast.action(
         `Saved ${venueName}`,
-        { label: "View", onClick: () => router.push("/saved/places") },
+        {
+          label: "View",
+          onClick: () => router.push(CONSUMER_ROUTES.saved.places),
+        },
         { tone: "success" },
       );
     } else {

@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/pay";
 import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 type TicketStep = "pay" | "review" | "done";
 
@@ -87,6 +88,7 @@ export function TicketDetailsRouteClient({
     : payload.venue_id
       ? placeHref(payload.venue_id)
       : null;
+  const stepIndex = step === "pay" ? 1 : step === "review" ? 2 : 3;
 
   const onConfirm = async () => {
     setBusy(true);
@@ -120,7 +122,7 @@ export function TicketDetailsRouteClient({
 
   const onBack = () => {
     if (variant === "modal") router.back();
-    else router.push("/pay/tickets");
+    else router.push(CONSUMER_ROUTES.pay.tickets);
   };
 
   return (
@@ -147,127 +149,141 @@ export function TicketDetailsRouteClient({
         }
       >
         {loading ? (
-          <div
-            className={
-              variant === "modal"
-                ? "space-y-3"
-                : "mx-auto max-w-md space-y-3 rounded-[28px] border border-[#f1dbe6] bg-[#fff9fc] p-3 shadow-2xl"
-            }
-          >
-            {variant === "page" ? (
-              <div className="bg-foreground/20 mx-auto h-1.5 w-16 rounded-full" />
-            ) : null}
-            <div className="h-56 rounded-3xl bg-muted" />
-            <div className="h-24 rounded-3xl bg-muted" />
-            <div className="h-12 rounded-full bg-muted" />
+          <div className="mx-auto w-full max-w-md space-y-3">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="h-44 bg-muted" />
+              <div className="space-y-3 p-4">
+                <div className="h-4 w-2/3 rounded bg-muted" />
+                <div className="h-9 w-36 rounded-xl bg-muted" />
+              </div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+              <div className="h-4 w-24 rounded bg-muted" />
+              <div className="h-9 w-full rounded-xl bg-muted" />
+              <div className="h-9 w-full rounded-xl bg-muted" />
+              <div className="h-10 w-full rounded-full bg-muted" />
+            </div>
           </div>
         ) : (
-        <div className={variant === "modal" ? "space-y-3" : "mx-auto max-w-md rounded-[28px] border border-[#f1dbe6] bg-[#fff9fc] p-3 shadow-2xl"}>
-          {variant === "page" ? (
-            <div className="bg-foreground/20 mx-auto mb-2 h-1.5 w-16 rounded-full" />
-          ) : null}
-          <section className="border-border bg-card overflow-hidden rounded-3xl border shadow-[0_4px_14px_rgba(17,0,10,0.08)]">
-            <div className="bg-muted relative aspect-[16/9] w-full">
-              {payload.venue_photo_url ? (
-                <Image
-                  src={payload.venue_photo_url}
-                  alt={payload.venue_name ?? "Venue"}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 430px) 100vw, 430px"
-                />
-              ) : (
-                <div className="text-muted-foreground flex h-full items-center justify-center">
-                  <MapPin className="h-8 w-8 opacity-40" />
-                </div>
-              )}
-              <div className="from-foreground/70 absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent p-3 pt-10">
+          <div className="mx-auto w-full max-w-md space-y-3">
+            {/* Top rectangle: image + name + reward amount */}
+            <section className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="bg-muted relative aspect-[16/9] w-full">
+                {payload.venue_photo_url ? (
+                  <Image
+                    src={payload.venue_photo_url}
+                    alt={payload.venue_name ?? "Venue"}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 430px) 100vw, 430px"
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex h-full items-center justify-center">
+                    <MapPin className="h-8 w-8 opacity-40" />
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
                 {venueHref ? (
-                  <Link href={venueHref} className="text-background text-sm font-semibold">
+                  <Link href={venueHref} className="text-foreground block truncate text-base font-semibold">
                     {payload.venue_name ?? "Partner venue"}
                   </Link>
                 ) : (
-                  <p className="text-background text-sm font-semibold">
+                  <p className="text-foreground truncate text-base font-semibold">
                     {payload.venue_name ?? "Partner venue"}
                   </p>
                 )}
+                <div className="bg-secondary/10 text-secondary mt-3 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold">
+                  <Gift className="h-4 w-4" />
+                  Reward amount: {formatPayMx(rewardCents, payload.currency)}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="border-border bg-card mt-3 rounded-3xl border p-4 shadow-[0_4px_14px_rgba(17,0,10,0.08)]">
-            <div className="flex items-center gap-3 rounded-2xl bg-[#ffeaf3] px-3 py-2.5">
-              <div className="bg-secondary text-background flex h-9 w-9 items-center justify-center rounded-full">
-                <Gift className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-secondary text-[10px] font-bold tracking-[0.14em] uppercase">Total reward</p>
-                <p className="font-display text-foreground text-xl font-bold">
-                  {formatPayMx(rewardCents, payload.currency)}
-                </p>
-              </div>
-            </div>
-
-            {step === "pay" ? (
-              <button
-                type="button"
-                onClick={() => void onConfirm()}
-                disabled={busy}
-                className="bg-foreground text-background mt-3 w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
-              >
-                {busy ? "Confirming…" : "I paid"}
-              </button>
-            ) : null}
-
-            {step === "review" ? (
-              <div className="mt-3 space-y-2">
-                {(["Food", "Service", "Ambiance", "Overall"] as const).map((label) => {
-                  const key = label.toLowerCase() as "food" | "service" | "ambiance" | "overall";
+            {/* Bottom rectangle: progress */}
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+                Progress
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                {[
+                  { label: "Pay", n: 1 },
+                  { label: "Review", n: 2 },
+                  { label: "Done", n: 3 },
+                ].map((s) => {
+                  const active = stepIndex >= s.n;
                   return (
-                    <div key={label} className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-[12px]">{label}</span>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setReviewDraft((d) => ({ ...d, [key]: n }))}
-                            className={`h-7 w-7 rounded-full text-sm ${reviewDraft[key] >= n ? "bg-secondary text-background" : "bg-muted text-muted-foreground"}`}
-                          >
-                            ★
-                          </button>
-                        ))}
-                      </div>
+                    <div
+                      key={s.label}
+                      className={`rounded-xl border px-2 py-2 text-center font-medium ${active ? "border-secondary bg-secondary/10 text-secondary" : "border-border text-muted-foreground bg-background"}`}
+                    >
+                      <span className="block text-[10px] opacity-80">Step {s.n}</span>
+                      <span className="mt-0.5 block">{s.label}</span>
                     </div>
                   );
                 })}
-                <textarea
-                  value={reviewDraft.comments}
-                  onChange={(e) => setReviewDraft((d) => ({ ...d, comments: e.target.value }))}
-                  placeholder="Comments (optional)"
-                  rows={2}
-                  className="border-border bg-background text-foreground mt-2 w-full rounded-2xl border px-3 py-2 text-sm"
-                />
+              </div>
+
+              {step === "pay" ? (
                 <button
                   type="button"
-                  onClick={() => void onReview()}
+                  onClick={() => void onConfirm()}
                   disabled={busy}
-                  className="bg-foreground text-background w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+                  className="bg-foreground text-background mt-3 w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
                 >
-                  {busy ? "Sending…" : "Submit review"}
+                  {busy ? "Confirming..." : "I paid"}
                 </button>
-              </div>
-            ) : null}
+              ) : null}
 
-            {step === "done" ? (
-              <p className="text-muted-foreground mt-3 text-sm">All steps complete for this visit.</p>
-            ) : null}
+              {step === "review" ? (
+                <div className="mt-3 space-y-2">
+                  {(["Food", "Service", "Ambiance", "Overall"] as const).map((label) => {
+                    const key = label.toLowerCase() as "food" | "service" | "ambiance" | "overall";
+                    return (
+                      <div key={label} className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-[12px]">{label}</span>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => setReviewDraft((d) => ({ ...d, [key]: n }))}
+                              className={`h-7 w-7 rounded-full text-sm ${reviewDraft[key] >= n ? "bg-secondary text-background" : "bg-muted text-muted-foreground"}`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <textarea
+                    value={reviewDraft.comments}
+                    onChange={(e) => setReviewDraft((d) => ({ ...d, comments: e.target.value }))}
+                    placeholder="Comments (optional)"
+                    rows={2}
+                    className="border-border bg-background text-foreground mt-2 w-full rounded-2xl border px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void onReview()}
+                    disabled={busy}
+                    className="bg-foreground text-background w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+                  >
+                    {busy ? "Sending..." : "Submit review"}
+                  </button>
+                </div>
+              ) : null}
 
-            {error ? (
-              <p className="bg-destructive/10 text-destructive mt-3 rounded-xl px-3 py-2 text-sm">{error}</p>
-            ) : null}
-          </section>
-        </div>
+              {step === "done" ? (
+                <p className="text-muted-foreground mt-3 text-sm">All steps complete for this visit.</p>
+              ) : null}
+
+              {error ? (
+                <p className="bg-destructive/10 text-destructive mt-3 rounded-xl px-3 py-2 text-sm">{error}</p>
+              ) : null}
+            </section>
+          </div>
         )}
       </div>
     </div>

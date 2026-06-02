@@ -18,11 +18,12 @@ import type { Database } from "./database.types";
 // Onboard pages and dashboards each do their own server-side check.
 //
 // Consumer browsing (discover, venue detail, share) is deliberately public
-// so anonymous visitors can swipe before signing up. /profile, /pay
+// so anonymous visitors can swipe before signing up. /me, /pay
 // (QR / tickets / balance), /inbox, /qr (legacy → /pay/qr), and /saved
 // are private because they expose personal data.
 
 const PROTECTED_PREFIXES = [
+  "/me",
   "/profile",
   "/pay",
   "/inbox",

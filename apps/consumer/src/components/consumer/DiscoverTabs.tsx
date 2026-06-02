@@ -3,21 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, Map as MapIcon } from "lucide-react";
+import { Flame, Map as MapIcon, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Four Discover modes, ordered left-to-right as an ascending engagement
-// curve — lowest-effort browse → map → direct lookup → AI tool:
-//
-//   Swipe   →   Map      →   Search     →   Add
-//   flick       pin-map      place-name      new venue
-//
 // Rendered in the top chrome row's center column (see DiscoverHeader),
 // flanked by the logo and class chip; discovery filters open from a Filter
 // button in the swipe action bar.
 const TABS = [
-  { href: "/explore/swipe", label: "Swipe", Icon: Flame },
-  { href: "/explore/map", label: "Map", Icon: MapIcon },
+  { href: CONSUMER_ROUTES.explore.swipe, label: "Swipe", Icon: Flame },
+  { href: CONSUMER_ROUTES.explore.map, label: "Map", Icon: MapIcon },
+  { href: CONSUMER_ROUTES.explore.add, label: "Add", Icon: Plus },
 ];
 
 export function DiscoverTabs() {

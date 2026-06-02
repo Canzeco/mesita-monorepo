@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-import { ShareBody } from "../share/page";
-
-export default function InvitePage() {
-  return <ShareBody />;
+export default function InviteLegacyPage() {
+  redirect(CONSUMER_ROUTES.share);
 }

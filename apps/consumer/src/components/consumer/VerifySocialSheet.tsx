@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BadgeCheck, Instagram, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOCK_INSTAGRAM_KEY } from "@/lib/membership-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
 // Premium. 1,000+ followers (and a story per visit) unlocks Premium. Extracted
@@ -31,7 +32,7 @@ export function VerifySocialSheet({
     if (code.length < 8 || verifying) return;
     setVerifying(true);
     window.localStorage.setItem(MOCK_INSTAGRAM_KEY, "1");
-    window.location.href = "/profile?instagram=success";
+    window.location.href = `${CONSUMER_ROUTES.me.plan}?instagram=success`;
   }
 
   const cfg = {
