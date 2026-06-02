@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
   Compass,
   Bookmark,
   QrCode,
-  Inbox,
   User,
   type LucideIcon,
 } from "lucide-react";
@@ -44,7 +44,7 @@ const ITEMS: Item[] = [
   },
   {
     href: "/inbox",
-    Icon: Inbox,
+    Icon: Bell,
     label: "Inbox",
     match: "/inbox",
     badge: true,
