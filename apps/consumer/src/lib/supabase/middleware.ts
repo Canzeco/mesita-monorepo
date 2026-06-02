@@ -48,14 +48,22 @@ function shouldGate(pathname: string): boolean {
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const pathname = request.nextUrl.pathname;
+
+  function nextWithPathname(req: NextRequest = request) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
   if (!url || !publishableKey) {
     // Don't kill the request just because env vars aren't injected (e.g. on
     // a preview build that hasn't been wired up yet). Pass it through; the
     // auth-dependent pages will surface a clear error themselves.
-    return NextResponse.next({ request });
+    return nextWithPathname();
   }
 
-  let response = NextResponse.next({ request });
+  let response = nextWithPathname();
 
   const supabase = createServerClient<Database>(url, publishableKey, {
     cookies: {
@@ -66,7 +74,7 @@ export async function updateSupabaseSession(request: NextRequest) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
-        response = NextResponse.next({ request });
+        response = nextWithPathname(request);
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);
         }
@@ -80,8 +88,6 @@ export async function updateSupabaseSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
 
   // Signed-out wall.
   if (shouldGate(pathname) && !user) {

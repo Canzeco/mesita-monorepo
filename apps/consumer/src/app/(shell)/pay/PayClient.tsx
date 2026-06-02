@@ -1,17 +1,13 @@
 "use client";
 
 import { useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
 import { PayTickets } from "@/components/consumer/PayTickets";
 import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
-import {
-  payTabFromPathname,
-  payTabHref,
-  type PayTab,
-} from "@/lib/pay-route";
+import { payTabHref, type PayTab } from "@/lib/pay-route";
 
 const TABS: { id: PayTab; label: string }[] = [
   { id: "qr", label: "QR" },
@@ -20,31 +16,29 @@ const TABS: { id: PayTab; label: string }[] = [
 ];
 
 export function PayClient({
+  tab,
   userId,
   code,
   cashbackBalanceCents,
 }: {
+  tab: PayTab;
   userId: string;
   code: string;
   cashbackBalanceCents: number;
 }) {
   const router = useRouter();
-  const pathname = usePathname() ?? "";
-  const tab = payTabFromPathname(pathname);
   const pendingTickets = usePendingNotificationCount(userId);
 
   const selectTab = useCallback(
     (next: PayTab) => {
       const href = payTabHref(next);
-      if (pathname !== href) {
-        router.replace(href, { scroll: false });
-      }
+      if (tab !== next) router.replace(href, { scroll: false });
     },
-    [pathname, router],
+    [tab, router],
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="px-4 pt-4">
         <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-full border p-1">
           {TABS.map((t) => (

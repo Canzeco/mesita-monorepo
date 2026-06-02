@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { StatusBar } from "@/components/consumer/StatusBar";
@@ -41,7 +42,10 @@ export default async function ConsumerShellLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  if (!user) {
+    const pathname = (await headers()).get("x-pathname");
+    redirect(pathname ? `/?next=${encodeURIComponent(pathname)}` : "/");
+  }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
   // reads back successfully (just with null fields). If the EF throws, we

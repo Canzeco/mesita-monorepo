@@ -2,26 +2,17 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
+import { consumerAuthDestination } from "@/lib/auth-redirect";
 
 // Root of the consumer subdomain. Strong routing contract:
 //
 //   no session              → render auth (this page)
-//   session + no profile    → /onboard
-  //   session + onboarded     → /swipe   (the actual app)
+//   session + verify        → /auth/post-signin (?next= deep link)
+//   post-signin             → /onboard or ?next= target
 //
-// Phone OTP collapses sign-in and create-account into one flow — the
-// first verify creates the user, every subsequent verify signs them in.
+// Phone OTP collapses sign-in and create-account into one flow.
 
 export const dynamic = "force-dynamic";
-
-const CONSUMER_AFTER_AUTH = "/auth/post-signin";
-
-function safeNext(raw: string | undefined): string {
-  if (!raw) return CONSUMER_AFTER_AUTH;
-  return raw.startsWith("/") && !raw.startsWith("//")
-    ? raw
-    : CONSUMER_AFTER_AUTH;
-}
 
 export default async function ConsumerRootPage({
   searchParams,
@@ -34,13 +25,11 @@ export default async function ConsumerRootPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Signed in — never render auth. The post-signin router handles the
-  // profile / onboarded fork.
-  if (user) {
-    redirect(safeNext(params.next));
-  }
+  const afterAuth = consumerAuthDestination(params.next);
 
-  const next = safeNext(params.next);
+  if (user) {
+    redirect(afterAuth);
+  }
 
   return (
     <EnterpriseAuthLayout
@@ -53,7 +42,7 @@ export default async function ConsumerRootPage({
         </>
       }
     >
-      <PhoneOtpForm redirectAfter={next} />
+      <PhoneOtpForm redirectAfter={afterAuth} />
     </EnterpriseAuthLayout>
   );
 }
