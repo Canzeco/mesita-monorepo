@@ -85,11 +85,9 @@ export function VenueDetailModalShell({
   }
 
   return (
-    // overflow-hidden on the outer container so the slide-in animation
-    // doesn't expose a horizontal scrollbar during the translate. The
-    // left-edge shadow sells the "covering sheet" depth so the underlying
-    // shell reads as paused, not removed.
-    <div className="animate-in slide-in-from-right bg-background absolute inset-0 z-50 flex flex-col overflow-hidden shadow-[-8px_0_24px_rgba(0,0,0,0.12)] duration-300 ease-out">
+    // Immediate overlay (no slide animation) to keep transitions stable
+    // when opening from swipe/info actions.
+    <div className="bg-background absolute inset-0 z-50 flex flex-col overflow-hidden">
       <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
         <button
           type="button"

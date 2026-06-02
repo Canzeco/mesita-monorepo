@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Gift, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -24,6 +25,14 @@ type TicketBundle = {
   payload: TicketBillPayload;
   payment?: PayNotificationRow;
   review?: PayNotificationRow;
+};
+
+type ReviewDraft = {
+  food: number;
+  service: number;
+  ambiance: number;
+  overall: number;
+  comments: string;
 };
 
 function StarRow({
@@ -81,23 +90,19 @@ function StepPill({
   );
 }
 
-function ticketSteps(bundle: TicketBundle): {
-  current: TicketStep;
-  pay: "done" | "active" | "upcoming";
-  review: "done" | "active" | "upcoming";
-} {
+function ticketSteps(bundle: TicketBundle): { current: TicketStep } {
   const payDone = !bundle.payment || bundle.payment.status !== "pending";
   const reviewPending = bundle.review?.status === "pending";
   if (!payDone) {
-    return { current: "pay", pay: "active", review: "upcoming" };
+    return { current: "pay" };
   }
   if (reviewPending) {
-    return { current: "review", pay: "done", review: "active" };
+    return { current: "review" };
   }
-  return { current: "done", pay: "done", review: "done" };
+  return { current: "done" };
 }
 
-function TicketCard({
+function TicketModalBody({
   bundle,
   busy,
   error,
@@ -132,8 +137,9 @@ function TicketCard({
       : null;
 
   return (
-    <article className="border-border bg-card overflow-hidden rounded-3xl border">
-      <div className="bg-muted relative aspect-[16/9] w-full">
+    <article className="flex flex-col gap-3">
+      <section className="border-border bg-card overflow-hidden rounded-3xl border shadow-[0_4px_14px_rgba(17,0,10,0.08)]">
+        <div className="bg-muted relative aspect-[16/9] w-full">
         {p.venue_photo_url ? (
           <Image
             src={p.venue_photo_url}
@@ -161,20 +167,16 @@ function TicketCard({
             </p>
           )}
         </div>
-      </div>
-
-      <div className="p-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <StepPill label="1 · Pay" state={steps.pay} />
-          <StepPill label="2 · Review" state={steps.review} />
         </div>
+      </section>
 
-        <div className="bg-secondary/10 mt-3 flex items-center gap-3 rounded-2xl px-3 py-2.5">
+      <section className="border-border bg-card rounded-3xl border p-4 shadow-[0_4px_14px_rgba(17,0,10,0.08)]">
+        <div className="flex items-center gap-3 rounded-2xl bg-[#ffeaf3] px-3 py-2.5">
           <div className="bg-secondary text-background flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
             <Gift className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-secondary text-[10px] font-bold tracking-wider uppercase">
+            <p className="text-secondary text-[10px] font-bold tracking-[0.14em] uppercase">
               Total reward
             </p>
             <p className="font-display text-foreground text-xl leading-none font-bold">
@@ -190,33 +192,8 @@ function TicketCard({
 
         {steps.current === "pay" && bundle.payment ? (
           <>
-            <dl className="text-muted-foreground mt-3 space-y-0.5 text-[12px]">
-              <div className="flex justify-between">
-                <dt>Bill</dt>
-                <dd>{formatPayMx(p.total_cents, p.currency)}</dd>
-              </div>
-              {(p.discount_cents ?? 0) > 0 ? (
-                <div className="flex justify-between">
-                  <dt>
-                    Discount
-                    {p.discount_percent != null ? ` (${p.discount_percent}%)` : ""}
-                  </dt>
-                  <dd>-{formatPayMx(p.discount_cents, p.currency)}</dd>
-                </div>
-              ) : null}
-              {(p.redeem_cents ?? 0) > 0 ? (
-                <div className="flex justify-between">
-                  <dt>Mesita balance</dt>
-                  <dd>-{formatPayMx(p.redeem_cents, p.currency)}</dd>
-                </div>
-              ) : null}
-              <div className="text-foreground flex justify-between font-medium">
-                <dt>You pay</dt>
-                <dd>{formatPayMx(p.amount_due_cents, p.currency)}</dd>
-              </div>
-            </dl>
-            <p className="text-muted-foreground mt-2 text-[11px]">
-              Step 1 — Confirm after you pay the waiter (cash or card).
+            <p className="text-muted-foreground mt-3 text-[12px]">
+              Confirm payment to continue.
             </p>
             {error ? (
               <p className="bg-destructive/10 text-destructive mt-2 rounded-xl px-3 py-2 text-sm">
@@ -293,13 +270,87 @@ function TicketCard({
             All steps complete for this visit.
           </p>
         ) : null}
-      </div>
+      </section>
     </article>
   );
 }
 
-/** Active tickets from Pay notifications — multi-step pay then review. */
+function TicketPreviewCard({
+  bundle,
+  onOpen,
+}: {
+  bundle: TicketBundle;
+  onOpen: () => void;
+}) {
+  const p = bundle.payload;
+  const rewardCents =
+    p.total_reward_cents ??
+    (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+  const steps = ticketSteps(bundle);
+  const payState =
+    steps.current === "pay"
+      ? "active"
+      : steps.current === "review" || steps.current === "done"
+        ? "done"
+        : "upcoming";
+  const reviewState =
+    steps.current === "review"
+      ? "active"
+      : steps.current === "done"
+        ? "done"
+        : "upcoming";
+  const statusLabel =
+    steps.current === "pay"
+      ? "Pending payment"
+      : steps.current === "review"
+        ? "Pending review"
+        : "Completed";
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="border-border bg-card w-full rounded-2xl border p-3 text-left transition hover:bg-white/70"
+    >
+      <div className="bg-muted relative h-28 w-full overflow-hidden rounded-2xl">
+        {p.venue_photo_url ? (
+          <Image
+            src={p.venue_photo_url}
+            alt={p.venue_name ?? "Venue"}
+            fill
+            className="object-cover"
+            sizes="(max-width: 430px) 100vw, 430px"
+          />
+        ) : (
+          <div className="text-muted-foreground flex h-full items-center justify-center">
+            <MapPin className="h-7 w-7 opacity-40" />
+          </div>
+        )}
+      </div>
+
+      <div className="border-border bg-background mt-2 rounded-2xl border px-3 py-2.5">
+        <p className="text-foreground truncate text-base font-semibold">
+          {p.venue_name ?? "Partner venue"}
+        </p>
+        <p className="text-muted-foreground mt-1 text-[12px]">{statusLabel}</p>
+      </div>
+
+      <div className="border-border bg-background mt-2 rounded-2xl border px-3 py-2.5">
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <StepPill label="Pay" state={payState} />
+          <StepPill label="Review" state={reviewState} />
+        </div>
+        <span className="bg-secondary/10 text-secondary inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold">
+          Reward {formatPayMx(rewardCents, p.currency)}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/** Tickets from Pay notifications — open + completed history. */
 export function PayTickets({ userId }: { userId: string }) {
+  const router = useRouter();
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<PayNotificationRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -312,18 +363,17 @@ export function PayTickets({ userId }: { userId: string }) {
     comments: "",
   });
 
-  const loadPending = useCallback(async () => {
+  const loadTickets = useCallback(async () => {
     const { data, error: qErr } = await supabase
       .from("consumer_pay_notifications")
       .select("*")
       .eq("consumer_id", userId)
-      .eq("status", "pending")
       .order("created_at", { ascending: false });
     if (!qErr && data) setRows(data);
   }, [supabase, userId]);
 
   useEffect(() => {
-    void loadPending();
+    void loadTickets();
     const channel = supabase
       .channel(`pay-tickets:${userId}`)
       .on(
@@ -335,14 +385,14 @@ export function PayTickets({ userId }: { userId: string }) {
           filter: `consumer_id=eq.${userId}`,
         },
         () => {
-          void loadPending();
+          void loadTickets();
         },
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [supabase, userId, loadPending]);
+  }, [supabase, userId, loadTickets]);
 
   const bundles = useMemo(() => {
     const map = new Map<string, TicketBundle>();
@@ -364,10 +414,7 @@ export function PayTickets({ userId }: { userId: string }) {
         b.payload = { ...b.payload, ...payloadFromNotification(n.payload) };
       }
     }
-    return [...map.values()].filter(
-      (b) =>
-        b.payment?.status === "pending" || b.review?.status === "pending",
-    );
+    return [...map.values()];
   }, [rows]);
 
   const onConfirmPayment = async (ticketId: string) => {
@@ -375,7 +422,7 @@ export function PayTickets({ userId }: { userId: string }) {
     setError(null);
     try {
       await confirmTicketPayment(supabase, ticketId);
-      await loadPending();
+      await loadTickets();
     } catch (e) {
       setError(errMsg(e, "Couldn't confirm payment."));
     } finally {
@@ -392,7 +439,7 @@ export function PayTickets({ userId }: { userId: string }) {
         ...reviewDraft,
         comments: reviewDraft.comments.trim() || undefined,
       });
-      await loadPending();
+      await loadTickets();
     } catch (e) {
       setError(errMsg(e, "Couldn't submit review."));
     } finally {
@@ -405,26 +452,22 @@ export function PayTickets({ userId }: { userId: string }) {
       <div className="flex items-baseline justify-between gap-2 px-0.5">
         <h2 className="text-foreground text-sm font-semibold">Tickets</h2>
         <p className="text-muted-foreground text-[11px]">
-          Pay → review
+          Open + completed
         </p>
       </div>
 
       {bundles.length === 0 ? (
         <p className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-6 text-center text-sm">
           When your waiter opens a ticket at the table, it appears here with
-          the venue photo, your total reward, and steps to finish.
+          the venue photo, your total reward, and steps to finish. Completed
+          tickets stay here as history.
         </p>
       ) : (
         bundles.map((b) => (
-          <TicketCard
+          <TicketPreviewCard
             key={b.ticketId}
             bundle={b}
-            busy={busy}
-            error={error}
-            reviewDraft={reviewDraft}
-            onReviewChange={setReviewDraft}
-            onConfirmPayment={(id) => void onConfirmPayment(id)}
-            onSubmitReview={(id) => void onSubmitReview(id)}
+            onOpen={() => router.push(`/pay/tickets/${b.ticketId}`, { scroll: false })}
           />
         ))
       )}

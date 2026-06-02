@@ -369,6 +369,12 @@ function Deck({ venues }: { venues: Venue[] }) {
   const backOffsetY = 14 - 14 * progress;
   const backOpacity = 0.7 + 0.3 * progress;
 
+  useEffect(() => {
+    if (!v) return;
+    router.prefetch(`/place/${v.id}`);
+    if (next) router.prefetch(`/place/${next.id}`);
+  }, [router, v, next]);
+
   if (exhausted || !v) {
     return <ExhaustedDeck onRestart={restart} restarting={restarting} />;
   }
@@ -382,12 +388,6 @@ function Deck({ venues }: { venues: Venue[] }) {
     infoOpeningRef.current = true;
     router.push(`/place/${v.id}`, { scroll: false });
   };
-
-  useEffect(() => {
-    if (!v) return;
-    router.prefetch(`/place/${v.id}`);
-    if (next) router.prefetch(`/place/${next.id}`);
-  }, [router, v, next]);
 
   return (
     <div className="relative flex h-full flex-col">
