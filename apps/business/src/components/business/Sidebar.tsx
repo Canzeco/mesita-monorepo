@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Store,
   Gift,
+  ReceiptText,
   BarChart3,
   Users,
   ChevronDown,
@@ -41,6 +42,7 @@ const NAV: NavItem[] = [
   { slug: "home", label: "Home", Icon: LayoutDashboard },
   { slug: "place", label: "Place", Icon: Store },
   { slug: "promos", label: "Promos", Icon: Gift },
+  { slug: "scan", label: "Scan", Icon: ReceiptText },
   {
     slug: "performance",
     label: "Performance",
