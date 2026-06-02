@@ -85,7 +85,7 @@ export default async function ConsumerShellLayout({
       <StatusBar />
       <MembershipProvider membership={membership}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
-          <TopBar userName={userName} />
+          <TopBar userName={userName} userId={user.id} />
           <div className="relative flex flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>
           </div>

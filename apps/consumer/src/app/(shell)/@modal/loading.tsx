@@ -1,6 +1,9 @@
-// Keep the current surface visible while intercepted modal routes load.
-// We intentionally render no fallback here so the swipe/card content stays
-// in place; once ready, the modal sheet animates in from right to left on top.
+// Keep the current surface visible while intercepted modal routes load and
+// add a subtle top-layer veil so we never flash shell chrome transitions.
 export default function ModalLoading() {
-  return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[55]">
+      <div className="absolute inset-0 bg-black/28 backdrop-blur-[1px]" />
+    </div>
+  );
 }

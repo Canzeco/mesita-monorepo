@@ -2,30 +2,29 @@ import Link from "next/link";
 import { Share2 } from "lucide-react";
 import { ClassChip } from "./ClassChip";
 import { MesitaMark } from "./MesitaMark";
+import { NotificationBell } from "./NotificationBell";
 
-// Shared header for every top-level surface that isn't /discover
-// (Reservations, Coupons, Pay, Share, Profile).
+// Shared header for Saved, Pay, Me (profile), Invite, Reservations, etc.
 //
-// Strict 3-column structure that matches DiscoverHeader pixel-for-pixel:
-//
-//   [Peacock logo · 40px]   [Centered title]   [Class chip · 40px]
-//
-// The middle column is `flex-1` and centers its content via flex
-// alignment. Any future surface that wants a richer center (icon row,
-// pill bar, etc.) drops in here without breaking the column model.
-// `h-16` (64px) is shared with DiscoverHeader so the body band gets a
-// consistent reservation across every route.
+// Layout variants:
+//   shell — [Logo][Share] · title · [Bell][Class]  (Saved, Pay, Me)
+//   class — [Logo] · title · [Class]
+//   invite — [Logo] · title · [Share]
 export function SimpleHeader({
   title,
   rightAction = "class",
+  userId,
 }: {
   title: string;
-  rightAction?: "class" | "invite" | "invite-and-class";
+  rightAction?: "class" | "invite" | "shell";
+  /** Required when rightAction is "shell" (notification bell). */
+  userId?: string;
 }) {
-  const doubleRight = rightAction === "invite-and-class";
+  const showShareLeft = rightAction === "shell" || rightAction === "invite";
+
   return (
-    <header className="border-border flex h-16 shrink-0 items-center gap-3 border-b px-4">
-      <div className="flex items-center gap-2">
+    <header className="border-border flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <div className="flex shrink-0 items-center gap-2">
         <Link
           href="/profile"
           className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
@@ -33,17 +32,7 @@ export function SimpleHeader({
         >
           <MesitaMark className="h-full w-full" />
         </Link>
-        {doubleRight && (
-          <span aria-hidden className="h-10 w-10 shrink-0 opacity-0" />
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 items-center justify-center">
-        <h1 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
-          {title}
-        </h1>
-      </div>
-      {rightAction === "invite-and-class" ? (
-        <div className="flex items-center gap-2">
+        {showShareLeft ? (
           <Link
             href="/invite"
             aria-label="Invite friends"
@@ -51,16 +40,20 @@ export function SimpleHeader({
           >
             <Share2 className="h-5 w-5" />
           </Link>
+        ) : null}
+      </div>
+
+      <div className="flex min-w-0 flex-1 items-center justify-center px-1">
+        <h1 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
+          {title}
+        </h1>
+      </div>
+
+      {rightAction === "shell" && userId ? (
+        <div className="flex shrink-0 items-center gap-2">
+          <NotificationBell userId={userId} />
           <ClassChip />
         </div>
-      ) : rightAction === "invite" ? (
-        <Link
-          href="/invite"
-          aria-label="Invite friends"
-          className="bg-pink-gradient shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white transition hover:opacity-95 active:scale-[0.98]"
-        >
-          <Share2 className="h-5 w-5" />
-        </Link>
       ) : (
         <ClassChip />
       )}
