@@ -153,8 +153,8 @@ export function NotificationsClient({ userId }: { userId: string }) {
       ) : rows.length === 0 ? (
         <div className="border-border bg-card text-muted-foreground mt-6 rounded-2xl border px-4 py-10 text-center text-sm">
           <Bell className="text-muted-foreground/50 mx-auto mb-3 h-10 w-10" />
-          No notifications yet. When a restaurant opens a ticket for you,
-          it will show up here and in Pay → Tickets.
+          Nothing in your inbox yet. When a restaurant opens a ticket for you,
+          it will show up here and in Pay → QR and Tickets.
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-6">

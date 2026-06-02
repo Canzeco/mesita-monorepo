@@ -2,25 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Bookmark, QrCode, User, type LucideIcon } from "lucide-react";
+import {
+  Compass,
+  Bookmark,
+  QrCode,
+  Inbox,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
 
-// Four top-level surfaces, all styled identically: muted at rest, pink
-// only when selected. The active tab gets a top pill indicator + a soft
-// pink ring-fill behind its icon + a text-primary label, so the current
-// surface is unmistakable at a glance without any tab drawing color
-// while idle.
-//
-// Coupons, Share/Invite were dropped from the bottom row — they now
-// live inside Profile (alongside Class + Settings). Saved was promoted
-// out of Discover into the bottom row — bookmarking a place is now a
-// first-class action, the "Save → coupon" coupling is gone.
+// Five top-level surfaces: Explore, Saved, Pay, Inbox, Me.
 
 type Item = {
   href: string;
   Icon: LucideIcon;
   label: string;
   match: string;
+  badge?: boolean;
 };
 
 const ITEMS: Item[] = [
@@ -31,8 +31,6 @@ const ITEMS: Item[] = [
     match: "/explore",
   },
   {
-    // Saved now covers both saved places and reservations (sub-tabs on
-    // the Saved page); /reservations stays reachable as a deep link.
     href: "/saved/places",
     Icon: Bookmark,
     label: "Saved",
@@ -44,46 +42,53 @@ const ITEMS: Item[] = [
     label: "Pay",
     match: "/pay",
   },
+  {
+    href: "/inbox",
+    Icon: Inbox,
+    label: "Inbox",
+    match: "/inbox",
+    badge: true,
+  },
   { href: "/profile", Icon: User, label: "Me", match: "/profile" },
 ];
 
-export function BottomNav() {
+export function BottomNav({ userId }: { userId?: string }) {
   const pathname = usePathname();
+  const pending = usePendingNotificationCount(userId);
+
   return (
-    <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-1 pt-2 backdrop-blur">
+    <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-0.5 pt-2 backdrop-blur">
       <div className="flex items-end justify-around">
-        {ITEMS.map(({ href, Icon, label, match }) => {
+        {ITEMS.map(({ href, Icon, label, match, badge }) => {
           const active = pathname.startsWith(match);
+          const showBadge = badge && pending > 0;
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                "relative flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-medium transition",
+                "relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium transition",
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {/* Top pill — visible only when the tab is active. Tiny,
-                  pink, centered. Gives the active state a graphic
-                  marker so it's not just a color shift on the label. */}
               {active && (
-                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
+                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full" />
               )}
 
-              {/* Icon cell. Always 32×32 so the row height stays
-                  consistent. The active tab gets a soft pink ring-fill
-                  hugging the icon; idle tabs stay neutral. The icon
-                  color is inherited from the Link (text-primary when
-                  active, muted otherwise). */}
               <span
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full transition",
+                  "relative flex h-8 w-8 items-center justify-center rounded-full transition",
                   active && "bg-primary/10 ring-primary/20 ring-1",
                 )}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
+                {showBadge ? (
+                  <span className="bg-secondary text-background absolute -top-0.5 -right-0.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full px-0.5 text-[9px] font-bold leading-none">
+                    {pending > 9 ? "9+" : pending}
+                  </span>
+                ) : null}
               </span>
               <span className="w-full truncate text-center">{label}</span>
             </Link>
