@@ -51,9 +51,9 @@ export function MyQrCard({ code }: { code: string }) {
           )}
         </button>
         <p className="text-muted-foreground text-center text-[11px]">
-          Show this to the waiter when you ask for the check.
+          Your 8-digit Mesita code — show it when you ask for the check.
           <br />
-          They&apos;ll scan it or type the code into their console.
+          Staff scan the QR or type it in WhatsApp / their console.
         </p>
       </div>
     </section>
