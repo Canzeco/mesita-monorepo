@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 import type { Database } from "@/lib/supabase/database.types";
+import type { FiscalType } from "./venues";
 
 type TicketStatus = Database["public"]["Enums"]["ticket_status"];
 type TicketKind = Database["public"]["Enums"]["ticket_kind"];
@@ -83,5 +84,32 @@ export async function apiCancelTicket(
     "business-cancel-ticket",
     input,
     "Couldn't cancel ticket.",
+  );
+}
+
+export async function apiCreateTicket(
+  client: SupabaseClient,
+  input: {
+    venueId: string;
+    consumerCode: string;
+    checkSubtotalCents: number;
+    tipCents?: number;
+    redeemCents?: number;
+    fiscalType: FiscalType;
+  },
+): Promise<{ ticket: BusinessTicket }> {
+  const kind = input.fiscalType === "formal" ? "p_c" : "dp";
+  return invokeEF<{ ticket: BusinessTicket }>(
+    client,
+    "business-create-ticket",
+    {
+      venueId: input.venueId,
+      consumerCode: input.consumerCode,
+      checkSubtotalCents: input.checkSubtotalCents,
+      tipCents: input.tipCents ?? 0,
+      redeemCents: input.redeemCents ?? 0,
+      kind,
+    },
+    "Couldn't create ticket.",
   );
 }

@@ -5,10 +5,12 @@ import { Loader2, ReceiptText, RefreshCw, XCircle } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCancelTicket,
+  apiCreateTicket,
   apiListTickets,
   apiMarkTicketPaid,
   type BusinessTicket,
 } from "@/lib/api/tickets";
+import type { FiscalType } from "@/lib/api/venues";
 import { cn, errMsg } from "@/lib/utils";
 import {
   ERROR_BOX_CLASS,
@@ -53,9 +55,13 @@ function titleFor(ticket: BusinessTicket): string {
 
 export function TicketsClient({
   venueId,
+  venueFiscalType,
+  venueCurrency,
   initialTickets,
 }: {
   venueId: string;
+  venueFiscalType: FiscalType;
+  venueCurrency: string;
   initialTickets: BusinessTicket[];
 }) {
   const supabase = useBrowserSupabase();
@@ -63,6 +69,9 @@ export function TicketsClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [guestCode, setGuestCode] = useState("");
+  const [subtotalText, setSubtotalText] = useState("");
+  const [tipText, setTipText] = useState("");
 
   const refresh = async () => {
     setBusy("refresh");
@@ -117,8 +126,105 @@ export function TicketsClient({
     }
   };
 
+  const createTicket = async () => {
+    const code = guestCode.trim().toUpperCase();
+    const subtotal = Number(subtotalText);
+    const tip = tipText.trim() ? Number(tipText) : 0;
+    if (!code) {
+      setError("Guest number/code is required.");
+      return;
+    }
+    if (!Number.isFinite(subtotal) || subtotal <= 0) {
+      setError("Subtotal must be greater than 0.");
+      return;
+    }
+    if (!Number.isFinite(tip) || tip < 0) {
+      setError("Tip must be 0 or greater.");
+      return;
+    }
+
+    setBusy("create");
+    setError(null);
+    setNotice(null);
+    try {
+      await apiCreateTicket(supabase, {
+        venueId,
+        fiscalType: venueFiscalType,
+        consumerCode: code,
+        checkSubtotalCents: Math.round(subtotal * 100),
+        tipCents: Math.round(tip * 100),
+      });
+      const rows = await apiListTickets(supabase, { venueId, limit: 40 });
+      setTickets(rows);
+      setGuestCode("");
+      setSubtotalText("");
+      setTipText("");
+      setNotice("Ticket created.");
+    } catch (e) {
+      setError(errMsg(e, "Couldn't create ticket."));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
+      <Section
+        title="Create ticket"
+        description="Open a new check by entering the guest number/code."
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <label className="md:col-span-2">
+            <span className={TINY_LABEL_CLASS}>Guest number/code</span>
+            <input
+              value={guestCode}
+              onChange={(e) => setGuestCode(e.target.value)}
+              placeholder="0000-0000"
+              className="border-border bg-background mt-1 h-10 w-full rounded-xl border px-3 text-sm outline-none"
+            />
+          </label>
+          <label>
+            <span className={TINY_LABEL_CLASS}>Subtotal ({venueCurrency})</span>
+            <input
+              value={subtotalText}
+              onChange={(e) => setSubtotalText(e.target.value)}
+              placeholder="850"
+              inputMode="decimal"
+              className="border-border bg-background mt-1 h-10 w-full rounded-xl border px-3 text-sm outline-none"
+            />
+          </label>
+          <label>
+            <span className={TINY_LABEL_CLASS}>Tip ({venueCurrency})</span>
+            <input
+              value={tipText}
+              onChange={(e) => setTipText(e.target.value)}
+              placeholder="120"
+              inputMode="decimal"
+              className="border-border bg-background mt-1 h-10 w-full rounded-xl border px-3 text-sm outline-none"
+            />
+          </label>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-muted-foreground text-[12px]">
+            Flow type:{" "}
+            <span className="font-medium">
+              {venueFiscalType === "formal" ? "Cashback (formal)" : "Discount (informal)"}
+            </span>
+          </p>
+          <button
+            type="button"
+            className={cn(PILL_BUTTON_CLASS, "px-3 py-1.5")}
+            onClick={() => void createTicket()}
+            disabled={busy === "create"}
+          >
+            {busy === "create" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            Create ticket
+          </button>
+        </div>
+      </Section>
+
       <Section
         title="Recent tickets"
         description="Type A and formal ticket rows opened by staff."

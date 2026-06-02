@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   Store,
   Gift,
-  ReceiptText,
+  ScanLine,
   BarChart3,
   Users,
   ChevronDown,
@@ -42,7 +42,7 @@ const NAV: NavItem[] = [
   { slug: "home", label: "Home", Icon: LayoutDashboard },
   { slug: "place", label: "Place", Icon: Store },
   { slug: "promos", label: "Promos", Icon: Gift },
-  { slug: "scan", label: "Scan", Icon: ReceiptText },
+  { slug: "scan", label: "Scan", Icon: ScanLine },
   {
     slug: "performance",
     label: "Performance",
