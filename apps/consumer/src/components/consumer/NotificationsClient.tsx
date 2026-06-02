@@ -12,6 +12,16 @@ import {
 } from "@/lib/api/notifications";
 import { formatPayMx } from "@/lib/api/pay";
 import { errMsg } from "@/lib/utils";
+import {
+  GLOBAL_ACTIVITY,
+  MY_ACTIVITY,
+} from "@/components/consumer/consumer-activity-data";
+import {
+  ConsumerActivityList,
+  InboxSegmentTabs,
+} from "@/components/consumer/ConsumerActivityList";
+
+type InboxTab = "mine" | "global";
 
 function kindLabel(kind: string): string {
   if (kind === "payment_confirm") return "Confirm payment";
@@ -91,6 +101,7 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
 
 export function NotificationsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
+  const [tab, setTab] = useState<InboxTab>("mine");
   const [rows, setRows] = useState<ConsumerNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,16 +142,28 @@ export function NotificationsClient({ userId }: { userId: string }) {
 
   const pending = rows.filter((r) => r.status === "pending");
   const done = rows.filter((r) => r.status !== "pending");
+  const myCount = rows.length + MY_ACTIVITY.length;
+  const globalCount = GLOBAL_ACTIVITY.length;
 
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
-      <p className="text-muted-foreground pt-2 text-sm">
-        Payment requests and reviews from your visits. Open a ticket in{" "}
-        <Link href="/pay" className="text-secondary font-medium underline-offset-2 hover:underline">
-          Pay
-        </Link>
-        .
-      </p>
+      <header className="pt-2">
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+          Inbox
+        </p>
+        <h2 className="font-display mt-0.5 text-lg font-semibold tracking-tight">
+          {tab === "mine" ? "Your recent moves" : "What's happening on Mesita"}
+        </h2>
+      </header>
+
+      <div className="mt-3">
+        <InboxSegmentTabs
+          active={tab}
+          onChange={setTab}
+          myCount={myCount}
+          globalCount={globalCount}
+        />
+      </div>
 
       {error ? (
         <p className="bg-destructive/10 text-destructive mt-4 rounded-xl px-3 py-2 text-sm">
@@ -148,40 +171,62 @@ export function NotificationsClient({ userId }: { userId: string }) {
         </p>
       ) : null}
 
-      {loading ? (
-        <p className="text-muted-foreground mt-8 text-center text-sm">Loading…</p>
-      ) : rows.length === 0 ? (
-        <div className="border-border bg-card text-muted-foreground mt-6 rounded-2xl border px-4 py-10 text-center text-sm">
-          <Bell className="text-muted-foreground/50 mx-auto mb-3 h-10 w-10" />
-          Nothing in your inbox yet. When a restaurant opens a ticket for you,
-          it will show up here and in Pay → QR and Tickets.
+      {tab === "global" ? (
+        <div className="mt-4 flex flex-col gap-3">
+          <ConsumerActivityList items={GLOBAL_ACTIVITY} anonymisedNote />
         </div>
+      ) : loading ? (
+        <p className="text-muted-foreground mt-8 text-center text-sm">Loading…</p>
       ) : (
         <div className="mt-4 flex flex-col gap-6">
-          {pending.length > 0 ? (
-            <section>
-              <h2 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
-                Action needed
-              </h2>
-              <div className="flex flex-col gap-2">
-                {pending.map((n) => (
-                  <NotificationRow key={n.id} n={n} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-          {done.length > 0 ? (
-            <section>
-              <h2 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
-                Earlier
-              </h2>
-              <div className="flex flex-col gap-2">
-                {done.map((n) => (
-                  <NotificationRow key={n.id} n={n} />
-                ))}
-              </div>
-            </section>
-          ) : null}
+          {rows.length === 0 && pending.length === 0 && done.length === 0 ? (
+            <div className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-8 text-center text-sm">
+              <Bell className="text-muted-foreground/50 mx-auto mb-3 h-10 w-10" />
+              No open tickets. When a restaurant opens one for you, it appears
+              here and in{" "}
+              <Link
+                href="/pay"
+                className="text-secondary font-medium underline-offset-2 hover:underline"
+              >
+                Pay
+              </Link>
+              .
+            </div>
+          ) : (
+            <>
+              {pending.length > 0 ? (
+                <section>
+                  <h3 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
+                    Action needed
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {pending.map((n) => (
+                      <NotificationRow key={n.id} n={n} />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+              {done.length > 0 ? (
+                <section>
+                  <h3 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
+                    Tickets
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {done.map((n) => (
+                      <NotificationRow key={n.id} n={n} />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </>
+          )}
+
+          <section>
+            <h3 className="text-muted-foreground mb-2 text-[11px] font-bold tracking-wider uppercase">
+              Activity
+            </h3>
+            <ConsumerActivityList items={MY_ACTIVITY} />
+          </section>
         </div>
       )}
     </div>
