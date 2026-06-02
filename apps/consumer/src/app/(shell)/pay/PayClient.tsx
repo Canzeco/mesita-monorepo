@@ -4,17 +4,16 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
-import { ActivityFeed } from "./ActivityFeed";
 import { PayTickets } from "@/components/consumer/PayTickets";
+import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
 
-// Pay surface:
-//   QR and Tickets — show QR to waiter, cashback, and active tickets (pay + review steps).
-//   Activity       — rewards / redemptions history.
-type Tab = "qr_tickets" | "activity";
+// Pay — three tabs: QR (code), Tickets (open visits), Balance (cashback).
+type Tab = "qr" | "tickets" | "balance";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "qr_tickets", label: "QR and Tickets" },
-  { id: "activity", label: "Activity" },
+  { id: "qr", label: "QR" },
+  { id: "tickets", label: "Tickets" },
+  { id: "balance", label: "Balance" },
 ];
 
 export function PayClient({
@@ -26,38 +25,50 @@ export function PayClient({
   code: string;
   cashbackBalanceCents: number;
 }) {
-  const [tab, setTab] = useState<Tab>("qr_tickets");
+  const [tab, setTab] = useState<Tab>("qr");
+  const pendingTickets = usePendingNotificationCount(userId);
+
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4">
-        <div className="border-border bg-card grid grid-cols-2 gap-0 rounded-full border p-1">
+        <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-full border p-1">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "rounded-full px-1 py-1.5 text-center text-[11px] font-medium leading-tight transition sm:text-[12px]",
+                "flex items-center justify-center gap-1 rounded-full px-1 py-1.5 text-center text-[11px] font-medium leading-tight transition sm:text-[12px]",
                 tab === t.id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t.label}
+              <span className="truncate">{t.label}</span>
+              {t.id === "tickets" && pendingTickets > 0 ? (
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold",
+                    tab === t.id
+                      ? "bg-background/25 text-background"
+                      : "bg-secondary text-background",
+                  )}
+                >
+                  {pendingTickets > 9 ? "9+" : pendingTickets}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-6">
-        {tab === "qr_tickets" ? (
-          <div className="flex flex-col gap-4">
-            <PayTickets userId={userId} />
-            <MyQrCard code={code} />
-            <CashbackBalanceCard cashbackBalanceCents={cashbackBalanceCents} />
-          </div>
+        {tab === "qr" ? (
+          <MyQrCard code={code} />
+        ) : tab === "tickets" ? (
+          <PayTickets userId={userId} />
         ) : (
-          <ActivityFeed />
+          <CashbackBalanceCard cashbackBalanceCents={cashbackBalanceCents} />
         )}
       </div>
     </div>

@@ -74,23 +74,20 @@ export default async function ConsumerShellLayout({
   //   - Middle: the body — flex-1, overflows internally via the page's
   //     own scroll container; never affects the chrome bands.
   //
-  // The modal slot lives INSIDE the \`shell-stage\` wrapper that contains
-  // TopBar + body + BottomNav. When a modal (e.g. the intercepted
-  // /venues/[id] route) is active, its \`absolute inset-0\` covers all
-  // three at once — the only thing still visible above it is the
-  // StatusBar (deliberate: the iOS-style 9:41/100% strip is decoration,
-  // not chrome the modal needs to replace).
+  // The modal slot lives inside the body band only (between TopBar and
+  // BottomNav). Its `absolute inset-0` covers the current surface — not
+  // the chrome — so place info stays bright and the bottom nav stays crisp.
   return (
     <MobileFrame>
       <StatusBar />
       <MembershipProvider membership={membership}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <TopBar userName={userName} />
-          <div className="relative flex flex-1 flex-col overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>
+            {modal}
           </div>
           <BottomNav userId={user.id} />
-          {modal}
         </div>
       </MembershipProvider>
       <Toaster />

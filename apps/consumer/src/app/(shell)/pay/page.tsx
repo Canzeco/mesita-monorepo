@@ -4,7 +4,7 @@ import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
 import { PayClient } from "./PayClient";
 
-// /pay — QR and Tickets (code, cashback, open tickets) + Activity history.
+// /pay — QR, Tickets, and Balance tabs.
 // Server component fetches profile and hands it to the client tab shell.
 //
 // Top header (SimpleHeader title="Pay") is owned by the shell layout

@@ -74,7 +74,7 @@ function Deck({ venues }: { venues: Venue[] }) {
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [infoOpeningVenueId, setInfoOpeningVenueId] = useState<string | null>(null);
+  const infoOpeningRef = useRef(false);
   const cardElRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
   const lastRef = useRef({ x: 0, t: 0 });
@@ -354,11 +354,8 @@ function Deck({ venues }: { venues: Venue[] }) {
   useEffect(() => () => clearAdvanceTimer(), [clearAdvanceTimer]);
 
   useEffect(() => {
-    // Clear the in-flight "opening info" guard once the user is back on
-    // any non-place route (e.g. /swipe after dismissing the modal), so
-    // the same card can open again.
     if (!pathname.startsWith("/place/")) {
-      setInfoOpeningVenueId(null);
+      infoOpeningRef.current = false;
     }
   }, [pathname]);
 
@@ -381,8 +378,8 @@ function Deck({ venues }: { venues: Venue[] }) {
   const saved = isSaved(v.id);
 
   const openInfo = () => {
-    if (infoOpeningVenueId === v.id) return;
-    setInfoOpeningVenueId(v.id);
+    if (infoOpeningRef.current) return;
+    infoOpeningRef.current = true;
     router.push(`/place/${v.id}`, { scroll: false });
   };
 
@@ -555,12 +552,6 @@ function Deck({ venues }: { venues: Venue[] }) {
       </div>
 
       <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} />
-
-      {infoOpeningVenueId === v.id && (
-        <div className="pointer-events-none absolute inset-0 z-[60]">
-          <div className="absolute inset-0 bg-black/35 backdrop-blur-[1.5px]" />
-        </div>
-      )}
     </div>
   );
 }
