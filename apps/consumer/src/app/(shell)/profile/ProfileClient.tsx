@@ -506,7 +506,7 @@ function SettingsTab() {
       Icon: CreditCard,
       label: "Payment methods",
       sub: "Apple Pay · Visa · 4242",
-      href: "/pay/wallet",
+      href: "/pay/balance",
     },
     {
       Icon: Bell,

@@ -814,7 +814,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
       <div className="flex flex-col gap-2">
         {isFree ? (
           <div className="flex gap-2">
-            <Link href="/pay" className={REWARD_PAY_BTN}>
+            <Link href="/pay/balance" className={REWARD_PAY_BTN}>
               <QrCode className="h-4 w-4" />
               Pay with QR
             </Link>
@@ -824,7 +824,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
             </Link>
           </div>
         ) : (
-          <Link href="/pay" className={REWARD_PAY_BTN}>
+          <Link href="/pay/balance" className={REWARD_PAY_BTN}>
             <QrCode className="h-4 w-4" />
             {isPremiumViaInstagram
               ? "Pay with QR & post IG story"

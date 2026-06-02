@@ -14,5 +14,9 @@ const RESERVED_PLACE_SEGMENTS = new Set([
 export function toCanonicalPlaceHrefOrNull(idOrSlug: string): string | null {
   const normalized = idOrSlug.trim().toLowerCase();
   if (!normalized || RESERVED_PLACE_SEGMENTS.has(normalized)) return null;
+  return placeHref(idOrSlug);
+}
+
+export function placeHref(idOrSlug: string): string {
   return `/place/${idOrSlug}`;
 }

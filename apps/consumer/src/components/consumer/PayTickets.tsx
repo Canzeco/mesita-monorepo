@@ -15,6 +15,7 @@ import {
   type TicketBillPayload,
 } from "@/lib/api/pay";
 import { errMsg } from "@/lib/utils";
+import { placeHref } from "@/lib/place-route";
 
 type TicketStep = "pay" | "review" | "done";
 
@@ -125,9 +126,9 @@ function TicketCard({
     p.total_reward_cents ??
     (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
   const venueHref = p.venue_slug
-    ? `/venues/${p.venue_slug}`
+    ? placeHref(p.venue_slug)
     : p.venue_id
-      ? `/venues/${p.venue_id}`
+      ? placeHref(p.venue_id)
       : null;
 
   return (

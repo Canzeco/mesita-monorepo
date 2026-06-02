@@ -37,7 +37,7 @@ const ITEMS: Item[] = [
     match: "/saved",
   },
   {
-    href: "/pay",
+    href: "/pay/qr",
     Icon: QrCode,
     label: "Pay",
     match: "/pay",

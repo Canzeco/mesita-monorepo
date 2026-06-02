@@ -56,7 +56,7 @@ const NORMAL_STATUS: Record<NormalCouponStatus, StatusMeta> = {
     iconClass: "text-muted-foreground",
     banner: {
       tone: "muted",
-      text: "Already redeemed. Cashback landed on /pay/wallet.",
+      text: "Already redeemed. Cashback landed on Pay → Balance.",
     },
   },
   expired: {
@@ -123,7 +123,7 @@ const IG_STATUS: Record<InstagramCouponStatus, StatusMeta> = {
     iconClass: "text-muted-foreground",
     banner: {
       tone: "muted",
-      text: "Already redeemed. Cashback landed on /pay/wallet.",
+      text: "Already redeemed. Cashback landed on Pay → Balance.",
     },
   },
   expired: {
@@ -231,7 +231,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
       )}
 
       {/* Action cluster. Coupons are scoped to "see where I can use it" +
-          "what to do next" — payment is on /pay/wallet, the actual
+          "what to do next" — cashback is on Pay → Balance, the actual
           redemption happens at the venue via QR scan. */}
       <section className="flex flex-col gap-2">
         <Link

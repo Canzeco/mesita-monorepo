@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/notifications";
 import { formatPayMx } from "@/lib/api/pay";
 import { errMsg } from "@/lib/utils";
+import { payTabHref } from "@/lib/pay-route";
 import {
   GLOBAL_ACTIVITY,
   MY_ACTIVITY,
@@ -44,7 +45,7 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
 
   return (
     <Link
-      href="/pay"
+      href={payTabHref("tickets")}
       className={cn(
         "border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3 transition active:scale-[0.99]",
         pending && "border-secondary/35 bg-secondary/5",
@@ -185,7 +186,7 @@ export function NotificationsClient({ userId }: { userId: string }) {
               No open tickets. When a restaurant opens one for you, it appears
               here and in{" "}
               <Link
-                href="/pay"
+                href={payTabHref("tickets")}
                 className="text-secondary font-medium underline-offset-2 hover:underline"
               >
                 Pay
