@@ -195,7 +195,9 @@ export function TeamClient({
         }));
         if (res.sent) {
           setNotice(
-            `WhatsApp invite sent to ${res.phone}. Pending until they reply SI in Mesita Ops.`,
+            res.sendMode === "template"
+              ? `WhatsApp invite sent to ${res.phone}. Pending until they tap Unirme in Mesita Ops.`
+              : `WhatsApp invite sent to ${res.phone}. Pending until they tap Unirme or reply SI in Mesita Ops.`,
           );
         } else {
           setNotice(
@@ -533,7 +535,7 @@ export function TeamClient({
                   )
                 }
                 title={inv.phone ?? "—"}
-                subtitle={`Invited · ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · waiting for SI · expires ${formatRelative(inv.expiresAt)}`}
+                subtitle={`Invited · ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · waiting for Unirme · expires ${formatRelative(inv.expiresAt)}`}
               >
                 {inv.phone && (
                   <PingButton
@@ -1092,8 +1094,8 @@ function WaiterInviteForm({
       </div>
       <p className="text-muted-foreground text-[11px]">
         {channel === "whatsapp"
-          ? "Add sends one WhatsApp from Mesita Ops. The waiter replies SI in that chat to join — no links, they stay in WhatsApp."
-          : "Use WhatsApp for waiter invites. Staff accept by replying SI in Mesita Ops."}
+          ? "Add sends the approved WhatsApp template with an in-chat Unirme flow (no links). Pending until they complete it."
+          : "Use WhatsApp for waiter invites. Staff accept via the Unirme flow in Mesita Ops."}
       </p>
     </form>
   );

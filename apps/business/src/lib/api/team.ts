@@ -114,6 +114,7 @@ type InviteWaiterResult = {
   sent: boolean;
   sendError?: string | null;
   messageSid?: string | null;
+  sendMode?: "template" | "session" | null;
 };
 
 export async function apiInviteWaiter(
