@@ -21,7 +21,7 @@ import type {
 const STEP_ICONS: Record<TicketFlowStepId, LucideIcon> = {
   scan: QrCode,
   bill: ReceiptText,
-  story_fallback: Instagram,
+  story: Instagram,
   pay: Banknote,
   pay_stripe: CreditCard,
   review: Star,
