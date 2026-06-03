@@ -19,9 +19,9 @@ function StepStatusBadge({ step }: { step: TicketFlowStepView }) {
     <span
       className={cn(
         "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
-        step.state === "done" && "bg-secondary/15 text-secondary",
-        step.state === "active" && "bg-foreground text-background",
-        step.state === "upcoming" && "bg-muted text-muted-foreground",
+        step.state === "done" && "bg-secondary/12 text-secondary",
+        step.state === "active" && "bg-pink-gradient text-white shadow-sm",
+        step.state === "upcoming" && "bg-muted/80 text-muted-foreground",
       )}
     >
       {label}
@@ -69,7 +69,7 @@ export function TicketFlowStepDetailPanel({
                 "min-w-0 flex-1",
                 !isLast && "pb-6",
                 isActive &&
-                  "border-secondary/25 bg-secondary/[0.06] rounded-xl border px-3 py-3",
+                  "border-secondary/20 from-secondary/10 via-background to-accent/5 rounded-2xl border bg-gradient-to-br px-3.5 py-3.5 shadow-[0_8px_24px_-12px_oklch(0.65_0.24_5_/_0.35)]",
                 !isActive && "pt-0.5",
               )}
             >

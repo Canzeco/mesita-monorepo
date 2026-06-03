@@ -41,7 +41,7 @@ export function DiscoverTabs() {
     // Fills the header's center column (flex-1 + min-w-0 so it shrinks on
     // narrow phones); three tabs share equal flex-1 width and whitespace-nowrap
     // guards against label wrapping.
-    <div className="border-border bg-card/70 flex min-w-0 flex-1 items-center gap-0.5 rounded-full border p-1 backdrop-blur">
+    <div className="segment-control min-w-0 flex-1">
       {TABS.map(({ href, label, Icon, iconClassName, linkClassName }) => {
         const active = activeHref === href;
         return (
@@ -53,11 +53,9 @@ export function DiscoverTabs() {
               if (href !== pathname) setOptimisticHref(href);
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-xs font-medium whitespace-nowrap transition",
+              "segment-tab",
               linkClassName,
-              active
-                ? "bg-foreground text-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+              active ? "segment-tab-active" : "segment-tab-idle",
             )}
           >
             <Icon className={cn("h-3 w-3 shrink-0", iconClassName)} />

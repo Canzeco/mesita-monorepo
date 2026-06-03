@@ -19,7 +19,7 @@ export function MyQrCard({ code }: { code: string }) {
   };
 
   return (
-    <section className="border-border bg-card rounded-3xl border p-4">
+    <section className="surface-card-soft p-4">
       <div className="flex items-center gap-2">
         <Sparkles className="text-secondary h-3.5 w-3.5" />
         <p className="text-secondary text-[10px] font-bold tracking-wider uppercase">

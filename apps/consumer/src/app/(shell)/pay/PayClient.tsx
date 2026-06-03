@@ -51,17 +51,15 @@ export function PayClient({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="px-4 pt-4">
-        <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-full border p-1">
+        <div className="segment-control grid grid-cols-3 gap-0">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => selectTab(t.id)}
               className={cn(
-                "flex items-center justify-center gap-1 rounded-full px-1 py-1.5 text-center text-[11px] font-medium leading-tight transition sm:text-[12px]",
-                tab === t.id
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
+                "segment-tab text-[11px] leading-tight sm:text-[12px]",
+                tab === t.id ? "segment-tab-active" : "segment-tab-idle",
               )}
             >
               <span className="truncate">{t.label}</span>

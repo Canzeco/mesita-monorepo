@@ -295,4 +295,28 @@
     font-size: 10px;
     color: var(--muted-foreground);
   }
+  .surface-card {
+    @apply border-border bg-card shadow-elev rounded-2xl border;
+  }
+  .surface-card-soft {
+    @apply border-border/80 bg-card-soft shadow-elev rounded-3xl border;
+  }
+  .btn-primary {
+    @apply bg-pink-gradient shadow-glow w-full rounded-full py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .segment-control {
+    @apply border-border/80 bg-card/80 flex items-center gap-0.5 rounded-full border p-1 backdrop-blur-sm;
+  }
+  .segment-tab {
+    @apply flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-xs font-medium whitespace-nowrap transition;
+  }
+  .segment-tab-active {
+    @apply bg-pink-gradient shadow-glow text-white;
+  }
+  .segment-tab-idle {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+  .reward-highlight {
+    @apply border-secondary/20 from-secondary/12 to-accent/8 flex items-center gap-3 rounded-2xl border bg-gradient-to-br px-3 py-2.5;
+  }
 }

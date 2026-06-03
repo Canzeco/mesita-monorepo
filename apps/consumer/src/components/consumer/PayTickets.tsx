@@ -66,10 +66,10 @@ function StarRow({
             aria-label={`${label} ${n} stars`}
             onClick={() => onChange(n)}
             className={cn(
-              "h-7 w-7 rounded-full text-sm transition",
+              "h-8 w-8 rounded-full text-base transition active:scale-95",
               value >= n
-                ? "bg-secondary text-background"
-                : "bg-muted text-muted-foreground",
+                ? "bg-pink-gradient text-white shadow-sm"
+                : "bg-muted/90 text-muted-foreground/70",
             )}
           >
             ★
@@ -128,7 +128,7 @@ function TicketModalBody({
 
   return (
     <article className="flex flex-col gap-3">
-      <section className="border-border bg-card overflow-hidden rounded-3xl border shadow-[0_4px_14px_rgba(17,0,10,0.08)]">
+      <section className="surface-card-soft overflow-hidden">
         <div className="bg-muted relative aspect-[16/9] w-full">
         {p.venue_photo_url ? (
           <Image
@@ -160,9 +160,9 @@ function TicketModalBody({
         </div>
       </section>
 
-      <section className="border-border bg-card rounded-3xl border p-4 shadow-[0_4px_14px_rgba(17,0,10,0.08)]">
-        <div className="flex items-center gap-3 rounded-2xl bg-[#ffeaf3] px-3 py-2.5">
-          <div className="bg-secondary text-background flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
+      <section className="surface-card-soft p-4">
+        <div className="reward-highlight">
+          <div className="bg-pink-gradient text-background flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-sm">
             <Gift className="h-4 w-4" />
           </div>
           <div>
@@ -194,9 +194,9 @@ function TicketModalBody({
               type="button"
               disabled={busy === bundle.ticketId}
               onClick={() => onConfirmPayment(bundle.ticketId)}
-              className="bg-foreground text-background mt-3 w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+              className="btn-primary mt-3"
             >
-              {busy === bundle.ticketId ? "Confirming…" : "I paid"}
+              {busy === bundle.ticketId ? "Confirming…" : "Paid issued"}
             </button>
           </>
         ) : null}
@@ -248,7 +248,7 @@ function TicketModalBody({
               type="button"
               disabled={busy === bundle.ticketId}
               onClick={() => onSubmitReview(bundle.ticketId)}
-              className="bg-foreground text-background mt-3 w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+              className="btn-primary mt-3"
             >
               {busy === bundle.ticketId ? "Sending…" : "Submit review"}
             </button>
@@ -316,11 +316,11 @@ function TicketPreviewCard({
     <button
       type="button"
       onClick={onOpen}
-      className="border-foreground/20 bg-card w-full rounded-lg border-2 p-3 text-left shadow-[0_1px_0_rgba(17,0,10,0.06)] transition hover:bg-white/70"
+      className="surface-card w-full p-3.5 text-left transition hover:border-secondary/30 active:scale-[0.995]"
     >
       {/* Top: image left, name + reward stacked right */}
       <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
-        <div className="bg-muted border-foreground/15 relative h-[88px] overflow-hidden rounded-md border">
+        <div className="bg-muted relative h-[88px] overflow-hidden rounded-xl ring-1 ring-border/60">
           {p.venue_photo_url ? (
             <Image
               src={p.venue_photo_url}
@@ -337,7 +337,7 @@ function TicketPreviewCard({
         </div>
 
         <div className="flex h-[88px] min-w-0 flex-col gap-2">
-          <div className="border-foreground/15 bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
+          <div className="bg-muted/40 flex min-h-0 flex-1 items-center rounded-xl px-3 ring-1 ring-border/50">
             <p className="text-foreground truncate text-sm font-semibold">
               {formatTicketVenueTitle(
                 p.venue_name,
@@ -347,7 +347,7 @@ function TicketPreviewCard({
               )}
             </p>
           </div>
-          <div className="border-foreground/15 bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
+          <div className="reward-highlight min-h-0 flex-1 py-2">
             <p className="text-secondary line-clamp-2 text-sm leading-snug font-semibold">
               {formatTicketRewardLabel(enriched, { capMxn })}
             </p>
@@ -356,7 +356,7 @@ function TicketPreviewCard({
       </div>
 
       {/* Bottom: steps */}
-      <div className="border-foreground/15 bg-background mt-2 rounded-md border px-3 py-2.5">
+      <div className="bg-muted/30 mt-3 rounded-xl px-3 py-3 ring-1 ring-border/50">
         <TicketFlowStepper steps={flowSteps} />
       </div>
 
@@ -532,7 +532,7 @@ export function PayTickets({ userId }: { userId: string }) {
       </div>
 
       {bundles.length === 0 ? (
-        <p className="border-foreground/20 bg-card text-muted-foreground rounded-2xl border-2 px-4 py-6 text-center text-sm">
+        <p className="surface-card text-muted-foreground px-4 py-8 text-center text-sm leading-relaxed">
           When staff opens your ticket at the table, it appears here with
           the venue photo, your total reward, and steps to finish. Completed
           tickets stay here as history.

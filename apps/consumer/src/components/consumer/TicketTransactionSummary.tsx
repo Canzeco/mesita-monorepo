@@ -44,7 +44,7 @@ export function TicketTransactionSummary({
     return (
       <div
         className={cn(
-          "bg-foreground text-background mt-2 w-full rounded-md px-3 py-2.5 text-left",
+          "bg-pink-gradient text-white shadow-sm mt-2 w-full rounded-xl px-3 py-2.5 text-left",
           className,
         )}
       >
@@ -81,7 +81,7 @@ export function TicketTransactionSummary({
   return (
     <div
       className={cn(
-        "border-border bg-background space-y-2 rounded-md border px-3 py-3",
+        "reward-highlight flex-col items-stretch space-y-2 px-3 py-3",
         className,
       )}
     >

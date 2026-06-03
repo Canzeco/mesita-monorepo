@@ -28,8 +28,8 @@ const STEP_ICONS: Record<TicketFlowStepId, LucideIcon> = {
   cashback: Wallet,
 };
 
-const STEP_CIRCLE_CLASS = "h-8 w-8";
-const STEP_ICON_CLASS = "h-3.5 w-3.5";
+const STEP_CIRCLE_CLASS = "h-9 w-9";
+const STEP_ICON_CLASS = "h-4 w-4";
 const STEP_CHECK_CLASS = "h-4 w-4";
 
 export const TICKET_STEP_ICONS = STEP_ICONS;
@@ -44,14 +44,14 @@ export function TicketFlowStepCircle({
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full border",
+        "flex shrink-0 items-center justify-center rounded-full border transition-colors",
         STEP_CIRCLE_CLASS,
         step.state === "done" &&
-          "border-secondary bg-secondary text-background",
+          "border-secondary/40 bg-secondary text-background shadow-sm",
         step.state === "active" &&
-          "border-foreground bg-foreground text-background",
+          "border-transparent bg-pink-gradient text-white shadow-glow",
         step.state === "upcoming" &&
-          "border-border bg-background text-muted-foreground",
+          "border-border/80 bg-card text-muted-foreground",
       )}
     >
       {step.state === "done" ? (
@@ -114,7 +114,7 @@ export function TicketFlowStepper({
               {i < steps.length - 1 ? (
                 <div
                   className={cn(
-                    "ml-4 h-5 w-0.5 shrink-0",
+                    "ml-[18px] h-5 w-0.5 shrink-0",
                     connectorDone ? "bg-secondary" : "bg-border",
                   )}
                 />
@@ -148,7 +148,7 @@ export function TicketFlowStepper({
               className={cn(
                 onSelectStep &&
                   isSelected &&
-                  "ring-secondary rounded-full ring-2 ring-offset-1",
+                  "ring-secondary/50 rounded-full ring-2 ring-offset-2 ring-offset-background",
               )}
             >
               <TicketFlowStepCircle step={step} Icon={Icon} />

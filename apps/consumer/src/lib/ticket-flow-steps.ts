@@ -99,8 +99,8 @@ export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]>
   ],
   pay: [
     "Pay what you owe at the table.",
-    "Tap Paid in Mesita when you've paid.",
-    "Staff taps paid received to close the visit.",
+    "Tap Paid issued in Mesita when you've paid.",
+    "Staff taps Paid received to close the visit.",
   ],
   pay_stripe: [
     "Open the secure Stripe checkout link on your phone.",
@@ -130,8 +130,8 @@ export const STEP_SEQUENCE_SUMMARY: Record<
     upcoming: "Post an IG story tagging Mesita and the venue.",
   },
   pay: {
-    done: "Payment confirmed with staff.",
-    upcoming: "Pay at the table, then tap Paid in Mesita.",
+    done: "Paid issued — waiting on or confirmed with staff.",
+    upcoming: "Pay at the table, then tap Paid issued.",
   },
   pay_stripe: {
     done: "Paid online.",

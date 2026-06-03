@@ -52,10 +52,10 @@ function StarRow({
             aria-label={`${label} ${n} stars`}
             onClick={() => onChange(n)}
             className={cn(
-              "h-7 w-7 rounded-full text-sm transition",
+              "h-8 w-8 rounded-full text-base transition active:scale-95",
               value >= n
-                ? "bg-secondary text-background"
-                : "bg-muted text-muted-foreground",
+                ? "bg-pink-gradient text-white shadow-sm"
+                : "bg-muted/90 text-muted-foreground/70",
             )}
           >
             ★
@@ -234,7 +234,7 @@ export function TicketDetailsRouteClient({
 
             return (
               <li key={`${step.id}-${i}`} className="flex gap-2">
-                <span className="text-secondary mt-0.5 shrink-0">·</span>
+                <span className="text-secondary/80 mt-1 shrink-0 text-[10px]">●</span>
                 <span className={cn(struck && "text-muted-foreground/60 line-through")}>
                   {text}
                 </span>
@@ -252,7 +252,7 @@ export function TicketDetailsRouteClient({
         ) : null}
 
         {step.id === "pay" || step.id === "pay_stripe" ? (
-          <div className="border-foreground/10 bg-background space-y-2 rounded-lg border p-3">
+          <div className="surface-card space-y-2 p-3">
             <p className="text-foreground text-[13px] font-medium">
               Ready to confirm payment?
             </p>
@@ -263,15 +263,15 @@ export function TicketDetailsRouteClient({
               type="button"
               onClick={() => void onConfirm()}
               disabled={busy}
-              className="bg-foreground text-background w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+              className="btn-primary"
             >
-              {busy ? "Confirming..." : "I paid"}
+              {busy ? "Confirming..." : "Paid issued"}
             </button>
           </div>
         ) : null}
 
         {step.id === "review" ? (
-          <div className="border-foreground/10 bg-background space-y-2.5 rounded-lg border p-3">
+          <div className="surface-card space-y-2.5 p-3">
             <p className="text-foreground text-[13px] font-medium">
               How was your visit?
             </p>
@@ -308,7 +308,7 @@ export function TicketDetailsRouteClient({
               type="button"
               onClick={() => void onReview()}
               disabled={busy}
-              className="bg-foreground text-background w-full rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+              className="btn-primary"
             >
               {busy ? "Sending..." : "Submit review"}
             </button>
@@ -365,7 +365,7 @@ export function TicketDetailsRouteClient({
           <button
             type="button"
             onClick={onBack}
-            className="border-border bg-card text-foreground rounded-full border p-2"
+            className="surface-card text-foreground rounded-full p-2"
             aria-label="Back to tickets"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -383,7 +383,7 @@ export function TicketDetailsRouteClient({
       >
         {loading ? (
           <div className="mx-auto w-full max-w-md space-y-3">
-            <div className="border-foreground/20 bg-card rounded-lg border-2 p-3">
+            <div className="surface-card p-3">
               <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
                 <div className="h-[88px] rounded-md bg-muted" />
                 <div className="flex h-[88px] flex-col gap-2">
@@ -392,7 +392,7 @@ export function TicketDetailsRouteClient({
                 </div>
               </div>
             </div>
-            <div className="space-y-3 rounded-lg border-2 border-foreground/20 bg-card p-4">
+            <div className="surface-card space-y-3 p-4">
               <div className="h-3 w-16 rounded bg-muted" />
               <div className="space-y-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -409,9 +409,9 @@ export function TicketDetailsRouteClient({
           </div>
         ) : (
           <div className="mx-auto w-full max-w-md space-y-4">
-            <section className="border-foreground/20 bg-card overflow-hidden rounded-xl border-2 shadow-[0_1px_0_rgba(17,0,10,0.06)]">
+            <section className="surface-card overflow-hidden">
               <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 p-3">
-                <div className="bg-muted border-foreground/15 relative h-[72px] overflow-hidden rounded-lg border">
+                <div className="bg-muted relative h-[72px] overflow-hidden rounded-xl ring-1 ring-border/60">
                   {payload.venue_photo_url ? (
                     <Image
                       src={payload.venue_photo_url}
@@ -455,7 +455,7 @@ export function TicketDetailsRouteClient({
               </div>
 
               {activeStep ? (
-                <div className="border-foreground/10 bg-secondary/[0.06] border-t px-3 py-2">
+                <div className="border-border/60 from-secondary/8 border-t bg-gradient-to-r to-transparent px-3 py-2.5">
                   <p className="text-muted-foreground text-[12px]">
                     Current step:{" "}
                     <span className="text-foreground font-semibold">
@@ -464,7 +464,7 @@ export function TicketDetailsRouteClient({
                   </p>
                 </div>
               ) : isComplete ? (
-                <div className="border-foreground/10 bg-secondary/[0.06] border-t px-3 py-2">
+                <div className="border-border/60 from-secondary/8 border-t bg-gradient-to-r to-transparent px-3 py-2.5">
                   <p className="text-secondary text-[12px] font-medium">
                     Visit complete
                   </p>
@@ -473,7 +473,7 @@ export function TicketDetailsRouteClient({
             </section>
 
             <section>
-              <div className="border-foreground/20 bg-card rounded-xl border-2 p-4 shadow-[0_1px_0_rgba(17,0,10,0.06)]">
+              <div className="surface-card p-4">
                 <div className="mb-4">
                   <h2 className="text-foreground text-base font-semibold">
                     Step-by-step
