@@ -111,7 +111,7 @@ export const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
   scan: "Guest code scanned — bot validated and linked the visit.",
   bill: "Enter subtotal (and tip on cashback flows), then send the bill.",
   story: "Guest posts IG story; confirm when the bot asks you to validate.",
-  pay: "Guest taps Paid in Mesita — tap Mark paid when you receive payment.",
+  pay: "Guest taps Paid issued — tap Paid received when you collect payment.",
   stripe: "Guest pays via the Stripe checkout link on their phone.",
   cashback: "Cashback credits to their Mesita balance after pay and review.",
   done: "Visit closed.",
