@@ -31,41 +31,7 @@ import {
 import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { cn } from "@/lib/utils";
-
-function StarRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-muted-foreground text-[12px]">{label}</span>
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            aria-label={`${label} ${n} stars`}
-            onClick={() => onChange(n)}
-            className={cn(
-              "h-8 w-8 rounded-full text-base transition active:scale-95",
-              value >= n
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted/90 text-muted-foreground/70",
-            )}
-          >
-            ★
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { TicketReviewForm } from "@/components/consumer/TicketReviewForm";
 
 export function TicketDetailsRouteClient({
   userId,
@@ -242,45 +208,13 @@ export function TicketDetailsRouteClient({
 
       if (step.id === "review") {
         return (
-          <div className="space-y-2.5">
-            <StarRow
-              label="Food"
-              value={reviewDraft.food}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, food: v }))}
-            />
-            <StarRow
-              label="Service"
-              value={reviewDraft.service}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, service: v }))}
-            />
-            <StarRow
-              label="Ambiance"
-              value={reviewDraft.ambiance}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, ambiance: v }))}
-            />
-            <StarRow
-              label="Overall"
-              value={reviewDraft.overall}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, overall: v }))}
-            />
-            <textarea
-              value={reviewDraft.comments}
-              onChange={(e) =>
-                setReviewDraft((d) => ({ ...d, comments: e.target.value }))
-              }
-              placeholder="Anything else? (optional)"
-              rows={2}
-              className="border-border bg-background text-foreground w-full rounded-xl border px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => void onReview()}
-              disabled={busy}
-              className="btn-primary"
-            >
-              {busy ? "Sending…" : "Submit review"}
-            </button>
-          </div>
+          <TicketReviewForm
+            draft={reviewDraft}
+            onChange={setReviewDraft}
+            onSubmit={() => void onReview()}
+            busy={busy}
+            venueName={payload.venue_name}
+          />
         );
       }
 

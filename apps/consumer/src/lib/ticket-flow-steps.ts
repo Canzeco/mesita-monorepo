@@ -239,7 +239,7 @@ export function ticketStepActiveInstruction(
     case "pay_stripe":
       return "Use the secure payment link on your phone.";
     case "review":
-      return "Quick ratings — helps the restaurant and Mesita.";
+      return "";
     case "cashback":
       return "Shows in Pay → Balance after you finish review.";
     default:

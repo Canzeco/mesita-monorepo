@@ -1,0 +1,155 @@
+"use client";
+
+import { Star } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export type TicketReviewDraft = {
+  food: number;
+  service: number;
+  ambiance: number;
+  overall: number;
+  comments: string;
+};
+
+function StarRatingRow({
+  label,
+  hint,
+  value,
+  onChange,
+  emphasized = false,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  onChange: (n: number) => void;
+  emphasized?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-3 py-2.5",
+        emphasized
+          ? "border-foreground/15 bg-muted/30"
+          : "border-border/70 bg-background",
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p
+          className={cn(
+            "font-medium",
+            emphasized ? "text-foreground text-sm" : "text-foreground text-[13px]",
+          )}
+        >
+          {label}
+        </p>
+        <p className="text-muted-foreground shrink-0 text-xs tabular-nums">
+          {value}/5
+        </p>
+      </div>
+      {hint ? (
+        <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p>
+      ) : null}
+      <div className="mt-2 flex justify-between gap-1" role="group" aria-label={label}>
+        {[1, 2, 3, 4, 5].map((n) => {
+          const on = value >= n;
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-label={`${label}: ${n} star${n === 1 ? "" : "s"}`}
+              aria-pressed={value === n}
+              onClick={() => onChange(n)}
+              className="flex flex-1 items-center justify-center rounded-lg py-1 transition active:scale-95"
+            >
+              <Star
+                className={cn(
+                  "h-8 w-8",
+                  on
+                    ? "fill-amber-400 text-amber-400"
+                    : "text-muted-foreground/35",
+                )}
+                strokeWidth={on ? 0 : 1.5}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function TicketReviewForm({
+  draft,
+  onChange,
+  onSubmit,
+  busy,
+  venueName,
+}: {
+  draft: TicketReviewDraft;
+  onChange: (draft: TicketReviewDraft) => void;
+  onSubmit: () => void;
+  busy?: boolean;
+  venueName?: string | null;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-foreground text-[13px] leading-snug">
+        Tap the stars for each row.{" "}
+        <span className="text-muted-foreground">1 = poor, 5 = excellent.</span>
+        {venueName ? (
+          <>
+            {" "}
+            <span className="text-muted-foreground">({venueName})</span>
+          </>
+        ) : null}
+      </p>
+
+      <div className="space-y-2">
+        <StarRatingRow
+          label="Overall"
+          hint="How was the visit in general?"
+          value={draft.overall}
+          onChange={(overall) => onChange({ ...draft, overall })}
+          emphasized
+        />
+        <StarRatingRow
+          label="Food"
+          value={draft.food}
+          onChange={(food) => onChange({ ...draft, food })}
+        />
+        <StarRatingRow
+          label="Service"
+          value={draft.service}
+          onChange={(service) => onChange({ ...draft, service })}
+        />
+        <StarRatingRow
+          label="Ambiance"
+          value={draft.ambiance}
+          onChange={(ambiance) => onChange({ ...draft, ambiance })}
+        />
+      </div>
+
+      <label className="block">
+        <span className="text-foreground mb-1 block text-[13px] font-medium">
+          Notes <span className="text-muted-foreground font-normal">(optional)</span>
+        </span>
+        <textarea
+          value={draft.comments}
+          onChange={(e) => onChange({ ...draft, comments: e.target.value })}
+          placeholder="e.g. great tacos, slow drinks…"
+          rows={2}
+          className="border-border bg-background text-foreground placeholder:text-muted-foreground/70 w-full resize-none rounded-xl border px-3 py-2 text-sm"
+        />
+      </label>
+
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={busy}
+        className="btn-primary"
+      >
+        {busy ? "Sending…" : "Send review"}
+      </button>
+    </div>
+  );
+}

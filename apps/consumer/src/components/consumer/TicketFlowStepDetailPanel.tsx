@@ -90,9 +90,17 @@ export function TicketFlowStepDetailPanel({
 
               {isActive ? (
                 <>
-                  <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
-                    {ticketStepActiveInstruction(step.id, progress)}
-                  </p>
+                  {(() => {
+                    const instruction = ticketStepActiveInstruction(
+                      step.id,
+                      progress,
+                    );
+                    return instruction ? (
+                      <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
+                        {instruction}
+                      </p>
+                    ) : null;
+                  })()}
                   {renderActiveContent ? (
                     <div className="mt-3">{renderActiveContent(step)}</div>
                   ) : null}
