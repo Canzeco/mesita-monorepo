@@ -86,9 +86,9 @@ export default async function ScanPage({
 
   return (
     <>
-      <Topbar title={active.name} subtitle="Scan guests · bill · confirm payment" />
+      <Topbar title={active.name} subtitle="Scan · bill · pay" />
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-2xl flex-col px-4 pt-2 pb-12 md:px-6 md:pt-4 md:pb-16">
+        <div className="mx-auto flex w-full max-w-lg flex-col px-4 pt-1 pb-14 md:px-5 md:pt-3 md:pb-16">
           <TicketsClient
             venueId={active.id}
             venueCurrency={active.currency}

@@ -8,37 +8,42 @@ export function TicketLifecycleStepper({
   steps,
   cancelled = false,
   showHint = false,
+  compact = false,
 }: {
   steps: StaffLifecycleStepView[];
   cancelled?: boolean;
   showHint?: boolean;
+  compact?: boolean;
 }) {
   const active = steps.find((s) => s.state === "active");
   const activeIndex = steps.findIndex((s) => s.state === "active");
+  const doneCount = steps.filter((s) => s.state === "done").length;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-1">
+    <div className={cn("flex flex-col", compact ? "gap-1" : "gap-1.5")}>
+      <div className="flex items-center gap-0.5">
         {steps.map((step, i) => (
           <Fragment key={step.id}>
             <span
               title={step.label}
               className={cn(
-                "flex shrink-0 rounded-full transition-colors",
-                step.state === "done" && "bg-emerald-500 h-1.5 w-1.5",
+                "flex shrink-0 rounded-full transition-all duration-300",
+                step.state === "done" &&
+                  "bg-emerald-500/90 h-1.5 w-1.5 shadow-[0_0_0_1px_oklch(0.65_0.17_152/0.25)]",
                 step.state === "active" &&
-                  "bg-foreground ring-foreground/20 h-2 w-2 ring-2",
-                step.state === "upcoming" && "bg-border h-1.5 w-1.5",
+                  "bg-primary ring-primary/25 h-2.5 w-2.5 ring-2 shadow-sm",
+                step.state === "upcoming" && "bg-border/90 h-1.5 w-1.5",
               )}
             />
             {i < steps.length - 1 ? (
               <span
                 className={cn(
-                  "h-px w-3 shrink-0",
+                  "h-px shrink-0 transition-colors",
+                  compact ? "w-2" : "w-2.5",
                   i < activeIndex ||
                     (activeIndex === -1 && step.state === "done")
-                    ? "bg-emerald-400/50"
-                    : "bg-border/80",
+                    ? "bg-emerald-400/60"
+                    : "bg-border/70",
                 )}
                 aria-hidden
               />
@@ -46,13 +51,21 @@ export function TicketLifecycleStepper({
           </Fragment>
         ))}
         {cancelled ? (
-          <span className="text-destructive ml-2 text-[11px] font-medium">
+          <span className="text-destructive ml-2.5 text-[11px] font-medium">
             Cancelled
           </span>
         ) : active ? (
-          <span className="text-muted-foreground ml-2 text-[11px]">
+          <span
+            className={cn(
+              "ml-2.5 font-medium",
+              compact ? "text-[10px] text-muted-foreground" : "text-[11px]",
+              active.state === "active" && !compact && "text-foreground",
+            )}
+          >
             {active.label}
           </span>
+        ) : doneCount === steps.length ? (
+          <span className="text-muted-foreground ml-2.5 text-[11px]">Done</span>
         ) : null}
       </div>
       {showHint && active?.hint ? (

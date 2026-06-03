@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Plus, ReceiptText, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Loader2,
+  Plus,
+  ReceiptText,
+  RefreshCw,
+  ScanLine,
+} from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCancelTicket,
@@ -10,12 +16,45 @@ import {
   type BusinessTicket,
 } from "@/lib/api/tickets";
 import { cn, errMsg } from "@/lib/utils";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { EmptyState } from "@/components/shared";
 import { ScanTicketPanel } from "@/components/tickets/ScanTicketPanel";
 import { TicketCard } from "@/components/tickets/TicketCard";
+import {
+  ticketNeedsBill,
+  ticketNeedsStaffPaymentConfirm,
+} from "@/lib/ticket-staff-lifecycle";
 
 const TICKET_LIST_LIMIT = 100;
+
+function StatPill({
+  label,
+  count,
+  tone = "muted",
+}: {
+  label: string;
+  count: number;
+  tone?: "muted" | "primary" | "amber" | "emerald";
+}) {
+  if (count === 0) return null;
+  const toneClass = {
+    muted: "bg-muted/70 text-muted-foreground",
+    primary: "bg-primary/10 text-primary",
+    amber: "bg-amber-500/10 text-amber-900",
+    emerald: "bg-emerald-500/10 text-emerald-800",
+  }[tone];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
+        toneClass,
+      )}
+    >
+      <span className="tabular-nums font-semibold">{count}</span>
+      {label}
+    </span>
+  );
+}
 
 function ScanFeedback({
   error,
@@ -30,8 +69,8 @@ function ScanFeedback({
   return (
     <div
       className={cn(
-        "mb-4 rounded-xl px-3 py-2.5 text-xs leading-snug",
-        error ? ERROR_BOX_CLASS : "bg-muted/60 text-muted-foreground",
+        "rounded-xl px-3.5 py-2.5 text-xs leading-snug",
+        error ? ERROR_BOX_CLASS : "bg-primary/8 text-foreground/80 border-primary/15 border",
       )}
       role="status"
     >
@@ -40,7 +79,7 @@ function ScanFeedback({
         <button
           type="button"
           onClick={onDismiss}
-          className="text-muted-foreground hover:text-foreground shrink-0 text-[10px] uppercase tracking-wide"
+          className="text-muted-foreground hover:text-foreground shrink-0 text-[10px] font-medium uppercase tracking-wide"
         >
           Dismiss
         </button>
@@ -65,6 +104,19 @@ export function TicketsClient({
   const [notice, setNotice] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
 
+  const stats = useMemo(() => {
+    let awaitingBill = 0;
+    let awaitingPay = 0;
+    let complete = 0;
+    for (const t of tickets) {
+      if (t.status === "cancelled") continue;
+      if (ticketNeedsBill(t)) awaitingBill += 1;
+      else if (ticketNeedsStaffPaymentConfirm(t)) awaitingPay += 1;
+      else if (t.status === "paid" || t.status === "revealed") complete += 1;
+    }
+    return { awaitingBill, awaitingPay, complete, total: tickets.length };
+  }, [tickets]);
+
   const refresh = async () => {
     setBusy("refresh");
     setError(null);
@@ -74,7 +126,7 @@ export function TicketsClient({
         limit: TICKET_LIST_LIMIT,
       });
       setTickets(rows);
-      setNotice(`${rows.length} tickets`);
+      setNotice(`${rows.length} tickets loaded`);
     } catch (e) {
       setError(errMsg(e, "Couldn't refresh."));
     } finally {
@@ -92,6 +144,7 @@ export function TicketsClient({
       });
       setTickets(rows);
       setNotice(message);
+      if (message.includes("scanned")) setScanOpen(false);
     } catch (e) {
       setError(errMsg(e, "Updated but refresh failed."));
     } finally {
@@ -133,37 +186,15 @@ export function TicketsClient({
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <section>
-        <button
-          type="button"
-          onClick={() => setScanOpen((v) => !v)}
-          className="bg-foreground text-background hover:opacity-90 inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold transition"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
-          Create ticket
-        </button>
-        {scanOpen ? (
-          <ScanTicketPanel
-            venueId={venueId}
-            supabase={supabase}
-            onCreated={(msg) => void reloadTickets(msg)}
-            onError={setError}
-            onClose={() => setScanOpen(false)}
-          />
-        ) : null}
-      </section>
-
-      <section>
-        <div className="mb-1 flex items-end justify-between gap-3">
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-lg font-semibold tracking-tight">
-              Tickets
+            <h2 className="font-display text-xl font-semibold tracking-tight">
+              Floor
             </h2>
-            <p className="text-muted-foreground mt-0.5 text-[12px]">
-              {tickets.length === 0
-                ? "Scan a guest to start"
-                : `${tickets.length} visible`}
+            <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
+              Scan → bill → confirm payment
             </p>
           </div>
           <button
@@ -171,7 +202,7 @@ export function TicketsClient({
             aria-label="Refresh tickets"
             onClick={() => void refresh()}
             disabled={busy === "refresh"}
-            className="text-muted-foreground hover:text-foreground border-border/60 hover:border-border flex h-9 w-9 items-center justify-center rounded-full border transition disabled:opacity-40"
+            className="border-border/60 hover:border-border text-muted-foreground hover:text-foreground mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-card transition disabled:opacity-40"
           >
             {busy === "refresh" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -181,41 +212,87 @@ export function TicketsClient({
           </button>
         </div>
 
-        <ScanFeedback
-          error={error}
-          notice={notice}
-          onDismiss={() => {
-            setError(null);
-            setNotice(null);
-          }}
-        />
+        {stats.total > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <StatPill label="need bill" count={stats.awaitingBill} tone="primary" />
+            <StatPill label="awaiting pay" count={stats.awaitingPay} tone="amber" />
+            <StatPill label="done" count={stats.complete} tone="emerald" />
+          </div>
+        ) : null}
 
-        <div className="border-border/60 bg-card/40 rounded-2xl border px-4 md:px-5">
-          {tickets.length === 0 ? (
-            <EmptyState
-              icon={<ReceiptText className="text-muted-foreground/60 h-5 w-5" />}
-              title="No tickets yet"
-              description="Create a ticket to scan a guest — billing comes next on each row."
-              className="py-10"
-            />
-          ) : (
-            tickets.map((t) => (
-              <TicketCard
-                key={t.id}
-                ticket={t}
-                venueCurrency={venueCurrency}
-                supabase={supabase}
-                busy={busy}
-                onMarkPaid={(id) => void markPaid(id)}
-                onCancel={(id) => void cancelTicket(id)}
-                onBillSubmitted={(msg) =>
-                  void reloadTickets(msg, t.id)
-                }
-                onError={setError}
-              />
-            ))
+        <button
+          type="button"
+          onClick={() => setScanOpen((v) => !v)}
+          className={cn(
+            PILL_BUTTON_CLASS,
+            "h-11 w-full justify-center gap-2 px-5 text-sm",
+            scanOpen && "ring-primary/30 ring-2",
           )}
-        </div>
+        >
+          {scanOpen ? (
+            <ScanLine className="h-4 w-4" strokeWidth={2.5} />
+          ) : (
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+          )}
+          {scanOpen ? "Scanning…" : "New ticket"}
+        </button>
+
+        {scanOpen ? (
+          <ScanTicketPanel
+            venueId={venueId}
+            supabase={supabase}
+            onCreated={(msg) => void reloadTickets(msg)}
+            onError={setError}
+            onClose={() => setScanOpen(false)}
+          />
+        ) : null}
+      </header>
+
+      <ScanFeedback
+        error={error}
+        notice={notice}
+        onDismiss={() => {
+          setError(null);
+          setNotice(null);
+        }}
+      />
+
+      <section className="flex flex-col gap-3">
+        {tickets.length === 0 ? (
+          <EmptyState
+            icon={<ReceiptText className="text-muted-foreground/60 h-5 w-5" />}
+            title="No tickets yet"
+            description="Tap New ticket to scan a guest code. You'll enter the bill on their row right after."
+            action={
+              <button
+                type="button"
+                onClick={() => setScanOpen(true)}
+                className={cn(PILL_BUTTON_CLASS, "px-5 py-2")}
+              >
+                <Plus className="h-4 w-4" />
+                New ticket
+              </button>
+            }
+            className="border-border/60 py-12"
+          />
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {tickets.map((t) => (
+              <li key={t.id}>
+                <TicketCard
+                  ticket={t}
+                  venueCurrency={venueCurrency}
+                  supabase={supabase}
+                  busy={busy}
+                  onMarkPaid={(id) => void markPaid(id)}
+                  onCancel={(id) => void cancelTicket(id)}
+                  onBillSubmitted={(msg) => void reloadTickets(msg, t.id)}
+                  onError={setError}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
