@@ -272,6 +272,7 @@ type TicketMeta = {
   story_submitted_at?: string | null;
   total_cents?: number | null;
   consumer_payment_confirmed_at?: string | null;
+  staff_payment_confirmed_at?: string | null;
   discount_percent?: number | null;
   cashback_percent?: number | null;
   capMxn?: number | null;
@@ -303,6 +304,7 @@ function TicketPreviewCard({
     story_submitted_at: ticketMeta?.story_submitted_at,
     total_cents: ticketMeta?.total_cents ?? p.total_cents,
     consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
+    staff_payment_confirmed_at: ticketMeta?.staff_payment_confirmed_at,
     payment: bundle.payment,
     review: bundle.review,
   });
@@ -404,7 +406,7 @@ export function PayTickets({ userId }: { userId: string }) {
     const { data: ticketRows } = await supabase
       .from("tickets")
       .select(
-        "id, kind, status, story_status, story_submitted_at, discount_percent, cashback_percent, venue_id, total_cents, consumer_payment_confirmed_at, created_at",
+        "id, kind, status, story_status, story_submitted_at, discount_percent, cashback_percent, venue_id, total_cents, consumer_payment_confirmed_at, staff_payment_confirmed_at, created_at",
       )
       .in("id", ticketIds);
 
@@ -438,6 +440,7 @@ export function PayTickets({ userId }: { userId: string }) {
         story_submitted_at: t.story_submitted_at,
         total_cents: t.total_cents,
         consumer_payment_confirmed_at: t.consumer_payment_confirmed_at,
+        staff_payment_confirmed_at: t.staff_payment_confirmed_at,
         discount_percent: t.discount_percent,
         cashback_percent: t.cashback_percent,
         capMxn: t.venue_id ? venueCapById.get(t.venue_id) ?? null : null,

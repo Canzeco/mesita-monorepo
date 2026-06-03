@@ -20,7 +20,9 @@ import { TicketBillSummary } from "@/components/consumer/TicketBillSummary";
 import { TicketFlowStepDetailPanel } from "@/components/consumer/TicketFlowStepDetailPanel";
 import { TicketTransactionSummary } from "@/components/consumer/TicketTransactionSummary";
 import {
+  discountPaymentPhase,
   isTicketFlowComplete,
+  payStepActiveSummary,
   resolveTicketFlowSteps,
   STEP_SEQUENCE_DETAILS,
   STEP_SEQUENCE_SUMMARY,
@@ -88,6 +90,7 @@ export function TicketDetailsRouteClient({
     story_submitted_at?: string | null;
     total_cents?: number | null;
     consumer_payment_confirmed_at?: string | null;
+    staff_payment_confirmed_at?: string | null;
     created_at?: string | null;
   } | null>(null);
   const [reviewDraft, setReviewDraft] = useState({
@@ -116,7 +119,7 @@ export function TicketDetailsRouteClient({
     const { data: ticketRow } = await supabase
       .from("tickets")
       .select(
-        "kind, status, story_status, story_submitted_at, total_cents, consumer_payment_confirmed_at, created_at",
+        "kind, status, story_status, story_submitted_at, total_cents, consumer_payment_confirmed_at, staff_payment_confirmed_at, created_at",
       )
       .eq("id", ticketId)
       .maybeSingle();
@@ -146,6 +149,7 @@ export function TicketDetailsRouteClient({
         story_submitted_at: ticketMeta?.story_submitted_at,
         total_cents: ticketMeta?.total_cents ?? payload.total_cents,
         consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
+        staff_payment_confirmed_at: ticketMeta?.staff_payment_confirmed_at,
         payment: rows.find((r) => r.kind === "payment_confirm"),
         review: reviewNotification,
       }),
@@ -185,7 +189,11 @@ export function TicketDetailsRouteClient({
   const renderStepSummary = (step: TicketFlowStepView) => {
     const summary = STEP_SEQUENCE_SUMMARY[step.id];
     const line =
-      step.state === "done" ? summary.done : summary.upcoming;
+      step.state === "done"
+        ? summary.done
+        : step.id === "pay" && step.state === "active"
+          ? payStepActiveSummary(progress)
+          : summary.upcoming;
 
     if (step.id === "bill" && step.state === "done" && payload.total_cents) {
       return (
@@ -218,7 +226,9 @@ export function TicketDetailsRouteClient({
     const bullets = STEP_SEQUENCE_DETAILS[step.id];
     const lead =
       step.state === "active"
-        ? STEP_SEQUENCE_SUMMARY[step.id].upcoming
+        ? step.id === "pay"
+          ? payStepActiveSummary(progress)
+          : STEP_SEQUENCE_SUMMARY[step.id].upcoming
         : null;
 
     return (
@@ -251,22 +261,41 @@ export function TicketDetailsRouteClient({
           />
         ) : null}
 
-        {step.id === "pay" || step.id === "pay_stripe" ? (
+        {step.id === "pay" ? (
+          <div className="surface-card space-y-2 p-3">
+            {discountPaymentPhase(progress) === "pending" ? (
+              <>
+                <p className="text-foreground text-[13px] font-medium">
+                  Ready to confirm payment?
+                </p>
+                <p className="text-muted-foreground text-[12px] leading-relaxed">
+                  Tap below once you&apos;ve paid the amount due at the table.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void onConfirm()}
+                  disabled={busy}
+                  className="btn-primary"
+                >
+                  {busy ? "Confirming..." : "Paid issued"}
+                </button>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-[13px] leading-relaxed">
+                {payStepActiveSummary(progress)}
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {step.id === "pay_stripe" ? (
           <div className="surface-card space-y-2 p-3">
             <p className="text-foreground text-[13px] font-medium">
-              Ready to confirm payment?
+              Pay online
             </p>
             <p className="text-muted-foreground text-[12px] leading-relaxed">
-              Tap below once you&apos;ve paid the amount due.
+              Open the Stripe checkout link on your phone when staff sends it.
             </p>
-            <button
-              type="button"
-              onClick={() => void onConfirm()}
-              disabled={busy}
-              className="btn-primary"
-            >
-              {busy ? "Confirming..." : "Paid issued"}
-            </button>
           </div>
         ) : null}
 

@@ -38,6 +38,7 @@ export type TicketProgressInput = {
   story_submitted_at?: string | null;
   total_cents?: number | null;
   consumer_payment_confirmed_at?: string | null;
+  staff_payment_confirmed_at?: string | null;
   paymentNotificationPending: boolean;
   reviewNotificationPending: boolean;
   reviewCompleted: boolean;
@@ -130,7 +131,7 @@ export const STEP_SEQUENCE_SUMMARY: Record<
     upcoming: "Post an IG story tagging Mesita and the venue.",
   },
   pay: {
-    done: "Paid issued — waiting on or confirmed with staff.",
+    done: "Paid issued and received — ready for review.",
     upcoming: "Pay at the table, then tap Paid issued.",
   },
   pay_stripe: {
@@ -167,11 +168,34 @@ function storyVerified(story_status: string): boolean {
   return STORY_VERIFIED.has(story_status as StoryStatus);
 }
 
-function discountPaid(input: TicketProgressInput): boolean {
-  return (
-    Boolean(input.consumer_payment_confirmed_at) ||
-    input.status === "revealed"
-  );
+export type DiscountPaymentPhase = "pending" | "issued" | "complete";
+
+/** Discount (type A/B): both Paid issued and Paid received, or ticket revealed. */
+export function discountPaymentPhase(
+  input: TicketProgressInput,
+): DiscountPaymentPhase {
+  if (input.status === "revealed") return "complete";
+  if (
+    input.consumer_payment_confirmed_at &&
+    input.staff_payment_confirmed_at
+  ) {
+    return "complete";
+  }
+  if (input.consumer_payment_confirmed_at) return "issued";
+  return "pending";
+}
+
+function discountPaymentComplete(input: TicketProgressInput): boolean {
+  return discountPaymentPhase(input) === "complete";
+}
+
+export function payStepActiveSummary(input: TicketProgressInput): string {
+  const phase = discountPaymentPhase(input);
+  if (phase === "pending") return STEP_SEQUENCE_SUMMARY.pay.upcoming;
+  if (phase === "issued") {
+    return "Paid issued — waiting for staff to tap Paid received.";
+  }
+  return STEP_SEQUENCE_SUMMARY.pay.done;
 }
 
 function stripePaid(input: TicketProgressInput): boolean {
@@ -201,13 +225,13 @@ function inferCurrentIndex(
 
   switch (flowType) {
     case "A": {
-      if (discountPaid(input) && reviewDone(input)) return steps.length;
-      if (discountPaid(input)) return idx("review");
+      if (discountPaymentComplete(input) && reviewDone(input)) return steps.length;
+      if (discountPaymentComplete(input)) return idx("review");
       return idx("pay");
     }
     case "B": {
-      if (discountPaid(input) && reviewDone(input)) return steps.length;
-      if (discountPaid(input)) return idx("review");
+      if (discountPaymentComplete(input) && reviewDone(input)) return steps.length;
+      if (discountPaymentComplete(input)) return idx("review");
       if (!storyVerified(input.story_status)) return idx("story");
       return idx("pay");
     }
@@ -259,6 +283,7 @@ export function ticketProgressFromBundle(input: {
   story_submitted_at?: string | null;
   total_cents?: number | null;
   consumer_payment_confirmed_at?: string | null;
+  staff_payment_confirmed_at?: string | null;
   payment?: { status: string } | null;
   review?: { status: string } | null;
 }): TicketProgressInput {
@@ -269,6 +294,7 @@ export function ticketProgressFromBundle(input: {
     story_submitted_at: input.story_submitted_at ?? null,
     total_cents: input.total_cents ?? null,
     consumer_payment_confirmed_at: input.consumer_payment_confirmed_at ?? null,
+    staff_payment_confirmed_at: input.staff_payment_confirmed_at ?? null,
     paymentNotificationPending: input.payment?.status === "pending",
     reviewNotificationPending: input.review?.status === "pending",
     reviewCompleted: input.review?.status === "completed",
