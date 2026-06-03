@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { TicketDetailsRouteClient } from "@/components/consumer/TicketDetailsRouteClient";
+import { TicketDetailsRouteClientDynamic } from "@/components/consumer/TicketDetailsRouteClientDynamic";
 import { payTicketPath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
@@ -17,5 +17,7 @@ export default async function PayTicketPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/?next=${encodeURIComponent(payTicketPath(id))}`);
 
-  return <TicketDetailsRouteClient userId={user.id} ticketId={id} />;
+  return (
+    <TicketDetailsRouteClientDynamic userId={user.id} ticketId={id} />
+  );
 }

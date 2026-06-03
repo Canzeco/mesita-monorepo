@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, MapPin } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -17,6 +17,7 @@ import {
   type TicketBillPayload,
 } from "@/lib/api/pay";
 import { TicketBillSummary } from "@/components/consumer/TicketBillSummary";
+import { TicketDetailsSkeleton } from "@/components/consumer/TicketDetailsSkeleton";
 import { TicketFlowStepDetailPanel } from "@/components/consumer/TicketFlowStepDetailPanel";
 import { TicketTransactionSummary } from "@/components/consumer/TicketTransactionSummary";
 import {
@@ -54,7 +55,7 @@ function StarRow({
             className={cn(
               "h-8 w-8 rounded-full text-base transition active:scale-95",
               value >= n
-                ? "bg-pink-gradient text-white shadow-sm"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted/90 text-muted-foreground/70",
             )}
           >
@@ -184,78 +185,7 @@ export function TicketDetailsRouteClient({
   const rewardLabel = formatTicketRewardLabel(payload, { capMxn });
   const activeStep = flowSteps.find((s) => s.state === "active");
 
-  const renderActiveContent = (step: TicketFlowStepView) => {
-    if (step.id === "bill" && payload.total_cents) {
-      return (
-        <TicketBillSummary
-          payload={payload}
-          capMxn={capMxn}
-          ticketKind={ticketKind}
-        />
-      );
-    }
-
-    if (step.id === "pay" && discountPaymentPhase(progress) === "pending") {
-      return (
-        <button
-          type="button"
-          onClick={() => void onConfirm()}
-          disabled={busy}
-          className="btn-primary"
-        >
-          {busy ? "Sending…" : "I paid — Paid issued"}
-        </button>
-      );
-    }
-
-    if (step.id === "review") {
-      return (
-        <div className="space-y-2.5">
-          <StarRow
-            label="Food"
-            value={reviewDraft.food}
-            onChange={(v) => setReviewDraft((d) => ({ ...d, food: v }))}
-          />
-          <StarRow
-            label="Service"
-            value={reviewDraft.service}
-            onChange={(v) => setReviewDraft((d) => ({ ...d, service: v }))}
-          />
-          <StarRow
-            label="Ambiance"
-            value={reviewDraft.ambiance}
-            onChange={(v) => setReviewDraft((d) => ({ ...d, ambiance: v }))}
-          />
-          <StarRow
-            label="Overall"
-            value={reviewDraft.overall}
-            onChange={(v) => setReviewDraft((d) => ({ ...d, overall: v }))}
-          />
-          <textarea
-            value={reviewDraft.comments}
-            onChange={(e) =>
-              setReviewDraft((d) => ({ ...d, comments: e.target.value }))
-            }
-            placeholder="Anything else? (optional)"
-            rows={2}
-            className="border-border bg-background text-foreground w-full rounded-xl border px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={() => void onReview()}
-            disabled={busy}
-            className="btn-primary"
-          >
-            {busy ? "Sending…" : "Submit review"}
-          </button>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const onConfirm = async () => {
+  const onConfirm = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
@@ -266,9 +196,9 @@ export function TicketDetailsRouteClient({
     } finally {
       setBusy(false);
     }
-  };
+  }, [supabase, ticketId, load]);
 
-  const onReview = async () => {
+  const onReview = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
@@ -283,7 +213,90 @@ export function TicketDetailsRouteClient({
     } finally {
       setBusy(false);
     }
-  };
+  }, [supabase, ticketId, reviewDraft, load]);
+
+  const renderActiveContent = useCallback(
+    (step: TicketFlowStepView): ReactNode => {
+      if (step.id === "bill" && payload.total_cents) {
+        return (
+          <TicketBillSummary
+            payload={payload}
+            capMxn={capMxn}
+            ticketKind={ticketKind}
+          />
+        );
+      }
+
+      if (step.id === "pay" && discountPaymentPhase(progress) === "pending") {
+        return (
+          <button
+            type="button"
+            onClick={() => void onConfirm()}
+            disabled={busy}
+            className="btn-primary"
+          >
+            {busy ? "Sending…" : "I paid — Paid issued"}
+          </button>
+        );
+      }
+
+      if (step.id === "review") {
+        return (
+          <div className="space-y-2.5">
+            <StarRow
+              label="Food"
+              value={reviewDraft.food}
+              onChange={(v) => setReviewDraft((d) => ({ ...d, food: v }))}
+            />
+            <StarRow
+              label="Service"
+              value={reviewDraft.service}
+              onChange={(v) => setReviewDraft((d) => ({ ...d, service: v }))}
+            />
+            <StarRow
+              label="Ambiance"
+              value={reviewDraft.ambiance}
+              onChange={(v) => setReviewDraft((d) => ({ ...d, ambiance: v }))}
+            />
+            <StarRow
+              label="Overall"
+              value={reviewDraft.overall}
+              onChange={(v) => setReviewDraft((d) => ({ ...d, overall: v }))}
+            />
+            <textarea
+              value={reviewDraft.comments}
+              onChange={(e) =>
+                setReviewDraft((d) => ({ ...d, comments: e.target.value }))
+              }
+              placeholder="Anything else? (optional)"
+              rows={2}
+              className="border-border bg-background text-foreground w-full rounded-xl border px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => void onReview()}
+              disabled={busy}
+              className="btn-primary"
+            >
+              {busy ? "Sending…" : "Submit review"}
+            </button>
+          </div>
+        );
+      }
+
+      return null;
+    },
+    [
+      payload,
+      capMxn,
+      ticketKind,
+      progress,
+      busy,
+      reviewDraft,
+      onConfirm,
+      onReview,
+    ],
+  );
 
   const onBack = () => {
     if (variant === "modal") router.back();
@@ -314,25 +327,7 @@ export function TicketDetailsRouteClient({
         }
       >
         {loading ? (
-          <div className="mx-auto w-full max-w-md space-y-3">
-            <div className="surface-card p-3">
-              <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
-                <div className="h-[88px] rounded-md bg-muted" />
-                <div className="flex h-[88px] flex-col gap-2">
-                  <div className="min-h-0 flex-1 rounded-md bg-muted" />
-                  <div className="min-h-0 flex-1 rounded-md bg-muted" />
-                </div>
-              </div>
-            </div>
-            <div className="surface-card space-y-3 p-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="h-6 w-6 shrink-0 rounded-full bg-muted" />
-                  <div className="h-4 flex-1 rounded bg-muted" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <TicketDetailsSkeleton />
         ) : (
           <div className="mx-auto w-full max-w-md space-y-4">
             <section className="surface-card overflow-hidden">
