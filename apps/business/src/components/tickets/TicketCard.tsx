@@ -11,6 +11,7 @@ import {
 } from "@/lib/ticket-display";
 import {
   FLOW_TYPE_LABELS,
+  FORMAL_KINDS,
   staffLifecycleFromTicket,
   staffStatusLabel,
   staffStatusTone,
@@ -73,6 +74,9 @@ export function TicketCard({
   const reward = rewardLine(ticket);
   const flowType = ticketFlowTypeFromKind(ticket.kind);
   const hasTotal = (ticket.total_cents ?? 0) > 0;
+  const payConfirmLabel = FORMAL_KINDS.has(ticket.kind)
+    ? "Mark paid"
+    : "Paid received";
   const showActions = !cancelled && (needsBill || pendingPay || canCancel);
 
   return (
@@ -179,7 +183,7 @@ export function TicketCard({
               {payBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                "Mark paid"
+                payConfirmLabel
               )}
             </button>
           ) : null}

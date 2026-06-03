@@ -42,7 +42,7 @@ export type StaffTicketProgressInput = Pick<
 
 const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "waiter_verified"]);
 
-const FORMAL_KINDS = new Set<TicketKind>([
+export const FORMAL_KINDS = new Set<TicketKind>([
   "p_c",
   "s_p_sf_c",
   "r_p_c",
