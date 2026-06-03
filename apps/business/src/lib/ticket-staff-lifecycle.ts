@@ -7,13 +7,22 @@ export type StoryStatus = Database["public"]["Enums"]["story_status"];
 
 export type TicketFlowType = "A" | "B" | "C" | "D";
 
-/** Staff-console milestones — scan and billing are separate steps. */
+/**
+ * Staff-console milestones — aligned to product sequences:
+ *
+ * - A: Scan → Billing → Discount payment → Done
+ * - B: Scan → Billing → Story → Discount payment → Done
+ * - C: Scan → Billing → Stripe pay → Cashback landing → Done
+ * - D: Scan → Billing → Story → Stripe pay → Cashback landing → Done
+ *
+ * Review runs on the consumer app after payment (and before cashback on C/D).
+ */
 export type StaffLifecycleStepId =
   | "scan"
   | "bill"
-  | "payment"
   | "story"
-  | "paid"
+  | "pay"
+  | "stripe"
   | "cashback"
   | "done";
 
@@ -76,28 +85,20 @@ export function ticketHasBill(input: StaffTicketProgressInput): boolean {
   return (input.total_cents ?? 0) > 0;
 }
 
-/**
- * Staff milestones aligned to consumer sequences:
- *
- * - A: Scan → Bill → Payment → Paid → Done
- * - B: Scan → Bill → Payment → Story → Paid → Done
- * - C: Scan → Bill → Payment → Paid → Cashback → Done
- * - D: Scan → Bill → Payment → Story → Paid → Cashback → Done
- */
 export const STAFF_STEPS_BY_FLOW_TYPE: Record<TicketFlowType, StaffLifecycleStepId[]> =
   {
-    A: ["scan", "bill", "payment", "paid", "done"],
-    B: ["scan", "bill", "payment", "story", "paid", "done"],
-    C: ["scan", "bill", "payment", "paid", "cashback", "done"],
-    D: ["scan", "bill", "payment", "story", "paid", "cashback", "done"],
+    A: ["scan", "bill", "pay", "done"],
+    B: ["scan", "bill", "story", "pay", "done"],
+    C: ["scan", "bill", "stripe", "cashback", "done"],
+    D: ["scan", "bill", "story", "stripe", "cashback", "done"],
   };
 
 export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   scan: "Scan",
   bill: "Billing",
-  payment: "Payment",
   story: "Story",
-  paid: "Paid",
+  pay: "Payment",
+  stripe: "Stripe",
   cashback: "Cashback",
   done: "Done",
 };
@@ -107,13 +108,13 @@ export function staffDoneStepLabel(kind: string): string {
 }
 
 export const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
-  scan: "Guest code scanned — visit started.",
-  bill: "Enter subtotal (and tip for cashback flows).",
-  payment: "Payment instructions sent — waiting for guest to pay.",
-  story: "Verify the guest's IG story before payment can finish.",
-  paid: "Confirm payment once the guest has paid.",
-  cashback: "Cashback credits after payment (and story, if required).",
-  done: "Visit closed — guest can leave a review.",
+  scan: "Guest code scanned — bot validated and linked the visit.",
+  bill: "Enter subtotal (and tip on cashback flows), then send the bill.",
+  story: "Guest posts IG story; confirm when the bot asks you to validate.",
+  pay: "Guest taps Paid in Mesita — tap Mark paid when you receive payment.",
+  stripe: "Guest pays via the Stripe checkout link on their phone.",
+  cashback: "Cashback credits to their Mesita balance after pay and review.",
+  done: "Visit closed.",
 };
 
 function storyComplete(input: StaffTicketProgressInput): boolean {
@@ -122,13 +123,11 @@ function storyComplete(input: StaffTicketProgressInput): boolean {
   return STORY_VERIFIED.has(input.story_status as StoryStatus);
 }
 
-function paymentPhaseComplete(input: StaffTicketProgressInput): boolean {
-  if (input.status === "cancelled") return false;
-  if (!ticketHasBill(input)) return false;
-  return input.status !== "open";
+function discountPaid(input: StaffTicketProgressInput): boolean {
+  return input.status === "revealed";
 }
 
-function paidPhaseComplete(input: StaffTicketProgressInput): boolean {
+function stripePaid(input: StaffTicketProgressInput): boolean {
   return (
     input.status === "paid" ||
     input.status === "awaiting_story" ||
@@ -136,7 +135,7 @@ function paidPhaseComplete(input: StaffTicketProgressInput): boolean {
   );
 }
 
-function cashbackPhaseComplete(input: StaffTicketProgressInput): boolean {
+function cashbackLanded(input: StaffTicketProgressInput): boolean {
   if (!FORMAL_KINDS.has(input.kind as TicketKind)) return true;
   return input.status === "paid" || input.status === "revealed";
 }
@@ -158,14 +157,14 @@ function stepComplete(
       return true;
     case "bill":
       return ticketHasBill(input);
-    case "payment":
-      return paymentPhaseComplete(input);
     case "story":
       return storyComplete(input);
-    case "paid":
-      return paidPhaseComplete(input);
+    case "pay":
+      return discountPaid(input);
+    case "stripe":
+      return stripePaid(input);
     case "cashback":
-      return cashbackPhaseComplete(input);
+      return cashbackLanded(input);
     case "done":
       return visitComplete(input);
     default:
@@ -178,8 +177,8 @@ function inferCurrentIndex(
   input: StaffTicketProgressInput,
 ): number {
   if (input.status === "cancelled") {
-    const paymentIdx = stepIds.indexOf("payment");
-    return paymentIdx >= 0 ? paymentIdx : 0;
+    const billIdx = stepIds.indexOf("bill");
+    return billIdx >= 0 ? billIdx : 0;
   }
 
   for (let i = 0; i < stepIds.length; i++) {
@@ -266,10 +265,21 @@ export function staffStatusTone(status: TicketStatus): string {
   return "bg-secondary/10 text-secondary";
 }
 
+/** Discount flows: guest issued paid, staff confirms received. */
 export function ticketNeedsStaffPaymentConfirm(ticket: BusinessTicket): boolean {
+  if (FORMAL_KINDS.has(ticket.kind as TicketKind)) {
+    return ticket.status === "pending_pay";
+  }
+  return ticket.status === "awaiting_payment_confirm";
+}
+
+export function ticketNeedsStoryConfirm(ticket: BusinessTicket): boolean {
+  if (!STORY_KINDS.has(ticket.kind as TicketKind)) return false;
+  if (ticket.status === "cancelled" || !ticketHasBill(ticket)) return false;
   return (
-    ticket.status === "pending_pay" ||
-    ticket.status === "awaiting_payment_confirm"
+    ticket.story_status === "pending" ||
+    ticket.story_status === "submitted" ||
+    ticket.story_status === "ai_rejected"
   );
 }
 
