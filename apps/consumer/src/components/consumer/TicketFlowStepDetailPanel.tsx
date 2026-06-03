@@ -3,7 +3,6 @@
 import { type ReactNode } from "react";
 import {
   STEP_DONE_LINE,
-  ticketStepActiveInstruction,
   type TicketFlowStepView,
   type TicketProgressInput,
 } from "@/lib/ticket-flow-steps";
@@ -88,23 +87,8 @@ export function TicketFlowStepDetailPanel({
                 </p>
               ) : null}
 
-              {isActive ? (
-                <>
-                  {(() => {
-                    const instruction = ticketStepActiveInstruction(
-                      step.id,
-                      progress,
-                    );
-                    return instruction ? (
-                      <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
-                        {instruction}
-                      </p>
-                    ) : null;
-                  })()}
-                  {renderActiveContent ? (
-                    <div className="mt-3">{renderActiveContent(step)}</div>
-                  ) : null}
-                </>
+              {isActive && renderActiveContent ? (
+                <div className="mt-2">{renderActiveContent(step)}</div>
               ) : null}
             </div>
           </li>

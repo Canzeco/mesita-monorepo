@@ -25,6 +25,7 @@ import {
   isTicketFlowComplete,
   resolveTicketFlowSteps,
   STEP_NOW_TITLE,
+  ticketStepNowInstructions,
   ticketProgressFromBundle,
   type TicketFlowStepView,
 } from "@/lib/ticket-flow-steps";
@@ -32,6 +33,7 @@ import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { TicketReviewForm } from "@/components/consumer/TicketReviewForm";
+import { TicketStepInstructions } from "@/components/consumer/TicketStepInstructions";
 
 export function TicketDetailsRouteClient({
   userId,
@@ -302,13 +304,18 @@ export function TicketDetailsRouteClient({
               </div>
 
               {activeStep && !isComplete ? (
-                <div className="border-border/60 border-t px-3 py-3">
-                  <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
-                    Do this now
-                  </p>
-                  <p className="text-foreground mt-0.5 text-lg font-semibold leading-tight">
-                    {STEP_NOW_TITLE[activeStep.id]}
-                  </p>
+                <div className="border-border/60 border-t space-y-2 px-3 py-3">
+                  <div>
+                    <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+                      What to do now
+                    </p>
+                    <p className="text-foreground mt-0.5 text-lg font-semibold leading-tight">
+                      {STEP_NOW_TITLE[activeStep.id]}
+                    </p>
+                  </div>
+                  <TicketStepInstructions
+                    steps={ticketStepNowInstructions(activeStep.id, progress)}
+                  />
                 </div>
               ) : isComplete ? (
                 <div className="border-border/60 border-t px-3 py-3">

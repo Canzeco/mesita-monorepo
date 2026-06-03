@@ -77,14 +77,76 @@ export const STEP_LABELS: Record<TicketFlowStepId, string> = {
 
 /** Big headline on the ticket card — plain language. */
 export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
-  scan: "Show your QR",
+  scan: "Get scanned in",
   bill: "Wait for your bill",
-  story: "Post your story",
+  story: "Post your Instagram story",
   pay: "Pay at the table",
   pay_stripe: "Pay on your phone",
-  review: "Rate your visit",
-  cashback: "Cashback incoming",
+  review: "Leave a quick review",
+  cashback: "Cashback is on the way",
 };
+
+/** Short numbered steps shown under the headline (active step only). */
+export function ticketStepNowInstructions(
+  stepId: TicketFlowStepId,
+  progress: TicketProgressInput,
+): string[] {
+  switch (stepId) {
+    case "scan":
+      return [
+        "Open Mesita → Pay → QR.",
+        "Show that code to your waiter.",
+        "They scan it — your visit starts.",
+      ];
+    case "bill":
+      return [
+        "Staff enters your food & drink total.",
+        "Your discount or cashback is applied automatically.",
+        "You’ll see the amount to pay on this screen.",
+      ];
+    case "story":
+      return [
+        "Post a story on Instagram.",
+        "Tag @mesita and this restaurant.",
+        "We detect it — staff confirms when asked.",
+      ];
+    case "pay": {
+      const phase = discountPaymentPhase(progress);
+      if (phase === "pending") {
+        return [
+          "Pay the amount due at the table (cash or card).",
+          "Come back here and tap “I paid — Paid issued”.",
+          "Staff taps “Paid received” — then you can review.",
+        ];
+      }
+      if (phase === "issued") {
+        return [
+          "You already tapped “I paid”.",
+          "Ask staff to confirm “Paid received” on their side.",
+        ];
+      }
+      return [];
+    }
+    case "pay_stripe":
+      return [
+        "Open the payment link staff sends you (Stripe).",
+        "Pay on your phone — stay on this screen until it updates.",
+      ];
+    case "review":
+      return [
+        "Tap 1–5 stars on each row (1 = bad, 5 = great).",
+        "Start with Overall — it matters most.",
+        "Tap Send review when you’re done.",
+      ];
+    case "cashback":
+      return [
+        "After your review, cashback is added to Mesita.",
+        "Check Pay → Balance in a minute or two.",
+      ];
+    default:
+      return [];
+  }
+}
 
 /** One line under each step in the checklist. */
 export const STEP_DONE_LINE: Record<TicketFlowStepId, string> = {
@@ -212,39 +274,19 @@ function discountPaymentComplete(input: TicketProgressInput): boolean {
 }
 
 export function payStepActiveSummary(input: TicketProgressInput): string {
-  const phase = discountPaymentPhase(input);
-  if (phase === "pending") {
-    return "Pay what you owe, then tap the button below.";
-  }
-  if (phase === "issued") {
-    return "Waiting for staff to tap Paid received.";
-  }
-  return STEP_SEQUENCE_SUMMARY.pay.done;
+  const lines = ticketStepNowInstructions("pay", input);
+  return lines[0] ?? STEP_SEQUENCE_SUMMARY.pay.upcoming;
 }
 
-/** Single instruction for the active step (no bullet lists). */
+/** One-line fallback under the step label in the checklist. */
 export function ticketStepActiveInstruction(
   stepId: TicketFlowStepId,
   progress: TicketProgressInput,
 ): string {
-  switch (stepId) {
-    case "scan":
-      return "Open Pay → QR. Staff scans it at your table.";
-    case "bill":
-      return "Staff enters your total. You'll see the amount here.";
-    case "story":
-      return "Instagram story tagging Mesita + this place. We detect it automatically.";
-    case "pay":
-      return payStepActiveSummary(progress);
-    case "pay_stripe":
-      return "Use the secure payment link on your phone.";
-    case "review":
-      return "";
-    case "cashback":
-      return "Shows in Pay → Balance after you finish review.";
-    default:
-      return "";
-  }
+  const lines = ticketStepNowInstructions(stepId, progress);
+  if (lines.length === 0) return "";
+  if (lines.length === 1) return lines[0];
+  return lines.join(" ");
 }
 
 function stripePaid(input: TicketProgressInput): boolean {

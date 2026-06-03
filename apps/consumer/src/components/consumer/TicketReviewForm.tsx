@@ -93,16 +93,14 @@ export function TicketReviewForm({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-foreground text-[13px] leading-snug">
-        Tap the stars for each row.{" "}
-        <span className="text-muted-foreground">1 = poor, 5 = excellent.</span>
-        {venueName ? (
-          <>
-            {" "}
-            <span className="text-muted-foreground">({venueName})</span>
-          </>
-        ) : null}
-      </p>
+      {venueName ? (
+        <p className="text-foreground text-sm font-medium">{venueName}</p>
+      ) : null}
+      <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-[13px] leading-snug">
+        <li>Tap stars on each row — 1 is bad, 5 is great.</li>
+        <li>Fill in Overall first, then Food, Service, and Ambiance.</li>
+        <li>Add notes only if you want — then tap Send review.</li>
+      </ol>
 
       <div className="space-y-2">
         <StarRatingRow
