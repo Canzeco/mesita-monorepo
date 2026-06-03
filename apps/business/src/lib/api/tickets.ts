@@ -143,3 +143,48 @@ export async function apiCreateTicket(
     "Couldn't create ticket.",
   );
 }
+
+/** Scan step — link guest code without billing. */
+export async function apiOpenTicket(
+  client: SupabaseClient,
+  input: {
+    venueId: string;
+    consumerCode: string;
+    kind?: TicketKind;
+  },
+): Promise<{ ticket: BusinessTicket }> {
+  return invokeEF<{ ticket: BusinessTicket }>(
+    client,
+    "business-create-ticket",
+    {
+      venueId: input.venueId,
+      consumerCode: input.consumerCode,
+      kind: input.kind ?? "dp",
+      scanOnly: true,
+    },
+    "Couldn't scan guest.",
+  );
+}
+
+/** Billing step — attach check totals to an open ticket. */
+export async function apiSubmitTicketBill(
+  client: SupabaseClient,
+  input: {
+    ticketId: string;
+    checkSubtotalCents: number;
+    tipCents?: number;
+    redeemCents?: number;
+  },
+): Promise<{ ticket: BusinessTicket }> {
+  return invokeEF<{ ticket: BusinessTicket }>(
+    client,
+    "business-submit-ticket-bill",
+    {
+      ticketId: input.ticketId,
+      checkSubtotalCents: input.checkSubtotalCents,
+      tipCents: input.tipCents ?? 0,
+      redeemCents: input.redeemCents ?? 0,
+    },
+    "Couldn't submit bill.",
+  );
+}

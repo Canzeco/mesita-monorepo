@@ -66,7 +66,7 @@ export default async function ScanPage({
   try {
     initialTickets = await apiListTickets(supabase, {
       venueId: active.id,
-      limit: 40,
+      limit: 100,
     });
   } catch (err) {
     ticketsError = errMsg(err, "Couldn't load tickets.");
@@ -86,9 +86,9 @@ export default async function ScanPage({
 
   return (
     <>
-      <Topbar title={active.name} subtitle="Scan" />
+      <Topbar title={active.name} subtitle="Scan guests · bill · confirm payment" />
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
+        <div className="mx-auto flex w-full max-w-2xl flex-col px-4 pt-2 pb-12 md:px-6 md:pt-4 md:pb-16">
           <TicketsClient
             venueId={active.id}
             venueCurrency={active.currency}
