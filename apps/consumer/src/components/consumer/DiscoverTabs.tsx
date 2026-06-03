@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, Map as MapIcon, Plus } from "lucide-react";
+import { Flame, Map as MapIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -13,7 +13,13 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 const TABS = [
   { href: CONSUMER_ROUTES.explore.swipe, label: "Swipe", Icon: Flame },
   { href: CONSUMER_ROUTES.explore.map, label: "Map", Icon: MapIcon },
-  { href: CONSUMER_ROUTES.explore.add, label: "Add", Icon: Plus },
+  {
+    href: CONSUMER_ROUTES.explore.add,
+    label: "Add",
+    Icon: Sparkles,
+    iconClassName: "h-3.5 w-3.5",
+    linkClassName: "gap-1.5 px-3",
+  },
 ];
 
 export function DiscoverTabs() {
@@ -36,7 +42,7 @@ export function DiscoverTabs() {
     // narrow phones); three tabs share equal flex-1 width and whitespace-nowrap
     // guards against label wrapping.
     <div className="border-border bg-card/70 flex min-w-0 flex-1 items-center gap-0.5 rounded-full border p-1 backdrop-blur">
-      {TABS.map(({ href, label, Icon }) => {
+      {TABS.map(({ href, label, Icon, iconClassName, linkClassName }) => {
         const active = activeHref === href;
         return (
           <Link
@@ -48,12 +54,13 @@ export function DiscoverTabs() {
             }}
             className={cn(
               "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-xs font-medium whitespace-nowrap transition",
+              linkClassName,
               active
                 ? "bg-foreground text-background shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className="h-3 w-3 shrink-0" />
+            <Icon className={cn("h-3 w-3 shrink-0", iconClassName)} />
             {label}
           </Link>
         );

@@ -7,15 +7,19 @@ import { useRouter } from "next/navigation";
 import { Gift, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TicketFlowStepper } from "@/components/consumer/TicketFlowStepper";
+import { TicketTransactionSummary } from "@/components/consumer/TicketTransactionSummary";
 import {
+  isTicketFlowComplete,
   resolveTicketFlowSteps,
   ticketProgressFromBundle,
 } from "@/lib/ticket-flow-steps";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   confirmTicketPayment,
+  buildTicketTransactionSummary,
   formatPayMx,
   formatTicketRewardLabel,
+  formatTicketVenueTitle,
   payloadFromNotification,
   submitTicketReview,
   type PayNotificationRow,
@@ -271,6 +275,7 @@ type TicketMeta = {
   discount_percent?: number | null;
   cashback_percent?: number | null;
   capMxn?: number | null;
+  created_at?: string | null;
 };
 
 function TicketPreviewCard({
@@ -290,28 +295,32 @@ function TicketPreviewCard({
   };
   const capMxn =
     p.reward_cap_mxn ?? p.monthly_promo_cap ?? ticketMeta?.capMxn ?? null;
-  const flowSteps = resolveTicketFlowSteps(
-    ticketProgressFromBundle({
-      kind: ticketMeta?.kind ?? p.ticket_kind,
-      status: ticketMeta?.status,
-      story_status: ticketMeta?.story_status,
-      story_submitted_at: ticketMeta?.story_submitted_at,
-      total_cents: ticketMeta?.total_cents ?? p.total_cents,
-      consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
-      payment: bundle.payment,
-      review: bundle.review,
-    }),
-  );
+  const ticketKind = ticketMeta?.kind ?? p.ticket_kind ?? "dp";
+  const progress = ticketProgressFromBundle({
+    kind: ticketKind,
+    status: ticketMeta?.status,
+    story_status: ticketMeta?.story_status,
+    story_submitted_at: ticketMeta?.story_submitted_at,
+    total_cents: ticketMeta?.total_cents ?? p.total_cents,
+    consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
+    payment: bundle.payment,
+    review: bundle.review,
+  });
+  const flowSteps = resolveTicketFlowSteps(progress);
+  const isComplete = isTicketFlowComplete(progress);
+  const transactionSummary = isComplete
+    ? buildTicketTransactionSummary(enriched, ticketKind)
+    : null;
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="border-border bg-card w-full rounded-lg border p-3 text-left transition hover:bg-white/70"
+      className="border-foreground/20 bg-card w-full rounded-lg border-2 p-3 text-left shadow-[0_1px_0_rgba(17,0,10,0.06)] transition hover:bg-white/70"
     >
       {/* Top: image left, name + reward stacked right */}
       <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
-        <div className="bg-muted border-border relative h-[88px] overflow-hidden rounded-md border">
+        <div className="bg-muted border-foreground/15 relative h-[88px] overflow-hidden rounded-md border">
           {p.venue_photo_url ? (
             <Image
               src={p.venue_photo_url}
@@ -328,12 +337,17 @@ function TicketPreviewCard({
         </div>
 
         <div className="flex h-[88px] min-w-0 flex-col gap-2">
-          <div className="border-border bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
+          <div className="border-foreground/15 bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
             <p className="text-foreground truncate text-sm font-semibold">
-              {p.venue_name ?? "Partner venue"}
+              {formatTicketVenueTitle(
+                p.venue_name,
+                ticketMeta?.created_at ??
+                  bundle.payment?.created_at ??
+                  bundle.review?.created_at,
+              )}
             </p>
           </div>
-          <div className="border-border bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
+          <div className="border-foreground/15 bg-background flex min-h-0 flex-1 items-center rounded-md border px-3">
             <p className="text-secondary line-clamp-2 text-sm leading-snug font-semibold">
               {formatTicketRewardLabel(enriched, { capMxn })}
             </p>
@@ -342,9 +356,13 @@ function TicketPreviewCard({
       </div>
 
       {/* Bottom: steps */}
-      <div className="border-border bg-background mt-2 rounded-md border px-3 py-2.5">
+      <div className="border-foreground/15 bg-background mt-2 rounded-md border px-3 py-2.5">
         <TicketFlowStepper steps={flowSteps} />
       </div>
+
+      {transactionSummary ? (
+        <TicketTransactionSummary summary={transactionSummary} variant="compact" />
+      ) : null}
     </button>
   );
 }
@@ -386,7 +404,7 @@ export function PayTickets({ userId }: { userId: string }) {
     const { data: ticketRows } = await supabase
       .from("tickets")
       .select(
-        "id, kind, status, story_status, story_submitted_at, discount_percent, cashback_percent, venue_id, total_cents, consumer_payment_confirmed_at",
+        "id, kind, status, story_status, story_submitted_at, discount_percent, cashback_percent, venue_id, total_cents, consumer_payment_confirmed_at, created_at",
       )
       .in("id", ticketIds);
 
@@ -423,6 +441,7 @@ export function PayTickets({ userId }: { userId: string }) {
         discount_percent: t.discount_percent,
         cashback_percent: t.cashback_percent,
         capMxn: t.venue_id ? venueCapById.get(t.venue_id) ?? null : null,
+        created_at: t.created_at,
       });
     }
     setTicketMetaById(meta);
@@ -513,8 +532,8 @@ export function PayTickets({ userId }: { userId: string }) {
       </div>
 
       {bundles.length === 0 ? (
-        <p className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-6 text-center text-sm">
-          When your waiter opens a ticket at the table, it appears here with
+        <p className="border-foreground/20 bg-card text-muted-foreground rounded-2xl border-2 px-4 py-6 text-center text-sm">
+          When staff opens your ticket at the table, it appears here with
           the venue photo, your total reward, and steps to finish. Completed
           tickets stay here as history.
         </p>

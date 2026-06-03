@@ -7,14 +7,13 @@ export type StoryStatus = Database["public"]["Enums"]["story_status"];
 export type TicketFlowType = "A" | "B" | "C" | "D";
 
 export type TicketFlowStepId =
-  | "story"
+  | "scan"
   | "bill"
   | "story_fallback"
   | "pay"
   | "pay_stripe"
-  | "story_vuln"
-  | "cashback"
-  | "review";
+  | "review"
+  | "cashback";
 
 export type TicketFlowStepState = "done" | "active" | "upcoming";
 
@@ -33,6 +32,7 @@ export type TicketProgressInput = {
   consumer_payment_confirmed_at?: string | null;
   paymentNotificationPending: boolean;
   reviewNotificationPending: boolean;
+  reviewCompleted: boolean;
 };
 
 const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "waiter_verified"]);
@@ -50,36 +50,117 @@ export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
   return STORY_KINDS.has(kind) ? "B" : "A";
 }
 
-/** Consumer-facing milestones per ticket type (matches product sequences). */
+/**
+ * Consumer ticket milestones aligned to product sequences:
+ *
+ * - Scan → Billing → [Story] → Payment → [Cashback landing] → Review
+ * - Type A: discount, no story
+ * - Type B: discount + story before payment
+ * - Type C: Stripe payment + cashback landing, no story
+ * - Type D: story + Stripe payment + cashback landing
+ */
 export const FLOW_STEPS_BY_TYPE: Record<TicketFlowType, TicketFlowStepId[]> = {
-  // Type A — Discount, no story: Billing → Discount payment → Review
-  A: ["bill", "pay", "review"],
-  // Type B — Discount, with story
-  B: ["story", "bill", "story_fallback", "pay", "story_vuln", "review"],
-  // Type C — Cashback, no story
-  C: ["bill", "pay_stripe", "cashback", "review"],
-  // Type D — Cashback, with story
-  D: [
-    "story",
-    "bill",
-    "story_fallback",
-    "pay_stripe",
-    "story_vuln",
-    "cashback",
-    "review",
-  ],
+  A: ["scan", "bill", "pay", "review"],
+  B: ["scan", "bill", "story_fallback", "pay", "review"],
+  C: ["scan", "bill", "pay_stripe", "cashback", "review"],
+  D: ["scan", "bill", "story_fallback", "pay_stripe", "cashback", "review"],
 };
 
 export const STEP_LABELS: Record<TicketFlowStepId, string> = {
-  story: "Story",
-  bill: "Bill",
+  scan: "Scan",
+  bill: "Billing",
   story_fallback: "Story",
   pay: "Pay",
   pay_stripe: "Pay",
-  story_vuln: "Story",
   cashback: "Cashback",
   review: "Review",
 };
+
+/** Consumer-facing copy for each product sequence step. */
+export type StepSequenceLine =
+  | string
+  | { text: string; struck?: boolean };
+
+export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]> = {
+  scan: [
+    "Show your Mesita QR at the table.",
+    "Staff scans it to start your visit and reward.",
+  ],
+  bill: [
+    "Your food & drink subtotal appears here.",
+    "Your Mesita discount applies to the subtotal only.",
+    "You'll see what to pay before the next step.",
+  ],
+  story_fallback: [
+    "Post an Instagram story tagging Mesita and the venue.",
+    {
+      text: "Upload a screenshot in the Mesita app.",
+      struck: true,
+    },
+    "We detect the tag automatically — no screenshot needed.",
+    "Once verified, you can finish payment and claim your reward.",
+  ],
+  pay: [
+    "Pay what you owe at the table.",
+    "Tap confirm in Mesita when you're done.",
+  ],
+  pay_stripe: [
+    "Open the secure payment link on your phone.",
+    "Pay online — your reward applies after payment clears.",
+  ],
+  cashback: ["Cashback is added to your Mesita balance."],
+  review: [
+    "Rate food, service, ambiance, and overall.",
+    "Add optional comments about your visit.",
+  ],
+};
+
+/** One-line copy when a step is done or not yet open. */
+export const STEP_SEQUENCE_SUMMARY: Record<
+  TicketFlowStepId,
+  { done: string; upcoming: string }
+> = {
+  scan: {
+    done: "Your QR was scanned — visit started.",
+    upcoming: "Show your Mesita QR so staff can start your visit.",
+  },
+  bill: {
+    done: "Your subtotal and discount are ready.",
+    upcoming: "Your subtotal will show up here.",
+  },
+  story_fallback: {
+    done: "Your story was verified.",
+    upcoming: "Post an IG story tagging Mesita and the venue.",
+  },
+  pay: {
+    done: "Payment confirmed.",
+    upcoming: "Pay at the table, then confirm in Mesita.",
+  },
+  pay_stripe: {
+    done: "Paid online.",
+    upcoming: "Pay with the secure link on your phone.",
+  },
+  cashback: {
+    done: "Cashback added to your Mesita balance.",
+    upcoming: "Cashback lands in your Mesita balance after payment.",
+  },
+  review: {
+    done: "Thanks — your review was submitted.",
+    upcoming: "Rate your visit when you're ready.",
+  },
+};
+
+export function ticketFlowStepAnchorId(stepId: TicketFlowStepId): string {
+  return `ticket-flow-step-${stepId}`;
+}
+
+export function ticketFlowStepStatusLabel(
+  step: TicketFlowStepView,
+): string {
+  if (step.state === "done") return "Done";
+  if (step.state === "active") return "Now";
+  return "Pending";
+}
 
 function hasBill(input: TicketProgressInput): boolean {
   return input.total_cents != null && input.total_cents > 0;
@@ -89,11 +170,29 @@ function storyVerified(story_status: string): boolean {
   return STORY_VERIFIED.has(story_status as StoryStatus);
 }
 
-function payConfirmed(input: TicketProgressInput): boolean {
+function discountPaid(input: TicketProgressInput): boolean {
   return (
     Boolean(input.consumer_payment_confirmed_at) ||
-    ["awaiting_story", "revealed", "paid"].includes(input.status)
+    input.status === "revealed"
   );
+}
+
+/** Stripe checkout completed (formal cashback types). */
+function stripePaid(input: TicketProgressInput): boolean {
+  return (
+    input.status === "paid" ||
+    input.status === "awaiting_story" ||
+    input.status === "revealed"
+  );
+}
+
+/** Cashback credited to Mesita balance. */
+function cashbackLanded(input: TicketProgressInput): boolean {
+  return input.status === "paid" || input.status === "revealed";
+}
+
+function reviewDone(input: TicketProgressInput): boolean {
+  return input.reviewCompleted;
 }
 
 function inferCurrentIndex(
@@ -103,82 +202,35 @@ function inferCurrentIndex(
 ): number {
   const idx = (id: TicketFlowStepId) => steps.indexOf(id);
 
-  if (input.reviewNotificationPending) return idx("review");
-
-  const allComplete =
-    !input.paymentNotificationPending &&
-    !input.reviewNotificationPending &&
-    (payConfirmed(input) ||
-      input.status === "paid" ||
-      input.status === "revealed");
-
-  if (allComplete && !input.reviewNotificationPending) {
-    return steps.length;
-  }
+  if (!hasBill(input)) return idx("scan");
 
   switch (flowType) {
     case "A": {
-      if (
-        input.paymentNotificationPending ||
-        (input.status === "awaiting_payment_confirm" && !payConfirmed(input))
-      ) {
-        return idx("pay");
-      }
-      return idx("bill");
+      if (discountPaid(input) && reviewDone(input)) return steps.length;
+      if (discountPaid(input)) return idx("review");
+      return idx("pay");
     }
     case "B": {
-      const storyOk = storyVerified(input.story_status);
-      if (
-        payConfirmed(input) &&
-        input.status === "awaiting_story" &&
-        !storyOk
-      ) {
-        return idx("story_vuln");
-      }
-      if (
-        input.paymentNotificationPending ||
-        (input.status === "awaiting_payment_confirm" && !payConfirmed(input))
-      ) {
-        return idx("pay");
-      }
-      if (hasBill(input) && storyOk && !payConfirmed(input)) {
-        return idx("story_fallback");
-      }
-      if (hasBill(input) && !storyOk) {
-        return idx("bill");
-      }
-      return idx("story");
+      if (discountPaid(input) && reviewDone(input)) return steps.length;
+      if (discountPaid(input)) return idx("review");
+      if (!storyVerified(input.story_status)) return idx("story_fallback");
+      return idx("pay");
     }
     case "C": {
-      if (input.status === "paid" || input.status === "revealed") {
-        return steps.length;
-      }
-      if (input.status === "pending_pay" || input.paymentNotificationPending) {
-        return idx("pay_stripe");
-      }
-      return idx("bill");
+      if (reviewDone(input)) return steps.length;
+      if (cashbackLanded(input)) return idx("review");
+      if (stripePaid(input)) return idx("cashback");
+      return idx("pay_stripe");
     }
     case "D": {
-      const storyOk = storyVerified(input.story_status);
-      if (input.status === "paid" || input.status === "revealed") {
-        return steps.length;
-      }
-      if (input.status === "awaiting_story") {
-        return storyOk ? idx("cashback") : idx("story_vuln");
-      }
-      if (input.status === "pending_pay" || input.paymentNotificationPending) {
-        return idx("pay_stripe");
-      }
-      if (hasBill(input) && storyOk) {
-        return idx("story_fallback");
-      }
-      if (hasBill(input) && !storyOk) {
-        return idx("bill");
-      }
-      return idx("story");
+      if (reviewDone(input)) return steps.length;
+      if (cashbackLanded(input)) return idx("review");
+      if (stripePaid(input)) return idx("cashback");
+      if (!storyVerified(input.story_status)) return idx("story_fallback");
+      return idx("pay_stripe");
     }
     default:
-      return 0;
+      return idx("scan");
   }
 }
 
@@ -220,5 +272,13 @@ export function ticketProgressFromBundle(input: {
     consumer_payment_confirmed_at: input.consumer_payment_confirmed_at ?? null,
     paymentNotificationPending: input.payment?.status === "pending",
     reviewNotificationPending: input.review?.status === "pending",
+    reviewCompleted: input.review?.status === "completed",
   };
+}
+
+export function isTicketFlowComplete(input: TicketProgressInput): boolean {
+  const flowType = ticketFlowTypeFromKind(input.kind);
+  const stepIds = FLOW_STEPS_BY_TYPE[flowType];
+  const currentIndex = inferCurrentIndex(flowType, stepIds, input);
+  return currentIndex >= stepIds.length;
 }

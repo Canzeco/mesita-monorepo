@@ -1,13 +1,24 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
-import { PayTickets } from "@/components/consumer/PayTickets";
 import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
 import { payTabHref, type PayTab } from "@/lib/pay-route";
+
+const PayTickets = dynamic(
+  () => import("@/components/consumer/PayTickets").then((mod) => mod.PayTickets),
+  {
+    loading: () => (
+      <div className="border-border bg-card text-muted-foreground rounded-lg border px-4 py-6 text-center text-sm">
+        Loading tickets…
+      </div>
+    ),
+  },
+);
 
 const TABS: { id: PayTab; label: string }[] = [
   { id: "qr", label: "QR" },

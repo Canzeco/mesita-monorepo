@@ -3,6 +3,7 @@
 import { Gift } from "lucide-react";
 import { tierProperLabel } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
+import { resolvePromoRateFromVenueRow } from "@/lib/promo-rates";
 import type { Venue } from "@/lib/api/venues";
 
 // Tiny shared building block for the venue-card promo callout.
@@ -48,11 +49,12 @@ export function PromoChip({
 
   // Hard gate: only Verified Partners can offer rewards. Web-listed venues
   // never resolve a rate; a Verified Partner may also choose not to set one.
-  const isPartner = venue.listing_type === "partner";
   const isFirstVisit = venue.is_first_visit !== false;
-  const promoPercent = isPartner
-    ? resolvePromoRate(venue, isFirstVisit, tier === "premium")
-    : null;
+  const promoPercent = resolvePromoRateFromVenueRow(
+    venue as unknown as Record<string, unknown>,
+    isFirstVisit,
+    tier === "premium",
+  );
 
   // No reward at the current tier. Hidden by default; when the caller opts
   // in, the absence is stated with a neutral pill rather than vanishing — the
@@ -70,6 +72,8 @@ export function PromoChip({
   }
 
   const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
+  const mechanicWord =
+    venue.fiscal_type === "formal" ? "cashback" : "discount";
   const tierLabel = tierProperLabel(tier);
   const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
   // Ticket cap: the reward applies to the first N of the bill, then full
@@ -90,36 +94,8 @@ export function PromoChip({
     >
       <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
       <span className="font-semibold">
-        {promoPercent}% OFF {promoKindLabel} discount
+        {promoPercent}% {mechanicWord} · {promoKindLabel}
       </span>
     </span>
   );
-}
-
-// Active reward rate for the current guest's tier. Reads the real per-tier
-// columns the venues row carries at runtime (welcome_/default_ × free/
-// premium) — present even though they're not on the Venue type — picking the
-// welcome bucket on a first visit and the default bucket afterwards. Falls
-// back across visit buckets, then to the legacy single cashback_percent.
-// Returns null when the venue has no promo at this tier so the caller can
-// hide the ribbon entirely.
-function resolvePromoRate(
-  venue: Venue,
-  isFirstVisit: boolean,
-  premium: boolean,
-): number | null {
-  const row = venue as unknown as Record<string, unknown>;
-  const rate = (key: string): number | null => {
-    const n = row[key];
-    return typeof n === "number" && n > 0 ? n : null;
-  };
-  const welcome = premium
-    ? rate("welcome_premium_rate")
-    : rate("welcome_free_rate");
-  const dflt = premium ? rate("premium_rate") : rate("free_rate");
-  const legacy =
-    venue.cashback_percent != null && venue.cashback_percent > 0
-      ? venue.cashback_percent
-      : null;
-  return (isFirstVisit ? (welcome ?? dflt) : (dflt ?? welcome)) ?? legacy;
 }

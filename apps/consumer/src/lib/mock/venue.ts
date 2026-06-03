@@ -127,6 +127,8 @@ export type VenueDetail = {
     };
     is_first_visit: boolean;
   };
+  /** Business set per-tier rates on the Promos page (not scraped legacy percent). */
+  promo_configured?: boolean;
   reward_cap_mxn: number;
   // When true, the reward unlocks only after the guest posts an Instagram
   // story tagging the venue (in addition to paying via QR). Drives the
@@ -395,6 +397,7 @@ export const mockVenue: VenueDetail = {
     },
     is_first_visit: false,
   },
+  promo_configured: true,
   reward_cap_mxn: 500,
   requires_story: true,
 

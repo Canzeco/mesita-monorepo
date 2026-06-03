@@ -51,6 +51,10 @@ import { tierProperLabel } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import {
+  resolveActivePromoRate,
+  venueOffersMesitaRewards,
+} from "@/lib/promo-rates";
 
 import { cn, firstInitial } from "@/lib/utils";
 import type { Tier, VenueDetail } from "@/lib/mock/venue";
@@ -661,27 +665,16 @@ function HoursTableCard({ venue }: { venue: VenueDetail }) {
 function RewardsBox({ venue }: { venue: VenueDetail }) {
   const membership = useMembership();
   const { welcome, default: returning, is_first_visit } = venue.promo_matrix;
-  // Resolve the reward against the guest's REAL tier from the shared
-  // membership context — the server adapter can't know who's viewing, so the
-  // active cell is picked here, keeping the detail hero in lock-step with the
-  // per-tier rate the swipe/catalog PromoChip already resolves.
   const tier = membership.tier;
 
-  // Rewards are a Verified-Partner-only capability. Web-listed venues never
-  // offer one; a Verified Partner may also choose not to set any rate. Both
-  // cases render the section — but with a plain "doesn't offer rewards"
-  // state instead of the pink hero — so the guest knows where they stand
-  // rather than wondering whether a section is missing. Only a partner with
-  // a real rate at SOME tier reaches the reward UI below; when they have a
-  // rate at another tier but not the guest's own, the hero still renders
-  // ("No reward at Mesita {tier} yet") as an upgrade nudge.
+  const offersRewards = venueOffersMesitaRewards({
+    listing_type: venue.listing_type,
+    promo_matrix: venue.promo_matrix,
+    promo_configured: venue.promo_configured === true,
+  });
   const isPartner = venue.listing_type === "partner";
-  const hasAnyRate =
-    (welcome.free ?? 0) > 0 ||
-    (welcome.premium ?? 0) > 0 ||
-    (returning.free ?? 0) > 0 ||
-    (returning.premium ?? 0) > 0;
-  if (!isPartner || !hasAnyRate) {
+
+  if (!offersRewards) {
     return (
       <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
         <div className="flex flex-col items-center gap-3 py-3 text-center">
@@ -695,7 +688,9 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
             <p className="text-muted-foreground text-xs leading-snug">
               {isPartner
                 ? "This Verified Partner isn't running a Mesita reward right now."
-                : "Only Verified Partners run the Mesita reward program — this place is a web listing."}
+                : venue.promo_configured
+                  ? "Rewards are being set up for this venue."
+                  : "Only Verified Partners run the Mesita reward program — this place is a web listing."}
             </p>
           </div>
         </div>
@@ -706,7 +701,11 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
   // Active reward = welcome variant on a first visit, default variant
   // otherwise. Null means the venue offers nothing at this tier — the
   // hero still renders so the user knows where they stand.
-  const activeValue = is_first_visit ? welcome[tier] : returning[tier];
+  const activeValue = resolveActivePromoRate(
+    venue.promo_matrix,
+    tier,
+    is_first_visit,
+  );
   // Mechanic comes in capitalized ("Cashback" / "Discount") so it can sit
   // in a subtitle pill; lowercase it when reading inline with the
   // percentage ("20% cashback").

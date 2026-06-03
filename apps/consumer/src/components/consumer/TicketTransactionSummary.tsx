@@ -1,0 +1,121 @@
+import {
+  formatPayMx,
+  formatTicketTransactionSummaryLine,
+  type TicketTransactionSummary as TicketTransactionSummaryData,
+} from "@/lib/api/pay";
+import { cn } from "@/lib/utils";
+
+function SummaryRow({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          "font-semibold tabular-nums",
+          highlight ? "text-secondary" : "text-foreground",
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+export function TicketTransactionSummary({
+  summary,
+  variant = "compact",
+  className,
+}: {
+  summary: TicketTransactionSummaryData;
+  variant?: "compact" | "detail";
+  className?: string;
+}) {
+  const line = formatTicketTransactionSummaryLine(summary);
+
+  if (variant === "compact") {
+    return (
+      <div
+        className={cn(
+          "bg-foreground text-background mt-2 w-full rounded-md px-3 py-2.5 text-left",
+          className,
+        )}
+      >
+        <p className="text-[10px] font-semibold tracking-[0.12em] uppercase opacity-80">
+          Transaction summary
+        </p>
+        <p className="mt-1 text-xs leading-snug font-medium">{line}</p>
+      </div>
+    );
+  }
+
+  const promoLabel =
+    summary.mechanic === "discount"
+      ? summary.promoPercent != null && summary.promoPercent > 0
+        ? `${summary.promoPercent}% off subtotal`
+        : "—"
+      : summary.promoPercent != null && summary.promoPercent > 0
+        ? `${summary.promoPercent}% ${summary.promoVerb}`
+        : "—";
+
+  const rewardLabel =
+    summary.mechanic === "discount"
+      ? summary.promoPercent != null && summary.promoPercent > 0
+        ? `${summary.promoPercent}% (${formatPayMx(summary.rewardCents, summary.currency)})`
+        : summary.rewardCents > 0
+          ? formatPayMx(summary.rewardCents, summary.currency)
+          : "—"
+      : summary.rewardPercent != null && summary.rewardPercent > 0
+        ? `${summary.rewardPercent}% (${formatPayMx(summary.rewardCents, summary.currency)})`
+        : summary.rewardCents > 0
+          ? formatPayMx(summary.rewardCents, summary.currency)
+          : "—";
+
+  return (
+    <div
+      className={cn(
+        "border-border bg-background space-y-2 rounded-md border px-3 py-3",
+        className,
+      )}
+    >
+      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+        Transaction summary
+      </p>
+      <SummaryRow
+        label={summary.mechanic === "discount" ? "Discount on subtotal" : "Won"}
+        value={promoLabel}
+        highlight
+      />
+      <SummaryRow
+        label="Payment"
+        value={
+          summary.paymentCents != null
+            ? formatPayMx(summary.paymentCents, summary.currency)
+            : "—"
+        }
+      />
+      {summary.mechanic === "cashback" ? (
+        <>
+          <SummaryRow label="Reward" value={rewardLabel} highlight />
+          <SummaryRow
+            label="Tip"
+            value={
+              summary.tipPercent != null && summary.tipPercent > 0
+                ? `${summary.tipPercent}%`
+                : "—"
+            }
+          />
+        </>
+      ) : (
+        <SummaryRow label="You save" value={rewardLabel} highlight />
+      )}
+    </div>
+  );
+}

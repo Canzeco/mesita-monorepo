@@ -12,6 +12,10 @@
 import type { VenueDetail } from "@/lib/mock/venue";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { relativeLabel } from "@/lib/utils";
+import {
+  buildPromoMatrixFromRow,
+  hasExplicitTierRates,
+} from "@/lib/promo-rates";
 
 // Loose row type — the EF returns the full venue projection; we read what we
 // need defensively.
@@ -324,17 +328,8 @@ export function venueRowToDetail(row: Row): VenueDetail {
       reward_value: activePremiumRate,
     },
 
-    promo_matrix: {
-      welcome: {
-        free: num(row.welcome_free_rate) ?? null,
-        premium: num(row.welcome_premium_rate) ?? null,
-      },
-      default: {
-        free: num(row.free_rate) ?? null,
-        premium: num(row.premium_rate) ?? null,
-      },
-      is_first_visit: true,
-    },
+    promo_matrix: buildPromoMatrixFromRow(row, listingType),
+    promo_configured: hasExplicitTierRates(row),
     // Ticket cap — the promo applies to the first `monthly_promo_cap` of the
     // bill (a peso amount in the venue's currency), then full price. 0 = no
     // cap. Reads the same column the business sets on the Promos page.

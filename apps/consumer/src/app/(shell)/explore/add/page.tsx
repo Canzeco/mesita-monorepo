@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, Plus, Search } from "lucide-react";
+import { CheckCircle2, Loader2, Search, Sparkles } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCreateVenueAsConsumerResult,
@@ -309,7 +309,7 @@ export default function ExploreAddPage() {
               </>
             ) : (
               <>
-                <Plus className="h-4 w-4" />
+                <Sparkles className="h-4 w-4" />
                 Add selected venue
               </>
             )}

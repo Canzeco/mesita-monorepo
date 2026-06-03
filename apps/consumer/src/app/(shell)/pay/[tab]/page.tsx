@@ -1,9 +1,15 @@
+import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
 import { payTabFromSegment, payTabHref } from "@/lib/pay-route";
-import { PayClient } from "../PayClient";
+import { PayTabLoading } from "../PayTabLoading";
+
+const PayClient = nextDynamic(
+  () => import("../PayClient").then((mod) => mod.PayClient),
+  { loading: () => <PayTabLoading /> },
+);
 
 export const dynamic = "force-dynamic";
 
