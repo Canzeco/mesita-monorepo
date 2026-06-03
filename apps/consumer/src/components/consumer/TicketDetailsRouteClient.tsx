@@ -22,10 +22,8 @@ import { TicketTransactionSummary } from "@/components/consumer/TicketTransactio
 import {
   discountPaymentPhase,
   isTicketFlowComplete,
-  payStepActiveSummary,
   resolveTicketFlowSteps,
-  STEP_SEQUENCE_DETAILS,
-  STEP_SEQUENCE_SUMMARY,
+  STEP_NOW_TITLE,
   ticketProgressFromBundle,
   type TicketFlowStepView,
 } from "@/lib/ticket-flow-steps";
@@ -186,16 +184,8 @@ export function TicketDetailsRouteClient({
   const rewardLabel = formatTicketRewardLabel(payload, { capMxn });
   const activeStep = flowSteps.find((s) => s.state === "active");
 
-  const renderStepSummary = (step: TicketFlowStepView) => {
-    const summary = STEP_SEQUENCE_SUMMARY[step.id];
-    const line =
-      step.state === "done"
-        ? summary.done
-        : step.id === "pay" && step.state === "active"
-          ? payStepActiveSummary(progress)
-          : summary.upcoming;
-
-    if (step.id === "bill" && step.state === "done" && payload.total_cents) {
+  const renderActiveContent = (step: TicketFlowStepView) => {
+    if (step.id === "bill" && payload.total_cents) {
       return (
         <TicketBillSummary
           payload={payload}
@@ -205,152 +195,65 @@ export function TicketDetailsRouteClient({
       );
     }
 
-    if (
-      step.id === "review" &&
-      step.state === "done" &&
-      transactionSummary
-    ) {
+    if (step.id === "pay" && discountPaymentPhase(progress) === "pending") {
       return (
-        <TicketTransactionSummary summary={transactionSummary} variant="detail" />
+        <button
+          type="button"
+          onClick={() => void onConfirm()}
+          disabled={busy}
+          className="btn-primary"
+        >
+          {busy ? "Sending…" : "I paid — Paid issued"}
+        </button>
       );
     }
 
-    return (
-      <p className="text-muted-foreground text-[13px] leading-relaxed">
-        {line}
-      </p>
-    );
-  };
-
-  const renderStepFullDetail = (step: TicketFlowStepView) => {
-    const bullets = STEP_SEQUENCE_DETAILS[step.id];
-    const lead =
-      step.state === "active"
-        ? step.id === "pay"
-          ? payStepActiveSummary(progress)
-          : STEP_SEQUENCE_SUMMARY[step.id].upcoming
-        : null;
-
-    return (
-      <div className="space-y-3">
-        {lead ? (
-          <p className="text-foreground text-[13px] leading-relaxed">{lead}</p>
-        ) : null}
-
-        <ul className="text-muted-foreground space-y-1.5 text-[13px] leading-relaxed">
-          {bullets.map((line, i) => {
-            const text = typeof line === "string" ? line : line.text;
-            const struck = typeof line === "object" && line.struck;
-
-            return (
-              <li key={`${step.id}-${i}`} className="flex gap-2">
-                <span className="text-secondary/80 mt-1 shrink-0 text-[10px]">●</span>
-                <span className={cn(struck && "text-muted-foreground/60 line-through")}>
-                  {text}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-
-        {step.id === "bill" && payload.total_cents ? (
-          <TicketBillSummary
-            payload={payload}
-            capMxn={capMxn}
-            ticketKind={ticketKind}
+    if (step.id === "review") {
+      return (
+        <div className="space-y-2.5">
+          <StarRow
+            label="Food"
+            value={reviewDraft.food}
+            onChange={(v) => setReviewDraft((d) => ({ ...d, food: v }))}
           />
-        ) : null}
+          <StarRow
+            label="Service"
+            value={reviewDraft.service}
+            onChange={(v) => setReviewDraft((d) => ({ ...d, service: v }))}
+          />
+          <StarRow
+            label="Ambiance"
+            value={reviewDraft.ambiance}
+            onChange={(v) => setReviewDraft((d) => ({ ...d, ambiance: v }))}
+          />
+          <StarRow
+            label="Overall"
+            value={reviewDraft.overall}
+            onChange={(v) => setReviewDraft((d) => ({ ...d, overall: v }))}
+          />
+          <textarea
+            value={reviewDraft.comments}
+            onChange={(e) =>
+              setReviewDraft((d) => ({ ...d, comments: e.target.value }))
+            }
+            placeholder="Anything else? (optional)"
+            rows={2}
+            className="border-border bg-background text-foreground w-full rounded-xl border px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => void onReview()}
+            disabled={busy}
+            className="btn-primary"
+          >
+            {busy ? "Sending…" : "Submit review"}
+          </button>
+        </div>
+      );
+    }
 
-        {step.id === "pay" ? (
-          <div className="surface-card space-y-2 p-3">
-            {discountPaymentPhase(progress) === "pending" ? (
-              <>
-                <p className="text-foreground text-[13px] font-medium">
-                  Ready to confirm payment?
-                </p>
-                <p className="text-muted-foreground text-[12px] leading-relaxed">
-                  Tap below once you&apos;ve paid the amount due at the table.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void onConfirm()}
-                  disabled={busy}
-                  className="btn-primary"
-                >
-                  {busy ? "Confirming..." : "Paid issued"}
-                </button>
-              </>
-            ) : (
-              <p className="text-muted-foreground text-[13px] leading-relaxed">
-                {payStepActiveSummary(progress)}
-              </p>
-            )}
-          </div>
-        ) : null}
-
-        {step.id === "pay_stripe" ? (
-          <div className="surface-card space-y-2 p-3">
-            <p className="text-foreground text-[13px] font-medium">
-              Pay online
-            </p>
-            <p className="text-muted-foreground text-[12px] leading-relaxed">
-              Open the Stripe checkout link on your phone when staff sends it.
-            </p>
-          </div>
-        ) : null}
-
-        {step.id === "review" ? (
-          <div className="surface-card space-y-2.5 p-3">
-            <p className="text-foreground text-[13px] font-medium">
-              How was your visit?
-            </p>
-            <StarRow
-              label="Food"
-              value={reviewDraft.food}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, food: v }))}
-            />
-            <StarRow
-              label="Service"
-              value={reviewDraft.service}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, service: v }))}
-            />
-            <StarRow
-              label="Ambiance"
-              value={reviewDraft.ambiance}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, ambiance: v }))}
-            />
-            <StarRow
-              label="Overall"
-              value={reviewDraft.overall}
-              onChange={(v) => setReviewDraft((d) => ({ ...d, overall: v }))}
-            />
-            <textarea
-              value={reviewDraft.comments}
-              onChange={(e) =>
-                setReviewDraft((d) => ({ ...d, comments: e.target.value }))
-              }
-              placeholder="Comments (optional)"
-              rows={2}
-              className="border-border bg-background text-foreground w-full rounded-xl border px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => void onReview()}
-              disabled={busy}
-              className="btn-primary"
-            >
-              {busy ? "Sending..." : "Submit review"}
-            </button>
-          </div>
-        ) : null}
-      </div>
-    );
+    return null;
   };
-
-  const renderStepDetail = (step: TicketFlowStepView) =>
-    step.state === "active"
-      ? renderStepFullDetail(step)
-      : renderStepSummary(step);
 
   const onConfirm = async () => {
     setBusy(true);
@@ -399,7 +302,7 @@ export function TicketDetailsRouteClient({
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <p className="text-foreground text-sm font-semibold">Ticket details</p>
+          <p className="text-foreground text-sm font-semibold">Your visit</p>
         </div>
       ) : null}
 
@@ -422,18 +325,12 @@ export function TicketDetailsRouteClient({
               </div>
             </div>
             <div className="surface-card space-y-3 p-4">
-              <div className="h-3 w-16 rounded bg-muted" />
-              <div className="space-y-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex gap-3">
-                    <div className="h-8 w-8 shrink-0 rounded-full bg-muted" />
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="h-3 w-20 rounded bg-muted" />
-                      <div className="h-12 rounded-lg bg-muted/40" />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="h-6 w-6 shrink-0 rounded-full bg-muted" />
+                  <div className="h-4 flex-1 rounded bg-muted" />
+                </div>
+              ))}
             </div>
           </div>
         ) : (
@@ -472,61 +369,52 @@ export function TicketDetailsRouteClient({
                   <p className="text-secondary text-[13px] leading-snug font-medium">
                     {rewardLabel}
                   </p>
-                  {venueHref ? (
-                    <Link
-                      href={venueHref}
-                      className="text-muted-foreground hover:text-foreground text-[12px] font-medium transition"
-                    >
-                      View place →
-                    </Link>
-                  ) : null}
                 </div>
               </div>
 
-              {activeStep ? (
-                <div className="border-border/60 from-secondary/8 border-t bg-gradient-to-r to-transparent px-3 py-2.5">
-                  <p className="text-muted-foreground text-[12px]">
-                    Current step:{" "}
-                    <span className="text-foreground font-semibold">
-                      {activeStep.label}
-                    </span>
+              {activeStep && !isComplete ? (
+                <div className="border-border/60 border-t px-3 py-3">
+                  <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+                    Do this now
+                  </p>
+                  <p className="text-foreground mt-0.5 text-lg font-semibold leading-tight">
+                    {STEP_NOW_TITLE[activeStep.id]}
                   </p>
                 </div>
               ) : isComplete ? (
-                <div className="border-border/60 from-secondary/8 border-t bg-gradient-to-r to-transparent px-3 py-2.5">
-                  <p className="text-secondary text-[12px] font-medium">
-                    Visit complete
+                <div className="border-border/60 border-t px-3 py-3">
+                  <p className="text-secondary text-sm font-semibold">
+                    All done
                   </p>
                 </div>
               ) : null}
             </section>
 
-            <section>
-              <div className="surface-card p-4">
-                <div className="mb-4">
-                  <h2 className="text-foreground text-base font-semibold">
-                    Step-by-step
-                  </h2>
-                  <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
-                    {isComplete
-                      ? "Everything from scan to review for this visit."
-                      : activeStep
-                        ? `You're on ${activeStep.label.toLowerCase()}. Done steps show a short summary; the current step has full details.`
-                        : "Track each step of your visit."}
-                  </p>
+            <section className="surface-card p-4">
+              <p className="text-muted-foreground mb-3 text-[11px] font-semibold tracking-[0.1em] uppercase">
+                Steps
+              </p>
+
+              <TicketFlowStepDetailPanel
+                steps={flowSteps}
+                progress={progress}
+                renderActiveContent={renderActiveContent}
+              />
+
+              {isComplete && transactionSummary ? (
+                <div className="border-border/60 mt-4 border-t pt-4">
+                  <TicketTransactionSummary
+                    summary={transactionSummary}
+                    variant="detail"
+                  />
                 </div>
+              ) : null}
 
-                <TicketFlowStepDetailPanel
-                  steps={flowSteps}
-                  renderStepDetail={renderStepDetail}
-                />
-
-                {error ? (
-                  <p className="bg-destructive/10 text-destructive mt-4 rounded-xl px-3 py-2.5 text-sm">
-                    {error}
-                  </p>
-                ) : null}
-              </div>
+              {error ? (
+                <p className="bg-destructive/10 text-destructive mt-4 rounded-xl px-3 py-2 text-sm">
+                  {error}
+                </p>
+              ) : null}
             </section>
           </div>
         )}

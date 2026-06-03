@@ -67,12 +67,34 @@ export const FLOW_STEPS_BY_TYPE: Record<TicketFlowType, TicketFlowStepId[]> = {
 
 export const STEP_LABELS: Record<TicketFlowStepId, string> = {
   scan: "Scan",
-  bill: "Billing",
+  bill: "Bill",
   story: "Story",
   pay: "Pay",
-  pay_stripe: "Pay",
+  pay_stripe: "Pay online",
   cashback: "Cashback",
   review: "Review",
+};
+
+/** Big headline on the ticket card — plain language. */
+export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
+  scan: "Show your QR",
+  bill: "Wait for your bill",
+  story: "Post your story",
+  pay: "Pay at the table",
+  pay_stripe: "Pay on your phone",
+  review: "Rate your visit",
+  cashback: "Cashback incoming",
+};
+
+/** One line under each step in the checklist. */
+export const STEP_DONE_LINE: Record<TicketFlowStepId, string> = {
+  scan: "Scanned",
+  bill: "Bill ready",
+  story: "Story OK",
+  pay: "Paid",
+  pay_stripe: "Paid online",
+  review: "Review sent",
+  cashback: "In your balance",
 };
 
 export type StepSequenceLine =
@@ -131,8 +153,8 @@ export const STEP_SEQUENCE_SUMMARY: Record<
     upcoming: "Post an IG story tagging Mesita and the venue.",
   },
   pay: {
-    done: "Paid issued and received — ready for review.",
-    upcoming: "Pay at the table, then tap Paid issued.",
+    done: "You and staff both confirmed payment.",
+    upcoming: "Pay, then tap Paid issued.",
   },
   pay_stripe: {
     done: "Paid online.",
@@ -191,11 +213,38 @@ function discountPaymentComplete(input: TicketProgressInput): boolean {
 
 export function payStepActiveSummary(input: TicketProgressInput): string {
   const phase = discountPaymentPhase(input);
-  if (phase === "pending") return STEP_SEQUENCE_SUMMARY.pay.upcoming;
+  if (phase === "pending") {
+    return "Pay what you owe, then tap the button below.";
+  }
   if (phase === "issued") {
-    return "Paid issued — waiting for staff to tap Paid received.";
+    return "Waiting for staff to tap Paid received.";
   }
   return STEP_SEQUENCE_SUMMARY.pay.done;
+}
+
+/** Single instruction for the active step (no bullet lists). */
+export function ticketStepActiveInstruction(
+  stepId: TicketFlowStepId,
+  progress: TicketProgressInput,
+): string {
+  switch (stepId) {
+    case "scan":
+      return "Open Pay → QR. Staff scans it at your table.";
+    case "bill":
+      return "Staff enters your total. You'll see the amount here.";
+    case "story":
+      return "Instagram story tagging Mesita + this place. We detect it automatically.";
+    case "pay":
+      return payStepActiveSummary(progress);
+    case "pay_stripe":
+      return "Use the secure payment link on your phone.";
+    case "review":
+      return "Quick ratings — helps the restaurant and Mesita.";
+    case "cashback":
+      return "Shows in Pay → Balance after you finish review.";
+    default:
+      return "";
+  }
 }
 
 function stripePaid(input: TicketProgressInput): boolean {

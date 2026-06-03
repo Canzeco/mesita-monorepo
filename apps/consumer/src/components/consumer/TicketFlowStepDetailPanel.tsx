@@ -2,97 +2,106 @@
 
 import { type ReactNode } from "react";
 import {
-  TICKET_STEP_ICONS,
-  TicketFlowStepCircle,
-} from "@/components/consumer/TicketFlowStepper";
-import {
-  ticketFlowStepAnchorId,
-  ticketFlowStepStatusLabel,
+  STEP_DONE_LINE,
+  ticketStepActiveInstruction,
   type TicketFlowStepView,
+  type TicketProgressInput,
 } from "@/lib/ticket-flow-steps";
 import { cn } from "@/lib/utils";
 
-function StepStatusBadge({ step }: { step: TicketFlowStepView }) {
-  const label = ticketFlowStepStatusLabel(step);
-
+function StepMarker({
+  step,
+  index,
+}: {
+  step: TicketFlowStepView;
+  index: number;
+}) {
+  if (step.state === "done") {
+    return (
+      <span
+        className="bg-secondary/15 text-secondary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+        aria-hidden
+      >
+        ✓
+      </span>
+    );
+  }
+  if (step.state === "active") {
+    return (
+      <span
+        className="bg-foreground text-background flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+        aria-hidden
+      >
+        {index}
+      </span>
+    );
+  }
   return (
     <span
-      className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
-        step.state === "done" && "bg-secondary/12 text-secondary",
-        step.state === "active" && "bg-pink-gradient text-white shadow-sm",
-        step.state === "upcoming" && "bg-muted/80 text-muted-foreground",
-      )}
+      className="border-border text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px]"
+      aria-hidden
     >
-      {label}
+      {index}
     </span>
   );
 }
 
 export function TicketFlowStepDetailPanel({
   steps,
-  renderStepDetail,
+  progress,
+  renderActiveContent,
 }: {
   steps: TicketFlowStepView[];
-  renderStepDetail: (step: TicketFlowStepView) => ReactNode;
+  progress: TicketProgressInput;
+  renderActiveContent?: (step: TicketFlowStepView) => ReactNode;
 }) {
   return (
-    <div className="space-y-0">
+    <ol className="divide-border/70 divide-y">
       {steps.map((step, i) => {
-        const Icon = TICKET_STEP_ICONS[step.id];
-        const isLast = i === steps.length - 1;
         const isActive = step.state === "active";
+        const isDone = step.state === "done";
 
         return (
-          <div
+          <li
             key={`${step.id}-${i}`}
-            id={ticketFlowStepAnchorId(step.id)}
-            className="scroll-mt-4 flex gap-3"
+            className={cn(
+              "flex gap-3 py-3 first:pt-0 last:pb-0",
+              isActive && "bg-muted/40 -mx-1 rounded-xl px-2",
+            )}
           >
-            <div className="relative w-8 shrink-0 self-stretch">
-              <div className="absolute top-0.5 left-1/2 z-10 -translate-x-1/2">
-                <TicketFlowStepCircle step={step} Icon={Icon} />
-              </div>
-              {!isLast ? (
-                <div
-                  className={cn(
-                    "absolute top-9 bottom-0 left-1/2 w-0.5 -translate-x-1/2",
-                    step.state === "done" ? "bg-secondary" : "bg-border",
-                  )}
-                  aria-hidden
-                />
+            <StepMarker step={step} index={i + 1} />
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "text-sm leading-tight font-semibold",
+                  isActive && "text-foreground",
+                  isDone && "text-muted-foreground",
+                  !isActive && !isDone && "text-muted-foreground/70",
+                )}
+              >
+                {step.label}
+              </p>
+
+              {isDone ? (
+                <p className="text-muted-foreground mt-0.5 text-xs">
+                  {STEP_DONE_LINE[step.id]}
+                </p>
+              ) : null}
+
+              {isActive ? (
+                <>
+                  <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
+                    {ticketStepActiveInstruction(step.id, progress)}
+                  </p>
+                  {renderActiveContent ? (
+                    <div className="mt-3">{renderActiveContent(step)}</div>
+                  ) : null}
+                </>
               ) : null}
             </div>
-
-            <div
-              className={cn(
-                "min-w-0 flex-1",
-                !isLast && "pb-6",
-                isActive &&
-                  "border-secondary/20 from-secondary/10 via-background to-accent/5 rounded-2xl border bg-gradient-to-br px-3.5 py-3.5 shadow-[0_8px_24px_-12px_oklch(0.65_0.24_5_/_0.35)]",
-                !isActive && "pt-0.5",
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p
-                  className={cn(
-                    "text-[15px] leading-tight font-semibold",
-                    step.state === "active" && "text-foreground",
-                    step.state === "done" && "text-secondary",
-                    step.state === "upcoming" && "text-muted-foreground",
-                  )}
-                >
-                  {step.label}
-                </p>
-                <StepStatusBadge step={step} />
-              </div>
-              <div className={cn("mt-2", !isActive && "mt-1.5")}>
-                {renderStepDetail(step)}
-              </div>
-            </div>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
