@@ -329,7 +329,7 @@ function SavedVenueTile({
 
 function SavedMetaTag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-2.5 py-1 text-[11px] whitespace-nowrap text-white backdrop-blur-md">
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-white/35 bg-black/45 px-2.5 py-1 text-[11px] whitespace-nowrap text-white backdrop-blur-md">
       {children}
     </span>
   );

@@ -12,7 +12,6 @@ import {
   type ConsumerMembership,
 } from "@/lib/api/profile";
 import { MembershipProvider } from "@/lib/membership-context";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -79,7 +78,9 @@ export default async function ConsumerShellLayout({
   //   - Middle: the body — flex-1, overflows internally via the page's
   //     own scroll container; never affects the chrome bands.
   //
-  const showBottomNav = pathname !== CONSUMER_ROUTES.share;
+  // The bottom nav is shown on every shell route. (Invite/Share used to hide
+  // it, which made the chrome appear to "break" when entering that surface —
+  // it's a first-class destination now, so it keeps the tabs like the rest.)
 
   // The modal slot is rendered last in this relative shell wrapper.
   // Section-scoped modal routes mount absolute overlays that intentionally
@@ -93,7 +94,7 @@ export default async function ConsumerShellLayout({
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>
           </div>
-          {showBottomNav ? <BottomNav userId={user.id} /> : null}
+          <BottomNav userId={user.id} />
           {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}

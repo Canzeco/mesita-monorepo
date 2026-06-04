@@ -232,7 +232,7 @@ export default function ExploreAddPage() {
     <div className="h-full overflow-y-auto px-4 pt-3 pb-6">
       <div className="mx-auto flex w-full max-w-xl flex-col text-center">
         <section className="border-border bg-card w-full rounded-2xl border p-3 text-left">
-          <label className="border-border bg-background focus-within:border-foreground/40 flex items-center gap-2 rounded-full border px-4 py-3 transition">
+          <label className="border-border bg-background focus-within:border-foreground/40 flex items-center gap-2 rounded-lg border px-4 py-3 transition">
             <Search className="text-muted-foreground h-4 w-4 shrink-0" />
             <input
               type="text"
@@ -300,7 +300,7 @@ export default function ExploreAddPage() {
             type="button"
             disabled={!selected || isAdding}
             onClick={onAddVenue}
-            className="bg-foreground text-background mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold disabled:opacity-50"
+            className="bg-foreground text-background mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold disabled:opacity-50"
           >
             {isAdding ? (
               <>

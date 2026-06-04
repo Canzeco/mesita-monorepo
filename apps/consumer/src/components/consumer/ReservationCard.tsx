@@ -93,7 +93,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
             </h3>
             <span
               className={cn(
-                "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
                 meta.pillClass,
               )}
             >
@@ -169,7 +169,7 @@ function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
       </div>
       <span
         className={cn(
-          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+          "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
           coupon.state === "active"
             ? "border-emerald-500/30 bg-emerald-50 text-emerald-800"
             : "border-amber-500/30 bg-amber-50 text-amber-800",

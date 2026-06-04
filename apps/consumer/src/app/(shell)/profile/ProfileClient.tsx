@@ -81,14 +81,14 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4">
-        <div className="border-border bg-card flex rounded-full border p-1">
+        <div className="border-border bg-card flex rounded-lg border p-1">
           {TABS.map((t) => (
             <Link
               key={t.id}
               href={t.href}
               scroll={false}
               className={cn(
-                "flex-1 rounded-full px-2 py-1.5 text-[12px] font-medium whitespace-nowrap transition",
+                "flex-1 rounded-md px-2 py-1.5 text-center text-[12px] font-medium whitespace-nowrap transition",
                 tab === t.id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
@@ -350,14 +350,14 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
   let footer: ReactNode = null;
   if (data.reached) {
     footer = (
-      <span className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-500/15 py-2.5 text-[12px] font-semibold text-emerald-700">
+      <span className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 py-2.5 text-[12px] font-semibold text-emerald-700">
         <Check className="h-3.5 w-3.5" strokeWidth={3} />
         {data.reachedLabel}
       </span>
     );
   } else if (data.action) {
     const cls =
-      "bg-pink-gradient shadow-sm flex items-center justify-center rounded-full py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]";
+      "bg-pink-gradient shadow-sm flex items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]";
     footer = data.action.href ? (
       <Link href={data.action.href} className={cls}>
         {data.action.label}
@@ -373,7 +373,7 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
     );
   } else if (data.note) {
     footer = (
-      <span className="border-border bg-muted/40 text-muted-foreground flex items-center justify-center rounded-full border py-2.5 text-[12px] font-medium">
+      <span className="border-border bg-muted/40 text-muted-foreground flex items-center justify-center rounded-lg border py-2.5 text-[12px] font-medium">
         {data.note}
       </span>
     );
@@ -561,7 +561,7 @@ function SettingsTab() {
 
       <SignOutButton
         redirectTo="/"
-        className="border-border bg-card hover:bg-muted mt-5 flex w-full items-center justify-center gap-2 rounded-full border py-4 text-sm font-semibold transition"
+        className="border-border bg-card hover:bg-muted mt-5 flex w-full items-center justify-center gap-2 rounded-lg border py-4 text-sm font-semibold transition"
       />
       <p className="text-muted-foreground mt-3 text-center text-[11px]">
         Not signed in?{" "}

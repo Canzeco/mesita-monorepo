@@ -175,7 +175,7 @@ function PremiumCheckoutButton() {
       type="button"
       onClick={MOCK_SUBSCRIPTION ? mockSubscribe : startCheckout}
       disabled={loading}
-      className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white disabled:opacity-70"
+      className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold text-white disabled:opacity-70"
     >
       <Sparkles className="h-4 w-4" />
       {loading ? "Activating Premium…" : "Continue to checkout"}

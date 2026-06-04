@@ -24,4 +24,4 @@ export const INFO_BOX_CLASS =
 // Primary submit button. Used for the bottom-of-form action — full-width,
 // pill-shaped, dark-foreground fill. Use cn() to merge in `flex-1`, etc.
 export const PRIMARY_BUTTON_CLASS =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background transition disabled:opacity-60";
+  "flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-foreground text-sm font-semibold text-background transition disabled:opacity-60";

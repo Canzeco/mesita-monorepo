@@ -108,14 +108,14 @@ export function VerifySocialSheet({
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Paste 8-digit code"
-          className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-4 h-12 w-full rounded-full border px-5 text-center text-sm outline-none"
+          className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-4 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
           maxLength={8}
         />
         <div className="mt-3 flex gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="border-border bg-card hover:bg-muted flex-1 rounded-full border py-3 text-sm font-semibold transition"
+            className="border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition"
           >
             Cancel
           </button>
@@ -123,7 +123,7 @@ export function VerifySocialSheet({
             type="button"
             onClick={mockVerify}
             disabled={code.length < 8 || verifying}
-            className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+            className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
           >
             {verifying ? (
               <Loader2 className="h-4 w-4 animate-spin" />

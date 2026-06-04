@@ -187,7 +187,7 @@ export function VenueSectionNav({ sections }: { sections: Section[] }) {
               href={`#${s.id}`}
               onClick={(e) => onTabClick(e, s.id)}
               className={cn(
-                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide transition",
+                "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition",
                 active
                   ? "bg-pink-gradient text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground",

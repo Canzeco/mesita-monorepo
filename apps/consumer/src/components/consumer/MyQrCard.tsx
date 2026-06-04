@@ -41,7 +41,7 @@ export function MyQrCard({ code }: { code: string }) {
           type="button"
           onClick={onCopy}
           aria-label={copied ? "Code copied" : "Copy code"}
-          className="border-border bg-background text-foreground hover:bg-muted flex items-center gap-2 rounded-full border px-4 py-2 text-base font-medium tracking-[0.16em] tabular-nums transition"
+          className="border-border bg-background text-foreground hover:bg-muted flex items-center gap-2 rounded-lg border px-4 py-2 text-base font-medium tracking-[0.16em] tabular-nums transition"
         >
           {displayCode}
           {copied ? (

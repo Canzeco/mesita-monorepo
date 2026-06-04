@@ -14,24 +14,19 @@ import type {
 function VenueThumbnail({
   photoUrl,
   name,
-  size = 88,
 }: {
   photoUrl?: string | null;
   name?: string | null;
-  size?: number;
 }) {
   return (
-    <div
-      className="bg-muted relative shrink-0 overflow-hidden rounded-xl ring-1 ring-border/60"
-      style={{ width: size, height: size }}
-    >
+    <div className="bg-muted relative aspect-square w-full shrink-0 overflow-hidden rounded-2xl ring-1 ring-border/60">
       {photoUrl ? (
         <Image
           src={photoUrl}
           alt={name ?? "Venue"}
           fill
           className="object-cover"
-          sizes={`${size}px`}
+          sizes="96px"
         />
       ) : (
         <div className="text-muted-foreground flex h-full items-center justify-center">
@@ -68,6 +63,9 @@ export function TicketVisitShell({
   transactionSummary?: TicketTransactionSummaryData | null;
   statusLine?: string | null;
 }) {
+  const pillBase =
+    "flex min-w-0 items-center rounded-xl px-3 ring-1 ring-inset";
+
   const nameEl = venueHref ? (
     <Link
       href={venueHref}
@@ -81,27 +79,29 @@ export function TicketVisitShell({
 
   return (
     <section className="surface-card-soft overflow-hidden ring-1 ring-secondary/15">
-      <div className="p-4">
-        <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
+      <div className="space-y-3 p-4">
+        <div className="grid grid-cols-[104px_minmax(0,1fr)] items-stretch gap-3">
           <VenueThumbnail photoUrl={venuePhotoUrl} name={venueName} />
-          <div className="flex h-[88px] min-w-0 flex-col gap-1.5">
-            <div className="bg-muted/50 flex min-h-0 flex-1 items-center rounded-xl px-3 ring-1 ring-border/50">
+          <div className="grid min-w-0 grid-rows-3 gap-2">
+            <div className={`${pillBase} bg-muted/50 ring-border/50`}>
               {nameEl}
             </div>
-            <div className="reward-highlight min-h-0 flex-1 items-center py-1.5">
-              <p className="text-secondary line-clamp-2 text-xs leading-snug font-semibold sm:text-sm">
+            <div
+              className={`${pillBase} border-secondary/20 from-secondary/12 to-accent/10 bg-gradient-to-br ring-secondary/15`}
+            >
+              <p className="text-secondary truncate text-sm font-semibold">
                 {rewardLabel}
               </p>
             </div>
-            <div className="bg-muted/40 flex min-h-0 flex-1 items-center rounded-xl px-3 ring-1 ring-border/50">
-              <p className="text-muted-foreground truncate text-xs font-medium tabular-nums sm:text-sm">
+            <div className={`${pillBase} bg-muted/40 ring-border/50`}>
+              <p className="text-muted-foreground truncate text-sm font-medium tabular-nums">
                 {visitDateLabel ?? "—"}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-muted/30 mt-3 rounded-xl px-2 py-3 ring-1 ring-border/50 sm:px-3">
+        <div className="bg-muted/30 rounded-2xl px-3 py-3.5 ring-1 ring-inset ring-border/50">
           <TicketFlowStepper
             steps={steps}
             selectedStepId={displayStepId}
@@ -114,10 +114,9 @@ export function TicketVisitShell({
           <TicketTransactionSummary
             summary={transactionSummary}
             variant="compact"
-            className="mt-3"
           />
         ) : statusLine ? (
-          <div className="bg-muted/40 mt-3 rounded-xl px-3 py-2.5 ring-1 ring-border/50">
+          <div className="bg-muted/40 rounded-2xl px-3.5 py-3 ring-1 ring-inset ring-border/50">
             <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
               Status
             </p>

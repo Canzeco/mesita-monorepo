@@ -74,7 +74,7 @@ export function VenueDetailPageHeader({
       <Link
         href={backHref}
         aria-label="Back"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground border-border border transition hover:bg-muted"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-foreground border-border border transition hover:bg-muted"
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
@@ -87,7 +87,7 @@ export function VenueDetailPageHeader({
         aria-label={saved ? "Unsave" : "Save"}
         aria-pressed={saved}
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
           saved
             ? "bg-pink-gradient text-white shadow-sm"
             : "bg-card text-foreground border-border border hover:bg-muted",
@@ -99,7 +99,7 @@ export function VenueDetailPageHeader({
         type="button"
         onClick={onShare}
         aria-label="Share"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground border-border border transition hover:bg-muted"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-foreground border-border border transition hover:bg-muted"
       >
         <Share2 className="h-4 w-4" />
       </button>

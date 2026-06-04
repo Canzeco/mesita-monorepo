@@ -489,7 +489,7 @@ function Deck({ venues }: { venues: Venue[] }) {
 
             <div
               className={cn(
-                "bg-foreground/40 pointer-events-none absolute top-4 left-4 z-30 rounded-full border-2 border-white px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
+                "bg-foreground/40 pointer-events-none absolute top-4 left-4 z-30 rounded-md border-2 border-white px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
                 dragX < -30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
               )}
             >
@@ -497,7 +497,7 @@ function Deck({ venues }: { venues: Venue[] }) {
             </div>
             <div
               className={cn(
-                "bg-pink-gradient pointer-events-none absolute top-4 right-4 z-30 rounded-full px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
+                "bg-pink-gradient pointer-events-none absolute top-4 right-4 z-30 rounded-md px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
                 dragX > 30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
               )}
             >
@@ -551,14 +551,14 @@ function Deck({ venues }: { venues: Venue[] }) {
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
+            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap transition active:scale-[0.97]"
           >
             <SlidersHorizontal className="h-4 w-4" /> Filter
           </button>
           <button
             type="button"
             onClick={skip}
-            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
+            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap transition active:scale-[0.97]"
           >
             <X className="h-4 w-4" /> Skip
           </button>
@@ -566,7 +566,7 @@ function Deck({ venues }: { venues: Venue[] }) {
             type="button"
             onClick={openInfo}
             aria-label="About this place"
-            className="border-border bg-card text-foreground/75 hover:text-foreground flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap transition"
+            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap transition active:scale-[0.97]"
           >
             <Store className="h-4 w-4" /> Info
           </button>
@@ -574,10 +574,10 @@ function Deck({ venues }: { venues: Venue[] }) {
             type="button"
             onClick={save}
             className={cn(
-              "flex h-12 flex-1 items-center justify-center gap-1 rounded-full border text-xs font-semibold whitespace-nowrap transition",
+              "flex h-12 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-semibold whitespace-nowrap transition active:scale-[0.97]",
               saved
-                ? "border-pink-500/50 bg-pink-500/20 text-pink-700"
-                : "border-pink-500/40 bg-pink-500/10 text-pink-600 hover:bg-pink-500/15",
+                ? "bg-pink-gradient shadow-glow border border-transparent text-white"
+                : "border-border bg-card text-secondary hover:bg-muted border",
             )}
           >
             <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
@@ -587,7 +587,7 @@ function Deck({ venues }: { venues: Venue[] }) {
             type="button"
             disabled
             aria-disabled="true"
-            className="border-border bg-muted text-muted-foreground flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-full border text-xs font-medium whitespace-nowrap"
+            className="border-border bg-muted/40 text-muted-foreground/70 flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap"
           >
             <CalendarCheck className="h-4 w-4" /> Reserve
           </button>
@@ -648,7 +648,7 @@ function ExhaustedDeck({
         type="button"
         onClick={onRestart}
         disabled={restarting}
-        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:cursor-default disabled:opacity-70"
+        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:cursor-default disabled:opacity-70"
       >
         {restarting ? (
           <>
@@ -698,7 +698,7 @@ function EmptyDeck({
       {actionHref && actionLabel && (
         <Link
           href={actionHref}
-          className="bg-foreground text-background mt-2 inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold hover:opacity-90"
+          className="bg-foreground text-background mt-2 inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90"
         >
           {actionLabel}
         </Link>

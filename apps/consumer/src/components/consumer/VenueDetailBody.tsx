@@ -270,7 +270,7 @@ function OverviewChip({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/35 bg-black/45 px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
+        "inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/35 bg-black/45 px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
         capitalize && "capitalize",
       )}
     >
@@ -614,7 +614,7 @@ function LocationBox({ venue }: { venue: VenueDetail }) {
 function HoursBox({ venue }: { venue: VenueDetail }) {
   return (
     <Box title="Time" icon={Clock} iconColor="text-violet-400">
-      <div className="bg-background rounded-full px-4 py-2.5 text-sm">
+      <div className="bg-background rounded-lg px-4 py-2.5 text-sm">
         <span className="font-semibold text-emerald-700">
           {venue.open_now ? "Open now" : "Closed"}
         </span>
@@ -828,9 +828,9 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
 // (Pay with QR); secondary = outlined pill (Upgrade plan). Both grow to fill
 // their row so the single-button and two-button layouts line up.
 const REWARD_PAY_BTN =
-  "bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white";
+  "bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-white";
 const REWARD_UPGRADE_BTN =
-  "border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition";
+  "border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold transition";
 
 // One numbered step in the "How it works" sequence. The badge carries the
 // step number; the tinted icon circle reads premium-violet for the
@@ -992,7 +992,7 @@ function RewardCell({
   if (active) {
     return (
       <span className="flex items-center justify-center">
-        <span className="bg-pink-gradient shadow-glow relative inline-flex items-baseline gap-0.5 rounded-full py-1.5 pr-5 pl-3">
+        <span className="bg-pink-gradient shadow-glow relative inline-flex items-baseline gap-0.5 rounded-lg py-1.5 pr-5 pl-3">
           {num}
           {unit}
           <span className="absolute top-0.5 right-1.5 text-[7px] font-bold tracking-[0.1em] text-white/85 uppercase">
@@ -1198,7 +1198,7 @@ export function VenueDetailActionBar({
         onClick={onSavePlace}
         aria-pressed={saved}
         className={cn(
-          "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border py-3 text-sm font-semibold transition active:scale-[0.99]",
+          "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-semibold transition active:scale-[0.99]",
           saved
             ? "bg-pink-gradient shadow-glow border-transparent text-white hover:brightness-110"
             : "border-border bg-card text-foreground hover:bg-muted",
@@ -1218,11 +1218,11 @@ export function VenueDetailActionBar({
         type="button"
         disabled
         aria-disabled="true"
-        className="border-border bg-muted text-muted-foreground inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full border py-3 text-sm font-semibold"
+        className="border-border bg-muted text-muted-foreground inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-semibold"
       >
         <CalendarCheck className="h-4 w-4" strokeWidth={2} />
         Reserve table
-        <span className="bg-foreground/10 text-muted-foreground rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+        <span className="bg-foreground/10 text-muted-foreground rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
           Soon
         </span>
       </button>

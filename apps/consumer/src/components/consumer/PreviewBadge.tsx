@@ -17,7 +17,7 @@ export function PreviewBadge({
   return (
     <p
       className={cn(
-        "bg-secondary/10 text-secondary rounded-full px-3 py-1 text-center text-[10.5px] font-medium",
+        "bg-secondary/10 text-secondary rounded-md px-3 py-1 text-center text-[10.5px] font-medium",
         align === "center" && "mx-auto inline-block",
         className,
       )}

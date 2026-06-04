@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.875rem;
+  --radius: 0.5rem;
 
   /* Mesita — pink-red palette */
   --background: oklch(0.985 0.012 10);
@@ -160,12 +160,14 @@
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
+  /* Tightened radius scale — flatter, less "pill-like" corners across the
+     whole app. Deltas between steps are small so even rounded-3xl stays crisp. */
+  --radius-sm: calc(var(--radius) - 3px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 4px);
+  --radius-3xl: calc(var(--radius) + 6px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -285,6 +287,28 @@
   .scrollbar-hide {
     scrollbar-width: none;
   }
+  /* Always-visible slim scrollbar (overrides the OS overlay auto-hide). */
+  .scrollbar-always {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scrollbar-always::-webkit-scrollbar {
+    width: 8px;
+    -webkit-appearance: none;
+  }
+  .scrollbar-always::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-always::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-always::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+    background-clip: content-box;
+  }
   .eyebrow {
     font-size: 10px;
     text-transform: uppercase;
@@ -305,18 +329,18 @@
     box-shadow: var(--shadow-elev);
   }
   .btn-primary {
-    @apply w-full rounded-full py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50;
+    @apply w-full rounded-lg py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50;
     background: var(--gradient-pink);
     box-shadow: var(--shadow-glow);
   }
   .segment-control {
-    @apply border-border/80 bg-card/80 flex items-center gap-0.5 rounded-full border p-1 backdrop-blur-sm;
+    @apply border-border/80 bg-card/80 flex items-center gap-0.5 rounded-lg border p-1 backdrop-blur-sm;
   }
   .segment-tab {
-    @apply flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-xs font-medium whitespace-nowrap transition;
+    @apply flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-xs font-medium whitespace-nowrap transition;
   }
   .segment-tab-active {
-    @apply text-white;
+    @apply rounded-md text-white;
     background: var(--gradient-pink);
     box-shadow: var(--shadow-glow);
   }

@@ -168,7 +168,7 @@ export function FilterSheet({
           <button
             type="button"
             onClick={onClose}
-            className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-full text-sm font-semibold text-white"
+            className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-lg text-sm font-semibold text-white"
           >
             Show places
           </button>
@@ -236,7 +236,7 @@ function Chip({
       disabled={soon}
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-full border px-3.5 py-2 text-[13px] font-medium whitespace-nowrap transition",
+        "shrink-0 rounded-lg border px-3.5 py-2 text-[13px] font-medium whitespace-nowrap transition",
         soon
           ? "border-border/60 text-muted-foreground/50 cursor-not-allowed"
           : active

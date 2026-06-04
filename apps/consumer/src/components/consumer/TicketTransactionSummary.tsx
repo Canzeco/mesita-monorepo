@@ -49,7 +49,7 @@ export function TicketTransactionSummary({
         )}
       >
         <p className="text-[10px] font-semibold tracking-[0.12em] uppercase opacity-80">
-          Transaction summary
+          Status summary
         </p>
         <p className="mt-1 text-xs leading-snug font-medium">{line}</p>
       </div>

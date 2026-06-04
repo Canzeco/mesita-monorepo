@@ -31,7 +31,7 @@ export function WhatsAppRemindersBox() {
           Pings on WhatsApp
         </span>
       </span>
-      <span className="text-primary border-primary/25 bg-primary/[0.06] inline-flex shrink-0 items-center gap-0.5 rounded-full border py-1 pr-1.5 pl-2.5 text-[11px] font-semibold">
+      <span className="text-primary border-primary/25 bg-primary/[0.06] inline-flex shrink-0 items-center gap-0.5 rounded-md border py-1 pr-1.5 pl-2.5 text-[11px] font-semibold">
         Connect
         <ChevronRight className="h-3 w-3" />
       </span>

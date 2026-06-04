@@ -21,7 +21,7 @@ type Tab = "friends" | "restaurants" | "others";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "friends", label: "Friends" },
-  { id: "restaurants", label: "Restaurantes" },
+  { id: "restaurants", label: "Restaurants" },
   { id: "others", label: "Others" },
 ];
 
@@ -35,14 +35,14 @@ function ShareBodyContent() {
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4">
-        <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-full border p-1">
+        <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-lg border p-1">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "rounded-full px-1 py-1.5 text-center text-[12px] font-medium transition",
+                "rounded-md px-1 py-1.5 text-center text-[12px] font-medium transition",
                 tab === t.id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
@@ -77,7 +77,7 @@ function UrlField({ url }: { url: string }) {
     }
   };
   return (
-    <div className="border-border bg-card flex items-center gap-2 rounded-full border px-4 py-3">
+    <div className="border-border bg-card flex items-center gap-2 rounded-lg border px-4 py-3">
       <span className="flex-1 truncate font-mono text-[13px]">{url}</span>
       <button
         type="button"
@@ -141,7 +141,7 @@ function PrimaryCta({
       onClick={onClick}
       disabled={!share}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-60",
+        "flex w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold transition disabled:opacity-60",
         variant === "outline"
           ? "border-border bg-card text-foreground hover:bg-muted border py-3"
           : "bg-foreground text-background py-3.5 hover:opacity-90",
@@ -413,14 +413,14 @@ function RestaurantsTab() {
             href={websiteUrl}
             target="_blank"
             rel="noreferrer"
-            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[12.5px] font-semibold transition"
+            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-lg border py-2.5 text-[12.5px] font-semibold transition"
           >
             Website
           </a>
           <button
             type="button"
             onClick={onInvite}
-            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[12.5px] font-semibold transition"
+            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-lg border py-2.5 text-[12.5px] font-semibold transition"
           >
             {inviteFlash === "shared"
               ? "Shared"
@@ -430,7 +430,7 @@ function RestaurantsTab() {
           </button>
           <a
             href={contactMailto}
-            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[12.5px] font-semibold transition"
+            className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-lg border py-2.5 text-[12.5px] font-semibold transition"
           >
             Contact
           </a>
@@ -478,13 +478,13 @@ function PartnerCard({ group: g }: { group: PartnerGroup }) {
           href={g.websiteUrl}
           target="_blank"
           rel="noreferrer"
-          className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-full border py-2.5 text-[13px] font-semibold transition"
+          className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center rounded-lg border py-2.5 text-[13px] font-semibold transition"
         >
           Website
         </a>
         <a
           href={mailto}
-          className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center gap-1.5 rounded-full border py-2.5 text-[13px] font-semibold transition"
+          className="border-border bg-card text-foreground hover:bg-muted flex items-center justify-center gap-1.5 rounded-lg border py-2.5 text-[13px] font-semibold transition"
         >
           Contact
           <ChevronRight className="h-4 w-4" />

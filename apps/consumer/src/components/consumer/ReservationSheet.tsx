@@ -286,7 +286,7 @@ function ReservationSheetContent({
           type="button"
           onClick={onConfirm}
           disabled={submitting}
-          className="bg-pink-gradient shadow-glow mt-5 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:opacity-70"
+          className="bg-pink-gradient shadow-glow mt-5 flex w-full items-center justify-center gap-2 rounded-lg py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:opacity-70"
         >
           {submitting ? (
             "Reserving…"

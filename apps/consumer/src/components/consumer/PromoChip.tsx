@@ -63,7 +63,7 @@ export function PromoChip({
     if (!showWhenEmpty) return null;
     return (
       <span
-        className={`inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/35 bg-black/45 whitespace-nowrap text-white ${sizing}`}
+        className={`inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/35 bg-black/45 whitespace-nowrap text-white ${sizing}`}
       >
         <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
         <span className="font-semibold">No Reward for You</span>
@@ -85,7 +85,7 @@ export function PromoChip({
 
   return (
     <span
-      className={`bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-full whitespace-nowrap text-white ${sizing}`}
+      className={`bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-md whitespace-nowrap text-white ${sizing}`}
       title={
         capLabel
           ? `at Mesita ${tierLabel} · ${capLabel}`

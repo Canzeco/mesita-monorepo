@@ -21,9 +21,9 @@ const PayTickets = dynamic(
 );
 
 const TABS: { id: PayTab; label: string }[] = [
+  { id: "balance", label: "Wallet" },
   { id: "qr", label: "QR" },
   { id: "tickets", label: "Tickets" },
-  { id: "balance", label: "Balance" },
 ];
 
 export function PayClient({

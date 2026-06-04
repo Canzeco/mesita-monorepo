@@ -44,7 +44,7 @@ export function PopularTimesCard({
               onClick={() => setSelectedDay(d.day.toUpperCase())}
               aria-pressed={active}
               className={cn(
-                "flex-1 rounded-full py-1 text-[9px] font-bold tracking-wider uppercase transition",
+                "flex-1 rounded-md py-1 text-[9px] font-bold tracking-wider uppercase transition",
                 active
                   ? "bg-pink-gradient text-white shadow-sm"
                   : "bg-muted/30 text-muted-foreground hover:bg-muted/50",

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ClassChip } from "./ClassChip";
-import { MesitaMark } from "./MesitaMark";
 import { DiscoverTabs } from "./DiscoverTabs";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -14,10 +13,12 @@ export function DiscoverHeader() {
       <div className="flex w-full items-center gap-2">
         <Link
           href={CONSUMER_ROUTES.me.plan}
-          className="border-border bg-card shadow-glow text-secondary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2"
+          className="bg-primary shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl leading-none"
           aria-label="Mesita — profile"
         >
-          <MesitaMark className="h-full w-full" />
+          <span role="img" aria-label="Peacock">
+            🦚
+          </span>
         </Link>
         <DiscoverTabs />
         <ClassChip />

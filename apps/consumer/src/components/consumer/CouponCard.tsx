@@ -149,7 +149,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
                 meta.pillClass,
               )}
             >
@@ -207,7 +207,7 @@ function LinkedReservationStub({
       </div>
       <span
         className={cn(
-          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+          "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
           isBooking
             ? "border-amber-500/30 bg-amber-50 text-amber-800"
             : "border-emerald-500/30 bg-emerald-50 text-emerald-800",

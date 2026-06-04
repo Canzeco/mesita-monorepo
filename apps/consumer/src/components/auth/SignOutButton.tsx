@@ -20,7 +20,7 @@ export function SignOutButton({
         title={label || "Sign out"}
         className={
           className ??
-          "border-border bg-card hover:bg-muted flex w-full items-center justify-center gap-2 rounded-full border py-4 text-sm font-semibold transition"
+          "border-border bg-card hover:bg-muted flex w-full items-center justify-center gap-2 rounded-lg border py-4 text-sm font-semibold transition"
         }
       >
         <LogOut className="h-4 w-4" />

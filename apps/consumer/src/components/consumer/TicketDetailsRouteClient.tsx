@@ -234,8 +234,8 @@ export function TicketDetailsRouteClient({
       <div
         className={
           variant === "page"
-            ? "scrollbar-hide min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-6"
-            : "scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-8"
+            ? "scrollbar-always min-h-0 flex-1 overflow-y-scroll px-3 pt-3 pb-6"
+            : "scrollbar-always min-h-0 flex-1 overflow-y-scroll px-4 pt-3 pb-8"
         }
       >
         {loading ? (

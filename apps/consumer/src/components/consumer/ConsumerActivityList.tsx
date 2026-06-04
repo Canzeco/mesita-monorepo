@@ -76,7 +76,7 @@ export function InboxSegmentTabs({
   globalCount: number;
 }) {
   return (
-    <div className="border-border bg-card flex rounded-full border p-1">
+    <div className="border-border bg-card flex rounded-lg border p-1">
       <InboxTabButton
         active={active === "mine"}
         onClick={() => onChange("mine")}
@@ -112,7 +112,7 @@ function InboxTabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-medium transition sm:gap-2 sm:px-3 sm:text-sm",
+        "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium transition sm:gap-2 sm:px-3 sm:text-sm",
         active ? "bg-foreground text-background" : "text-muted-foreground",
       )}
     >
