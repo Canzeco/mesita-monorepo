@@ -10,6 +10,14 @@ export function TicketDetailsSkeleton() {
           </div>
         </div>
       </div>
+      <div className="surface-card flex gap-2 px-3 py-3">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex flex-1 flex-col items-center gap-1">
+            <div className="h-7 w-7 rounded-full bg-muted" />
+            <div className="h-2 w-full rounded bg-muted" />
+          </div>
+        ))}
+      </div>
       <div className="surface-card space-y-3 p-4">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex gap-3">

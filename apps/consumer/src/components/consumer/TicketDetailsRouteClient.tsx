@@ -18,6 +18,7 @@ import {
 } from "@/lib/api/pay";
 import { TicketBillSummary } from "@/components/consumer/TicketBillSummary";
 import { TicketDetailsSkeleton } from "@/components/consumer/TicketDetailsSkeleton";
+import { TicketFlowProgressBar } from "@/components/consumer/TicketFlowProgressBar";
 import { TicketFlowStepDetailPanel } from "@/components/consumer/TicketFlowStepDetailPanel";
 import { TicketTransactionSummary } from "@/components/consumer/TicketTransactionSummary";
 import {
@@ -324,6 +325,10 @@ export function TicketDetailsRouteClient({
                   </p>
                 </div>
               ) : null}
+            </section>
+
+            <section className="surface-card px-3 py-3">
+              <TicketFlowProgressBar steps={flowSteps} />
             </section>
 
             <section className="surface-card p-4">
