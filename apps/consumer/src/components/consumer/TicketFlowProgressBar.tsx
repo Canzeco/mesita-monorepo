@@ -8,9 +8,11 @@ import type { TicketFlowStepView } from "@/lib/ticket-flow-steps";
 function StepDot({
   step,
   index,
+  selected,
 }: {
   step: TicketFlowStepView;
   index: number;
+  selected?: boolean;
 }) {
   return (
     <span
@@ -22,6 +24,7 @@ function StepDot({
           "border-transparent bg-primary text-primary-foreground",
         step.state === "upcoming" &&
           "border-border bg-muted/50 text-muted-foreground",
+        selected && "ring-primary/40 ring-2 ring-offset-2 ring-offset-background",
       )}
       aria-hidden
     >
@@ -37,8 +40,12 @@ function StepDot({
 /** Compact horizontal step progress for ticket detail (below venue summary). */
 export function TicketFlowProgressBar({
   steps,
+  selectedStepId,
+  onSelectStep,
 }: {
   steps: TicketFlowStepView[];
+  selectedStepId?: string;
+  onSelectStep?: (stepId: TicketFlowStepView["id"]) => void;
 }) {
   return (
     <div
@@ -48,26 +55,46 @@ export function TicketFlowProgressBar({
     >
       {steps.map((step, i) => {
         const connectorDone = step.state === "done";
-
-        return (
-          <Fragment key={`${step.id}-${i}`}>
-            <div
-              className="flex min-w-0 flex-1 flex-col items-center gap-1"
-              role="listitem"
-              aria-current={step.state === "active" ? "step" : undefined}
-            >
-              <StepDot step={step} index={i} />
+        const navigable = step.state === "done" || step.state === "active";
+        const selected = selectedStepId === step.id;
+        const stepCol = (
+          <>
+              <StepDot step={step} index={i} selected={selected} />
               <span
                 className={cn(
                   "w-full truncate px-0.5 text-center text-[10px] leading-tight",
-                  step.state === "active" && "text-foreground font-semibold",
-                  step.state === "done" && "text-secondary font-medium",
+                  selected && "text-foreground font-semibold",
+                  !selected && step.state === "active" && "text-foreground font-medium",
+                  !selected && step.state === "done" && "text-secondary",
                   step.state === "upcoming" && "text-muted-foreground",
                 )}
               >
                 {step.label}
               </span>
-            </div>
+          </>
+        );
+
+        return (
+          <Fragment key={`${step.id}-${i}`}>
+            {navigable && onSelectStep ? (
+              <button
+                type="button"
+                onClick={() => onSelectStep(step.id)}
+                className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg py-0.5 transition hover:bg-muted/50"
+                aria-current={selected ? "step" : undefined}
+                aria-label={`${step.label} — ${step.state}`}
+              >
+                {stepCol}
+              </button>
+            ) : (
+              <div
+                className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                role="listitem"
+                aria-current={step.state === "active" ? "step" : undefined}
+              >
+                {stepCol}
+              </div>
+            )}
             {i < steps.length - 1 ? (
               <div
                 className={cn(

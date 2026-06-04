@@ -1,10 +1,8 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MapPin } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   confirmTicketPayment,
@@ -16,25 +14,12 @@ import {
   type PayNotificationRow,
   type TicketBillPayload,
 } from "@/lib/api/pay";
-import { TicketBillSummary } from "@/components/consumer/TicketBillSummary";
 import { TicketDetailsSkeleton } from "@/components/consumer/TicketDetailsSkeleton";
-import { TicketFlowProgressBar } from "@/components/consumer/TicketFlowProgressBar";
-import { TicketFlowStepDetailPanel } from "@/components/consumer/TicketFlowStepDetailPanel";
-import { TicketTransactionSummary } from "@/components/consumer/TicketTransactionSummary";
-import {
-  discountPaymentPhase,
-  isTicketFlowComplete,
-  resolveTicketFlowSteps,
-  STEP_NOW_TITLE,
-  ticketStepNowInstructions,
-  ticketProgressFromBundle,
-  type TicketFlowStepView,
-} from "@/lib/ticket-flow-steps";
-import { cn, errMsg } from "@/lib/utils";
+import { TicketDetailsView } from "@/components/consumer/TicketDetailsView";
+import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { TicketReviewForm } from "@/components/consumer/TicketReviewForm";
-import { TicketStepInstructions } from "@/components/consumer/TicketStepInstructions";
+import { isTicketFlowComplete, ticketProgressFromBundle } from "@/lib/ticket-flow-steps";
 
 export function TicketDetailsRouteClient({
   userId,
@@ -107,41 +92,34 @@ export function TicketDetailsRouteClient({
   }, [rows]);
 
   const ticketKind = ticketMeta?.kind ?? payload.ticket_kind ?? "dp";
+  const paymentNotification = rows.find((r) => r.kind === "payment_confirm");
   const reviewNotification = rows.find((r) => r.kind === "review");
-  const progress = useMemo(
-    () =>
-      ticketProgressFromBundle({
-        kind: ticketKind,
-        status: ticketMeta?.status,
-        story_status: ticketMeta?.story_status,
-        story_submitted_at: ticketMeta?.story_submitted_at,
-        total_cents: ticketMeta?.total_cents ?? payload.total_cents,
-        consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
-        staff_payment_confirmed_at: ticketMeta?.staff_payment_confirmed_at,
-        payment: rows.find((r) => r.kind === "payment_confirm"),
-        review: reviewNotification,
-      }),
-    [
-      ticketKind,
-      ticketMeta,
-      payload.total_cents,
-      rows,
-      reviewNotification,
-    ],
-  );
-  const isComplete = isTicketFlowComplete(progress);
-  const flowSteps = useMemo(
-    () => resolveTicketFlowSteps(progress),
-    [progress],
-  );
-  const transactionSummary = useMemo(
-    () =>
-      isComplete ? buildTicketTransactionSummary(payload, ticketKind) : null,
-    [isComplete, payload, ticketKind],
-  );
+
+  const transactionSummary = useMemo(() => {
+    const progress = ticketProgressFromBundle({
+      kind: ticketKind,
+      status: ticketMeta?.status,
+      story_status: ticketMeta?.story_status,
+      total_cents: ticketMeta?.total_cents ?? payload.total_cents,
+      consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
+      staff_payment_confirmed_at: ticketMeta?.staff_payment_confirmed_at,
+      payment: paymentNotification,
+      review: reviewNotification,
+    });
+    return isTicketFlowComplete(progress)
+      ? buildTicketTransactionSummary(payload, ticketKind)
+      : null;
+  }, [
+    ticketKind,
+    ticketMeta,
+    payload,
+    paymentNotification,
+    reviewNotification,
+  ]);
+
   const visitDateIso =
     ticketMeta?.created_at ??
-    rows.find((r) => r.kind === "payment_confirm")?.created_at ??
+    paymentNotification?.created_at ??
     rows[0]?.created_at ??
     null;
   const venueTitle = formatTicketVenueTitle(payload.venue_name, visitDateIso);
@@ -152,7 +130,6 @@ export function TicketDetailsRouteClient({
       : null;
   const capMxn = payload.reward_cap_mxn ?? payload.monthly_promo_cap ?? null;
   const rewardLabel = formatTicketRewardLabel(payload, { capMxn });
-  const activeStep = flowSteps.find((s) => s.state === "active");
 
   const onConfirm = useCallback(async () => {
     setBusy(true);
@@ -183,57 +160,6 @@ export function TicketDetailsRouteClient({
       setBusy(false);
     }
   }, [supabase, ticketId, reviewDraft, load]);
-
-  const renderActiveContent = useCallback(
-    (step: TicketFlowStepView): ReactNode => {
-      if (step.id === "bill" && payload.total_cents) {
-        return (
-          <TicketBillSummary
-            payload={payload}
-            capMxn={capMxn}
-            ticketKind={ticketKind}
-          />
-        );
-      }
-
-      if (step.id === "pay" && discountPaymentPhase(progress) === "pending") {
-        return (
-          <button
-            type="button"
-            onClick={() => void onConfirm()}
-            disabled={busy}
-            className="btn-primary"
-          >
-            {busy ? "Sending…" : "I paid — Paid issued"}
-          </button>
-        );
-      }
-
-      if (step.id === "review") {
-        return (
-          <TicketReviewForm
-            draft={reviewDraft}
-            onChange={setReviewDraft}
-            onSubmit={() => void onReview()}
-            busy={busy}
-            venueName={payload.venue_name}
-          />
-        );
-      }
-
-      return null;
-    },
-    [
-      payload,
-      capMxn,
-      ticketKind,
-      progress,
-      busy,
-      reviewDraft,
-      onConfirm,
-      onReview,
-    ],
-  );
 
   const onBack = () => {
     if (variant === "modal") router.back();
@@ -266,106 +192,26 @@ export function TicketDetailsRouteClient({
         {loading ? (
           <TicketDetailsSkeleton />
         ) : (
-          <div className="mx-auto w-full max-w-md space-y-4">
-            <section className="surface-card overflow-hidden">
-              <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 p-3">
-                <div className="bg-muted relative h-[72px] overflow-hidden rounded-xl ring-1 ring-border/60">
-                  {payload.venue_photo_url ? (
-                    <Image
-                      src={payload.venue_photo_url}
-                      alt={payload.venue_name ?? "Venue"}
-                      fill
-                      className="object-cover"
-                      sizes="72px"
-                    />
-                  ) : (
-                    <div className="text-muted-foreground flex h-full items-center justify-center">
-                      <MapPin className="h-5 w-5 opacity-40" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex min-w-0 flex-col justify-center gap-1">
-                  {venueHref ? (
-                    <Link
-                      href={venueHref}
-                      className="text-foreground truncate text-[15px] leading-tight font-semibold transition hover:opacity-80"
-                    >
-                      {venueTitle}
-                    </Link>
-                  ) : (
-                    <p className="text-foreground truncate text-[15px] leading-tight font-semibold">
-                      {venueTitle}
-                    </p>
-                  )}
-                  <p className="text-secondary text-[13px] leading-snug font-medium">
-                    {rewardLabel}
-                  </p>
-                </div>
-              </div>
-
-              {isComplete ? (
-                <div className="border-border/60 border-t px-3 pt-3">
-                  <p className="text-secondary text-sm font-semibold">All done</p>
-                </div>
-              ) : null}
-
-              <div
-                className={cn(
-                  "border-border/60 border-t px-3 py-3",
-                  isComplete && "pt-2",
-                )}
-              >
-                <TicketFlowProgressBar steps={flowSteps} />
-              </div>
-
-              {activeStep && !isComplete ? (
-                <div className="border-border/60 border-t space-y-2 px-3 py-3">
-                  <div>
-                    <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
-                      What to do now
-                    </p>
-                    <p className="text-foreground mt-0.5 text-lg font-semibold leading-tight">
-                      {STEP_NOW_TITLE[activeStep.id]}
-                    </p>
-                  </div>
-                  <TicketStepInstructions
-                    steps={ticketStepNowInstructions(activeStep.id, progress)}
-                  />
-                </div>
-              ) : null}
-            </section>
-
-            <section className="surface-card p-4">
-              <p className="text-muted-foreground mb-3 text-[11px] font-semibold tracking-[0.1em] uppercase">
-                Steps
-              </p>
-
-              <TicketFlowStepDetailPanel
-                steps={flowSteps}
-                progress={progress}
-                renderActiveContent={renderActiveContent}
-              />
-
-              {isComplete && transactionSummary ? (
-                <div className="border-border/60 mt-4 border-t pt-4">
-                  <TicketTransactionSummary
-                    summary={transactionSummary}
-                    variant="detail"
-                  />
-                </div>
-              ) : null}
-
-              {error ? (
-                <p className="bg-destructive/10 text-destructive mt-4 rounded-xl px-3 py-2 text-sm">
-                  {error}
-                </p>
-              ) : null}
-            </section>
-          </div>
+          <TicketDetailsView
+            ticketKind={ticketKind}
+            payload={payload}
+            capMxn={capMxn}
+            venueTitle={venueTitle}
+            venueHref={venueHref}
+            rewardLabel={rewardLabel}
+            ticketMeta={ticketMeta}
+            payment={paymentNotification}
+            review={reviewNotification}
+            transactionSummary={transactionSummary}
+            reviewDraft={reviewDraft}
+            onReviewDraftChange={setReviewDraft}
+            busy={busy}
+            error={error}
+            onConfirmPayment={() => void onConfirm()}
+            onSubmitReview={() => void onReview()}
+          />
         )}
       </div>
     </div>
   );
 }
-

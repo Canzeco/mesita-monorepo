@@ -75,6 +75,17 @@ export const STEP_LABELS: Record<TicketFlowStepId, string> = {
   review: "Review",
 };
 
+/** One-line hint under each step in the ticket menu. */
+export const STEP_MENU_HINT: Record<TicketFlowStepId, string> = {
+  scan: "Show QR to waiter",
+  bill: "Staff adds your total",
+  story: "Instagram story + tags",
+  pay: "Pay table, then tap below",
+  pay_stripe: "Pay link on your phone",
+  review: "Tap stars, then send",
+  cashback: "Check Pay → Balance",
+};
+
 /** Big headline on the ticket card — plain language. */
 export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
   scan: "Get scanned in",
@@ -85,6 +96,17 @@ export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
   review: "Leave a quick review",
   cashback: "Cashback is on the way",
 };
+
+/** At most two short lines for the ticket help panel. */
+export function ticketStepDummyInstructions(
+  stepId: TicketFlowStepId,
+  progress: TicketProgressInput,
+): string[] {
+  const lines = ticketStepNowInstructions(stepId, progress);
+  if (lines.length === 0) return [];
+  if (lines.length === 1) return lines;
+  return lines.slice(0, 2);
+}
 
 /** Short numbered steps shown under the headline (active step only). */
 export function ticketStepNowInstructions(

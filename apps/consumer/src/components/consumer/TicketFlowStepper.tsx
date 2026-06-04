@@ -157,20 +157,26 @@ export function TicketFlowStepper({
           </div>
         );
 
+        const canSelect =
+          onSelectStep && (step.state === "done" || step.state === "active");
+
         return (
           <Fragment key={`${step.id}-${i}`}>
-            {onSelectStep ? (
+            {canSelect ? (
               <button
                 type="button"
                 onClick={() => onSelectStep(step.id)}
-                className="min-w-0 flex-1 cursor-pointer rounded-md transition hover:opacity-80"
+                className="min-w-0 flex-1 cursor-pointer rounded-md transition hover:opacity-80 disabled:cursor-default disabled:opacity-100"
                 aria-pressed={isSelected}
                 aria-label={step.label}
+                aria-disabled={step.state === "upcoming"}
               >
                 {stepCol}
               </button>
             ) : (
-              stepCol
+              <div className="min-w-0 flex-1" aria-hidden={false}>
+                {stepCol}
+              </div>
             )}
             {i < steps.length - 1 ? (
               <div
