@@ -5,14 +5,17 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Shared header for Saved, Pay, Inbox, Me (profile), Invite, Reservations, etc.
 //
-//   share — [Logo][Share] · title · [Wallet][Plan]
+//   share — [Logo][Share] · title · [Plan]
+//   share + showWallet — same, with Wallet before Plan (Pay only)
 //   class — [Logo] · title · [Plan]
 export function SimpleHeader({
   title,
   rightAction = "class",
+  showWallet = false,
 }: {
   title: string;
   rightAction?: "class" | "share";
+  showWallet?: boolean;
 }) {
   const isShare = rightAction === "share";
 
@@ -46,7 +49,7 @@ export function SimpleHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {isShare ? (
+        {isShare && showWallet ? (
           <Link
             href={CONSUMER_ROUTES.pay.balance}
             aria-label="Your wallet"

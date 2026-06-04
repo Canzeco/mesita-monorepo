@@ -2,7 +2,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export type PayTab = "qr" | "tickets" | "balance";
 
-export const PAY_TABS: readonly PayTab[] = ["qr", "tickets", "balance"];
+export const PAY_TABS: readonly PayTab[] = ["balance", "qr", "tickets"];
 
 const TAB_PATHS: Record<PayTab, string> = {
   qr: CONSUMER_ROUTES.pay.qr,
@@ -33,7 +33,7 @@ export function payTabFromPathname(pathname: string): PayTab {
   ) {
     return "balance";
   }
-  return "qr";
+  return "balance";
 }
 
 export function isPayPath(pathname: string): boolean {
