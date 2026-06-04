@@ -30,7 +30,7 @@ import {
   ticketProgressFromBundle,
   type TicketFlowStepView,
 } from "@/lib/ticket-flow-steps";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { TicketReviewForm } from "@/components/consumer/TicketReviewForm";
@@ -304,6 +304,21 @@ export function TicketDetailsRouteClient({
                 </div>
               </div>
 
+              {isComplete ? (
+                <div className="border-border/60 border-t px-3 pt-3">
+                  <p className="text-secondary text-sm font-semibold">All done</p>
+                </div>
+              ) : null}
+
+              <div
+                className={cn(
+                  "border-border/60 border-t px-3 py-3",
+                  isComplete && "pt-2",
+                )}
+              >
+                <TicketFlowProgressBar steps={flowSteps} />
+              </div>
+
               {activeStep && !isComplete ? (
                 <div className="border-border/60 border-t space-y-2 px-3 py-3">
                   <div>
@@ -318,17 +333,7 @@ export function TicketDetailsRouteClient({
                     steps={ticketStepNowInstructions(activeStep.id, progress)}
                   />
                 </div>
-              ) : isComplete ? (
-                <div className="border-border/60 border-t px-3 py-3">
-                  <p className="text-secondary text-sm font-semibold">
-                    All done
-                  </p>
-                </div>
               ) : null}
-            </section>
-
-            <section className="surface-card px-3 py-3">
-              <TicketFlowProgressBar steps={flowSteps} />
             </section>
 
             <section className="surface-card p-4">
