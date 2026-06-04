@@ -12,12 +12,13 @@ import {
   discountPaymentPhase,
   isTicketFlowComplete,
   resolveTicketFlowSteps,
+  STEP_NOW_TITLE,
   ticketProgressFromBundle,
-  ticketStepActiveInstruction,
   type TicketFlowStepId,
   type TicketFlowStepView,
   type TicketProgressInput,
 } from "@/lib/ticket-flow-steps";
+import { TicketEmbeddedPayment } from "@/components/consumer/TicketEmbeddedPayment";
 import type {
   TicketBillPayload,
   TicketTransactionSummary as TicketTransactionSummaryData,
@@ -27,8 +28,9 @@ export type TicketDetailsViewProps = {
   ticketKind: string;
   payload: TicketBillPayload;
   capMxn?: number | null;
-  venueTitle: string;
+  venueName: string;
   venueHref: string | null;
+  visitDateLabel: string | null;
   rewardLabel: string;
   ticketMeta: {
     status?: string;
@@ -53,14 +55,22 @@ export type TicketDetailsViewProps = {
   error: string | null;
   onConfirmPayment: () => void;
   onSubmitReview: () => void;
+  onMockStoryDetect?: () => void;
+  showMockStoryButton?: boolean;
+  venueInstagramHandle?: string | null;
+  ticketId?: string;
+  paymentReturnUrl?: string;
+  onPaymentComplete?: () => void;
+  onPaymentError?: (message: string) => void;
 };
 
 export function TicketDetailsView({
   ticketKind,
   payload,
   capMxn,
-  venueTitle,
+  venueName,
   venueHref,
+  visitDateLabel,
   rewardLabel,
   ticketMeta,
   payment,
@@ -72,7 +82,18 @@ export function TicketDetailsView({
   error,
   onConfirmPayment,
   onSubmitReview,
+  onMockStoryDetect,
+  showMockStoryButton,
+  venueInstagramHandle,
+  ticketId,
+  paymentReturnUrl,
+  onPaymentComplete,
+  onPaymentError,
 }: TicketDetailsViewProps) {
+  const stepCopy = useMemo(
+    () => ({ venueInstagramHandle }),
+    [venueInstagramHandle],
+  );
   const progress = useMemo(
     () =>
       ticketProgressFromBundle({
@@ -112,12 +133,11 @@ export function TicketDetailsView({
   const displayStep = flowSteps.find((s) => s.id === displayStepId);
 
   const statusLine = useMemo(() => {
-    if (isComplete) return "Everything for this visit is finished.";
-    if (activeStep) {
-      return ticketStepActiveInstruction(activeStep.id, progress);
-    }
-    return null;
-  }, [isComplete, activeStep, progress]);
+    if (isComplete) return null;
+    const active = flowSteps.find((s) => s.state === "active");
+    if (!active) return null;
+    return `${STEP_NOW_TITLE[active.id]} — in progress`;
+  }, [isComplete, flowSteps]);
 
   const handleStepSelect = (id: TicketFlowStepId) => {
     const step = flowSteps.find((s) => s.id === id);
@@ -129,23 +149,21 @@ export function TicketDetailsView({
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
       <TicketVisitHeader
-        venueTitle={venueTitle}
+        venueName={venueName}
         venueHref={venueHref}
         venuePhotoUrl={payload.venue_photo_url}
-        venueName={payload.venue_name}
         rewardLabel={rewardLabel}
+        visitDateLabel={visitDateLabel}
         steps={flowSteps}
         displayStepId={displayStepId}
         onStepSelect={isComplete ? undefined : handleStepSelect}
         stepperInteractive={!isComplete}
+        transactionSummary={isComplete ? transactionSummary : null}
         statusLine={statusLine}
       />
 
       {isComplete && transactionSummary ? (
-        <TicketVisitComplete
-          summary={transactionSummary}
-          ticketKind={ticketKind}
-        />
+        <TicketVisitComplete ticketKind={ticketKind} />
       ) : displayStep ? (
         <TicketActionCard
           step={displayStep}
@@ -153,6 +171,7 @@ export function TicketDetailsView({
           payload={payload}
           ticketKind={ticketKind}
           capMxn={capMxn}
+          stepCopy={stepCopy}
         >
           {renderStepActions({
             step: displayStep,
@@ -162,6 +181,12 @@ export function TicketDetailsView({
             onReviewDraftChange,
             onConfirmPayment,
             onSubmitReview,
+            onMockStoryDetect,
+            showMockStoryButton,
+            ticketId,
+            paymentReturnUrl,
+            onPaymentComplete,
+            onPaymentError,
           })}
         </TicketActionCard>
       ) : null}
@@ -181,6 +206,12 @@ function renderStepActions({
   busy,
   onConfirmPayment,
   onSubmitReview,
+  onMockStoryDetect,
+  showMockStoryButton,
+  ticketId,
+  paymentReturnUrl,
+  onPaymentComplete,
+  onPaymentError,
   reviewDraft,
   onReviewDraftChange,
 }: {
@@ -191,8 +222,27 @@ function renderStepActions({
   onReviewDraftChange: TicketDetailsViewProps["onReviewDraftChange"];
   onConfirmPayment: () => void;
   onSubmitReview: () => void;
+  onMockStoryDetect?: () => void;
+  showMockStoryButton?: boolean;
+  ticketId?: string;
+  paymentReturnUrl?: string;
+  onPaymentComplete?: () => void;
+  onPaymentError?: (message: string) => void;
 }): ReactNode {
   if (step.state !== "active") return null;
+
+  if (step.id === "story" && showMockStoryButton && onMockStoryDetect) {
+    return (
+      <button
+        type="button"
+        onClick={onMockStoryDetect}
+        disabled={busy}
+        className="w-full rounded-xl border border-dashed border-secondary/50 bg-secondary/10 px-4 py-3 text-sm font-semibold text-secondary transition hover:bg-secondary/15 disabled:opacity-50"
+      >
+        {busy ? "Simulating…" : "Mock: story posted & detected"}
+      </button>
+    );
+  }
 
   if (step.id === "pay") {
     const phase = discountPaymentPhase(progress);
@@ -211,6 +261,17 @@ function renderStepActions({
     if (phase === "issued") {
       return <TicketWaitingStaffBanner />;
     }
+  }
+
+  if (step.id === "pay_stripe" && ticketId && paymentReturnUrl && onPaymentComplete) {
+    return (
+      <TicketEmbeddedPayment
+        ticketId={ticketId}
+        returnUrl={paymentReturnUrl}
+        onComplete={onPaymentComplete}
+        onError={onPaymentError}
+      />
+    );
   }
 
   if (step.id === "review") {

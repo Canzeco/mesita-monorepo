@@ -6,7 +6,7 @@ import {
   type TicketBillPayload,
 } from "@/lib/api/pay";
 
-/** Large amount block for bill / pay steps. */
+/** Large amount block for pay steps (not the bill/receipt step). */
 export function TicketAmountDueCard({
   payload,
   ticketKind,

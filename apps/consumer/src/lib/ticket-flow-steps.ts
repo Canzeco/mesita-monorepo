@@ -1,4 +1,9 @@
+import { storyTagInstruction } from "@/lib/api/pay";
 import type { Database } from "@/lib/supabase/database.types";
+
+export type TicketStepCopyContext = {
+  venueInstagramHandle?: string | null;
+};
 
 export type TicketKind = Database["public"]["Enums"]["ticket_kind"];
 export type TicketStatus = Database["public"]["Enums"]["ticket_status"];
@@ -101,9 +106,11 @@ export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
 export function ticketStepDummyInstructions(
   stepId: TicketFlowStepId,
   progress: TicketProgressInput,
+  ctx?: TicketStepCopyContext,
 ): string[] {
-  const lines = ticketStepNowInstructions(stepId, progress);
+  const lines = ticketStepNowInstructions(stepId, progress, ctx);
   if (lines.length === 0) return [];
+  if (stepId === "story") return lines;
   if (lines.length === 1) return lines;
   return lines.slice(0, 2);
 }
@@ -112,6 +119,7 @@ export function ticketStepDummyInstructions(
 export function ticketStepNowInstructions(
   stepId: TicketFlowStepId,
   progress: TicketProgressInput,
+  ctx?: TicketStepCopyContext,
 ): string[] {
   switch (stepId) {
     case "scan":
@@ -123,14 +131,14 @@ export function ticketStepNowInstructions(
     case "bill":
       return [
         "Staff enters your food & drink total.",
-        "Your discount or cashback is applied automatically.",
-        "You’ll see the amount to pay on this screen.",
+        "Your Mesita discount or cashback is applied automatically.",
+        "Check the bill below matches what they told you.",
       ];
     case "story":
       return [
         "Post a story on Instagram.",
-        "Tag @mesita and this restaurant.",
-        "We detect it — staff confirms when asked.",
+        storyTagInstruction(ctx?.venueInstagramHandle),
+        "Mesita's bot detects your story automatically.",
       ];
     case "pay": {
       const phase = discountPaymentPhase(progress);
@@ -304,8 +312,9 @@ export function payStepActiveSummary(input: TicketProgressInput): string {
 export function ticketStepActiveInstruction(
   stepId: TicketFlowStepId,
   progress: TicketProgressInput,
+  ctx?: TicketStepCopyContext,
 ): string {
-  const lines = ticketStepNowInstructions(stepId, progress);
+  const lines = ticketStepNowInstructions(stepId, progress, ctx);
   if (lines.length === 0) return "";
   if (lines.length === 1) return lines[0];
   return lines.join(" ");

@@ -11,6 +11,8 @@ export type TicketBillPayload = {
   venue_slug?: string | null;
   venue_name?: string;
   venue_photo_url?: string | null;
+  /** Bare handle (no @), from venue instagram_url at billing time. */
+  venue_instagram_handle?: string | null;
   ticket_kind?: string;
   check_subtotal_cents?: number;
   tip_cents?: number;
@@ -27,6 +29,48 @@ export type TicketBillPayload = {
   amount_due_cents?: number;
   currency?: string;
 };
+
+const MESITA_IG_HANDLE = "@mesita";
+
+export function formatInstagramHandle(
+  raw: string | null | undefined,
+): string | null {
+  const h = raw?.replace(/^@/, "").trim();
+  return h ? `@${h}` : null;
+}
+
+export function instagramHandleFromUrl(
+  url: string | null | undefined,
+): string | null {
+  if (!url) return null;
+  const m = /instagram\.com\/([^/?#]+)/i.exec(url);
+  if (!m) return null;
+  const handle = m[1].replace(/^@/, "").trim();
+  if (!handle) return null;
+  const reserved = new Set(["p", "reel", "reels", "explore", "stories", "tv"]);
+  if (reserved.has(handle.toLowerCase())) return null;
+  return handle;
+}
+
+export function resolveVenueInstagramHandle(
+  payload: TicketBillPayload,
+  fallbackUrl?: string | null,
+): string | null {
+  const fromPayload = payload.venue_instagram_handle?.replace(/^@/, "").trim();
+  if (fromPayload) return fromPayload;
+  return instagramHandleFromUrl(fallbackUrl);
+}
+
+/** Story step: tag Mesita + the venue's Instagram. */
+export function storyTagInstruction(
+  venueInstagramHandle: string | null | undefined,
+): string {
+  const venue = formatInstagramHandle(venueInstagramHandle);
+  if (venue) {
+    return `Tag ${MESITA_IG_HANDLE} and ${venue} on your story.`;
+  }
+  return `Tag ${MESITA_IG_HANDLE} and the restaurant on your story.`;
+}
 
 function formatBillScopeSuffix(
   capMxn: number | null | undefined,
@@ -415,6 +459,27 @@ export function payloadFromNotification(
 ): TicketBillPayload {
   if (!payload || typeof payload !== "object") return {};
   return payload as TicketBillPayload;
+}
+
+/** Show mock story-detect control in ticket detail (dev / explicit flag). */
+export const MOCK_STORY_DETECT_ENABLED =
+  process.env.NODE_ENV === "development" ||
+  process.env.NEXT_PUBLIC_MOCK_STORY_DETECT === "true";
+
+export async function mockStoryDetect(
+  supabase: SupabaseClient<Database>,
+  ticketId: string,
+) {
+  const { data, error } = await supabase.functions.invoke(
+    "consumer-mock-story-detect",
+    { body: { ticketId } },
+  );
+  if (error) throw error;
+  const body = data as { ok?: boolean; error?: string };
+  if (!body?.ok) {
+    throw new Error(body?.error ?? "Could not simulate story detection.");
+  }
+  return body;
 }
 
 export async function confirmTicketPayment(

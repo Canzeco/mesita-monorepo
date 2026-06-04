@@ -4,13 +4,15 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Clock, Lock, QrCode } from "lucide-react";
 import { TicketAmountDueCard } from "@/components/consumer/TicketAmountDueCard";
-import { TicketBillSummary } from "@/components/consumer/TicketBillSummary";
+import { TicketBillReceipt } from "@/components/consumer/TicketBillReceipt";
+import { TicketStoryFrame } from "@/components/consumer/TicketStoryFrame";
 import {
   STEP_DONE_LINE,
   STEP_NOW_TITLE,
   ticketStepDummyInstructions,
   type TicketFlowStepView,
   type TicketProgressInput,
+  type TicketStepCopyContext,
 } from "@/lib/ticket-flow-steps";
 import type { TicketBillPayload } from "@/lib/api/pay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -22,6 +24,7 @@ export function TicketActionCard({
   payload,
   ticketKind,
   capMxn,
+  stepCopy,
   children,
 }: {
   step: TicketFlowStepView;
@@ -29,15 +32,18 @@ export function TicketActionCard({
   payload: TicketBillPayload;
   ticketKind?: string | null;
   capMxn?: number | null;
+  stepCopy?: TicketStepCopyContext;
   children?: ReactNode;
 }) {
   const isDone = step.state === "done";
   const isActive = step.state === "active";
   const isLocked = step.state === "upcoming";
-  const tips = isActive ? ticketStepDummyInstructions(step.id, progress) : [];
-  const showAmount =
-    (step.id === "bill" || step.id === "pay" || step.id === "pay_stripe") &&
-    payload.total_cents;
+  const tips = isActive
+    ? ticketStepDummyInstructions(step.id, progress, stepCopy)
+    : [];
+  const showPayAmount =
+    (step.id === "pay" || step.id === "pay_stripe") && payload.total_cents;
+  const showBillReceipt = step.id === "bill" && payload.total_cents && !isLocked;
 
   return (
     <section
@@ -102,19 +108,28 @@ export function TicketActionCard({
           </ol>
         ) : null}
 
-        {showAmount ? (
+        {step.id === "story" && !isLocked ? (
+          <TicketStoryFrame
+            venuePhotoUrl={payload.venue_photo_url}
+            venueName={payload.venue_name}
+            venueInstagramHandle={stepCopy?.venueInstagramHandle}
+          />
+        ) : null}
+
+        {showBillReceipt ? (
+          <TicketBillReceipt
+            payload={payload}
+            ticketKind={ticketKind}
+            capMxn={capMxn}
+            venueName={payload.venue_name}
+          />
+        ) : null}
+
+        {showPayAmount ? (
           <TicketAmountDueCard
             payload={payload}
             ticketKind={ticketKind}
             capMxn={capMxn}
-          />
-        ) : null}
-
-        {step.id === "bill" && payload.total_cents ? (
-          <TicketBillSummary
-            payload={payload}
-            capMxn={capMxn}
-            ticketKind={ticketKind}
           />
         ) : null}
 

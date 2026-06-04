@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   confirmTicketPayment,
   buildTicketTransactionSummary,
   formatTicketRewardLabel,
-  formatTicketVenueTitle,
+  formatTicketVisitDate,
   payloadFromNotification,
+  mockStoryDetect,
+  MOCK_STORY_DETECT_ENABLED,
+  resolveVenueInstagramHandle,
   submitTicketReview,
   type PayNotificationRow,
   type TicketBillPayload,
@@ -31,6 +34,7 @@ export function TicketDetailsRouteClient({
   variant?: "page" | "modal";
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<PayNotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,7 @@ export function TicketDetailsRouteClient({
     staff_payment_confirmed_at?: string | null;
     created_at?: string | null;
   } | null>(null);
+  const [venueInstagramUrl, setVenueInstagramUrl] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState({
     food: 5,
     service: 5,
@@ -78,12 +83,38 @@ export function TicketDetailsRouteClient({
       .maybeSingle();
     setTicketMeta(ticketRow ?? null);
 
+    const venueId =
+      (data ?? []).map((r) => payloadFromNotification(r.payload).venue_id).find(Boolean) ??
+      null;
+    if (venueId) {
+      const { data: venueRow } = await supabase
+        .from("venues")
+        .select("instagram_url")
+        .eq("id", venueId)
+        .maybeSingle();
+      setVenueInstagramUrl(venueRow?.instagram_url ?? null);
+    } else {
+      setVenueInstagramUrl(null);
+    }
+
     setLoading(false);
   }, [supabase, userId, ticketId]);
 
   useEffect(() => {
     void load();
   }, [load, ticketId]);
+
+  useEffect(() => {
+    if (searchParams.get("stripe_return") === "1") {
+      void load();
+      router.replace(`/pay/ticket/${ticketId}`, { scroll: false });
+    }
+  }, [searchParams, load, ticketId, router]);
+
+  const paymentReturnUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/pay/ticket/${ticketId}?stripe_return=1`;
+  }, [ticketId]);
 
   const payload = useMemo<TicketBillPayload>(() => {
     const merged: TicketBillPayload = {};
@@ -122,7 +153,8 @@ export function TicketDetailsRouteClient({
     paymentNotification?.created_at ??
     rows[0]?.created_at ??
     null;
-  const venueTitle = formatTicketVenueTitle(payload.venue_name, visitDateIso);
+  const venueName = payload.venue_name ?? "Partner venue";
+  const visitDateLabel = formatTicketVisitDate(visitDateIso);
   const venueHref = payload.venue_slug
     ? placeHref(payload.venue_slug)
     : payload.venue_id
@@ -130,6 +162,10 @@ export function TicketDetailsRouteClient({
       : null;
   const capMxn = payload.reward_cap_mxn ?? payload.monthly_promo_cap ?? null;
   const rewardLabel = formatTicketRewardLabel(payload, { capMxn });
+  const venueInstagramHandle = useMemo(
+    () => resolveVenueInstagramHandle(payload, venueInstagramUrl),
+    [payload, venueInstagramUrl],
+  );
 
   const onConfirm = useCallback(async () => {
     setBusy(true);
@@ -139,6 +175,19 @@ export function TicketDetailsRouteClient({
       await load();
     } catch (e) {
       setError(errMsg(e, "Couldn't confirm payment."));
+    } finally {
+      setBusy(false);
+    }
+  }, [supabase, ticketId, load]);
+
+  const onMockStoryDetect = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await mockStoryDetect(supabase, ticketId);
+      await load();
+    } catch (e) {
+      setError(errMsg(e, "Couldn't simulate story detection."));
     } finally {
       setBusy(false);
     }
@@ -196,7 +245,8 @@ export function TicketDetailsRouteClient({
             ticketKind={ticketKind}
             payload={payload}
             capMxn={capMxn}
-            venueTitle={venueTitle}
+            venueName={venueName}
+            visitDateLabel={visitDateLabel}
             venueHref={venueHref}
             rewardLabel={rewardLabel}
             ticketMeta={ticketMeta}
@@ -209,6 +259,13 @@ export function TicketDetailsRouteClient({
             error={error}
             onConfirmPayment={() => void onConfirm()}
             onSubmitReview={() => void onReview()}
+            onMockStoryDetect={() => void onMockStoryDetect()}
+            showMockStoryButton={MOCK_STORY_DETECT_ENABLED}
+            venueInstagramHandle={venueInstagramHandle}
+            ticketId={ticketId}
+            paymentReturnUrl={paymentReturnUrl}
+            onPaymentComplete={() => void load()}
+            onPaymentError={setError}
           />
         )}
       </div>

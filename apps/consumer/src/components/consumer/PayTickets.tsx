@@ -6,8 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Gift, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TicketFlowStepper } from "@/components/consumer/TicketFlowStepper";
-import { TicketTransactionSummary } from "@/components/consumer/TicketTransactionSummary";
+import { TicketVisitShell } from "@/components/consumer/TicketVisitShell";
 import {
   isTicketFlowComplete,
   resolveTicketFlowSteps,
@@ -19,7 +18,7 @@ import {
   buildTicketTransactionSummary,
   formatPayMx,
   formatTicketRewardLabel,
-  formatTicketVenueTitle,
+  formatTicketVisitDate,
   payloadFromNotification,
   submitTicketReview,
   type PayNotificationRow,
@@ -313,58 +312,27 @@ function TicketPreviewCard({
   const transactionSummary = isComplete
     ? buildTicketTransactionSummary(enriched, ticketKind)
     : null;
+  const visitDateIso =
+    ticketMeta?.created_at ??
+    bundle.payment?.created_at ??
+    bundle.review?.created_at ??
+    null;
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="surface-card w-full p-3.5 text-left transition hover:border-secondary/30 active:scale-[0.995]"
+      className="w-full text-left transition active:scale-[0.995]"
     >
-      {/* Top: image left, name + reward stacked right */}
-      <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
-        <div className="bg-muted relative h-[88px] overflow-hidden rounded-xl ring-1 ring-border/60">
-          {p.venue_photo_url ? (
-            <Image
-              src={p.venue_photo_url}
-              alt={p.venue_name ?? "Venue"}
-              fill
-              className="object-cover"
-              sizes="88px"
-            />
-          ) : (
-            <div className="text-muted-foreground flex h-full items-center justify-center">
-              <MapPin className="h-6 w-6 opacity-40" />
-            </div>
-          )}
-        </div>
-
-        <div className="flex h-[88px] min-w-0 flex-col gap-2">
-          <div className="bg-muted/40 flex min-h-0 flex-1 items-center rounded-xl px-3 ring-1 ring-border/50">
-            <p className="text-foreground truncate text-sm font-semibold">
-              {formatTicketVenueTitle(
-                p.venue_name,
-                ticketMeta?.created_at ??
-                  bundle.payment?.created_at ??
-                  bundle.review?.created_at,
-              )}
-            </p>
-          </div>
-          <div className="reward-highlight min-h-0 flex-1 py-2">
-            <p className="text-secondary line-clamp-2 text-sm leading-snug font-semibold">
-              {formatTicketRewardLabel(enriched, { capMxn })}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom: steps */}
-      <div className="bg-muted/30 mt-3 rounded-xl px-3 py-3 ring-1 ring-border/50">
-        <TicketFlowStepper steps={flowSteps} />
-      </div>
-
-      {transactionSummary ? (
-        <TicketTransactionSummary summary={transactionSummary} variant="compact" />
-      ) : null}
+      <TicketVisitShell
+        venueName={p.venue_name ?? "Partner venue"}
+        venuePhotoUrl={p.venue_photo_url}
+        rewardLabel={formatTicketRewardLabel(enriched, { capMxn })}
+        visitDateLabel={formatTicketVisitDate(visitDateIso)}
+        steps={flowSteps}
+        stepperInteractive={false}
+        transactionSummary={transactionSummary}
+      />
     </button>
   );
 }

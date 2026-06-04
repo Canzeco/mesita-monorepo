@@ -2,16 +2,12 @@
 
 import Link from "next/link";
 import { CheckCircle2, Wallet } from "lucide-react";
-import { TicketTransactionSummary } from "@/components/consumer/TicketTransactionSummary";
-import type { TicketTransactionSummary as TicketTransactionSummaryData } from "@/lib/api/pay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { ticketFlowTypeFromKind } from "@/lib/ticket-flow-steps";
 
 export function TicketVisitComplete({
-  summary,
   ticketKind,
 }: {
-  summary: TicketTransactionSummaryData;
   ticketKind?: string | null;
 }) {
   const flowType = ticketFlowTypeFromKind(ticketKind ?? "dp");
@@ -26,8 +22,6 @@ export function TicketVisitComplete({
           Thanks for using Mesita at this restaurant.
         </p>
       </div>
-
-      <TicketTransactionSummary summary={summary} variant="detail" />
 
       {hasCashback ? (
         <Link
