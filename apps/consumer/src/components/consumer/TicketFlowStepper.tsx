@@ -6,6 +6,7 @@ import {
   Check,
   CreditCard,
   Instagram,
+  Lock,
   QrCode,
   ReceiptText,
   Star,
@@ -28,36 +29,41 @@ const STEP_ICONS: Record<TicketFlowStepId, LucideIcon> = {
   cashback: Wallet,
 };
 
-const STEP_CIRCLE_CLASS = "h-9 w-9";
-const STEP_ICON_CLASS = "h-4 w-4";
-const STEP_CHECK_CLASS = "h-4 w-4";
-
 export const TICKET_STEP_ICONS = STEP_ICONS;
 
+/**
+ * One round step indicator, NU-verification style:
+ * done = green check · active = pink gradient + step icon · upcoming = gray + lock.
+ */
 export function TicketFlowStepCircle({
   step,
   Icon,
+  selected,
 }: {
   step: TicketFlowStepView;
   Icon: LucideIcon;
+  selected?: boolean;
 }) {
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full border transition-colors",
-        STEP_CIRCLE_CLASS,
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors",
         step.state === "done" &&
-          "border-secondary/40 bg-secondary text-background shadow-sm",
+          "border-transparent bg-secondary text-background shadow-sm",
         step.state === "active" &&
           "border-transparent bg-pink-gradient text-white shadow-glow",
         step.state === "upcoming" &&
-          "border-border/80 bg-card text-muted-foreground",
+          "border-border/80 bg-muted/50 text-muted-foreground",
+        selected &&
+          "ring-secondary/50 ring-2 ring-offset-2 ring-offset-background",
       )}
     >
       {step.state === "done" ? (
-        <Check className={STEP_CHECK_CLASS} strokeWidth={2.5} />
+        <Check className="h-4 w-4" strokeWidth={2.5} />
+      ) : step.state === "upcoming" ? (
+        <Lock className="h-3.5 w-3.5" strokeWidth={2} />
       ) : (
-        <Icon className={STEP_ICON_CLASS} strokeWidth={2} />
+        <Icon className="h-4 w-4" strokeWidth={2} />
       )}
     </span>
   );
@@ -89,15 +95,12 @@ export function TicketFlowStepper({
   direction = "horizontal",
   selectedStepId,
   onSelectStep,
-  labelPosition = "bottom",
 }: {
   steps: TicketFlowStepView[];
   direction?: "horizontal" | "vertical";
   selectedStepId?: TicketFlowStepId;
   onSelectStep?: (stepId: TicketFlowStepId) => void;
-  labelPosition?: "top" | "bottom";
 }) {
-  const labelsOnTop = labelPosition === "top";
   if (direction === "vertical") {
     return (
       <div className="flex flex-col">
@@ -114,7 +117,7 @@ export function TicketFlowStepper({
               {i < steps.length - 1 ? (
                 <div
                   className={cn(
-                    "ml-[18px] h-5 w-0.5 shrink-0",
+                    "ml-[15px] h-5 w-0.5 shrink-0",
                     connectorDone ? "bg-secondary" : "bg-border",
                   )}
                 />
@@ -126,39 +129,21 @@ export function TicketFlowStepper({
     );
   }
 
+  // Horizontal: a single continuous track. The whole journey at a glance.
   return (
-    <div className="flex w-full items-start">
+    <div
+      className="flex w-full items-center"
+      role="list"
+      aria-label="Visit progress"
+    >
       {steps.map((step, i) => {
         const Icon = STEP_ICONS[step.id];
         const isSelected = selectedStepId === step.id;
-        const labelEl = (
-          <StepLabel
-            step={step}
-            className={cn(
-              "w-full truncate text-center leading-tight",
-              labelsOnTop ? "text-xs" : "text-[9px] leading-none",
-              onSelectStep && isSelected && "text-foreground font-semibold",
-            )}
-          />
-        );
-        const stepCol = (
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-            {labelsOnTop ? labelEl : null}
-            <span
-              className={cn(
-                onSelectStep &&
-                  isSelected &&
-                  "ring-secondary/50 rounded-full ring-2 ring-offset-2 ring-offset-background",
-              )}
-            >
-              <TicketFlowStepCircle step={step} Icon={Icon} />
-            </span>
-            {!labelsOnTop ? labelEl : null}
-          </div>
-        );
-
         const canSelect =
           onSelectStep && (step.state === "done" || step.state === "active");
+        const circle = (
+          <TicketFlowStepCircle step={step} Icon={Icon} selected={isSelected} />
+        );
 
         return (
           <Fragment key={`${step.id}-${i}`}>
@@ -166,25 +151,29 @@ export function TicketFlowStepper({
               <button
                 type="button"
                 onClick={() => onSelectStep(step.id)}
-                className="min-w-0 flex-1 cursor-pointer rounded-md transition hover:opacity-80 disabled:cursor-default disabled:opacity-100"
-                aria-pressed={isSelected}
-                aria-label={step.label}
-                aria-disabled={step.state === "upcoming"}
+                className="shrink-0 cursor-pointer rounded-full transition hover:opacity-80"
+                aria-current={isSelected ? "step" : undefined}
+                aria-label={`${step.label} — ${step.state}`}
               >
-                {stepCol}
+                {circle}
               </button>
             ) : (
-              <div className="min-w-0 flex-1" aria-hidden={false}>
-                {stepCol}
-              </div>
+              <span
+                className="shrink-0"
+                role="listitem"
+                aria-current={step.state === "active" ? "step" : undefined}
+                aria-label={`${step.label} — ${step.state}`}
+              >
+                {circle}
+              </span>
             )}
             {i < steps.length - 1 ? (
-              <div
+              <span
                 className={cn(
-                  "h-0.5 w-1 shrink-0 self-center",
-                  labelsOnTop ? "mb-2" : "mt-4",
-                  steps[i].state === "done" ? "bg-secondary" : "bg-border",
+                  "h-[3px] flex-1 rounded-full transition-colors",
+                  step.state === "done" ? "bg-secondary" : "bg-border",
                 )}
+                aria-hidden
               />
             ) : null}
           </Fragment>

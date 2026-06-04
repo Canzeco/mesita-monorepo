@@ -101,12 +101,11 @@ export function TicketVisitShell({
           </div>
         </div>
 
-        <div className="bg-muted/30 rounded-2xl px-3 py-3.5 ring-1 ring-inset ring-border/50">
+        <div className="bg-muted/30 rounded-2xl px-4 py-3 ring-1 ring-inset ring-border/50">
           <TicketFlowStepper
             steps={steps}
             selectedStepId={displayStepId}
             onSelectStep={stepperInteractive ? onStepSelect : undefined}
-            labelPosition="top"
           />
         </div>
 
