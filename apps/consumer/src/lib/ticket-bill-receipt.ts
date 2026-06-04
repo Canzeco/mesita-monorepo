@@ -93,7 +93,7 @@ export function buildTicketReceipt(
     rewardCallout = `After you pay, ${pct}cashback of ${fmt(promo.computedPromoCents)} goes to your Mesita balance. Tip is not included in cashback.`;
   }
 
-  let footerNote: string | undefined =
+  const footerNote: string | undefined =
     "Confirm this matches what staff told you. Payment is the next step.";
 
   if (promo.capMxn != null && promo.capMxn > 0 && promo.ratePercent) {
