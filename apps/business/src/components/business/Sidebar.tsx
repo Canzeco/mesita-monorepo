@@ -8,6 +8,7 @@ import {
   Store,
   Gift,
   ScanLine,
+  CalendarCheck,
   BarChart3,
   Users,
   ChevronDown,
@@ -43,6 +44,7 @@ const NAV: NavItem[] = [
   { slug: "place", label: "Place", Icon: Store },
   { slug: "promos", label: "Promos", Icon: Gift },
   { slug: "scan", label: "Scan", Icon: ScanLine },
+  { slug: "reservations", label: "Reservations", Icon: CalendarCheck },
   {
     slug: "performance",
     label: "Performance",
