@@ -1,5 +1,6 @@
 import type { BusinessTicket } from "@/lib/api/tickets";
 import { ticketFlowTypeFromKind } from "@/lib/ticket-staff-lifecycle";
+import { planLabel } from "@/lib/consumer-plan";
 
 export function centsToMoney(cents: number | null, currency: string): string {
   if (cents == null) return "—";
@@ -35,10 +36,6 @@ function sexLabel(sex: string | null): string | null {
   if (s === "m" || s === "male" || s === "man") return "Male";
   if (s === "f" || s === "female" || s === "woman") return "Female";
   return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function planLabel(tierKey: string | null | undefined): string {
-  return tierKey === "premium" ? "Premium" : "Free";
 }
 
 export function ticketConsumerMetaLine(ticket: BusinessTicket): string {

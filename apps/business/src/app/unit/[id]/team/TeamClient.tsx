@@ -13,7 +13,6 @@ import {
   Plus,
   Send,
   Trash2,
-  UserPlus,
   X,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -1281,21 +1280,6 @@ function TeamStatPill({
         <p className="text-muted-foreground text-[11px]">{hint}</p>
       </div>
     </div>
-  );
-}
-
-function ChannelIcon({ channel }: { channel: "whatsapp" | "sms" }) {
-  if (channel === "whatsapp") {
-    return (
-      <span className="bg-whatsapp/15 text-whatsapp-deep flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-        <MessageCircle className="h-4 w-4" />
-      </span>
-    );
-  }
-  return (
-    <span className="bg-muted text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-      <UserPlus className="h-4 w-4" />
-    </span>
   );
 }
 

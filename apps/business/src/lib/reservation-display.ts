@@ -2,6 +2,7 @@ import type {
   BusinessReservation,
   ReservationStatus,
 } from "@/lib/api/reservations";
+import { isPremiumTier, planLabel, premiumDoorLabel } from "@/lib/consumer-plan";
 
 export function reservationStatusLabel(status: ReservationStatus): string {
   switch (status) {
@@ -49,20 +50,12 @@ export function reservationPlan(r: BusinessReservation): {
   premium: boolean;
   door: string | null;
 } {
-  const premium = r.consumer?.tier_key === "premium";
+  const premium = isPremiumTier(r.consumer?.tier_key);
   return {
-    label: premium ? "Premium" : "Free",
+    label: planLabel(r.consumer?.tier_key),
     premium,
     door: premium ? premiumDoorLabel(r.consumer?.tier_origin) : null,
   };
-}
-
-function premiumDoorLabel(origin: string | null | undefined): string | null {
-  const o = (origin ?? "").toLowerCase();
-  if (o.includes("insta") || o === "ig") return "Instagram";
-  if (o.includes("sub")) return "Subscription";
-  if (o.includes("invit")) return "Invitation";
-  return null;
 }
 
 export function reservationWhen(reservedAt: string): {
