@@ -63,38 +63,6 @@ function ShareBodyContent() {
   );
 }
 
-function UrlField({ url }: { url: string }) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // Clipboard API can fail on insecure origins or older browsers — fall
-      // back to noop. We could select the text, but the URL is already in
-      // view so the user can long-press to copy on mobile.
-    }
-  };
-  return (
-    <div className="border-border bg-card flex items-center gap-2 rounded-lg border px-4 py-3">
-      <span className="flex-1 truncate font-mono text-[13px]">{url}</span>
-      <button
-        type="button"
-        aria-label={copied ? "Copied" : "Copy"}
-        onClick={onCopy}
-        className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-7 w-7 items-center justify-center rounded-full"
-      >
-        {copied ? (
-          <Check className="text-secondary h-3.5 w-3.5" />
-        ) : (
-          <Copy className="h-3.5 w-3.5" />
-        )}
-      </button>
-    </div>
-  );
-}
-
 function PrimaryCta({
   label,
   share,
