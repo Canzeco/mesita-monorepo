@@ -6,7 +6,6 @@ import {
   Check,
   CreditCard,
   Instagram,
-  Lock,
   QrCode,
   ReceiptText,
   Star,
@@ -60,8 +59,6 @@ export function TicketFlowStepCircle({
     >
       {step.state === "done" ? (
         <Check className="h-4 w-4" strokeWidth={2.5} />
-      ) : step.state === "upcoming" ? (
-        <Lock className="h-3.5 w-3.5" strokeWidth={2} />
       ) : (
         <Icon className="h-4 w-4" strokeWidth={2} />
       )}

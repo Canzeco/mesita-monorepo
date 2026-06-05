@@ -10,6 +10,7 @@ import { TicketVisitShell } from "@/components/consumer/TicketVisitShell";
 import {
   isTicketFlowComplete,
   resolveTicketFlowSteps,
+  STEP_NOW_TITLE,
   ticketProgressFromBundle,
 } from "@/lib/ticket-flow-steps";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -241,7 +242,7 @@ function TicketModalBody({
               onChange={(e) =>
                 onReviewChange({ ...reviewDraft, comments: e.target.value })
               }
-              placeholder="Comments (optional)"
+              placeholder="Add a note about your visit"
               rows={2}
               className="border-border bg-background text-foreground placeholder:text-muted-foreground mt-3 w-full resize-none rounded-2xl border px-3 py-2 text-sm"
             />
@@ -252,7 +253,15 @@ function TicketModalBody({
             ) : null}
             <button
               type="button"
-              disabled={busy === bundle.ticketId}
+              disabled={
+                busy === bundle.ticketId ||
+                reviewDraft.overall < 1 ||
+                reviewDraft.food < 1 ||
+                reviewDraft.service < 1 ||
+                reviewDraft.ambiance < 1 ||
+                reviewDraft.value < 1 ||
+                reviewDraft.comments.trim().length === 0
+              }
               onClick={() => onSubmitReview(bundle.ticketId)}
               className="btn-primary mt-3"
             >
@@ -319,6 +328,11 @@ function TicketPreviewCard({
   const transactionSummary = isComplete
     ? buildTicketTransactionSummary(enriched, ticketKind)
     : null;
+  const activeStep = flowSteps.find((s) => s.state === "active");
+  const statusLine =
+    isComplete || !activeStep
+      ? null
+      : `${STEP_NOW_TITLE[activeStep.id]} — in progress`;
   const visitDateIso =
     ticketMeta?.created_at ??
     bundle.payment?.created_at ??
@@ -339,6 +353,7 @@ function TicketPreviewCard({
         steps={flowSteps}
         stepperInteractive={false}
         transactionSummary={transactionSummary}
+        statusLine={statusLine}
       />
     </button>
   );
@@ -355,11 +370,11 @@ export function PayTickets({ userId }: { userId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState({
-    food: 5,
-    service: 5,
-    ambiance: 5,
-    value: 5,
-    overall: 5,
+    food: 0,
+    service: 0,
+    ambiance: 0,
+    value: 0,
+    overall: 0,
     comments: "",
   });
 

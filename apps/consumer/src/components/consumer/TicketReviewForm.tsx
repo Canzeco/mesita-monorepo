@@ -94,6 +94,13 @@ export function TicketReviewForm({
   venueName?: string | null;
   showIntro?: boolean;
 }) {
+  const ratingsSet =
+    draft.overall > 0 &&
+    draft.food > 0 &&
+    draft.service > 0 &&
+    draft.ambiance > 0 &&
+    draft.value > 0;
+  const canSubmit = ratingsSet && draft.comments.trim().length > 0;
   return (
     <div className="space-y-3">
       {venueName ? (
@@ -103,7 +110,7 @@ export function TicketReviewForm({
         <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-[13px] leading-snug">
           <li>Tap stars on each row — 1 is bad, 5 is great.</li>
           <li>Fill in Overall first, then Food, Service, Ambiance, and Value.</li>
-          <li>Add notes only if you want — then tap Send review.</li>
+          <li>Add a note about your visit, then tap Send review.</li>
         </ol>
       ) : null}
 
@@ -139,7 +146,7 @@ export function TicketReviewForm({
 
       <label className="block">
         <span className="text-foreground mb-1 block text-[13px] font-medium">
-          Notes <span className="text-muted-foreground font-normal">(optional)</span>
+          Notes
         </span>
         <textarea
           value={draft.comments}
@@ -150,10 +157,17 @@ export function TicketReviewForm({
         />
       </label>
 
+      {!canSubmit ? (
+        <p className="text-muted-foreground text-center text-[12px]">
+          {ratingsSet
+            ? "Add a note to send your review."
+            : "Tap a rating on every row to continue."}
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={onSubmit}
-        disabled={busy}
+        disabled={busy || !canSubmit}
         className="btn-primary"
       >
         {busy ? "Sending…" : "Send review"}

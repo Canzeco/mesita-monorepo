@@ -52,11 +52,11 @@ export function TicketDetailsRouteClient({
   } | null>(null);
   const [venueInstagramUrl, setVenueInstagramUrl] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState({
-    food: 5,
-    service: 5,
-    ambiance: 5,
-    value: 5,
-    overall: 5,
+    food: 0,
+    service: 0,
+    ambiance: 0,
+    value: 0,
+    overall: 0,
     comments: "",
   });
 

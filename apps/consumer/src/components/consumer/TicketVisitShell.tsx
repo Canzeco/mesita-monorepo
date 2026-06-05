@@ -117,7 +117,7 @@ export function TicketVisitShell({
         ) : statusLine ? (
           <div className="bg-muted/40 rounded-2xl px-3.5 py-3 ring-1 ring-inset ring-border/50">
             <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
-              Status
+              Status summary
             </p>
             <p className="text-foreground mt-0.5 text-sm font-medium">{statusLine}</p>
           </div>
