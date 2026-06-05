@@ -242,7 +242,7 @@ function TicketModalBody({
               onChange={(e) =>
                 onReviewChange({ ...reviewDraft, comments: e.target.value })
               }
-              placeholder="Add a note about your visit"
+              placeholder="Add a note (min 50 characters)"
               rows={2}
               className="border-border bg-background text-foreground placeholder:text-muted-foreground mt-3 w-full resize-none rounded-2xl border px-3 py-2 text-sm"
             />
@@ -260,7 +260,7 @@ function TicketModalBody({
                 reviewDraft.service < 1 ||
                 reviewDraft.ambiance < 1 ||
                 reviewDraft.value < 1 ||
-                reviewDraft.comments.trim().length === 0
+                reviewDraft.comments.trim().length < 50
               }
               onClick={() => onSubmitReview(bundle.ticketId)}
               className="btn-primary mt-3"

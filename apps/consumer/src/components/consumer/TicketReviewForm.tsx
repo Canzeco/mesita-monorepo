@@ -3,6 +3,8 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const NOTE_MIN = 50;
+
 export type TicketReviewDraft = {
   food: number;
   service: number;
@@ -100,7 +102,8 @@ export function TicketReviewForm({
     draft.service > 0 &&
     draft.ambiance > 0 &&
     draft.value > 0;
-  const canSubmit = ratingsSet && draft.comments.trim().length > 0;
+  const noteLen = draft.comments.trim().length;
+  const canSubmit = ratingsSet && noteLen >= NOTE_MIN;
   return (
     <div className="space-y-3">
       {venueName ? (
@@ -145,8 +148,16 @@ export function TicketReviewForm({
       </div>
 
       <label className="block">
-        <span className="text-foreground mb-1 block text-[13px] font-medium">
-          Notes
+        <span className="text-foreground mb-1 flex items-center justify-between text-[13px] font-medium">
+          <span>Notes</span>
+          <span
+            className={cn(
+              "text-[11px] font-normal tabular-nums",
+              noteLen >= NOTE_MIN ? "text-emerald-600" : "text-muted-foreground",
+            )}
+          >
+            {noteLen}/{NOTE_MIN}
+          </span>
         </span>
         <textarea
           value={draft.comments}
@@ -160,7 +171,7 @@ export function TicketReviewForm({
       {!canSubmit ? (
         <p className="text-muted-foreground text-center text-[12px]">
           {ratingsSet
-            ? "Add a note to send your review."
+            ? `Your note needs at least ${NOTE_MIN} characters.`
             : "Tap a rating on every row to continue."}
         </p>
       ) : null}

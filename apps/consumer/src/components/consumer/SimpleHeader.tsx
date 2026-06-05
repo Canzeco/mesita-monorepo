@@ -4,14 +4,15 @@ import { ClassChip } from "./ClassChip";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Shared header for Saved, Pay, Inbox, Me (profile), Invite, Reservations, etc.
+// Explore is the exception — it uses DiscoverHeader and shows no wallet.
 //
-//   share — [Logo][Share] · title · [Plan]
-//   share + showWallet — same, with Wallet before Plan (Pay only)
-//   class — [Logo] · title · [Plan]
+//   share — [Logo][Share] · title · [Wallet][Plan]
+//   class — [Logo] · title · [Wallet][Plan]
+// The Wallet chip is shown by default everywhere this header is used.
 export function SimpleHeader({
   title,
   rightAction = "class",
-  showWallet = false,
+  showWallet = true,
 }: {
   title: string;
   rightAction?: "class" | "share";
@@ -49,7 +50,7 @@ export function SimpleHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {isShare && showWallet ? (
+        {showWallet ? (
           <Link
             href={CONSUMER_ROUTES.pay.balance}
             aria-label="Your wallet"
