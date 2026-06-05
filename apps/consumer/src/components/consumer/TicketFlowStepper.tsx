@@ -48,7 +48,7 @@ export function TicketFlowStepCircle({
       className={cn(
         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors",
         step.state === "done" &&
-          "border-transparent bg-secondary text-background shadow-sm",
+          "border-transparent bg-emerald-500 text-white shadow-sm",
         step.state === "active" &&
           "border-transparent bg-pink-gradient text-white shadow-glow",
         step.state === "upcoming" &&
@@ -115,7 +115,7 @@ export function TicketFlowStepper({
                 <div
                   className={cn(
                     "ml-[15px] h-5 w-0.5 shrink-0",
-                    connectorDone ? "bg-secondary" : "bg-border",
+                    connectorDone ? "bg-emerald-500" : "bg-border",
                   )}
                 />
               ) : null}
@@ -168,7 +168,7 @@ export function TicketFlowStepper({
               <span
                 className={cn(
                   "h-[3px] flex-1 rounded-full transition-colors",
-                  step.state === "done" ? "bg-secondary" : "bg-border",
+                  step.state === "done" ? "bg-emerald-500" : "bg-border",
                 )}
                 aria-hidden
               />
