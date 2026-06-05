@@ -18,7 +18,7 @@ type CreateUnitOk = {
   enriched: boolean;
 };
 type CreateUnitErr = { ok: false; error: string };
-export type CreateUnitResult = CreateUnitOk | CreateUnitErr;
+type CreateUnitResult = CreateUnitOk | CreateUnitErr;
 
 type CreateUnitResponse = {
   venue?: { id?: string; name?: string; slug?: string | null };
