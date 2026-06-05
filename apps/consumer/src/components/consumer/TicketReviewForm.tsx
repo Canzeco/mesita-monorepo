@@ -7,6 +7,7 @@ export type TicketReviewDraft = {
   food: number;
   service: number;
   ambiance: number;
+  value: number;
   overall: number;
   comments: string;
 };
@@ -27,7 +28,7 @@ function StarRatingRow({
   return (
     <div
       className={cn(
-        "rounded-xl border px-3 py-2.5",
+        "rounded-xl border px-3 py-2",
         emphasized
           ? "border-foreground/15 bg-muted/30"
           : "border-border/70 bg-background",
@@ -49,7 +50,7 @@ function StarRatingRow({
       {hint ? (
         <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p>
       ) : null}
-      <div className="mt-2 flex justify-between gap-1" role="group" aria-label={label}>
+      <div className="mt-1.5 flex justify-between gap-1" role="group" aria-label={label}>
         {[1, 2, 3, 4, 5].map((n) => {
           const on = value >= n;
           return (
@@ -59,11 +60,11 @@ function StarRatingRow({
               aria-label={`${label}: ${n} star${n === 1 ? "" : "s"}`}
               aria-pressed={value === n}
               onClick={() => onChange(n)}
-              className="flex flex-1 items-center justify-center rounded-lg py-1 transition active:scale-95"
+              className="flex flex-1 items-center justify-center rounded-lg py-0.5 transition active:scale-95"
             >
               <Star
                 className={cn(
-                  "h-8 w-8",
+                  "h-7 w-7",
                   on
                     ? "fill-amber-400 text-amber-400"
                     : "text-muted-foreground/35",
@@ -101,7 +102,7 @@ export function TicketReviewForm({
       {showIntro !== false ? (
         <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-[13px] leading-snug">
           <li>Tap stars on each row — 1 is bad, 5 is great.</li>
-          <li>Fill in Overall first, then Food, Service, and Ambiance.</li>
+          <li>Fill in Overall first, then Food, Service, Ambiance, and Value.</li>
           <li>Add notes only if you want — then tap Send review.</li>
         </ol>
       ) : null}
@@ -128,6 +129,11 @@ export function TicketReviewForm({
           label="Ambiance"
           value={draft.ambiance}
           onChange={(ambiance) => onChange({ ...draft, ambiance })}
+        />
+        <StarRatingRow
+          label="Value"
+          value={draft.value}
+          onChange={(value) => onChange({ ...draft, value })}
         />
       </div>
 

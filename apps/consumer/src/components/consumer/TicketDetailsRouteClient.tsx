@@ -55,6 +55,7 @@ export function TicketDetailsRouteClient({
     food: 5,
     service: 5,
     ambiance: 5,
+    value: 5,
     overall: 5,
     comments: "",
   });

@@ -503,6 +503,7 @@ export async function submitTicketReview(
     food: number;
     service: number;
     ambiance: number;
+    value: number;
     overall: number;
     comments?: string;
   },

@@ -223,7 +223,7 @@ export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]>
   ],
   cashback: ["Cashback is added to your Mesita balance."],
   review: [
-    "Rate food, service, ambiance, and overall.",
+    "Rate food, service, ambiance, value, and overall.",
     "Add optional comments about your visit.",
   ],
 };

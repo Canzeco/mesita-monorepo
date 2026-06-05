@@ -41,6 +41,7 @@ type ReviewDraft = {
   food: number;
   service: number;
   ambiance: number;
+  value: number;
   overall: number;
   comments: string;
 };
@@ -107,6 +108,7 @@ function TicketModalBody({
     food: number;
     service: number;
     ambiance: number;
+    value: number;
     overall: number;
     comments: string;
   };
@@ -222,6 +224,11 @@ function TicketModalBody({
                 onChange={(v) =>
                   onReviewChange({ ...reviewDraft, ambiance: v })
                 }
+              />
+              <StarRow
+                label="Value"
+                value={reviewDraft.value}
+                onChange={(v) => onReviewChange({ ...reviewDraft, value: v })}
               />
               <StarRow
                 label="Overall"
@@ -351,6 +358,7 @@ export function PayTickets({ userId }: { userId: string }) {
     food: 5,
     service: 5,
     ambiance: 5,
+    value: 5,
     overall: 5,
     comments: "",
   });
