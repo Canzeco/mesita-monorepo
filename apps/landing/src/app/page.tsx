@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   Compass,
   CalendarCheck,
-  Wallet,
+  Gift,
   Sparkles,
   TrendingUp,
   Instagram,
@@ -117,7 +117,7 @@ function Hero() {
         </Badge>
 
         <h1 className="font-display max-w-3xl text-4xl leading-[1.05] font-semibold tracking-tight md:text-6xl">
-          The smartest cashback wallet for going out.
+          The smartest way to go out — rewarded.
         </h1>
 
         <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed md:text-xl">
@@ -148,7 +148,7 @@ function Hero() {
         </div>
 
         <p className="text-muted-foreground text-xs">
-          Free for consumers · Set up your venue in 10 minutes · Cashback on
+          Free for consumers · Set up your venue in 10 minutes · Rewards on
           every visit
         </p>
 
@@ -222,8 +222,8 @@ function ForConsumers() {
     },
     {
       title: "Classes and rewards",
-      body: "Bronze is free for everyone. Earn Silver, Gold, or Diamond through Instagram followers or a Mesita subscription — and unlock higher cashback at every partner, an instant discount at Informal ones, plus priority tables, private openings, and other perks that scale with your class.",
-      Icon: Wallet,
+      body: "Bronze is free for everyone. Earn Silver, Gold, or Diamond through Instagram followers or a Mesita subscription — and unlock bigger discounts at every partner, plus priority tables, private openings, and other perks that scale with your class.",
+      Icon: Gift,
     },
   ];
   return (
@@ -240,7 +240,7 @@ function ForConsumers() {
           </div>
           <p className="text-muted-foreground max-w-sm text-sm">
             Mesita Bronze is free forever. Silver, Gold, and Diamond grant
-            higher cashback at every partner — earned with Instagram followers
+            bigger discounts at every partner — earned with Instagram followers
             or a monthly subscription.
           </p>
         </header>
@@ -301,7 +301,7 @@ function ForVenues() {
     },
     {
       title: "Win the magnetic & rich customers",
-      body: "Set cashback (or discount) rates per tier — Bronze, Silver, Gold, Diamond. Reward the consumers who actually fill the room and post it to thousands; pay base rates to walk-ins.",
+      body: "Set discount rates per tier — Bronze, Silver, Gold, Diamond. Reward the consumers who actually fill the room and post it to thousands; pay base rates to walk-ins.",
       Icon: Sparkles,
     },
     {
@@ -385,16 +385,12 @@ function ForVenues() {
 function FAQ() {
   const items: { q: string; a: string }[] = [
     {
-      q: "Why do Formal venues run cashback and Informal venues run discount?",
-      a: "It comes down to whether you invoice. If you do, cashback works clean: the consumer pays full price by card, you book it as marketing spend, and the % comes back to their Mesita wallet for a future visit. If you don't invoice, asking the consumer to pay full price first (so you can invoice + charge 16% VAT) so they can recover 10% later loses them money. So instead the discount is revealed at the bill and applied to the cash total directly — no invoice, no IVA, the consumer just pays less today.",
-    },
-    {
-      q: "Why does Informal Pro cost 2× Formal Pro?",
-      a: "Formal partners participate in the Mesita wallet. Every peso of cashback issued lives on as a balance the consumer can redeem at any other Formal partner — so the network compounds, and traffic flows between Formal venues that you'd never see in a vacuum. Informal partners offer a standalone discount that doesn't pool across the network the same way. Same priority placement, no shared wallet pull — so Informal pays more for the same surface coverage.",
+      q: "How does the Mesita discount work?",
+      a: "Every Verified venue runs an instant discount that's revealed at the bill and applied to the total directly — no invoice, no IVA, no waiting. The consumer scans their QR, your staff enters the bill, and Mesita applies the agreed % on the spot. The consumer just pays less today, and you only reward the visits that actually happen.",
     },
     {
       q: "What's the difference between a Verified Partner and a Web-Listed venue?",
-      a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.ai and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Wallet / Team dashboard.",
+      a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.ai and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Team dashboard.",
     },
     {
       q: "How does a consumer reach Silver, Gold, or Diamond?",
@@ -402,7 +398,7 @@ function FAQ() {
     },
     {
       q: "What's the Instagram story step about?",
-      a: "Consumers whose Silver / Gold / Diamond class came from follower count have to post an IG story tagging the venue to claim their coupon. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. At Formal venues, no story = no cashback (held back until verified). At Informal venues, the discount applies at the bill before verification — that's the only mechanical risk.",
+      a: "Consumers whose Silver / Gold / Diamond class came from follower count have to post an IG story tagging the venue to claim their reward. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. The discount is applied at the bill before verification clears — that's the only mechanical risk.",
     },
     {
       q: "Do I need hardware or POS integration?",
