@@ -12,8 +12,6 @@ export type TicketReceiptLine = {
 
 export type TicketReceiptView = {
   lines: TicketReceiptLine[];
-  /** Cashback only — shown below the total, not mixed into the math. */
-  rewardCallout?: string;
   footerNote?: string;
 };
 
@@ -53,7 +51,7 @@ export function buildTicketReceipt(
     });
   }
 
-  if (promo.mechanic === "discount" && promo.computedPromoCents > 0) {
+  if (promo.computedPromoCents > 0) {
     const pct =
       promo.ratePercent != null && promo.ratePercent > 0
         ? `${promo.ratePercent}% off`
@@ -65,46 +63,27 @@ export function buildTicketReceipt(
     });
   }
 
-  if (promo.redeemCents > 0) {
-    lines.push({
-      label: "Balance used",
-      value: `− ${fmt(promo.redeemCents)}`,
-      kind: "deduction",
-    });
-  }
-
   const totalCents =
-    promo.mechanic === "discount" && promo.amountDueCents != null
-      ? promo.amountDueCents
-      : promo.totalCents;
+    promo.amountDueCents != null ? promo.amountDueCents : promo.totalCents;
 
   lines.push({
-    label: promo.mechanic === "discount" ? "You pay" : "Total to pay",
+    label: "You pay",
     value: fmt(totalCents),
     kind: "total",
   });
-
-  let rewardCallout: string | undefined;
-  if (promo.mechanic === "cashback" && promo.computedPromoCents > 0) {
-    const pct =
-      promo.ratePercent != null && promo.ratePercent > 0
-        ? `${promo.ratePercent}% `
-        : "";
-    rewardCallout = `After you pay, ${pct}cashback of ${fmt(promo.computedPromoCents)} goes to your Mesita balance. Tip is not included in cashback.`;
-  }
 
   const footerNote: string | undefined =
     "Confirm this matches what staff told you. Payment is the next step.";
 
   if (promo.capMxn != null && promo.capMxn > 0 && promo.ratePercent) {
     lines.push({
-      label: `Cashback/discount applies to the first MX$${promo.capMxn.toLocaleString("en-US")} of food & drinks`,
+      label: `Discount applies to the first MX$${promo.capMxn.toLocaleString("en-US")} of food & drinks`,
       value: "",
       kind: "note",
     });
   }
 
-  return { lines, rewardCallout, footerNote };
+  return { lines, footerNote };
 }
 
 /** @deprecated Use buildTicketReceipt */

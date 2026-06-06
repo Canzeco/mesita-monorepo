@@ -2,9 +2,9 @@
 // consumer-side wire-up of `consumer-list-saved-venues` lands. Bookmarks
 // created by the consumer's plain "Save" action on a venue card. Shape
 // matches the production `Venue` type so VenueCatalogCard can render
-// these unmodified. Two verified-partner venues (cashback / discount
-// badges) plus two web-listed venues (no badge) so the contextual badge
-// logic on /saved is visible across both kinds.
+// these unmodified. Two verified-partner venues (discount badges) plus
+// two web-listed venues (no badge) so the contextual badge logic on
+// /saved is visible across both kinds.
 //
 // TODO: swap this for a `consumer-list-saved-venues` EF call.
 // The EF + the underlying public.saved_venues table already ship — see
@@ -35,7 +35,6 @@ export const SAVED_VENUES: PublicVenue[] = [
     phone: null,
     pitch: "Mediterranean tasting menu on a candle-lit rooftop.",
     story: null,
-    cashback_percent: 20,
     photos: [
       "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80&auto=format&fit=crop",
     ],
@@ -79,7 +78,6 @@ export const SAVED_VENUES: PublicVenue[] = [
     phone: null,
     pitch: "Wood-fired Argentine grill with a 200-label cellar.",
     story: null,
-    cashback_percent: 15,
     photos: [
       "https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&q=80&auto=format&fit=crop",
     ],
@@ -123,7 +121,6 @@ export const SAVED_VENUES: PublicVenue[] = [
     phone: null,
     pitch: null,
     story: null,
-    cashback_percent: null,
     photos: [
       "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200&q=80&auto=format&fit=crop",
     ],
@@ -167,7 +164,6 @@ export const SAVED_VENUES: PublicVenue[] = [
     phone: null,
     pitch: null,
     story: null,
-    cashback_percent: null,
     photos: [
       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80&auto=format&fit=crop",
     ],

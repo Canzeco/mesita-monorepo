@@ -161,7 +161,7 @@ function SectionEyebrow({ children }: { children: ReactNode }) {
 // Quick at-a-glance comparison. The three perks that actually differ, with
 // the Premium column tinted + emphasized.
 const COMPARE_ROWS: { label: string; free: string; premium: string }[] = [
-  { label: "Cashback & discounts", free: "Base", premium: "Boosted" },
+  { label: "Discounts", free: "Base", premium: "Boosted" },
   { label: "Recommendations", free: "Standard", premium: "Personalized" },
   { label: "Max monthly reservations", free: "2", premium: "Unlimited" },
 ];
@@ -260,7 +260,7 @@ function WaysToClimb({
       title: "Free",
       price: "$0",
       priceNote: "always free",
-      desc: "Your default account at no cost. Earn base cashback and discounts at partner venues, get standard recommendations, and book up to 2 reservations every month.",
+      desc: "Your default account at no cost. Get a base discount at Verified Partners, standard recommendations, and book up to 2 reservations every month.",
       reached: isFree,
       reachedLabel: "Current plan",
       note: isFree ? undefined : "Included in every account",
@@ -275,7 +275,7 @@ function WaysToClimb({
       accent: true,
       price: `${premium.followerThreshold.toLocaleString("en-US")}+ followers`,
       priceNote: "no payment — earned with reach",
-      desc: "Connect an Instagram with 1,000+ followers and post a story each time you visit. You get full Premium — boosted cashback, personalized recommendations, and unlimited reservations — without paying a peso.",
+      desc: "Connect an Instagram with 1,000+ followers and post a story each time you visit. You get full Premium — boosted discounts, personalized recommendations, and unlimited reservations — without paying a peso.",
       reached: origin === "instagram",
       reachedLabel: "Connected",
       action: { label: "Connect", onClick: () => onConnectSocial("instagram") },
@@ -289,7 +289,7 @@ function WaysToClimb({
       accent: true,
       price: `$${premium.priceMxn} MXN`,
       priceNote: "per month · cancel anytime",
-      desc: "Subscribe and unlock full Premium instantly — boosted cashback and discounts, personalized recommendations, and unlimited reservations. No follower count needed; cancel whenever you want.",
+      desc: "Subscribe and unlock full Premium instantly — boosted discounts, personalized recommendations, and unlimited reservations. No follower count needed; cancel whenever you want.",
       reached: origin === "subscription",
       reachedLabel: "Active",
       action: { label: "Subscribe", href: "/subscribe/premium" },
@@ -507,7 +507,7 @@ function SettingsTab() {
       Icon: CreditCard,
       label: "Payment methods",
       sub: "Apple Pay · Visa · 4242",
-      href: "/pay/balance",
+      href: "/pay/qr",
     },
     {
       Icon: Bell,

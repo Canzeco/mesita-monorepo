@@ -235,14 +235,10 @@ export function venueRowToDetail(row: Row): VenueDetail {
   const currency = str(row.currency) ?? "MXN";
   const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
   const listingType = row.listing_type === "partner" ? "partner" : "web";
-  const fiscalFormal = row.fiscal_type === "formal";
   const details = obj(row.details);
 
   const activePremiumRate =
-    num(row.premium_rate) ??
-    num(row.free_rate) ??
-    num(row.cashback_percent) ??
-    0;
+    num(row.premium_rate) ?? num(row.free_rate) ?? 0;
   const openState = computeOpenState(row.hours, str(row.timezone));
 
   return {
@@ -324,7 +320,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
     promo: {
       badge_label:
         listingType === "partner" ? "Verified partner" : "Web listing",
-      reward_kind: fiscalFormal ? "cashback" : "discount",
+      reward_kind: "discount",
       reward_value: activePremiumRate,
     },
 
@@ -373,7 +369,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
       established_year: num(row.established_year),
       executive_chef: str(row.executive_chef),
       participation: listingType === "partner" ? "Partner" : "Web listing",
-      mechanic: fiscalFormal ? "Cashback" : "Discount",
+      mechanic: "Discount",
     },
 
     channels: {

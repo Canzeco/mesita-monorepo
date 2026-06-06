@@ -61,17 +61,6 @@ export function TicketBillReceipt({
           </div>
         ) : null}
 
-        {receipt.rewardCallout ? (
-          <div className="bg-secondary/10 border-secondary/25 mt-3 rounded-xl border px-3 py-2.5">
-            <p className="text-secondary text-[10px] font-bold tracking-wider uppercase">
-              Your reward
-            </p>
-            <p className="text-foreground mt-1 text-sm leading-snug">
-              {receipt.rewardCallout}
-            </p>
-          </div>
-        ) : null}
-
         {noteLines.map((line, i) => (
           <p
             key={`note-${i}`}

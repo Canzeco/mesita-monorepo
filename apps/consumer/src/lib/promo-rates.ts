@@ -25,10 +25,10 @@ export function hasExplicitTierRates(row: Record<string, unknown>): boolean {
   );
 }
 
-/** Map venues row → promo matrix. Legacy cashback_percent fills in for partners only. */
+/** Map venues row → promo matrix from the per-tier rate columns. */
 export function buildPromoMatrixFromRow(
   row: Record<string, unknown>,
-  listingType: "partner" | "web",
+  _listingType: "partner" | "web",
 ): PromoMatrix {
   const welcome = {
     free: positiveRate(row.welcome_free_rate),
@@ -38,24 +38,6 @@ export function buildPromoMatrixFromRow(
     free: positiveRate(row.free_rate),
     premium: positiveRate(row.premium_rate),
   };
-  const explicit = hasExplicitTierRates(row);
-
-  if (explicit) {
-    return {
-      welcome,
-      default: defaults,
-      is_first_visit: row.is_first_visit !== false,
-    };
-  }
-
-  const legacy = positiveRate(row.cashback_percent);
-  if (listingType === "partner" && legacy != null) {
-    return {
-      welcome: { free: legacy, premium: legacy },
-      default: { free: legacy, premium: legacy },
-      is_first_visit: row.is_first_visit !== false,
-    };
-  }
 
   return {
     welcome,

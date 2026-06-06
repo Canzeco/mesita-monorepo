@@ -289,7 +289,6 @@ type TicketMeta = {
   consumer_payment_confirmed_at?: string | null;
   staff_payment_confirmed_at?: string | null;
   discount_percent?: number | null;
-  cashback_percent?: number | null;
   capMxn?: number | null;
   created_at?: string | null;
 };
@@ -307,7 +306,6 @@ function TicketPreviewCard({
   const enriched: TicketBillPayload = {
     ...p,
     discount_percent: p.discount_percent ?? ticketMeta?.discount_percent,
-    cashback_percent: p.cashback_percent ?? ticketMeta?.cashback_percent,
   };
   const capMxn =
     p.reward_cap_mxn ?? p.monthly_promo_cap ?? ticketMeta?.capMxn ?? null;
@@ -397,7 +395,7 @@ export function PayTickets({ userId }: { userId: string }) {
     const { data: ticketRows } = await supabase
       .from("tickets")
       .select(
-        "id, kind, status, story_status, story_submitted_at, discount_percent, cashback_percent, venue_id, total_cents, consumer_payment_confirmed_at, staff_payment_confirmed_at, created_at",
+        "id, kind, status, story_status, story_submitted_at, discount_percent, venue_id, total_cents, consumer_payment_confirmed_at, staff_payment_confirmed_at, created_at",
       )
       .in("id", ticketIds);
 
@@ -433,7 +431,6 @@ export function PayTickets({ userId }: { userId: string }) {
         consumer_payment_confirmed_at: t.consumer_payment_confirmed_at,
         staff_payment_confirmed_at: t.staff_payment_confirmed_at,
         discount_percent: t.discount_percent,
-        cashback_percent: t.cashback_percent,
         capMxn: t.venue_id ? venueCapById.get(t.venue_id) ?? null : null,
         created_at: t.created_at,
       });

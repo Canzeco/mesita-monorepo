@@ -383,7 +383,6 @@ function venueCardFromDraft(
     phone: null,
     pitch: null,
     story: null,
-    cashback_percent: null,
     photos: [],
     website_url: null,
     instagram_url: null,

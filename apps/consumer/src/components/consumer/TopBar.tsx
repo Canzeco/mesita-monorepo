@@ -28,7 +28,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
     return <SimpleHeader title="My Reservations" />;
   }
   if (pathname.startsWith(CONSUMER_ROUTE_PREFIX.pay)) {
-    return <SimpleHeader title="Pay" rightAction="share" />;
+    return <SimpleHeader title="QR" rightAction="share" />;
   }
   if (pathname.startsWith("/invite") || pathname.startsWith(CONSUMER_ROUTES.share)) {
     return <SimpleHeader title="Invite" />;

@@ -20,7 +20,6 @@ export const CONSUMER_ROUTES = {
   pay: {
     qr: "/pay/qr",
     tickets: "/pay/tickets",
-    balance: "/pay/balance",
     ticketPrefix: "/pay/ticket/",
   },
   inbox: {

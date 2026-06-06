@@ -1,11 +1,11 @@
-// Frontend API surface for the consumer-facing profile + cashback EFs.
+// Frontend API surface for the consumer-facing profile EFs.
 //
 // Pre-entity-split this file used to also house the ticket workflow /
 // taxonomy code under the name `api/tickets.ts`. After the split
 // (reservations + coupons each got their own EFs) the ticket helpers
 // were dropped and the file was renamed to its current responsibility:
 // fetch + update the consumer profile, plus the currency display
-// helper that every wallet surface reuses.
+// helper that every money surface reuses.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -24,7 +24,6 @@ export type ConsumerProfile = {
   birthday: string | null;
   country: string | null;
   phone: string | null;
-  cashback_balance_cents: number;
 };
 
 // Membership payload returned alongside the profile by consumer-get-profile.

@@ -77,7 +77,7 @@ export const TIERS: {
   priceMxn: number;
   /** Follower threshold via Instagram verification. 0 = no threshold. */
   followerThreshold: number;
-  cashback: string;
+  reward: string;
   perk: string;
 }[] = [
   // The tier IS the brand — rendered as "Mesita Free" / "Mesita Premium" in
@@ -89,7 +89,7 @@ export const TIERS: {
     req: "Default account",
     priceMxn: 0,
     followerThreshold: 0,
-    cashback: "Base cashback",
+    reward: "Base discount",
     perk: "Welcome to the club",
   },
   {
@@ -98,7 +98,7 @@ export const TIERS: {
     req: "1K+ IG followers · invitation · or $200 MXN / mo",
     priceMxn: 200,
     followerThreshold: 1_000,
-    cashback: "Better cashback",
+    reward: "Bigger discount",
     perk: "Better recs · more reservations",
   },
 ];

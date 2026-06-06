@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       app_settings: {
@@ -188,64 +163,6 @@ export type Database = {
         }
         Relationships: []
       }
-      cashback_ledger: {
-        Row: {
-          balance_after_cents: number
-          consumer_id: string
-          created_at: string
-          delta_cents: number
-          id: string
-          kind: Database["public"]["Enums"]["cashback_kind"]
-          notes: string | null
-          ticket_id: string | null
-          venue_id: string | null
-        }
-        Insert: {
-          balance_after_cents: number
-          consumer_id: string
-          created_at?: string
-          delta_cents: number
-          id?: string
-          kind: Database["public"]["Enums"]["cashback_kind"]
-          notes?: string | null
-          ticket_id?: string | null
-          venue_id?: string | null
-        }
-        Update: {
-          balance_after_cents?: number
-          consumer_id?: string
-          created_at?: string
-          delta_cents?: number
-          id?: string
-          kind?: Database["public"]["Enums"]["cashback_kind"]
-          notes?: string | null
-          ticket_id?: string | null
-          venue_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cashback_ledger_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cashback_ledger_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cashback_ledger_venue_id_fkey"
-            columns: ["venue_id"]
-            isOneToOne: false
-            referencedRelation: "venues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       consumer_code_counter: {
         Row: {
           id: number
@@ -363,7 +280,6 @@ export type Database = {
         Row: {
           avatar_url: string | null
           birthday: string | null
-          cashback_balance_cents: number
           code: string | null
           consumer_instagram_followers_count: number | null
           country: string | null
@@ -382,7 +298,6 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           birthday?: string | null
-          cashback_balance_cents?: number
           code?: string | null
           consumer_instagram_followers_count?: number | null
           country?: string | null
@@ -401,7 +316,6 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           birthday?: string | null
-          cashback_balance_cents?: number
           code?: string | null
           consumer_instagram_followers_count?: number | null
           country?: string | null
@@ -701,6 +615,33 @@ export type Database = {
           },
         ]
       }
+      staff_whatsapp_messages: {
+        Row: {
+          body: string
+          created_at: string
+          direction: string
+          id: string
+          phone_e164: string
+          twilio_message_sid: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          direction: string
+          id?: string
+          phone_e164: string
+          twilio_message_sid?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          phone_e164?: string
+          twilio_message_sid?: string | null
+        }
+        Relationships: []
+      }
       staff_whatsapp_sessions: {
         Row: {
           consumer_id: string | null
@@ -815,6 +756,7 @@ export type Database = {
           overall: number
           service: number
           ticket_id: string
+          value: number | null
           venue_id: string
         }
         Insert: {
@@ -827,6 +769,7 @@ export type Database = {
           overall: number
           service: number
           ticket_id: string
+          value?: number | null
           venue_id: string
         }
         Update: {
@@ -839,6 +782,7 @@ export type Database = {
           overall?: number
           service?: number
           ticket_id?: string
+          value?: number | null
           venue_id?: string
         }
         Relationships: [
@@ -869,8 +813,6 @@ export type Database = {
         Row: {
           cancel_reason: string | null
           cancelled_at: string | null
-          cashback_cents: number | null
-          cashback_percent: number
           check_subtotal_cents: number | null
           consumer_id: string
           consumer_payment_confirmed_at: string | null
@@ -908,8 +850,6 @@ export type Database = {
         Insert: {
           cancel_reason?: string | null
           cancelled_at?: string | null
-          cashback_cents?: number | null
-          cashback_percent: number
           check_subtotal_cents?: number | null
           consumer_id: string
           consumer_payment_confirmed_at?: string | null
@@ -947,8 +887,6 @@ export type Database = {
         Update: {
           cancel_reason?: string | null
           cancelled_at?: string | null
-          cashback_cents?: number | null
-          cashback_percent?: number
           check_subtotal_cents?: number | null
           consumer_id?: string
           consumer_payment_confirmed_at?: string | null
@@ -1223,7 +1161,6 @@ export type Database = {
       venues: {
         Row: {
           address: string | null
-          cashback_percent: number | null
           category: string | null
           category_label: string | null
           city: string | null
@@ -1312,7 +1249,6 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          cashback_percent?: number | null
           category?: string | null
           category_label?: string | null
           city?: string | null
@@ -1401,7 +1337,6 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          cashback_percent?: number | null
           category?: string | null
           category_label?: string | null
           city?: string | null
@@ -1505,7 +1440,6 @@ export type Database = {
       seed_venue_categories: { Args: never; Returns: undefined }
     }
     Enums: {
-      cashback_kind: "earn" | "redeem" | "expire" | "adjust"
       coupon_status: "active" | "redeemed" | "expired" | "cancelled"
       listing_type: "partner" | "web" | "unclaimed"
       member_role: "owner" | "editor" | "staff" | "viewer"
@@ -1688,12 +1622,8 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
-      cashback_kind: ["earn", "redeem", "expire", "adjust"],
       coupon_status: ["active", "redeemed", "expired", "cancelled"],
       listing_type: ["partner", "web", "unclaimed"],
       member_role: ["owner", "editor", "staff", "viewer"],

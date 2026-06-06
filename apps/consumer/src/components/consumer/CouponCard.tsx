@@ -141,7 +141,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
                 <span className="text-foreground/70 text-base">%</span>
               </p>
               <p className="text-muted-foreground mt-0.5 text-[9px] font-bold tracking-[0.16em] uppercase">
-                cashback
+                reward
               </p>
             </div>
           </div>

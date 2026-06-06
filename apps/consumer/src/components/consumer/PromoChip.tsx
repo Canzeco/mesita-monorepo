@@ -15,7 +15,7 @@ import type { Venue } from "@/lib/api/venues";
 //
 // The rate is REAL: it's read from the venue's per-tier promo columns
 // (welcome_/default_ × free/premium, migration 0032) for the current
-// guest's tier, falling back to the legacy single cashback_percent.
+// guest's tier.
 //
 // Rewards are a Verified-Partner-only capability. Web-listed venues never
 // offer rewards — a hard rule the chip enforces by short-circuiting on
@@ -72,8 +72,7 @@ export function PromoChip({
   }
 
   const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
-  const mechanicWord =
-    venue.fiscal_type === "formal" ? "cashback" : "discount";
+  const mechanicWord = "discount";
   const tierLabel = tierProperLabel(tier);
   const capPrefix = venue.currency === "MXN" ? "MX$" : "$";
   // Ticket cap: the reward applies to the first N of the bill, then full

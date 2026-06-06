@@ -57,26 +57,16 @@ export function TicketTransactionSummary({
   }
 
   const promoLabel =
-    summary.mechanic === "discount"
-      ? summary.promoPercent != null && summary.promoPercent > 0
-        ? `${summary.promoPercent}% off subtotal`
-        : "—"
-      : summary.promoPercent != null && summary.promoPercent > 0
-        ? `${summary.promoPercent}% ${summary.promoVerb}`
-        : "—";
+    summary.promoPercent != null && summary.promoPercent > 0
+      ? `${summary.promoPercent}% off subtotal`
+      : "—";
 
   const rewardLabel =
-    summary.mechanic === "discount"
-      ? summary.promoPercent != null && summary.promoPercent > 0
-        ? `${summary.promoPercent}% (${formatPayMx(summary.rewardCents, summary.currency)})`
-        : summary.rewardCents > 0
-          ? formatPayMx(summary.rewardCents, summary.currency)
-          : "—"
-      : summary.rewardPercent != null && summary.rewardPercent > 0
-        ? `${summary.rewardPercent}% (${formatPayMx(summary.rewardCents, summary.currency)})`
-        : summary.rewardCents > 0
-          ? formatPayMx(summary.rewardCents, summary.currency)
-          : "—";
+    summary.promoPercent != null && summary.promoPercent > 0
+      ? `${summary.promoPercent}% (${formatPayMx(summary.rewardCents, summary.currency)})`
+      : summary.rewardCents > 0
+        ? formatPayMx(summary.rewardCents, summary.currency)
+        : "—";
 
   return (
     <div
@@ -88,11 +78,7 @@ export function TicketTransactionSummary({
       <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
         Transaction summary
       </p>
-      <SummaryRow
-        label={summary.mechanic === "discount" ? "Discount on subtotal" : "Won"}
-        value={promoLabel}
-        highlight
-      />
+      <SummaryRow label="Discount on subtotal" value={promoLabel} highlight />
       <SummaryRow
         label="Payment"
         value={
@@ -101,21 +87,7 @@ export function TicketTransactionSummary({
             : "—"
         }
       />
-      {summary.mechanic === "cashback" ? (
-        <>
-          <SummaryRow label="Reward" value={rewardLabel} highlight />
-          <SummaryRow
-            label="Tip"
-            value={
-              summary.tipPercent != null && summary.tipPercent > 0
-                ? `${summary.tipPercent}%`
-                : "—"
-            }
-          />
-        </>
-      ) : (
-        <SummaryRow label="You save" value={rewardLabel} highlight />
-      )}
+      <SummaryRow label="You save" value={rewardLabel} highlight />
     </div>
   );
 }

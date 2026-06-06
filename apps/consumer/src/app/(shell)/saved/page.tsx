@@ -168,7 +168,7 @@ function PlacesBody() {
   return (
     <div className="scrollbar-hide h-full overflow-y-auto">
       <div className="flex flex-col gap-4 px-4 py-4">
-        {/* "Higher class, higher cashback" promo lives on /profile >
+        {/* "Higher class, bigger discount" promo lives on /profile >
             Coupons, /coupons standalone, and here at the top of
             /saved — anywhere the consumer is browsing places worth
             spending on. Scrolls with the rest of the page; no

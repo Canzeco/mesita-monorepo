@@ -26,8 +26,8 @@ import { placeHref } from "@/lib/place-route";
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
 // purpose — booking metadata, the linked coupon if any, and the few
-// reservation-level actions. No payment, no cashback math (that lives
-// on /pay/wallet); no full venue detail (that lives on /venues/[id]).
+// reservation-level actions. No payment, no bill math (that happens at
+// the table); no full venue detail (that lives on /venues/[id]).
 
 const STATUS_META: Record<
   ReservationStatus,
@@ -141,7 +141,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
       )}
 
       {/* Action cluster — keep it scoped to what a reservation can do.
-          Payment, cashback redemption, and the full venue page each have
+          Payment, reward redemption, and the full venue page each have
           their own surfaces; we just link out. */}
       <section className="flex flex-col gap-2">
         <Link
@@ -262,7 +262,7 @@ function LinkedCouponCard({ coupon }: { coupon: LinkedCouponSummary }) {
           Reward tied to this reservation
         </p>
         <p className="text-foreground mt-0.5 text-[14px] leading-tight font-semibold">
-          <span className="text-pink-600">{coupon.percent}%</span> cashback{" "}
+          <span className="text-pink-600">{coupon.percent}%</span> discount{" "}
           <span className="text-muted-foreground font-normal">
             · {coupon.tierLabel}
           </span>

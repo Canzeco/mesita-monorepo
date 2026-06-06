@@ -16,8 +16,8 @@ export type TicketFlowType = "A" | "B" | "C" | "D";
  *
  * - A: Scan → Billing → Discount payment → Review
  * - B: Scan → Billing → Story → Discount payment → Review
- * - C: Scan → Billing → Stripe pay → Review → Cashback landing
- * - D: Scan → Billing → Story → Stripe pay → Review → Cashback landing
+ * - C: Scan → Billing → Stripe pay → Review → Reward
+ * - D: Scan → Billing → Story → Stripe pay → Review → Reward
  */
 export type TicketFlowStepId =
   | "scan"
@@ -26,7 +26,7 @@ export type TicketFlowStepId =
   | "pay"
   | "pay_stripe"
   | "review"
-  | "cashback";
+  | "reward";
 
 export type TicketFlowStepState = "done" | "active" | "upcoming";
 
@@ -66,8 +66,8 @@ export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
 export const FLOW_STEPS_BY_TYPE: Record<TicketFlowType, TicketFlowStepId[]> = {
   A: ["scan", "bill", "pay", "review"],
   B: ["scan", "bill", "story", "pay", "review"],
-  C: ["scan", "bill", "pay_stripe", "review", "cashback"],
-  D: ["scan", "bill", "story", "pay_stripe", "review", "cashback"],
+  C: ["scan", "bill", "pay_stripe", "review", "reward"],
+  D: ["scan", "bill", "story", "pay_stripe", "review", "reward"],
 };
 
 export const STEP_LABELS: Record<TicketFlowStepId, string> = {
@@ -76,7 +76,7 @@ export const STEP_LABELS: Record<TicketFlowStepId, string> = {
   story: "Story",
   pay: "Pay",
   pay_stripe: "Pay online",
-  cashback: "Cashback",
+  reward: "Reward",
   review: "Review",
 };
 
@@ -88,7 +88,7 @@ export const STEP_MENU_HINT: Record<TicketFlowStepId, string> = {
   pay: "Pay table, then tap below",
   pay_stripe: "Pay link on your phone",
   review: "Tap stars, then send",
-  cashback: "Check Pay → Balance",
+  reward: "Your reward is applied",
 };
 
 /** Big headline on the ticket card — plain language. */
@@ -99,7 +99,7 @@ export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
   pay: "Pay at the table",
   pay_stripe: "Pay on your phone",
   review: "Leave a quick review",
-  cashback: "Cashback is on the way",
+  reward: "Your reward is applied",
 };
 
 /** At most two short lines for the ticket help panel. */
@@ -131,7 +131,7 @@ export function ticketStepNowInstructions(
     case "bill":
       return [
         "Staff enters your food & drink total.",
-        "Your Mesita discount or cashback is applied automatically.",
+        "Your Mesita discount is applied automatically.",
         "Check the bill below matches what they told you.",
       ];
     case "story":
@@ -168,10 +168,10 @@ export function ticketStepNowInstructions(
         "Start with Overall — it matters most.",
         "Tap Send review when you’re done.",
       ];
-    case "cashback":
+    case "reward":
       return [
-        "After your review, cashback is added to Mesita.",
-        "Check Pay → Balance in a minute or two.",
+        "Your Mesita discount was applied to this bill.",
+        "Nothing else to do — enjoy.",
       ];
     default:
       return [];
@@ -186,7 +186,7 @@ export const STEP_DONE_LINE: Record<TicketFlowStepId, string> = {
   pay: "Paid",
   pay_stripe: "Paid online",
   review: "Review sent",
-  cashback: "In your balance",
+  reward: "Reward applied",
 };
 
 export type StepSequenceLine =
@@ -199,8 +199,8 @@ export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]>
     "Staff scans your code — the bot validates it and starts your visit.",
   ],
   bill: [
-    "Staff enters your food & drink subtotal (and tip on cashback visits).",
-    "Your bill is calculated with Mesita discount or cashback applied.",
+    "Staff enters your food & drink subtotal.",
+    "Your bill is calculated with your Mesita discount applied.",
     "You and staff receive payment instructions in the app.",
   ],
   story: [
@@ -221,7 +221,7 @@ export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]>
     "Open the secure Stripe checkout link on your phone.",
     "Pay online — your reward applies after payment clears.",
   ],
-  cashback: ["Cashback is added to your Mesita balance."],
+  reward: ["Your Mesita discount was applied to this bill."],
   review: [
     "Rate food, service, ambiance, value, and overall.",
     "Add optional comments about your visit.",
@@ -252,9 +252,9 @@ export const STEP_SEQUENCE_SUMMARY: Record<
     done: "Paid online.",
     upcoming: "Complete checkout on your phone.",
   },
-  cashback: {
-    done: "Cashback added to your Mesita balance.",
-    upcoming: "Cashback lands after you pay and review.",
+  reward: {
+    done: "Your Mesita discount was applied.",
+    upcoming: "Your reward applies after you pay.",
   },
   review: {
     done: "Thanks — your review was submitted.",
@@ -328,7 +328,7 @@ function stripePaid(input: TicketProgressInput): boolean {
   );
 }
 
-function cashbackLanded(input: TicketProgressInput): boolean {
+function rewardLanded(input: TicketProgressInput): boolean {
   return input.status === "paid" || input.status === "revealed";
 }
 
@@ -358,17 +358,17 @@ function inferCurrentIndex(
       return idx("pay");
     }
     case "C": {
-      if (reviewDone(input) && cashbackLanded(input)) return steps.length;
-      if (stripePaid(input) && reviewDone(input) && !cashbackLanded(input)) {
-        return idx("cashback");
+      if (reviewDone(input) && rewardLanded(input)) return steps.length;
+      if (stripePaid(input) && reviewDone(input) && !rewardLanded(input)) {
+        return idx("reward");
       }
       if (stripePaid(input) && !reviewDone(input)) return idx("review");
       return idx("pay_stripe");
     }
     case "D": {
-      if (reviewDone(input) && cashbackLanded(input)) return steps.length;
-      if (stripePaid(input) && reviewDone(input) && !cashbackLanded(input)) {
-        return idx("cashback");
+      if (reviewDone(input) && rewardLanded(input)) return steps.length;
+      if (stripePaid(input) && reviewDone(input) && !rewardLanded(input)) {
+        return idx("reward");
       }
       if (stripePaid(input) && !reviewDone(input)) return idx("review");
       if (!storyVerified(input.story_status)) return idx("story");

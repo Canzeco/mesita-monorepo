@@ -1,24 +1,24 @@
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-export type PayTab = "qr" | "tickets" | "balance";
+export type PayTab = "qr" | "tickets";
 
-export const PAY_TABS: readonly PayTab[] = ["balance", "qr", "tickets"];
+export const PAY_TABS: readonly PayTab[] = ["qr", "tickets"];
 
 const TAB_PATHS: Record<PayTab, string> = {
   qr: CONSUMER_ROUTES.pay.qr,
   tickets: CONSUMER_ROUTES.pay.tickets,
-  balance: CONSUMER_ROUTES.pay.balance,
 };
 
-/** Canonical href for a Pay tab. */
+/** Canonical href for a QR tab. */
 export function payTabHref(tab: PayTab): string {
   return TAB_PATHS[tab];
 }
 
-/** Parse dynamic /pay/[tab] segment (incl. legacy `wallet`). */
+/** Parse dynamic /pay/[tab] segment (incl. legacy `wallet` / `balance`). */
 export function payTabFromSegment(segment: string | undefined): PayTab | null {
   if (!segment) return null;
-  if (segment === "wallet") return "balance";
+  // The wallet is gone — legacy balance/wallet links land on QR.
+  if (segment === "wallet" || segment === "balance") return "qr";
   return PAY_TABS.includes(segment as PayTab) ? (segment as PayTab) : null;
 }
 
@@ -27,13 +27,7 @@ export function payTabFromPathname(pathname: string): PayTab {
   if (pathname.startsWith("/pay/tickets") || pathname.startsWith("/pay/ticket")) {
     return "tickets";
   }
-  if (
-    pathname.startsWith("/pay/balance") ||
-    pathname.startsWith("/pay/wallet")
-  ) {
-    return "balance";
-  }
-  return "balance";
+  return "qr";
 }
 
 export function isPayPath(pathname: string): boolean {

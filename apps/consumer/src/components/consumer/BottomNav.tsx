@@ -17,7 +17,7 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// Five top-level surfaces: Explore, Saved, Pay, Inbox, Me.
+// Five top-level surfaces: Explore, Saved, QR, Inbox, Me.
 
 type Item = {
   href: string;
@@ -43,7 +43,7 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTE_PREFIX.pay,
     Icon: QrCode,
-    label: "Pay",
+    label: "QR",
     match: CONSUMER_ROUTE_PREFIX.pay,
   },
   {

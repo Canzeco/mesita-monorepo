@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { reservationPath } from "@/lib/consumer-route-contract";
 
 // Reservation card. Booking metadata only. When the reservation has a
-// linked coupon (the wallet entry tied to the visit), a small "ticket
+// linked coupon (the reward tied to the visit), a small "ticket
 // stub" rides along underneath the card — dashed perforated edge above
 // it sells the metaphor without needing a literal scissor icon.
 
@@ -161,7 +161,7 @@ function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
         </p>
         <p className="text-foreground mt-0.5 text-[13px] leading-tight font-semibold">
           <span className="text-pink-600">{coupon.percent}%</span>{" "}
-          cashback{" "}
+          discount{" "}
           <span className="text-muted-foreground font-normal">
             · {coupon.tierLabel}
           </span>

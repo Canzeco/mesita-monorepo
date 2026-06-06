@@ -45,12 +45,7 @@ export default async function PayTabPage({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <PayClient
-        tab={tab}
-        userId={user.id}
-        code={profile.code ?? ""}
-        cashbackBalanceCents={profile.cashback_balance_cents}
-      />
+      <PayClient tab={tab} userId={user.id} code={profile.code ?? ""} />
     </div>
   );
 }

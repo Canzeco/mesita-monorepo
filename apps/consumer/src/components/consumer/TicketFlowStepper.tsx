@@ -5,11 +5,11 @@ import {
   Banknote,
   Check,
   CreditCard,
+  Gift,
   Instagram,
   QrCode,
   ReceiptText,
   Star,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ const STEP_ICONS: Record<TicketFlowStepId, LucideIcon> = {
   pay: Banknote,
   pay_stripe: CreditCard,
   review: Star,
-  cashback: Wallet,
+  reward: Gift,
 };
 
 export const TICKET_STEP_ICONS = STEP_ICONS;

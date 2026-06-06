@@ -1,4 +1,4 @@
-import { CircleDollarSign, Percent } from "lucide-react";
+import { Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   BADGE_SHELL,
@@ -7,15 +7,9 @@ import {
   type BadgeSize,
 } from "./badge-sizing";
 
-// Coupon rate displayed on cards / modal headers / promo previews.
-// Mechanic decides the suffix: "cashback" on formal venues, "discount"
-// on informal venues. Same component, two readings.
+// Discount rate displayed on cards / modal headers / promo previews.
+// Every Verified Partner runs an instant discount applied at the bill.
 
-export type Mechanic = "cashback" | "discount";
-
-// Mesita's canonical rate rungs: 5 / 10 / 20 / 50. Bands sit between rungs
-// so a 7% still reads as the 5% tier visually, a 23% reads as the 20%
-// tier, etc. The order matters — we walk from lightest to most saturated.
 const RATE_BANDS: { max: number; tone: string }[] = [
   { max: 0, tone: "bg-muted text-muted-foreground" },
   { max: 10, tone: "bg-secondary/30 text-foreground" },
@@ -34,17 +28,13 @@ function toneForPercent(p: number): string {
 
 export function RatePill({
   percent,
-  mechanic,
   size = "sm",
   className,
 }: {
   percent: number;
-  mechanic: Mechanic;
   size?: BadgeSize;
   className?: string;
 }) {
-  const Icon = mechanic === "cashback" ? CircleDollarSign : Percent;
-  const label = mechanic === "cashback" ? "cashback" : "discount";
   return (
     <span
       className={cn(
@@ -54,8 +44,8 @@ export function RatePill({
         className,
       )}
     >
-      <Icon className={BADGE_ICON_CLASS[size]} />
-      {percent}% {label}
+      <Percent className={BADGE_ICON_CLASS[size]} />
+      {percent}% discount
     </span>
   );
 }

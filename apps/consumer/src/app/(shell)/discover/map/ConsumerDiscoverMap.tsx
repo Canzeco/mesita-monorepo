@@ -16,6 +16,7 @@ import {
 import type { Venue } from "@/lib/api/venues";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
 import { PartnerBadge, RatePill } from "@/components/shared";
+import { resolvePromoRateFromVenueRow } from "@/lib/promo-rates";
 import { placeHref } from "@/lib/place-route";
 
 // Default map centre — Monterrey, since that's the city the project is
@@ -310,6 +311,17 @@ function VenuePreview({
   onOpen: () => void;
 }) {
   const photo = venue.photos[0];
+  // Advertised reward for the preview pill — the base first-visit rate a
+  // guest sees before membership context resolves. Only Verified Partners
+  // run the Mesita discount, so web listings resolve null and show nothing.
+  const discountPercent =
+    venue.listing_type === "partner"
+      ? resolvePromoRateFromVenueRow(
+          venue as unknown as Record<string, unknown>,
+          true,
+          false,
+        )
+      : null;
   // Category is the single classification (one-of, mapped to a Google
   // primary type). Vibe is a tag and belongs in the future tag-chip
   // strip, not stacked next to the category in this subtitle.
@@ -359,25 +371,12 @@ function VenuePreview({
                 {subtitle}
               </span>
             )}
-            {(meta ||
-              (venue.listing_type === "partner" &&
-                venue.cashback_percent != null &&
-                venue.cashback_percent > 0)) && (
+            {(meta || (discountPercent != null && discountPercent > 0)) && (
               <span className="mt-0.5 flex items-center gap-2 text-[11px]">
                 {meta && <span className="text-muted-foreground">{meta}</span>}
-                {venue.listing_type === "partner" &&
-                  venue.cashback_percent != null &&
-                  venue.cashback_percent > 0 && (
-                    <RatePill
-                      percent={venue.cashback_percent}
-                      mechanic={
-                        venue.fiscal_type === "informal"
-                          ? "discount"
-                          : "cashback"
-                      }
-                      size="xs"
-                    />
-                  )}
+                {discountPercent != null && discountPercent > 0 && (
+                  <RatePill percent={discountPercent} size="xs" />
+                )}
               </span>
             )}
           </span>

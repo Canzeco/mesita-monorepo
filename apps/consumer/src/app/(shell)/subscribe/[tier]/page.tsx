@@ -19,7 +19,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // /subscribe/premium links resolve, but only "premium" is valid.
 
 const PERKS = [
-  "Better cashback & discounts at every Verified Partner.",
+  "Bigger discounts at every Verified Partner.",
   "Better, more rewarding recommendations across discovery.",
   "Unlimited reservations every month.",
 ];

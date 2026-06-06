@@ -18,7 +18,7 @@ type VenueListingType = "partner" | "web";
 type VenueStatus = "lead" | "active" | "paused" | "archived";
 type FiscalType = "formal" | "informal";
 // Five-plan venue catalog: Free (default) + Pro and Ultra at each fiscal
-// type. The mechanic (cashback vs discount) is fixed by fiscal_type.
+// type. Every Verified Partner runs an instant discount applied at the bill.
 type VenuePlan =
   | "free"
   | "formal_pro"
@@ -51,7 +51,6 @@ export type Venue = {
   phone: string | null;
   pitch: string | null;
   story: string | null;
-  cashback_percent: number | null;
   photos: string[];
   website_url: string | null;
   instagram_url: string | null;
@@ -75,7 +74,7 @@ export type Venue = {
   // ── Overview parity (optional) ────────────────────────────────────
   //
   // The swipe / catalog cards used to show only what's strictly on the
-  // venues row (name, vibe, category, price_level, closes_at, cashback).
+  // venues row (name, vibe, category, price_level, closes_at, reward).
   // The "all info on the tinder card too" checkpoint widens that to
   // mirror the venue-detail overview grid. Every field below is
   // optional because the recommend-deck / list-venues EFs don't return
@@ -94,7 +93,7 @@ export type Venue = {
   opens_at?: string | null;
   distance_km?: number | null;
   zone?: string | null;
-  /** Per-visit cashback ceiling in the venue's currency. */
+  /** Per-visit reward ceiling in the venue's currency. */
   reward_cap_mxn?: number | null;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;

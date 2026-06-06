@@ -706,13 +706,11 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
     tier,
     is_first_visit,
   );
-  // Mechanic comes in capitalized ("Cashback" / "Discount") so it can sit
-  // in a subtitle pill; lowercase it when reading inline with the
-  // percentage ("20% cashback").
+  // Every Verified Partner runs an instant discount. Lowercase it when
+  // reading inline with the percentage ("20% discount").
   const mechanicWord = venue.details.mechanic.toLowerCase();
-  // Short suffix for the tier tiles, kept consistent with the hero's
-  // mechanic: cashback venues read "70% back", discount venues "70% off".
-  const mechanicShort = mechanicWord.startsWith("cash") ? "back" : "off";
+  // Short suffix for the tier tiles, consistent with the hero — "70% off".
+  const mechanicShort = "off";
   // Ticket cap (pesos): the reward applies to the first N of the bill, then
   // full price — it is not a ceiling on the reward. 0/null means no cap, so
   // the clause is dropped entirely.
@@ -795,7 +793,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
       <div className="flex flex-col gap-2">
         {isFree ? (
           <div className="flex gap-2">
-            <Link href="/pay/balance" className={REWARD_PAY_BTN}>
+            <Link href="/pay/qr" className={REWARD_PAY_BTN}>
               <QrCode className="h-4 w-4" />
               Pay with QR
             </Link>
@@ -805,7 +803,7 @@ function RewardsBox({ venue }: { venue: VenueDetail }) {
             </Link>
           </div>
         ) : (
-          <Link href="/pay/balance" className={REWARD_PAY_BTN}>
+          <Link href="/pay/qr" className={REWARD_PAY_BTN}>
             <QrCode className="h-4 w-4" />
             {isPremiumViaInstagram
               ? "Pay with QR & post IG story"
@@ -890,7 +888,7 @@ function RewardMatrix({
   returning: { free: number | null; premium: number | null };
   currentTier: Tier;
   isFirstVisit: boolean;
-  /** Mechanic-aware unit, e.g. "back" (cashback) or "off" (discount). */
+  /** Reward unit shown after the percent, e.g. "off". */
   suffix: string;
 }) {
   const rows = [

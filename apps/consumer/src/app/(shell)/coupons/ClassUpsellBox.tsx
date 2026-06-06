@@ -66,9 +66,9 @@ export function ClassUpsellBox() {
       </div>
 
       <p className="mt-3 text-[13px] leading-snug text-white/90">
-        Mesita has two plans: Free and Premium. Premium unlocks better cashback
-        and discounts, better recommendations, and unlimited reservations — some
-        partners compete with cashbacks up to 70%.
+        Mesita has two plans: Free and Premium. Premium unlocks bigger
+        discounts, better recommendations, and unlimited reservations — some
+        partners compete with discounts up to 70%.
       </p>
 
       <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">

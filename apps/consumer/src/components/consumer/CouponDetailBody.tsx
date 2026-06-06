@@ -58,7 +58,7 @@ const NORMAL_STATUS: Record<NormalCouponStatus, StatusMeta> = {
     iconClass: "text-muted-foreground",
     banner: {
       tone: "muted",
-      text: "Already redeemed. Cashback landed on Pay → Balance.",
+      text: "Already redeemed. Your discount was applied at the bill.",
     },
   },
   expired: {
@@ -125,7 +125,7 @@ const IG_STATUS: Record<InstagramCouponStatus, StatusMeta> = {
     iconClass: "text-muted-foreground",
     banner: {
       tone: "muted",
-      text: "Already redeemed. Cashback landed on Pay → Balance.",
+      text: "Already redeemed. Your discount was applied at the bill.",
     },
   },
   expired: {
@@ -152,7 +152,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
-      {/* Hero — venue photo, name, status. Cashback % printed huge so the
+      {/* Hero — venue photo, name, status. Reward % printed huge so the
           coupon reads like a ticket, not a list row. */}
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted relative aspect-[16/9] w-full">
@@ -181,7 +181,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
               <span className="text-foreground/70 text-lg">%</span>
             </p>
             <p className="text-muted-foreground mt-0.5 text-[9px] font-bold tracking-[0.16em] uppercase">
-              cashback
+              reward
             </p>
           </div>
         </div>
@@ -233,7 +233,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
       )}
 
       {/* Action cluster. Coupons are scoped to "see where I can use it" +
-          "what to do next" — cashback is on Pay → Balance, the actual
+          "what to do next" — the discount applies at the bill, the actual
           redemption happens at the venue via QR scan. */}
       <section className="flex flex-col gap-2">
         <Link

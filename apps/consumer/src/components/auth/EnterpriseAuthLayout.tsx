@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Camera, MapPin, Sparkles, Wallet } from "lucide-react";
+import { BadgePercent, Camera, MapPin, Sparkles } from "lucide-react";
 
 // Two-column enterprise auth shell for the consumer subdomain.
 //
@@ -86,9 +86,9 @@ function LandingPane() {
             blurb="Swipe and explore venues curated for your tier, your city, your vibe."
           />
           <ValueProp
-            Icon={Wallet}
-            title="Cashback on every visit"
-            blurb="Card payments through Mesita earn cashback in your wallet — usable anywhere."
+            Icon={BadgePercent}
+            title="A discount on every visit"
+            blurb="Show your Mesita QR at the table — your discount is applied right at the bill."
           />
           <ValueProp
             Icon={Camera}

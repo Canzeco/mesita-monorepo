@@ -103,7 +103,7 @@ export type VenueDetail = {
   // 7. Promotion
   promo: {
     badge_label: string;
-    reward_kind: "cashback" | "discount";
+    reward_kind: "discount";
     reward_value: number;
   };
 
@@ -382,7 +382,7 @@ export const mockVenue: VenueDetail = {
 
   promo: {
     badge_label: "Verified partner",
-    reward_kind: "cashback",
+    reward_kind: "discount",
     reward_value: 20,
   },
 
@@ -485,7 +485,7 @@ export const mockVenue: VenueDetail = {
     established_year: 2014,
     executive_chef: "Chef Andrés Saavedra",
     participation: "Partner",
-    mechanic: "Cashback",
+    mechanic: "Discount",
   },
   channels: {
     website_url: "https://www.mochomos.com",

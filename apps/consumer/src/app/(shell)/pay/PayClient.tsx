@@ -5,7 +5,6 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
-import { CashbackBalanceCard } from "@/components/consumer/CashbackBalanceCard";
 import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
 import { payTabHref, type PayTab } from "@/lib/pay-route";
 
@@ -21,7 +20,6 @@ const PayTickets = dynamic(
 );
 
 const TABS: { id: PayTab; label: string }[] = [
-  { id: "balance", label: "Wallet" },
   { id: "qr", label: "QR" },
   { id: "tickets", label: "Tickets" },
 ];
@@ -30,12 +28,10 @@ export function PayClient({
   tab,
   userId,
   code,
-  cashbackBalanceCents,
 }: {
   tab: PayTab;
   userId: string;
   code: string;
-  cashbackBalanceCents: number;
 }) {
   const router = useRouter();
   const pendingTickets = usePendingNotificationCount(userId);
@@ -51,7 +47,7 @@ export function PayClient({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="px-4 pt-4">
-        <div className="segment-control grid grid-cols-3 gap-0">
+        <div className="segment-control grid grid-cols-2 gap-0">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -81,12 +77,10 @@ export function PayClient({
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-6">
-        {tab === "qr" ? (
-          <MyQrCard code={code} />
-        ) : tab === "tickets" ? (
+        {tab === "tickets" ? (
           <PayTickets userId={userId} />
         ) : (
-          <CashbackBalanceCard cashbackBalanceCents={cashbackBalanceCents} />
+          <MyQrCard code={code} />
         )}
       </div>
     </div>
