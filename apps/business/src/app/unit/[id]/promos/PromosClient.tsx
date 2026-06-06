@@ -3,11 +3,9 @@
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CreditCard,
   Crown,
   Instagram,
   Loader2,
-  Lock,
   Percent,
   Smile,
   type LucideIcon,
@@ -28,8 +26,8 @@ import {
 } from "@/lib/business/plans";
 
 // Promos — minimal layout. Three blocks stacked top to bottom:
-//   1. Visibility    — slim 5-step rail (Low → Max), no prose
-//   2. Subscription  — Free + Pro/Ultra × Discount/Reward, one card per DB state
+//   1. Visibility    — slim 3-step rail (Low → Max), no prose
+//   2. Subscription  — Free / Pro / Ultra, all discount-only
 //   3. Promos        — Welcome row + 4 tier rows; rate + audience count
 //
 // "OFF" is the neutral label for the rate scale, applied across every tier.
@@ -157,18 +155,16 @@ const TIER_LABEL: Record<Tier, string> = {
 
 // ─── Subscription icons + accents ─────────────────────────────────────────
 
-// Tier icon + accent — Discount tiers get the gold percent badge, Reward
-// tiers get the pink-gradient card badge. Pro vs Ultra is communicated
-// through price/visibility on the card, not a separate icon.
+// Tier icon + accent — paid discount tiers get the gold percent badge.
+// Pro vs Ultra is communicated through price/visibility on the card, not
+// a separate icon.
 const SUB_VISUAL: Record<
   SubscriptionId,
   { icon?: LucideIcon; accent?: string }
 > = {
   free: {},
   pro_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
-  pro_reward: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
   ultra_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
-  ultra_reward: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
 };
 
 // ─── Client ───────────────────────────────────────────────────────────────
@@ -187,11 +183,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
   const selectSubscription = (target: SubscriptionId) => {
     if (target === currentSub || pending) return;
-    // Locked tiers (e.g. the reward flow while the payment loop is being
-    // built) render disabled in the picker, but guard here too so a stray
-    // click from a stale render can't bypass it.
-    const row = SUBSCRIPTIONS.find((s) => s.id === target);
-    if (row?.comingSoon) return;
     setError(null);
     setPendingSubId(target);
     startSubmit(async () => {
@@ -217,7 +208,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         title="Subscription"
         className="shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]"
       >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {SUBSCRIPTIONS.map((s) => {
             const v = SUB_VISUAL[s.id];
             return (
@@ -230,7 +221,6 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
                 visibility={s.visibility}
                 setup={s.setup}
                 featured={!!s.featured}
-                comingSoon={!!s.comingSoon}
                 icon={v.icon}
                 iconAccent={v.accent}
                 isCurrent={s.id === currentSub}
@@ -244,7 +234,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         {isFree && (
           <p className="text-muted-foreground text-xs">
             On <span className="text-foreground font-semibold">Free</span> rates
-            are locked to 0% — pick Discounts or Rewards to set them.
+            are locked to 0% — pick Pro or Ultra to set them.
           </p>
         )}
       </Section>
@@ -514,12 +504,12 @@ function ColumnHeader({ children }: { children: React.ReactNode }) {
 
 // ─── Visibility rail ──────────────────────────────────────────────────────
 
-// Visibility rail. Five levels (Low → Max). Mesita shows higher-plan
-// venues to more guests on every discovery surface (swipe, catalog,
-// map), so the business needs to see at a glance where their plan lands
-// on the ladder. Previous design used 5 × 2 paired bars; the redesign
-// drops to one stepped dot-ladder with the current node ringed + a
-// big "Step X of 5 · <label>" headline so the answer is immediate.
+// Visibility rail. Three levels (Low → Max), one per plan. Mesita shows
+// higher-plan venues to more guests on every discovery surface (swipe,
+// catalog, map), so the business needs to see at a glance where their
+// plan lands on the ladder. Rendered as a stepped dot-ladder with the
+// current node ringed + a "Step X of 3" headline so the answer is
+// immediate.
 
 function VisibilityRail({
   plan,
@@ -530,8 +520,6 @@ function VisibilityRail({
   const levels: { label: string; real: PlanVisibility }[] = [
     { label: "Low", real: "Low" },
     { label: "Medium", real: "Medium" },
-    { label: "High", real: "High" },
-    { label: "Extra high", real: "Extra high" },
     { label: "Max", real: "Max" },
   ];
   const currentIdx = levels.findIndex((l) => l.real === current);
@@ -605,7 +593,6 @@ function SubscriptionCard({
   visibility,
   setup,
   featured,
-  comingSoon,
   icon: Icon,
   iconAccent,
   isCurrent,
@@ -619,33 +606,24 @@ function SubscriptionCard({
   visibility: PlanVisibility;
   setup?: string;
   featured: boolean;
-  comingSoon: boolean;
   icon?: LucideIcon;
   iconAccent?: string;
   isCurrent: boolean;
   pending: boolean;
   onPick: () => void;
 }) {
-  // Locked tiers stay visible (so the visibility ladder still makes
-  // sense), but the button can't fire and the badge tells the business
-  // why. We keep the soft pink wash from `featured` so the card still
-  // reads as the aspirational top of the ladder.
   return (
     <button
       type="button"
       onClick={onPick}
-      disabled={isCurrent || pending || comingSoon}
-      aria-disabled={comingSoon || undefined}
-      title={comingSoon ? "Coming soon" : undefined}
+      disabled={isCurrent || pending}
       className={cn(
         "border-border bg-card relative flex flex-col gap-2 rounded-2xl border p-4 text-left shadow-[0_12px_26px_-24px_rgba(0,0,0,0.7)] transition disabled:cursor-default",
-        !isCurrent && !comingSoon && "hover:border-foreground/30",
+        !isCurrent && "hover:border-foreground/30",
         !isCurrent &&
-          !comingSoon &&
           "hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-22px_rgba(236,72,153,0.55)]",
         isCurrent && "border-foreground shadow-elev ring-1 ring-foreground/10",
         featured && !isCurrent && "bg-pink-gradient/[0.04]",
-        comingSoon && "cursor-not-allowed",
       )}
     >
       {isCurrent && (
@@ -653,23 +631,12 @@ function SubscriptionCard({
           Current
         </Badge>
       )}
-      {!isCurrent && comingSoon && (
-        <Badge className="bg-muted text-muted-foreground border-border absolute top-3 right-3 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-          <Lock className="h-2.5 w-2.5" />
-          Coming soon
-        </Badge>
-      )}
-      {!isCurrent && !comingSoon && featured && (
+      {!isCurrent && featured && (
         <Badge className="bg-pink-gradient absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider text-white uppercase">
           Recommended
         </Badge>
       )}
-      <div
-        className={cn(
-          "flex items-center gap-2 pr-16",
-          comingSoon && "opacity-70",
-        )}
-      >
+      <div className="flex items-center gap-2 pr-16">
         {Icon && (
           <span
             className={cn(
@@ -684,42 +651,20 @@ function SubscriptionCard({
           {label}
         </span>
       </div>
-      <div
-        className={cn(
-          "flex items-baseline gap-1.5",
-          comingSoon && "opacity-70",
-        )}
-      >
+      <div className="flex items-baseline gap-1.5">
         <span className="font-display text-foreground text-lg leading-none font-bold tabular-nums">
           {price}
         </span>
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
       </div>
-      <p
-        className={cn(
-          "text-muted-foreground text-[12px] leading-snug",
-          comingSoon && "opacity-70",
-        )}
-      >
-        {tagline}
-      </p>
+      <p className="text-muted-foreground text-[12px] leading-snug">{tagline}</p>
       <div className="mt-auto flex flex-col gap-0.5">
-        <p
-          className={cn(
-            "text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase",
-            comingSoon && "opacity-70",
-          )}
-        >
+        <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
           {visibility} visibility
         </p>
-        {setup && !comingSoon && (
+        {setup && (
           <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
             {setup} setup
-          </p>
-        )}
-        {comingSoon && (
-          <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
-            Available soon
           </p>
         )}
       </div>
