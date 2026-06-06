@@ -29,11 +29,10 @@ import {
 
 // Promos — minimal layout. Three blocks stacked top to bottom:
 //   1. Visibility    — slim 5-step rail (Low → Max), no prose
-//   2. Subscription  — Free + Pro/Ultra × Discount/Cashback, one card per DB state
+//   2. Subscription  — Free + Pro/Ultra × Discount/Reward, one card per DB state
 //   3. Promos        — Welcome row + 4 tier rows; rate + audience count
 //
-// "OFF" is the neutral label for the rate scale — same wording whether the
-// venue runs cashback or discount.
+// "OFF" is the neutral label for the rate scale, applied across every tier.
 
 // ─── Rate picker scale ────────────────────────────────────────────────────
 
@@ -158,18 +157,18 @@ const TIER_LABEL: Record<Tier, string> = {
 
 // ─── Subscription icons + accents ─────────────────────────────────────────
 
-// Mechanic icon + accent — Discount tiers get the gold percent badge,
-// Cashback tiers get the pink-gradient card badge. Pro vs Ultra is
-// communicated through price/visibility on the card, not a separate icon.
+// Tier icon + accent — Discount tiers get the gold percent badge, Reward
+// tiers get the pink-gradient card badge. Pro vs Ultra is communicated
+// through price/visibility on the card, not a separate icon.
 const SUB_VISUAL: Record<
   SubscriptionId,
   { icon?: LucideIcon; accent?: string }
 > = {
   free: {},
   pro_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
-  pro_cashback: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
+  pro_reward: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
   ultra_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
-  ultra_cashback: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
+  ultra_reward: { icon: CreditCard, accent: "bg-pink-gradient text-white" },
 };
 
 // ─── Client ───────────────────────────────────────────────────────────────
@@ -188,9 +187,9 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
 
   const selectSubscription = (target: SubscriptionId) => {
     if (target === currentSub || pending) return;
-    // Locked tiers (e.g. cashback while the payment loop is being built)
-    // render disabled in the picker, but guard here too so a stray click
-    // from a stale render can't bypass it.
+    // Locked tiers (e.g. the reward flow while the payment loop is being
+    // built) render disabled in the picker, but guard here too so a stray
+    // click from a stale render can't bypass it.
     const row = SUBSCRIPTIONS.find((s) => s.id === target);
     if (row?.comingSoon) return;
     setError(null);
@@ -245,7 +244,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         {isFree && (
           <p className="text-muted-foreground text-xs">
             On <span className="text-foreground font-semibold">Free</span> rates
-            are locked to 0% — pick Discounts or Cashbacks to set them.
+            are locked to 0% — pick Discounts or Rewards to set them.
           </p>
         )}
       </Section>

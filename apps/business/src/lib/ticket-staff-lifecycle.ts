@@ -12,10 +12,10 @@ export type TicketFlowType = "A" | "B" | "C" | "D";
  *
  * - A: Scan → Billing → Discount payment → Done
  * - B: Scan → Billing → Story → Discount payment → Done
- * - C: Scan → Billing → Stripe pay → Cashback landing → Done
- * - D: Scan → Billing → Story → Stripe pay → Cashback landing → Done
+ * - C: Scan → Billing → Stripe pay → Reward landing → Done
+ * - D: Scan → Billing → Story → Stripe pay → Reward landing → Done
  *
- * Review runs on the consumer app after payment (and before cashback on C/D).
+ * Review runs on the consumer app after payment (and before the reward on C/D).
  */
 export type StaffLifecycleStepId =
   | "scan"
@@ -23,7 +23,7 @@ export type StaffLifecycleStepId =
   | "story"
   | "pay"
   | "stripe"
-  | "cashback"
+  | "reward"
   | "done";
 
 export type StaffLifecycleStepState = "done" | "active" | "upcoming";
@@ -66,8 +66,8 @@ export const TICKET_KIND_BY_FLOW_TYPE: Record<TicketFlowType, TicketKind> = {
 export const FLOW_TYPE_LABELS: Record<TicketFlowType, string> = {
   A: "Discount · No story",
   B: "Discount · Story",
-  C: "Cashback · Stripe",
-  D: "Cashback · Story · Stripe",
+  C: "Discount · Stripe",
+  D: "Discount · Story · Stripe",
 };
 
 export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
@@ -89,8 +89,8 @@ export const STAFF_STEPS_BY_FLOW_TYPE: Record<TicketFlowType, StaffLifecycleStep
   {
     A: ["scan", "bill", "pay", "done"],
     B: ["scan", "bill", "story", "pay", "done"],
-    C: ["scan", "bill", "stripe", "cashback", "done"],
-    D: ["scan", "bill", "story", "stripe", "cashback", "done"],
+    C: ["scan", "bill", "stripe", "reward", "done"],
+    D: ["scan", "bill", "story", "stripe", "reward", "done"],
   };
 
 export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
@@ -99,7 +99,7 @@ export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   story: "Story",
   pay: "Payment",
   stripe: "Stripe",
-  cashback: "Cashback",
+  reward: "Reward",
   done: "Done",
 };
 
@@ -109,11 +109,11 @@ export function staffDoneStepLabel(kind: string): string {
 
 export const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
   scan: "Guest code scanned — bot validated and linked the visit.",
-  bill: "Enter subtotal (and tip on cashback flows), then send the bill.",
+  bill: "Enter subtotal (and tip on formal flows), then send the bill.",
   story: "Guest posts IG story; confirm when the bot asks you to validate.",
   pay: "Guest taps Paid issued — tap Paid received when you collect payment.",
   stripe: "Guest pays via the Stripe checkout link on their phone.",
-  cashback: "Cashback credits to their Mesita balance after pay and review.",
+  reward: "The reward lands for the guest after pay and review.",
   done: "Visit closed.",
 };
 
@@ -135,7 +135,7 @@ function stripePaid(input: StaffTicketProgressInput): boolean {
   );
 }
 
-function cashbackLanded(input: StaffTicketProgressInput): boolean {
+function rewardLanded(input: StaffTicketProgressInput): boolean {
   if (!FORMAL_KINDS.has(input.kind as TicketKind)) return true;
   return input.status === "paid" || input.status === "revealed";
 }
@@ -163,8 +163,8 @@ function stepComplete(
       return discountPaid(input);
     case "stripe":
       return stripePaid(input);
-    case "cashback":
-      return cashbackLanded(input);
+    case "reward":
+      return rewardLanded(input);
     case "done":
       return visitComplete(input);
     default:

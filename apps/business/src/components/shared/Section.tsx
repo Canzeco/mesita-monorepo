@@ -1,6 +1,6 @@
 // Shared section card — the canonical card primitive for every long-form
-// business surface (Place, Promos, Team, Wallet, etc.). Replaces local
-// `Section` definitions that were drifting between files.
+// business surface (Place, Promos, Team, etc.). Replaces local `Section`
+// definitions that were drifting between files.
 //
 // Layout: rounded card with a header row (title + optional description on
 // the left, optional `right` element opposite) and the children stacked

@@ -21,15 +21,15 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),
   title: {
-    default: "Mesita — smart hospitality wallet",
+    default: "Mesita — smart hospitality rewards",
     template: "%s · Mesita",
   },
   description:
-    "Discover, reserve, and earn real cashback at restaurants, cafés, and bars. Made in Monterrey.",
+    "Discover, reserve, and get instant discounts at restaurants, cafés, and bars. Made in Monterrey.",
   openGraph: {
-    title: "Mesita — smart hospitality wallet",
+    title: "Mesita — smart hospitality rewards",
     description:
-      "Discover, reserve, and earn real cashback at restaurants, cafés, and bars.",
+      "Discover, reserve, and get instant discounts at restaurants, cafés, and bars.",
     siteName: "Mesita",
     locale: "en_US",
     type: "website",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Mesita",
-    description: "Discover. Reserve. Get paid to go out.",
+    description: "Discover. Reserve. Save every time you go out.",
   },
 };
 

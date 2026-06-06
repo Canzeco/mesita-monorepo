@@ -7,9 +7,10 @@ import { createServerSupabase } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 // Home is a placeholder until the dashboard surfaces (today's visits,
-// cashback owed, cohort trends) are wired up. We still render the standard
-// Topbar + container shell so the layout matches the rest of the business
-// console — the body is just an EmptyState explaining what will land here.
+// discounts applied, cohort trends) are wired up. We still render the
+// standard Topbar + container shell so the layout matches the rest of the
+// business console — the body is just an EmptyState explaining what will
+// land here.
 
 export default async function BusinessHomePage({
   params,
@@ -31,7 +32,7 @@ export default async function BusinessHomePage({
           <EmptyState
             icon={<LayoutDashboard className="text-muted-foreground h-5 w-5" />}
             title="Dashboard coming soon"
-            description="Today's visits, cashback owed, and weekly cohort trends will land here once analytics is wired up. For now, hop into Promos to tune your rewards or Team to invite waiters."
+            description="Today's visits, discounts applied, and weekly cohort trends will land here once analytics is wired up. For now, hop into Promos to tune your rewards or Team to invite waiters."
           />
         </div>
       </div>

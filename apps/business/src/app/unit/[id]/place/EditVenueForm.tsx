@@ -1022,7 +1022,7 @@ function previewMeta(venue: MyVenue, v: FormState) {
   // In business console previews, venues are always shown as verified.
   const isPartner = true;
   const rewardRate = resolvePreviewRewardRate(venue);
-  const rewardMechanic = venue.fiscal_type === "informal" ? "Discount" : "Cashback";
+  const rewardMechanic = venue.fiscal_type === "informal" ? "Discount" : "Reward";
   const promoLabel =
     rewardRate != null ? `Reward · ${rewardRate}% ${rewardMechanic}` : "No reward yet";
 
@@ -1047,7 +1047,6 @@ function resolvePreviewRewardRate(venue: MyVenue): number | null {
     venue.welcome_premium_rate,
     venue.free_rate,
     venue.premium_rate,
-    venue.cashback_percent,
   ].filter((rate): rate is number => typeof rate === "number" && rate > 0);
   if (rates.length === 0) return null;
   return Math.max(...rates);

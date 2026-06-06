@@ -19,8 +19,6 @@ type RawTicket = {
   check_subtotal_cents: number | null;
   tip_cents: number | null;
   total_cents: number | null;
-  cashback_percent: number;
-  cashback_cents: number | null;
   redeem_cents: number | null;
   discount_percent: number | null;
   discount_cents: number | null;

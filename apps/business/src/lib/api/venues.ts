@@ -14,9 +14,9 @@ type VenueStatus = "lead" | "active" | "paused" | "archived";
 
 export type FiscalType = "formal" | "informal";
 // Five-plan venue catalog: Free (default) + Pro and Ultra at each fiscal
-// type. The mechanic (cashback vs discount) is fixed by fiscal_type — Pro
-// and Ultra differ only in price and visibility. See lib/business/plans.ts
-// for the picker catalog and visibility/mechanic mappings.
+// type. Every Verified venue runs an instant discount applied at the bill;
+// Pro and Ultra differ only in price and visibility. See lib/business/plans.ts
+// for the picker catalog and visibility mappings.
 export type VenuePlan =
   | "free"
   | "formal_pro"
@@ -66,7 +66,6 @@ type Venue = {
   pitch: string | null;
   story: string | null;
   description: string | null;
-  cashback_percent: number | null;
   // Four per-tier promo rates (DB migration 0032). Welcome variants fire on
   // a guest's first visit at this venue; the unprefixed variants apply on
   // every visit afterwards. Each is one of 10 / 20 / 50 / 70 or null.
@@ -223,7 +222,6 @@ export type UpdateVenueInput = {
   phone?: string | null;
   pitch?: string | null;
   story?: string | null;
-  cashback_percent?: number | null;
   // Four per-tier promo rates. One of 10 / 20 / 50 / 70 or null to clear.
   welcome_free_rate?: number | null;
   welcome_premium_rate?: number | null;

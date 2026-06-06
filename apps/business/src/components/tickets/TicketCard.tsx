@@ -25,11 +25,9 @@ import { TicketBillForm } from "@/components/tickets/TicketBillForm";
 
 function rewardLine(ticket: BusinessTicket): string | null {
   const discount = ticket.discount_cents ?? 0;
-  const cashback = ticket.cashback_cents ?? 0;
   const redeem = ticket.redeem_cents ?? 0;
   const parts: string[] = [];
   if (discount > 0) parts.push(`${centsToMoney(discount, ticket.currency)} off`);
-  if (cashback > 0) parts.push(`${centsToMoney(cashback, ticket.currency)} back`);
   if (redeem > 0) parts.push(`${centsToMoney(redeem, ticket.currency)} redeemed`);
   return parts.length > 0 ? parts.join(" · ") : null;
 }

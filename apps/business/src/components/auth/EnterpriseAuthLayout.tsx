@@ -95,7 +95,7 @@ function LandingPane() {
           <ValueProp
             Icon={Star}
             title="Win magnetic consumers"
-            blurb="Per-tier cashback or discount rates so high-spend regulars are worth chasing."
+            blurb="Per-tier discount rates so high-spend regulars are worth chasing."
           />
           <ValueProp
             Icon={Camera}

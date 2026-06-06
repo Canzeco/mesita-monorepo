@@ -28,17 +28,17 @@ export function TicketBillForm({
   const [subtotalText, setSubtotalText] = useState("");
   const [tipText, setTipText] = useState("");
   const flowType = ticketFlowTypeFromKind(ticket.kind);
-  const isCashbackFlow = flowType === "C" || flowType === "D";
+  const isFormalFlow = flowType === "C" || flowType === "D";
 
   const submitBill = async () => {
     const subtotal = Number(subtotalText);
-    const tip = isCashbackFlow && tipText.trim() ? Number(tipText) : 0;
+    const tip = isFormalFlow && tipText.trim() ? Number(tipText) : 0;
 
     if (!Number.isFinite(subtotal) || subtotal <= 0) {
       onError("Subtotal must be greater than 0.");
       return;
     }
-    if (isCashbackFlow && (!Number.isFinite(tip) || tip < 0)) {
+    if (isFormalFlow && (!Number.isFinite(tip) || tip < 0)) {
       onError("Tip must be 0 or greater.");
       return;
     }
@@ -48,7 +48,7 @@ export function TicketBillForm({
       await apiSubmitTicketBill(supabase, {
         ticketId: ticket.id,
         checkSubtotalCents: Math.round(subtotal * 100),
-        tipCents: isCashbackFlow ? Math.round(tip * 100) : 0,
+        tipCents: isFormalFlow ? Math.round(tip * 100) : 0,
       });
       setSubtotalText("");
       setTipText("");
@@ -77,7 +77,7 @@ export function TicketBillForm({
       <div
         className={cn(
           "grid gap-2",
-          isCashbackFlow ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2",
+          isFormalFlow ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2",
         )}
       >
         <label className="min-w-0">
@@ -95,7 +95,7 @@ export function TicketBillForm({
             />
           </div>
         </label>
-        {isCashbackFlow ? (
+        {isFormalFlow ? (
           <label className="min-w-0">
             <span className={TINY_LABEL_CLASS}>Tip</span>
             <div className="relative mt-1">
@@ -115,7 +115,7 @@ export function TicketBillForm({
         <div
           className={cn(
             "flex items-end",
-            isCashbackFlow ? "col-span-2 sm:col-span-1" : "col-span-1",
+            isFormalFlow ? "col-span-2 sm:col-span-1" : "col-span-1",
           )}
         >
           <button

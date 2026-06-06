@@ -57,7 +57,6 @@ export type LookupVenue = {
   photos: string[];
   category: string | null;
   vibe: string | null;
-  cashback_percent: number | null;
   created_at: string;
   updated_at: string | null;
 };
