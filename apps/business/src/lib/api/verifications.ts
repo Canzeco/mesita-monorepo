@@ -115,11 +115,11 @@ export type SendPhoneOtpResult = {
 export async function apiBusinessSendsPhoneOtp(
   client: SupabaseClient,
   venueId: string,
-  requesterEmail: string,
+  requesterEmail?: string,
 ): Promise<SendPhoneOtpResult> {
   return invokeEF<SendPhoneOtpResult>(client, "business-sends-phone-otp", {
     venueId,
-    requesterEmail,
+    ...(requesterEmail?.trim() ? { requesterEmail: requesterEmail.trim() } : {}),
   });
 }
 
@@ -154,11 +154,11 @@ export type SendEmailOtpResult = {
 export async function apiBusinessSendsEmailOtp(
   client: SupabaseClient,
   venueId: string,
-  requesterEmail: string,
+  requesterEmail?: string,
 ): Promise<SendEmailOtpResult> {
   return invokeEF<SendEmailOtpResult>(client, "business-sends-email-otp", {
     venueId,
-    requesterEmail,
+    ...(requesterEmail?.trim() ? { requesterEmail: requesterEmail.trim() } : {}),
   });
 }
 
