@@ -12,6 +12,7 @@ import {
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { EmptyState } from "@/components/shared";
+import { SubTabs, type SubTabItem } from "@/components/business/SubTabs";
 import { ScanTicketPanel } from "@/components/tickets/ScanTicketPanel";
 import { TicketCard } from "@/components/tickets/TicketCard";
 import {
@@ -21,34 +22,25 @@ import {
 
 const TICKET_LIST_LIMIT = 100;
 
-function StatPill({
-  label,
-  count,
-  tone = "muted",
-}: {
-  label: string;
-  count: number;
-  tone?: "muted" | "primary" | "amber" | "emerald";
-}) {
-  if (count === 0) return null;
-  const toneClass = {
-    muted: "bg-muted/70 text-muted-foreground",
-    primary: "bg-primary/10 text-primary",
-    amber: "bg-amber-500/10 text-amber-900",
-    emerald: "bg-emerald-500/10 text-emerald-800",
-  }[tone];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
-        toneClass,
-      )}
-    >
-      <span className="font-semibold tabular-nums">{count}</span>
-      {label}
-    </span>
-  );
+// Tickets bucket into three lifecycle stages, surfaced as the top filter:
+//   Create  — just scanned, still needs a bill entered
+//   Pending — billed, awaiting payment / confirmation (in service)
+//   Done    — paid, revealed, or cancelled (closed out)
+type TicketFilter = "create" | "pending" | "done";
+
+function ticketBucket(t: BusinessTicket): TicketFilter {
+  if (t.status === "cancelled") return "done";
+  if (ticketNeedsBill(t)) return "create";
+  if (ticketNeedsStaffPaymentConfirm(t)) return "pending";
+  if (t.status === "paid" || t.status === "revealed") return "done";
+  return "pending";
 }
+
+const FILTER_EMPTY: Record<TicketFilter, string> = {
+  create: "No tickets waiting on a bill.",
+  pending: "No tickets awaiting payment.",
+  done: "No closed tickets yet.",
+};
 
 function ScanFeedback({
   error,
@@ -99,19 +91,24 @@ export function TicketsClient({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const [filter, setFilter] = useState<TicketFilter>("create");
 
-  const stats = useMemo(() => {
-    let awaitingBill = 0;
-    let awaitingPay = 0;
-    let complete = 0;
-    for (const t of tickets) {
-      if (t.status === "cancelled") continue;
-      if (ticketNeedsBill(t)) awaitingBill += 1;
-      else if (ticketNeedsStaffPaymentConfirm(t)) awaitingPay += 1;
-      else if (t.status === "paid" || t.status === "revealed") complete += 1;
-    }
-    return { awaitingBill, awaitingPay, complete, total: tickets.length };
+  const counts = useMemo(() => {
+    const c = { create: 0, pending: 0, done: 0 };
+    for (const t of tickets) c[ticketBucket(t)] += 1;
+    return c;
   }, [tickets]);
+
+  const visibleTickets = useMemo(
+    () => tickets.filter((t) => ticketBucket(t) === filter),
+    [tickets, filter],
+  );
+
+  const filterTabs: SubTabItem<TicketFilter>[] = [
+    { id: "create", label: "Create", count: counts.create },
+    { id: "pending", label: "Pending", count: counts.pending },
+    { id: "done", label: "Done", count: counts.done },
+  ];
 
   const refresh = async () => {
     setBusy("refresh");
@@ -180,7 +177,10 @@ export function TicketsClient({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
+      {/* Status filter — sticks under the app bar while the list scrolls. */}
+      <SubTabs tabs={filterTabs} active={filter} onChange={setFilter} />
+
       <header className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -205,22 +205,6 @@ export function TicketsClient({
             )}
           </button>
         </div>
-
-        {stats.total > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            <StatPill
-              label="need bill"
-              count={stats.awaitingBill}
-              tone="primary"
-            />
-            <StatPill
-              label="awaiting pay"
-              count={stats.awaitingPay}
-              tone="amber"
-            />
-            <StatPill label="done" count={stats.complete} tone="emerald" />
-          </div>
-        ) : null}
 
         <button
           type="button"
@@ -277,9 +261,16 @@ export function TicketsClient({
             }
             className="border-border/60 py-12"
           />
+        ) : visibleTickets.length === 0 ? (
+          <EmptyState
+            icon={<ReceiptText className="text-muted-foreground/60 h-5 w-5" />}
+            title={FILTER_EMPTY[filter]}
+            description="Switch filters above to see tickets in other stages."
+            className="border-border/60 py-10"
+          />
         ) : (
           <ul className="flex flex-col gap-2.5">
-            {tickets.map((t) => (
+            {visibleTickets.map((t) => (
               <li key={t.id}>
                 <TicketCard
                   ticket={t}

@@ -18,16 +18,15 @@ type Item = {
   label: string;
 };
 
-// The five operating surfaces, ordered left→right along the venue's
-// workflow: set up (Place, Promos) → run service (Scan, Team) →
-// review (Stats). Account is not here — it's a profile avatar in the top
-// bar (see AccountAvatar), since it's a utility, not an operating surface.
+// The five operating surfaces, ordered left→right: Place, Promos, Scan,
+// Stats, Team. Account/Settings are not here — they live in the top app
+// bar (see Topbar), since they're utilities, not operating surfaces.
 const ITEMS: Item[] = [
   { slug: "place", Icon: Store, label: "Place" },
   { slug: "promos", Icon: Gift, label: "Promos" },
   { slug: "scan", Icon: ScanLine, label: "Scan" },
-  { slug: "team", Icon: Users, label: "Team" },
   { slug: "performance", Icon: BarChart3, label: "Stats" },
+  { slug: "team", Icon: Users, label: "Team" },
 ];
 
 export function BottomNav({ unitId }: { unitId: string }) {
