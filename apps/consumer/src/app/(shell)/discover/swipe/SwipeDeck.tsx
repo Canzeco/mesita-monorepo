@@ -103,15 +103,13 @@ function Deck({ venues }: { venues: Venue[] }) {
   const pathname = usePathname();
   const supabase = useBrowserSupabase();
   const { isSaved, setSaved } = useSavedVenues();
-  const initialSnapshot = useMemo(() => readSwipeSnapshot(), []);
-  const [runtimeDeck, setRuntimeDeck] = useState<Venue[]>(
-    initialSnapshot?.runtimeDeck?.length ? initialSnapshot.runtimeDeck : venues,
-  );
+  // Seed from the server-provided deck so the first client render matches the
+  // SSR HTML. The persisted snapshot is restored after mount (see below) —
+  // reading sessionStorage during render trips a hydration mismatch because
+  // the server has no storage to read.
+  const [runtimeDeck, setRuntimeDeck] = useState<Venue[]>(venues);
   const [restarting, setRestarting] = useState(false);
-  const [idx, setIdx] = useState(() => {
-    if (!initialSnapshot?.runtimeDeck?.length) return 0;
-    return Math.min(initialSnapshot.idx, initialSnapshot.runtimeDeck.length - 1);
-  });
+  const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
@@ -128,7 +126,29 @@ function Deck({ venues }: { venues: Venue[] }) {
   const activePointerIdRef = useRef<number | null>(null);
   const advanceTimerRef = useRef<number | null>(null);
 
+  // Restore a persisted deck + position AFTER mount (client-only), so the
+  // hydration render stays identical to the server's.
   useEffect(() => {
+    const snap = readSwipeSnapshot();
+    if (snap?.runtimeDeck?.length) {
+      // Post-mount setState is intentional: the server has no sessionStorage,
+      // so restoring here (rather than during render) is what keeps SSR and
+      // hydration identical.
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setRuntimeDeck(snap.runtimeDeck);
+      setIdx(Math.min(snap.idx, snap.runtimeDeck.length - 1));
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+  }, []);
+
+  // Persist on change — but skip the initial mount so the fresh server deck
+  // doesn't clobber a stored snapshot before the restore effect applies it.
+  const didPersistMountRef = useRef(false);
+  useEffect(() => {
+    if (!didPersistMountRef.current) {
+      didPersistMountRef.current = true;
+      return;
+    }
     writeSwipeSnapshot({ runtimeDeck, idx });
   }, [runtimeDeck, idx]);
 
