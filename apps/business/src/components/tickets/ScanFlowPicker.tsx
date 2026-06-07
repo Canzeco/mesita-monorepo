@@ -33,7 +33,7 @@ export function ScanFlowPicker({
             className={cn(
               "flex min-w-[3.25rem] flex-1 flex-col items-center rounded-lg px-2 py-2 transition",
               selected
-                ? "bg-card text-foreground shadow-sm ring-1 ring-border/80"
+                ? "bg-card text-foreground ring-border/80 shadow-sm ring-1"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

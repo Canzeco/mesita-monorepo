@@ -26,8 +26,10 @@ function rewardLine(ticket: BusinessTicket): string | null {
   const discount = ticket.discount_cents ?? 0;
   const redeem = ticket.redeem_cents ?? 0;
   const parts: string[] = [];
-  if (discount > 0) parts.push(`${centsToMoney(discount, ticket.currency)} off`);
-  if (redeem > 0) parts.push(`${centsToMoney(redeem, ticket.currency)} redeemed`);
+  if (discount > 0)
+    parts.push(`${centsToMoney(discount, ticket.currency)} off`);
+  if (redeem > 0)
+    parts.push(`${centsToMoney(redeem, ticket.currency)} redeemed`);
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -78,7 +80,7 @@ export function TicketCard({
       className={cn(
         "group relative flex flex-col gap-3 rounded-2xl border p-4 transition",
         needsBill
-          ? "border-primary/25 bg-card shadow-sm ring-1 ring-primary/10"
+          ? "border-primary/25 bg-card ring-primary/10 shadow-sm ring-1"
           : "border-border/50 bg-card/80 hover:border-border/80 hover:bg-card",
         cancelled && "opacity-60",
       )}
@@ -113,7 +115,7 @@ export function TicketCard({
               </p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[16px] font-semibold tabular-nums tracking-tight">
+              <p className="text-[16px] font-semibold tracking-tight tabular-nums">
                 {hasTotal
                   ? centsToMoney(ticket.total_cents, ticket.currency)
                   : "—"}
@@ -172,7 +174,7 @@ export function TicketCard({
               type="button"
               onClick={() => onMarkPaid(ticket.id)}
               disabled={payBusy || busy === "refresh"}
-              className="bg-primary text-primary-foreground hover:opacity-92 inline-flex h-9 items-center justify-center rounded-full px-4 text-[13px] font-semibold shadow-sm transition disabled:opacity-40"
+              className="bg-primary text-primary-foreground inline-flex h-9 items-center justify-center rounded-full px-4 text-[13px] font-semibold shadow-sm transition hover:opacity-92 disabled:opacity-40"
             >
               {payBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

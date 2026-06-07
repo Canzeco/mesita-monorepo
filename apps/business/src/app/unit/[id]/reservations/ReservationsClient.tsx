@@ -78,9 +78,7 @@ export function ReservationsClient({
         prev
           .map((r) => (r.id === reservation.id ? reservation : r))
           // Declines drop out of the live "upcoming" view immediately.
-          .filter(
-            (r) => scope !== "upcoming" || UPCOMING_STATES.has(r.status),
-          ),
+          .filter((r) => scope !== "upcoming" || UPCOMING_STATES.has(r.status)),
       );
     } catch (err) {
       setError(errMsg(err, "Couldn't update the reservation."));
@@ -109,7 +107,7 @@ export function ReservationsClient({
             >
               {s.label}
               {s.key === "upcoming" && pendingCount > 0 ? (
-                <span className="bg-amber-500/15 text-amber-900 rounded-full px-1.5 text-[10px] font-semibold tabular-nums">
+                <span className="rounded-full bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-900 tabular-nums">
                   {pendingCount}
                 </span>
               ) : null}
@@ -138,7 +136,9 @@ export function ReservationsClient({
         <EmptyState
           icon={<CalendarClock className="text-muted-foreground h-5 w-5" />}
           title={
-            scope === "upcoming" ? "No upcoming reservations" : "Nothing here yet"
+            scope === "upcoming"
+              ? "No upcoming reservations"
+              : "Nothing here yet"
           }
           description={
             scope === "upcoming"

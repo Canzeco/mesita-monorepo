@@ -16,9 +16,9 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-hero relative flex min-h-dvh flex-col overflow-hidden">
+    <div className="bg-hero relative flex h-full flex-1 flex-col overflow-y-auto">
       {header}
-      <div className="relative grid flex-1 place-items-center px-5 py-10">
+      <div className="relative flex min-h-full flex-1 flex-col items-center justify-center px-5 py-10">
         <SoftGlow />
         {children}
       </div>

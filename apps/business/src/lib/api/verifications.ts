@@ -119,7 +119,9 @@ export async function apiBusinessSendsPhoneOtp(
 ): Promise<SendPhoneOtpResult> {
   return invokeEF<SendPhoneOtpResult>(client, "business-sends-phone-otp", {
     venueId,
-    ...(requesterEmail?.trim() ? { requesterEmail: requesterEmail.trim() } : {}),
+    ...(requesterEmail?.trim()
+      ? { requesterEmail: requesterEmail.trim() }
+      : {}),
   });
 }
 
@@ -158,7 +160,9 @@ export async function apiBusinessSendsEmailOtp(
 ): Promise<SendEmailOtpResult> {
   return invokeEF<SendEmailOtpResult>(client, "business-sends-email-otp", {
     venueId,
-    ...(requesterEmail?.trim() ? { requesterEmail: requesterEmail.trim() } : {}),
+    ...(requesterEmail?.trim()
+      ? { requesterEmail: requesterEmail.trim() }
+      : {}),
   });
 }
 

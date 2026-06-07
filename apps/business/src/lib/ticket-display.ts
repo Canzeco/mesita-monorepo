@@ -43,8 +43,7 @@ export function ticketConsumerMetaLine(ticket: BusinessTicket): string {
   const sex = sexLabel(ticket.consumer?.sex ?? null);
   const country = ticket.consumer?.country?.trim() || null;
   const plan = planLabel(ticket.consumer?.tier_key);
-  const rewardCents =
-    (ticket.discount_cents ?? 0) + (ticket.redeem_cents ?? 0);
+  const rewardCents = (ticket.discount_cents ?? 0) + (ticket.redeem_cents ?? 0);
 
   return [
     age != null ? `${age}y` : "Age —",

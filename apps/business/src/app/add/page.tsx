@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { AppHeader, type HeaderVenue } from "@/components/auth/AppHeader";
+import { MobileFrame } from "@/components/business/MobileFrame";
 import { CreateUnitForm } from "./CreateUnitForm";
 
 // /add lets a business operator claim a venue. Distinct from /onboard,
@@ -34,20 +35,22 @@ export default async function CreateUnitPage() {
   }
 
   return (
-    <div className="bg-background min-h-dvh w-full">
+    <MobileFrame>
       <AppHeader email={user.email ?? null} venues={venues} />
-      <div className="mx-auto flex max-w-[640px] flex-col px-6 py-10">
-        <header className="mb-6">
-          <h1 className="font-display text-[30px] font-semibold tracking-[-0.02em]">
-            Add a venue
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-[54ch] text-[14.5px] leading-[1.55]">
-            Type the venue&apos;s name — we pull the profile straight from
-            Google and show its current Mesita status inline.
-          </p>
-        </header>
-        <CreateUnitForm signedInEmail={user.email ?? ""} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex max-w-[640px] flex-col px-5 py-8">
+          <header className="mb-6">
+            <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em]">
+              Add a venue
+            </h1>
+            <p className="text-muted-foreground mt-2 text-[14.5px] leading-[1.55]">
+              Type the venue&apos;s name — we pull the profile straight from
+              Google and show its current Mesita status inline.
+            </p>
+          </header>
+          <CreateUnitForm signedInEmail={user.email ?? ""} />
+        </div>
       </div>
-    </div>
+    </MobileFrame>
   );
 }

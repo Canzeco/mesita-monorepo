@@ -99,7 +99,9 @@ export function ScanTicketPanel({
         <span className={TINY_LABEL_CLASS}>Guest code</span>
         <input
           value={guestCode}
-          onChange={(e) => setGuestCode(formatConsumerCodeInput(e.target.value))}
+          onChange={(e) =>
+            setGuestCode(formatConsumerCodeInput(e.target.value))
+          }
           placeholder="0000-0000"
           inputMode="numeric"
           autoComplete="off"
@@ -122,7 +124,7 @@ export function ScanTicketPanel({
       <button
         type="submit"
         disabled={busy}
-        className="bg-primary text-primary-foreground hover:opacity-92 flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold shadow-sm transition disabled:opacity-50"
+        className="bg-primary text-primary-foreground flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold shadow-sm transition hover:opacity-92 disabled:opacity-50"
       >
         {busy ? (
           <Loader2 className="h-4 w-4 animate-spin" />

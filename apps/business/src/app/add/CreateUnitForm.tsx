@@ -188,7 +188,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     supabase,
     signedInEmail,
     onApproved: (venueId) => {
-      router.push(`/unit/${venueId}/home`);
+      router.push(`/unit/${venueId}/place`);
       router.refresh();
     },
     onAwaitingAdmin: () => {
@@ -819,7 +819,13 @@ function PhoneBody({
     }
     const { verificationId, mockCode, phoneDialed, mockMode } = state;
     setError(null);
-    setState({ kind: "verifying", verificationId, mockCode, phoneDialed, mockMode });
+    setState({
+      kind: "verifying",
+      verificationId,
+      mockCode,
+      phoneDialed,
+      mockMode,
+    });
     void (async () => {
       try {
         const { venueId: vId, awaitingAdmin } = await apiBusinessVerifiesPhone(
@@ -847,9 +853,9 @@ function PhoneBody({
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted-foreground text-[13px] leading-relaxed">
-          We&apos;ll dial the number on file and read out a 6-digit code. In test
-          mode you&apos;ll see a Mesita mock line and the code on screen — we
-          don&apos;t call{" "}
+          We&apos;ll dial the number on file and read out a 6-digit code. In
+          test mode you&apos;ll see a Mesita mock line and the code on screen —
+          we don&apos;t call{" "}
           <span className="text-foreground font-mono font-semibold">
             {phoneDisplay}
           </span>{" "}
@@ -903,8 +909,7 @@ function PhoneBody({
               Mock line{" "}
               <span className="text-foreground font-mono font-semibold">
                 {dialed}
-              </span>
-              {" "}
+              </span>{" "}
               — we didn&apos;t call the venue. Type the 6-digit code below.
             </>
           ) : (
@@ -1122,8 +1127,7 @@ function EmailBody({
               Mock inbox{" "}
               <span className="text-foreground font-mono font-semibold break-all">
                 {sentTo}
-              </span>
-              {" "}
+              </span>{" "}
               — we didn&apos;t email the venue. Type the 6-digit code below.
             </>
           ) : (

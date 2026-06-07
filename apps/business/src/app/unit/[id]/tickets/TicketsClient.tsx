@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Loader2,
-  Plus,
-  ReceiptText,
-  RefreshCw,
-  ScanLine,
-} from "lucide-react";
+import { Loader2, Plus, ReceiptText, RefreshCw, ScanLine } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCancelTicket,
@@ -50,7 +44,7 @@ function StatPill({
         toneClass,
       )}
     >
-      <span className="tabular-nums font-semibold">{count}</span>
+      <span className="font-semibold tabular-nums">{count}</span>
       {label}
     </span>
   );
@@ -70,7 +64,9 @@ function ScanFeedback({
     <div
       className={cn(
         "rounded-xl px-3.5 py-2.5 text-xs leading-snug",
-        error ? ERROR_BOX_CLASS : "bg-primary/8 text-foreground/80 border-primary/15 border",
+        error
+          ? ERROR_BOX_CLASS
+          : "bg-primary/8 text-foreground/80 border-primary/15 border",
       )}
       role="status"
     >
@@ -79,7 +75,7 @@ function ScanFeedback({
         <button
           type="button"
           onClick={onDismiss}
-          className="text-muted-foreground hover:text-foreground shrink-0 text-[10px] font-medium uppercase tracking-wide"
+          className="text-muted-foreground hover:text-foreground shrink-0 text-[10px] font-medium tracking-wide uppercase"
         >
           Dismiss
         </button>
@@ -200,7 +196,7 @@ export function TicketsClient({
             aria-label="Refresh tickets"
             onClick={() => void refresh()}
             disabled={busy === "refresh"}
-            className="border-border/60 hover:border-border text-muted-foreground hover:text-foreground mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-card transition disabled:opacity-40"
+            className="border-border/60 hover:border-border text-muted-foreground hover:text-foreground bg-card mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-40"
           >
             {busy === "refresh" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -212,8 +208,16 @@ export function TicketsClient({
 
         {stats.total > 0 ? (
           <div className="flex flex-wrap gap-2">
-            <StatPill label="need bill" count={stats.awaitingBill} tone="primary" />
-            <StatPill label="awaiting pay" count={stats.awaitingPay} tone="amber" />
+            <StatPill
+              label="need bill"
+              count={stats.awaitingBill}
+              tone="primary"
+            />
+            <StatPill
+              label="awaiting pay"
+              count={stats.awaitingPay}
+              tone="amber"
+            />
             <StatPill label="done" count={stats.complete} tone="emerald" />
           </div>
         ) : null}

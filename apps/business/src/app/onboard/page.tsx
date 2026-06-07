@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/business";
 import { AppHeader } from "@/components/auth/AppHeader";
 import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
+import { MobileFrame } from "@/components/business/MobileFrame";
 import { BusinessOnboardForm } from "./BusinessOnboardForm";
 
 // Business onboarding — captures the business operator's name after signup.
@@ -42,13 +43,15 @@ export default async function BusinessOnboardPage() {
   if (profile?.full_name) redirect("/central");
 
   return (
-    <AuthShell header={<AppHeader email={user.email ?? null} venues={[]} />}>
-      <AuthCard
-        title="Welcome to Mesita"
-        subtitle="Tell us who you are. You can add your venue right after."
-      >
-        <BusinessOnboardForm />
-      </AuthCard>
-    </AuthShell>
+    <MobileFrame>
+      <AuthShell header={<AppHeader email={user.email ?? null} venues={[]} />}>
+        <AuthCard
+          title="Welcome to Mesita"
+          subtitle="Tell us who you are. You can add your venue right after."
+        >
+          <BusinessOnboardForm />
+        </AuthCard>
+      </AuthShell>
+    </MobileFrame>
   );
 }

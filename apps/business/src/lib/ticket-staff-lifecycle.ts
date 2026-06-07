@@ -18,12 +18,7 @@ export type TicketFlowType = "A" | "B";
  *
  * Review runs on the consumer app after the ticket closes.
  */
-export type StaffLifecycleStepId =
-  | "scan"
-  | "bill"
-  | "story"
-  | "pay"
-  | "done";
+export type StaffLifecycleStepId = "scan" | "bill" | "story" | "pay" | "done";
 
 export type StaffLifecycleStepState = "done" | "active" | "upcoming";
 
@@ -41,10 +36,7 @@ export type StaffTicketProgressInput = Pick<
 
 const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "waiter_verified"]);
 
-const STORY_KINDS = new Set<TicketKind>([
-  "s_dp_sf",
-  "r_s_dp_sf",
-]);
+const STORY_KINDS = new Set<TicketKind>(["s_dp_sf", "r_s_dp_sf"]);
 
 export const TICKET_KIND_BY_FLOW_TYPE: Record<TicketFlowType, TicketKind> = {
   A: "dp",
@@ -72,11 +64,13 @@ export function ticketHasBill(input: StaffTicketProgressInput): boolean {
   return (input.total_cents ?? 0) > 0;
 }
 
-export const STAFF_STEPS_BY_FLOW_TYPE: Record<TicketFlowType, StaffLifecycleStepId[]> =
-  {
-    A: ["scan", "bill", "pay", "done"],
-    B: ["scan", "bill", "story", "pay", "done"],
-  };
+export const STAFF_STEPS_BY_FLOW_TYPE: Record<
+  TicketFlowType,
+  StaffLifecycleStepId[]
+> = {
+  A: ["scan", "bill", "pay", "done"],
+  B: ["scan", "bill", "story", "pay", "done"],
+};
 
 export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   scan: "Scan",
@@ -165,7 +159,8 @@ export function resolveStaffLifecycleSteps(
 
     return {
       id,
-      label: id === "done" ? staffDoneStepLabel(input.kind) : STAFF_STEP_LABELS[id],
+      label:
+        id === "done" ? staffDoneStepLabel(input.kind) : STAFF_STEP_LABELS[id],
       state,
       hint: state === "active" ? STAFF_STEP_HINTS[id] : undefined,
     };
@@ -223,7 +218,9 @@ export function staffStatusTone(status: TicketStatus): string {
 }
 
 /** Staff payment confirm: guest pays at the table, staff tap Paid received. */
-export function ticketNeedsStaffPaymentConfirm(ticket: BusinessTicket): boolean {
+export function ticketNeedsStaffPaymentConfirm(
+  ticket: BusinessTicket,
+): boolean {
   return ticket.status === "awaiting_payment_confirm";
 }
 

@@ -61,7 +61,7 @@ export function AcceptInviteClient() {
         setVenueId(res.venueId);
         setStatus("success");
         window.setTimeout(() => {
-          router.replace(`/unit/${res.venueId}/home`);
+          router.replace(`/unit/${res.venueId}/place`);
         }, 1200);
       } catch (err) {
         if (cancelled) return;
@@ -112,7 +112,7 @@ export function AcceptInviteClient() {
         </p>
         {venueId && (
           <Link
-            href={`/unit/${venueId}/home`}
+            href={`/unit/${venueId}/place`}
             className="text-secondary text-xs font-semibold"
           >
             Open now

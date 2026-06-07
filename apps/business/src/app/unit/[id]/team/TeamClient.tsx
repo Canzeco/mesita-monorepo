@@ -190,8 +190,7 @@ export function TeamClient({
         },
         ...(prev.pendingWaiterInvites ?? []).filter(
           (p) =>
-            p.id !== res.inviteId &&
-            waiterInvitePhoneKey(p.phone) !== phoneKey,
+            p.id !== res.inviteId && waiterInvitePhoneKey(p.phone) !== phoneKey,
         ),
       ],
     }));
@@ -596,7 +595,6 @@ export function TeamClient({
             ))}
           </PendingGroup>
         )}
-
       </Section>
 
       {/* ── PRs ──────────────────────────────────────────────────── */}
@@ -684,9 +682,14 @@ export function TeamClient({
                     key={`pr-ig-${handle}`}
                     className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
                   >
-                    <Avatar initial={handle.slice(1, 2)} tint="bg-pink-gradient" />
+                    <Avatar
+                      initial={handle.slice(1, 2)}
+                      tint="bg-pink-gradient"
+                    />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-semibold">{handle}</p>
+                      <p className="truncate text-[13px] font-semibold">
+                        {handle}
+                      </p>
                       <p className="text-muted-foreground text-[11px]">
                         Instagram PR (mock for now)
                       </p>
@@ -700,14 +703,15 @@ export function TeamClient({
                       hidden={!isOwner}
                       label={`Remove ${handle}`}
                       onClick={() =>
-                        setMockPrInstagrams((prev) => prev.filter((x) => x !== handle))
+                        setMockPrInstagrams((prev) =>
+                          prev.filter((x) => x !== handle),
+                        )
                       }
                     />
                   </li>
                 ))}
               </ul>
             )}
-
           </>
         )}
       </Section>
@@ -996,7 +1000,10 @@ function PrChannelForm({
         <button
           type="submit"
           disabled={busy || value.trim().length === 0}
-          className={cn(PILL_BUTTON_CLASS, "shrink-0 px-4 py-2 disabled:opacity-50")}
+          className={cn(
+            PILL_BUTTON_CLASS,
+            "shrink-0 px-4 py-2 disabled:opacity-50",
+          )}
         >
           {busy ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -1016,7 +1023,7 @@ function PrChannelForm({
             disabled={busy || value.trim().length === 0}
             onClick={() => onPing(channel, value.trim())}
             className={cn(
-              "border-border bg-background text-foreground inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition hover:bg-muted disabled:opacity-50",
+              "border-border bg-background text-foreground hover:bg-muted inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition disabled:opacity-50",
             )}
           >
             <Send className="h-3.5 w-3.5" />
@@ -1105,8 +1112,13 @@ function WaiterInviteForm({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
-            disabled={busy || (channel === "whatsapp" && phone.trim().length === 0)}
-            className={cn(PILL_BUTTON_CLASS, "shrink-0 px-4 py-2 disabled:opacity-50")}
+            disabled={
+              busy || (channel === "whatsapp" && phone.trim().length === 0)
+            }
+            className={cn(
+              PILL_BUTTON_CLASS,
+              "shrink-0 px-4 py-2 disabled:opacity-50",
+            )}
           >
             {busy ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -1119,7 +1131,7 @@ function WaiterInviteForm({
             type="button"
             disabled={busy || phone.trim().length === 0}
             onClick={() => onPing(channel, phone.trim())}
-            className="border-border bg-background text-foreground inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition hover:bg-muted disabled:opacity-50"
+            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition disabled:opacity-50"
           >
             <Send className="h-3.5 w-3.5" />
             Ping
@@ -1276,7 +1288,9 @@ function TeamStatPill({
     <div className="border-border bg-card rounded-xl border px-3 py-2.5">
       <p className={TINY_LABEL_CLASS}>{label}</p>
       <div className="mt-1 flex items-baseline justify-between gap-2">
-        <p className="font-display text-xl font-semibold tracking-tight">{value}</p>
+        <p className="font-display text-xl font-semibold tracking-tight">
+          {value}
+        </p>
         <p className="text-muted-foreground text-[11px]">{hint}</p>
       </div>
     </div>

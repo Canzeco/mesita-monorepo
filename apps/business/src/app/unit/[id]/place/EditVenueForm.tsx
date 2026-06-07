@@ -378,8 +378,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
       return;
     }
 
-    const firstMenu =
-      v.menu_links.find((m) => m.url.trim() !== "") ??
+    const firstMenu = v.menu_links.find((m) => m.url.trim() !== "") ??
       v.menu_links[0] ?? { name: "", url: "" };
 
     const payload: UpdateVenueInput = {
@@ -469,8 +468,8 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
             <div>
               <p className="text-sm font-semibold">Need fresh profile data?</p>
               <p className="text-muted-foreground text-xs">
-                Re-run Atlas profile enrichment to refresh channels, reviews, and
-                metadata.
+                Re-run Atlas profile enrichment to refresh channels, reviews,
+                and metadata.
               </p>
               {atlasMockNotice && (
                 <p className="text-secondary mt-1 text-[11px] font-medium">
@@ -482,7 +481,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
               type="button"
               onClick={handleMockAtlasRefresh}
               disabled={atlasMockRunning}
-              className="bg-foreground text-background hover:opacity-90 inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition disabled:opacity-60"
+              className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition hover:opacity-90 disabled:opacity-60"
             >
               {atlasMockRunning ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -618,8 +617,8 @@ function BasicsSection({
           />
           <div className="flex items-center justify-between gap-3">
             <p className="text-muted-foreground text-[11px]">
-              Atlas AI writes up to 1000 characters. You can expand it manually up to
-              2000.
+              Atlas AI writes up to 1000 characters. You can expand it manually
+              up to 2000.
             </p>
             <span className="text-muted-foreground shrink-0 text-[11px] font-medium tabular-nums">
               {v.description.length} / {DESCRIPTION_MAX}
@@ -657,7 +656,8 @@ function PriceLevelDisplay({ level }: { level: number | null }) {
         >
           {Array.from({ length: PRICE_LEVEL_MAX }, (_, idx) => {
             const segment = idx + 1;
-            const active = normalizedLevel != null && segment <= normalizedLevel;
+            const active =
+              normalizedLevel != null && segment <= normalizedLevel;
             const current = normalizedLevel === segment;
             return (
               <div
@@ -666,7 +666,7 @@ function PriceLevelDisplay({ level }: { level: number | null }) {
                   "flex h-10 items-center justify-center rounded-lg border text-[12px] font-semibold tabular-nums transition",
                   active
                     ? "bg-pink-gradient border-transparent text-white shadow-sm"
-                    : "border-border/60 bg-white/90 text-muted-foreground/80",
+                    : "border-border/60 text-muted-foreground/80 bg-white/90",
                   current && "ring-2 ring-fuchsia-300/70",
                 )}
               >
@@ -679,7 +679,9 @@ function PriceLevelDisplay({ level }: { level: number | null }) {
           <p
             className={cn(
               "text-[12px]",
-              isEmpty ? "text-muted-foreground italic" : "text-muted-foreground/90",
+              isEmpty
+                ? "text-muted-foreground italic"
+                : "text-muted-foreground/90",
             )}
           >
             {isEmpty
@@ -827,13 +829,15 @@ function ProfileCompletionBar({ v }: { v: FormState }) {
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3">
-        <p className="text-foreground text-[12px] font-semibold">{pct}% complete</p>
+        <p className="text-foreground text-[12px] font-semibold">
+          {pct}% complete
+        </p>
         {pending.length > 0 ? (
           <p className="text-muted-foreground text-[11px]">
             Next up: {pending.map((item) => item.label).join(" · ")}
           </p>
         ) : (
-          <p className="text-emerald-700 text-[11px] font-medium">
+          <p className="text-[11px] font-medium text-emerald-700">
             Profile looks complete.
           </p>
         )}
@@ -1022,9 +1026,12 @@ function previewMeta(venue: MyVenue, v: FormState) {
   // In business console previews, venues are always shown as verified.
   const isPartner = true;
   const rewardRate = resolvePreviewRewardRate(venue);
-  const rewardMechanic = venue.fiscal_type === "informal" ? "Discount" : "Reward";
+  const rewardMechanic =
+    venue.fiscal_type === "informal" ? "Discount" : "Reward";
   const promoLabel =
-    rewardRate != null ? `Reward · ${rewardRate}% ${rewardMechanic}` : "No reward yet";
+    rewardRate != null
+      ? `Reward · ${rewardRate}% ${rewardMechanic}`
+      : "No reward yet";
 
   return {
     name,
@@ -1052,11 +1059,15 @@ function resolvePreviewRewardRate(venue: MyVenue): number | null {
   return Math.max(...rates);
 }
 
-function profileCompletionChecks(v: FormState): Array<{ label: string; done: boolean }> {
+function profileCompletionChecks(
+  v: FormState,
+): Array<{ label: string; done: boolean }> {
   const hasAnyPhoto = v.photos.length > 0;
   const hasAnyTag = v.tags.length > 0;
   const hasHours = DAYS.some(({ key }) =>
-    v.hours[key].ranges.some((range) => range.open.trim() && range.close.trim()),
+    v.hours[key].ranges.some(
+      (range) => range.open.trim() && range.close.trim(),
+    ),
   );
 
   const checks: Array<{ label: string; done: boolean }> = [
@@ -1189,16 +1200,22 @@ function MediaSection({
             cacheControl: "31536000",
           });
         if (uploadError) {
-          throw new Error(`Couldn't upload ${file.name}: ${uploadError.message}`);
+          throw new Error(
+            `Couldn't upload ${file.name}: ${uploadError.message}`,
+          );
         }
-        const { data } = supabase.storage.from("venue-images").getPublicUrl(path);
+        const { data } = supabase.storage
+          .from("venue-images")
+          .getPublicUrl(path);
         if (data?.publicUrl) uploadedUrls.push(data.publicUrl);
       }
       if (uploadedUrls.length > 0) {
         onChange([...photos, ...uploadedUrls].slice(0, MAX_PHOTOS));
       }
       if (files.length > slots) {
-        onError(`Uploaded ${uploadedUrls.length} image(s). Max is ${MAX_PHOTOS} total.`);
+        onError(
+          `Uploaded ${uploadedUrls.length} image(s). Max is ${MAX_PHOTOS} total.`,
+        );
       } else {
         onError(null);
       }
@@ -1385,9 +1402,10 @@ function MenuSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  const links = v.menu_links.length > 0 ? v.menu_links : [{ name: "", url: "" }];
-  const primary =
-    links.find((m) => m.url.trim() !== "") ?? links[0] ?? { name: "", url: "" };
+  const links =
+    v.menu_links.length > 0 ? v.menu_links : [{ name: "", url: "" }];
+  const primary = links.find((m) => m.url.trim() !== "") ??
+    links[0] ?? { name: "", url: "" };
   const menuMeta = describeMenuUrl(primary.url);
   const activeKind = menuMeta?.kind ?? "other";
   const setLink = (idx: number, patch: Partial<MenuEntry>) => {
@@ -1670,19 +1688,27 @@ function ChannelsSection({
   const prCompleted = prFields.filter((f) => f.trim() !== "").length;
   const secondaryCompletionMap: Record<SecondaryChannelKey, boolean> = {
     email: v.email.trim() !== "" || secondaryNotAvailable.email,
-    facebook_url: v.facebook_url.trim() !== "" || secondaryNotAvailable.facebook_url,
+    facebook_url:
+      v.facebook_url.trim() !== "" || secondaryNotAvailable.facebook_url,
     tiktok_url: v.tiktok_url.trim() !== "" || secondaryNotAvailable.tiktok_url,
-    youtube_url: v.youtube_url.trim() !== "" || secondaryNotAvailable.youtube_url,
-    opentable_url: v.opentable_url.trim() !== "" || secondaryNotAvailable.opentable_url,
+    youtube_url:
+      v.youtube_url.trim() !== "" || secondaryNotAvailable.youtube_url,
+    opentable_url:
+      v.opentable_url.trim() !== "" || secondaryNotAvailable.opentable_url,
     rappi_url: v.rappi_url.trim() !== "" || secondaryNotAvailable.rappi_url,
-    uber_eats_url: v.uber_eats_url.trim() !== "" || secondaryNotAvailable.uber_eats_url,
-    didi_food_url: v.didi_food_url.trim() !== "" || secondaryNotAvailable.didi_food_url,
+    uber_eats_url:
+      v.uber_eats_url.trim() !== "" || secondaryNotAvailable.uber_eats_url,
+    didi_food_url:
+      v.didi_food_url.trim() !== "" || secondaryNotAvailable.didi_food_url,
     google_maps_url:
       v.google_maps_url.trim() !== "" || secondaryNotAvailable.google_maps_url,
   };
-  const secondaryCompleted = Object.values(secondaryCompletionMap).filter(Boolean).length;
+  const secondaryCompleted = Object.values(secondaryCompletionMap).filter(
+    Boolean,
+  ).length;
   const filled = primaryCompleted + prCompleted + secondaryCompleted;
-  const totalFields = primaryFields.length + prFields.length + secondaryFields.length;
+  const totalFields =
+    primaryFields.length + prFields.length + secondaryFields.length;
 
   const prWhatsapp = v.whatsapp_pr_urls[0] ?? "";
   const prInstagram = v.instagram_pr_urls[0] ?? "";
@@ -1746,7 +1772,7 @@ function ChannelsSection({
             <div className="flex items-center gap-1.5">
               <Link
                 href={teamHref}
-                className="bg-pink-gradient text-white inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition hover:opacity-90"
+                className="bg-pink-gradient inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white transition hover:opacity-90"
               >
                 Connect your PRs
                 <ExternalLink className="h-3 w-3" />
@@ -1802,7 +1828,9 @@ function ChannelsSection({
               }}
               completed={secondaryCompletionMap.email}
               missing={secondaryNotAvailable.email}
-              onToggleMissing={(missing) => setSecondaryMissing("email", missing)}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("email", missing)
+              }
             />
             <UrlField
               label="Facebook"
@@ -1830,7 +1858,9 @@ function ChannelsSection({
               }}
               completed={secondaryCompletionMap.tiktok_url}
               missing={secondaryNotAvailable.tiktok_url}
-              onToggleMissing={(missing) => setSecondaryMissing("tiktok_url", missing)}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("tiktok_url", missing)
+              }
             />
             <UrlField
               label="YouTube"
@@ -1843,7 +1873,9 @@ function ChannelsSection({
               }}
               completed={secondaryCompletionMap.youtube_url}
               missing={secondaryNotAvailable.youtube_url}
-              onToggleMissing={(missing) => setSecondaryMissing("youtube_url", missing)}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("youtube_url", missing)
+              }
             />
             <UrlField
               label="OpenTable"
@@ -1871,7 +1903,9 @@ function ChannelsSection({
               }}
               completed={secondaryCompletionMap.rappi_url}
               missing={secondaryNotAvailable.rappi_url}
-              onToggleMissing={(missing) => setSecondaryMissing("rappi_url", missing)}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("rappi_url", missing)
+              }
             />
             <UrlField
               label="Uber Eats"
@@ -1884,7 +1918,9 @@ function ChannelsSection({
               }}
               completed={secondaryCompletionMap.uber_eats_url}
               missing={secondaryNotAvailable.uber_eats_url}
-              onToggleMissing={(missing) => setSecondaryMissing("uber_eats_url", missing)}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("uber_eats_url", missing)
+              }
             />
             <UrlField
               label="DiDi Food"
@@ -1897,7 +1933,9 @@ function ChannelsSection({
               }}
               completed={secondaryCompletionMap.didi_food_url}
               missing={secondaryNotAvailable.didi_food_url}
-              onToggleMissing={(missing) => setSecondaryMissing("didi_food_url", missing)}
+              onToggleMissing={(missing) =>
+                setSecondaryMissing("didi_food_url", missing)
+              }
             />
             <UrlField
               label="Google Maps"
@@ -2202,7 +2240,7 @@ function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
                   />
                 ))}
               </div>
-              <div className="bg-muted/20 scrollbar-thin mt-2 max-h-44 min-h-36 overflow-y-auto rounded-lg p-2.5">
+              <div className="bg-muted/20 mt-2 max-h-44 min-h-36 scrollbar-thin overflow-y-auto rounded-lg p-2.5">
                 <p className="text-muted-foreground text-[13px] leading-snug">
                   &ldquo;{item.text}&rdquo;
                 </p>
@@ -2221,7 +2259,9 @@ function ReviewSourceBadge({ source }: { source: "Mesita" | "Google" }) {
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
-        isGoogle ? "bg-blue-500/10 text-blue-700" : "bg-pink-500/10 text-pink-700",
+        isGoogle
+          ? "bg-blue-500/10 text-blue-700"
+          : "bg-pink-500/10 text-pink-700",
       )}
     >
       {isGoogle ? <GoogleLogo size={10} /> : <Sparkles className="h-3 w-3" />}
@@ -2355,7 +2395,8 @@ function PopularTimesMock({ venueName }: { venueName: string }) {
         <span className="col-start-17 text-right">10PM</span>
       </div>
       <p className="text-muted-foreground mt-1.5 px-1.5 text-[11px]">
-        Peak around <span className="text-foreground font-semibold">{peakHour}</span>
+        Peak around{" "}
+        <span className="text-foreground font-semibold">{peakHour}</span>
       </p>
     </div>
   );
@@ -2623,7 +2664,11 @@ function UrlField({
               : "text-muted-foreground hover:bg-muted",
           )}
         >
-          {missing ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+          {missing ? (
+            <CheckCircle2 className="h-3 w-3" />
+          ) : (
+            <Clock className="h-3 w-3" />
+          )}
           {missing ? "Has channel" : "I don't have this"}
         </button>
       )}
@@ -2646,8 +2691,8 @@ function FieldStatusBadge({
         isMissing
           ? "bg-slate-500/10 text-slate-700"
           : completed
-          ? "bg-emerald-500/10 text-emerald-700"
-          : "bg-amber-500/10 text-amber-700",
+            ? "bg-emerald-500/10 text-emerald-700"
+            : "bg-amber-500/10 text-amber-700",
       )}
     >
       {isMissing ? (

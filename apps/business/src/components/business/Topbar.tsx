@@ -1,16 +1,13 @@
 import { cn } from "@/lib/utils";
 
-// Minimal business topbar: just the page title + optional subtitle.
-// Everything else (AppSwitcher, global search, notifications) was either
-// disabled placeholder UI or surface clutter — removed until real
-// implementations exist.
+// Mobile app bar for the venue console: page title + optional subtitle,
+// pinned to the top of the scrollable body inside the phone frame.
+// (Previously a desktop topbar with hamburger padding — the sidebar is
+// gone now, replaced by the BottomNav, so the title can sit flush.)
 //
-// `innerClassName` lets a page constrain the title row to the same
-// container width as its content below (e.g. `mx-auto w-full max-w-6xl`)
-// so the title and the content cards share a left edge. Without it the
-// title sits flush to the business content area's edge, which on a wide
-// monitor reads as misaligned when the content is centered with a
-// max-width.
+// `innerClassName` is kept for back-compat with pages that pass a
+// container width; inside the max-w-md frame it's effectively a no-op but
+// harmless.
 export function Topbar({
   title,
   subtitle,
@@ -21,19 +18,16 @@ export function Topbar({
   innerClassName?: string;
 }) {
   return (
-    <header className="bg-background/80 sticky top-0 z-20 backdrop-blur-md">
+    <header className="border-border bg-background/85 sticky top-0 z-20 shrink-0 border-b backdrop-blur-md">
       <div
-        className={cn(
-          "flex items-center gap-3 px-4 py-4 pl-14 md:gap-4 md:px-8 md:pl-8",
-          innerClassName,
-        )}
+        className={cn("flex items-center gap-3 px-4 py-3.5", innerClassName)}
       >
         <div className="min-w-0 flex-1">
-          <h1 className="font-display truncate text-xl leading-none font-semibold tracking-tight md:text-2xl">
+          <h1 className="font-display truncate text-lg leading-tight font-semibold tracking-tight">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-muted-foreground mt-1 truncate text-[13px] leading-snug">
+            <p className="text-muted-foreground mt-0.5 truncate text-[12px] leading-snug">
               {subtitle}
             </p>
           )}

@@ -17,6 +17,7 @@ import {
   type BusinessProfile,
 } from "@/lib/api/business";
 import { AppHeader } from "@/components/auth/AppHeader";
+import { MobileFrame } from "@/components/business/MobileFrame";
 import { errMsg } from "@/lib/utils";
 
 // /central — the business operator's venue hub. Lives one level below
@@ -89,31 +90,33 @@ const ENTITY_OPTIONS: EntityOption[] = [
 // operator can sign out without a sidebar.
 function VenuelessHub({ email }: { email: string | null }) {
   return (
-    <div className="bg-background min-h-dvh">
+    <MobileFrame>
       <AppHeader email={email} venues={[]} />
-      <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="border-border bg-card-soft flex flex-col items-center gap-6 rounded-[22px] border p-10 text-center">
-          <span className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <div>
-            <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
-              Add your first place
-            </h1>
-            <p className="text-muted-foreground mt-2 max-w-[44ch] text-sm leading-[1.55]">
-              Mesita lists every place on the open internet. Claim the one you
-              operate (or create a brand new listing) and your dashboard shows
-              up here. Events, communities, products and services are next.
-            </p>
-          </div>
-          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
-            {ENTITY_OPTIONS.map((opt) => (
-              <AddEntityTile key={opt.label} option={opt} />
-            ))}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-2xl px-5 py-10">
+          <div className="border-border bg-card-soft flex flex-col items-center gap-6 rounded-[22px] border p-7 text-center">
+            <span className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <div>
+              <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em]">
+                Add your first place
+              </h1>
+              <p className="text-muted-foreground mt-2 text-sm leading-[1.55]">
+                Mesita lists every place on the open internet. Claim the one you
+                operate (or create a brand new listing) and your dashboard shows
+                up here. Events, communities, products and services are next.
+              </p>
+            </div>
+            <div className="grid w-full grid-cols-2 gap-2">
+              {ENTITY_OPTIONS.map((opt) => (
+                <AddEntityTile key={opt.label} option={opt} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </MobileFrame>
   );
 }
 
@@ -156,56 +159,58 @@ function VenueHub({
   venues: Array<{ id: string; name: string; address: string | null }>;
 }) {
   return (
-    <div className="bg-background min-h-dvh">
+    <MobileFrame>
       <AppHeader
         email={email}
         venues={venues.map(({ id, name }) => ({ id, name }))}
       />
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
-          Your places
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Pick a place to open its dashboard, or add another.
-        </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {venues.map((v) => (
-            <Link
-              key={v.id}
-              href={`/unit/${v.id}/home`}
-              className="border-border bg-card hover:border-foreground/30 group flex flex-col gap-2.5 rounded-[18px] border p-5 transition"
-            >
-              <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
-                <MapPin className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="font-display text-base font-semibold tracking-[-0.01em]">
-                  {v.name}
-                </p>
-                {v.address && (
-                  <p className="text-muted-foreground mt-0.5 truncate text-[12px]">
-                    {v.address}
-                  </p>
-                )}
-              </div>
-              <span className="text-muted-foreground mt-2 inline-flex items-center gap-1 text-[12px] font-medium">
-                Open dashboard
-                <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-          ))}
-        </div>
-        <div className="mt-8">
-          <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
-            Add another
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-5 py-8">
+          <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em]">
+            Your places
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm">
+            Pick a place to open its dashboard, or add another.
           </p>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {ENTITY_OPTIONS.map((opt) => (
-              <AddEntityTile key={opt.label} option={opt} />
+          <div className="mt-6 grid gap-3">
+            {venues.map((v) => (
+              <Link
+                key={v.id}
+                href={`/unit/${v.id}/place`}
+                className="border-border bg-card hover:border-foreground/30 group flex flex-col gap-2.5 rounded-[18px] border p-5 transition"
+              >
+                <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
+                  <MapPin className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-display text-base font-semibold tracking-[-0.01em]">
+                    {v.name}
+                  </p>
+                  {v.address && (
+                    <p className="text-muted-foreground mt-0.5 truncate text-[12px]">
+                      {v.address}
+                    </p>
+                  )}
+                </div>
+                <span className="text-muted-foreground mt-2 inline-flex items-center gap-1 text-[12px] font-medium">
+                  Open dashboard
+                  <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+                </span>
+              </Link>
             ))}
+          </div>
+          <div className="mt-8">
+            <p className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
+              Add another
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {ENTITY_OPTIONS.map((opt) => (
+                <AddEntityTile key={opt.label} option={opt} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </MobileFrame>
   );
 }

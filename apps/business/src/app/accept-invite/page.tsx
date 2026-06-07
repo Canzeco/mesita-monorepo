@@ -11,7 +11,10 @@ export default function AcceptInvitePage() {
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-2">
-              <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" aria-label="Loading" />
+              <Loader2
+                className="text-muted-foreground h-5 w-5 animate-spin"
+                aria-label="Loading"
+              />
             </div>
           }
         >

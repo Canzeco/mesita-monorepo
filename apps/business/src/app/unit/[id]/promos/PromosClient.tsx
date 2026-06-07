@@ -286,7 +286,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         className="bg-gradient-to-b from-white to-fuchsia-50/[0.22]"
       >
         <div className="bg-muted/25 border-border/60 grid grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-2">
-          <div className="sm:col-span-2 flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 sm:col-span-2">
             <p className="text-[12px] font-semibold">Story posting required</p>
             <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white">
               Required
@@ -319,7 +319,8 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
           </div>
         </div>
         <p className="text-foreground/80 text-[11px]">
-          Selected rule: <span className="font-semibold">{STORY_INSTRUCTION}</span>
+          Selected rule:{" "}
+          <span className="font-semibold">{STORY_INSTRUCTION}</span>
         </p>
         <p className="text-muted-foreground text-[11px]">
           No follow is required from guests.
@@ -534,7 +535,7 @@ function VisibilityRail({
           Step {currentIdx + 1} of {levels.length}
         </span>
       </div>
-      <p className="font-display text-foreground mt-1 text-2xl font-semibold leading-none tracking-tight">
+      <p className="font-display text-foreground mt-1 text-2xl leading-none font-semibold tracking-tight">
         {current}
       </p>
 
@@ -556,7 +557,7 @@ function VisibilityRail({
                 className={cn(
                   "shrink-0 rounded-full transition",
                   isCurrent
-                    ? "bg-pink-gradient shadow-glow ring-pink-500/30 h-4 w-4 ring-4"
+                    ? "bg-pink-gradient shadow-glow h-4 w-4 ring-4 ring-pink-500/30"
                     : reached
                       ? "bg-pink-gradient h-3 w-3"
                       : "bg-muted/80 h-3 w-3",
@@ -622,7 +623,7 @@ function SubscriptionCard({
         !isCurrent && "hover:border-foreground/30",
         !isCurrent &&
           "hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-22px_rgba(236,72,153,0.55)]",
-        isCurrent && "border-foreground shadow-elev ring-1 ring-foreground/10",
+        isCurrent && "border-foreground shadow-elev ring-foreground/10 ring-1",
         featured && !isCurrent && "bg-pink-gradient/[0.04]",
       )}
     >
@@ -657,7 +658,9 @@ function SubscriptionCard({
         </span>
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
       </div>
-      <p className="text-muted-foreground text-[12px] leading-snug">{tagline}</p>
+      <p className="text-muted-foreground text-[12px] leading-snug">
+        {tagline}
+      </p>
       <div className="mt-auto flex flex-col gap-0.5">
         <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
           {visibility} visibility
@@ -773,7 +776,7 @@ function RatePill({
           : active
             ? "bg-pink-gradient text-white shadow-sm"
             : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/20 border",
-        disabled && "cursor-not-allowed opacity-60 hover:text-muted-foreground",
+        disabled && "hover:text-muted-foreground cursor-not-allowed opacity-60",
       )}
     >
       {label}

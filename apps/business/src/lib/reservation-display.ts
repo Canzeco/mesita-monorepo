@@ -2,7 +2,11 @@ import type {
   BusinessReservation,
   ReservationStatus,
 } from "@/lib/api/reservations";
-import { isPremiumTier, planLabel, premiumDoorLabel } from "@/lib/consumer-plan";
+import {
+  isPremiumTier,
+  planLabel,
+  premiumDoorLabel,
+} from "@/lib/consumer-plan";
 
 export function reservationStatusLabel(status: ReservationStatus): string {
   switch (status) {

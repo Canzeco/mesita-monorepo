@@ -5,10 +5,9 @@ import {
   type BusinessProfile,
 } from "@/lib/api/business";
 import { errMsg } from "@/lib/utils";
-import {
-  AuthChip,
-  EnterpriseAuthLayout,
-} from "@/components/auth/EnterpriseAuthLayout";
+import { MobileFrame } from "@/components/business/MobileFrame";
+import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
+import { AuthChip } from "@/components/auth/EnterpriseAuthLayout";
 import { AuthTabs } from "@/components/auth/AuthTabs";
 import { authSignInWithEmail, authSignUpWithEmail } from "@/app/auth/actions";
 
@@ -66,31 +65,36 @@ export default async function BusinessRootPage({
   const initialMode = params.mode === "signup" ? "signup" : "signin";
 
   return (
-    <EnterpriseAuthLayout
-      title={
-        initialMode === "signup"
-          ? "Become a partner"
-          : "Welcome to your dashboard"
-      }
-      subtitle={
-        initialMode === "signup"
-          ? "Sign up with Google or email — you can add your venue right after."
-          : "Sign in to manage your venues, promos, and team."
-      }
-      chip={
-        params.error === "oauth_failed" ? (
-          <AuthChip tone="error">
-            That sign-in didn&apos;t go through. Try again, or use email below.
-          </AuthChip>
-        ) : null
-      }
-    >
-      <AuthTabs
-        next={next}
-        signInAction={signInAction}
-        signUpAction={signUpAction}
-        initialMode={initialMode}
-      />
-    </EnterpriseAuthLayout>
+    <MobileFrame>
+      <AuthShell>
+        <AuthCard
+          title={
+            initialMode === "signup"
+              ? "Become a partner"
+              : "Welcome to your dashboard"
+          }
+          subtitle={
+            initialMode === "signup"
+              ? "Sign up with Google or email — add your venue right after."
+              : "Sign in to manage your venues, promos, and team."
+          }
+          chip={
+            params.error === "oauth_failed" ? (
+              <AuthChip tone="error">
+                That sign-in didn&apos;t go through. Try again, or use email
+                below.
+              </AuthChip>
+            ) : null
+          }
+        >
+          <AuthTabs
+            next={next}
+            signInAction={signInAction}
+            signUpAction={signUpAction}
+            initialMode={initialMode}
+          />
+        </AuthCard>
+      </AuthShell>
+    </MobileFrame>
   );
 }

@@ -86,7 +86,10 @@ export default async function ReservationsPage({
 
   return (
     <>
-      <Topbar title={active.name} subtitle="Reservations · confirm or decline" />
+      <Topbar
+        title={active.name}
+        subtitle="Reservations · confirm or decline"
+      />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-lg flex-col px-4 pt-1 pb-14 md:px-5 md:pt-3 md:pb-16">
           <ReservationsClient

@@ -88,7 +88,7 @@ function AccountMenu({
             {venues.map((v) => (
               <DropdownMenuItem key={v.id} asChild>
                 <Link
-                  href={`/unit/${v.id}/home`}
+                  href={`/unit/${v.id}/place`}
                   className="cursor-pointer truncate"
                 >
                   <MapPin className="text-muted-foreground h-3.5 w-3.5" />

@@ -47,7 +47,7 @@ export function ReservationCard({
       className={cn(
         "group relative flex flex-col gap-3 rounded-2xl border p-4 transition",
         pending
-          ? "border-primary/25 bg-card shadow-sm ring-1 ring-primary/10"
+          ? "border-primary/25 bg-card ring-primary/10 shadow-sm ring-1"
           : "border-border/50 bg-card/80 hover:border-border/80 hover:bg-card",
         terminal && "opacity-60",
       )}

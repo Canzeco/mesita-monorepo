@@ -29,9 +29,9 @@ export function TicketLifecycleStepper({
               className={cn(
                 "flex shrink-0 rounded-full transition-all duration-300",
                 step.state === "done" &&
-                  "bg-emerald-500/90 h-1.5 w-1.5 shadow-[0_0_0_1px_oklch(0.65_0.17_152/0.25)]",
+                  "h-1.5 w-1.5 bg-emerald-500/90 shadow-[0_0_0_1px_oklch(0.65_0.17_152/0.25)]",
                 step.state === "active" &&
-                  "bg-primary ring-primary/25 h-2.5 w-2.5 ring-2 shadow-sm",
+                  "bg-primary ring-primary/25 h-2.5 w-2.5 shadow-sm ring-2",
                 step.state === "upcoming" && "bg-border/90 h-1.5 w-1.5",
               )}
             />
@@ -58,7 +58,7 @@ export function TicketLifecycleStepper({
           <span
             className={cn(
               "ml-2.5 font-medium",
-              compact ? "text-[10px] text-muted-foreground" : "text-[11px]",
+              compact ? "text-muted-foreground text-[10px]" : "text-[11px]",
               active.state === "active" && !compact && "text-foreground",
             )}
           >

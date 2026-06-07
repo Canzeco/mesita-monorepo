@@ -61,7 +61,10 @@ export function TicketBillForm({
       }}
     >
       <div className="flex items-center gap-2">
-        <Receipt className="text-primary h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+        <Receipt
+          className="text-primary h-3.5 w-3.5 shrink-0"
+          strokeWidth={2.5}
+        />
         <p className="text-foreground text-[12px] font-semibold">Enter bill</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -76,7 +79,10 @@ export function TicketBillForm({
               onChange={(e) => setSubtotalText(e.target.value)}
               placeholder="850"
               inputMode="decimal"
-              className={cn(INPUT_CLASS, "h-10 bg-card pl-12 text-sm tabular-nums")}
+              className={cn(
+                INPUT_CLASS,
+                "bg-card h-10 pl-12 text-sm tabular-nums",
+              )}
             />
           </div>
         </label>
@@ -84,7 +90,7 @@ export function TicketBillForm({
           <button
             type="submit"
             disabled={disabled}
-            className="bg-foreground text-background hover:opacity-90 flex h-10 w-full items-center justify-center gap-2 rounded-full text-[13px] font-semibold transition disabled:opacity-50"
+            className="bg-foreground text-background flex h-10 w-full items-center justify-center gap-2 rounded-full text-[13px] font-semibold transition hover:opacity-90 disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
