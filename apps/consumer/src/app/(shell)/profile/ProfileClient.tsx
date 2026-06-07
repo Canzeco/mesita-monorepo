@@ -24,9 +24,15 @@ import {
 } from "@/components/consumer/VerifySocialSheet";
 import { TIERS, tierBadgeClass } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  apiFetchConsumerProfile,
+  apiUpdateConsumerProfile,
+  type ConsumerProfile,
+} from "@/lib/api/profile";
 
 // Three-tab Profile. Invite is folded in as a sub-tab; the standalone
 // /invite route is primary and /share stays as a legacy deep link alias.
@@ -488,50 +494,88 @@ function CurrentClassCard() {
 // the corresponding screen ships. Rows where we already have a real route
 // link directly; the rest fire a toast pointing at the support email so
 // users have somewhere to go right now.
-type SettingsRow = {
-  Icon: LucideIcon;
-  label: string;
-  sub: string;
-} & ({ href: string } | { stubReason: string });
 
+const MESITA_SUPPORT_EMAIL = "support@mesita.ai";
+const MESITA_PRIVACY_EMAIL = "privacy@mesita.ai";
+const NOTIF_PUSH_KEY = "mesita:notif:push";
+const NOTIF_EMAIL_KEY = "mesita:notif:email";
+
+// Single-page settings. Everything is configured inline here — no nested
+// drill-in screens. Personal details write through consumer-update-profile;
+// notification toggles persist on the device until the push integration
+// lands; privacy + support are direct contact links.
 function SettingsTab() {
-  const items: SettingsRow[] = [
-    {
-      Icon: UserIcon,
-      label: "Personal details",
-      sub: "Name, email, phone",
-      stubReason:
-        "Personal details editor lands next — for now re-onboard at /onboard or email support@mesita.ai",
-    },
-    {
-      Icon: CreditCard,
-      label: "Payment methods",
-      sub: "Apple Pay · Visa · 4242",
-      href: "/pay/qr",
-    },
-    {
-      Icon: Bell,
-      label: "Notifications",
-      sub: "Push, email",
-      stubReason:
-        "Notification preferences land with the push-token integration.",
-    },
-    {
-      Icon: Shield,
-      label: "Privacy & data",
-      sub: "Permissions, export",
-      stubReason:
-        "Privacy controls + data export land before launch — email privacy@mesita.ai.",
-    },
-    {
-      Icon: HelpCircle,
-      label: "Help & support",
-      sub: "FAQ · contact us",
-      stubReason: "Help center lands soon — email support@mesita.ai meanwhile.",
-    },
-  ];
+  const supabase = useBrowserSupabase();
+
+  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ consumer }, authRes] = await Promise.all([
+          apiFetchConsumerProfile(supabase),
+          supabase.auth.getUser(),
+        ]);
+        if (cancelled) return;
+        setProfile(consumer);
+        setFirstName(consumer.first_name ?? "");
+        setLastName(consumer.last_name ?? "");
+        setPhone(consumer.phone ?? authRes.data.user?.phone ?? "");
+        setEmail(authRes.data.user?.email ?? null);
+      } catch (e) {
+        if (!cancelled) toast(errMsg(e, "Couldn't load your details."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  const dirty =
+    !!profile &&
+    (firstName.trim() !== (profile.first_name ?? "") ||
+      lastName.trim() !== (profile.last_name ?? "") ||
+      phone.trim() !== (profile.phone ?? ""));
+
+  const saveDetails = async () => {
+    if (!profile || !dirty || saving) return;
+    if (!firstName.trim() || !lastName.trim()) {
+      toast("First and last name are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      // Preserve the fields not edited here (sex/birthday/country) so the
+      // required-field EF contract stays satisfied.
+      const updated = await apiUpdateConsumerProfile(supabase, {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        sex: (profile.sex as "male" | "female" | "other") ?? "other",
+        birthday: profile.birthday ?? "",
+        country: profile.country ?? "",
+        phone: phone.trim() || undefined,
+      });
+      setProfile(updated);
+      toast("Details saved.");
+    } catch (e) {
+      toast(errMsg(e, "Couldn't save your details."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-6">
       {/* Invite — promoted out of the bottom tab bar into Profile. Kept
           prominent (pink-gradient card) since it's a growth surface. */}
       <Link
@@ -550,68 +594,243 @@ function SettingsTab() {
         <ChevronRight className="h-5 w-5 text-white/80" />
       </Link>
 
-      <p className="text-muted-foreground mt-6 text-[11px] font-medium tracking-[0.18em] uppercase">
-        Account
-      </p>
-      <div className="divide-border border-border bg-card mt-3 divide-y overflow-hidden rounded-2xl border">
-        {items.map((row) => (
-          <SettingsRowButton key={row.label} row={row} />
-        ))}
-      </div>
+      {/* Personal details — editable inline. */}
+      <SettingsSection Icon={UserIcon} title="Personal details">
+        {loading ? (
+          <p className="text-muted-foreground px-4 py-3 text-sm">Loading…</p>
+        ) : (
+          <div className="flex flex-col gap-3 p-4">
+            <div className="grid grid-cols-2 gap-3">
+              <SettingsField
+                label="First name"
+                value={firstName}
+                onChange={setFirstName}
+                placeholder="First name"
+              />
+              <SettingsField
+                label="Last name"
+                value={lastName}
+                onChange={setLastName}
+                placeholder="Last name"
+              />
+            </div>
+            <SettingsField
+              label="Phone"
+              value={phone}
+              onChange={setPhone}
+              placeholder="+52 …"
+              inputMode="tel"
+            />
+            <div>
+              <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+                Email
+              </span>
+              <p className="border-border bg-muted/40 text-muted-foreground rounded-lg border px-3 py-2 text-sm">
+                {email ?? "—"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void saveDetails()}
+              disabled={!dirty || saving}
+              className="btn-primary mt-1 py-2.5 text-sm disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        )}
+      </SettingsSection>
+
+      {/* Notifications — device-level toggles until push lands. */}
+      <SettingsSection Icon={Bell} title="Notifications">
+        <div className="flex flex-col">
+          <NotificationToggle
+            storageKey={NOTIF_PUSH_KEY}
+            label="Push notifications"
+            sub="Ticket updates and rewards"
+          />
+          <div className="border-border border-t" />
+          <NotificationToggle
+            storageKey={NOTIF_EMAIL_KEY}
+            label="Email"
+            sub="Receipts and news"
+          />
+        </div>
+      </SettingsSection>
+
+      {/* Privacy & data + Help — direct contact links. */}
+      <SettingsSection Icon={Shield} title="Privacy & data">
+        <div className="flex flex-col">
+          <SettingsLinkRow
+            href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
+              "Export my Mesita data",
+            )}`}
+            label="Export my data"
+            sub={MESITA_PRIVACY_EMAIL}
+          />
+          <div className="border-border border-t" />
+          <SettingsLinkRow
+            href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
+              "Delete my Mesita account",
+            )}`}
+            label="Delete account"
+            sub="Request account deletion"
+          />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection Icon={HelpCircle} title="Help & support">
+        <div className="flex flex-col">
+          <SettingsLinkRow
+            href={`mailto:${MESITA_SUPPORT_EMAIL}`}
+            label="Contact us"
+            sub={MESITA_SUPPORT_EMAIL}
+          />
+        </div>
+      </SettingsSection>
 
       <SignOutButton
         redirectTo="/"
-        className="border-border bg-card hover:bg-muted mt-5 flex w-full items-center justify-center gap-2 rounded-lg border py-4 text-sm font-semibold transition"
+        className="border-border bg-card hover:bg-muted flex w-full items-center justify-center gap-2 rounded-lg border py-4 text-sm font-semibold transition"
       />
-      <p className="text-muted-foreground mt-3 text-center text-[11px]">
-        Not signed in?{" "}
-        <Link
-          href="/"
-          className="text-foreground font-semibold hover:underline"
-        >
-          Sign in
-        </Link>
-      </p>
-      <p className="text-muted-foreground mt-4 text-center text-[11px]">
+      <p className="text-muted-foreground -mt-3 text-center text-[11px]">
         Mesita · v2.4.1
       </p>
     </div>
   );
 }
 
-// One settings row — either a Link (real route) or a button (stub toast).
-// Rendering is identical; the only branch is what happens on tap.
-function SettingsRowButton({ row }: { row: SettingsRow }) {
-  const inner = (
-    <>
-      <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-        <row.Icon className="h-4 w-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{row.label}</span>
-        <span className="text-muted-foreground block text-[11px]">
-          {row.sub}
-        </span>
-      </span>
-      <ChevronRight className="text-muted-foreground h-4 w-4" />
-    </>
+function SettingsSection({
+  Icon,
+  title,
+  children,
+}: {
+  Icon: LucideIcon;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <p className="text-muted-foreground mb-2 flex items-center gap-1.5 text-[11px] font-medium tracking-[0.18em] uppercase">
+        <Icon className="h-3.5 w-3.5" />
+        {title}
+      </p>
+      <div className="border-border bg-card overflow-hidden rounded-2xl border">
+        {children}
+      </div>
+    </section>
   );
-  const className =
-    "hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition";
-  if ("href" in row) {
-    return (
-      <Link href={row.href} className={className}>
-        {inner}
-      </Link>
-    );
-  }
+}
+
+function SettingsField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  inputMode?: "text" | "tel";
+}) {
+  return (
+    <label className="block">
+      <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+        {label}
+      </span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        inputMode={inputMode}
+        className="border-border bg-background focus:border-primary w-full rounded-lg border px-3 py-2 text-sm outline-none"
+      />
+    </label>
+  );
+}
+
+function NotificationToggle({
+  storageKey,
+  label,
+  sub,
+}: {
+  storageKey: string;
+  label: string;
+  sub: string;
+}) {
+  const [on, setOn] = useState(true);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored != null) setOn(stored === "1");
+    } catch {
+      // localStorage unavailable — keep the default.
+    }
+  }, [storageKey]);
+
+  const toggle = () => {
+    setOn((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(storageKey, next ? "1" : "0");
+      } catch {
+        // best-effort persistence
+      }
+      return next;
+    });
+  };
+
   return (
     <button
       type="button"
-      onClick={() => toast(row.stubReason)}
-      className={className}
+      onClick={toggle}
+      role="switch"
+      aria-checked={on}
+      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
     >
-      {inner}
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="text-muted-foreground block text-[11px]">{sub}</span>
+      </span>
+      <span
+        className={cn(
+          "relative h-6 w-10 shrink-0 rounded-full transition",
+          on ? "bg-pink-gradient" : "bg-muted",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all",
+            on ? "left-[18px]" : "left-0.5",
+          )}
+        />
+      </span>
     </button>
+  );
+}
+
+function SettingsLinkRow({
+  href,
+  label,
+  sub,
+}: {
+  href: string;
+  label: string;
+  sub: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="text-muted-foreground block text-[11px]">{sub}</span>
+      </span>
+      <ChevronRight className="text-muted-foreground h-4 w-4" />
+    </a>
   );
 }
