@@ -342,20 +342,6 @@ export async function mockStoryDetect(
   return body;
 }
 
-export async function confirmTicketPayment(
-  supabase: SupabaseClient<Database>,
-  ticketId: string,
-) {
-  const { data, error } = await supabase.functions.invoke(
-    "consumer-confirm-ticket-payment",
-    { body: { ticketId } },
-  );
-  if (error) throw error;
-  const body = data as { ok?: boolean; error?: string };
-  if (!body?.ok) throw new Error(body?.error ?? "Could not confirm payment");
-  return body;
-}
-
 export async function submitTicketReview(
   supabase: SupabaseClient<Database>,
   input: {

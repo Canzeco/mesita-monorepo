@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  confirmTicketPayment,
   buildTicketTransactionSummary,
   formatTicketRewardLabel,
   formatTicketVisitDate,
@@ -34,7 +33,6 @@ export function TicketDetailsRouteClient({
   variant?: "page" | "modal";
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<PayNotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,8 +44,6 @@ export function TicketDetailsRouteClient({
     story_status?: string;
     story_submitted_at?: string | null;
     total_cents?: number | null;
-    consumer_payment_confirmed_at?: string | null;
-    staff_payment_confirmed_at?: string | null;
     created_at?: string | null;
   } | null>(null);
   const [venueInstagramUrl, setVenueInstagramUrl] = useState<string | null>(null);
@@ -78,7 +74,7 @@ export function TicketDetailsRouteClient({
     const { data: ticketRow } = await supabase
       .from("tickets")
       .select(
-        "kind, status, story_status, story_submitted_at, total_cents, consumer_payment_confirmed_at, staff_payment_confirmed_at, created_at",
+        "kind, status, story_status, story_submitted_at, total_cents, created_at",
       )
       .eq("id", ticketId)
       .maybeSingle();
@@ -105,18 +101,6 @@ export function TicketDetailsRouteClient({
     void load();
   }, [load, ticketId]);
 
-  useEffect(() => {
-    if (searchParams.get("stripe_return") === "1") {
-      void load();
-      router.replace(`/pay/ticket/${ticketId}`, { scroll: false });
-    }
-  }, [searchParams, load, ticketId, router]);
-
-  const paymentReturnUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return `${window.location.origin}/pay/ticket/${ticketId}?stripe_return=1`;
-  }, [ticketId]);
-
   const payload = useMemo<TicketBillPayload>(() => {
     const merged: TicketBillPayload = {};
     for (const row of rows) Object.assign(merged, payloadFromNotification(row.payload));
@@ -124,7 +108,7 @@ export function TicketDetailsRouteClient({
   }, [rows]);
 
   const ticketKind = ticketMeta?.kind ?? payload.ticket_kind ?? "dp";
-  const paymentNotification = rows.find((r) => r.kind === "payment_confirm");
+  const billNotification = rows.find((r) => r.kind === "bill");
   const reviewNotification = rows.find((r) => r.kind === "review");
 
   const transactionSummary = useMemo(() => {
@@ -133,25 +117,16 @@ export function TicketDetailsRouteClient({
       status: ticketMeta?.status,
       story_status: ticketMeta?.story_status,
       total_cents: ticketMeta?.total_cents ?? payload.total_cents,
-      consumer_payment_confirmed_at: ticketMeta?.consumer_payment_confirmed_at,
-      staff_payment_confirmed_at: ticketMeta?.staff_payment_confirmed_at,
-      payment: paymentNotification,
       review: reviewNotification,
     });
     return isTicketFlowComplete(progress)
       ? buildTicketTransactionSummary(payload, ticketKind)
       : null;
-  }, [
-    ticketKind,
-    ticketMeta,
-    payload,
-    paymentNotification,
-    reviewNotification,
-  ]);
+  }, [ticketKind, ticketMeta, payload, reviewNotification]);
 
   const visitDateIso =
     ticketMeta?.created_at ??
-    paymentNotification?.created_at ??
+    billNotification?.created_at ??
     rows[0]?.created_at ??
     null;
   const venueName = payload.venue_name ?? "Partner venue";
@@ -167,19 +142,6 @@ export function TicketDetailsRouteClient({
     () => resolveVenueInstagramHandle(payload, venueInstagramUrl),
     [payload, venueInstagramUrl],
   );
-
-  const onConfirm = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await confirmTicketPayment(supabase, ticketId);
-      await load();
-    } catch (e) {
-      setError(errMsg(e, "Couldn't confirm payment."));
-    } finally {
-      setBusy(false);
-    }
-  }, [supabase, ticketId, load]);
 
   const onMockStoryDetect = useCallback(async () => {
     setBusy(true);
@@ -251,22 +213,16 @@ export function TicketDetailsRouteClient({
             venueHref={venueHref}
             rewardLabel={rewardLabel}
             ticketMeta={ticketMeta}
-            payment={paymentNotification}
             review={reviewNotification}
             transactionSummary={transactionSummary}
             reviewDraft={reviewDraft}
             onReviewDraftChange={setReviewDraft}
             busy={busy}
             error={error}
-            onConfirmPayment={() => void onConfirm()}
             onSubmitReview={() => void onReview()}
             onMockStoryDetect={() => void onMockStoryDetect()}
             showMockStoryButton={MOCK_STORY_DETECT_ENABLED}
             venueInstagramHandle={venueInstagramHandle}
-            ticketId={ticketId}
-            paymentReturnUrl={paymentReturnUrl}
-            onPaymentComplete={() => void load()}
-            onPaymentError={setError}
           />
         )}
       </div>

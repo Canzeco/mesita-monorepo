@@ -9,24 +9,18 @@ export type TicketKind = Database["public"]["Enums"]["ticket_kind"];
 export type TicketStatus = Database["public"]["Enums"]["ticket_status"];
 export type StoryStatus = Database["public"]["Enums"]["story_status"];
 
-export type TicketFlowType = "A" | "B" | "C" | "D";
+export type TicketFlowType = "A" | "B";
 
 /**
- * Consumer-visible milestones — aligned to product sequences:
+ * Consumer-visible milestones. Mesita is discounts-only and the reward is
+ * applied at the bill, so a visit closes the moment the bill is issued
+ * (Type A) or the story is verified (Type B). There is no separate payment
+ * step — you just pay the discounted total at the table.
  *
- * - A: Scan → Billing → Discount payment → Review
- * - B: Scan → Billing → Story → Discount payment → Review
- * - C: Scan → Billing → Stripe pay → Review → Reward
- * - D: Scan → Billing → Story → Stripe pay → Review → Reward
+ * - A: Scan → Bill → Review
+ * - B: Scan → Bill → Story → Review
  */
-export type TicketFlowStepId =
-  | "scan"
-  | "bill"
-  | "story"
-  | "pay"
-  | "pay_stripe"
-  | "review"
-  | "reward";
+export type TicketFlowStepId = "scan" | "bill" | "story" | "review";
 
 export type TicketFlowStepState = "done" | "active" | "upcoming";
 
@@ -42,8 +36,6 @@ export type TicketProgressInput = {
   story_status: StoryStatus | string;
   story_submitted_at?: string | null;
   total_cents?: number | null;
-  consumer_payment_confirmed_at?: string | null;
-  staff_payment_confirmed_at?: string | null;
   paymentNotificationPending: boolean;
   reviewNotificationPending: boolean;
   reviewCompleted: boolean;
@@ -51,32 +43,21 @@ export type TicketProgressInput = {
 
 const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "waiter_verified"]);
 
-const FORMAL_KINDS = new Set(["p_c", "s_p_sf_c", "r_p_c", "r_s_p_sf_c"]);
-const STORY_KINDS = new Set(["s_p_sf_c", "r_s_p_sf_c", "s_dp_sf", "r_s_dp_sf"]);
+const STORY_KINDS = new Set(["s_dp_sf", "r_s_dp_sf"]);
 
 export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
-  if (kind === "dp" || kind === "r_dp") return "A";
-  if (kind === "s_dp_sf" || kind === "r_s_dp_sf") return "B";
-  if (kind === "p_c" || kind === "r_p_c") return "C";
-  if (kind === "s_p_sf_c" || kind === "r_s_p_sf_c") return "D";
-  if (FORMAL_KINDS.has(kind)) return STORY_KINDS.has(kind) ? "D" : "C";
   return STORY_KINDS.has(kind) ? "B" : "A";
 }
 
 export const FLOW_STEPS_BY_TYPE: Record<TicketFlowType, TicketFlowStepId[]> = {
-  A: ["scan", "bill", "pay", "review"],
-  B: ["scan", "bill", "story", "pay", "review"],
-  C: ["scan", "bill", "pay_stripe", "review", "reward"],
-  D: ["scan", "bill", "story", "pay_stripe", "review", "reward"],
+  A: ["scan", "bill", "review"],
+  B: ["scan", "bill", "story", "review"],
 };
 
 export const STEP_LABELS: Record<TicketFlowStepId, string> = {
   scan: "Scan",
   bill: "Bill",
   story: "Story",
-  pay: "Pay",
-  pay_stripe: "Pay online",
-  reward: "Reward",
   review: "Review",
 };
 
@@ -85,21 +66,15 @@ export const STEP_MENU_HINT: Record<TicketFlowStepId, string> = {
   scan: "Show QR to waiter",
   bill: "Staff adds your total",
   story: "Instagram story + tags",
-  pay: "Pay table, then tap below",
-  pay_stripe: "Pay link on your phone",
   review: "Tap stars, then send",
-  reward: "Your reward is applied",
 };
 
 /** Big headline on the ticket card — plain language. */
 export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
   scan: "Get scanned in",
-  bill: "Wait for your bill",
+  bill: "Here's your bill",
   story: "Post your Instagram story",
-  pay: "Pay at the table",
-  pay_stripe: "Pay on your phone",
   review: "Leave a quick review",
-  reward: "Your reward is applied",
 };
 
 /** At most two short lines for the ticket help panel. */
@@ -118,7 +93,7 @@ export function ticketStepDummyInstructions(
 /** Short numbered steps shown under the headline (active step only). */
 export function ticketStepNowInstructions(
   stepId: TicketFlowStepId,
-  progress: TicketProgressInput,
+  _progress: TicketProgressInput,
   ctx?: TicketStepCopyContext,
 ): string[] {
   switch (stepId) {
@@ -130,9 +105,9 @@ export function ticketStepNowInstructions(
       ];
     case "bill":
       return [
-        "Staff enters your food & drink total.",
-        "Your Mesita discount is applied automatically.",
-        "Check the bill below matches what they told you.",
+        "Staff enter your food & drink total.",
+        "Your Mesita discount is already applied below.",
+        "Pay the discounted total at the table (cash or card).",
       ];
     case "story":
       return [
@@ -140,38 +115,11 @@ export function ticketStepNowInstructions(
         storyTagInstruction(ctx?.venueInstagramHandle),
         "Mesita's bot detects your story automatically.",
       ];
-    case "pay": {
-      const phase = discountPaymentPhase(progress);
-      if (phase === "pending") {
-        return [
-          "Pay the amount due at the table (cash or card).",
-          "Come back here and tap “I paid — Paid issued”.",
-          "Staff taps “Paid received” — then you can review.",
-        ];
-      }
-      if (phase === "issued") {
-        return [
-          "You already tapped “I paid”.",
-          "Ask staff to confirm “Paid received” on their side.",
-        ];
-      }
-      return [];
-    }
-    case "pay_stripe":
-      return [
-        "Open the payment link staff sends you (Stripe).",
-        "Pay on your phone — stay on this screen until it updates.",
-      ];
     case "review":
       return [
         "Tap 1–5 stars on each row (1 = bad, 5 = great).",
         "Start with Overall — it matters most.",
         "Tap Send review when you’re done.",
-      ];
-    case "reward":
-      return [
-        "Your Mesita discount was applied to this bill.",
-        "Nothing else to do — enjoy.",
       ];
     default:
       return [];
@@ -183,10 +131,7 @@ export const STEP_DONE_LINE: Record<TicketFlowStepId, string> = {
   scan: "Scanned",
   bill: "Bill ready",
   story: "Story OK",
-  pay: "Paid",
-  pay_stripe: "Paid online",
   review: "Review sent",
-  reward: "Reward applied",
 };
 
 export type StepSequenceLine =
@@ -199,9 +144,9 @@ export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]>
     "Staff scans your code — the bot validates it and starts your visit.",
   ],
   bill: [
-    "Staff enters your food & drink subtotal.",
+    "Staff enter your food & drink subtotal.",
     "Your bill is calculated with your Mesita discount applied.",
-    "You and staff receive payment instructions in the app.",
+    "Pay the discounted total at the table — Mesita never touches the money.",
   ],
   story: [
     "Post an Instagram story tagging Mesita and this venue.",
@@ -212,16 +157,6 @@ export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]>
     "We detect the tag automatically and update your ticket.",
     "Staff confirms your story when the bot asks.",
   ],
-  pay: [
-    "Pay what you owe at the table.",
-    "Tap Paid issued in Mesita when you've paid.",
-    "Staff taps Paid received to close the visit.",
-  ],
-  pay_stripe: [
-    "Open the secure Stripe checkout link on your phone.",
-    "Pay online — your reward applies after payment clears.",
-  ],
-  reward: ["Your Mesita discount was applied to this bill."],
   review: [
     "Rate food, service, ambiance, value, and overall.",
     "Add optional comments about your visit.",
@@ -243,18 +178,6 @@ export const STEP_SEQUENCE_SUMMARY: Record<
   story: {
     done: "Your story was verified.",
     upcoming: "Post an IG story tagging Mesita and the venue.",
-  },
-  pay: {
-    done: "You and staff both confirmed payment.",
-    upcoming: "Pay, then tap Paid issued.",
-  },
-  pay_stripe: {
-    done: "Paid online.",
-    upcoming: "Complete checkout on your phone.",
-  },
-  reward: {
-    done: "Your Mesita discount was applied.",
-    upcoming: "Your reward applies after you pay.",
   },
   review: {
     done: "Thanks — your review was submitted.",
@@ -282,32 +205,6 @@ function storyVerified(story_status: string): boolean {
   return STORY_VERIFIED.has(story_status as StoryStatus);
 }
 
-export type DiscountPaymentPhase = "pending" | "issued" | "complete";
-
-/** Discount (type A/B): both Paid issued and Paid received, or ticket revealed. */
-export function discountPaymentPhase(
-  input: TicketProgressInput,
-): DiscountPaymentPhase {
-  if (input.status === "revealed") return "complete";
-  if (
-    input.consumer_payment_confirmed_at &&
-    input.staff_payment_confirmed_at
-  ) {
-    return "complete";
-  }
-  if (input.consumer_payment_confirmed_at) return "issued";
-  return "pending";
-}
-
-function discountPaymentComplete(input: TicketProgressInput): boolean {
-  return discountPaymentPhase(input) === "complete";
-}
-
-export function payStepActiveSummary(input: TicketProgressInput): string {
-  const lines = ticketStepNowInstructions("pay", input);
-  return lines[0] ?? STEP_SEQUENCE_SUMMARY.pay.upcoming;
-}
-
 /** One-line fallback under the step label in the checklist. */
 export function ticketStepActiveInstruction(
   stepId: TicketFlowStepId,
@@ -318,18 +215,6 @@ export function ticketStepActiveInstruction(
   if (lines.length === 0) return "";
   if (lines.length === 1) return lines[0];
   return lines.join(" ");
-}
-
-function stripePaid(input: TicketProgressInput): boolean {
-  return (
-    input.status === "paid" ||
-    input.status === "awaiting_story" ||
-    input.status === "revealed"
-  );
-}
-
-function rewardLanded(input: TicketProgressInput): boolean {
-  return input.status === "paid" || input.status === "revealed";
 }
 
 function reviewDone(input: TicketProgressInput): boolean {
@@ -344,39 +229,11 @@ function inferCurrentIndex(
   const idx = (id: TicketFlowStepId) => steps.indexOf(id);
 
   if (!hasBill(input)) return idx("scan");
-
-  switch (flowType) {
-    case "A": {
-      if (discountPaymentComplete(input) && reviewDone(input)) return steps.length;
-      if (discountPaymentComplete(input)) return idx("review");
-      return idx("pay");
-    }
-    case "B": {
-      if (discountPaymentComplete(input) && reviewDone(input)) return steps.length;
-      if (discountPaymentComplete(input)) return idx("review");
-      if (!storyVerified(input.story_status)) return idx("story");
-      return idx("pay");
-    }
-    case "C": {
-      if (reviewDone(input) && rewardLanded(input)) return steps.length;
-      if (stripePaid(input) && reviewDone(input) && !rewardLanded(input)) {
-        return idx("reward");
-      }
-      if (stripePaid(input) && !reviewDone(input)) return idx("review");
-      return idx("pay_stripe");
-    }
-    case "D": {
-      if (reviewDone(input) && rewardLanded(input)) return steps.length;
-      if (stripePaid(input) && reviewDone(input) && !rewardLanded(input)) {
-        return idx("reward");
-      }
-      if (stripePaid(input) && !reviewDone(input)) return idx("review");
-      if (!storyVerified(input.story_status)) return idx("story");
-      return idx("pay_stripe");
-    }
-    default:
-      return idx("scan");
+  if (flowType === "B" && !storyVerified(input.story_status)) {
+    return idx("story");
   }
+  if (!reviewDone(input)) return idx("review");
+  return steps.length;
 }
 
 export function resolveTicketFlowSteps(
@@ -404,19 +261,15 @@ export function ticketProgressFromBundle(input: {
   story_status?: string | null;
   story_submitted_at?: string | null;
   total_cents?: number | null;
-  consumer_payment_confirmed_at?: string | null;
-  staff_payment_confirmed_at?: string | null;
   payment?: { status: string } | null;
   review?: { status: string } | null;
 }): TicketProgressInput {
   return {
     kind: input.kind ?? "dp",
-    status: input.status ?? "awaiting_payment_confirm",
+    status: input.status ?? "open",
     story_status: input.story_status ?? "not_required",
     story_submitted_at: input.story_submitted_at ?? null,
     total_cents: input.total_cents ?? null,
-    consumer_payment_confirmed_at: input.consumer_payment_confirmed_at ?? null,
-    staff_payment_confirmed_at: input.staff_payment_confirmed_at ?? null,
     paymentNotificationPending: input.payment?.status === "pending",
     reviewNotificationPending: input.review?.status === "pending",
     reviewCompleted: input.review?.status === "completed",

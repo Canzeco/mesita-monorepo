@@ -27,10 +27,11 @@ export function MyQrCard({ code }: { code: string }) {
         </p>
       </div>
       <div className="mt-3 flex flex-col items-center gap-3">
-        <div className="border-border bg-background rounded-2xl border p-3.5">
+        <div className="border-border bg-background w-full max-w-[300px] rounded-2xl border p-5">
           <QRCodeSVG
             value={`mesita:${displayCode}`}
-            size={140}
+            size={260}
+            className="h-auto w-full"
             bgColor="transparent"
             fgColor="currentColor"
             level="M"

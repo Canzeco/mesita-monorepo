@@ -6,7 +6,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // Shared header for Saved, QR, Inbox, Me (profile), Invite, Reservations, etc.
 // Explore is the exception — it uses DiscoverHeader.
 //
-//   share — [Logo] · title · [Share][Plan]
+//   share — [Logo] · title (true center) · [Share][Plan] — share overlays, not in flow
 //   class — [Logo] · title · [Plan]
 export function SimpleHeader({
   title,
@@ -18,8 +18,8 @@ export function SimpleHeader({
   const isShare = rightAction === "share";
 
   return (
-    <header className="border-border flex h-16 shrink-0 items-center gap-2 border-b px-4">
-      <div className="flex shrink-0 items-center gap-2">
+    <header className="border-border relative flex h-16 shrink-0 items-center border-b px-4">
+      <div className="relative z-10 flex w-10 shrink-0 items-center">
         <Link
           href={CONSUMER_ROUTES.me.plan}
           className="bg-primary shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl leading-none"
@@ -31,24 +31,24 @@ export function SimpleHeader({
         </Link>
       </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-center px-1">
-        <h1 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
-          {title}
-        </h1>
-      </div>
+      {/* Centered as if only logo + plan chip exist — share is overlaid, not in flow */}
+      <h1 className="font-display pointer-events-none absolute inset-x-0 truncate px-20 text-center text-xl leading-tight font-semibold tracking-tight">
+        {title}
+      </h1>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {isShare ? (
-          <Link
-            href={CONSUMER_ROUTES.share}
-            aria-label="Invite friends"
-            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition active:scale-[0.98]"
-          >
-            <Share2 className="h-5 w-5" />
-          </Link>
-        ) : null}
+      <div className="relative z-10 ml-auto flex w-10 shrink-0 items-center justify-end">
         <ClassChip />
       </div>
+
+      {isShare ? (
+        <Link
+          href={CONSUMER_ROUTES.share}
+          aria-label="Invite friends"
+          className="border-border bg-card text-foreground/70 hover:bg-muted absolute top-1/2 right-[calc(1rem+2.5rem+0.5rem)] z-10 flex h-10 w-10 shrink-0 -translate-y-1/2 items-center justify-center rounded-2xl border transition active:scale-[0.98]"
+        >
+          <Share2 className="h-5 w-5" />
+        </Link>
+      ) : null}
     </header>
   );
 }

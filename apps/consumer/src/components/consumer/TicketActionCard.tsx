@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Clock, Lock, QrCode } from "lucide-react";
-import { TicketAmountDueCard } from "@/components/consumer/TicketAmountDueCard";
+import { Lock, QrCode } from "lucide-react";
 import { TicketBillReceipt } from "@/components/consumer/TicketBillReceipt";
 import { TicketStoryFrame } from "@/components/consumer/TicketStoryFrame";
 import {
@@ -41,8 +40,6 @@ export function TicketActionCard({
   const tips = isActive
     ? ticketStepDummyInstructions(step.id, progress, stepCopy)
     : [];
-  const showPayAmount =
-    (step.id === "pay" || step.id === "pay_stripe") && payload.total_cents;
   const showBillReceipt = step.id === "bill" && payload.total_cents && !isLocked;
 
   return (
@@ -125,14 +122,6 @@ export function TicketActionCard({
           />
         ) : null}
 
-        {showPayAmount ? (
-          <TicketAmountDueCard
-            payload={payload}
-            ticketKind={ticketKind}
-            capMxn={capMxn}
-          />
-        ) : null}
-
         {step.id === "scan" && !isLocked ? (
           <Link
             href={CONSUMER_ROUTES.pay.qr}
@@ -190,19 +179,4 @@ function StatusPill({
     );
   }
   return null;
-}
-
-export function TicketWaitingStaffBanner() {
-  return (
-    <div className="flex items-start gap-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
-      <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-      <div>
-        <p className="text-foreground text-sm font-semibold">Waiting on staff</p>
-        <p className="text-muted-foreground mt-0.5 text-sm leading-snug">
-          You said you paid. Ask them to tap <strong>Paid received</strong> on
-          their side.
-        </p>
-      </div>
-    </div>
-  );
 }

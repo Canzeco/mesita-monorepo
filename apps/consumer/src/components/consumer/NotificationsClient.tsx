@@ -25,7 +25,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export type InboxTab = "mine" | "global";
 
 function kindLabel(kind: string): string {
-  if (kind === "payment_confirm") return "Payment update";
+  if (kind === "bill") return "Your bill";
   if (kind === "review") return "Review update";
   return "Update";
 }

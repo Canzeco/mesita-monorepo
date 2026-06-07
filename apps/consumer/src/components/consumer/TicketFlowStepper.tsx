@@ -4,8 +4,6 @@ import { Fragment } from "react";
 import {
   Banknote,
   Check,
-  CreditCard,
-  Gift,
   Instagram,
   QrCode,
   ReceiptText,
@@ -23,9 +21,7 @@ const STEP_ICONS: Record<TicketFlowStepId, LucideIcon> = {
   bill: ReceiptText,
   story: Instagram,
   pay: Banknote,
-  pay_stripe: CreditCard,
   review: Star,
-  reward: Gift,
 };
 
 export const TICKET_STEP_ICONS = STEP_ICONS;
