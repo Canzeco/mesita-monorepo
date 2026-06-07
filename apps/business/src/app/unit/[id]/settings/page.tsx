@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   Check,
   CalendarCheck,
   LifeBuoy,
   PlayCircle,
   Plus,
+  Users,
 } from "lucide-react";
 import { Topbar } from "@/components/business/Topbar";
 import { PageErrorState } from "@/components/business/PageErrorState";
@@ -147,12 +149,29 @@ export default async function SettingsPage({
           {activeVenue && (
             <section className="flex flex-col gap-2">
               <SectionLabel>Manage</SectionLabel>
-              <RowLink
-                href={`/unit/${activeVenue.id}/reservations`}
-                Icon={CalendarCheck}
-                label="Reservations"
-                hint="Bookings from Mesita"
-              />
+              <div className="border-border bg-card overflow-hidden rounded-2xl border">
+                <RowLink
+                  href={`/unit/${activeVenue.id}/team`}
+                  Icon={Users}
+                  label="Team"
+                  hint="Managers, waiters, and PRs"
+                  embedded
+                />
+                <RowLink
+                  href={`/unit/${activeVenue.id}/reservations`}
+                  Icon={CalendarCheck}
+                  label="Reservations"
+                  hint="Bookings from Mesita"
+                  embedded
+                />
+                <RowLink
+                  href={`/unit/${activeVenue.id}/performance`}
+                  Icon={BarChart3}
+                  label="Performance"
+                  hint="Visits and revenue trends"
+                  embedded
+                />
+              </div>
             </section>
           )}
 
@@ -199,16 +218,22 @@ function RowLink({
   Icon,
   label,
   hint,
+  embedded = false,
 }: {
   href: string;
   Icon: React.ComponentType<{ className?: string }>;
   label: string;
   hint?: string;
+  embedded?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="border-border bg-card hover:bg-muted/40 flex items-center gap-3 rounded-2xl border px-3 py-3 transition"
+      className={
+        embedded
+          ? "hover:bg-muted/40 border-border flex items-center gap-3 border-b px-3 py-3 transition last:border-b-0"
+          : "border-border bg-card hover:bg-muted/40 flex items-center gap-3 rounded-2xl border px-3 py-3 transition"
+      }
     >
       <span className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
         <Icon className="h-4 w-4" />

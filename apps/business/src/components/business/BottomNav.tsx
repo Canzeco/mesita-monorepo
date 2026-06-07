@@ -5,18 +5,13 @@ import { usePathname } from "next/navigation";
 import {
   Store,
   Gift,
-  Users,
   ScanLine,
-  BarChart3,
   Settings,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Six operating surfaces for a venue, mirrored from the consumer app's
-// BottomNav. The active unit lives in the URL (/unit/<id>/<slug>), so the
-// shell passes the id down and we only need the current slug for the
-// active state.
+// Four primary surfaces — team, stats, and reservations live under Settings.
 type Item = {
   slug: string;
   Icon: LucideIcon;
@@ -26,9 +21,7 @@ type Item = {
 const ITEMS: Item[] = [
   { slug: "place", Icon: Store, label: "Place" },
   { slug: "promos", Icon: Gift, label: "Promos" },
-  { slug: "team", Icon: Users, label: "Team" },
   { slug: "scan", Icon: ScanLine, label: "Scan" },
-  { slug: "performance", Icon: BarChart3, label: "Stats" },
   { slug: "settings", Icon: Settings, label: "Settings" },
 ];
 

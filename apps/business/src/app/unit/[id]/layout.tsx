@@ -9,10 +9,9 @@ import {
   type BusinessProfile,
 } from "@/lib/api/business";
 
-// Mobile-first venue console shell. The desktop sidebar is gone — the six
-// operating surfaces (Place / Promos / Team / Scan / Performance /
-// Settings) are reached through the BottomNav, and unit selection now
-// lives on the Settings tab.
+// Mobile-first venue console shell. Place / Promos / Scan / Settings are
+// the four bottom-nav surfaces; team, reservations, and stats live under
+// Settings.
 //
 // Auth flow is unchanged:
 //   - Require a Supabase session (middleware bounces signed-out users to /).

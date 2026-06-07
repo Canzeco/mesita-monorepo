@@ -436,63 +436,55 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {/* Responsive place layout: single column on mobile, two columns on wide screens. */}
-      <div className="grid grid-cols-1 gap-4 min-[1700px]:grid-cols-2">
-        <div className="col-span-full">
-          <ProfileCompletionBar v={v} />
+      <ProfileCompletionBar v={v} />
+      <BasicsSection venue={venue} v={v} set={set} />
+      <DetailsSection venue={venue} v={v} set={set} />
+      <MediaSection
+        photos={v.photos}
+        onChange={(photos) => set("photos", photos)}
+        venueId={venue.id}
+        venueName={v.name}
+        onError={setError}
+      />
+      <MenuSection v={v} set={set} />
+      <LocationSection venue={venue} />
+      <TimeSection venue={venue} v={v} set={set} />
+      <ChannelsSection
+        venue={venue}
+        v={v}
+        set={set}
+        teamHref={`/unit/${venue.id}/team`}
+      />
+      <div className="border-border bg-card flex flex-col gap-3 rounded-xl border p-4">
+        <div>
+          <p className="text-sm font-semibold">Need fresh profile data?</p>
+          <p className="text-muted-foreground text-xs">
+            Re-run Atlas profile enrichment to refresh channels, reviews, and
+            metadata.
+          </p>
+          {atlasMockNotice && (
+            <p className="text-secondary mt-1 text-[11px] font-medium">
+              {atlasMockNotice}
+            </p>
+          )}
         </div>
-        <PreviewSection venue={venue} v={v} />
-        <BasicsSection venue={venue} v={v} set={set} />
-        <ReviewsSummarySection venue={venue} />
-        <RelevantReviewsSection venue={venue} />
-        <MenuSection v={v} set={set} />
-        <LocationSection venue={venue} />
-        <TimeSection venue={venue} v={v} set={set} />
-        <ChannelsSection
-          venue={venue}
-          v={v}
-          set={set}
-          teamHref={`/unit/${venue.id}/team`}
-        />
-        <DetailsSection venue={venue} v={v} set={set} />
-        <MediaSection
-          photos={v.photos}
-          onChange={(photos) => set("photos", photos)}
-          venueId={venue.id}
-          venueName={v.name}
-          onError={setError}
-        />
-
-        <div className="col-span-full">
-          <div className="border-border bg-card flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold">Need fresh profile data?</p>
-              <p className="text-muted-foreground text-xs">
-                Re-run Atlas profile enrichment to refresh channels, reviews,
-                and metadata.
-              </p>
-              {atlasMockNotice && (
-                <p className="text-secondary mt-1 text-[11px] font-medium">
-                  {atlasMockNotice}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={handleMockAtlasRefresh}
-              disabled={atlasMockRunning}
-              className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition hover:opacity-90 disabled:opacity-60"
-            >
-              {atlasMockRunning ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              {atlasMockRunning ? "Calling Atlas…" : "Re-update profile"}
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={handleMockAtlasRefresh}
+          disabled={atlasMockRunning}
+          className="bg-foreground text-background inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-semibold transition hover:opacity-90 disabled:opacity-60"
+        >
+          {atlasMockRunning ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          {atlasMockRunning ? "Calling Atlas…" : "Re-update profile"}
+        </button>
       </div>
+      <ReviewsSummarySection venue={venue} />
+      <RelevantReviewsSection venue={venue} />
+      <PreviewSection venue={venue} v={v} />
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
