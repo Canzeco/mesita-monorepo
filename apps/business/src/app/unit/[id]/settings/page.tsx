@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarCheck,
   Check,
   LifeBuoy,
   PlayCircle,
@@ -43,8 +42,8 @@ export default async function SettingsPage({
   if (overviewResult.status === "rejected") {
     return (
       <PageErrorState
-        title="Settings"
-        heading="Couldn't load your settings"
+        title="Account"
+        heading="Couldn't load your account"
         message={errMsg(overviewResult.reason, "Could not load your venues.")}
         retryHref={`/unit/${id}/settings`}
       />
@@ -71,7 +70,7 @@ export default async function SettingsPage({
 
   return (
     <>
-      <Topbar title="Settings" subtitle="Place, account, and preferences" />
+      <Topbar title="Account" subtitle="Your places, profile, and more" />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pt-3 pb-10">
           {/* Current place + switcher */}
@@ -143,24 +142,9 @@ export default async function SettingsPage({
             )}
           </section>
 
-          {activeVenue && (
-            <section className="flex flex-col gap-2">
-              <SectionLabel>Operations</SectionLabel>
-              <div className="border-border bg-card overflow-hidden rounded-2xl border">
-                <RowLink
-                  href={`/unit/${activeVenue.id}/reservations`}
-                  Icon={CalendarCheck}
-                  label="Reservations"
-                  hint="Bookings from Mesita"
-                  embedded
-                />
-              </div>
-            </section>
-          )}
-
           {/* Account */}
           <section className="flex flex-col gap-2">
-            <SectionLabel>Account</SectionLabel>
+            <SectionLabel>Profile</SectionLabel>
             <div className="border-border bg-card flex items-center gap-3 rounded-2xl border px-3 py-3">
               <span className="bg-pink-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
                 {personInitial(accountName, email)}
@@ -193,42 +177,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <p className="text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.12em] uppercase">
       {children}
     </p>
-  );
-}
-
-function RowLink({
-  href,
-  Icon,
-  label,
-  hint,
-  embedded = false,
-}: {
-  href: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  hint?: string;
-  embedded?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={
-        embedded
-          ? "hover:bg-muted/40 border-border flex items-center gap-3 border-b px-3 py-3 transition last:border-b-0"
-          : "border-border bg-card hover:bg-muted/40 flex items-center gap-3 rounded-2xl border px-3 py-3 transition"
-      }
-    >
-      <span className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{label}</p>
-        {hint && (
-          <p className="text-muted-foreground truncate text-[11px]">{hint}</p>
-        )}
-      </div>
-      <ArrowRight className="text-muted-foreground h-4 w-4 shrink-0" />
-    </Link>
   );
 }
 

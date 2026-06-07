@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
+import { AccountAvatar } from "@/components/business/AccountAvatar";
 
-// Mobile app bar for the venue console: page title + optional subtitle,
-// pinned to the top of the scrollable body inside the phone frame.
-// (Previously a desktop topbar with hamburger padding — the sidebar is
-// gone now, replaced by the BottomNav, so the title can sit flush.)
+// Mobile app bar for the venue console: page title + optional subtitle on
+// the left, and the Account avatar pinned to the right. Pinned to the top
+// of the scrollable body inside the phone frame.
 //
 // `innerClassName` is kept for back-compat with pages that pass a
 // container width; inside the max-w-md frame it's effectively a no-op but
@@ -32,6 +32,7 @@ export function Topbar({
             </p>
           )}
         </div>
+        <AccountAvatar />
       </div>
     </header>
   );

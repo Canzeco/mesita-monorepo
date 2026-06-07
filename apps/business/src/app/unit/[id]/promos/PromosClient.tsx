@@ -285,54 +285,51 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         description="Manager preview of the Instagram subscription requirement so you can see what you're buying."
         className="bg-gradient-to-b from-white to-fuchsia-50/[0.22]"
       >
-          <div className="bg-muted/25 border-border/60 grid grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-2">
-            <div className="flex items-center justify-between gap-2 sm:col-span-2">
-              <p className="text-[12px] font-semibold">
-                Story posting required
-              </p>
-              <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white">
-                Required
-              </span>
-            </div>
+        <div className="bg-muted/25 border-border/60 grid grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between gap-2 sm:col-span-2">
+            <p className="text-[12px] font-semibold">Story posting required</p>
+            <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white">
+              Required
+            </span>
+          </div>
 
-            <label className="block">
-              <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
-                <Instagram className="h-3.5 w-3.5" />
-                Instagram to tag
-              </span>
-              <input
-                value={igTagAccount}
-                readOnly
-                aria-readonly
-                spellCheck={false}
-                autoCapitalize="none"
-                className="border-border bg-muted/35 text-foreground/85 w-full rounded-full border px-3 py-2 text-[13px] outline-none"
-              />
-            </label>
+          <label className="block">
+            <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
+              <Instagram className="h-3.5 w-3.5" />
+              Instagram to tag
+            </span>
+            <input
+              value={igTagAccount}
+              readOnly
+              aria-readonly
+              spellCheck={false}
+              autoCapitalize="none"
+              className="border-border bg-muted/35 text-foreground/85 w-full rounded-full border px-3 py-2 text-[13px] outline-none"
+            />
+          </label>
 
-            <div className="block">
-              <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
-                Story instruction
-              </span>
-              <div className="border-border bg-background text-foreground/85 rounded-xl border px-3 py-2 text-[12px] font-medium">
-                Post a positive story with a photo/video of the place or food,
-                tag this venue account, and show it at check-in (no negative
-                content).
-              </div>
+          <div className="block">
+            <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
+              Story instruction
+            </span>
+            <div className="border-border bg-background text-foreground/85 rounded-xl border px-3 py-2 text-[12px] font-medium">
+              Post a positive story with a photo/video of the place or food, tag
+              this venue account, and show it at check-in (no negative content).
             </div>
           </div>
-          <p className="text-foreground/80 text-[11px]">
-            Selected rule:{" "}
-            <span className="font-semibold">{STORY_INSTRUCTION}</span>
-          </p>
-          <p className="text-muted-foreground text-[11px]">
-            No follow is required from guests.
-          </p>
-          <p className="text-muted-foreground text-[11px]">
-            Placeholder preview for managers only. It communicates the expected
-            Instagram requirement that comes with this subscription.
-          </p>
-        </Section>
+        </div>
+        <p className="text-foreground/80 text-[11px]">
+          Selected rule:{" "}
+          <span className="font-semibold">{STORY_INSTRUCTION}</span>
+        </p>
+        <p className="text-muted-foreground text-[11px]">
+          No follow is required from guests.
+        </p>
+        <p className="text-muted-foreground text-[11px]">
+          Placeholder preview for managers only. It communicates the expected
+          Instagram requirement that comes with this subscription.
+        </p>
+      </Section>
 
       <Section
         title="Mesita user examples"
