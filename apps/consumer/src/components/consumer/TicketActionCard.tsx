@@ -40,7 +40,10 @@ export function TicketActionCard({
   const tips = isActive
     ? ticketStepDummyInstructions(step.id, progress, stepCopy)
     : [];
-  const showBillReceipt = step.id === "bill" && payload.total_cents && !isLocked;
+  const showBillReceipt =
+    (step.id === "bill" || step.id === "pay") &&
+    !!payload.total_cents &&
+    !isLocked;
 
   return (
     <section

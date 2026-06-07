@@ -12,15 +12,15 @@ export type StoryStatus = Database["public"]["Enums"]["story_status"];
 export type TicketFlowType = "A" | "B";
 
 /**
- * Consumer-visible milestones. Mesita is discounts-only and the reward is
- * applied at the bill, so a visit closes the moment the bill is issued
- * (Type A) or the story is verified (Type B). There is no separate payment
- * step — you just pay the discounted total at the table.
+ * Consumer-visible milestones. Mesita is discounts-only; the discount is
+ * applied at the bill and the guest pays the discounted total at the table.
+ * The consumer never confirms payment — staff tap "Paid received", which
+ * closes the ticket. The consumer's Pay step is a passive waiting state.
  *
- * - A: Scan → Bill → Review
- * - B: Scan → Bill → Story → Review
+ * - A: Scan → Bill → Pay → Review
+ * - B: Scan → Bill → Story → Pay → Review
  */
-export type TicketFlowStepId = "scan" | "bill" | "story" | "review";
+export type TicketFlowStepId = "scan" | "bill" | "story" | "pay" | "review";
 
 export type TicketFlowStepState = "done" | "active" | "upcoming";
 
@@ -50,14 +50,15 @@ export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
 }
 
 export const FLOW_STEPS_BY_TYPE: Record<TicketFlowType, TicketFlowStepId[]> = {
-  A: ["scan", "bill", "review"],
-  B: ["scan", "bill", "story", "review"],
+  A: ["scan", "bill", "pay", "review"],
+  B: ["scan", "bill", "story", "pay", "review"],
 };
 
 export const STEP_LABELS: Record<TicketFlowStepId, string> = {
   scan: "Scan",
   bill: "Bill",
   story: "Story",
+  pay: "Pay",
   review: "Review",
 };
 
@@ -66,6 +67,7 @@ export const STEP_MENU_HINT: Record<TicketFlowStepId, string> = {
   scan: "Show QR to waiter",
   bill: "Staff adds your total",
   story: "Instagram story + tags",
+  pay: "Pay table; staff confirms",
   review: "Tap stars, then send",
 };
 
@@ -74,6 +76,7 @@ export const STEP_NOW_TITLE: Record<TicketFlowStepId, string> = {
   scan: "Get scanned in",
   bill: "Here's your bill",
   story: "Post your Instagram story",
+  pay: "Pay at the table",
   review: "Leave a quick review",
 };
 
@@ -115,6 +118,11 @@ export function ticketStepNowInstructions(
         storyTagInstruction(ctx?.venueInstagramHandle),
         "Mesita's bot detects your story automatically.",
       ];
+    case "pay":
+      return [
+        "Pay the discounted total at the table (cash or card).",
+        "Staff confirm it — then your review unlocks. Nothing to tap here.",
+      ];
     case "review":
       return [
         "Tap 1–5 stars on each row (1 = bad, 5 = great).",
@@ -131,6 +139,7 @@ export const STEP_DONE_LINE: Record<TicketFlowStepId, string> = {
   scan: "Scanned",
   bill: "Bill ready",
   story: "Story OK",
+  pay: "Paid",
   review: "Review sent",
 };
 
@@ -157,6 +166,10 @@ export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]>
     "We detect the tag automatically and update your ticket.",
     "Staff confirms your story when the bot asks.",
   ],
+  pay: [
+    "Pay the discounted total at the table — Mesita never touches the money.",
+    "Staff tap Paid received to close your visit. You don't confirm anything.",
+  ],
   review: [
     "Rate food, service, ambiance, value, and overall.",
     "Add optional comments about your visit.",
@@ -178,6 +191,10 @@ export const STEP_SEQUENCE_SUMMARY: Record<
   story: {
     done: "Your story was verified.",
     upcoming: "Post an IG story tagging Mesita and the venue.",
+  },
+  pay: {
+    done: "Staff confirmed your payment.",
+    upcoming: "Pay at the table; staff confirm to close it.",
   },
   review: {
     done: "Thanks — your review was submitted.",
@@ -221,6 +238,11 @@ function reviewDone(input: TicketProgressInput): boolean {
   return input.reviewCompleted;
 }
 
+/** Staff confirmed payment — the ticket is closed (revealed). */
+function staffConfirmedPayment(input: TicketProgressInput): boolean {
+  return input.status === "revealed";
+}
+
 function inferCurrentIndex(
   flowType: TicketFlowType,
   steps: TicketFlowStepId[],
@@ -232,6 +254,7 @@ function inferCurrentIndex(
   if (flowType === "B" && !storyVerified(input.story_status)) {
     return idx("story");
   }
+  if (!staffConfirmedPayment(input)) return idx("pay");
   if (!reviewDone(input)) return idx("review");
   return steps.length;
 }
