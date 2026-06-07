@@ -177,7 +177,7 @@ export function TicketsClient({
               Floor
             </h2>
             <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
-              Scan → bill → pay → review
+              Scan → bill → story → close
             </p>
           </div>
           <button
