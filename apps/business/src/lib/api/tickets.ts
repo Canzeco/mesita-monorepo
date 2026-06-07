@@ -88,18 +88,6 @@ export async function apiListTickets(
   return (tickets ?? []).map(normalizeTicketConsumer);
 }
 
-export async function apiMarkTicketPaid(
-  client: SupabaseClient,
-  ticketId: string,
-): Promise<{ awaitingStory?: boolean }> {
-  return invokeEF<{ awaitingStory?: boolean }>(
-    client,
-    "business-mark-paid",
-    { ticketId },
-    "Couldn't mark ticket as paid.",
-  );
-}
-
 export async function apiCancelTicket(
   client: SupabaseClient,
   input: { ticketId: string; reason?: string },
@@ -124,9 +112,7 @@ export async function apiCreateTicket(
     kind?: TicketKind;
   },
 ): Promise<{ ticket: BusinessTicket }> {
-  const kind =
-    input.kind ??
-    (input.fiscalType === "formal" ? "p_c" : "dp");
+  const kind = input.kind ?? "dp";
   return invokeEF<{ ticket: BusinessTicket }>(
     client,
     "business-create-ticket",

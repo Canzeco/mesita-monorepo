@@ -5,25 +5,23 @@ export type TicketKind = Database["public"]["Enums"]["ticket_kind"];
 export type TicketStatus = Database["public"]["Enums"]["ticket_status"];
 export type StoryStatus = Database["public"]["Enums"]["story_status"];
 
-export type TicketFlowType = "A" | "B" | "C" | "D";
+export type TicketFlowType = "A" | "B";
 
 /**
- * Staff-console milestones — aligned to product sequences:
+ * Staff-console milestones. Mesita is discounts-only and the reward is applied
+ * at the bill, so a ticket closes at billing (Type A) or story verification
+ * (Type B). The guest just pays the discounted total at the table — there is
+ * no payment-confirmation step.
  *
- * - A: Scan → Billing → Discount payment → Done
- * - B: Scan → Billing → Story → Discount payment → Done
- * - C: Scan → Billing → Stripe pay → Reward landing → Done
- * - D: Scan → Billing → Story → Stripe pay → Reward landing → Done
+ * - A: Scan → Billing → Done
+ * - B: Scan → Billing → Story → Done
  *
- * Review runs on the consumer app after payment (and before the reward on C/D).
+ * Review runs on the consumer app after the ticket closes.
  */
 export type StaffLifecycleStepId =
   | "scan"
   | "bill"
   | "story"
-  | "pay"
-  | "stripe"
-  | "reward"
   | "done";
 
 export type StaffLifecycleStepState = "done" | "active" | "upcoming";
@@ -42,16 +40,7 @@ export type StaffTicketProgressInput = Pick<
 
 const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "waiter_verified"]);
 
-export const FORMAL_KINDS = new Set<TicketKind>([
-  "p_c",
-  "s_p_sf_c",
-  "r_p_c",
-  "r_s_p_sf_c",
-]);
-
 const STORY_KINDS = new Set<TicketKind>([
-  "s_p_sf_c",
-  "r_s_p_sf_c",
   "s_dp_sf",
   "r_s_dp_sf",
 ]);
@@ -59,25 +48,22 @@ const STORY_KINDS = new Set<TicketKind>([
 export const TICKET_KIND_BY_FLOW_TYPE: Record<TicketFlowType, TicketKind> = {
   A: "dp",
   B: "s_dp_sf",
-  C: "p_c",
-  D: "s_p_sf_c",
 };
 
 export const FLOW_TYPE_LABELS: Record<TicketFlowType, string> = {
   A: "Discount · No story",
-  B: "Discount · Story",
-  C: "Discount · Stripe",
-  D: "Discount · Story · Stripe",
+  B: "Discount · With story",
+};
+
+// Short, distinguishing label for the scan picker chips. Both flows are a
+// discount; the only difference is whether the guest posts an IG story, so
+// the chip leads with that.
+export const FLOW_TYPE_SHORT_LABELS: Record<TicketFlowType, string> = {
+  A: "No story",
+  B: "With story",
 };
 
 export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
-  if (kind === "dp" || kind === "r_dp") return "A";
-  if (kind === "s_dp_sf" || kind === "r_s_dp_sf") return "B";
-  if (kind === "p_c" || kind === "r_p_c") return "C";
-  if (kind === "s_p_sf_c" || kind === "r_s_p_sf_c") return "D";
-  if (FORMAL_KINDS.has(kind as TicketKind)) {
-    return STORY_KINDS.has(kind as TicketKind) ? "D" : "C";
-  }
   return STORY_KINDS.has(kind as TicketKind) ? "B" : "A";
 }
 
@@ -87,33 +73,25 @@ export function ticketHasBill(input: StaffTicketProgressInput): boolean {
 
 export const STAFF_STEPS_BY_FLOW_TYPE: Record<TicketFlowType, StaffLifecycleStepId[]> =
   {
-    A: ["scan", "bill", "pay", "done"],
-    B: ["scan", "bill", "story", "pay", "done"],
-    C: ["scan", "bill", "stripe", "reward", "done"],
-    D: ["scan", "bill", "story", "stripe", "reward", "done"],
+    A: ["scan", "bill", "done"],
+    B: ["scan", "bill", "story", "done"],
   };
 
 export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   scan: "Scan",
   bill: "Billing",
   story: "Story",
-  pay: "Payment",
-  stripe: "Stripe",
-  reward: "Reward",
   done: "Done",
 };
 
-export function staffDoneStepLabel(kind: string): string {
-  return FORMAL_KINDS.has(kind as TicketKind) ? "Complete" : "Revealed";
+export function staffDoneStepLabel(_kind: string): string {
+  return "Closed";
 }
 
 export const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
   scan: "Guest code scanned — bot validated and linked the visit.",
-  bill: "Enter subtotal (and tip on formal flows), then send the bill.",
+  bill: "Enter the subtotal and send the bill. The guest pays the discounted total at the table.",
   story: "Guest posts IG story; confirm when the bot asks you to validate.",
-  pay: "Guest taps Paid issued — tap Paid received when you collect payment.",
-  stripe: "Guest pays via the Stripe checkout link on their phone.",
-  reward: "The reward lands for the guest after pay and review.",
   done: "Visit closed.",
 };
 
@@ -123,28 +101,8 @@ function storyComplete(input: StaffTicketProgressInput): boolean {
   return STORY_VERIFIED.has(input.story_status as StoryStatus);
 }
 
-function discountPaid(input: StaffTicketProgressInput): boolean {
-  return input.status === "revealed";
-}
-
-function stripePaid(input: StaffTicketProgressInput): boolean {
-  return (
-    input.status === "paid" ||
-    input.status === "awaiting_story" ||
-    input.status === "revealed"
-  );
-}
-
-function rewardLanded(input: StaffTicketProgressInput): boolean {
-  if (!FORMAL_KINDS.has(input.kind as TicketKind)) return true;
-  return input.status === "paid" || input.status === "revealed";
-}
-
 function visitComplete(input: StaffTicketProgressInput): boolean {
   if (input.status === "cancelled") return false;
-  if (FORMAL_KINDS.has(input.kind as TicketKind)) {
-    return input.status === "paid";
-  }
   return input.status === "revealed";
 }
 
@@ -159,12 +117,6 @@ function stepComplete(
       return ticketHasBill(input);
     case "story":
       return storyComplete(input);
-    case "pay":
-      return discountPaid(input);
-    case "stripe":
-      return stripePaid(input);
-    case "reward":
-      return rewardLanded(input);
     case "done":
       return visitComplete(input);
     default:
@@ -225,16 +177,10 @@ export function staffLifecycleFromTicket(
 
 export function staffStatusLabel(status: TicketStatus): string {
   switch (status) {
-    case "awaiting_payment_confirm":
-      return "Awaiting payment";
-    case "pending_pay":
-      return "Pending pay";
     case "awaiting_story":
       return "Awaiting story";
-    case "paid":
-      return "Paid";
     case "revealed":
-      return "Revealed";
+      return "Closed";
     case "cancelled":
       return "Cancelled";
     case "open":
@@ -250,10 +196,7 @@ export function staffStatusTone(status: TicketStatus): string {
   if (status === "open") {
     return "bg-sky-500/10 text-sky-800";
   }
-  if (status === "pending_pay" || status === "awaiting_payment_confirm") {
-    return "bg-amber-500/10 text-amber-800";
-  }
-  if (status === "paid" || status === "revealed") {
+  if (status === "revealed") {
     return "bg-emerald-500/10 text-emerald-800";
   }
   if (status === "awaiting_story") {
@@ -263,14 +206,6 @@ export function staffStatusTone(status: TicketStatus): string {
     return "bg-muted text-muted-foreground";
   }
   return "bg-secondary/10 text-secondary";
-}
-
-/** Discount flows: guest issued paid, staff confirms received. */
-export function ticketNeedsStaffPaymentConfirm(ticket: BusinessTicket): boolean {
-  if (FORMAL_KINDS.has(ticket.kind as TicketKind)) {
-    return ticket.status === "pending_pay";
-  }
-  return ticket.status === "awaiting_payment_confirm";
 }
 
 export function ticketNeedsStoryConfirm(ticket: BusinessTicket): boolean {
@@ -288,9 +223,5 @@ export function ticketNeedsBill(ticket: BusinessTicket): boolean {
 }
 
 export function ticketCanCancel(ticket: BusinessTicket): boolean {
-  return (
-    ticket.status === "open" ||
-    ticket.status === "pending_pay" ||
-    ticket.status === "awaiting_payment_confirm"
-  );
+  return ticket.status === "open" || ticket.status === "awaiting_story";
 }

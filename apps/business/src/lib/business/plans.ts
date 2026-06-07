@@ -5,8 +5,8 @@ import type { FiscalType, VenuePlan } from "@/lib/api/venues";
 // Three subscriptions, ordered ascending so the business reads the picker
 // left-to-right as a visibility ladder:
 //   - "Free without promos" (plan=free)                            · Low    · $0
-//   - "Pro"                  (plan=informal_pro,   fiscal=informal) · Medium · $200
-//   - "Ultra"                (plan=informal_ultra, fiscal=informal) · Max    · $5,000
+//   - "Pro"                  (plan=informal_pro,   fiscal=informal) · Medium · $200/yr
+//   - "Ultra"                (plan=informal_ultra, fiscal=informal) · Max    · $500/mo
 //
 // Mesita is discounts-only: every Verified venue runs the same instant
 // discount applied directly at the bill, with no money flowing through
@@ -47,7 +47,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     id: "pro_discount",
     label: "Pro",
     price: "MX$200",
-    cadence: "/ month",
+    cadence: "/ year",
     tagline: "Consumer shows the coupon, you discount the bill.",
     visibility: "Medium",
     setup: "1 min",
@@ -55,7 +55,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
   {
     id: "ultra_discount",
     label: "Ultra",
-    price: "MX$5,000",
+    price: "MX$500",
     cadence: "/ month",
     tagline: "Same coupon flow, maximum visibility.",
     visibility: "Max",

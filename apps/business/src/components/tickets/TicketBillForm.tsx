@@ -5,7 +5,6 @@ import { cn, errMsg } from "@/lib/utils";
 import { INPUT_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import type { BusinessTicket } from "@/lib/api/tickets";
 import { apiSubmitTicketBill } from "@/lib/api/tickets";
-import { ticketFlowTypeFromKind } from "@/lib/ticket-staff-lifecycle";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
 
@@ -26,20 +25,12 @@ export function TicketBillForm({
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [subtotalText, setSubtotalText] = useState("");
-  const [tipText, setTipText] = useState("");
-  const flowType = ticketFlowTypeFromKind(ticket.kind);
-  const isFormalFlow = flowType === "C" || flowType === "D";
 
   const submitBill = async () => {
     const subtotal = Number(subtotalText);
-    const tip = isFormalFlow && tipText.trim() ? Number(tipText) : 0;
 
     if (!Number.isFinite(subtotal) || subtotal <= 0) {
       onError("Subtotal must be greater than 0.");
-      return;
-    }
-    if (isFormalFlow && (!Number.isFinite(tip) || tip < 0)) {
-      onError("Tip must be 0 or greater.");
       return;
     }
 
@@ -48,10 +39,9 @@ export function TicketBillForm({
       await apiSubmitTicketBill(supabase, {
         ticketId: ticket.id,
         checkSubtotalCents: Math.round(subtotal * 100),
-        tipCents: isFormalFlow ? Math.round(tip * 100) : 0,
+        tipCents: 0,
       });
       setSubtotalText("");
-      setTipText("");
       onSubmitted("Bill sent to guest.");
     } catch (e) {
       onError(errMsg(e, "Couldn't submit bill."));
@@ -74,12 +64,7 @@ export function TicketBillForm({
         <Receipt className="text-primary h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
         <p className="text-foreground text-[12px] font-semibold">Enter bill</p>
       </div>
-      <div
-        className={cn(
-          "grid gap-2",
-          isFormalFlow ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2",
-        )}
-      >
+      <div className="grid grid-cols-2 gap-2">
         <label className="min-w-0">
           <span className={TINY_LABEL_CLASS}>Subtotal</span>
           <div className="relative mt-1">
@@ -95,29 +80,7 @@ export function TicketBillForm({
             />
           </div>
         </label>
-        {isFormalFlow ? (
-          <label className="min-w-0">
-            <span className={TINY_LABEL_CLASS}>Tip</span>
-            <div className="relative mt-1">
-              <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[10px] font-medium">
-                {venueCurrency}
-              </span>
-              <input
-                value={tipText}
-                onChange={(e) => setTipText(e.target.value)}
-                placeholder="0"
-                inputMode="decimal"
-                className={cn(INPUT_CLASS, "h-10 bg-card pl-12 text-sm tabular-nums")}
-              />
-            </div>
-          </label>
-        ) : null}
-        <div
-          className={cn(
-            "flex items-end",
-            isFormalFlow ? "col-span-2 sm:col-span-1" : "col-span-1",
-          )}
-        >
+        <div className="col-span-1 flex items-end">
           <button
             type="submit"
             disabled={disabled}

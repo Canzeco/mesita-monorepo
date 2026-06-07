@@ -815,7 +815,6 @@ export type Database = {
           cancelled_at: string | null
           check_subtotal_cents: number | null
           consumer_id: string
-          consumer_payment_confirmed_at: string | null
           created_at: string
           currency: string
           discount_cents: number | null
@@ -834,7 +833,6 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at: string | null
-          staff_payment_confirmed_at: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason: string | null
           story_screenshot_url: string | null
@@ -852,7 +850,6 @@ export type Database = {
           cancelled_at?: string | null
           check_subtotal_cents?: number | null
           consumer_id: string
-          consumer_payment_confirmed_at?: string | null
           created_at?: string
           currency?: string
           discount_cents?: number | null
@@ -871,7 +868,6 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at?: string | null
-          staff_payment_confirmed_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason?: string | null
           story_screenshot_url?: string | null
@@ -889,7 +885,6 @@ export type Database = {
           cancelled_at?: string | null
           check_subtotal_cents?: number | null
           consumer_id?: string
-          consumer_payment_confirmed_at?: string | null
           created_at?: string
           currency?: string
           discount_cents?: number | null
@@ -908,7 +903,6 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at?: string | null
-          staff_payment_confirmed_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason?: string | null
           story_screenshot_url?: string | null

@@ -2,11 +2,11 @@
 
 import { cn } from "@/lib/utils";
 import {
-  FLOW_TYPE_LABELS,
+  FLOW_TYPE_SHORT_LABELS,
   type TicketFlowType,
 } from "@/lib/ticket-staff-lifecycle";
 
-const FLOW_TYPES: TicketFlowType[] = ["A", "B", "C", "D"];
+const FLOW_TYPES: TicketFlowType[] = ["A", "B"];
 
 export function ScanFlowPicker({
   value,
@@ -37,9 +37,11 @@ export function ScanFlowPicker({
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <span className="text-[13px] font-semibold tabular-nums">{t}</span>
-            <span className="mt-0.5 max-w-full truncate text-[9px] leading-tight font-medium">
-              {FLOW_TYPE_LABELS[t].split(" · ")[0]}
+            <span className="text-[13px] font-semibold">
+              {FLOW_TYPE_SHORT_LABELS[t]}
+            </span>
+            <span className="text-muted-foreground mt-0.5 max-w-full truncate text-[9px] leading-tight font-medium tracking-wide uppercase">
+              Type {t}
             </span>
           </button>
         );

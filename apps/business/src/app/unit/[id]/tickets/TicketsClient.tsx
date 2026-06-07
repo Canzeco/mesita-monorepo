@@ -12,7 +12,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCancelTicket,
   apiListTickets,
-  apiMarkTicketPaid,
   type BusinessTicket,
 } from "@/lib/api/tickets";
 import { cn, errMsg } from "@/lib/utils";
@@ -152,22 +151,6 @@ export function TicketsClient({
     }
   };
 
-  const markPaid = async (ticketId: string) => {
-    setBusy(`pay:${ticketId}`);
-    setError(null);
-    setNotice(null);
-    try {
-      const res = await apiMarkTicketPaid(supabase, ticketId);
-      await reloadTickets(
-        res.awaitingStory ? "Paid — waiting on story." : "Marked as paid.",
-      );
-    } catch (e) {
-      setError(errMsg(e, "Couldn't mark as paid."));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const cancelTicket = async (ticketId: string) => {
     setBusy(`cancel:${ticketId}`);
     setError(null);
@@ -284,7 +267,6 @@ export function TicketsClient({
                   venueCurrency={venueCurrency}
                   supabase={supabase}
                   busy={busy}
-                  onMarkPaid={(id) => void markPaid(id)}
                   onCancel={(id) => void cancelTicket(id)}
                   onBillSubmitted={(msg) => void reloadTickets(msg, t.id)}
                   onError={setError}
