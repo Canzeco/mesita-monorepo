@@ -8,13 +8,13 @@ export type StoryStatus = Database["public"]["Enums"]["story_status"];
 export type TicketFlowType = "A" | "B";
 
 /**
- * Staff-console milestones. Mesita is discounts-only and the reward is applied
- * at the bill, so a ticket closes at billing (Type A) or story verification
- * (Type B). The guest just pays the discounted total at the table — there is
- * no payment-confirmation step.
+ * Staff-console milestones. Mesita is discounts-only; the discount is applied
+ * at the bill and the guest pays the discounted total at the table. Staff
+ * confirm payment ("Paid received") to close the ticket — the consumer never
+ * confirms.
  *
- * - A: Scan → Billing → Done
- * - B: Scan → Billing → Story → Done
+ * - A: Scan → Billing → Payment → Done
+ * - B: Scan → Billing → Story → Payment → Done
  *
  * Review runs on the consumer app after the ticket closes.
  */
@@ -22,6 +22,7 @@ export type StaffLifecycleStepId =
   | "scan"
   | "bill"
   | "story"
+  | "pay"
   | "done";
 
 export type StaffLifecycleStepState = "done" | "active" | "upcoming";
@@ -73,14 +74,15 @@ export function ticketHasBill(input: StaffTicketProgressInput): boolean {
 
 export const STAFF_STEPS_BY_FLOW_TYPE: Record<TicketFlowType, StaffLifecycleStepId[]> =
   {
-    A: ["scan", "bill", "done"],
-    B: ["scan", "bill", "story", "done"],
+    A: ["scan", "bill", "pay", "done"],
+    B: ["scan", "bill", "story", "pay", "done"],
   };
 
 export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   scan: "Scan",
   bill: "Billing",
   story: "Story",
+  pay: "Payment",
   done: "Done",
 };
 
@@ -92,6 +94,7 @@ export const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
   scan: "Guest code scanned — bot validated and linked the visit.",
   bill: "Enter the subtotal and send the bill. The guest pays the discounted total at the table.",
   story: "Guest posts IG story; confirm when the bot asks you to validate.",
+  pay: "Tap Paid received once the guest pays — that closes the ticket.",
   done: "Visit closed.",
 };
 
@@ -99,6 +102,10 @@ function storyComplete(input: StaffTicketProgressInput): boolean {
   if (!STORY_KINDS.has(input.kind as TicketKind)) return true;
   if (input.story_status === "not_required") return true;
   return STORY_VERIFIED.has(input.story_status as StoryStatus);
+}
+
+function paymentConfirmed(input: StaffTicketProgressInput): boolean {
+  return input.status === "revealed";
 }
 
 function visitComplete(input: StaffTicketProgressInput): boolean {
@@ -117,6 +124,8 @@ function stepComplete(
       return ticketHasBill(input);
     case "story":
       return storyComplete(input);
+    case "pay":
+      return paymentConfirmed(input);
     case "done":
       return visitComplete(input);
     default:
@@ -179,6 +188,8 @@ export function staffStatusLabel(status: TicketStatus): string {
   switch (status) {
     case "awaiting_story":
       return "Awaiting story";
+    case "awaiting_payment_confirm":
+      return "Awaiting payment";
     case "revealed":
       return "Closed";
     case "cancelled":
@@ -196,6 +207,9 @@ export function staffStatusTone(status: TicketStatus): string {
   if (status === "open") {
     return "bg-sky-500/10 text-sky-800";
   }
+  if (status === "awaiting_payment_confirm") {
+    return "bg-amber-500/10 text-amber-800";
+  }
   if (status === "revealed") {
     return "bg-emerald-500/10 text-emerald-800";
   }
@@ -206,6 +220,11 @@ export function staffStatusTone(status: TicketStatus): string {
     return "bg-muted text-muted-foreground";
   }
   return "bg-secondary/10 text-secondary";
+}
+
+/** Staff payment confirm: guest pays at the table, staff tap Paid received. */
+export function ticketNeedsStaffPaymentConfirm(ticket: BusinessTicket): boolean {
+  return ticket.status === "awaiting_payment_confirm";
 }
 
 export function ticketNeedsStoryConfirm(ticket: BusinessTicket): boolean {
@@ -223,5 +242,9 @@ export function ticketNeedsBill(ticket: BusinessTicket): boolean {
 }
 
 export function ticketCanCancel(ticket: BusinessTicket): boolean {
-  return ticket.status === "open" || ticket.status === "awaiting_story";
+  return (
+    ticket.status === "open" ||
+    ticket.status === "awaiting_story" ||
+    ticket.status === "awaiting_payment_confirm"
+  );
 }

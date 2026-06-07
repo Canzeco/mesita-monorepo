@@ -17,6 +17,7 @@ import {
   ticketCanCancel,
   ticketFlowTypeFromKind,
   ticketNeedsBill,
+  ticketNeedsStaffPaymentConfirm,
 } from "@/lib/ticket-staff-lifecycle";
 import { TicketLifecycleStepper } from "@/components/tickets/TicketLifecycleStepper";
 import { TicketBillForm } from "@/components/tickets/TicketBillForm";
@@ -46,6 +47,7 @@ export function TicketCard({
   venueCurrency,
   supabase,
   busy,
+  onMarkPaid,
   onCancel,
   onBillSubmitted,
   onError,
@@ -54,19 +56,22 @@ export function TicketCard({
   venueCurrency: string;
   supabase: SupabaseClient;
   busy: string | null;
+  onMarkPaid: (ticketId: string) => void;
   onCancel: (ticketId: string) => void;
   onBillSubmitted: (message: string) => void;
   onError: (message: string) => void;
 }) {
   const lifecycle = staffLifecycleFromTicket(ticket);
   const needsBill = ticketNeedsBill(ticket);
+  const pendingPay = ticketNeedsStaffPaymentConfirm(ticket);
   const canCancel = ticketCanCancel(ticket);
+  const payBusy = busy === `pay:${ticket.id}`;
   const cancelBusy = busy === `cancel:${ticket.id}`;
   const cancelled = ticket.status === "cancelled";
   const reward = rewardLine(ticket);
   const flowType = ticketFlowTypeFromKind(ticket.kind);
   const hasTotal = (ticket.total_cents ?? 0) > 0;
-  const showActions = !cancelled && (needsBill || canCancel);
+  const showActions = !cancelled && (needsBill || pendingPay || canCancel);
 
   return (
     <article
@@ -160,20 +165,36 @@ export function TicketCard({
         />
       ) : null}
 
-      {showActions && !needsBill && canCancel ? (
+      {showActions && !needsBill ? (
         <div className="flex flex-wrap items-center gap-2 pl-11 sm:pl-12">
-          <button
-            type="button"
-            onClick={() => onCancel(ticket.id)}
-            disabled={cancelBusy || busy === "refresh"}
-            className="text-muted-foreground hover:text-destructive border-border/60 hover:border-border inline-flex h-9 items-center justify-center rounded-full border px-3.5 text-[13px] font-medium transition disabled:opacity-40"
-          >
-            {cancelBusy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              "Cancel"
-            )}
-          </button>
+          {pendingPay ? (
+            <button
+              type="button"
+              onClick={() => onMarkPaid(ticket.id)}
+              disabled={payBusy || busy === "refresh"}
+              className="bg-primary text-primary-foreground hover:opacity-92 inline-flex h-9 items-center justify-center rounded-full px-4 text-[13px] font-semibold shadow-sm transition disabled:opacity-40"
+            >
+              {payBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Paid received"
+              )}
+            </button>
+          ) : null}
+          {canCancel ? (
+            <button
+              type="button"
+              onClick={() => onCancel(ticket.id)}
+              disabled={cancelBusy || busy === "refresh"}
+              className="text-muted-foreground hover:text-destructive border-border/60 hover:border-border inline-flex h-9 items-center justify-center rounded-full border px-3.5 text-[13px] font-medium transition disabled:opacity-40"
+            >
+              {cancelBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Cancel"
+              )}
+            </button>
+          ) : null}
         </div>
       ) : null}
 

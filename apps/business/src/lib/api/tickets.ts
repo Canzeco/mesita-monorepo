@@ -88,6 +88,18 @@ export async function apiListTickets(
   return (tickets ?? []).map(normalizeTicketConsumer);
 }
 
+export async function apiMarkTicketPaid(
+  client: SupabaseClient,
+  ticketId: string,
+): Promise<{ status?: string; alreadyPaid?: boolean }> {
+  return invokeEF<{ status?: string; alreadyPaid?: boolean }>(
+    client,
+    "business-mark-paid",
+    { ticketId },
+    "Couldn't mark ticket as paid.",
+  );
+}
+
 export async function apiCancelTicket(
   client: SupabaseClient,
   input: { ticketId: string; reason?: string },
