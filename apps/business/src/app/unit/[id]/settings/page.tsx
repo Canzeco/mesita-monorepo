@@ -3,13 +3,11 @@ import { redirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
-  BarChart3,
-  Check,
   CalendarCheck,
+  Check,
   LifeBuoy,
   PlayCircle,
   Plus,
-  Users,
 } from "lucide-react";
 import { Topbar } from "@/components/business/Topbar";
 import { PageErrorState } from "@/components/business/PageErrorState";
@@ -145,30 +143,15 @@ export default async function SettingsPage({
             )}
           </section>
 
-          {/* Manage */}
           {activeVenue && (
             <section className="flex flex-col gap-2">
-              <SectionLabel>Manage</SectionLabel>
+              <SectionLabel>Operations</SectionLabel>
               <div className="border-border bg-card overflow-hidden rounded-2xl border">
-                <RowLink
-                  href={`/unit/${activeVenue.id}/team`}
-                  Icon={Users}
-                  label="Team"
-                  hint="Managers, waiters, and PRs"
-                  embedded
-                />
                 <RowLink
                   href={`/unit/${activeVenue.id}/reservations`}
                   Icon={CalendarCheck}
                   label="Reservations"
                   hint="Bookings from Mesita"
-                  embedded
-                />
-                <RowLink
-                  href={`/unit/${activeVenue.id}/performance`}
-                  Icon={BarChart3}
-                  label="Performance"
-                  hint="Visits and revenue trends"
                   embedded
                 />
               </div>

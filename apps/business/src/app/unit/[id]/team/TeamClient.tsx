@@ -600,7 +600,7 @@ export function TeamClient({
       {/* ── PRs ──────────────────────────────────────────────────── */}
       <Section
         title="PRs"
-        description="Connect WhatsApp, SMS, or Instagram PR channels that handle reservations."
+        description="Connect WhatsApp, SMS, or Instagram PR channels that bring in and manage guests."
         right={
           isOwner && (
             <InviteButton
@@ -625,7 +625,7 @@ export function TeamClient({
           <EmptyState
             icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
             title="No PRs yet"
-            description="Connect PR WhatsApp numbers so they can handle reservations from their phone."
+            description="Connect PR WhatsApp numbers so they can manage their guests from their phone."
             className="border-border/60 bg-muted/20 rounded-xl border p-7"
           />
         ) : snapshot.waiters.length === 0 ? (

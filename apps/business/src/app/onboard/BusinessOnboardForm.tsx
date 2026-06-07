@@ -13,10 +13,9 @@ import {
   PRIMARY_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 
-// Business onboard captures first + last name so contracts and
-// reservation outreach can address the signer correctly. Phone is the
-// auth identity and gets mirrored into businesses.phone by the EF
-// from auth.user.phone.
+// Business onboard captures first + last name so contracts and outreach
+// can address the signer correctly. Phone is the auth identity and gets
+// mirrored into businesses.phone by the EF from auth.user.phone.
 export function BusinessOnboardForm() {
   const router = useRouter();
   const supabase = useBrowserSupabase();

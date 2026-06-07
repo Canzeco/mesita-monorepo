@@ -6,12 +6,14 @@ import {
   Store,
   Gift,
   ScanLine,
+  BarChart3,
+  Users,
   Settings,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Four primary surfaces — team, stats, and reservations live under Settings.
+// Six primary surfaces — reservations stays under Settings.
 type Item = {
   slug: string;
   Icon: LucideIcon;
@@ -22,6 +24,8 @@ const ITEMS: Item[] = [
   { slug: "place", Icon: Store, label: "Place" },
   { slug: "promos", Icon: Gift, label: "Promos" },
   { slug: "scan", Icon: ScanLine, label: "Scan" },
+  { slug: "performance", Icon: BarChart3, label: "Stats" },
+  { slug: "team", Icon: Users, label: "Team" },
   { slug: "settings", Icon: Settings, label: "Settings" },
 ];
 
@@ -39,22 +43,22 @@ export function BottomNav({ unitId }: { unitId: string }) {
               key={slug}
               href={`/unit/${unitId}/${slug}`}
               className={cn(
-                "relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium transition",
+                "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 text-[9px] font-medium transition",
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
               {active && (
-                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full" />
+                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full" />
               )}
               <span
                 className={cn(
-                  "relative flex h-8 w-8 items-center justify-center rounded-full transition",
+                  "relative flex h-7 w-7 items-center justify-center rounded-full transition",
                   active && "bg-primary/10 ring-primary/20 ring-1",
                 )}
               >
-                <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
+                <Icon className="h-4 w-4" strokeWidth={active ? 2.25 : 1.75} />
               </span>
               <span className="w-full truncate text-center">{label}</span>
             </Link>

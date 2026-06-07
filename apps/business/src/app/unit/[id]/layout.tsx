@@ -9,9 +9,8 @@ import {
   type BusinessProfile,
 } from "@/lib/api/business";
 
-// Mobile-first venue console shell. Place / Promos / Scan / Settings are
-// the four bottom-nav surfaces; team, reservations, and stats live under
-// Settings.
+// Mobile-first venue console shell. Place / Promos / Scan / Stats / Team /
+// Settings are the six bottom-nav surfaces; reservations lives under Settings.
 //
 // Auth flow is unchanged:
 //   - Require a Supabase session (middleware bounces signed-out users to /).
