@@ -20,19 +20,30 @@ export function SubTabs<T extends string>({
   active,
   onChange,
   className,
+  equalWidth = false,
 }: {
   tabs: readonly SubTabItem<T>[];
   active: T;
   onChange: (id: T) => void;
   className?: string;
+  // When true, tabs share the row evenly (e.g. 5 tabs → 20% each).
+  equalWidth?: boolean;
 }) {
   return (
     <div
       role="tablist"
       className={cn(
-        "scrollbar-hide bg-background/90 border-border sticky top-0 z-10 -mx-4 flex gap-1 overflow-x-auto border-b px-4 py-2 backdrop-blur-md",
+        "bg-background/90 border-border sticky top-0 z-10 -mx-4 border-b py-2 backdrop-blur-md",
+        equalWidth
+          ? "grid gap-1 px-2"
+          : "scrollbar-hide flex gap-1 overflow-x-auto px-4",
         className,
       )}
+      style={
+        equalWidth && tabs.length > 0
+          ? { gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }
+          : undefined
+      }
     >
       {tabs.map(({ id, label, Icon, count }) => {
         const isActive = id === active;
@@ -44,14 +55,21 @@ export function SubTabs<T extends string>({
             aria-selected={isActive}
             onClick={() => onChange(id)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold whitespace-nowrap transition",
+              "flex items-center rounded-full font-semibold transition",
+              equalWidth
+                ? "min-w-0 justify-center gap-1 px-1 py-1.5 text-[11px] sm:text-[12px]"
+                : "shrink-0 gap-1.5 px-3.5 py-1.5 text-[13px] whitespace-nowrap",
               isActive
                 ? "bg-foreground text-background shadow-sm"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            {Icon && <Icon className="h-3.5 w-3.5" />}
-            {label}
+            {Icon && (
+              <Icon
+                className={cn("shrink-0", equalWidth ? "h-3 w-3" : "h-3.5 w-3.5")}
+              />
+            )}
+            <span className={equalWidth ? "truncate" : undefined}>{label}</span>
             {count !== undefined && (
               <span
                 className={cn(

@@ -5,12 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Check, Plus, Settings, CircleUser } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MesitaLogo } from "@/components/shared";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
 import type { MyVenue } from "@/lib/api/venues";
 import { useUnitChrome } from "./UnitChrome";
 
 // The venue console app bar:
-//   left  — current unit, tap to switch between venues (or add one)
+//   left  — Mesita logo + current unit, tap unit to switch venues (or add one)
 //   right — two circular actions: Settings (gear) and Profile (account)
 //
 // Unit data comes from UnitChrome context (provided by the unit layout).
@@ -41,8 +42,16 @@ export function Topbar(
   return (
     <header className="border-border bg-background/85 sticky top-0 z-20 shrink-0 border-b backdrop-blur-md">
       <div className="flex items-center gap-2 px-3 py-2.5">
-        {/* Left — current unit / switcher */}
-        <div className="relative min-w-0 flex-1">
+        {/* Left — brand + current unit / switcher */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Link
+            href={unitId ? `/unit/${unitId}/place` : "/"}
+            aria-label="Mesita"
+            className="shrink-0"
+          >
+            <MesitaLogo size={32} />
+          </Link>
+          <div className="relative min-w-0 flex-1">
           {activeVenue ? (
             canSwitch ? (
               <>
@@ -128,6 +137,7 @@ export function Topbar(
               Add a place
             </Link>
           )}
+          </div>
         </div>
 
         {/* Right — Settings (gear) + Profile (account) */}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -19,7 +18,6 @@ import {
   Music2,
   ShoppingBag,
   UtensilsCrossed,
-  DollarSign,
   ExternalLink,
   Save,
   Check,
@@ -35,8 +33,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Cloud,
-  HardDrive,
-  FolderOpen,
+  Upload,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -45,6 +42,7 @@ import {
   type UpdateVenueInput,
   type VenueHours,
 } from "@/lib/api/venues";
+import { SubTabs, type SubTabItem } from "@/components/business/SubTabs";
 import { Field, GoogleLogo, InstagramLogo, Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
@@ -77,7 +75,7 @@ const DAYS: { key: DayKey; label: string; long: keyof VenueHours }[] = [
   { key: "sun", label: "Sun", long: "sunday" },
 ];
 
-const MAX_SHIFTS_PER_DAY = 2;
+const MAX_SHIFTS_PER_DAY = 1;
 
 type FormState = {
   name: string;
@@ -108,10 +106,18 @@ type FormState = {
   didi_food_url: string;
 };
 
-// Tier names only — the `$` count now renders as a row of DollarSign
-// icons in the BasicsSection so the price reads visually instead of
-// stringly. `PRICE_LEVEL_MAX` is the full count (4 icons total).
+// Tier names for the price-level readout. `PRICE_LEVEL_MAX` is 4 ($–$$$$).
 const PRICE_LEVEL_MAX = 4;
+
+type PlaceTab = "basics" | "channels" | "media" | "reviews" | "preview";
+
+const PLACE_TABS: readonly SubTabItem<PlaceTab>[] = [
+  { id: "basics", label: "Basics" },
+  { id: "channels", label: "Channels" },
+  { id: "media", label: "Media" },
+  { id: "reviews", label: "Reviews" },
+  { id: "preview", label: "Preview" },
+];
 const PRICE_TIER_LABEL: Record<number, string> = {
   1: "Budget",
   2: "Casual",
@@ -121,7 +127,7 @@ const PRICE_TIER_LABEL: Record<number, string> = {
 
 const SAVED_TOAST_MS = 2200;
 const VENUE_NAME_MAX = 120;
-const DESCRIPTION_MAX = 2000;
+const DESCRIPTION_MAX = 7000;
 const TAG_MAX = 40;
 const MAX_PHOTOS = 10;
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -132,6 +138,11 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/avif",
 ]);
 const ALLOWED_IMAGE_ACCEPT = Array.from(ALLOWED_IMAGE_MIME_TYPES).join(",");
+const ALLOWED_MENU_MIME_TYPES = new Set([
+  "application/pdf",
+  ...ALLOWED_IMAGE_MIME_TYPES,
+]);
+const ALLOWED_MENU_ACCEPT = Array.from(ALLOWED_MENU_MIME_TYPES).join(",");
 
 const NOT_FOUND_NOTE = "Not found yet — pipeline still searching.";
 
@@ -192,6 +203,29 @@ function validateUploadFile(file: File): string | null {
     return `File is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_UPLOAD_BYTES)}.`;
   }
   return null;
+}
+
+function validateMenuUploadFile(file: File): string | null {
+  if (!ALLOWED_MENU_MIME_TYPES.has(file.type)) {
+    return "Use a PDF or image (JPG, PNG, WEBP, AVIF).";
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return `File is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_UPLOAD_BYTES)}.`;
+  }
+  return null;
+}
+
+function extForMenuFile(file: File): string {
+  if (file.type === "application/pdf") return "pdf";
+  return extForFile(file);
+}
+
+function isDriveMenuUrl(url: string): boolean {
+  return describeMenuUrl(url)?.kind === "drive";
+}
+
+function initialMenuSource(url: string): "drive" | "upload" {
+  return isDriveMenuUrl(url) ? "drive" : "upload";
 }
 
 // Belt-and-suspenders for legacy data: any row that still carries the
@@ -340,6 +374,7 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
   // since Discard reset). Drives whether the SaveBar shows at all —
   // when clean, the form has no save chrome cluttering the page.
   const [isDirty, setIsDirty] = useState(false);
+  const [activeTab, setActiveTab] = useState<PlaceTab>("basics");
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setV((prev) => ({ ...prev, [key]: value }));
@@ -436,55 +471,71 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <SubTabs
+        tabs={PLACE_TABS}
+        active={activeTab}
+        onChange={setActiveTab}
+        equalWidth
+      />
       <ProfileCompletionBar v={v} />
-      <BasicsSection venue={venue} v={v} set={set} />
-      <DetailsSection venue={venue} v={v} set={set} />
-      <MediaSection
-        photos={v.photos}
-        onChange={(photos) => set("photos", photos)}
-        venueId={venue.id}
-        venueName={v.name}
-        onError={setError}
-      />
-      <MenuSection v={v} set={set} />
-      <LocationSection venue={venue} />
-      <TimeSection venue={venue} v={v} set={set} />
-      <ChannelsSection
-        venue={venue}
-        v={v}
-        set={set}
-        teamHref={`/unit/${venue.id}/team`}
-      />
-      <div className="border-border bg-card flex flex-col gap-3 rounded-xl border p-4">
-        <div>
-          <p className="text-sm font-semibold">Need fresh profile data?</p>
-          <p className="text-muted-foreground text-xs">
-            Re-run Atlas profile enrichment to refresh channels, reviews, and
-            metadata.
-          </p>
-          {atlasMockNotice && (
-            <p className="text-secondary mt-1 text-[11px] font-medium">
-              {atlasMockNotice}
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={handleMockAtlasRefresh}
-          disabled={atlasMockRunning}
-          className="bg-foreground text-background inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-semibold transition hover:opacity-90 disabled:opacity-60"
-        >
-          {atlasMockRunning ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          {atlasMockRunning ? "Calling Atlas…" : "Re-update profile"}
-        </button>
-      </div>
-      <ReviewsSummarySection venue={venue} />
-      <RelevantReviewsSection venue={venue} />
-      <PreviewSection venue={venue} v={v} />
+
+      {activeTab === "basics" && (
+        <>
+          <BasicsSection venue={venue} v={v} set={set} />
+          <MenuSection venueId={venue.id} v={v} set={set} onError={setError} />
+          <TimeSection venue={venue} v={v} set={set} />
+          <LocationSection venue={venue} />
+          <DetailsSection venue={venue} v={v} set={set} />
+          <div className="border-border bg-card flex flex-col gap-3 rounded-xl border p-4">
+            <div>
+              <p className="text-sm font-semibold">Need fresh profile data?</p>
+              <p className="text-muted-foreground text-xs">
+                Re-run Atlas profile enrichment to refresh channels, reviews,
+                and metadata.
+              </p>
+              {atlasMockNotice && (
+                <p className="text-secondary mt-1 text-[11px] font-medium">
+                  {atlasMockNotice}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleMockAtlasRefresh}
+              disabled={atlasMockRunning}
+              className="bg-foreground text-background inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-semibold transition hover:opacity-90 disabled:opacity-60"
+            >
+              {atlasMockRunning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {atlasMockRunning ? "Calling Atlas…" : "Re-update profile"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {activeTab === "channels" && <ChannelsSection v={v} set={set} />}
+
+      {activeTab === "media" && (
+        <MediaSection
+          photos={v.photos}
+          onChange={(photos) => set("photos", photos)}
+          venueId={venue.id}
+          venueName={v.name}
+          onError={setError}
+        />
+      )}
+
+      {activeTab === "reviews" && (
+        <>
+          <ReviewsSummarySection venue={venue} />
+          <RelevantReviewsSection venue={venue} />
+        </>
+      )}
+
+      {activeTab === "preview" && <PreviewSection venue={venue} v={v} />}
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
@@ -560,6 +611,12 @@ export function EditVenueForm({ venue }: { venue: MyVenue }) {
 
 // ── Sections ────────────────────────────────────────────────────────────
 
+const PROFILE_INPUT_CLASS =
+  "h-10 w-full rounded-xl bg-muted/35 px-3 text-[13px] outline-none transition placeholder:text-muted-foreground/45 focus:bg-muted/55";
+
+const PROFILE_TEXTAREA_CLASS =
+  "min-h-[11rem] w-full resize-y overflow-hidden rounded-xl bg-muted/35 px-3 py-3 text-[13px] leading-relaxed outline-none transition placeholder:text-muted-foreground/45 focus:bg-muted/55";
+
 function BasicsSection({
   venue,
   v,
@@ -569,125 +626,217 @@ function BasicsSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  // Keep identity + about copy together as requested.
-  const aboutLabel = `About ${v.name.trim() || "Venue"}`;
-  return (
-    <Section title="Basics">
-      <Field label="Name" required>
-        <div className="flex flex-col gap-1.5">
-          <input
-            value={v.name}
-            readOnly
-            maxLength={VENUE_NAME_MAX}
-            className={cn(INPUT, "bg-muted/35 text-foreground/85")}
-          />
-          <p className="text-muted-foreground text-[11px]">
-            Inferred from Google. This field cannot be changed here.
-          </p>
-        </div>
-      </Field>
+  const aboutRef = useRef<HTMLTextAreaElement>(null);
 
-      <Field label="Category">
+  useEffect(() => {
+    const el = aboutRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.max(176, el.scrollHeight)}px`;
+  }, [v.description]);
+
+  return (
+    <Section
+      title="Profile"
+      description="What guests see on your Place page."
+      contentClassName="flex flex-col gap-4"
+    >
+      <ReadOnly
+        label="Name"
+        value={v.name.trim() || null}
+        empty="Synced from your Google listing"
+      />
+
+      <ProfileVerificationStatus venue={venue} />
+
+      <ProfileField label="Category">
         <input
           value={v.category}
           onChange={(e) => set("category", e.target.value)}
           placeholder="e.g. cafe, mexican, sushi"
-          className={INPUT}
+          className={PROFILE_INPUT_CLASS}
         />
-      </Field>
+      </ProfileField>
 
       <PriceLevelDisplay level={venue.price_level} />
 
-      <Field label={aboutLabel}>
-        <div className="flex flex-col gap-1.5">
-          <textarea
-            value={v.description}
-            onChange={(e) => set("description", e.target.value)}
-            maxLength={DESCRIPTION_MAX}
-            placeholder={DESCRIPTION_PLACEHOLDER}
-            className={TEXTAREA}
-          />
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-muted-foreground text-[11px]">
-              Atlas AI writes up to 1000 characters. You can expand it manually
-              up to 2000.
-            </p>
-            <span className="text-muted-foreground shrink-0 text-[11px] font-medium tabular-nums">
-              {v.description.length} / {DESCRIPTION_MAX}
-            </span>
-          </div>
-        </div>
-      </Field>
+      <ProfileField
+        label="About"
+        meta={
+          <span className="text-muted-foreground text-[10px] font-medium tabular-nums">
+            {v.description.length.toLocaleString()} /{" "}
+            {DESCRIPTION_MAX.toLocaleString()}
+          </span>
+        }
+      >
+        <textarea
+          ref={aboutRef}
+          value={v.description}
+          onChange={(e) => set("description", e.target.value)}
+          maxLength={DESCRIPTION_MAX}
+          placeholder={DESCRIPTION_PLACEHOLDER}
+          rows={6}
+          className={PROFILE_TEXTAREA_CLASS}
+        />
+      </ProfileField>
     </Section>
   );
 }
 
+function ProfileVerificationStatus({ venue }: { venue: MyVenue }) {
+  const status = resolveVerificationPresentation(venue);
+
+  return (
+    <div>
+      <span className="text-[12px] font-medium text-foreground/85">
+        Verification
+      </span>
+      <div
+        className={cn(
+          "mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5",
+          status.surface,
+        )}
+      >
+        <span
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            status.iconTone,
+          )}
+        >
+          {status.icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold tracking-tight">
+            {status.label}
+          </p>
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            {status.detail}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function resolveVerificationPresentation(venue: MyVenue): {
+  label: string;
+  detail: string;
+  icon: React.ReactNode;
+  surface: string;
+  iconTone: string;
+} {
+  if (venue.listing_type === "partner") {
+    return {
+      label: "Verified partner",
+      detail: "Ownership confirmed — guests see you as a Mesita partner.",
+      icon: <BadgeCheck className="h-4 w-4" />,
+      surface: "bg-emerald-500/8 border border-emerald-500/15",
+      iconTone: "bg-emerald-500/15 text-emerald-600",
+    };
+  }
+
+  if (
+    venue.status === "pending_verification" ||
+    venue.status === "pending_review"
+  ) {
+    return {
+      label: "Verification pending",
+      detail: "Your ownership claim is in review.",
+      icon: <Clock className="h-4 w-4" />,
+      surface: "bg-amber-500/8 border border-amber-500/15",
+      iconTone: "bg-amber-500/15 text-amber-700",
+    };
+  }
+
+  if (venue.listing_type === "web") {
+    return {
+      label: "Not verified",
+      detail: "Listed on Mesita from the web — verify ownership to unlock partner perks.",
+      icon: <ShieldAlert className="h-4 w-4" />,
+      surface: "bg-muted/35 border border-border/60",
+      iconTone: "bg-foreground/8 text-muted-foreground",
+    };
+  }
+
+  return {
+    label: humanizeToken(venue.status) ?? "Unverified",
+    detail: humanizeToken(venue.listing_type) ?? "Claim this place to verify.",
+    icon: <ShieldAlert className="h-4 w-4" />,
+    surface: "bg-muted/35 border border-border/60",
+    iconTone: "bg-foreground/8 text-muted-foreground",
+  };
+}
+
+function ProfileField({
+  label,
+  meta,
+  children,
+}: {
+  label: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[12px] font-medium text-foreground/85">
+          {label}
+        </span>
+        {meta}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function PriceLevelDisplay({ level }: { level: number | null }) {
-  // Segmented 4-step bar (25% each) so price tier is readable at a glance.
   const normalizedLevel =
     level == null ? null : Math.max(1, Math.min(PRICE_LEVEL_MAX, level));
   const isEmpty = normalizedLevel == null;
 
   return (
-    <div>
-      <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
-        <DollarSign className="text-foreground/60 h-4 w-4" />
-        Price level
-      </span>
-      <p className="text-muted-foreground/80 mb-2 text-[11px]">
-        From Google. This field is auto-detected and cannot be changed here.
-      </p>
-      <div className="border-border rounded-xl border bg-gradient-to-r from-fuchsia-50/70 via-rose-50/60 to-orange-50/70 p-2.5">
-        <div
-          className="grid grid-cols-4 gap-1"
-          aria-label={
-            normalizedLevel == null
-              ? "Price level not available"
-              : `Price level ${normalizedLevel} of ${PRICE_LEVEL_MAX}`
-          }
-        >
-          {Array.from({ length: PRICE_LEVEL_MAX }, (_, idx) => {
-            const segment = idx + 1;
-            const active =
-              normalizedLevel != null && segment <= normalizedLevel;
-            const current = normalizedLevel === segment;
-            return (
-              <div
-                key={segment}
-                className={cn(
-                  "flex h-10 items-center justify-center rounded-lg border text-[12px] font-semibold tabular-nums transition",
-                  active
-                    ? "bg-pink-gradient border-transparent text-white shadow-sm"
-                    : "border-border/60 text-muted-foreground/80 bg-white/90",
-                  current && "ring-2 ring-fuchsia-300/70",
-                )}
-              >
-                {"$".repeat(segment)}
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <p
-            className={cn(
-              "text-[12px]",
-              isEmpty
-                ? "text-muted-foreground italic"
-                : "text-muted-foreground/90",
-            )}
-          >
-            {isEmpty
-              ? "Not listed on Google yet."
-              : `Level ${normalizedLevel} of ${PRICE_LEVEL_MAX}`}
-          </p>
-          {!isEmpty && (
-            <span className="bg-pink-gradient rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white uppercase">
-              {PRICE_TIER_LABEL[normalizedLevel] ?? "—"}
+    <ProfileField
+      label="Price level"
+      meta={
+        !isEmpty ? (
+          <span className="text-muted-foreground text-[10px] font-medium">
+            {PRICE_TIER_LABEL[normalizedLevel]}
+          </span>
+        ) : null
+      }
+    >
+      <div
+        className="flex items-center gap-2"
+        aria-label={
+          isEmpty
+            ? "Price level not available"
+            : `Price level ${normalizedLevel} of ${PRICE_LEVEL_MAX}`
+        }
+      >
+        {Array.from({ length: PRICE_LEVEL_MAX }, (_, idx) => {
+          const segment = idx + 1;
+          const active = normalizedLevel != null && segment <= normalizedLevel;
+          return (
+            <span
+              key={segment}
+              className={cn(
+                "font-display flex h-9 flex-1 items-center justify-center rounded-lg text-[13px] font-semibold tabular-nums transition",
+                active
+                  ? "bg-pink-gradient text-white"
+                  : "bg-muted/35 text-muted-foreground/45",
+              )}
+            >
+              {"$".repeat(segment)}
             </span>
-          )}
-        </div>
+          );
+        })}
       </div>
-    </div>
+      {isEmpty ? (
+        <p className="text-muted-foreground mt-2 text-[10px]">
+          Not on Google yet
+        </p>
+      ) : null}
+    </ProfileField>
   );
 }
 
@@ -797,43 +946,65 @@ function ProfileCompletionBar({ v }: { v: FormState }) {
   const completed = checks.filter((check) => check.done).length;
   const total = checks.length;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const pending = checks.filter((check) => !check.done).slice(0, 3);
+  const pending = checks.filter((check) => !check.done);
+  const isComplete = pending.length === 0;
 
   return (
-    <div className="border-border bg-card rounded-2xl border p-4">
-      <div className="mb-2.5 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">Profile completeness</p>
-        <span className="text-muted-foreground text-xs font-medium">
-          {completed}/{total} completed
-        </span>
+    <div
+      className="border-border/80 bg-card rounded-2xl border px-4 py-3.5"
+      role="status"
+      aria-label={`Profile ${pct}% complete, ${completed} of ${total} fields filled`}
+    >
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold tracking-tight">
+            Profile completeness
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-[11px]">
+            {completed} of {total} fields filled
+          </p>
+        </div>
+        <p className="font-display shrink-0 text-[1.75rem] leading-none font-semibold tracking-tight tabular-nums">
+          {pct}
+          <span className="text-muted-foreground text-sm font-medium">%</span>
+        </p>
       </div>
-      <div className="bg-muted h-2.5 overflow-hidden rounded-full">
+
+      <div className="bg-muted mt-3 h-1 overflow-hidden rounded-full">
         <div
           className={cn(
-            "h-full rounded-full transition-all",
-            pct >= 90
-              ? "bg-emerald-500"
-              : pct >= 60
-                ? "bg-amber-500"
-                : "bg-foreground/75",
+            "h-full rounded-full transition-[width] duration-500 ease-out",
+            isComplete ? "bg-emerald-500" : "bg-pink-gradient",
           )}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="mt-2.5 flex items-center justify-between gap-3">
-        <p className="text-foreground text-[12px] font-semibold">
-          {pct}% complete
+
+      {isComplete ? (
+        <p className="text-emerald-700 mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+          Profile looks complete
         </p>
-        {pending.length > 0 ? (
-          <p className="text-muted-foreground text-[11px]">
-            Next up: {pending.map((item) => item.label).join(" · ")}
-          </p>
-        ) : (
-          <p className="text-[11px] font-medium text-emerald-700">
-            Profile looks complete.
-          </p>
-        )}
-      </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+            Still needed
+          </span>
+          {pending.slice(0, 4).map((item) => (
+            <span
+              key={item.label}
+              className="border-border/70 text-foreground/80 bg-background rounded-full border px-2 py-0.5 text-[10px] font-medium"
+            >
+              {item.label}
+            </span>
+          ))}
+          {pending.length > 4 ? (
+            <span className="text-muted-foreground text-[10px] font-medium">
+              +{pending.length - 4} more
+            </span>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -1102,27 +1273,16 @@ function TimeSection({
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  // Density notes: HoursEditor drops its own card chrome (the parent
-  // Section already provides it), so the days render as hairline-
-  // separated rows. Timezone is a proper key+value readonly card so it
-  // matches Address / Google Maps in Location and reads as a real
-  // field, not floating caption. Popular Times is on the roadmap (it's
-  // M-Place-V=NO in Notion and the Google Places API doesn't expose
-  // it) — surfacing it as a stub here was adding noise, so we drop it
-  // until the scraper pipeline lands real data.
   return (
     <Section
-      title="Time"
-      description="Set opening hours by day. Use +1d for overnight ranges (e.g. 23:00 → 02:00)."
+      title="Hours"
+      description={
+        venue.timezone
+          ? `${venue.timezone} · one shift per day`
+          : "One shift per day"
+      }
     >
-      <ReadOnly
-        label="Timezone"
-        value={venue.timezone}
-        icon={<Clock className="h-4 w-4" />}
-      />
-
       <HoursEditor hours={v.hours} onChange={(hours) => set("hours", hours)} />
-      <PopularTimesMock venueName={v.name || venue.name || "Venue"} />
     </Section>
   );
 }
@@ -1388,190 +1548,210 @@ function PhotoLightbox({
 }
 
 function MenuSection({
+  venueId,
   v,
   set,
+  onError,
 }: {
+  venueId: string;
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  onError: (msg: string | null) => void;
 }) {
-  const links =
-    v.menu_links.length > 0 ? v.menu_links : [{ name: "", url: "" }];
-  const primary = links.find((m) => m.url.trim() !== "") ??
-    links[0] ?? { name: "", url: "" };
-  const menuMeta = describeMenuUrl(primary.url);
-  const activeKind = menuMeta?.kind ?? "other";
-  const setLink = (idx: number, patch: Partial<MenuEntry>) => {
-    const next = links.map((entry, i) =>
-      i === idx ? { ...entry, ...patch } : entry,
-    );
-    set("menu_links", next);
+  const supabase = useBrowserSupabase();
+  const link = v.menu_links[0] ?? { name: "", url: "" };
+  const [source, setSource] = useState<"drive" | "upload">(() =>
+    initialMenuSource(link.url),
+  );
+  const [uploading, setUploading] = useState(false);
+
+  const setLink = (patch: Partial<MenuEntry>) => {
+    set("menu_links", [{ ...link, ...patch }]);
   };
-  const addLink = () => {
-    if (links.length >= 10) return;
-    set("menu_links", [...links, { name: "", url: "" }]);
-  };
-  const removeLink = (idx: number) => {
-    const next = links.filter((_, i) => i !== idx);
-    set("menu_links", next.length > 0 ? next : [{ name: "", url: "" }]);
+
+  const driveMeta =
+    source === "drive" ? describeMenuUrl(link.url) : null;
+  const hasUploadedFile =
+    source === "upload" && link.url.trim() !== "" && !isDriveMenuUrl(link.url);
+
+  const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || uploading) return;
+
+    const fileError = validateMenuUploadFile(file);
+    if (fileError) {
+      onError(fileError);
+      return;
+    }
+
+    setUploading(true);
+    onError(null);
+    try {
+      const ext = extForMenuFile(file);
+      const path = `business/${venueId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("venue-images")
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type,
+          cacheControl: "31536000",
+        });
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+      const { data } = supabase.storage.from("venue-images").getPublicUrl(path);
+      if (!data?.publicUrl) {
+        throw new Error("Couldn't get a public URL for the upload.");
+      }
+      const baseName = file.name.replace(/\.[^.]+$/, "").trim();
+      setLink({
+        url: data.publicUrl,
+        name: link.name.trim() || baseName.slice(0, 80),
+      });
+      onError(null);
+    } catch (err) {
+      onError(errMsg(err, "Couldn't upload catalog file."));
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <Section
       title="Products"
-      description="Add one or more public product/catalog links. The first link with a URL is used as the primary catalog."
+      description="One catalog for guests — link from Google Drive or upload a file."
     >
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <MenuHostCard
-          title="Google Drive"
-          subtitle="Shared catalog file"
-          active={activeKind === "drive"}
-          icon={<Cloud className="h-3.5 w-3.5" />}
-        />
-        <MenuHostCard
-          title="Hosted directly"
-          subtitle="Your domain / CDN"
-          active={activeKind === "hosted"}
-          icon={<HardDrive className="h-3.5 w-3.5" />}
-        />
-        <MenuHostCard
-          title="Other storage"
-          subtitle="Dropbox / custom host"
-          active={activeKind === "other"}
-          icon={<FolderOpen className="h-3.5 w-3.5" />}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {links.map((link, idx) => (
-          <div
-            key={`menu-link-${idx}`}
-            className="border-border bg-background rounded-xl border p-3"
-          >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className={TINY_LABEL_CLASS}>
-                Product {idx + 1}
-                {idx === 0 && " (primary)"}
-              </p>
-              <button
-                type="button"
-                onClick={() => removeLink(idx)}
-                disabled={links.length === 1}
-                className="text-muted-foreground hover:text-destructive rounded-full px-2 py-1 text-[11px] font-semibold disabled:opacity-40"
-              >
-                Remove
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div>
-                <p className="text-muted-foreground mb-1 text-[11px] font-medium">
-                  Product name
-                </p>
-                <input
-                  type="text"
-                  value={link.name}
-                  onChange={(e) =>
-                    setLink(idx, { name: e.target.value.slice(0, 80) })
-                  }
-                  placeholder="Dinner menu"
-                  className="border-border bg-card focus:border-foreground/40 w-full rounded-xl border px-3 py-2.5 text-sm transition outline-none"
-                />
-              </div>
-              <div>
-                <p className="text-muted-foreground mb-1 text-[11px] font-medium">
-                  Product catalog link
-                </p>
-                <UrlInput
-                  icon={<FileText className="h-4 w-4" />}
-                  value={link.url}
-                  onChange={(val) => setLink(idx, { url: val })}
-                  placeholder="https://yourplace.com/menu.pdf"
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={addLink}
-          disabled={links.length >= 10}
-          className="border-border bg-card hover:bg-muted inline-flex h-10 items-center justify-center gap-1 rounded-full border px-4 text-[12px] font-semibold transition disabled:opacity-50"
+      <div className="flex flex-col gap-3">
+        <div
+          role="tablist"
+          aria-label="Catalog source"
+          className="bg-muted/40 flex gap-1 rounded-full p-1"
         >
-          <Plus className="h-3.5 w-3.5" />
-          Add another product
-        </button>
-      </div>
+          {(
+            [
+              { id: "drive" as const, label: "Google Drive", Icon: Cloud },
+              { id: "upload" as const, label: "Direct upload", Icon: Upload },
+            ] as const
+          ).map(({ id, label, Icon }) => {
+            const active = source === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setSource(id)}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-[12px] font-semibold transition",
+                  active
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
-      {menuMeta ? (
-        menuMeta.valid ? (
-          <div className="bg-secondary/10 border-secondary/25 flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-start gap-2">
-              <span className="bg-secondary/15 text-secondary mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                <CheckCircle2 className="h-4 w-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-secondary text-sm font-semibold">
-                  {menuMeta.provider} link detected
-                </p>
-                <p className="text-muted-foreground truncate text-xs">
-                  {menuMeta.note}
-                </p>
-              </div>
-            </div>
-            <a
-              href={menuMeta.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-foreground text-background inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold"
-            >
-              <ExternalLink className="h-3 w-3" />
-              Open link
-            </a>
-          </div>
-        ) : (
-          <div className="bg-destructive/10 border-destructive/25 text-destructive flex items-start gap-2 rounded-xl border px-3 py-2.5 text-xs">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <p>
-              Link looks invalid. Paste a full public URL (for example
-              `https://.../menu.pdf`).
+        <Field label="Product name">
+          <input
+            type="text"
+            value={link.name}
+            onChange={(e) => setLink({ name: e.target.value.slice(0, 80) })}
+            placeholder="Dinner menu"
+            className={INPUT}
+          />
+        </Field>
+
+        {source === "drive" ? (
+          <Field label="Google Drive link">
+            <UrlInput
+              icon={<Cloud className="h-4 w-4" />}
+              value={link.url}
+              onChange={(val) => setLink({ url: val })}
+              placeholder="https://drive.google.com/..."
+            />
+            <p className="text-muted-foreground mt-1.5 text-[11px]">
+              Use a public share link so guests can open the catalog.
             </p>
+          </Field>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {hasUploadedFile ? (
+              <div className="border-border bg-muted/30 flex items-center gap-2 rounded-xl border px-3 py-2.5">
+                <FileText className="text-muted-foreground h-4 w-4 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">Catalog uploaded</p>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground truncate text-[11px] hover:underline"
+                  >
+                    {link.url}
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLink({ url: "" })}
+                  className="text-muted-foreground hover:text-destructive shrink-0 text-[11px] font-semibold"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-[11px]">
+                PDF or image, up to {formatBytes(MAX_UPLOAD_BYTES)}.
+              </p>
+            )}
+            <input
+              id={`menu-upload-${venueId}`}
+              type="file"
+              accept={ALLOWED_MENU_ACCEPT}
+              onChange={onFilePicked}
+              disabled={uploading}
+              className="hidden"
+            />
+            <label
+              htmlFor={`menu-upload-${venueId}`}
+              className={cn(
+                "border-border bg-card hover:bg-muted inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-full border px-4 text-[12px] font-semibold transition",
+                uploading && "pointer-events-none opacity-60",
+              )}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  {hasUploadedFile ? "Replace file" : "Upload catalog"}
+                </>
+              )}
+            </label>
           </div>
-        )
-      ) : null}
-    </Section>
-  );
-}
-
-function MenuHostCard({
-  title,
-  subtitle,
-  active,
-  icon,
-}: {
-  title: string;
-  subtitle: string;
-  active: boolean;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "border-border/70 bg-muted/20 flex items-start gap-2 rounded-xl border px-3 py-2.5",
-        active && "border-foreground/25 bg-foreground/[0.04]",
-      )}
-    >
-      <span
-        className={cn(
-          "text-muted-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-          active && "bg-foreground text-background",
         )}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="text-foreground text-xs font-semibold">{title}</p>
-        <p className="text-muted-foreground text-[11px]">{subtitle}</p>
+
+        {driveMeta ? (
+          driveMeta.valid ? (
+            <p className="text-secondary flex items-start gap-1.5 text-[11px] font-medium">
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {driveMeta.note}
+            </p>
+          ) : (
+            <p className="text-destructive flex items-start gap-1.5 text-[11px] font-medium">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Paste a full public Google Drive URL.
+            </p>
+          )
+        ) : null}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -1616,31 +1796,24 @@ function DetailsSection({
 }
 
 function ChannelsSection({
-  venue,
   v,
   set,
-  teamHref,
 }: {
-  venue: MyVenue;
   v: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-  teamHref: string;
 }) {
   type SecondaryChannelKey =
-    | "email"
     | "facebook_url"
     | "tiktok_url"
     | "youtube_url"
     | "opentable_url"
     | "rappi_url"
     | "uber_eats_url"
-    | "didi_food_url"
-    | "google_maps_url";
+    | "didi_food_url";
 
   const [secondaryNotAvailable, setSecondaryNotAvailable] = useState<
     Record<SecondaryChannelKey, boolean>
   >({
-    email: false,
     facebook_url: false,
     tiktok_url: false,
     youtube_url: false,
@@ -1648,7 +1821,6 @@ function ChannelsSection({
     rappi_url: false,
     uber_eats_url: false,
     didi_food_url: false,
-    google_maps_url: false,
   });
 
   const setSecondaryMissing = (key: SecondaryChannelKey, missing: boolean) =>
@@ -1659,14 +1831,10 @@ function ChannelsSection({
     v.phone,
     v.whatsapp_url,
     v.instagram_url,
-  ];
-  const prFields = [
-    v.phone,
-    v.whatsapp_pr_urls[0] ?? "",
-    v.instagram_pr_urls[0] ?? "",
+    v.google_maps_url,
+    v.email,
   ];
   const secondaryFields = [
-    v.email,
     v.facebook_url,
     v.tiktok_url,
     v.youtube_url,
@@ -1674,12 +1842,9 @@ function ChannelsSection({
     v.rappi_url,
     v.uber_eats_url,
     v.didi_food_url,
-    v.google_maps_url,
   ];
   const primaryCompleted = primaryFields.filter((f) => f.trim() !== "").length;
-  const prCompleted = prFields.filter((f) => f.trim() !== "").length;
   const secondaryCompletionMap: Record<SecondaryChannelKey, boolean> = {
-    email: v.email.trim() !== "" || secondaryNotAvailable.email,
     facebook_url:
       v.facebook_url.trim() !== "" || secondaryNotAvailable.facebook_url,
     tiktok_url: v.tiktok_url.trim() !== "" || secondaryNotAvailable.tiktok_url,
@@ -1692,267 +1857,183 @@ function ChannelsSection({
       v.uber_eats_url.trim() !== "" || secondaryNotAvailable.uber_eats_url,
     didi_food_url:
       v.didi_food_url.trim() !== "" || secondaryNotAvailable.didi_food_url,
-    google_maps_url:
-      v.google_maps_url.trim() !== "" || secondaryNotAvailable.google_maps_url,
   };
   const secondaryCompleted = Object.values(secondaryCompletionMap).filter(
     Boolean,
   ).length;
-  const filled = primaryCompleted + prCompleted + secondaryCompleted;
-  const totalFields =
-    primaryFields.length + prFields.length + secondaryFields.length;
-
-  const prWhatsapp = v.whatsapp_pr_urls[0] ?? "";
-  const prInstagram = v.instagram_pr_urls[0] ?? "";
-  const setPrWhatsapp = (value: string) =>
-    set("whatsapp_pr_urls", value.trim() ? [value.trim()] : []);
-  const setPrInstagram = (value: string) =>
-    set("instagram_pr_urls", value.trim() ? [value.trim()] : []);
+  const filled = primaryCompleted + secondaryCompleted;
+  const totalFields = primaryFields.length + secondaryFields.length;
   const completed = (value: string) => value.trim() !== "";
 
   return (
     <Section
       title="Channels"
+      description="Where guests find and reach you."
       right={
         <span className={TINY_LABEL_CLASS}>
           {filled} / {totalFields}
         </span>
       }
     >
-      <div className="flex flex-col gap-3">
-        <div className="border-border bg-background rounded-xl border p-3">
-          <p className={cn(TINY_LABEL_CLASS, "mb-2")}>Primary Channels</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <UrlField
-              label="Website"
-              icon={<Globe className="h-4 w-4" />}
-              placeholder="https://yourplace.com"
-              value={v.website_url}
-              onChange={(val) => set("website_url", val)}
-              completed={completed(v.website_url)}
-            />
-            <UrlField
-              label="Phone"
-              icon={<PhoneIcon className="h-4 w-4" />}
-              placeholder="+52 444 833 5050"
-              value={v.phone}
-              onChange={(val) => set("phone", val)}
-              completed={completed(v.phone)}
-            />
-            <UrlField
-              label="WhatsApp"
-              icon={<MessageCircle className="h-4 w-4" />}
-              placeholder="https://wa.me/52…"
-              value={v.whatsapp_url}
-              onChange={(val) => set("whatsapp_url", val)}
-              completed={completed(v.whatsapp_url)}
-            />
-            <UrlField
-              label="Instagram"
-              icon={<Instagram className="h-4 w-4" />}
-              placeholder="https://instagram.com/yourplace"
-              value={v.instagram_url}
-              onChange={(val) => set("instagram_url", val)}
-              completed={completed(v.instagram_url)}
-            />
-          </div>
-        </div>
+      <div className="flex flex-col gap-5">
+        <ChannelGroup title="Primary channels">
+          <ChannelField
+            label="Website"
+            icon={<Globe className="h-4 w-4" />}
+            placeholder="https://yourplace.com"
+            value={v.website_url}
+            onChange={(val) => set("website_url", val)}
+            completed={completed(v.website_url)}
+          />
+          <ChannelField
+            label="Phone"
+            icon={<PhoneIcon className="h-4 w-4" />}
+            placeholder="+52 444 833 5050"
+            value={v.phone}
+            onChange={(val) => set("phone", val)}
+            completed={completed(v.phone)}
+          />
+          <ChannelField
+            label="WhatsApp"
+            icon={<MessageCircle className="h-4 w-4" />}
+            placeholder="https://wa.me/52…"
+            value={v.whatsapp_url}
+            onChange={(val) => set("whatsapp_url", val)}
+            completed={completed(v.whatsapp_url)}
+          />
+          <ChannelField
+            label="Instagram"
+            icon={<Instagram className="h-4 w-4" />}
+            placeholder="https://instagram.com/yourplace"
+            value={v.instagram_url}
+            onChange={(val) => set("instagram_url", val)}
+            completed={completed(v.instagram_url)}
+          />
+          <ChannelField
+            label="Google Maps"
+            icon={<MapPin className="h-4 w-4" />}
+            placeholder="https://maps.google.com/..."
+            value={v.google_maps_url}
+            onChange={(val) => set("google_maps_url", val)}
+            completed={completed(v.google_maps_url)}
+          />
+          <ChannelField
+            label="Email"
+            icon={<Mail className="h-4 w-4" />}
+            placeholder="hola@yourplace.com"
+            value={v.email}
+            onChange={(val) => set("email", val)}
+            completed={completed(v.email)}
+          />
+        </ChannelGroup>
 
-        <div className="border-border bg-background rounded-xl border p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className={TINY_LABEL_CLASS}>PR Channels</p>
-            <div className="flex items-center gap-1.5">
-              <Link
-                href={teamHref}
-                className="bg-pink-gradient inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white transition hover:opacity-90"
-              >
-                Connect your PRs
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-              <Link
-                href={teamHref}
-                className="bg-muted text-foreground hover:bg-foreground hover:text-background inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition"
-              >
-                Team page
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <UrlField
-              label="Phone"
-              icon={<PhoneIcon className="h-4 w-4" />}
-              placeholder="+52 444 833 5050"
-              value={v.phone}
-              onChange={(val) => set("phone", val)}
-              completed={completed(v.phone)}
-            />
-            <UrlField
-              label="WhatsApp"
-              icon={<MessageCircle className="h-4 w-4" />}
-              placeholder="https://wa.me/52…"
-              value={prWhatsapp}
-              onChange={setPrWhatsapp}
-              completed={completed(prWhatsapp)}
-            />
-            <UrlField
-              label="Instagram"
-              icon={<Instagram className="h-4 w-4" />}
-              placeholder="https://instagram.com/…"
-              value={prInstagram}
-              onChange={setPrInstagram}
-              completed={completed(prInstagram)}
-            />
-          </div>
-        </div>
-
-        <div className="border-border bg-background rounded-xl border p-3">
-          <p className={cn(TINY_LABEL_CLASS, "mb-2")}>Secundary Channels</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <UrlField
-              label="Email"
-              icon={<Mail className="h-4 w-4" />}
-              placeholder="hola@yourplace.com"
-              value={v.email}
-              onChange={(val) => {
-                set("email", val);
-                if (val.trim()) setSecondaryMissing("email", false);
-              }}
-              completed={secondaryCompletionMap.email}
-              missing={secondaryNotAvailable.email}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("email", missing)
-              }
-            />
-            <UrlField
-              label="Facebook"
-              icon={<Facebook className="h-4 w-4" />}
-              placeholder="https://facebook.com/yourplace"
-              value={v.facebook_url}
-              onChange={(val) => {
-                set("facebook_url", val);
-                if (val.trim()) setSecondaryMissing("facebook_url", false);
-              }}
-              completed={secondaryCompletionMap.facebook_url}
-              missing={secondaryNotAvailable.facebook_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("facebook_url", missing)
-              }
-            />
-            <UrlField
-              label="TikTok"
-              icon={<Music2 className="h-4 w-4" />}
-              placeholder="https://tiktok.com/@yourplace"
-              value={v.tiktok_url}
-              onChange={(val) => {
-                set("tiktok_url", val);
-                if (val.trim()) setSecondaryMissing("tiktok_url", false);
-              }}
-              completed={secondaryCompletionMap.tiktok_url}
-              missing={secondaryNotAvailable.tiktok_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("tiktok_url", missing)
-              }
-            />
-            <UrlField
-              label="YouTube"
-              icon={<Globe className="h-4 w-4" />}
-              placeholder="https://youtube.com/@yourplace"
-              value={v.youtube_url}
-              onChange={(val) => {
-                set("youtube_url", val);
-                if (val.trim()) setSecondaryMissing("youtube_url", false);
-              }}
-              completed={secondaryCompletionMap.youtube_url}
-              missing={secondaryNotAvailable.youtube_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("youtube_url", missing)
-              }
-            />
-            <UrlField
-              label="OpenTable"
-              icon={<UtensilsCrossed className="h-4 w-4" />}
-              placeholder="https://www.opentable.com/..."
-              value={v.opentable_url}
-              onChange={(val) => {
-                set("opentable_url", val);
-                if (val.trim()) setSecondaryMissing("opentable_url", false);
-              }}
-              completed={secondaryCompletionMap.opentable_url}
-              missing={secondaryNotAvailable.opentable_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("opentable_url", missing)
-              }
-            />
-            <UrlField
-              label="Rappi"
-              icon={<ShoppingBag className="h-4 w-4" />}
-              placeholder="https://www.rappi.com/restaurants/..."
-              value={v.rappi_url}
-              onChange={(val) => {
-                set("rappi_url", val);
-                if (val.trim()) setSecondaryMissing("rappi_url", false);
-              }}
-              completed={secondaryCompletionMap.rappi_url}
-              missing={secondaryNotAvailable.rappi_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("rappi_url", missing)
-              }
-            />
-            <UrlField
-              label="Uber Eats"
-              icon={<UtensilsCrossed className="h-4 w-4" />}
-              placeholder="https://www.ubereats.com/store/..."
-              value={v.uber_eats_url}
-              onChange={(val) => {
-                set("uber_eats_url", val);
-                if (val.trim()) setSecondaryMissing("uber_eats_url", false);
-              }}
-              completed={secondaryCompletionMap.uber_eats_url}
-              missing={secondaryNotAvailable.uber_eats_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("uber_eats_url", missing)
-              }
-            />
-            <UrlField
-              label="DiDi Food"
-              icon={<ShoppingBag className="h-4 w-4" />}
-              placeholder="https://www.didiglobal.com/..."
-              value={v.didi_food_url}
-              onChange={(val) => {
-                set("didi_food_url", val);
-                if (val.trim()) setSecondaryMissing("didi_food_url", false);
-              }}
-              completed={secondaryCompletionMap.didi_food_url}
-              missing={secondaryNotAvailable.didi_food_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("didi_food_url", missing)
-              }
-            />
-            <UrlField
-              label="Google Maps"
-              icon={<MapPin className="h-4 w-4" />}
-              placeholder="https://maps.google.com/..."
-              value={v.google_maps_url}
-              onChange={(val) => {
-                set("google_maps_url", val);
-                if (val.trim()) setSecondaryMissing("google_maps_url", false);
-              }}
-              completed={secondaryCompletionMap.google_maps_url}
-              missing={secondaryNotAvailable.google_maps_url}
-              onToggleMissing={(missing) =>
-                setSecondaryMissing("google_maps_url", missing)
-              }
-            />
-            <div className="sm:col-span-2">
-              <ReadOnly
-                label="Google business profile id (Mesita spine)"
-                value={venue.id}
-                icon={<Sparkles className="h-4 w-4" />}
-              />
-            </div>
-          </div>
-        </div>
+        <ChannelGroup title="Secondary channels">
+          <ChannelField
+            label="Facebook"
+            icon={<Facebook className="h-4 w-4" />}
+            placeholder="https://facebook.com/yourplace"
+            value={v.facebook_url}
+            onChange={(val) => {
+              set("facebook_url", val);
+              if (val.trim()) setSecondaryMissing("facebook_url", false);
+            }}
+            completed={secondaryCompletionMap.facebook_url}
+            missing={secondaryNotAvailable.facebook_url}
+            onToggleMissing={(missing) =>
+              setSecondaryMissing("facebook_url", missing)
+            }
+          />
+          <ChannelField
+            label="TikTok"
+            icon={<Music2 className="h-4 w-4" />}
+            placeholder="https://tiktok.com/@yourplace"
+            value={v.tiktok_url}
+            onChange={(val) => {
+              set("tiktok_url", val);
+              if (val.trim()) setSecondaryMissing("tiktok_url", false);
+            }}
+            completed={secondaryCompletionMap.tiktok_url}
+            missing={secondaryNotAvailable.tiktok_url}
+            onToggleMissing={(missing) =>
+              setSecondaryMissing("tiktok_url", missing)
+            }
+          />
+          <ChannelField
+            label="YouTube"
+            icon={<Globe className="h-4 w-4" />}
+            placeholder="https://youtube.com/@yourplace"
+            value={v.youtube_url}
+            onChange={(val) => {
+              set("youtube_url", val);
+              if (val.trim()) setSecondaryMissing("youtube_url", false);
+            }}
+            completed={secondaryCompletionMap.youtube_url}
+            missing={secondaryNotAvailable.youtube_url}
+            onToggleMissing={(missing) =>
+              setSecondaryMissing("youtube_url", missing)
+            }
+          />
+          <ChannelField
+            label="OpenTable"
+            icon={<UtensilsCrossed className="h-4 w-4" />}
+            placeholder="https://www.opentable.com/..."
+            value={v.opentable_url}
+            onChange={(val) => {
+              set("opentable_url", val);
+              if (val.trim()) setSecondaryMissing("opentable_url", false);
+            }}
+            completed={secondaryCompletionMap.opentable_url}
+            missing={secondaryNotAvailable.opentable_url}
+            onToggleMissing={(missing) =>
+              setSecondaryMissing("opentable_url", missing)
+            }
+          />
+          <ChannelField
+            label="Rappi"
+            icon={<ShoppingBag className="h-4 w-4" />}
+            placeholder="https://www.rappi.com/restaurants/..."
+            value={v.rappi_url}
+            onChange={(val) => {
+              set("rappi_url", val);
+              if (val.trim()) setSecondaryMissing("rappi_url", false);
+            }}
+            completed={secondaryCompletionMap.rappi_url}
+            missing={secondaryNotAvailable.rappi_url}
+            onToggleMissing={(missing) =>
+              setSecondaryMissing("rappi_url", missing)
+            }
+          />
+          <ChannelField
+            label="Uber Eats"
+            icon={<UtensilsCrossed className="h-4 w-4" />}
+            placeholder="https://www.ubereats.com/store/..."
+            value={v.uber_eats_url}
+            onChange={(val) => {
+              set("uber_eats_url", val);
+              if (val.trim()) setSecondaryMissing("uber_eats_url", false);
+            }}
+            completed={secondaryCompletionMap.uber_eats_url}
+            missing={secondaryNotAvailable.uber_eats_url}
+            onToggleMissing={(missing) =>
+              setSecondaryMissing("uber_eats_url", missing)
+            }
+          />
+          <ChannelField
+            label="DiDi Food"
+            icon={<ShoppingBag className="h-4 w-4" />}
+            placeholder="https://www.didiglobal.com/..."
+            value={v.didi_food_url}
+            onChange={(val) => {
+              set("didi_food_url", val);
+              if (val.trim()) setSecondaryMissing("didi_food_url", false);
+            }}
+            completed={secondaryCompletionMap.didi_food_url}
+            missing={secondaryNotAvailable.didi_food_url}
+            onToggleMissing={(missing) =>
+              setSecondaryMissing("didi_food_url", missing)
+            }
+          />
+        </ChannelGroup>
       </div>
     </Section>
   );
@@ -2317,112 +2398,6 @@ function ExternalMetricCard({
   );
 }
 
-function PopularTimesMock({ venueName }: { venueName: string }) {
-  const [selectedDay, setSelectedDay] = useState<DayKey>("fri");
-  const byDay = mockPopularTimesByDay(venueName);
-  const bars = byDay[selectedDay];
-  const max = Math.max(...bars, 1);
-  const peakIdx = bars.findIndex((v) => v === max);
-  const peakHour = hourLabelFromOffset(peakIdx);
-  return (
-    <div className="bg-muted/30 border-border rounded-[26px] border p-4 sm:p-5">
-      <div className="mb-3 flex items-center gap-2">
-        <p className="text-foreground text-2xl/[1.1] font-semibold tracking-tight">
-          Popular times
-        </p>
-      </div>
-      <p className="text-muted-foreground -mt-1 mb-3 text-[11px] font-medium">
-        From Google
-      </p>
-
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {DAYS.map((d) => (
-          <button
-            key={d.key}
-            type="button"
-            onClick={() => setSelectedDay(d.key)}
-            className={cn(
-              "rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
-              selectedDay === d.key
-                ? "bg-foreground text-background"
-                : "bg-background text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {d.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-2.5 grid grid-cols-[repeat(17,minmax(0,1fr))] items-end gap-1.5 px-1.5">
-        {bars.map((v, idx) => {
-          const h = Math.max(8, Math.round((v / max) * 62));
-          if (v <= 0) {
-            return (
-              <span
-                key={`dash-${idx}`}
-                className="bg-muted-foreground/35 mx-auto mb-1 block h-[1.5px] w-full max-w-4 rounded-full"
-                aria-hidden
-              />
-            );
-          }
-          return (
-            <span
-              key={`bar-${idx}`}
-              className={cn(
-                "mx-auto block w-full max-w-4 rounded-full transition-all",
-                idx === peakIdx ? "bg-red-700" : "bg-muted-foreground/45",
-              )}
-              style={{ height: `${h}px` }}
-              aria-hidden
-            />
-          );
-        })}
-      </div>
-
-      <div className="text-foreground/85 grid grid-cols-[repeat(17,minmax(0,1fr))] px-1.5 text-[13px] font-semibold">
-        <span className="col-start-1 text-left">6AM</span>
-        <span className="col-start-5 text-center">10AM</span>
-        <span className="col-start-9 text-center">2PM</span>
-        <span className="col-start-13 text-center">6PM</span>
-        <span className="col-start-17 text-right">10PM</span>
-      </div>
-      <p className="text-muted-foreground mt-1.5 px-1.5 text-[11px]">
-        Peak around{" "}
-        <span className="text-foreground font-semibold">{peakHour}</span>
-      </p>
-    </div>
-  );
-}
-
-function hourLabelFromOffset(idx: number): string {
-  const hour24 = Math.max(6, Math.min(22, 6 + idx));
-  const suffix = hour24 >= 12 ? "PM" : "AM";
-  const h12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  return `${h12}${suffix}`;
-}
-
-function mockPopularTimesByDay(seedBase: string): Record<DayKey, number[]> {
-  const seed = Array.from(seedBase).reduce(
-    (acc, c) => acc + c.charCodeAt(0),
-    0,
-  );
-  const template: number[] = [
-    0, 0, 18, 34, 52, 62, 54, 42, 28, 0, 0, 0, 0, 0, 0, 0, 0,
-  ];
-  const out = {} as Record<DayKey, number[]>;
-  DAYS.forEach((d, dayIdx) => {
-    const shift = (seed + dayIdx) % 3;
-    out[d.key] = template.map((v, idx) => {
-      if (v === 0) return 0;
-      const sourceIdx = Math.min(template.length - 1, idx + shift);
-      const source = template[sourceIdx];
-      const jitter = ((seed + dayIdx * 23 + idx * 11) % 12) - 6;
-      return Math.max(10, source + jitter);
-    });
-  });
-  return out;
-}
-
 function extractRelevantReviews(venue: MyVenue): Array<{
   id: string;
   source: "Mesita" | "Google";
@@ -2605,6 +2580,138 @@ function describeMenuUrl(raw: string): {
 
 // ── Primitives ──────────────────────────────────────────────────────────
 
+const CHANNEL_ICON_TONE: Record<string, string> = {
+  Website: "bg-sky-500/12 text-sky-600",
+  Phone: "bg-violet-500/12 text-violet-600",
+  WhatsApp: "bg-whatsapp/15 text-whatsapp-deep",
+  Instagram: "bg-pink-500/12 text-pink-600",
+  "Google Maps": "bg-emerald-500/12 text-emerald-600",
+  Email: "bg-orange-500/12 text-orange-600",
+  Facebook: "bg-blue-600/12 text-blue-600",
+  TikTok: "bg-foreground/8 text-foreground",
+  YouTube: "bg-red-500/12 text-red-600",
+  OpenTable: "bg-amber-500/12 text-amber-700",
+  Rappi: "bg-orange-500/12 text-orange-600",
+  "Uber Eats": "bg-emerald-600/12 text-emerald-700",
+  "DiDi Food": "bg-lime-600/12 text-lime-700",
+};
+
+function ChannelGroup({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-foreground text-[13px] font-semibold tracking-tight">
+          {title}
+        </p>
+        {action}
+      </div>
+      <div className="flex flex-col gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function ChannelField({
+  label,
+  icon,
+  placeholder,
+  value,
+  onChange,
+  completed,
+  missing,
+  onToggleMissing,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  placeholder?: string;
+  value: string;
+  onChange: (v: string) => void;
+  completed?: boolean;
+  missing?: boolean;
+  onToggleMissing?: (missing: boolean) => void;
+}) {
+  const isMissing = !!missing;
+  const iconTone =
+    CHANNEL_ICON_TONE[label] ?? "bg-foreground/8 text-foreground";
+  return (
+    <div
+      className={cn(
+        "border-border/60 bg-muted/20 flex items-center gap-3 rounded-2xl border px-3 py-2.5",
+        isMissing && "opacity-75",
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+          iconTone,
+        )}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+            {label}
+          </p>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {onToggleMissing && (
+              <button
+                type="button"
+                onClick={() => onToggleMissing(!isMissing)}
+                className="text-muted-foreground hover:text-foreground text-[9px] font-semibold tracking-wide uppercase transition"
+              >
+                {isMissing ? "Add" : "N/A"}
+              </button>
+            )}
+            {typeof completed === "boolean" && (
+              <ChannelStatus completed={completed} missing={isMissing} />
+            )}
+          </div>
+        </div>
+        {isMissing ? (
+          <p className="text-muted-foreground truncate text-[12px] italic">
+            Not available
+          </p>
+        ) : (
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            spellCheck={false}
+            autoCapitalize="none"
+            className="placeholder:text-muted-foreground/55 w-full truncate bg-transparent py-0 text-[12px] outline-none"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChannelStatus({
+  completed,
+  missing,
+}: {
+  completed: boolean;
+  missing: boolean;
+}) {
+  if (missing) {
+    return (
+      <span className="text-muted-foreground text-[10px] font-medium">N/A</span>
+    );
+  }
+  if (completed) {
+    return <Check className="text-emerald-500 h-3.5 w-3.5 shrink-0" />;
+  }
+  return <span className="bg-amber-400 h-1.5 w-1.5 shrink-0 rounded-full" />;
+}
+
 function UrlField({
   label,
   icon,
@@ -2735,29 +2842,13 @@ function HoursEditor({
   const setDay = (key: DayKey, next: DayShifts) =>
     onChange({ ...hours, [key]: next });
 
-  const setRange = (key: DayKey, idx: number, patch: Partial<HoursRange>) => {
+  const setRange = (key: DayKey, patch: Partial<HoursRange>) => {
     const day = hours[key];
-    const ranges = day.ranges.map((r, i) =>
-      i === idx ? { ...r, ...patch } : r,
-    );
-    setDay(key, { ...day, ranges });
-  };
-
-  const addShift = (key: DayKey) => {
-    const day = hours[key];
-    if (day.ranges.length >= MAX_SHIFTS_PER_DAY) return;
-    setDay(key, {
-      closed: false,
-      ranges: [...day.ranges, { open: "", close: "" }],
-    });
-  };
-
-  const removeShift = (key: DayKey, idx: number) => {
-    const day = hours[key];
-    const ranges = day.ranges.filter((_, i) => i !== idx);
+    const current = day.ranges[0] ?? { open: "", close: "" };
     setDay(key, {
       ...day,
-      ranges: ranges.length > 0 ? ranges : [{ open: "", close: "" }],
+      closed: false,
+      ranges: [{ ...current, ...patch }],
     });
   };
 
@@ -2766,89 +2857,50 @@ function HoursEditor({
   const reopen = (key: DayKey) =>
     setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
 
-  // Cleaner schedule table: day label + time inputs + lightweight actions.
-  // Closed rows are visually muted; open rows stay flat and scannable.
   return (
-    <div className="border-border bg-background divide-border/70 divide-y rounded-2xl border">
+    <div className="border-border divide-border/60 divide-y rounded-lg border text-[11px]">
       {DAYS.map(({ key, label }) => {
         const d = hours[key];
         const isClosed = d.closed;
+        const range = d.ranges[0] ?? { open: "", close: "" };
         return (
           <div
             key={key}
             className={cn(
-              "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition",
-              isClosed ? "bg-muted/20" : "hover:bg-muted/10",
+              "flex items-center gap-2 px-2 py-1",
+              isClosed && "bg-muted/25",
             )}
           >
-            <span className="text-foreground/75 w-10 shrink-0 text-[11px] font-semibold tracking-[0.14em] uppercase">
+            <span className="text-muted-foreground w-7 shrink-0 font-semibold">
               {label}
             </span>
 
             {isClosed ? (
-              <span className="text-muted-foreground flex-1 text-[12px]">
-                Closed
-              </span>
+              <span className="text-muted-foreground flex-1">Closed</span>
             ) : (
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-2">
-                {d.ranges.map((r, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5">
-                    {idx > 0 && (
-                      <span className="text-muted-foreground/60 mr-0.5 text-[11px] select-none">
-                        ·
-                      </span>
-                    )}
-                    <input
-                      value={r.open}
-                      onChange={(e) =>
-                        setRange(key, idx, { open: e.target.value })
-                      }
-                      placeholder="13:00"
-                      aria-label={`${label} shift ${idx + 1} opens at`}
-                      className="bg-muted/45 border-border/80 focus:border-foreground/40 h-9 w-[82px] rounded-lg border px-2 text-center text-[14px] tabular-nums outline-none"
-                    />
-                    <span className="text-muted-foreground/70 text-[12px]">
-                      →
-                    </span>
-                    <input
-                      value={r.close}
-                      onChange={(e) =>
-                        setRange(key, idx, { close: e.target.value })
-                      }
-                      placeholder="00:00"
-                      aria-label={`${label} shift ${idx + 1} closes at`}
-                      className="bg-muted/45 border-border/80 focus:border-foreground/40 h-9 w-[82px] rounded-lg border px-2 text-center text-[14px] tabular-nums outline-none"
-                    />
-                    {isOvernight(r.open, r.close) && (
-                      <span
-                        title="Closes the next day"
-                        aria-label="Closes the next day"
-                        className="text-muted-foreground/80 -ml-0.5 text-[10px] font-semibold tracking-wider uppercase select-none"
-                      >
-                        +1d
-                      </span>
-                    )}
-                    {d.ranges.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeShift(key, idx)}
-                        aria-label="Remove this shift"
-                        className="text-muted-foreground/70 hover:text-destructive ml-0.5 flex h-6 w-6 items-center justify-center rounded-full transition"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {d.ranges.length < MAX_SHIFTS_PER_DAY && (
-                  <button
-                    type="button"
-                    onClick={() => addShift(key)}
-                    className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium"
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <input
+                  value={range.open}
+                  onChange={(e) => setRange(key, { open: e.target.value })}
+                  placeholder="09:00"
+                  aria-label={`${label} opens`}
+                  className="border-border bg-muted/40 focus:border-foreground/35 h-7 w-[4.25rem] rounded-md border px-1 text-center text-[11px] tabular-nums outline-none"
+                />
+                <span className="text-muted-foreground/70 text-[10px]">–</span>
+                <input
+                  value={range.close}
+                  onChange={(e) => setRange(key, { close: e.target.value })}
+                  placeholder="22:00"
+                  aria-label={`${label} closes`}
+                  className="border-border bg-muted/40 focus:border-foreground/35 h-7 w-[4.25rem] rounded-md border px-1 text-center text-[11px] tabular-nums outline-none"
+                />
+                {isOvernight(range.open, range.close) && (
+                  <span
+                    title="Closes the next day"
+                    className="text-muted-foreground text-[9px] font-medium"
                   >
-                    <Plus className="h-3 w-3" />
-                    shift
-                  </button>
+                    +1d
+                  </span>
                 )}
               </div>
             )}
@@ -2856,15 +2908,15 @@ function HoursEditor({
             <button
               type="button"
               onClick={() => (isClosed ? reopen(key) : markClosed(key))}
-              aria-label={isClosed ? "Reopen this day" : "Mark this day closed"}
+              aria-label={isClosed ? `Open ${label}` : `Close ${label}`}
               className={cn(
-                "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide uppercase transition",
+                "shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold transition",
                 isClosed
-                  ? "bg-foreground text-background hover:opacity-90"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted",
               )}
             >
-              {isClosed ? "Reopen" : "Close"}
+              {isClosed ? "Open" : "Closed"}
             </button>
           </div>
         );

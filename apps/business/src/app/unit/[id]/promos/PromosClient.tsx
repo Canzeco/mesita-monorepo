@@ -208,7 +208,7 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         title="Subscription"
         className="shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]"
       >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-3">
           {SUBSCRIPTIONS.map((s) => {
             const v = SUB_VISUAL[s.id];
             return (
@@ -243,27 +243,33 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
         title="Promos"
         className="bg-gradient-to-b from-white to-fuchsia-50/[0.25]"
       >
-        <div className="grid grid-cols-2 gap-2">
-          <ColumnHeader>First visit</ColumnHeader>
-          <ColumnHeader>Returning visits</ColumnHeader>
-          {(["free", "premium"] as const).flatMap((tier) => [
-            <PromoCell
-              key={`welcome-${tier}`}
-              column={`welcome_${tier}_rate` as PromoColumn}
-              tier={tier}
-              initial={venue[`welcome_${tier}_rate`]}
-              venueId={venue.id}
-              disabled={isFree}
-            />,
-            <PromoCell
-              key={`default-${tier}`}
-              column={`${tier}_rate` as PromoColumn}
-              tier={tier}
-              initial={venue[`${tier}_rate`]}
-              venueId={venue.id}
-              disabled={isFree}
-            />,
-          ])}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <ColumnHeader>First visit</ColumnHeader>
+            {(["free", "premium"] as const).map((tier) => (
+              <PromoCell
+                key={`welcome-${tier}`}
+                column={`welcome_${tier}_rate` as PromoColumn}
+                tier={tier}
+                initial={venue[`welcome_${tier}_rate`]}
+                venueId={venue.id}
+                disabled={isFree}
+              />
+            ))}
+          </div>
+          <div className="flex flex-col gap-2">
+            <ColumnHeader>Returning visits</ColumnHeader>
+            {(["free", "premium"] as const).map((tier) => (
+              <PromoCell
+                key={`default-${tier}`}
+                column={`${tier}_rate` as PromoColumn}
+                tier={tier}
+                initial={venue[`${tier}_rate`]}
+                venueId={venue.id}
+                disabled={isFree}
+              />
+            ))}
+          </div>
         </div>
       </Section>
 

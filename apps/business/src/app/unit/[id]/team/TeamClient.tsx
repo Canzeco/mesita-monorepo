@@ -8,12 +8,11 @@ import {
   Instagram,
   Loader2,
   Mail,
+  Megaphone,
   MessageCircle,
   Phone as PhoneIcon,
-  Plus,
   Send,
   Trash2,
-  X,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
@@ -22,10 +21,9 @@ import {
   ICON_BUTTON_CLASS,
   INFO_BOX_CLASS,
   PILL_BUTTON_CLASS,
-  TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
-import { EmptyState, Section } from "@/components/shared";
 import { PhonePicker } from "@/components/ui/phone-picker";
+import { apiUpdateVenue } from "@/lib/api/venues";
 import {
   apiInviteEditor,
   apiInviteWaiter,
@@ -54,7 +52,7 @@ function waiterInvitePhoneKey(phone: string | null | undefined): string {
   return phone.replace(/\D/g, "");
 }
 
-type InviteOpen = null | "manager" | "waiter" | "pr";
+type InviteOpen = null | "manager" | "waiter";
 
 // In-app confirmation, replacing native window.confirm so destructive
 // actions get a styled dialog instead of the browser's gray box.
@@ -70,10 +68,14 @@ export function TeamClient({
   venueId,
   currentUserId,
   initialSnapshot,
+  initialWhatsappPrUrl,
+  initialInstagramPrUrl,
 }: {
   venueId: string;
   currentUserId: string;
   initialSnapshot: TeamSnapshot;
+  initialWhatsappPrUrl: string;
+  initialInstagramPrUrl: string;
 }) {
   const supabase = useBrowserSupabase();
   // Seeded from the server fetch in page.tsx — no client-side initial
@@ -83,7 +85,12 @@ export function TeamClient({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState<InviteOpen>(null);
-  const [mockPrInstagrams, setMockPrInstagrams] = useState<string[]>([]);
+  const [prWhatsapp, setPrWhatsapp] = useState(initialWhatsappPrUrl);
+  const [prInstagram, setPrInstagram] = useState(initialInstagramPrUrl);
+  const [savedPrChannels, setSavedPrChannels] = useState({
+    whatsapp: initialWhatsappPrUrl,
+    instagram: initialInstagramPrUrl,
+  });
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -107,8 +114,6 @@ export function TeamClient({
   );
   const pendingWaiterInvites = snapshot.pendingWaiterInvites ?? [];
   const activeWaiterCount = snapshot.waiters.length;
-  const prCount = snapshot.waiters.length + mockPrInstagrams.length;
-
   // Wrap any mutating action in the shared busy/error/refresh frame.
   async function runAction(
     key: string,
@@ -143,32 +148,27 @@ export function TeamClient({
       "Couldn't send that manager invite.",
     );
 
-  const handleInvitePr = (
-    channel: "whatsapp" | "sms" | "instagram",
-    value: string,
-  ) => {
-    if (channel === "instagram") {
-      const raw = value.trim();
-      if (!raw) return;
-      const normalized = `@${raw.replace(/^@+/, "")}`;
-      setMockPrInstagrams((prev) =>
-        prev.includes(normalized) ? prev : [...prev, normalized],
-      );
-      setInviteOpen(null);
+  const persistPrChannels = () => {
+    const whatsapp = prWhatsapp.trim();
+    const instagram = prInstagram.trim();
+    if (
+      whatsapp === savedPrChannels.whatsapp.trim() &&
+      instagram === savedPrChannels.instagram.trim()
+    ) {
       return;
     }
     return runAction(
-      "invite-pr",
+      "save-pr-channels",
       async () => {
-        await apiInviteWaiter(supabase, {
-          venueId,
-          channel,
-          phone: value || undefined,
-          redirectBase: window.location.origin,
+        await apiUpdateVenue(supabase, {
+          id: venueId,
+          whatsapp_pr_urls: whatsapp ? [whatsapp] : [],
+          instagram_pr_urls: instagram ? [instagram] : [],
         });
-        setInviteOpen(null);
+        setSavedPrChannels({ whatsapp: prWhatsapp, instagram: prInstagram });
+        setNotice("PR channels saved.");
       },
-      `Couldn't connect that PR ${channel === "whatsapp" ? "WhatsApp" : "SMS"}.`,
+      "Couldn't save PR channels.",
     );
   };
 
@@ -331,7 +331,7 @@ export function TeamClient({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       {error && <div className={ERROR_BOX_CLASS}>{error}</div>}
       {notice && <div className={INFO_BOX_CLASS}>{notice}</div>}
 
@@ -347,38 +347,21 @@ export function TeamClient({
         />
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <TeamStatPill
-          label="Managers"
-          value={managers.length}
-          hint={`${pendingManagerInvites.length} pending`}
-        />
-        <TeamStatPill
-          label="Waiters"
-          value={activeWaiterCount}
-          hint={`${pendingWaiterInvites.length} pending`}
-        />
-        <TeamStatPill
-          label="PR channels"
-          value={prCount}
-          hint={`${prCount} active`}
-        />
-      </div>
-
-      {/* ── Managers ─────────────────────────────────────────────── */}
-      <Section
+      <TeamModule
+        icon={<Crown className="h-4 w-4" />}
         title="Managers"
-        description="Core team with dashboard access."
-        right={
-          isOwner && (
+        active={managers.length}
+        pending={pendingManagerInvites.length}
+        action={
+          isOwner ? (
             <InviteButton
-              label="Invite manager"
+              label="Invite"
               open={inviteOpen === "manager"}
               onClick={() =>
                 setInviteOpen(inviteOpen === "manager" ? null : "manager")
               }
             />
-          )
+          ) : null
         }
       >
         {inviteOpen === "manager" && (
@@ -387,19 +370,16 @@ export function TeamClient({
             onSubmit={handleInviteManager}
             roleChoices={MANAGER_ROLE_CHOICES}
             defaultRole="editor"
-            submitLabel="Send manager invite"
+            submitLabel="Send invite"
           />
         )}
 
-        {managers.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No managers yet.</p>
+        {managers.length === 0 && pendingManagerInvites.length === 0 ? (
+          <TeamEmpty message="No managers yet" />
         ) : (
-          <ul className="divide-border/60 divide-y">
+          <TeamList>
             {managers.map((m) => (
-              <li
-                key={m.memberId}
-                className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
-              >
+              <TeamMemberRow key={m.memberId}>
                 <Avatar
                   initial={initialOf(m.fullName, m.email)}
                   tint="bg-pink-gradient"
@@ -450,19 +430,14 @@ export function TeamClient({
                     )
                   }
                 />
-              </li>
+              </TeamMemberRow>
             ))}
-          </ul>
-        )}
-
-        {pendingManagerInvites.length > 0 && (
-          <PendingGroup>
             {pendingManagerInvites.map((inv) => (
               <PendingRow
                 key={inv.id}
                 icon={<Mail className="text-muted-foreground h-3.5 w-3.5" />}
                 title={inv.email}
-                subtitle={`Invited as ${teamRoleLabel((inv.role as BusinessRole) ?? "editor")} · expires ${formatRelative(inv.expiresAt)}`}
+                subtitle={`${teamRoleLabel((inv.role as BusinessRole) ?? "editor")} · ${formatRelative(inv.expiresAt)}`}
               >
                 <CopyButton
                   text={buildAcceptUrl(inv.token)}
@@ -483,17 +458,18 @@ export function TeamClient({
                 )}
               </PendingRow>
             ))}
-          </PendingGroup>
+          </TeamList>
         )}
-      </Section>
+      </TeamModule>
 
-      {/* ── Waiters ──────────────────────────────────────────────── */}
-      <Section
+      <TeamModule
+        icon={<PhoneIcon className="h-4 w-4" />}
         title="Waiters"
-        description="Floor team that validates tickets from their phone."
-        right={
+        active={activeWaiterCount}
+        pending={pendingWaiterInvites.length}
+        action={
           <InviteButton
-            label="Add waiter"
+            label="Add"
             open={inviteOpen === "waiter"}
             onClick={() =>
               setInviteOpen(inviteOpen === "waiter" ? null : "waiter")
@@ -509,15 +485,12 @@ export function TeamClient({
           />
         )}
 
-        {activeWaiterCount === 0 ? (
-          <p className="text-muted-foreground text-sm">No waiters yet.</p>
+        {activeWaiterCount === 0 && pendingWaiterInvites.length === 0 ? (
+          <TeamEmpty message="No waiters yet" />
         ) : (
-          <ul className="divide-border/60 divide-y">
+          <TeamList>
             {snapshot.waiters.map((w) => (
-              <li
-                key={`${w.userId}:${venueId}`}
-                className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
-              >
+              <TeamMemberRow key={`${w.userId}:${venueId}`}>
                 <Avatar
                   initial={(w.phone ?? "?").slice(-2)}
                   tint="bg-whatsapp/15 text-whatsapp-deep"
@@ -549,13 +522,8 @@ export function TeamClient({
                     }
                   />
                 )}
-              </li>
+              </TeamMemberRow>
             ))}
-          </ul>
-        )}
-
-        {pendingWaiterInvites.length > 0 && (
-          <PendingGroup>
             {pendingWaiterInvites.map((inv) => (
               <PendingRow
                 key={inv.id}
@@ -567,7 +535,7 @@ export function TeamClient({
                   )
                 }
                 title={inv.phone ?? "—"}
-                subtitle={`Invitado · ${inv.channel === "whatsapp" ? "WhatsApp" : "SMS"} · esperando que respondan sí · vence ${formatRelative(inv.expiresAt)}`}
+                subtitle={`Pending · ${formatRelative(inv.expiresAt)}`}
               >
                 {inv.phone && (
                   <PingButton
@@ -593,133 +561,39 @@ export function TeamClient({
                 )}
               </PendingRow>
             ))}
-          </PendingGroup>
+          </TeamList>
         )}
-      </Section>
+      </TeamModule>
 
-      {/* ── PRs ──────────────────────────────────────────────────── */}
-      <Section
-        title="PRs"
-        description="Connect WhatsApp, SMS, or Instagram PR channels that bring in and manage guests."
-        right={
-          isOwner && (
-            <InviteButton
-              label="Add WhatsApp"
-              open={inviteOpen === "pr"}
-              onClick={() => setInviteOpen(inviteOpen === "pr" ? null : "pr")}
-            />
-          )
-        }
+      <TeamModule
+        icon={<Megaphone className="h-4 w-4" />}
+        title="PR channels"
+        active={0}
+        meta={`${(prWhatsapp.trim() ? 1 : 0) + (prInstagram.trim() ? 1 : 0)} connected`}
       >
-        {inviteOpen === "pr" && (
-          <PrChannelForm
-            busy={busy === "invite-pr"}
-            onSubmit={handleInvitePr}
-            onPing={handleTestPing}
+        <TeamList>
+          <PrChannelEditRow
+            label="WhatsApp"
+            icon={<MessageCircle className="h-3.5 w-3.5" />}
+            iconTone="bg-whatsapp/15 text-whatsapp-deep"
+            placeholder="https://wa.me/52…"
+            value={prWhatsapp}
+            disabled={busy === "save-pr-channels"}
+            onChange={setPrWhatsapp}
+            onCommit={persistPrChannels}
           />
-        )}
-
-        {snapshot.waiters.length === 0 &&
-        mockPrInstagrams.length === 0 &&
-        inviteOpen !== "pr" ? (
-          <EmptyState
-            icon={<MessageCircle className="text-muted-foreground h-5 w-5" />}
-            title="No PRs yet"
-            description="Connect PR WhatsApp numbers so they can manage their guests from their phone."
-            className="border-border/60 bg-muted/20 rounded-xl border p-7"
+          <PrChannelEditRow
+            label="Instagram"
+            icon={<Instagram className="h-3.5 w-3.5" />}
+            iconTone="bg-pink-500/12 text-pink-600"
+            placeholder="https://instagram.com/…"
+            value={prInstagram}
+            disabled={busy === "save-pr-channels"}
+            onChange={setPrInstagram}
+            onCommit={persistPrChannels}
           />
-        ) : snapshot.waiters.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No PRs yet.</p>
-        ) : (
-          <>
-            {snapshot.waiters.length > 0 && (
-              <ul className="divide-border/60 divide-y">
-                {snapshot.waiters.map((w) => (
-                  <li
-                    key={`${w.userId}:${venueId}:pr`}
-                    className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
-                  >
-                    <Avatar
-                      initial={(w.phone ?? "?").slice(-2)}
-                      tint="bg-whatsapp/15 text-whatsapp-deep"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-mono text-[13px] font-semibold">
-                        {w.phone ?? "—"}
-                      </p>
-                      <p className="text-muted-foreground text-[11px]">
-                        Joined {formatRelative(w.createdAt)}
-                      </p>
-                    </div>
-                    {w.phone && (
-                      <PingButton
-                        busy={busy === `ping-${w.phone}`}
-                        onClick={() => handleTestPing("whatsapp", w.phone!)}
-                      />
-                    )}
-                    {isOwner && w.phone && (
-                      <RemoveButton
-                        busy={busy === `remove-${w.userId}`}
-                        label={`Remove ${w.phone}`}
-                        onClick={() =>
-                          handleRemove(
-                            `${w.userId}:${venueId}`,
-                            "waiter",
-                            "Remove this PR WhatsApp?",
-                          )
-                        }
-                      />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {mockPrInstagrams.length > 0 && (
-              <ul className="divide-border/60 divide-y">
-                {mockPrInstagrams.map((handle) => (
-                  <li
-                    key={`pr-ig-${handle}`}
-                    className="hover:bg-muted/25 flex items-center gap-3 rounded-xl px-2 py-2.5 transition"
-                  >
-                    <Avatar
-                      initial={handle.slice(1, 2)}
-                      tint="bg-pink-gradient"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-semibold">
-                        {handle}
-                      </p>
-                      <p className="text-muted-foreground text-[11px]">
-                        Instagram PR (mock for now)
-                      </p>
-                    </div>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
-                      <Instagram className="h-3 w-3" />
-                      Instagram
-                    </span>
-                    <RemoveButton
-                      busy={false}
-                      hidden={!isOwner}
-                      label={`Remove ${handle}`}
-                      onClick={() =>
-                        setMockPrInstagrams((prev) =>
-                          prev.filter((x) => x !== handle),
-                        )
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-      </Section>
-
-      <p className={cn(INFO_BOX_CLASS, "text-center")}>
-        Las invitaciones por WhatsApp se envían desde Mesita Ops cuando el
-        número está cargado. Si falla el envío, puedes reintentar con Ping.
-      </p>
+        </TeamList>
+      </TeamModule>
     </div>
   );
 }
@@ -784,6 +658,66 @@ function ConfirmDialog({
   );
 }
 
+function TeamModule({
+  icon,
+  title,
+  active,
+  pending = 0,
+  meta,
+  action,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  active: number;
+  pending?: number;
+  meta?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const subtitle =
+    meta ??
+    `${active} active${pending > 0 ? ` · ${pending} pending` : ""}`;
+
+  return (
+    <section className="border-border bg-card overflow-hidden rounded-2xl border shadow-[0_8px_28px_-24px_rgba(0,0,0,0.35)]">
+      <div className="border-border/60 flex items-center gap-3 border-b px-4 py-3">
+        <span className="bg-muted text-foreground/75 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          <p className="text-muted-foreground text-[11px]">{subtitle}</p>
+        </div>
+        {action}
+      </div>
+      <div className="flex flex-col gap-2.5 p-3">{children}</div>
+    </section>
+  );
+}
+
+function TeamList({ children }: { children: React.ReactNode }) {
+  return (
+    <ul className="border-border/70 bg-background divide-border/60 divide-y overflow-hidden rounded-xl border">
+      {children}
+    </ul>
+  );
+}
+
+function TeamMemberRow({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-2.5 px-3 py-2.5">{children}</li>
+  );
+}
+
+function TeamEmpty({ message }: { message: string }) {
+  return (
+    <div className="border-border/60 bg-muted/15 text-muted-foreground flex min-h-[4.5rem] items-center justify-center rounded-xl border border-dashed px-4 text-center text-[12px]">
+      {message}
+    </div>
+  );
+}
+
 function InviteButton({
   open,
   onClick,
@@ -798,27 +732,14 @@ function InviteButton({
       type="button"
       onClick={onClick}
       className={cn(
-        PILL_BUTTON_CLASS,
-        "shadow-sm",
+        "shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition",
         open
-          ? "bg-muted text-foreground hover:bg-muted/80"
+          ? "border-border bg-muted text-foreground border"
           : "bg-pink-gradient text-white hover:opacity-90",
       )}
     >
-      {open ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
       {open ? "Cancel" : label}
     </button>
-  );
-}
-
-// Pending-invites group — eyebrow label + stack of subdued tile rows.
-// Used identically by both Editors and Waiters sections.
-function PendingGroup({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-border/60 mt-1 flex flex-col gap-2 border-t pt-3">
-      <p className={TINY_LABEL_CLASS}>Pending invites</p>
-      <ul className="flex flex-col gap-2">{children}</ul>
-    </div>
   );
 }
 
@@ -836,15 +757,15 @@ function PendingRow({
   children: React.ReactNode;
 }) {
   return (
-    <li className="bg-muted/25 border-border/50 flex items-center gap-3 rounded-xl border px-3 py-2.5">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+    <li className="bg-muted/25 flex items-center gap-2.5 px-3 py-2.5">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
         <p className={cn("truncate text-[12px] font-semibold", titleClassName)}>
           {title}
         </p>
-        <p className="text-muted-foreground text-[11px]">{subtitle}</p>
+        <p className="text-muted-foreground truncate text-[10px]">{subtitle}</p>
       </div>
       {children}
     </li>
@@ -916,122 +837,49 @@ function EditorInviteForm({
   );
 }
 
-function PrChannelForm({
-  busy,
-  onSubmit,
-  onPing,
+function PrChannelEditRow({
+  label,
+  icon,
+  iconTone,
+  placeholder,
+  value,
+  disabled,
+  onChange,
+  onCommit,
 }: {
-  busy: boolean;
-  onSubmit: (
-    channel: "whatsapp" | "sms" | "instagram",
-    value: string,
-  ) => void | Promise<void>;
-  onPing: (channel: "whatsapp" | "sms", phone: string) => void | Promise<void>;
+  label: string;
+  icon: React.ReactNode;
+  iconTone: string;
+  placeholder: string;
+  value: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+  onCommit: () => void;
 }) {
-  const [channel, setChannel] = useState<"whatsapp" | "sms" | "instagram">(
-    "whatsapp",
-  );
-  const [value, setValue] = useState("");
   return (
-    <form
-      className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = value.trim();
-        if (!trimmed) return;
-        onSubmit(channel, trimmed);
-      }}
-    >
-      <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="border-border bg-background flex items-center overflow-hidden rounded-full border p-0.5 text-[12px] font-semibold">
-          {(["whatsapp", "sms", "instagram"] as const).map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setChannel(c)}
-              className={cn(
-                "inline-flex min-w-[98px] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition",
-                channel === c
-                  ? c === "whatsapp"
-                    ? "bg-whatsapp text-white shadow-sm"
-                    : c === "sms"
-                      ? "bg-sky-600 text-white shadow-sm"
-                      : "bg-pink-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {c === "whatsapp" ? (
-                <MessageCircle className="h-3.5 w-3.5" />
-              ) : c === "sms" ? (
-                <PhoneIcon className="h-3.5 w-3.5" />
-              ) : (
-                <Instagram className="h-3.5 w-3.5" />
-              )}
-              {c === "whatsapp"
-                ? "WhatsApp"
-                : c === "sms"
-                  ? "SMS"
-                  : "Instagram"}
-            </button>
-          ))}
-        </div>
-        {channel === "instagram" ? (
-          <div className="border-border bg-background flex w-full min-w-0 items-center gap-2 rounded-full border px-3 py-2 lg:flex-1">
-            <Instagram className="text-muted-foreground h-4 w-4" />
-            <input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="@yourprhandle"
-              className="w-full bg-transparent text-[13px] outline-none"
-              spellCheck={false}
-              autoCapitalize="none"
-            />
-          </div>
-        ) : (
-          <PhonePicker
-            value={value}
-            onChange={setValue}
-            placeholder="33 1234 5678"
-            className="w-full min-w-0 lg:flex-1"
-          />
+    <TeamMemberRow>
+      <span
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+          iconTone,
         )}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-semibold">{label}</p>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onCommit}
+          placeholder={placeholder}
+          disabled={disabled}
+          spellCheck={false}
+          autoCapitalize="none"
+          className="placeholder:text-muted-foreground/50 text-muted-foreground focus:text-foreground w-full truncate bg-transparent py-0.5 text-[11px] outline-none disabled:opacity-60"
+        />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="submit"
-          disabled={busy || value.trim().length === 0}
-          className={cn(
-            PILL_BUTTON_CLASS,
-            "shrink-0 px-4 py-2 disabled:opacity-50",
-          )}
-        >
-          {busy ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Send className="h-3 w-3" />
-          )}
-          Connect{" "}
-          {channel === "whatsapp"
-            ? "WhatsApp"
-            : channel === "sms"
-              ? "SMS"
-              : "Instagram"}
-        </button>
-        {channel !== "instagram" && (
-          <button
-            type="button"
-            disabled={busy || value.trim().length === 0}
-            onClick={() => onPing(channel, value.trim())}
-            className={cn(
-              "border-border bg-background text-foreground hover:bg-muted inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition disabled:opacity-50",
-            )}
-          >
-            <Send className="h-3.5 w-3.5" />
-            Ping
-          </button>
-        )}
-      </div>
-    </form>
+    </TeamMemberRow>
   );
 }
 
@@ -1265,35 +1113,13 @@ function Avatar({ initial, tint }: { initial: string; tint: string }) {
   return (
     <span
       className={cn(
-        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[11px] font-bold uppercase shadow-sm",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold uppercase",
         tint,
         tint.includes("gradient") && "text-white",
       )}
     >
       {initial.trim() || "·"}
     </span>
-  );
-}
-
-function TeamStatPill({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: number;
-  hint: string;
-}) {
-  return (
-    <div className="border-border bg-card rounded-xl border px-3 py-2.5">
-      <p className={TINY_LABEL_CLASS}>{label}</p>
-      <div className="mt-1 flex items-baseline justify-between gap-2">
-        <p className="font-display text-xl font-semibold tracking-tight">
-          {value}
-        </p>
-        <p className="text-muted-foreground text-[11px]">{hint}</p>
-      </div>
-    </div>
   );
 }
 

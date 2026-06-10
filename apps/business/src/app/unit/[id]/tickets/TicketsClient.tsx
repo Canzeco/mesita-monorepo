@@ -105,7 +105,7 @@ export function TicketsClient({
   );
 
   const filterTabs: SubTabItem<TicketFilter>[] = [
-    { id: "create", label: "Create", count: counts.create },
+    { id: "create", label: "New", count: counts.create },
     { id: "pending", label: "Pending", count: counts.pending },
     { id: "done", label: "Done", count: counts.done },
   ];
@@ -248,17 +248,7 @@ export function TicketsClient({
           <EmptyState
             icon={<ReceiptText className="text-muted-foreground/60 h-5 w-5" />}
             title="No tickets yet"
-            description="Tap New ticket to scan a guest code. You'll enter the bill on their row right after."
-            action={
-              <button
-                type="button"
-                onClick={() => setScanOpen(true)}
-                className={cn(PILL_BUTTON_CLASS, "px-5 py-2")}
-              >
-                <Plus className="h-4 w-4" />
-                New ticket
-              </button>
-            }
+            description="Use New ticket above to scan a guest code. You'll enter the bill on their row right after."
             className="border-border/60 py-12"
           />
         ) : visibleTickets.length === 0 ? (
