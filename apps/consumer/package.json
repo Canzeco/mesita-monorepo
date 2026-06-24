@@ -36,5 +36,11 @@
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "overrides": {
+      "next>postcss": "8.5.14",
+      "postcss": "8.5.14"
+    }
   }
 }
