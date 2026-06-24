@@ -23,9 +23,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export function ClassUpsellBox() {
   const { tier: current } = useMembership();
   const currentLabel = tierProperLabel(current);
-  const currentIdx = TIER_ORDER.indexOf(
-    current as (typeof TIER_ORDER)[number],
-  );
+  const currentIdx = TIER_ORDER.indexOf(current as (typeof TIER_ORDER)[number]);
   const isMaxedOut = currentIdx === TIER_ORDER.length - 1;
 
   if (isMaxedOut) {
@@ -35,7 +33,7 @@ export function ClassUpsellBox() {
           <Crown className="h-4 w-4 fill-current" />
         </div>
         <div className="flex-1 leading-tight">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
+          <p className="text-[10px] font-bold tracking-[0.18em] text-white/85 uppercase">
             Mesita Premium
           </p>
           <p className="font-display mt-0.5 text-base font-semibold">
@@ -71,7 +69,7 @@ export function ClassUpsellBox() {
         partners compete with discounts up to 70%.
       </p>
 
-      <p className="mt-4 text-[10px] font-bold tracking-[0.18em] uppercase text-white/85">
+      <p className="mt-4 text-[10px] font-bold tracking-[0.18em] text-white/85 uppercase">
         Three ways to unlock Premium
       </p>
 
@@ -98,7 +96,7 @@ export function ClassUpsellBox() {
         ].map((m) => (
           <div
             key={m.label}
-            className="rounded-xl bg-white/12 p-2.5 backdrop-blur ring-1 ring-white/10"
+            className="rounded-xl bg-white/12 p-2.5 ring-1 ring-white/10 backdrop-blur"
           >
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/20">

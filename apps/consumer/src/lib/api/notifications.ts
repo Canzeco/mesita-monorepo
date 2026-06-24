@@ -9,7 +9,9 @@ export type ConsumerNotification = ConsumerNotificationRow & {
   bill: TicketBillPayload;
 };
 
-export function enrichNotification(row: ConsumerNotificationRow): ConsumerNotification {
+export function enrichNotification(
+  row: ConsumerNotificationRow,
+): ConsumerNotification {
   return {
     ...row,
     bill: payloadFromNotification(row.payload),

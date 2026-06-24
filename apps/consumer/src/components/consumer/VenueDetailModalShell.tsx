@@ -96,7 +96,7 @@ export function VenueDetailModalShell({
           type="button"
           onClick={() => router.back()}
           aria-label="Back"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-foreground border-border border transition hover:bg-muted"
+          className="bg-card text-foreground border-border hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition"
         >
           <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
         </button>
@@ -112,7 +112,7 @@ export function VenueDetailModalShell({
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
             saved
               ? "bg-pink-gradient text-white shadow-sm"
-              : "bg-card text-foreground border-border border hover:bg-muted",
+              : "bg-card text-foreground border-border hover:bg-muted border",
           )}
         >
           <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
@@ -121,7 +121,7 @@ export function VenueDetailModalShell({
           type="button"
           onClick={onShare}
           aria-label="Share"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-foreground border-border border transition hover:bg-muted"
+          className="bg-card text-foreground border-border hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition"
         >
           <Share2 className="h-4 w-4" />
         </button>

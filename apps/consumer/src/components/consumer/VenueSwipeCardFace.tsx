@@ -4,10 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Venue } from "@/lib/api/venues";
 import { ImageCarousel, type CarouselMediaItem } from "./ImageCarousel";
-import {
-  CarouselPhotoSlide,
-  StaticPhotoSlide,
-} from "./SwipePhotoSlide";
+import { CarouselPhotoSlide, StaticPhotoSlide } from "./SwipePhotoSlide";
 import {
   SwipeCardFieldsLayer,
   SwipeCardFieldsMeasure,
@@ -31,11 +28,8 @@ export function VenueSwipeCardFace({
   const fieldsMeasureRef = useRef<HTMLDivElement>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
-  const {
-    getPhotoLayoutMode,
-    reportPhotoSize,
-    fieldsHeight,
-  } = useSwipeCardPhotoLayout(venue.photos, cardRef, fieldsMeasureRef);
+  const { getPhotoLayoutMode, reportPhotoSize, fieldsHeight } =
+    useSwipeCardPhotoLayout(venue.photos, cardRef, fieldsMeasureRef);
 
   const hasPhotos = venue.photos.length > 0;
   const staticPhoto = venue.photos[0];
@@ -66,13 +60,7 @@ export function VenueSwipeCardFace({
         />
       );
     },
-    [
-      venue.name,
-      getPhotoLayoutMode,
-      fieldsHeight,
-      priority,
-      reportPhotoSize,
-    ],
+    [venue.name, getPhotoLayoutMode, fieldsHeight, priority, reportPhotoSize],
   );
 
   return (
@@ -124,7 +112,6 @@ export function VenueSwipeCardFace({
       ) : (
         <PhotoPlaceholder name={venue.name} />
       )}
-
     </div>
   );
 }

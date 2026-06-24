@@ -3,7 +3,9 @@ export function TicketStepInstructions({ steps }: { steps: string[] }) {
 
   if (steps.length === 1) {
     return (
-      <p className="text-muted-foreground text-sm leading-relaxed">{steps[0]}</p>
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        {steps[0]}
+      </p>
     );
   }
 

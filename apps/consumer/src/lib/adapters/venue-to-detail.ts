@@ -237,8 +237,7 @@ export function venueRowToDetail(row: Row): VenueDetail {
   const listingType = row.listing_type === "partner" ? "partner" : "web";
   const details = obj(row.details);
 
-  const activePremiumRate =
-    num(row.premium_rate) ?? num(row.free_rate) ?? 0;
+  const activePremiumRate = num(row.premium_rate) ?? num(row.free_rate) ?? 0;
   const openState = computeOpenState(row.hours, str(row.timezone));
 
   return {

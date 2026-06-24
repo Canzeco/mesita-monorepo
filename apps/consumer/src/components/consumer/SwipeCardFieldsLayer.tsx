@@ -2,7 +2,10 @@
 
 import type { RefObject } from "react";
 import type { Venue } from "@/lib/api/venues";
-import { isSplitLayout, type SwipeCardLayoutMode } from "@/lib/swipe-card-layout";
+import {
+  isSplitLayout,
+  type SwipeCardLayoutMode,
+} from "@/lib/swipe-card-layout";
 import { SwipeCardInfo } from "./SwipeCardInfo";
 import {
   SWIPE_CARD_FIELDS_INNER,

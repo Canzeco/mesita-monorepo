@@ -79,7 +79,10 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
               alt={r.venueName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"
-              className={cn("object-cover", cancelled && "grayscale opacity-80")}
+              className={cn(
+                "object-cover",
+                cancelled && "opacity-80 grayscale",
+              )}
             />
           ) : null}
         </div>
@@ -154,7 +157,9 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
             </span>
             <span className="text-sm font-semibold">View venue</span>
           </span>
-          <span className="text-muted-foreground text-[12px]">Details, map, menu</span>
+          <span className="text-muted-foreground text-[12px]">
+            Details, map, menu
+          </span>
         </Link>
 
         {!cancelled && (
@@ -196,7 +201,9 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
                 </span>
                 <span className="text-sm font-semibold">Call venue</span>
               </span>
-              <span className="text-muted-foreground text-[12px]">If plans change</span>
+              <span className="text-muted-foreground text-[12px]">
+                If plans change
+              </span>
             </button>
 
             <button
@@ -207,7 +214,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
                   { label: "Copy email", onClick: () => {} },
                 )
               }
-              className="border-border bg-card hover:bg-muted flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold text-foreground/80 transition"
+              className="border-border bg-card hover:bg-muted text-foreground/80 flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition"
             >
               Cancel reservation
             </button>
@@ -248,7 +255,7 @@ function LinkedCouponCard({ coupon }: { coupon: LinkedCouponSummary }) {
   return (
     <Link
       href={`/coupon/${coupon.id}`}
-      className="hover:bg-pink-500/[0.06] flex items-center gap-3 rounded-2xl border border-pink-500/15 bg-pink-500/[0.04] px-4 py-3.5 transition"
+      className="flex items-center gap-3 rounded-2xl border border-pink-500/15 bg-pink-500/[0.04] px-4 py-3.5 transition hover:bg-pink-500/[0.06]"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-500/15 ring-1 ring-pink-500/20">
         {ig ? (

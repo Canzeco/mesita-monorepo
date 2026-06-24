@@ -46,11 +46,11 @@ export function TicketFlowStepCircle({
         step.state === "done" &&
           "border-transparent bg-emerald-500 text-white shadow-sm",
         step.state === "active" &&
-          "border-transparent bg-pink-gradient text-white shadow-glow",
+          "bg-pink-gradient shadow-glow border-transparent text-white",
         step.state === "upcoming" &&
           "border-border/80 bg-muted/50 text-muted-foreground",
         selected &&
-          "ring-secondary/50 ring-2 ring-offset-2 ring-offset-background",
+          "ring-secondary/50 ring-offset-background ring-2 ring-offset-2",
       )}
     >
       {step.state === "done" ? (

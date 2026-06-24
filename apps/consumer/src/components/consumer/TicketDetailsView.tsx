@@ -93,10 +93,7 @@ export function TicketDetailsView({
   );
 
   const isComplete = isTicketFlowComplete(progress);
-  const flowSteps = useMemo(
-    () => resolveTicketFlowSteps(progress),
-    [progress],
-  );
+  const flowSteps = useMemo(() => resolveTicketFlowSteps(progress), [progress]);
   const activeStep = flowSteps.find((s) => s.state === "active");
   const [peekStepId, setPeekStepId] = useState<TicketFlowStepId | null>(null);
 
@@ -201,7 +198,7 @@ function renderStepActions({
         type="button"
         onClick={onMockStoryDetect}
         disabled={busy}
-        className="w-full rounded-xl border border-dashed border-secondary/50 bg-secondary/10 px-4 py-3 text-sm font-semibold text-secondary transition hover:bg-secondary/15 disabled:opacity-50"
+        className="border-secondary/50 bg-secondary/10 text-secondary hover:bg-secondary/15 w-full rounded-xl border border-dashed px-4 py-3 text-sm font-semibold transition disabled:opacity-50"
       >
         {busy ? "Simulating…" : "Mock: story posted & detected"}
       </button>

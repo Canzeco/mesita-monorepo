@@ -76,8 +76,7 @@ export function ImageCarousel({
       : photos.map((src) => ({ type: "image" as const, src }));
 
   const hasVideo = items.some((m) => m.type === "video");
-  const fitClass =
-    objectFit === "contain" ? "object-contain" : "object-cover";
+  const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";
 
   // Surface idx immediately for indicators; defer chrome/layout reactions until
   // the slide transform finishes so wide/tall chrome does not flip mid-transition.
@@ -159,7 +158,12 @@ export function ImageCarousel({
 
   return (
     <div
-      className={cn("relative w-full overflow-hidden", aspect, rounded, className)}
+      className={cn(
+        "relative w-full overflow-hidden",
+        aspect,
+        rounded,
+        className,
+      )}
     >
       <div
         ref={ref}
@@ -203,7 +207,11 @@ export function ImageCarousel({
                 loop
                 playsInline
                 preload="metadata"
-                className={cn("h-full w-full", fitClass, hideSlides && "opacity-0")}
+                className={cn(
+                  "h-full w-full",
+                  fitClass,
+                  hideSlides && "opacity-0",
+                )}
               />
             ) : (
               <Image

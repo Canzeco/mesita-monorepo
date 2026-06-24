@@ -30,7 +30,10 @@ export function TopBar({ userName }: { userName?: string | null }) {
   if (pathname.startsWith(CONSUMER_ROUTE_PREFIX.pay)) {
     return <SimpleHeader title="QR" rightAction="share" />;
   }
-  if (pathname.startsWith("/invite") || pathname.startsWith(CONSUMER_ROUTES.share)) {
+  if (
+    pathname.startsWith("/invite") ||
+    pathname.startsWith(CONSUMER_ROUTES.share)
+  ) {
     return <SimpleHeader title="Invite" />;
   }
   if (
@@ -38,10 +41,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
     pathname.startsWith(CONSUMER_ROUTES.legacy.profile)
   ) {
     return (
-      <SimpleHeader
-        title={userName?.trim() || "Profile"}
-        rightAction="share"
-      />
+      <SimpleHeader title={userName?.trim() || "Profile"} rightAction="share" />
     );
   }
   return null;

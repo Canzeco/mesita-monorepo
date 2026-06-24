@@ -39,8 +39,7 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
   const Icon = kindIcon(n.kind);
   const p = n.bill;
   const reward =
-    p.total_reward_cents ??
-    (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
 
   return (
     <article className="border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3">
@@ -61,7 +60,7 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-foreground text-sm font-semibold leading-snug">
+          <p className="text-foreground text-sm leading-snug font-semibold">
             {p.venue_name ?? "Mesita partner"}
           </p>
         </div>
@@ -183,7 +182,9 @@ export function NotificationsClient({
           <ConsumerActivityList items={GLOBAL_ACTIVITY} anonymisedNote />
         </div>
       ) : loading ? (
-        <p className="text-muted-foreground mt-8 text-center text-sm">Loading…</p>
+        <p className="text-muted-foreground mt-8 text-center text-sm">
+          Loading…
+        </p>
       ) : (
         <div className="mt-4 flex flex-col gap-4">
           {rows.length === 0 && MY_ACTIVITY.length === 0 ? (
@@ -200,7 +201,9 @@ export function NotificationsClient({
                   ))}
                 </div>
               ) : null}
-              {MY_ACTIVITY.length > 0 ? <ConsumerActivityList items={MY_ACTIVITY} /> : null}
+              {MY_ACTIVITY.length > 0 ? (
+                <ConsumerActivityList items={MY_ACTIVITY} />
+              ) : null}
             </>
           )}
         </div>

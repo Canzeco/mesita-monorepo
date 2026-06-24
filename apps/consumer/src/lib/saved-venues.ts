@@ -142,7 +142,9 @@ function setVenueSaved(venueId: string, saved: boolean): void {
   emit();
 }
 
-export function upsertSavedVenuePreview<T extends { id: string }>(venue: T): void {
+export function upsertSavedVenuePreview<T extends { id: string }>(
+  venue: T,
+): void {
   if (typeof window === "undefined") return;
   const map = readPreviewStorage<T>();
   map.set(venue.id, venue);
@@ -156,7 +158,10 @@ export function removeSavedVenuePreview(venueId: string): void {
   writePreviewStorage(map);
 }
 
-export function readSavedVenuePreviews<T extends { id: string }>(): Map<string, T> {
+export function readSavedVenuePreviews<T extends { id: string }>(): Map<
+  string,
+  T
+> {
   return readPreviewStorage<T>();
 }
 
@@ -168,10 +173,7 @@ export function useSavedVenues() {
     getSnapshot,
     getServerSnapshot,
   );
-  const isSaved = useCallback(
-    (id: string) => savedIds.has(id),
-    [savedIds],
-  );
+  const isSaved = useCallback((id: string) => savedIds.has(id), [savedIds]);
   const toggle = useCallback((id: string) => toggleSavedVenue(id), []);
   const setSaved = useCallback(
     (id: string, saved: boolean) => setVenueSaved(id, saved),

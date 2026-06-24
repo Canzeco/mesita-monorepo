@@ -161,7 +161,7 @@ export function PayTickets({ userId }: { userId: string }) {
         story_submitted_at: t.story_submitted_at,
         total_cents: t.total_cents,
         discount_percent: t.discount_percent,
-        capMxn: t.venue_id ? venueCapById.get(t.venue_id) ?? null : null,
+        capMxn: t.venue_id ? (venueCapById.get(t.venue_id) ?? null) : null,
         created_at: t.created_at,
       });
     }
@@ -232,7 +232,9 @@ export function PayTickets({ userId }: { userId: string }) {
             key={b.ticketId}
             bundle={b}
             ticketMeta={ticketMetaById.get(b.ticketId)}
-            onOpen={() => router.push(ticketPath(b.ticketId), { scroll: false })}
+            onOpen={() =>
+              router.push(ticketPath(b.ticketId), { scroll: false })
+            }
           />
         ))
       )}

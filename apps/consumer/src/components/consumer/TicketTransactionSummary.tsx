@@ -44,7 +44,7 @@ export function TicketTransactionSummary({
     return (
       <div
         className={cn(
-          "bg-pink-gradient text-white shadow-sm mt-2 w-full rounded-xl px-3 py-2.5 text-left",
+          "bg-pink-gradient mt-2 w-full rounded-xl px-3 py-2.5 text-left text-white shadow-sm",
           className,
         )}
       >

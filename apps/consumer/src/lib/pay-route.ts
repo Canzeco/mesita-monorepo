@@ -24,7 +24,10 @@ export function payTabFromSegment(segment: string | undefined): PayTab | null {
 
 /** Resolve active tab from the current pathname (incl. legacy /pay/wallet). */
 export function payTabFromPathname(pathname: string): PayTab {
-  if (pathname.startsWith("/pay/tickets") || pathname.startsWith("/pay/ticket")) {
+  if (
+    pathname.startsWith("/pay/tickets") ||
+    pathname.startsWith("/pay/ticket")
+  ) {
     return "tickets";
   }
   return "qr";

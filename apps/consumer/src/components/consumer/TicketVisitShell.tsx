@@ -19,7 +19,7 @@ function VenueThumbnail({
   name?: string | null;
 }) {
   return (
-    <div className="bg-muted relative aspect-square w-full shrink-0 overflow-hidden rounded-2xl ring-1 ring-border/60">
+    <div className="bg-muted ring-border/60 relative aspect-square w-full shrink-0 overflow-hidden rounded-2xl ring-1">
       {photoUrl ? (
         <Image
           src={photoUrl}
@@ -74,11 +74,13 @@ export function TicketVisitShell({
       {venueName}
     </Link>
   ) : (
-    <p className="text-foreground truncate text-sm font-semibold">{venueName}</p>
+    <p className="text-foreground truncate text-sm font-semibold">
+      {venueName}
+    </p>
   );
 
   return (
-    <section className="surface-card-soft overflow-hidden ring-1 ring-secondary/15">
+    <section className="surface-card-soft ring-secondary/15 overflow-hidden ring-1">
       <div className="space-y-3 p-4">
         <div className="grid grid-cols-[104px_minmax(0,1fr)] items-stretch gap-3">
           <VenueThumbnail photoUrl={venuePhotoUrl} name={venueName} />
@@ -87,7 +89,7 @@ export function TicketVisitShell({
               {nameEl}
             </div>
             <div
-              className={`${pillBase} border-secondary/20 from-secondary/12 to-accent/10 bg-gradient-to-br ring-secondary/15`}
+              className={`${pillBase} border-secondary/20 from-secondary/12 to-accent/10 ring-secondary/15 bg-gradient-to-br`}
             >
               <p className="text-secondary truncate text-sm font-semibold">
                 {rewardLabel}
@@ -101,7 +103,7 @@ export function TicketVisitShell({
           </div>
         </div>
 
-        <div className="bg-muted/30 rounded-2xl px-4 py-3 ring-1 ring-inset ring-border/50">
+        <div className="bg-muted/30 ring-border/50 rounded-2xl px-4 py-3 ring-1 ring-inset">
           <TicketFlowStepper
             steps={steps}
             selectedStepId={displayStepId}
@@ -115,11 +117,13 @@ export function TicketVisitShell({
             variant="compact"
           />
         ) : statusLine ? (
-          <div className="bg-muted/40 rounded-2xl px-3.5 py-3 ring-1 ring-inset ring-border/50">
+          <div className="bg-muted/40 ring-border/50 rounded-2xl px-3.5 py-3 ring-1 ring-inset">
             <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
               Status summary
             </p>
-            <p className="text-foreground mt-0.5 text-sm font-medium">{statusLine}</p>
+            <p className="text-foreground mt-0.5 text-sm font-medium">
+              {statusLine}
+            </p>
           </div>
         ) : null}
       </div>

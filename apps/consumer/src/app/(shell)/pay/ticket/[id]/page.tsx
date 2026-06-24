@@ -17,7 +17,5 @@ export default async function PayTicketPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/?next=${encodeURIComponent(payTicketPath(id))}`);
 
-  return (
-    <TicketDetailsRouteClientDynamic userId={user.id} ticketId={id} />
-  );
+  return <TicketDetailsRouteClientDynamic userId={user.id} ticketId={id} />;
 }

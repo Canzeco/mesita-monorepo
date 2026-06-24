@@ -22,7 +22,7 @@ export function CalendarConnectBox() {
       aria-label="Connect calendar"
       className="hover:bg-muted/40 active:bg-muted/60 flex w-full items-center gap-3 px-4 py-3.5 text-left transition"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border/50">
+      <span className="ring-border/50 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1">
         <GoogleCalendarLogo />
       </span>
       <span className="flex min-w-0 flex-1 flex-col">

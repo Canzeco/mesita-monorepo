@@ -101,8 +101,6 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
  * a not-found state without crashing — every id is mock for now, but
  * once the real Edge Function lands the same shape applies.
  */
-export function getMockReservationById(
-  id: string,
-): ReservationItem | null {
+export function getMockReservationById(id: string): ReservationItem | null {
   return MOCK_RESERVATIONS.find((r) => r.id === id) ?? null;
 }

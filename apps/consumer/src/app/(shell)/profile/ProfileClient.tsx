@@ -477,11 +477,11 @@ function CurrentClassCard() {
         <Icon className="h-5 w-5" />
       </span>
       <div className="min-w-0">
-        <h2 className="font-display [text-shadow:0_1px_6px_rgba(0,0,0,0.35)] text-2xl leading-tight font-semibold tracking-tight">
+        <h2 className="font-display text-2xl leading-tight font-semibold tracking-tight [text-shadow:0_1px_6px_rgba(0,0,0,0.35)]">
           {brand}
         </h2>
         {via && (
-          <p className="[text-shadow:0_1px_4px_rgba(0,0,0,0.3)] text-[11px] leading-snug opacity-100">
+          <p className="text-[11px] leading-snug opacity-100 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">
             {via}
           </p>
         )}

@@ -21,5 +21,10 @@ export default async function ExplorePlacePage({
   if (!venue) {
     redirect(CONSUMER_ROUTES.explore.swipe);
   }
-  return <VenueDetailPageBody venue={venue} backHref={CONSUMER_ROUTES.explore.swipe} />;
+  return (
+    <VenueDetailPageBody
+      venue={venue}
+      backHref={CONSUMER_ROUTES.explore.swipe}
+    />
+  );
 }

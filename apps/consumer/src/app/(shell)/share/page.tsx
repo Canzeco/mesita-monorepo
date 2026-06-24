@@ -168,7 +168,9 @@ function FriendsTab() {
             <p className="text-[10px] font-bold tracking-[0.2em] text-white/80 uppercase">
               Mesita · Gift card
             </p>
-            <p className="mt-1 text-[11px] text-white/85">To a friend, from you</p>
+            <p className="mt-1 text-[11px] text-white/85">
+              To a friend, from you
+            </p>
           </div>
           <span className="text-2xl leading-none" aria-hidden>
             🎀
@@ -225,7 +227,7 @@ function FriendsTab() {
                     <span className="font-display absolute inset-0 flex items-center justify-center text-base font-bold text-white">
                       {f.initials}
                     </span>
-                    <span className="bg-emerald-500 absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full text-white shadow-sm">
+                    <span className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
                       <Check className="h-2.5 w-2.5" strokeWidth={3} />
                     </span>
                   </div>
@@ -285,8 +287,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     title: "Influencers",
     icon: Megaphone,
     iconBg: "bg-pink-gradient text-white",
-    body:
-      "Create content about travel, food, nightlife or lifestyle? You just found a gold mine. 20% of Mesita's equity is reserved for creators. Let's partner.",
+    body: "Create content about travel, food, nightlife or lifestyle? You just found a gold mine. 20% of Mesita's equity is reserved for creators. Let's partner.",
     websiteUrl: "https://www.mesita.ai",
   },
   {
@@ -294,8 +295,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     title: "Marketing agencies",
     icon: Briefcase,
     iconBg: "bg-sky-500 text-white",
-    body:
-      "Do you manage marketing for restaurants or bars? Add Mesita to your stack.",
+    body: "Do you manage marketing for restaurants or bars? Add Mesita to your stack.",
     websiteUrl: "https://www.mesita.ai",
   },
   {
@@ -303,8 +303,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     title: "Model & talent agencies",
     icon: Star,
     iconBg: "bg-tier-premium text-white",
-    body:
-      "Our partner venues want your talent in the room to enhance the ambience. Make all your talent Mesita Premium, for free, no tricks.",
+    body: "Our partner venues want your talent in the room to enhance the ambience. Make all your talent Mesita Premium, for free, no tricks.",
     websiteUrl: "https://www.mesita.ai",
   },
 ];
@@ -314,8 +313,7 @@ const RESTAURANTS_GROUP: PartnerGroup = {
   title: "Restaurants & bars",
   icon: UtensilsCrossed,
   iconBg: "bg-pink-gradient text-white",
-  body:
-    "More customers from priority placement on swipe, map, and catalog. Better customers with higher spend and repeat visits. Setup takes ~8 minutes in any browser.",
+  body: "More customers from priority placement on swipe, map, and catalog. Better customers with higher spend and repeat visits. Setup takes ~8 minutes in any browser.",
   websiteUrl: "https://www.mesita.ai",
 };
 

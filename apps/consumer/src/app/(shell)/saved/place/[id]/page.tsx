@@ -21,5 +21,10 @@ export default async function SavedPlacePage({
   if (!venue) {
     redirect(CONSUMER_ROUTES.saved.places);
   }
-  return <VenueDetailPageBody venue={venue} backHref={CONSUMER_ROUTES.saved.places} />;
+  return (
+    <VenueDetailPageBody
+      venue={venue}
+      backHref={CONSUMER_ROUTES.saved.places}
+    />
+  );
 }

@@ -104,7 +104,9 @@ function PlacesBody() {
   const [previewCatalog] = useState<Map<string, Venue>>(() =>
     readSavedVenuePreviews<Venue>(),
   );
-  const [liveCatalog, setLiveCatalog] = useState<Map<string, Venue> | null>(null);
+  const [liveCatalog, setLiveCatalog] = useState<Map<string, Venue> | null>(
+    null,
+  );
 
   useEffect(() => {
     let active = true;
@@ -208,12 +210,14 @@ function SavedVenueTile({
     categoryLabel: venue.category_label,
     category: venue.category,
   });
-  const priceLevel = venue.price_level != null ? "$".repeat(venue.price_level) : null;
+  const priceLevel =
+    venue.price_level != null ? "$".repeat(venue.price_level) : null;
   const ratingLabel =
     venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
   const ratingCountLabel =
     venue.google_count != null ? formatCompactCount(venue.google_count) : null;
-  const distanceLabel = venue.distance_km != null ? `${venue.distance_km} km` : null;
+  const distanceLabel =
+    venue.distance_km != null ? `${venue.distance_km} km` : null;
   const isPartner = venue.listing_type === "partner";
   const isOpen = venue.open_now === true;
   const statusLabel = venue.opens_at
@@ -228,7 +232,7 @@ function SavedVenueTile({
     <div className="relative">
       <Link
         href={placeHref(venue.slug || venue.id, "saved")}
-        className="border-border bg-card hover:shadow-md flex min-h-[118px] w-full overflow-hidden rounded-xl border transition"
+        className="border-border bg-card flex min-h-[118px] w-full overflow-hidden rounded-xl border transition hover:shadow-md"
       >
         <div className="bg-muted relative w-[42%] shrink-0">
           {photo ? (
@@ -282,7 +286,11 @@ function SavedVenueTile({
             {statusLabel && (
               <SavedMetaTag>
                 <Clock
-                  className={isOpen ? "h-3 w-3 shrink-0 text-emerald-400" : "h-3 w-3 shrink-0 text-white/70"}
+                  className={
+                    isOpen
+                      ? "h-3 w-3 shrink-0 text-emerald-400"
+                      : "h-3 w-3 shrink-0 text-white/70"
+                  }
                 />
                 <span className="font-semibold">{statusLabel}</span>
               </SavedMetaTag>

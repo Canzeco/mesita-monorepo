@@ -26,19 +26,23 @@ export default async function ConsumerOnboardPage() {
   // only checked full_name here, a partially-onboarded user would loop:
   //   onboard → discover/swipe (full_name truthy) → shell sees missing
   //   country/birthday/sex → bounces back to onboard. Strict here too.
+  // redirect() throws NEXT_REDIRECT, so it MUST live outside the try/catch —
+  // otherwise the catch swallows the redirect and logs it as an error (and
+  // the already-onboarded user gets stuck on the form).
+  let onboarded = false;
   try {
     const { consumer: profile } = await apiFetchConsumerProfile(supabase);
-    const onboarded =
+    onboarded =
       !!profile.full_name &&
       !!profile.country &&
       !!profile.birthday &&
       !!profile.sex;
-    if (onboarded) redirect("/explore/swipe");
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.
     console.error("[consumer/onboard] consumer-get-profile:", err);
   }
+  if (onboarded) redirect("/explore/swipe");
 
   return (
     <MobileFrame>

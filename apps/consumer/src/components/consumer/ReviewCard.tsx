@@ -72,7 +72,8 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
         />
         <StarRow rating={overall} />
         <p className="text-muted-foreground text-[10px] leading-snug">
-          Overall <span className="text-foreground font-semibold">{overall}</span>
+          Overall{" "}
+          <span className="text-foreground font-semibold">{overall}</span>
           {" · "}Food{" "}
           <span className="text-foreground font-semibold">{v.food}</span>
           {" · "}Service{" "}
@@ -233,10 +234,7 @@ function Thumbnail({
   return (
     <div className="mt-auto flex justify-center">
       <div
-        className={cn(
-          "relative w-40 overflow-hidden rounded-xl",
-          aspectClass,
-        )}
+        className={cn("relative w-40 overflow-hidden rounded-xl", aspectClass)}
       >
         <Image
           src={src}

@@ -9,7 +9,8 @@ import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationC
 import { payTabHref, type PayTab } from "@/lib/pay-route";
 
 const PayTickets = dynamic(
-  () => import("@/components/consumer/PayTickets").then((mod) => mod.PayTickets),
+  () =>
+    import("@/components/consumer/PayTickets").then((mod) => mod.PayTickets),
   {
     loading: () => (
       <div className="border-border bg-card text-muted-foreground rounded-lg border px-4 py-6 text-center text-sm">

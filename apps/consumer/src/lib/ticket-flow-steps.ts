@@ -143,11 +143,12 @@ export const STEP_DONE_LINE: Record<TicketFlowStepId, string> = {
   review: "Review sent",
 };
 
-export type StepSequenceLine =
-  | string
-  | { text: string; struck?: boolean };
+export type StepSequenceLine = string | { text: string; struck?: boolean };
 
-export const STEP_SEQUENCE_DETAILS: Record<TicketFlowStepId, StepSequenceLine[]> = {
+export const STEP_SEQUENCE_DETAILS: Record<
+  TicketFlowStepId,
+  StepSequenceLine[]
+> = {
   scan: [
     "Show your Mesita QR at the table.",
     "Staff scans your code — the bot validates it and starts your visit.",
@@ -206,9 +207,7 @@ export function ticketFlowStepAnchorId(stepId: TicketFlowStepId): string {
   return `ticket-flow-step-${stepId}`;
 }
 
-export function ticketFlowStepStatusLabel(
-  step: TicketFlowStepView,
-): string {
+export function ticketFlowStepStatusLabel(step: TicketFlowStepView): string {
   if (step.state === "done") return "Done";
   if (step.state === "active") return "Now";
   return "Pending";

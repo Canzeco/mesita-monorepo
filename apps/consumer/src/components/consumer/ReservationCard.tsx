@@ -147,7 +147,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
 function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
   const ig = coupon.kind === "instagram";
   return (
-    <div className="-mx-3 -mb-3 flex items-center gap-2.5 border-t border-dashed border-border/70 bg-pink-500/[0.04] px-3 py-2.5">
+    <div className="border-border/70 -mx-3 -mb-3 flex items-center gap-2.5 border-t border-dashed bg-pink-500/[0.04] px-3 py-2.5">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 ring-1 ring-pink-500/20">
         {ig ? (
           <Instagram className="h-4 w-4 text-pink-600" strokeWidth={2} />
@@ -160,8 +160,7 @@ function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
           Reward tied
         </p>
         <p className="text-foreground mt-0.5 text-[13px] leading-tight font-semibold">
-          <span className="text-pink-600">{coupon.percent}%</span>{" "}
-          discount{" "}
+          <span className="text-pink-600">{coupon.percent}%</span> discount{" "}
           <span className="text-muted-foreground font-normal">
             · {coupon.tierLabel}
           </span>

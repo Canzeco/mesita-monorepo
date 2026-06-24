@@ -21,10 +21,11 @@ function StepDot({
         step.state === "done" &&
           "border-secondary/30 bg-secondary/15 text-secondary",
         step.state === "active" &&
-          "border-transparent bg-primary text-primary-foreground",
+          "bg-primary text-primary-foreground border-transparent",
         step.state === "upcoming" &&
           "border-border bg-muted/50 text-muted-foreground",
-        selected && "ring-primary/40 ring-2 ring-offset-2 ring-offset-background",
+        selected &&
+          "ring-primary/40 ring-offset-background ring-2 ring-offset-2",
       )}
       aria-hidden
     >
@@ -59,18 +60,20 @@ export function TicketFlowProgressBar({
         const selected = selectedStepId === step.id;
         const stepCol = (
           <>
-              <StepDot step={step} index={i} selected={selected} />
-              <span
-                className={cn(
-                  "w-full truncate px-0.5 text-center text-[10px] leading-tight",
-                  selected && "text-foreground font-semibold",
-                  !selected && step.state === "active" && "text-foreground font-medium",
-                  !selected && step.state === "done" && "text-secondary",
-                  step.state === "upcoming" && "text-muted-foreground",
-                )}
-              >
-                {step.label}
-              </span>
+            <StepDot step={step} index={i} selected={selected} />
+            <span
+              className={cn(
+                "w-full truncate px-0.5 text-center text-[10px] leading-tight",
+                selected && "text-foreground font-semibold",
+                !selected &&
+                  step.state === "active" &&
+                  "text-foreground font-medium",
+                !selected && step.state === "done" && "text-secondary",
+                step.state === "upcoming" && "text-muted-foreground",
+              )}
+            >
+              {step.label}
+            </span>
           </>
         );
 
@@ -80,7 +83,7 @@ export function TicketFlowProgressBar({
               <button
                 type="button"
                 onClick={() => onSelectStep(step.id)}
-                className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg py-0.5 transition hover:bg-muted/50"
+                className="hover:bg-muted/50 flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg py-0.5 transition"
                 aria-current={selected ? "step" : undefined}
                 aria-label={`${step.label} — ${step.state}`}
               >

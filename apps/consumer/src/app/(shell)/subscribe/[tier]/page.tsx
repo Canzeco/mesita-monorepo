@@ -101,7 +101,7 @@ export default function SubscribePage() {
               </span>
             </li>
             <li className="flex items-start gap-2.5">
-              <span className="bg-amber-500 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
                 <Mail className="h-3.5 w-3.5" />
               </span>
               <span>
@@ -114,8 +114,8 @@ export default function SubscribePage() {
                 <Sparkles className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="font-semibold">Subscribe</span> — ${premium.priceMxn}{" "}
-                MXN / mo, below. Cancel anytime.
+                <span className="font-semibold">Subscribe</span> — $
+                {premium.priceMxn} MXN / mo, below. Cancel anytime.
               </span>
             </li>
           </ul>

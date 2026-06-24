@@ -68,9 +68,7 @@ export function getCachedImageNaturalSize(
   return imageSizeCache.get(normalizePhotoSrc(src));
 }
 
-export function loadImageNaturalSize(
-  src: string,
-): Promise<ImageNaturalSize> {
+export function loadImageNaturalSize(src: string): Promise<ImageNaturalSize> {
   const key = normalizePhotoSrc(src);
   const cached = imageSizeCache.get(key);
   if (cached) return Promise.resolve(cached);
@@ -97,7 +95,9 @@ async function loadImageNaturalSizeViaBitmap(
   return cached;
 }
 
-function loadImageNaturalSizeViaElement(src: string): Promise<ImageNaturalSize> {
+function loadImageNaturalSizeViaElement(
+  src: string,
+): Promise<ImageNaturalSize> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.onload = () => {
@@ -188,10 +188,11 @@ export function useSwipeCardPhotoLayout(
   useLayoutEffect(() => {
     if (photos.length === 0) return;
     let cancelled = false;
-    Promise.all(photos.map((src) => loadImageNaturalSize(src).catch(() => null)))
-      .then(() => {
-        if (!cancelled) setSizesEpoch((n) => n + 1);
-      });
+    Promise.all(
+      photos.map((src) => loadImageNaturalSize(src).catch(() => null)),
+    ).then(() => {
+      if (!cancelled) setSizesEpoch((n) => n + 1);
+    });
     return () => {
       cancelled = true;
     };
@@ -217,11 +218,7 @@ export function useSwipeCardPhotoLayout(
     const prev = getCachedImageNaturalSize(src);
     const cached = cacheImageNaturalSize(src, size);
     if (!cached) return;
-    if (
-      !prev ||
-      prev.width !== cached.width ||
-      prev.height !== cached.height
-    ) {
+    if (!prev || prev.width !== cached.width || prev.height !== cached.height) {
       setSizesEpoch((n) => n + 1);
     }
   }, []);

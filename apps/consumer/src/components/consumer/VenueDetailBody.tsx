@@ -212,7 +212,9 @@ function SummaryHeader({ venue }: { venue: VenueDetail }) {
       </h1>
       <div className="flex flex-wrap items-center gap-2">
         <OverviewChip capitalize>{venue.category}</OverviewChip>
-        {showFullCategory && <OverviewChip capitalize>{fullCategory}</OverviewChip>}
+        {showFullCategory && (
+          <OverviewChip capitalize>{fullCategory}</OverviewChip>
+        )}
         <OverviewChip>{formatPerPersonPrice(venue.price_range)}</OverviewChip>
         <OverviewChip
           icon={Star}
@@ -1083,7 +1085,7 @@ function OwnershipClaimBox({ venue }: { venue: VenueDetail }) {
         href="https://business.mesita.ai/add"
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-amber-500/10 text-amber-800 ring-amber-500/30 hover:bg-amber-500/15 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold ring-1 transition"
+        className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-500/30 transition hover:bg-amber-500/15"
       >
         Are you the owner of this venue? Claim ownership
         <ChevronRight className="h-3.5 w-3.5" />

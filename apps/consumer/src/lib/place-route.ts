@@ -1,7 +1,4 @@
-import {
-  placePath,
-  type PlaceSurface,
-} from "@/lib/consumer-route-contract";
+import { placePath, type PlaceSurface } from "@/lib/consumer-route-contract";
 
 const RESERVED_PLACE_SEGMENTS = new Set([
   "discover",

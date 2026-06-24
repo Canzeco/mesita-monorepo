@@ -19,7 +19,10 @@ export default async function ExploreSwipePage() {
     const result = await apiRecommendDeck(supabase, { limit: 50 });
     venues = result.deck;
   } catch (err) {
-    console.warn("[explore/swipe] consumer-recommend-deck failed, falling back:", err);
+    console.warn(
+      "[explore/swipe] consumer-recommend-deck failed, falling back:",
+      err,
+    );
     try {
       venues = await apiFetchPublicVenues(supabase);
     } catch (err2) {

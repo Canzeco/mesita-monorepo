@@ -26,7 +26,8 @@ export function Toaster() {
 }
 
 function ToastCard({ t }: { t: Toast }) {
-  const Icon = t.tone === "success" ? Check : t.tone === "error" ? AlertCircle : null;
+  const Icon =
+    t.tone === "success" ? Check : t.tone === "error" ? AlertCircle : null;
   // emerald-600 / red-600 read against the light card; the lighter 400
   // variants we used before were tuned for the old dark surface.
   const iconClass =
@@ -39,7 +40,7 @@ function ToastCard({ t }: { t: Toast }) {
     <div
       role="status"
       className={cn(
-        "animate-in slide-in-from-bottom-2 fade-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border bg-card/95 px-4 py-2.5 text-sm shadow-elev backdrop-blur duration-200",
+        "animate-in slide-in-from-bottom-2 fade-in bg-card/95 shadow-elev pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 text-sm backdrop-blur duration-200",
         t.tone === "error" ? "border-red-500/40" : "border-border",
       )}
     >

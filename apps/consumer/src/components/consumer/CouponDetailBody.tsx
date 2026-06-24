@@ -162,7 +162,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
               alt={c.venueName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"
-              className={cn("object-cover", muted && "grayscale opacity-80")}
+              className={cn("object-cover", muted && "opacity-80 grayscale")}
             />
           ) : null}
         </div>
@@ -209,13 +209,11 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
 
       {meta.banner && <StatusBanner banner={meta.banner} />}
 
-      {c.kind === "instagram" &&
-        c.status === "rejected" &&
-        c.rejectReason && (
-          <p className="bg-destructive/10 text-destructive rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug">
-            {c.rejectReason}
-          </p>
-        )}
+      {c.kind === "instagram" && c.status === "rejected" && c.rejectReason && (
+        <p className="bg-destructive/10 text-destructive rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug">
+          {c.rejectReason}
+        </p>
+      )}
 
       {/* Coupon metadata list — tier, cap, expiry. iOS Settings-style. */}
       <section className="border-border bg-card divide-border/70 divide-y overflow-hidden rounded-2xl border">
@@ -293,10 +291,10 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
         <button
           type="button"
           onClick={() =>
-            toast.action(
-              "Sharing a coupon link with a friend lands soon.",
-              { label: "Notify me", onClick: () => {} },
-            )
+            toast.action("Sharing a coupon link with a friend lands soon.", {
+              label: "Notify me",
+              onClick: () => {},
+            })
           }
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition"
         >
@@ -367,7 +365,7 @@ function LinkedReservationCard({
   return (
     <Link
       href={reservationPath(reservation.id)}
-      className="hover:bg-emerald-500/[0.06] flex items-center gap-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-3.5 transition"
+      className="flex items-center gap-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-3.5 transition hover:bg-emerald-500/[0.06]"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/20">
         <Calendar className="h-5 w-5 text-emerald-700" strokeWidth={2} />

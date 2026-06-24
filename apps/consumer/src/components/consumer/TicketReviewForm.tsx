@@ -40,7 +40,9 @@ function StarRatingRow({
         <p
           className={cn(
             "font-medium",
-            emphasized ? "text-foreground text-sm" : "text-foreground text-[13px]",
+            emphasized
+              ? "text-foreground text-sm"
+              : "text-foreground text-[13px]",
           )}
         >
           {label}
@@ -52,7 +54,11 @@ function StarRatingRow({
       {hint ? (
         <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p>
       ) : null}
-      <div className="mt-1.5 flex justify-between gap-1" role="group" aria-label={label}>
+      <div
+        className="mt-1.5 flex justify-between gap-1"
+        role="group"
+        aria-label={label}
+      >
         {[1, 2, 3, 4, 5].map((n) => {
           const on = value >= n;
           return (
@@ -112,7 +118,9 @@ export function TicketReviewForm({
       {showIntro !== false ? (
         <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-[13px] leading-snug">
           <li>Tap stars on each row — 1 is bad, 5 is great.</li>
-          <li>Fill in Overall first, then Food, Service, Ambiance, and Value.</li>
+          <li>
+            Fill in Overall first, then Food, Service, Ambiance, and Value.
+          </li>
           <li>Add a note about your visit, then tap Send review.</li>
         </ol>
       ) : null}
@@ -153,7 +161,9 @@ export function TicketReviewForm({
           <span
             className={cn(
               "text-[11px] font-normal tabular-nums",
-              noteLen >= NOTE_MIN ? "text-emerald-600" : "text-muted-foreground",
+              noteLen >= NOTE_MIN
+                ? "text-emerald-600"
+                : "text-muted-foreground",
             )}
           >
             {noteLen}/{NOTE_MIN}

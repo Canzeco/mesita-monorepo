@@ -236,7 +236,7 @@ function ReservationSheetContent({
                   className={cn(
                     "rounded-xl border py-2 text-sm font-semibold tabular-nums transition",
                     active
-                      ? "border-pink-500/40 bg-pink-500/10 text-foreground"
+                      ? "text-foreground border-pink-500/40 bg-pink-500/10"
                       : "border-border bg-card text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -255,9 +255,7 @@ function ReservationSheetContent({
           <div className="border-border bg-card mt-2 flex items-center justify-between rounded-2xl border p-2">
             <button
               type="button"
-              onClick={() =>
-                setPartySize((n) => Math.max(MIN_PARTY, n - 1))
-              }
+              onClick={() => setPartySize((n) => Math.max(MIN_PARTY, n - 1))}
               disabled={partySize <= MIN_PARTY}
               aria-label="Decrease party size"
               className="bg-muted text-foreground hover:bg-muted/70 flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"
@@ -269,9 +267,7 @@ function ReservationSheetContent({
             </span>
             <button
               type="button"
-              onClick={() =>
-                setPartySize((n) => Math.min(MAX_PARTY, n + 1))
-              }
+              onClick={() => setPartySize((n) => Math.min(MAX_PARTY, n + 1))}
               disabled={partySize >= MAX_PARTY}
               aria-label="Increase party size"
               className="bg-muted text-foreground hover:bg-muted/70 flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"

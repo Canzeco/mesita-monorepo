@@ -48,7 +48,8 @@ function dismiss(id: string) {
 }
 
 function push(input: ToastInput | string): string {
-  const cfg: ToastInput = typeof input === "string" ? { message: input } : input;
+  const cfg: ToastInput =
+    typeof input === "string" ? { message: input } : input;
   // Action toasts hold longer by default because users need a chance to
   // notice + tap the button. 6s feels right — much past that and the user
   // has moved on, much under and they miss it.
@@ -75,7 +76,10 @@ function toastFn(message: string, opts?: Omit<ToastInput, "message">): string {
 }
 
 const toast = Object.assign(toastFn, {
-  success(message: string, opts?: Omit<ToastInput, "message" | "tone">): string {
+  success(
+    message: string,
+    opts?: Omit<ToastInput, "message" | "tone">,
+  ): string {
     return push({ message, tone: "success", ...(opts ?? {}) });
   },
   error(message: string, opts?: Omit<ToastInput, "message" | "tone">): string {

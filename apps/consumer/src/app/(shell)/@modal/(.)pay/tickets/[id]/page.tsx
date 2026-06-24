@@ -11,4 +11,3 @@ export default async function TicketDetailsModalPage({
   const { id } = await params;
   redirect(ticketPath(id));
 }
-

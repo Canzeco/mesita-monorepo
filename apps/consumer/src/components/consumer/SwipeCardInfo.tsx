@@ -44,10 +44,7 @@ export function SwipeCardInfo({
 
   return (
     <div
-      className={cn(
-        "flex flex-col",
-        compact ? "gap-1.5" : "gap-2.5 p-4 pt-3",
-      )}
+      className={cn("flex flex-col", compact ? "gap-1.5" : "gap-2.5 p-4 pt-3")}
     >
       <h2
         className={cn(
@@ -151,7 +148,7 @@ function MetaChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-white/35 bg-black/45 whitespace-nowrap text-white tabular-nums backdrop-blur-md [font-variant-numeric:tabular-nums_lining-nums]",
+        "inline-flex items-center gap-1.5 rounded-md border border-white/35 bg-black/45 whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
         compact ? "px-[9px] py-[3px] text-[11px]" : "px-2.5 py-1 text-[11.5px]",
       )}
     >

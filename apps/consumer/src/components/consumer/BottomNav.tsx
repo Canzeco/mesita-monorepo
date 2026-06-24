@@ -99,7 +99,7 @@ export function BottomNav({ userId }: { userId?: string }) {
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
                 {showBadge ? (
-                  <span className="bg-secondary text-background absolute -top-0.5 -right-0.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full px-0.5 text-[9px] font-bold leading-none">
+                  <span className="bg-secondary text-background absolute -top-0.5 -right-0.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full px-0.5 text-[9px] leading-none font-bold">
                     {pending > 9 ? "9+" : pending}
                   </span>
                 ) : null}

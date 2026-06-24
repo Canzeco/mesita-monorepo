@@ -49,7 +49,7 @@ export function TicketActionCard({
     <section
       className={cn(
         "surface-card overflow-hidden",
-        isActive && "ring-2 ring-primary/25",
+        isActive && "ring-primary/25 ring-2",
       )}
       aria-labelledby="ticket-action-title"
     >
@@ -65,7 +65,7 @@ export function TicketActionCard({
         <h2
           id="ticket-action-title"
           className={cn(
-            "mt-2 text-xl font-bold leading-tight",
+            "mt-2 text-xl leading-tight font-bold",
             isActive && "text-white",
             isDone && "text-foreground",
             isLocked && "text-muted-foreground",
@@ -87,10 +87,11 @@ export function TicketActionCard({
 
       <div className="space-y-4 p-4">
         {isLocked ? (
-          <div className="flex items-start gap-3 rounded-2xl bg-muted/40 px-3 py-3">
+          <div className="bg-muted/40 flex items-start gap-3 rounded-2xl px-3 py-3">
             <Lock className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
             <p className="text-muted-foreground text-sm leading-relaxed">
-              This comes later. Finish what&apos;s highlighted in pink above first.
+              This comes later. Finish what&apos;s highlighted in pink above
+              first.
             </p>
           </div>
         ) : null}
@@ -168,14 +169,14 @@ function StatusPill({
   }
   if (done) {
     return (
-      <span className="text-secondary inline-flex items-center rounded-full bg-secondary/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+      <span className="text-secondary bg-secondary/15 inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
         Done
       </span>
     );
   }
   if (locked) {
     return (
-      <span className="text-muted-foreground inline-flex items-center gap-1 rounded-full bg-background/80 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+      <span className="text-muted-foreground bg-background/80 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
         <Lock className="h-3 w-3" />
         Later
       </span>

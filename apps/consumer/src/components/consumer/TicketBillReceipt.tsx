@@ -1,6 +1,9 @@
 "use client";
 
-import { buildTicketReceipt, type TicketReceiptLine } from "@/lib/ticket-bill-receipt";
+import {
+  buildTicketReceipt,
+  type TicketReceiptLine,
+} from "@/lib/ticket-bill-receipt";
 import type { TicketBillPayload } from "@/lib/api/pay";
 import { cn } from "@/lib/utils";
 
@@ -25,9 +28,9 @@ export function TicketBillReceipt({
   const noteLines = receipt.lines.filter((l) => l.kind === "note");
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
-      <div className="border-border/60 border-b bg-muted/20 px-4 py-3">
-        <p className="text-foreground text-base font-semibold leading-tight">
+    <div className="border-border/80 bg-card overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border/60 bg-muted/20 border-b px-4 py-3">
+        <p className="text-foreground text-base leading-tight font-semibold">
           {venueName ?? "Your bill"}
         </p>
         <p className="text-muted-foreground mt-0.5 text-xs">
@@ -55,7 +58,7 @@ export function TicketBillReceipt({
             )}
           >
             <span className="text-sm font-semibold">{totalLine.label}</span>
-            <span className="text-xl font-bold tabular-nums tracking-tight">
+            <span className="text-xl font-bold tracking-tight tabular-nums">
               {totalLine.value}
             </span>
           </div>
@@ -72,7 +75,7 @@ export function TicketBillReceipt({
       </div>
 
       {receipt.footerNote ? (
-        <div className="border-border/60 border-t bg-muted/15 px-4 py-3">
+        <div className="border-border/60 bg-muted/15 border-t px-4 py-3">
           <p className="text-muted-foreground text-center text-xs leading-snug">
             {receipt.footerNote}
           </p>
@@ -97,7 +100,7 @@ function ReceiptRow({ line }: { line: TicketReceiptLine }) {
         className={cn(
           "text-sm",
           isDeduction ? "text-secondary font-medium" : "text-foreground",
-          isSubtotal && "font-medium text-muted-foreground",
+          isSubtotal && "text-muted-foreground font-medium",
         )}
       >
         {line.label}

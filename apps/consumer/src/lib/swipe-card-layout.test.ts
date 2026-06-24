@@ -52,10 +52,14 @@ assertMode("16:9 landscape", 1920, 1080, "witc");
     throw new Error("16:9 on portrait card should be height-limited");
   }
   if (Math.abs(placement.top) > 0.01) {
-    throw new Error(`height-limited cover should flush bottom: top=${placement.top}`);
+    throw new Error(
+      `height-limited cover should flush bottom: top=${placement.top}`,
+    );
   }
   if (Math.abs(placement.height - planeHeight) > 0.01) {
-    throw new Error(`height-limited cover height should match plane: ${placement.height}`);
+    throw new Error(
+      `height-limited cover height should match plane: ${placement.height}`,
+    );
   }
 
   const layout = computeWitcCoverLayout({
@@ -69,7 +73,11 @@ assertMode("16:9 landscape", 1920, 1080, "witc");
   if (mirrorSliceBottom > layout.placement.height + 0.01) {
     throw new Error("mirror slice should fit inside scaled image");
   }
-  if (Math.abs(layout.regions.mirrorStrip.top - (placement.top - layout.topBandHeight)) > 0.01) {
+  if (
+    Math.abs(
+      layout.regions.mirrorStrip.top - (placement.top - layout.topBandHeight),
+    ) > 0.01
+  ) {
     throw new Error("mirror offset must shift by topBandHeight");
   }
 }
@@ -89,10 +97,14 @@ assertMode("16:9 landscape", 1920, 1080, "witc");
     throw new Error("square on portrait card should be height-limited");
   }
   if (Math.abs(placement.width - planeHeight) > 0.01) {
-    throw new Error(`width should be planeHeight × imageRatio: ${placement.width}`);
+    throw new Error(
+      `width should be planeHeight × imageRatio: ${placement.width}`,
+    );
   }
   if (placement.left >= 0) {
-    throw new Error(`horizontal crop should be negative left: ${placement.left}`);
+    throw new Error(
+      `horizontal crop should be negative left: ${placement.left}`,
+    );
   }
 }
 
@@ -114,7 +126,9 @@ assertMode("16:9 landscape", 1920, 1080, "witc");
     throw new Error("1:2 image on portrait card should be width-limited");
   }
   if (placement.top >= 0) {
-    throw new Error(`width-limited cover should crop above: top=${placement.top}`);
+    throw new Error(
+      `width-limited cover should crop above: top=${placement.top}`,
+    );
   }
 
   const layout = computeWitcCoverLayout({
@@ -124,7 +138,10 @@ assertMode("16:9 landscape", 1920, 1080, "witc");
     planeHeight,
     stripHeight,
   });
-  if (Math.abs(layout.seamRowInImage - (layout.topBandHeight - placement.top)) > 0.01) {
+  if (
+    Math.abs(layout.seamRowInImage - (layout.topBandHeight - placement.top)) >
+    0.01
+  ) {
     throw new Error("seam row should match topBandHeight − placement.top");
   }
 }

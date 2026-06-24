@@ -21,7 +21,10 @@ import { TicketDetailsView } from "@/components/consumer/TicketDetailsView";
 import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { isTicketFlowComplete, ticketProgressFromBundle } from "@/lib/ticket-flow-steps";
+import {
+  isTicketFlowComplete,
+  ticketProgressFromBundle,
+} from "@/lib/ticket-flow-steps";
 
 export function TicketDetailsRouteClient({
   userId,
@@ -46,7 +49,9 @@ export function TicketDetailsRouteClient({
     total_cents?: number | null;
     created_at?: string | null;
   } | null>(null);
-  const [venueInstagramUrl, setVenueInstagramUrl] = useState<string | null>(null);
+  const [venueInstagramUrl, setVenueInstagramUrl] = useState<string | null>(
+    null,
+  );
   const [reviewDraft, setReviewDraft] = useState({
     food: 0,
     service: 0,
@@ -81,8 +86,9 @@ export function TicketDetailsRouteClient({
     setTicketMeta(ticketRow ?? null);
 
     const venueId =
-      (data ?? []).map((r) => payloadFromNotification(r.payload).venue_id).find(Boolean) ??
-      null;
+      (data ?? [])
+        .map((r) => payloadFromNotification(r.payload).venue_id)
+        .find(Boolean) ?? null;
     if (venueId) {
       const { data: venueRow } = await supabase
         .from("venues")
@@ -103,7 +109,8 @@ export function TicketDetailsRouteClient({
 
   const payload = useMemo<TicketBillPayload>(() => {
     const merged: TicketBillPayload = {};
-    for (const row of rows) Object.assign(merged, payloadFromNotification(row.payload));
+    for (const row of rows)
+      Object.assign(merged, payloadFromNotification(row.payload));
     return merged;
   }, [rows]);
 

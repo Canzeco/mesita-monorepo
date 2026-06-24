@@ -93,8 +93,7 @@ export function formatTicketRewardLabel(
   }
 
   const rewardCents =
-    p.total_reward_cents ??
-    (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
   if (rewardCents > 0) {
     return `${formatPayMx(rewardCents, p.currency)} ${billPart}`;
   }

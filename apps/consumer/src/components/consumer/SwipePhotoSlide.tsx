@@ -2,7 +2,10 @@
 
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { isSplitLayout, type SwipeCardLayoutMode } from "@/lib/swipe-card-layout";
+import {
+  isSplitLayout,
+  type SwipeCardLayoutMode,
+} from "@/lib/swipe-card-layout";
 import {
   readPhotoNaturalSize,
   type ImageNaturalSize,
@@ -118,7 +121,9 @@ function WitcPhotoSlide({
   };
 
   return (
-    <div className={cn("flex h-full w-full flex-col overflow-hidden", className)}>
+    <div
+      className={cn("flex h-full w-full flex-col overflow-hidden", className)}
+    >
       <div className={SWIPE_CARD_WITC_PHOTO_BAND} style={reflectStyle}>
         <CoverImage
           src={src}

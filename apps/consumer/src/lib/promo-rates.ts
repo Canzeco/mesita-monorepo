@@ -62,7 +62,9 @@ export function resolveActivePromoRate(
 ): number | null {
   const welcome = matrix.welcome[tier];
   const returning = matrix.default[tier];
-  return (isFirstVisit ? (welcome ?? returning) : (returning ?? welcome)) ?? null;
+  return (
+    (isFirstVisit ? (welcome ?? returning) : (returning ?? welcome)) ?? null
+  );
 }
 
 /** Whether the venue runs the Mesita reward program (detail hero + matrix). */
@@ -85,12 +87,18 @@ export function resolvePromoRateFromVenueRow(
 ): number | null {
   const listingType = row.listing_type === "partner" ? "partner" : "web";
   const matrix = buildPromoMatrixFromRow(row, listingType);
-  if (!venueOffersMesitaRewards({
-    listing_type: listingType,
-    promo_matrix: matrix,
-    promo_configured: hasExplicitTierRates(row),
-  })) {
+  if (
+    !venueOffersMesitaRewards({
+      listing_type: listingType,
+      promo_matrix: matrix,
+      promo_configured: hasExplicitTierRates(row),
+    })
+  ) {
     return null;
   }
-  return resolveActivePromoRate(matrix, premium ? "premium" : "free", isFirstVisit);
+  return resolveActivePromoRate(
+    matrix,
+    premium ? "premium" : "free",
+    isFirstVisit,
+  );
 }
