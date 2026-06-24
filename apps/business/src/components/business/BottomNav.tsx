@@ -55,7 +55,7 @@ export function BottomNav({ unitId }: { unitId: string }) {
               <span
                 className={cn(
                   "relative flex h-8 w-8 items-center justify-center rounded-full transition",
-                  active && "bg-primary/10 ring-primary/20 ring-1",
+                  active && "bg-primary/10",
                 )}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />

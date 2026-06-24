@@ -10,7 +10,7 @@ import {
   type BusinessTicket,
 } from "@/lib/api/tickets";
 import { cn, errMsg } from "@/lib/utils";
-import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { EmptyState } from "@/components/shared";
 import { SubTabs, type SubTabItem } from "@/components/business/SubTabs";
 import { ScanTicketPanel } from "@/components/tickets/ScanTicketPanel";
@@ -22,10 +22,6 @@ import {
 
 const TICKET_LIST_LIMIT = 100;
 
-// Tickets bucket into three lifecycle stages, surfaced as the top filter:
-//   Create  — just scanned, still needs a bill entered
-//   Pending — billed, awaiting payment / confirmation (in service)
-//   Done    — paid, revealed, or cancelled (closed out)
 type TicketFilter = "create" | "pending" | "done";
 
 function ticketBucket(t: BusinessTicket): TicketFilter {
@@ -55,23 +51,21 @@ function ScanFeedback({
   return (
     <div
       className={cn(
-        "rounded-xl px-3.5 py-2.5 text-xs leading-snug",
+        "flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-[13px] leading-snug",
         error
           ? ERROR_BOX_CLASS
-          : "bg-primary/8 text-foreground/80 border-primary/15 border",
+          : "border-border/60 bg-card text-foreground/80 border",
       )}
       role="status"
     >
-      <div className="flex items-start justify-between gap-2">
-        <span>{error ?? notice}</span>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="text-muted-foreground hover:text-foreground shrink-0 text-[10px] font-medium tracking-wide uppercase"
-        >
-          Dismiss
-        </button>
-      </div>
+      <span className="min-w-0">{error ?? notice}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-muted-foreground hover:text-foreground shrink-0 text-[11px] font-medium"
+      >
+        Dismiss
+      </button>
     </div>
   );
 }
@@ -177,42 +171,22 @@ export function TicketsClient({
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Status filter — sticks under the app bar while the list scrolls. */}
-      <SubTabs tabs={filterTabs} active={filter} onChange={setFilter} />
+    <div className="flex flex-col gap-4">
+      <SubTabs
+        tabs={filterTabs}
+        active={filter}
+        onChange={setFilter}
+        equalWidth
+        className="-mx-4 px-2"
+      />
 
-      <header className="flex flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
-              Floor
-            </h2>
-            <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
-              Scan → bill → pay → close
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label="Refresh tickets"
-            onClick={() => void refresh()}
-            disabled={busy === "refresh"}
-            className="border-border/60 hover:border-border text-muted-foreground hover:text-foreground bg-card mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-40"
-          >
-            {busy === "refresh" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
-            )}
-          </button>
-        </div>
-
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => setScanOpen((v) => !v)}
           className={cn(
-            PILL_BUTTON_CLASS,
-            "h-11 w-full justify-center gap-2 px-5 text-sm",
-            scanOpen && "ring-primary/30 ring-2",
+            "bg-pink-gradient inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold text-white shadow-sm transition hover:opacity-90",
+            scanOpen && "ring-primary/30 ring-2 ring-offset-2",
           )}
         >
           {scanOpen ? (
@@ -222,17 +196,30 @@ export function TicketsClient({
           )}
           {scanOpen ? "Scanning…" : "New ticket"}
         </button>
+        <button
+          type="button"
+          aria-label="Refresh tickets"
+          onClick={() => void refresh()}
+          disabled={busy === "refresh"}
+          className="border-border/60 hover:border-border text-muted-foreground hover:text-foreground bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-40"
+        >
+          {busy === "refresh" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+        </button>
+      </div>
 
-        {scanOpen ? (
-          <ScanTicketPanel
-            venueId={venueId}
-            supabase={supabase}
-            onCreated={(msg) => void reloadTickets(msg)}
-            onError={setError}
-            onClose={() => setScanOpen(false)}
-          />
-        ) : null}
-      </header>
+      {scanOpen ? (
+        <ScanTicketPanel
+          venueId={venueId}
+          supabase={supabase}
+          onCreated={(msg) => void reloadTickets(msg)}
+          onError={setError}
+          onClose={() => setScanOpen(false)}
+        />
+      ) : null}
 
       <ScanFeedback
         error={error}
@@ -243,19 +230,19 @@ export function TicketsClient({
         }}
       />
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-2.5">
         {tickets.length === 0 ? (
           <EmptyState
             icon={<ReceiptText className="text-muted-foreground/60 h-5 w-5" />}
             title="No tickets yet"
-            description="Use New ticket above to scan a guest code. You'll enter the bill on their row right after."
+            description="Tap New ticket to scan a guest code. You'll enter the bill on their row right after."
             className="border-border/60 py-12"
           />
         ) : visibleTickets.length === 0 ? (
           <EmptyState
             icon={<ReceiptText className="text-muted-foreground/60 h-5 w-5" />}
             title={FILTER_EMPTY[filter]}
-            description="Switch filters above to see tickets in other stages."
+            description="Switch tabs above to see tickets in other stages."
             className="border-border/60 py-10"
           />
         ) : (

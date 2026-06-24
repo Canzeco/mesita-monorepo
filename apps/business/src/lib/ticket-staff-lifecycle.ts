@@ -200,10 +200,10 @@ export function staffStatusLabel(status: TicketStatus): string {
 
 export function staffStatusTone(status: TicketStatus): string {
   if (status === "open") {
-    return "bg-sky-500/10 text-sky-800";
+    return "bg-primary/10 text-primary";
   }
   if (status === "awaiting_payment_confirm") {
-    return "bg-amber-500/10 text-amber-800";
+    return "bg-amber-500/10 text-amber-900/80";
   }
   if (status === "revealed") {
     return "bg-emerald-500/10 text-emerald-800";
@@ -214,7 +214,7 @@ export function staffStatusTone(status: TicketStatus): string {
   if (status === "cancelled") {
     return "bg-muted text-muted-foreground";
   }
-  return "bg-secondary/10 text-secondary";
+  return "bg-muted text-muted-foreground";
 }
 
 /** Staff payment confirm: guest pays at the table, staff tap Paid received. */

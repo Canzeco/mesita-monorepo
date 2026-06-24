@@ -9,11 +9,13 @@ export function TicketLifecycleStepper({
   cancelled = false,
   showHint = false,
   compact = false,
+  hideLabel = false,
 }: {
   steps: StaffLifecycleStepView[];
   cancelled?: boolean;
   showHint?: boolean;
   compact?: boolean;
+  hideLabel?: boolean;
 }) {
   const active = steps.find((s) => s.state === "active");
   const activeIndex = steps.findIndex((s) => s.state === "active");
@@ -50,11 +52,11 @@ export function TicketLifecycleStepper({
             ) : null}
           </Fragment>
         ))}
-        {cancelled ? (
+        {!hideLabel && cancelled ? (
           <span className="text-destructive ml-2.5 text-[11px] font-medium">
             Cancelled
           </span>
-        ) : active ? (
+        ) : !hideLabel && active ? (
           <span
             className={cn(
               "ml-2.5 font-medium",
@@ -64,7 +66,7 @@ export function TicketLifecycleStepper({
           >
             {active.label}
           </span>
-        ) : doneCount === steps.length ? (
+        ) : !hideLabel && doneCount === steps.length ? (
           <span className="text-muted-foreground ml-2.5 text-[11px]">Done</span>
         ) : null}
       </div>
