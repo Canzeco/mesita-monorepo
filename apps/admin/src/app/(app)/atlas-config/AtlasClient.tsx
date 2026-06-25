@@ -43,8 +43,7 @@ type Method =
   | "Perplexity"
   | "Apify"
   | "OpenAI LLM"
-  | "OpenAI Vision"
-  | "Meta Graph API";
+  | "OpenAI Vision";
 
 type Tier = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -71,7 +70,7 @@ const ADEA_NODES: AdeaNode[] = [
   { name: "Website Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
   { name: "Website Page Contents", pipeline: "Contents", tier: 2, methods: ["Firecrawl Crawl"] },
   { name: "Instagram Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
-  { name: "Instagram Page Profile", pipeline: "Contents", tier: 2, methods: ["Meta Graph API", "Apify"] },
+  { name: "Instagram Page Profile", pipeline: "Contents", tier: 2, methods: ["Apify"] },
   { name: "Instagram Page Photos", pipeline: "Contents", tier: 2, methods: ["Apify"] },
   { name: "Facebook Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
   { name: "Facebook Page Profile", pipeline: "Contents", tier: 2, methods: ["Apify"] },
@@ -116,7 +115,6 @@ const METHOD_CLS: Record<Method, string> = {
   "Apify": "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
   "OpenAI LLM": "border-sky-500/25 bg-sky-500/10 text-sky-700",
   "OpenAI Vision": "border-violet-500/25 bg-violet-500/10 text-violet-600",
-  "Meta Graph API": "border-blue-500/25 bg-blue-500/10 text-blue-600",
 };
 
 export function AtlasClient(props: {
