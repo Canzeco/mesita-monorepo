@@ -4,12 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AlertTriangle,
-  Bell,
+  BarChart3,
   Compass,
   FilePen,
-  ListPlus,
-  ListChecks,
-  ListFilter,
+  Layers,
   LogOut,
 } from "lucide-react";
 import { authSignOut } from "@/app/auth/actions";
@@ -25,27 +23,17 @@ type SidebarProps = {
   onNavigate?: () => void;
 };
 
-// Verifications were dropped from the sidebar when ownership flipped
-// to fully-automatic (phone OTP / video AI / WhatsApp fallback) — the
-// /verifications route still exists as the admin escape hatch for
-// manual grants, but it's not part of the day-to-day surface.
-const UNIT_NAV: NavItem[] = [
-  { href: "/update", label: "Manually update unit", Icon: FilePen },
-  { href: "/bulk-search", label: "Bulk search units", Icon: ListFilter },
-  { href: "/bulk-create", label: "Bulk create units", Icon: ListPlus },
-  { href: "/bulk-update", label: "Bulk update units", Icon: ListChecks },
-];
-
-const INBOX_NAV: NavItem[] = [
-  { href: "/notifications", label: "Notifications", Icon: Bell },
-];
-
-const ATLAS_NAV: NavItem[] = [
-  { href: "/atlas", label: "Atlas", Icon: Compass },
-];
-
-const DANGER_NAV: NavItem[] = [
-  { href: "/danger", label: "Danger zone", Icon: AlertTriangle },
+// The console is deliberately five items. Single-unit and multi-unit
+// management are split (the latter consolidates the bulk search/create/
+// update tools behind one tabbed surface at /bulk). Routes that still
+// exist but aren't part of the day-to-day surface (e.g. /verifications,
+// /central, /create) are reachable directly but stay off the nav.
+const NAV: NavItem[] = [
+  { href: "/atlas", label: "Atlas Configuration", Icon: Compass },
+  { href: "/update", label: "Manage Single Unit", Icon: FilePen },
+  { href: "/bulk", label: "Manage Multiple Units", Icon: Layers },
+  { href: "/performance", label: "Global Performance", Icon: BarChart3 },
+  { href: "/danger", label: "Danger Zone", Icon: AlertTriangle },
 ];
 
 export function Sidebar({ email, onNavigate }: SidebarProps) {
@@ -69,31 +57,26 @@ export function Sidebar({ email, onNavigate }: SidebarProps) {
         </span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto">
-        <NavSection
-          label="Units"
-          items={UNIT_NAV}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
-        <NavSection
-          label="Inbox"
-          items={INBOX_NAV}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
-        <NavSection
-          label="Operations"
-          items={ATLAS_NAV}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
-        <NavSection
-          label="Danger"
-          items={DANGER_NAV}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
+        {NAV.map(({ href, label, Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNavigate}
+              className={
+                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition " +
+                (active
+                  ? "bg-secondary/10 text-secondary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground")
+              }
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
       {email && (
@@ -109,44 +92,5 @@ export function Sidebar({ email, onNavigate }: SidebarProps) {
         </form>
       )}
     </aside>
-  );
-}
-
-function NavSection({
-  label,
-  items,
-  pathname,
-  onNavigate,
-}: {
-  label: string;
-  items: NavItem[];
-  pathname: string;
-  onNavigate?: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="text-muted-foreground px-2 pb-1 text-[10px] font-medium tracking-[0.14em] uppercase">
-        {label}
-      </p>
-      {items.map(({ href, label, Icon }) => {
-        const active = pathname === href;
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            className={
-              "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition " +
-              (active
-                ? "bg-secondary/10 text-secondary"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground")
-            }
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </Link>
-        );
-      })}
-    </div>
   );
 }

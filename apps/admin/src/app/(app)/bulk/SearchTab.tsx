@@ -41,7 +41,7 @@ const EXAMPLE_QUERIES = [
   "Coffee shops in Mexico City",
 ];
 
-export default function BulkSearchUnitsPage() {
+export function SearchTab() {
   const [queriesText, setQueriesText] = useState("");
   const [regionCode, setRegionCode] = useState("MX");
   const [maxResults, setMaxResults] = useState(MAX_RESULTS);
@@ -146,20 +146,11 @@ export default function BulkSearchUnitsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-8 pt-12 pb-24">
-      {/* Header */}
-      <header>
-        <p className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
-          Bulk search
-        </p>
-        <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-          Find Place IDs in bulk
-        </h1>
-        <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-          One Google Places query per line. Each runs through the Places
-          Text Search API; the deduped union of Place IDs comes back below.
-        </p>
-      </header>
+    <div>
+      <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
+        One Google Places query per line. Each runs through the Places
+        Text Search API; the deduped union of Place IDs comes back below.
+      </p>
 
       {/* Form */}
       <section className="mt-8 space-y-4">

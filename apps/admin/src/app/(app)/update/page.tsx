@@ -7,7 +7,7 @@ export default function UpdateUnitPage() {
         Units · Single
       </p>
       <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-        Manually update unit
+        Manage Single Unit
       </h1>
       <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
         Paste a Google Place ID. If the venue is in Mesita, you&apos;ll get a
