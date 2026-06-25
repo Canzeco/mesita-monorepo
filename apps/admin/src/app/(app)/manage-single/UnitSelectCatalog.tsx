@@ -9,7 +9,7 @@ import { ErrorNote } from "./ui";
 
 export function UnitSelectCatalog() {
   const router = useRouter();
-  const { q, setQ, hits, pending, error, metaLabel, clear } =
+  const { q, setQ, hits, pending, error, metaLabel, searchedQuery, clear } =
     useUnitCatalogSearch();
 
   const pick = (unitId: string) => {
@@ -76,12 +76,17 @@ export function UnitSelectCatalog() {
               <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
             </button>
           ))}
-          {!pending && hits.length === 0 && !error && (
+          {!pending && hits.length === 0 && !error && searchedQuery !== null && (
             <div className="border-border bg-card rounded-2xl border px-4 py-12 text-center">
               <p className="text-muted-foreground text-sm">
-                {q.trim().length >= 2
-                  ? `No units match “${q.trim()}”.`
-                  : "No units in the catalog yet."}
+                {`No units match “${searchedQuery}”.`}
+              </p>
+            </div>
+          )}
+          {!pending && hits.length === 0 && !error && searchedQuery === null && q.trim().length === 0 && (
+            <div className="border-border bg-card rounded-2xl border px-4 py-12 text-center">
+              <p className="text-muted-foreground text-sm">
+                No units in the catalog yet.
               </p>
             </div>
           )}

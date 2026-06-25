@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { listUnits, searchUnits, type UnitHit } from "./actions";
 
+const SEARCH_DEBOUNCE_MS = 1000;
+
 type Options = {
   /** When false, skip loading the full catalog until the user types. */
   browseOnEmpty?: boolean;
@@ -24,7 +26,7 @@ function filterUnits(units: UnitHit[], query: string): UnitHit[] {
 }
 
 export function useUnitCatalogSearch(options: Options = {}) {
-  const { browseOnEmpty = true, debounceMs = 280 } = options;
+  const { browseOnEmpty = true, debounceMs = SEARCH_DEBOUNCE_MS } = options;
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [catalog, setCatalog] = useState<UnitHit[]>([]);
@@ -32,6 +34,7 @@ export function useUnitCatalogSearch(options: Options = {}) {
   const [hits, setHits] = useState<UnitHit[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
   const [mode, setMode] = useState<"browse" | "search" | "idle">(
     browseOnEmpty ? "browse" : "idle",
   );
@@ -60,15 +63,19 @@ export function useUnitCatalogSearch(options: Options = {}) {
     };
   }, [browseOnEmpty]);
 
-  // Debounce server search input.
+  // Debounce search input — wait for typing to stop before searching.
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q.trim()), debounceMs);
+    const trimmed = q.trim();
+    if (trimmed.length >= 2) {
+      setSearchedQuery(null);
+    }
+    const t = setTimeout(() => setDebouncedQ(trimmed), debounceMs);
     return () => clearTimeout(t);
   }, [q, debounceMs]);
 
-  // Instant client-side filter while typing.
+  // Run search only after debounce settles.
   useEffect(() => {
-    const query = q.trim();
+    const query = debouncedQ;
     if (query.length === 0) {
       if (browseOnEmpty && catalogLoaded) {
         setHits(catalog);
@@ -77,25 +84,26 @@ export function useUnitCatalogSearch(options: Options = {}) {
         setHits([]);
         setMode("idle");
       }
+      setSearchedQuery(null);
+      setPending(false);
       return;
     }
     if (query.length < 2) {
-      setHits([]);
-      setMode(browseOnEmpty ? "browse" : "idle");
+      if (browseOnEmpty && catalogLoaded) {
+        setHits(catalog);
+        setMode("browse");
+      } else {
+        setHits([]);
+        setMode("idle");
+      }
+      setSearchedQuery(null);
+      setPending(false);
       return;
     }
+
     setMode("search");
     if (catalog.length > 0) {
       setHits(filterUnits(catalog, query));
-    }
-  }, [q, catalog, catalogLoaded, browseOnEmpty]);
-
-  // Authoritative server search (debounced).
-  useEffect(() => {
-    const query = debouncedQ;
-    if (query.length < 2) {
-      setPending(false);
-      return;
     }
 
     const id = ++requestIdRef.current;
@@ -105,24 +113,46 @@ export function useUnitCatalogSearch(options: Options = {}) {
     void searchUnits(query).then((r) => {
       if (id !== requestIdRef.current) return;
       setPending(false);
+      setSearchedQuery(query);
       if (!r.ok) {
         setError(r.error);
         return;
       }
       setHits(r.data);
     });
-  }, [debouncedQ]);
+  }, [debouncedQ, catalog, catalogLoaded, browseOnEmpty]);
+
+  const trimmed = q.trim();
+  const waiting =
+    trimmed.length >= 2 && trimmed !== debouncedQ;
+  const searching = pending || waiting;
 
   const metaLabel =
     mode === "idle"
       ? "Type to search"
       : mode === "browse"
-        ? !catalogLoaded || pending
+        ? !catalogLoaded || searching
           ? "Loading catalog…"
           : `Recent units · ${hits.length}`
-        : pending
+        : searching
           ? "Searching…"
           : `Results · ${hits.length}`;
 
-  return { q, setQ, hits, pending, error, mode, metaLabel, clear: () => setQ("") };
+  const clear = () => {
+    setQ("");
+    setDebouncedQ("");
+    setSearchedQuery(null);
+  };
+
+  return {
+    q,
+    setQ,
+    hits,
+    pending: searching,
+    error,
+    mode,
+    metaLabel,
+    searchedQuery,
+    clear,
+  };
 }
