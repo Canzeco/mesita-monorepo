@@ -6,6 +6,7 @@ import {
   Brain,
   CheckCircle2,
   ChevronRight,
+  Clock,
   DollarSign,
   Eye,
   FileText,
@@ -181,6 +182,7 @@ export function AtlasClient(props: {
       <CostSection
         initialSourceTierCeiling={props.initialSourceTierCeiling}
         initialSynthesisQuality={props.initialSynthesisQuality}
+        initialVisionQuality={props.initialVisionQuality}
         initialImageVisionEnabled={props.initialImageVisionEnabled}
         initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
         initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
@@ -773,17 +775,51 @@ const COST_RATES = {
   apifyInstagram: 0.02, // IG profile scraper
   apifyFacebook: 0.02, // FB pages scraper
   firecrawlScrape: 0.01, // website content scrape
-  visionPerImage: 0.002, // gpt-4o-mini vision, one image (detail:low)
+  visionEconomy: 0.002, // gpt-4o-mini vision, one image (detail:low)
+  visionStandard: 0.01, // gpt-4o vision, one image
   sort: 0.003, // gpt-4o-mini text sort
   synthEconomy: 0.005, // gpt-4o-mini synthesis
   synthStandard: 0.03, // gpt-4o synthesis (standard & high)
 } as const;
 
+// Rough wall-clock seconds per step. The gather steps overlap (the enricher
+// fires them with Promise.all), so the per-venue total uses the stage model in
+// CostSection (pre + max(gather) + post), NOT the column sum.
+const TIME_RATES = {
+  googlePlaces: 2, // Places Details lookup
+  apifyGoogleMaps: 45, // Apify reviews + photos — the slow one
+  discoverySearch: 6, // 3 × Firecrawl search
+  discoveryFallback: 4, // Perplexity
+  apifyInstagram: 25, // Apify IG run
+  apifyFacebook: 15, // Apify FB run
+  firecrawlScrape: 18, // website crawl
+  visionEconomy: 1.0, // gpt-4o-mini vision / image
+  visionStandard: 1.8, // gpt-4o vision / image
+  sort: 3, // text sort
+  synthEconomy: 6, // gpt-4o-mini synthesis
+  synthStandard: 12, // gpt-4o synthesis
+} as const;
+
 const money = (n: number) => `$${n.toFixed(3)}`;
+
+// Compact duration: 45s · 1m 20s · 2h 5m.
+const fmtTime = (secs: number) => {
+  const s = Math.round(secs);
+  if (s < 60) return `${s}s`;
+  if (s < 3600) {
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return r ? `${m}m ${r}s` : `${m}m`;
+  }
+  const h = Math.floor(s / 3600);
+  const m = Math.round((s % 3600) / 60);
+  return m ? `${h}h ${m}m` : `${h}h`;
+};
 
 function CostSection({
   initialSourceTierCeiling,
   initialSynthesisQuality,
+  initialVisionQuality,
   initialImageVisionEnabled,
   initialAnalyzeGoogleImages,
   initialAnalyzeWebsiteImages,
@@ -791,6 +827,7 @@ function CostSection({
 }: {
   initialSourceTierCeiling: number;
   initialSynthesisQuality: SynthesisQuality;
+  initialVisionQuality: SynthesisQuality;
   initialImageVisionEnabled: boolean;
   initialAnalyzeGoogleImages: number;
   initialAnalyzeWebsiteImages: number;
@@ -798,6 +835,7 @@ function CostSection({
 }) {
   const [tier, setTier] = useState(initialSourceTierCeiling);
   const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
+  const [imageModel, setImageModel] = useState<SynthesisQuality>(initialVisionQuality);
   const [vision, setVision] = useState(initialImageVisionEnabled);
   const [g, setG] = useState(initialAnalyzeGoogleImages);
   const [w, setW] = useState(initialAnalyzeWebsiteImages);
@@ -807,32 +845,74 @@ function CostSection({
   const social = tier >= 2; // tier ≥ 2 unlocks IG / FB / website / discovery
   const synthCost =
     quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
-  const visionImgs = vision ? g + w + ig : 0;
+  const synthSecs =
+    quality === "economy" ? TIME_RATES.synthEconomy : TIME_RATES.synthStandard;
+  // Website + Instagram images only exist when the social layer runs (tier ≥ 2).
+  const visionImgs = vision ? g + (social ? w + ig : 0) : 0;
   const visionActive = vision && visionImgs > 0;
+  const visionCostPer =
+    imageModel === "economy" ? COST_RATES.visionEconomy : COST_RATES.visionStandard;
+  const visionSecsPer =
+    imageModel === "economy" ? TIME_RATES.visionEconomy : TIME_RATES.visionStandard;
 
-  const lines: { label: string; detail: string; cost: number; active: boolean }[] = [
-    { label: "Google Places details", detail: "create lookup", cost: COST_RATES.googlePlaces, active: true },
-    { label: "Google reviews + photos", detail: "Apify Maps run", cost: COST_RATES.apifyGoogleMaps, active: true },
-    { label: "Channel discovery — search", detail: "3 × Firecrawl search", cost: COST_RATES.firecrawlSearch * 3, active: social },
-    { label: "Channel discovery — fallback", detail: "Perplexity", cost: COST_RATES.perplexity, active: social },
-    { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, active: social },
-    { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, active: social },
-    { label: "Website content", detail: "Firecrawl scrape", cost: COST_RATES.firecrawlScrape, active: social },
-    { label: "Image analysis — vision", detail: `${visionImgs} img × ${money(COST_RATES.visionPerImage)}`, cost: visionImgs * COST_RATES.visionPerImage, active: visionActive },
-    { label: "Image sorting — text", detail: "1 call", cost: COST_RATES.sort, active: visionActive },
-    { label: `Synthesis — ${quality}`, detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o", cost: synthCost, active: true },
+  // Each line: cost (USD) + secs (duration) + stage for the wall-clock model.
+  // pre = serial before gather · gather = concurrent · post = serial after.
+  type Line = {
+    label: string;
+    detail: string;
+    cost: number;
+    secs: number;
+    stage: "pre" | "gather" | "post";
+    active: boolean;
+  };
+  const lines: Line[] = [
+    { label: "Google Places details", detail: "create lookup", cost: COST_RATES.googlePlaces, secs: TIME_RATES.googlePlaces, stage: "pre", active: true },
+    { label: "Google reviews + photos", detail: "Apify Maps run", cost: COST_RATES.apifyGoogleMaps, secs: TIME_RATES.apifyGoogleMaps, stage: "gather", active: true },
+    { label: "Channel discovery — search", detail: "3 × Firecrawl search", cost: COST_RATES.firecrawlSearch * 3, secs: TIME_RATES.discoverySearch, stage: "pre", active: social },
+    { label: "Channel discovery — fallback", detail: "Perplexity", cost: COST_RATES.perplexity, secs: TIME_RATES.discoveryFallback, stage: "pre", active: social },
+    { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, secs: TIME_RATES.apifyInstagram, stage: "gather", active: social },
+    { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, secs: TIME_RATES.apifyFacebook, stage: "gather", active: social },
+    { label: "Website content", detail: "Firecrawl crawl", cost: COST_RATES.firecrawlScrape, secs: TIME_RATES.firecrawlScrape, stage: "gather", active: social },
+    { label: "Image analysis — vision", detail: `${visionImgs} img × ${money(visionCostPer)}`, cost: visionImgs * visionCostPer, secs: visionImgs * visionSecsPer, stage: "post", active: visionActive },
+    { label: "Image sorting — text", detail: "1 call", cost: COST_RATES.sort, secs: TIME_RATES.sort, stage: "post", active: visionActive },
+    { label: `Synthesis — ${quality}`, detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o", cost: synthCost, secs: synthSecs, stage: "post", active: true },
   ];
 
-  const perVenue = lines.filter((l) => l.active).reduce((s, l) => s + l.cost, 0);
+  const active = lines.filter((l) => l.active);
+  const perVenue = active.reduce((s, l) => s + l.cost, 0);
   const total = perVenue * Math.max(1, venues);
+  // Wall-clock: serial pre + the SLOWEST concurrent gather + serial post.
+  const preSecs = active.filter((l) => l.stage === "pre").reduce((s, l) => s + l.secs, 0);
+  const gatherSecs = active
+    .filter((l) => l.stage === "gather")
+    .reduce((mx, l) => Math.max(mx, l.secs), 0);
+  const postSecs = active.filter((l) => l.stage === "post").reduce((s, l) => s + l.secs, 0);
+  const perVenueSecs = preSecs + gatherSecs + postSecs;
+  const totalSecs = perVenueSecs * Math.max(1, venues);
 
   return (
     <SectionCard
       icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
       title="Cost Calculator"
-      subtitle="What-if external spend to enrich one new venue."
+      subtitle="What-if external spend and wall-clock time to enrich one new venue."
     >
-      <Collapsible summary="Show cost breakdown">
+      {/* Headline: cost + time for the current settings, always visible. */}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+          <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+            <DollarSign className="h-4 w-4" /> Per venue
+          </span>
+          <span className="text-lg font-semibold tabular-nums">{money(perVenue)}</span>
+        </div>
+        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+          <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+            <Clock className="h-4 w-4" /> Per venue
+          </span>
+          <span className="text-lg font-semibold tabular-nums">~{fmtTime(perVenueSecs)}</span>
+        </div>
+      </div>
+
+      <Collapsible summary="Adjust inputs & show breakdown">
       {/* Params */}
       <div className="grid gap-3 md:grid-cols-2">
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
@@ -860,25 +940,10 @@ function CostSection({
 
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="text-muted-foreground h-4 w-4" />
-            Synthesis quality
+            <Brain className="text-muted-foreground h-4 w-4" />
+            Text model
           </span>
-          <div className="flex gap-1">
-            {(["economy", "standard", "high"] as SynthesisQuality[]).map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => setQuality(q)}
-                className={`h-8 rounded-lg border px-2.5 text-xs font-semibold capitalize transition ${
-                  quality === q
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-card hover:border-foreground/40"
-                }`}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
+          <QualityPicker value={quality} onChange={setQuality} />
         </div>
 
         <Card
@@ -891,9 +956,16 @@ function CostSection({
 
         {vision && (
           <>
+            <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4 md:col-span-2">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <Eye className="text-muted-foreground h-4 w-4" />
+                Image model
+              </span>
+              <QualityPicker value={imageModel} onChange={setImageModel} />
+            </div>
             <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Google" value={g} min={0} max={10} onChange={setG} disabled={false} />
-            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={false} />
-            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={false} />
+            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={!social} />
+            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={!social} />
           </>
         )}
 
@@ -906,7 +978,8 @@ function CostSection({
           <thead>
             <tr className="border-border text-muted-foreground border-b text-xs uppercase tracking-wide">
               <th className="px-4 py-2.5 text-left font-medium">Source / step</th>
-              <th className="px-4 py-2.5 text-left font-medium">Detail</th>
+              <th className="hidden px-4 py-2.5 text-left font-medium sm:table-cell">Detail</th>
+              <th className="px-4 py-2.5 text-right font-medium">~Time</th>
               <th className="px-4 py-2.5 text-right font-medium">Cost</th>
             </tr>
           </thead>
@@ -917,7 +990,10 @@ function CostSection({
                 className={`border-border/60 border-b last:border-0 ${l.active ? "" : "opacity-40"}`}
               >
                 <td className="px-4 py-2.5 font-medium">{l.label}</td>
-                <td className="text-muted-foreground px-4 py-2.5">{l.detail}</td>
+                <td className="text-muted-foreground hidden px-4 py-2.5 sm:table-cell">{l.detail}</td>
+                <td className="text-muted-foreground px-4 py-2.5 text-right tabular-nums">
+                  {l.active ? fmtTime(l.secs) : "—"}
+                </td>
                 <td className="px-4 py-2.5 text-right tabular-nums">
                   {l.active ? money(l.cost) : "—"}
                 </td>
@@ -930,6 +1006,9 @@ function CostSection({
                 Per venue
               </td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                ~{fmtTime(perVenueSecs)}
+              </td>
+              <td className="px-4 py-3 text-right font-semibold tabular-nums">
                 {money(perVenue)}
               </td>
             </tr>
@@ -937,6 +1016,9 @@ function CostSection({
               <tr className="bg-background border-border/60 border-t">
                 <td className="text-muted-foreground px-4 py-2.5" colSpan={2}>
                   × {venues} venues
+                </td>
+                <td className="text-muted-foreground px-4 py-2.5 text-right font-semibold tabular-nums">
+                  ~{fmtTime(totalSecs)}
                 </td>
                 <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
                   ${total.toFixed(2)}
@@ -948,13 +1030,44 @@ function CostSection({
       </div>
 
       <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
-        Upper bound for a fresh venue. Rates are approximate per-call estimates
-        that mirror the enricher&apos;s cost model. Tiers above T2 add link
-        resolution (T3–T4) and gated heavy contents (T5) the enricher
-        doesn&apos;t yet bill, so the estimate is flat past T2.
+        Approximate per-call estimates that mirror the enricher&apos;s cost
+        model. The ~Time column is each step&apos;s own duration; the gather
+        steps run concurrently, so per-venue wall-clock is pre + the slowest
+        gather + post — not the column sum. The ×N time assumes venues run
+        back-to-back (batches overlap, so it&apos;s an upper bound). Tiers above
+        T2 add link resolution (T3–T4) and gated heavy contents (T5) the
+        enricher doesn&apos;t yet bill, so the estimate is flat past T2.
       </p>
       </Collapsible>
     </SectionCard>
+  );
+}
+
+// Shared economy/standard/high segmented picker used by the calculator.
+function QualityPicker({
+  value,
+  onChange,
+}: {
+  value: SynthesisQuality;
+  onChange: (v: SynthesisQuality) => void;
+}) {
+  return (
+    <div className="flex gap-1">
+      {(["economy", "standard", "high"] as SynthesisQuality[]).map((q) => (
+        <button
+          key={q}
+          type="button"
+          onClick={() => onChange(q)}
+          className={`h-8 rounded-lg border px-2.5 text-xs font-semibold capitalize transition ${
+            value === q
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-card hover:border-foreground/40"
+          }`}
+        >
+          {q}
+        </button>
+      ))}
+    </div>
   );
 }
 
