@@ -13,7 +13,7 @@
 //
 // The third "Talk to us" option is now a direct wa.me deep-link to
 // Mesita ops — no EF round-trip, no admin queue row. See the WhatsApp
-// constant in CreateUnitForm. The legacy business-requests-manual-review
+// constant in CreateUnitForm. The legacy business-request-manual-review
 // EF still exists server-side for historical rows but is no longer
 // wrapped here.
 //
@@ -62,7 +62,7 @@ export type LookupVenue = {
 };
 
 // What the UI needs to decide which auto-verify cards to render.
-// Returned by business-lookup-venue for every claim-able state. The
+// Returned by business-find-venue for every claim-able state. The
 // "Talk to us" WhatsApp fallback is rendered unconditionally on the
 // FE and isn't surfaced here.
 export type LookupMethods = {
@@ -94,7 +94,7 @@ export async function apiLookupVenue(
   client: SupabaseClient,
   placeId: string,
 ): Promise<LookupResult> {
-  return invokeEF<LookupResult>(client, "business-lookup-venue", { placeId });
+  return invokeEF<LookupResult>(client, "business-find-venue", { placeId });
 }
 
 // ── Phone OTP path ────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ export async function apiBusinessSendsPhoneOtp(
   venueId: string,
   requesterEmail?: string,
 ): Promise<SendPhoneOtpResult> {
-  return invokeEF<SendPhoneOtpResult>(client, "business-sends-phone-otp", {
+  return invokeEF<SendPhoneOtpResult>(client, "business-send-phone-otp", {
     venueId,
     ...(requesterEmail?.trim()
       ? { requesterEmail: requesterEmail.trim() }
@@ -138,7 +138,7 @@ export async function apiBusinessVerifiesPhone(
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "business-verifies-phone", {
+  return invokeEF<VerifyOtpResult>(client, "business-verify-phone", {
     verificationId,
     code,
   });
@@ -158,7 +158,7 @@ export async function apiBusinessSendsEmailOtp(
   venueId: string,
   requesterEmail?: string,
 ): Promise<SendEmailOtpResult> {
-  return invokeEF<SendEmailOtpResult>(client, "business-sends-email-otp", {
+  return invokeEF<SendEmailOtpResult>(client, "business-send-email-otp", {
     venueId,
     ...(requesterEmail?.trim()
       ? { requesterEmail: requesterEmail.trim() }
@@ -171,7 +171,7 @@ export async function apiBusinessVerifiesEmail(
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "business-verifies-email", {
+  return invokeEF<VerifyOtpResult>(client, "business-verify-email", {
     verificationId,
     code,
   });

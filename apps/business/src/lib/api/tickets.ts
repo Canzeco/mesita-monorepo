@@ -94,7 +94,7 @@ export async function apiMarkTicketPaid(
 ): Promise<{ status?: string; alreadyPaid?: boolean }> {
   return invokeEF<{ status?: string; alreadyPaid?: boolean }>(
     client,
-    "business-mark-paid",
+    "business-mark-ticket-paid",
     { ticketId },
     "Couldn't mark ticket as paid.",
   );
