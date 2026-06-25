@@ -80,7 +80,7 @@ export function CatalogTab() {
         {hits.map((u) => (
           <Link
             key={u.id}
-            href={`/manage-single/${u.id}`}
+            href={`/manage-single/${u.id}/place`}
             className="border-border bg-card hover:border-foreground/40 flex items-center gap-3 rounded-xl border p-3 transition"
           >
             <UnitThumb photo={u.photo} name={u.name} />

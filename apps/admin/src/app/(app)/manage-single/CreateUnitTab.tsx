@@ -130,7 +130,7 @@ export function CreateUnitTab() {
         setError(created.error);
         return;
       }
-      router.push(`/manage-single/${created.venueId}`);
+      router.push(`/manage-single/${created.venueId}/place`);
     });
   };
 

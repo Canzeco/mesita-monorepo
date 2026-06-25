@@ -31,14 +31,22 @@ export const TOOL_ROUTES = [
   },
 ] as const;
 
-export function isUnitSection(value: string | null): value is UnitSection {
+export function unitSectionHref(unitId: string, section: UnitSection): string {
+  return `/manage-single/${unitId}/${section}`;
+}
+
+export function isUnitSection(value: string | null | undefined): value is UnitSection {
   return UNIT_SECTIONS.some((s) => s.id === value);
 }
 
 export function parseUnitId(pathname: string): string | null {
-  const m = pathname.match(/^\/manage-single\/([^/]+)$/);
+  const m = pathname.match(/^\/manage-single\/([^/]+)(?:\/|$)/);
   if (!m) return null;
   const id = m[1];
   if (id === "select" || id === "create" || id === "add") return null;
   return id;
+}
+
+export function isEditSingleUnitRoute(pathname: string): boolean {
+  return pathname === "/manage-single/select" || parseUnitId(pathname) !== null;
 }

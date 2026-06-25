@@ -1,78 +1,49 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ImageOff, Loader2, Search } from "lucide-react";
-import { listUnits, searchUnits, type UnitHit } from "./actions";
+import { ChevronRight, Loader2, Search, X } from "lucide-react";
+import { unitSectionHref } from "./nav";
+import { UnitThumb } from "./UnitEditChrome";
+import { useUnitCatalogSearch } from "./useUnitCatalogSearch";
 import { ErrorNote } from "./ui";
 
 export function UnitSelectCatalog() {
   const router = useRouter();
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState<UnitHit[]>([]);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"browse" | "search">("browse");
-
-  useEffect(() => {
-    start(async () => {
-      setError(null);
-      const query = q.trim();
-      if (query.length === 0) {
-        setMode("browse");
-        const r = await listUnits();
-        if (!r.ok) {
-          setError(r.error);
-          setHits([]);
-          return;
-        }
-        setHits(r.data);
-        return;
-      }
-      if (query.length < 2) {
-        setHits([]);
-        setMode("browse");
-        return;
-      }
-      setMode("search");
-      const r = await searchUnits(query);
-      if (!r.ok) {
-        setError(r.error);
-        setHits([]);
-        return;
-      }
-      setHits(r.data);
-    });
-  }, [q]);
+  const { q, setQ, hits, pending, error, metaLabel, clear } =
+    useUnitCatalogSearch();
 
   const pick = (unitId: string) => {
-    router.push(`/manage-single/${unitId}`);
+    router.push(unitSectionHref(unitId, "place"));
   };
-
-  const metaLabel =
-    mode === "browse"
-      ? pending
-        ? "Loading catalog…"
-        : `Recent units · ${hits.length}`
-      : pending
-        ? "Searching…"
-        : `Results · ${hits.length}`;
 
   return (
     <div className="-mx-4 -mt-8 sm:-mx-6 sm:-mt-12 lg:-mx-8">
-      <div className="border-border bg-card sticky top-0 z-30 border-b px-4 py-3 sm:px-6 lg:px-8">
-        <div className="focus-within:border-foreground flex items-center gap-3">
-          <Search className="text-muted-foreground h-5 w-5 shrink-0" />
+      <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-b px-4 py-4 backdrop-blur-md sm:px-6 sm:py-5 lg:px-8">
+        <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+          Edit Single Unit
+        </p>
+        <div className="border-border bg-background focus-within:border-foreground focus-within:ring-foreground/10 mt-3 flex h-14 items-center gap-3 rounded-xl border px-4 shadow-sm transition focus-within:ring-2 sm:h-16 sm:gap-4 sm:px-5">
+          <Search className="text-muted-foreground h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by name, slug, or unit id…"
             autoFocus
             aria-label="Search units"
-            className="placeholder:text-muted-foreground h-12 w-full bg-transparent text-base outline-none"
+            className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
           />
           {pending && (
             <Loader2 className="text-muted-foreground h-5 w-5 shrink-0 animate-spin" />
+          )}
+          {!pending && q.length > 0 && (
+            <button
+              type="button"
+              onClick={clear}
+              aria-label="Clear search"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
         </div>
       </div>
@@ -92,7 +63,7 @@ export function UnitSelectCatalog() {
               onClick={() => pick(u.id)}
               className="border-border bg-card hover:border-foreground/40 flex items-center gap-3 rounded-xl border p-3 text-left transition"
             >
-              <UnitThumb photo={u.photo} name={u.name} />
+              <UnitThumb photo={u.photo} name={u.name} size="lg" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{u.name}</p>
                 <p className="text-muted-foreground truncate text-xs">
@@ -117,23 +88,5 @@ export function UnitSelectCatalog() {
         </div>
       </div>
     </div>
-  );
-}
-
-function UnitThumb({ photo, name }: { photo: string | null; name: string }) {
-  if (!photo) {
-    return (
-      <div className="border-border bg-background text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border">
-        <ImageOff className="h-4 w-4" />
-      </div>
-    );
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={photo}
-      alt={name}
-      className="border-border h-11 w-11 shrink-0 rounded-lg border object-cover"
-    />
   );
 }

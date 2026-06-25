@@ -46,6 +46,7 @@ export function TextField({
   placeholder,
   type = "text",
   disabled,
+  maxLength,
 }: {
   label: string;
   value: string;
@@ -53,6 +54,7 @@ export function TextField({
   placeholder?: string;
   type?: string;
   disabled?: boolean;
+  maxLength?: number;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
@@ -62,6 +64,7 @@ export function TextField({
         value={value}
         placeholder={placeholder}
         disabled={disabled}
+        maxLength={maxLength}
         onChange={(e) => onChange(e.target.value)}
         className="border-border bg-background focus:border-foreground h-9 rounded-lg border px-3 text-sm outline-none disabled:opacity-50"
       />

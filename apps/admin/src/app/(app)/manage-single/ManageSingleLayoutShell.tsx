@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { PageHeader } from "@/components/PageContainer";
+import { isEditSingleUnitRoute } from "./nav";
 
 export function ManageSingleLayoutShell({
   children,
@@ -9,9 +10,8 @@ export function ManageSingleLayoutShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isEditCatalog = pathname === "/manage-single/select";
 
-  if (isEditCatalog) {
+  if (isEditSingleUnitRoute(pathname)) {
     return <>{children}</>;
   }
 

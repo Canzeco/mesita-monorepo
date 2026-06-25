@@ -40,15 +40,28 @@ export async function efInvoke<T>(
         .clone()
         .json()
         .catch(() => null);
+      if (!inner) {
+        const text = await ctx
+          .clone()
+          .text()
+          .catch(() => "");
+        if (text) inner = { error: text.slice(0, 500) };
+      }
     }
     const innerError =
       inner && typeof inner === "object" && "error" in inner
         ? String((inner as { error: unknown }).error)
         : null;
+    const status =
+      ctx && typeof ctx.status === "number" ? ctx.status : 0;
     return {
       ok: false,
-      status: 0,
-      error: innerError ?? error.message ?? `EF ${fnName} failed`,
+      status,
+      error:
+        innerError ??
+        (status ? `${fnName} failed (HTTP ${status})` : null) ??
+        error.message ??
+        `EF ${fnName} failed`,
       data: inner,
     };
   }

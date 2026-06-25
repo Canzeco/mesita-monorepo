@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Building2,
   Radar,
@@ -11,10 +11,8 @@ import {
 import { ADEA_PARENT } from "@/app/(app)/adea-config/nav";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import {
-  isUnitSection,
   parseUnitId,
   TOOL_ROUTES,
-  UNIT_SECTIONS,
 } from "@/app/(app)/manage-single/nav";
 
 function isNavActive(
@@ -90,10 +88,7 @@ function SectionGap() {
 
 export function SidebarNav({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const unitId = parseUnitId(pathname);
-  const sectionParam = searchParams.get("section");
-  const section = isUnitSection(sectionParam) ? sectionParam : "place";
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
@@ -119,21 +114,6 @@ export function SidebarNav({ onNavigate }: SidebarProps) {
           onNavigate={onNavigate}
         />
       ))}
-
-      {unitId &&
-        UNIT_SECTIONS.map(({ id, label, Icon }) => {
-          const href = `/manage-single/${unitId}?section=${id}`;
-          return (
-            <NavLink
-              key={id}
-              href={href}
-              label={label}
-              Icon={Icon}
-              active={section === id}
-              onNavigate={onNavigate}
-            />
-          );
-        })}
     </nav>
   );
 }

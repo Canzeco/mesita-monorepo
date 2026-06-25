@@ -73,7 +73,7 @@ export function PromosSection({
     <SectionCard
       icon={<Percent className="text-muted-foreground h-4 w-4" />}
       title="Promos"
-      subtitle="Subscription plan, discount rates per user tier & visit, and the monthly per-ticket cap. Discount-only — the venue never holds money."
+      subtitle="Subscription plan, discount rates per user tier & visit, and the ticket cap. Discount-only — the venue never holds money."
       action={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
     >
       {/* Plan */}
@@ -146,7 +146,7 @@ export function PromosSection({
 
       {/* Cap */}
       <p className="text-muted-foreground mt-7 text-[11px] font-semibold tracking-[0.12em] uppercase">
-        Monthly per-ticket cap {v.currency ? `(${v.currency})` : ""}
+        Ticket cap {v.currency ? `(${v.currency})` : ""}
       </p>
       <div className="border-border bg-background mt-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
         <p className="text-muted-foreground text-xs">Max discount applied to a single ticket.</p>
