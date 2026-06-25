@@ -58,12 +58,10 @@ function Header() {
       <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
         ADEA
       </h1>
-      <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-        Mesita&apos;s venue research &amp; enrichment engine. ADEA runs fresh
-        whenever a venue is created or updated — Link resolves each source,
-        Contents fetches from it, and Analysis perceives and reasons over
-        everything to write the canonical profile. Each card below tunes one
-        part of the pipeline.
+      <p className="text-muted-foreground mt-3 max-w-3xl text-sm leading-relaxed">
+        Mesita&apos;s venue-enrichment engine. On every venue create or update,
+        ADEA resolves each source (Link), fetches from it (Contents), then
+        reasons over everything (Analysis) to write the canonical profile.
       </p>
     </>
   );

@@ -103,20 +103,20 @@ const TIERS: { tier: Tier; blurb: string; alwaysOn?: boolean }[] = [
 const CEILING_MIN = 1;
 const CEILING_MAX = 5;
 
-// Per-method chip styling. Short label + a tinted class keyed to the provider
-// family so the spine (Mesita), Google, Firecrawl, Apify, OpenAI and Meta read
-// at a glance. Light-themed admin surface — subtle tints only.
-const METHOD_META: Record<Method, { short: string; cls: string }> = {
-  "Mesita Input": { short: "Mesita", cls: "border-foreground/20 bg-foreground/5 text-foreground/80" },
-  "Google Places": { short: "Places", cls: "border-red-500/25 bg-red-500/10 text-red-600" },
-  "Firecrawl Search": { short: "FC Search", cls: "border-amber-500/25 bg-amber-500/10 text-amber-700" },
-  "Firecrawl Crawl": { short: "FC Crawl", cls: "border-amber-500/25 bg-amber-500/10 text-amber-700" },
-  "Firecrawl Scrape": { short: "FC Scrape", cls: "border-amber-500/25 bg-amber-500/10 text-amber-700" },
-  "Perplexity": { short: "Perplexity", cls: "border-purple-500/25 bg-purple-500/10 text-purple-600" },
-  "Apify": { short: "Apify", cls: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700" },
-  "OpenAI LLM": { short: "OpenAI", cls: "border-sky-500/25 bg-sky-500/10 text-sky-700" },
-  "OpenAI Vision": { short: "Vision", cls: "border-violet-500/25 bg-violet-500/10 text-violet-600" },
-  "Meta Graph API": { short: "Graph API", cls: "border-blue-500/25 bg-blue-500/10 text-blue-600" },
+// Per-method chip tint, keyed to the provider family (spine, Google,
+// Firecrawl, Apify, OpenAI, Meta). The chip shows the method's full spec name —
+// no abbreviations. Light-themed admin surface, subtle tints only.
+const METHOD_CLS: Record<Method, string> = {
+  "Mesita Input": "border-foreground/20 bg-foreground/5 text-foreground/80",
+  "Google Places": "border-red-500/25 bg-red-500/10 text-red-600",
+  "Firecrawl Search": "border-amber-500/25 bg-amber-500/10 text-amber-700",
+  "Firecrawl Crawl": "border-amber-500/25 bg-amber-500/10 text-amber-700",
+  "Firecrawl Scrape": "border-amber-500/25 bg-amber-500/10 text-amber-700",
+  "Perplexity": "border-purple-500/25 bg-purple-500/10 text-purple-600",
+  "Apify": "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
+  "OpenAI LLM": "border-sky-500/25 bg-sky-500/10 text-sky-700",
+  "OpenAI Vision": "border-violet-500/25 bg-violet-500/10 text-violet-600",
+  "Meta Graph API": "border-blue-500/25 bg-blue-500/10 text-blue-600",
 };
 
 export function AtlasClient(props: {
@@ -157,11 +157,8 @@ export function AtlasClient(props: {
         initialTierCeiling={props.initialSourceTierCeiling}
         onSaved={setUpdatedAt}
       />
-      <SourceDepthSection
-        initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
-        onSaved={setUpdatedAt}
-      />
       <GatherSection
+        initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
         initialGatherGoogleImages={props.initialGatherGoogleImages}
         initialGatherWebsiteImages={props.initialGatherWebsiteImages}
         initialGatherInstagramPosts={props.initialGatherInstagramPosts}
@@ -227,7 +224,7 @@ function SourcesSection({
     <SectionCard
       icon={<Globe className="text-muted-foreground h-4 w-4" />}
       title="Sources"
-      subtitle="The tier ceiling runs every ADEA node whose tier is at or below it. T0 — the Google/Mesita spine plus the analysis brain — is always on. The grouped nodes below mirror the ADEA spec; they're read-only."
+      subtitle="Runs every node at or below the ceiling tier. T0 (the Google/Mesita spine + cognition) is always on. The nodes below are a read-only mirror of the ADEA spec."
       status={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
     >
       <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -343,83 +340,39 @@ function TierBadge({ tier, on }: { tier: Tier; on: boolean }) {
 }
 
 function MethodChip({ method }: { method: Method }) {
-  const m = METHOD_META[method];
   return (
     <span
-      title={method}
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${m.cls}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${METHOD_CLS[method]}`}
     >
-      {m.short}
+      {method}
     </span>
   );
 }
 
-// ─── Data sources: non-image depth ─────────────────────────────────────────
-
-function SourceDepthSection({
-  initialWebsiteCrawlMaxPages,
-  onSaved,
-}: {
-  initialWebsiteCrawlMaxPages: number;
-  onSaved: (updatedAt: string | null) => void;
-}) {
-  const [websitePages, setWebsitePages] = useState(initialWebsiteCrawlMaxPages);
-  const [saved, setSaved] = useState(initialWebsiteCrawlMaxPages);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
-
-  const dirty = websitePages !== saved;
-
-  const save = () => {
-    if (!dirty) return;
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updateAtlasConfig({ websiteCrawlMaxPages: websitePages });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setSaved(r.data.atlasWebsiteCrawlMaxPages);
-      onSaved(r.data.updatedAt);
-      setOk(true);
-    });
-  };
-
-  return (
-    <SectionCard
-      icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />}
-      title="Source depth"
-      subtitle="Non-image crawl depth. Reviews are pulled from Google in full; website pages set the content-crawl depth."
-    >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
-      </div>
-
-      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
-      {error && <ErrorNote message={error} />}
-    </SectionCard>
-  );
-}
-
-// ─── Gather (images pulled per source) ─────────────────────────────────────
+// ─── Gather (per-source fetch depth: pages, images, posts) ──────────────────
+// One card for every "how much to pull" knob — website crawl depth plus the
+// image/post candidate counts per source. Four fields sit on one row at wide
+// widths, so the card fills the space instead of a half-empty grid.
 
 function GatherSection({
+  initialWebsiteCrawlMaxPages,
   initialGatherGoogleImages,
   initialGatherWebsiteImages,
   initialGatherInstagramPosts,
   onSaved,
 }: {
+  initialWebsiteCrawlMaxPages: number;
   initialGatherGoogleImages: number;
   initialGatherWebsiteImages: number;
   initialGatherInstagramPosts: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
+  const [pages, setPages] = useState(initialWebsiteCrawlMaxPages);
   const [g, setG] = useState(initialGatherGoogleImages);
   const [w, setW] = useState(initialGatherWebsiteImages);
   const [posts, setPosts] = useState(initialGatherInstagramPosts);
   const [saved, setSaved] = useState({
+    pages: initialWebsiteCrawlMaxPages,
     g: initialGatherGoogleImages,
     w: initialGatherWebsiteImages,
     posts: initialGatherInstagramPosts,
@@ -428,7 +381,11 @@ function GatherSection({
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty = g !== saved.g || w !== saved.w || posts !== saved.posts;
+  const dirty =
+    pages !== saved.pages ||
+    g !== saved.g ||
+    w !== saved.w ||
+    posts !== saved.posts;
 
   const save = () => {
     if (!dirty) return;
@@ -436,6 +393,7 @@ function GatherSection({
     setOk(false);
     start(async () => {
       const r = await updateAtlasConfig({
+        websiteCrawlMaxPages: pages,
         gatherGoogleImages: g,
         gatherWebsiteImages: w,
         gatherInstagramPosts: posts,
@@ -445,10 +403,12 @@ function GatherSection({
         return;
       }
       setSaved({
+        pages: r.data.atlasWebsiteCrawlMaxPages,
         g: r.data.atlasGatherGoogleImages,
         w: r.data.atlasGatherWebsiteImages,
         posts: r.data.atlasGatherInstagramPosts,
       });
+      setPages(r.data.atlasWebsiteCrawlMaxPages);
       setG(r.data.atlasGatherGoogleImages);
       setW(r.data.atlasGatherWebsiteImages);
       setPosts(r.data.atlasGatherInstagramPosts);
@@ -461,9 +421,10 @@ function GatherSection({
     <SectionCard
       icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
       title="Gather"
-      subtitle="Image candidates pulled per source into the pool (≤10 each), pre-sorted as they arrive — not how many get analyzed or saved."
+      subtitle="How much to pull per source before analysis: website crawl depth, image candidates per source (≤10 each), and Instagram posts."
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <NumberField icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />} label="Website pages" value={pages} min={1} max={20} onChange={setPages} disabled={pending} />
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts" value={posts} min={0} max={30} onChange={setPosts} disabled={pending} />
@@ -1013,7 +974,7 @@ function SectionCard({
             </h2>
           </div>
           {subtitle && (
-            <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">
+            <p className="text-muted-foreground mt-1 max-w-3xl text-sm leading-relaxed">
               {subtitle}
             </p>
           )}
