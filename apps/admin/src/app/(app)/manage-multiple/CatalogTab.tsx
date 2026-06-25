@@ -1,56 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronRight, ImageOff, Loader2, Search } from "lucide-react";
-import { listUnits, searchUnits, type UnitHit } from "../manage-single/actions";
+import { ChevronRight, Loader2, Search, X } from "lucide-react";
+import { unitSectionHref } from "../manage-single/nav";
+import { UnitThumb } from "../manage-single/UnitEditChrome";
+import { useUnitCatalogSearch } from "../manage-single/useUnitCatalogSearch";
 
 export function CatalogTab() {
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState<UnitHit[]>([]);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"browse" | "search">("browse");
-
-  useEffect(() => {
-    start(async () => {
-      setError(null);
-      const query = q.trim();
-      if (query.length === 0) {
-        setMode("browse");
-        const r = await listUnits();
-        if (!r.ok) {
-          setError(r.error);
-          setHits([]);
-          return;
-        }
-        setHits(r.data);
-        return;
-      }
-      if (query.length < 2) {
-        setHits([]);
-        setMode("browse");
-        return;
-      }
-      setMode("search");
-      const r = await searchUnits(query);
-      if (!r.ok) {
-        setError(r.error);
-        setHits([]);
-        return;
-      }
-      setHits(r.data);
-    });
-  }, [q]);
-
-  const metaLabel =
-    mode === "browse"
-      ? pending
-        ? "Loading…"
-        : `${hits.length} on Mesita`
-      : pending
-        ? "Searching…"
-        : `${hits.length} match${hits.length === 1 ? "" : "es"}`;
+  const { q, setQ, hits, pending, error, metaLabel, clear } =
+    useUnitCatalogSearch({ variant: "multiple" });
 
   return (
     <div>
@@ -63,8 +21,18 @@ export function CatalogTab() {
           aria-label="Search Mesita catalog"
           className="placeholder:text-muted-foreground h-9 w-full bg-transparent text-sm outline-none"
         />
-        {pending && (
+        {pending && q.trim().length >= 2 && (
           <Loader2 className="text-muted-foreground h-4 w-4 shrink-0 animate-spin" />
+        )}
+        {!pending && q.length > 0 && (
+          <button
+            type="button"
+            onClick={clear}
+            aria-label="Clear search"
+            className="text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         )}
       </div>
 
@@ -72,18 +40,16 @@ export function CatalogTab() {
         Mesita catalog · {metaLabel}
       </p>
 
-      {error && (
-        <p className="text-destructive mt-3 text-sm">{error}</p>
-      )}
+      {error && <p className="text-destructive mt-3 text-sm">{error}</p>}
 
       <div className="mt-4 flex flex-col gap-2">
         {hits.map((u) => (
           <Link
             key={u.id}
-            href={`/manage-single/${u.id}/place`}
+            href={unitSectionHref(u.id, "place")}
             className="border-border bg-card hover:border-foreground/40 flex items-center gap-3 rounded-xl border p-3 transition"
           >
-            <UnitThumb photo={u.photo} name={u.name} />
+            <UnitThumb photo={u.photo} name={u.name} size="lg" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{u.name}</p>
               <p className="text-muted-foreground truncate text-xs">
@@ -107,23 +73,5 @@ export function CatalogTab() {
         )}
       </div>
     </div>
-  );
-}
-
-function UnitThumb({ photo, name }: { photo: string | null; name: string }) {
-  if (!photo) {
-    return (
-      <div className="border-border bg-background text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border">
-        <ImageOff className="h-4 w-4" />
-      </div>
-    );
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={photo}
-      alt={name}
-      className="border-border h-11 w-11 shrink-0 rounded-lg border object-cover"
-    />
   );
 }

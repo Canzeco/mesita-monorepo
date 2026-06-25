@@ -32,7 +32,7 @@ export function UnitSelectCatalog() {
             aria-label="Search units"
             className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
           />
-          {pending && (
+          {pending && q.trim().length >= 2 && (
             <Loader2 className="text-muted-foreground h-5 w-5 shrink-0 animate-spin" />
           )}
           {!pending && q.length > 0 && (

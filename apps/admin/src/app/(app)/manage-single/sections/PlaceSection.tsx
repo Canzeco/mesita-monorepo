@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Clock, Globe, ImageOff, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Globe, ImageOff, MapPin, Plus, X } from "lucide-react";
 import { updateVenue, type AdminVenue } from "../actions";
 import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 
@@ -38,7 +38,7 @@ type Form = {
   phone: string;
   email: string;
   tags: string;
-  photos: string;
+  photos: string[];
   channels: Record<string, string>;
   hours: Record<Day, DayHours>;
 };
@@ -67,7 +67,7 @@ function venueToForm(v: AdminVenue): Form {
     phone: v.phone ?? "",
     email: v.email ?? "",
     tags: (v.tags ?? []).join(", "),
-    photos: (v.photos ?? []).join("\n"),
+    photos: (v.photos ?? []).slice(0, PHOTOS_MAX),
     channels,
     hours,
   };
@@ -94,11 +94,7 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
       .map((t) => t.trim())
       .filter(Boolean)
       .slice(0, TAGS_PER_VENUE_MAX),
-    photos: f.photos
-      .split("\n")
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .slice(0, PHOTOS_MAX),
+    photos: f.photos.slice(0, PHOTOS_MAX),
     hours,
   };
   for (const c of CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
@@ -130,7 +126,35 @@ export function PlaceSection({
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
-  const photoUrls = form.photos.split("\n").map((p) => p.trim()).filter(Boolean);
+  const [photoDraft, setPhotoDraft] = useState("");
+
+  const setPhotos = (photos: string[]) => set("photos", photos.slice(0, PHOTOS_MAX));
+
+  const addPhotoUrl = () => {
+    const url = photoDraft.trim();
+    if (!url) return;
+    if (form.photos.length >= PHOTOS_MAX) {
+      setError(`At most ${PHOTOS_MAX} photos.`);
+      return;
+    }
+    if (form.photos.includes(url)) {
+      setPhotoDraft("");
+      return;
+    }
+    setPhotos([...form.photos, url]);
+    setPhotoDraft("");
+    setError(null);
+  };
+
+  const movePhoto = (from: number, dir: -1 | 1) => {
+    const to = from + dir;
+    if (to < 0 || to >= form.photos.length) return;
+    const next = form.photos.slice();
+    [next[from], next[to]] = [next[to], next[from]];
+    setPhotos(next);
+  };
+
+  const removePhoto = (idx: number) => setPhotos(form.photos.filter((_, i) => i !== idx));
 
   const save = () => {
     if (!dirty || !form.name.trim()) {
@@ -242,28 +266,133 @@ export function PlaceSection({
       <SectionCard
         icon={<ImageOff className="text-muted-foreground h-4 w-4" />}
         title="Photos"
-        subtitle="One image URL per line. These are the venue's saved photos (first = hero)."
+        subtitle="Venue gallery — first photo is the hero. Reorder or remove; add by URL if needed."
       >
-        {photoUrls.length > 0 && (
-          <div className="mt-5 flex flex-wrap gap-2">
-            {photoUrls.slice(0, 12).map((u, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={`${u}-${i}`} src={u} alt={`photo ${i + 1}`} className="border-border h-16 w-16 rounded-lg border object-cover" />
-            ))}
-          </div>
-        )}
-        <div className="mt-4">
-          <TextArea label="Photo URLs" value={form.photos} onChange={(x) => set("photos", x)} rows={5} placeholder={"https://…\nhttps://…"} disabled={pending} />
-          <p className="text-muted-foreground mt-1 text-xs tabular-nums">
-            {photoUrls.length}/{PHOTOS_MAX} photos
-          </p>
-        </div>
+        <PhotosEditor
+          photos={form.photos}
+          pending={pending}
+          photoDraft={photoDraft}
+          onPhotoDraftChange={setPhotoDraft}
+          onAdd={addPhotoUrl}
+          onMove={movePhoto}
+          onRemove={removePhoto}
+        />
       </SectionCard>
 
       <div>
         <SaveBar pending={pending} dirty={dirty} ok={ok} onSave={save} />
         {error && <ErrorNote message={error} />}
       </div>
+    </div>
+  );
+}
+
+function PhotosEditor({
+  photos,
+  pending,
+  photoDraft,
+  onPhotoDraftChange,
+  onAdd,
+  onMove,
+  onRemove,
+}: {
+  photos: string[];
+  pending: boolean;
+  photoDraft: string;
+  onPhotoDraftChange: (value: string) => void;
+  onAdd: () => void;
+  onMove: (from: number, dir: -1 | 1) => void;
+  onRemove: (idx: number) => void;
+}) {
+  return (
+    <div className="mt-5">
+      {photos.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No photos yet.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {photos.map((src, idx) => (
+            <div
+              key={`${src}-${idx}`}
+              className="border-border bg-background group relative overflow-hidden rounded-xl border"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={`Photo ${idx + 1}`}
+                className="aspect-[4/3] w-full object-cover"
+              />
+              {idx === 0 && (
+                <span className="bg-foreground/80 text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                  Hero
+                </span>
+              )}
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    disabled={pending || idx === 0}
+                    onClick={() => onMove(idx, -1)}
+                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition disabled:opacity-40"
+                    aria-label="Move earlier"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending || idx === photos.length - 1}
+                    onClick={() => onMove(idx, 1)}
+                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition disabled:opacity-40"
+                    aria-label="Move later"
+                  >
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => onRemove(idx)}
+                  className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
+                  aria-label="Remove photo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+        <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <span className="text-sm font-medium">Add photo</span>
+          <input
+            type="url"
+            value={photoDraft}
+            onChange={(e) => onPhotoDraftChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onAdd();
+              }
+            }}
+            placeholder="Paste image URL…"
+            disabled={pending || photos.length >= PHOTOS_MAX}
+            className="border-border bg-background focus:border-foreground h-9 rounded-lg border px-3 text-sm outline-none disabled:opacity-50"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={pending || !photoDraft.trim() || photos.length >= PHOTOS_MAX}
+          className="border-border hover:border-foreground/40 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </button>
+      </div>
+      <p className="text-muted-foreground mt-2 text-xs tabular-nums">
+        {photos.length}/{PHOTOS_MAX} photos
+      </p>
     </div>
   );
 }

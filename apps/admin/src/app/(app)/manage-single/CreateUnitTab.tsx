@@ -21,7 +21,7 @@ import {
 } from "./actions";
 import { ErrorNote, SectionCard } from "./ui";
 
-const SEARCH_DEBOUNCE_MS = 250;
+const SEARCH_DEBOUNCE_MS = 1000;
 
 const STATUS_BADGE: Record<
   PlacePredictionStatus,
@@ -56,6 +56,7 @@ export function CreateUnitTab() {
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
   const [selected, setSelected] = useState<PlacePrediction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [existsName, setExistsName] = useState<string | null>(null);
@@ -67,9 +68,12 @@ export function CreateUnitTab() {
   useEffect(() => {
     if (selected || trimmed.length < 2 || placeIdMode) {
       if (trimmed.length < 2 || placeIdMode) setPredictions([]);
+      setSearching(false);
       return;
     }
 
+    setSearching(false);
+    setSearchedQuery(null);
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       setSearching(true);
@@ -77,6 +81,7 @@ export function CreateUnitTab() {
       const r = await suggestPlaces(trimmed, sessionTokenRef.current);
       if (cancelled) return;
       setSearching(false);
+      setSearchedQuery(trimmed);
       if (!r.ok) {
         setSearchError(r.error);
         setPredictions([]);
@@ -99,6 +104,7 @@ export function CreateUnitTab() {
     setError(null);
     setExistsName(null);
     sessionTokenRef.current = newSessionToken();
+    setSearchedQuery(null);
   };
 
   const createFromPlaceId = (placeId: string, label?: string) => {
@@ -181,7 +187,11 @@ export function CreateUnitTab() {
               if (selected) setSelected(null);
               setError(null);
               setExistsName(null);
-              if (next.trim().length < 2) setPredictions([]);
+              setSearchError(null);
+              if (next.trim().length < 2) {
+                setPredictions([]);
+                setSearching(false);
+              }
             }}
             placeholder="Place name or Google Place ID…"
             spellCheck={false}
@@ -265,6 +275,7 @@ export function CreateUnitTab() {
         !placeIdMode &&
         !searching &&
         !searchError &&
+        searchedQuery === trimmed &&
         trimmed.length >= 2 &&
         predictions.length === 0 && (
           <p className="text-muted-foreground mt-3 text-sm">
