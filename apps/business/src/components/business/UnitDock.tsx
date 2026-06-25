@@ -47,7 +47,9 @@ export function UnitDock() {
   const pathname = usePathname() ?? "";
   const footerRef = useRef<HTMLElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [menuBottom, setMenuBottom] = useState(0);
+  // Anchored to the dock's own box so the portaled menu stays inside the
+  // phone frame instead of spanning the whole viewport.
+  const [menuRect, setMenuRect] = useState({ bottom: 0, left: 0, width: 0 });
   const [mounted, setMounted] = useState(false);
 
   const venues = chrome?.venues ?? [];
@@ -93,8 +95,13 @@ export function UnitDock() {
   useEffect(() => {
     if (!pickerOpen || !footerRef.current) return;
     const update = () => {
-      const top = footerRef.current?.getBoundingClientRect().top ?? 0;
-      setMenuBottom(window.innerHeight - top + 8);
+      const rect = footerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuRect({
+        bottom: window.innerHeight - rect.top + 8,
+        left: rect.left,
+        width: rect.width,
+      });
     };
     update();
     window.addEventListener("resize", update);
@@ -112,8 +119,12 @@ export function UnitDock() {
               className="fixed inset-0 z-[100] cursor-default bg-black/30"
             />
             <div
-              className="border-border bg-card shadow-elev fixed inset-x-3 z-[110] max-h-[min(20rem,50vh)] overflow-y-auto rounded-2xl border"
-              style={{ bottom: menuBottom }}
+              className="border-border bg-card shadow-elev fixed z-[110] max-h-[min(20rem,50vh)] overflow-y-auto rounded-2xl border"
+              style={{
+                bottom: menuRect.bottom,
+                left: menuRect.left + 12,
+                width: Math.max(menuRect.width - 24, 0),
+              }}
             >
               <p className="text-muted-foreground sticky top-0 border-b border-border/40 bg-card px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-[0.12em] uppercase">
                 Your places
