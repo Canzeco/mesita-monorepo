@@ -8,7 +8,6 @@ import {
   PlayCircle,
   Plus,
 } from "lucide-react";
-import { Topbar } from "@/components/business/Topbar";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -42,7 +41,6 @@ export default async function SettingsPage({
   if (overviewResult.status === "rejected") {
     return (
       <PageErrorState
-        title="Account"
         heading="Couldn't load your account"
         message={errMsg(overviewResult.reason, "Could not load your venues.")}
         retryHref={`/unit/${id}/settings`}
@@ -69,10 +67,8 @@ export default async function SettingsPage({
     : (business?.full_name ?? accountLabel(email));
 
   return (
-    <>
-      <Topbar title="Account" subtitle="Your places, profile, and more" />
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pt-3 pb-10">
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pt-3 pb-8">
           {/* Current place + switcher */}
           <section className="flex flex-col gap-2">
             <SectionLabel>Current place</SectionLabel>
@@ -168,7 +164,6 @@ export default async function SettingsPage({
           </section>
         </div>
       </div>
-    </>
   );
 }
 

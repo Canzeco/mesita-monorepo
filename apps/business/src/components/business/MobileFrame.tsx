@@ -11,11 +11,9 @@ import { cn } from "@/lib/utils";
  *     centered on the hero gradient with breathing room.
  *   - Card: the actual app surface. STRICT height on mobile (`h-full`
  *     of the outer = h-dvh), capped `max-h` on desktop. The shell inside
- *     lays out as flex-col: [StatusBar][TopBar][body flex-1][BottomNav].
- *     With a strict card height, BottomNav as a shrink-0 flex child sits
- *     at the bottom of the viewport and the body's own `overflow-y-auto`
- *     scrolls inside the available space — neither chrome band scrolls
- *     out of view.
+ *     lays out as flex-col: [StatusBar][body flex-1][UnitDock].
+ *     With a strict card height, the dock stays pinned at the bottom and
+ *     the body's own `overflow-y-auto` scrolls inside the available space.
  */
 export function MobileFrame({
   children,

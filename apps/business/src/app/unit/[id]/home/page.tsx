@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 // `home` is no longer a destination in the mobile console — the six
-// BottomNav surfaces start at Place. Anything still pointing here (old
+// Section nav surfaces start at Place. Anything still pointing here (old
 // links, bookmarks, post-create redirects) lands on Place.
 export const dynamic = "force-dynamic";
 

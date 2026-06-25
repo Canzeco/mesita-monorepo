@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { ReceiptText } from "lucide-react";
-import { Topbar } from "@/components/business/Topbar";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -34,8 +33,6 @@ export default async function ScanPage({
   if (overviewError) {
     return (
       <PageErrorState
-        title="Scan"
-        subtitle="Business can also check tickets."
         heading="Couldn't load the venue"
         message={overviewError}
         retryHref={`/unit/${id}/scan`}
@@ -45,18 +42,15 @@ export default async function ScanPage({
 
   if (!overview || overview.venues.length === 0) {
     return (
-      <>
-        <Topbar title="Scan" subtitle="Business can also check tickets." />
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 py-10 md:px-8">
-            <EmptyState
-              icon={<ReceiptText className="text-muted-foreground h-5 w-5" />}
-              title="No venue available"
-              description="Add or select a venue to check tickets."
-            />
-          </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-4 py-10 md:px-8">
+          <EmptyState
+            icon={<ReceiptText className="text-muted-foreground h-5 w-5" />}
+            title="No venue available"
+            description="Add or select a venue to check tickets."
+          />
         </div>
-      </>
+      </div>
     );
   }
 
@@ -75,8 +69,6 @@ export default async function ScanPage({
   if (ticketsError) {
     return (
       <PageErrorState
-        title={active.name}
-        subtitle="Scan"
         heading="Couldn't load tickets"
         message={ticketsError}
         retryHref={`/unit/${id}/scan`}
@@ -85,17 +77,14 @@ export default async function ScanPage({
   }
 
   return (
-    <>
-      <Topbar title={active.name} subtitle="Scan · bill · pay" />
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-lg flex-col px-4 pt-1 pb-14 md:px-5 md:pt-3 md:pb-16">
-          <TicketsClient
-            venueId={active.id}
-            venueCurrency={active.currency}
-            initialTickets={initialTickets}
-          />
-        </div>
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-lg flex-col px-4 pt-1 pb-8 md:px-5 md:pt-3 md:pb-10">
+        <TicketsClient
+          venueId={active.id}
+          venueCurrency={active.currency}
+          initialTickets={initialTickets}
+        />
       </div>
-    </>
+    </div>
   );
 }

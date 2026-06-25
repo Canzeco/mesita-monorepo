@@ -38,38 +38,6 @@ const FILTER_EMPTY: Record<TicketFilter, string> = {
   done: "No closed tickets yet.",
 };
 
-function ScanFeedback({
-  error,
-  notice,
-  onDismiss,
-}: {
-  error: string | null;
-  notice: string | null;
-  onDismiss: () => void;
-}) {
-  if (!error && !notice) return null;
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-[13px] leading-snug",
-        error
-          ? ERROR_BOX_CLASS
-          : "border-border/60 bg-card text-foreground/80 border",
-      )}
-      role="status"
-    >
-      <span className="min-w-0">{error ?? notice}</span>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="text-muted-foreground hover:text-foreground shrink-0 text-[11px] font-medium"
-      >
-        Dismiss
-      </button>
-    </div>
-  );
-}
-
 export function TicketsClient({
   venueId,
   venueCurrency,
@@ -83,7 +51,6 @@ export function TicketsClient({
   const [tickets, setTickets] = useState(initialTickets);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
   const [filter, setFilter] = useState<TicketFilter>("create");
 
@@ -113,7 +80,6 @@ export function TicketsClient({
         limit: TICKET_LIST_LIMIT,
       });
       setTickets(rows);
-      setNotice(`${rows.length} tickets loaded`);
     } catch (e) {
       setError(errMsg(e, "Couldn't refresh."));
     } finally {
@@ -130,7 +96,6 @@ export function TicketsClient({
         limit: TICKET_LIST_LIMIT,
       });
       setTickets(rows);
-      setNotice(message);
       if (message.includes("scanned")) setScanOpen(false);
     } catch (e) {
       setError(errMsg(e, "Updated but refresh failed."));
@@ -142,10 +107,9 @@ export function TicketsClient({
   const markPaid = async (ticketId: string) => {
     setBusy(`pay:${ticketId}`);
     setError(null);
-    setNotice(null);
     try {
       await apiMarkTicketPaid(supabase, ticketId);
-      await reloadTickets("Payment confirmed — ticket closed.");
+      await reloadTickets("Payment confirmed.");
     } catch (e) {
       setError(errMsg(e, "Couldn't mark as paid."));
     } finally {
@@ -156,7 +120,6 @@ export function TicketsClient({
   const cancelTicket = async (ticketId: string) => {
     setBusy(`cancel:${ticketId}`);
     setError(null);
-    setNotice(null);
     try {
       await apiCancelTicket(supabase, {
         ticketId,
@@ -221,14 +184,11 @@ export function TicketsClient({
         />
       ) : null}
 
-      <ScanFeedback
-        error={error}
-        notice={notice}
-        onDismiss={() => {
-          setError(null);
-          setNotice(null);
-        }}
-      />
+      {error ? (
+        <p className={cn(ERROR_BOX_CLASS, "text-[13px] leading-snug")} role="alert">
+          {error}
+        </p>
+      ) : null}
 
       <section className="flex flex-col gap-2.5">
         {tickets.length === 0 ? (

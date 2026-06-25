@@ -21,30 +21,20 @@ export function SubTabs<T extends string>({
   onChange,
   className,
   equalWidth = false,
+  variant = "default",
 }: {
   tabs: readonly SubTabItem<T>[];
   active: T;
   onChange: (id: T) => void;
   className?: string;
-  // When true, tabs share the row evenly (e.g. 5 tabs → 20% each).
   equalWidth?: boolean;
+  variant?: "default" | "minimal" | "segmented";
 }) {
-  return (
-    <div
-      role="tablist"
-      className={cn(
-        "bg-background/90 border-border sticky top-0 z-10 -mx-4 border-b py-2 backdrop-blur-md",
-        equalWidth
-          ? "grid gap-1 px-2"
-          : "scrollbar-hide flex gap-1 overflow-x-auto px-4",
-        className,
-      )}
-      style={
-        equalWidth && tabs.length > 0
-          ? { gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }
-          : undefined
-      }
-    >
+  const isSegmented = variant === "segmented";
+  const segmentedStacked = isSegmented && equalWidth;
+
+  const tabList = (
+    <>
       {tabs.map(({ id, label, Icon, count }) => {
         const isActive = id === active;
         return (
@@ -55,27 +45,63 @@ export function SubTabs<T extends string>({
             aria-selected={isActive}
             onClick={() => onChange(id)}
             className={cn(
-              "flex items-center rounded-full font-semibold transition",
-              equalWidth
-                ? "min-w-0 justify-center gap-1 px-1 py-1.5 text-[11px] sm:text-[12px]"
-                : "shrink-0 gap-1.5 px-3.5 py-1.5 text-[13px] whitespace-nowrap",
-              isActive
-                ? "bg-foreground text-background shadow-sm"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              "font-semibold transition-all duration-200 ease-out",
+              segmentedStacked
+                ? "flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5"
+                : "flex items-center",
+              equalWidth && !segmentedStacked
+                ? cn(
+                    "min-w-0 justify-center gap-1 rounded-lg px-2 py-2 text-[12px]",
+                    isSegmented && tabs.length >= 5 && "px-1 text-[11px]",
+                    isSegmented && tabs.length >= 6 && "px-0.5 text-[10px]",
+                    isSegmented && "py-2.5",
+                  )
+                : !segmentedStacked &&
+                    "shrink-0 gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap",
+              isSegmented
+                ? isActive
+                  ? "bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_12px_rgba(0,0,0,0.04)] ring-1 ring-pink-500/15"
+                  : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                : variant === "minimal"
+                  ? isActive
+                    ? "bg-foreground/8 text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                  : isActive
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              !equalWidth && variant === "minimal" && "rounded-lg px-3 py-1.5 text-[12px]",
+              equalWidth && variant === "default" && "sm:text-[12px] rounded-full px-1",
             )}
           >
             {Icon && (
               <Icon
-                className={cn("shrink-0", equalWidth ? "h-3 w-3" : "h-3.5 w-3.5")}
+                className={cn(
+                  "shrink-0 transition-colors",
+                  segmentedStacked ? "h-4 w-4" : equalWidth ? "h-3 w-3" : "h-3.5 w-3.5",
+                  isSegmented && isActive && "text-pink-500",
+                )}
+                strokeWidth={isSegmented && isActive ? 2.25 : 2}
               />
             )}
-            <span className={equalWidth ? "truncate" : undefined}>{label}</span>
+            <span
+              className={cn(
+                segmentedStacked
+                  ? "max-w-full truncate text-[10px] leading-none tracking-tight"
+                  : equalWidth
+                    ? "truncate"
+                    : undefined,
+              )}
+            >
+              {label}
+            </span>
             {count !== undefined && (
               <span
                 className={cn(
                   "rounded-full px-1.5 text-[11px] font-bold tabular-nums",
                   isActive
-                    ? "bg-background/20 text-background"
+                    ? isSegmented || variant === "default"
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-background/20 text-background"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -85,6 +111,50 @@ export function SubTabs<T extends string>({
           </button>
         );
       })}
+    </>
+  );
+
+  if (isSegmented && equalWidth) {
+    return (
+      <div
+        className={cn(
+          "border-border/40 sticky top-0 z-10 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur-md",
+          className,
+        )}
+      >
+        <div
+          role="tablist"
+          className="border-border/50 bg-muted/35 grid gap-1 rounded-2xl border p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
+          {tabList}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="tablist"
+      className={cn(
+        variant === "minimal"
+          ? "border-border/60 sticky top-0 z-10 -mx-4 border-b bg-background/95 px-3 py-1.5 backdrop-blur-sm"
+          : "bg-background/90 border-border sticky top-0 z-10 -mx-4 border-b py-2 backdrop-blur-md",
+        equalWidth
+          ? "grid gap-1"
+          : "scrollbar-hide flex gap-1 overflow-x-auto px-4",
+        !equalWidth && variant === "default" && "px-4",
+        equalWidth && variant === "minimal" && "px-2",
+        equalWidth && variant === "default" && "px-2",
+        className,
+      )}
+      style={
+        equalWidth && tabs.length > 0
+          ? { gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }
+          : undefined
+      }
+    >
+      {tabList}
     </div>
   );
 }

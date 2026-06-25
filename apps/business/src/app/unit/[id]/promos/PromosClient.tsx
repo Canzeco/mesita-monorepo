@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Crown,
   Instagram,
@@ -10,6 +10,12 @@ import {
   Smile,
   type LucideIcon,
 } from "lucide-react";
+import { SubTabs } from "@/components/business/SubTabs";
+import {
+  PROMOS_SUB_TABS,
+  resolvePromosSubTab,
+  type PromosSubTab,
+} from "@/components/business/promos/promos-subtabs";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
 import { Badge } from "@/components/ui/badge";
@@ -171,7 +177,19 @@ const SUB_VISUAL: Record<
 
 export function PromosClient({ venue }: { venue: MyVenue }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const supabase = useBrowserSupabase();
+
+  const tab: PromosSubTab = resolvePromosSubTab(searchParams.get("tab"));
+
+  const setTab = (next: PromosSubTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "plan") params.delete("tab");
+    else params.set("tab", next);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   const [pending, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -201,162 +219,184 @@ export function PromosClient({ venue }: { venue: MyVenue }) {
   const isFree = currentSub === "free";
 
   return (
-    <div className="flex flex-col gap-5">
-      <VisibilityRail plan={venue.plan} />
+    <div className="flex flex-col gap-5 px-4 pt-5 pb-10">
+      <SubTabs
+        tabs={PROMOS_SUB_TABS}
+        active={tab}
+        onChange={setTab}
+        equalWidth
+        variant="segmented"
+        className="-mx-4"
+      />
 
-      <Section
-        title="Subscription"
-        className="shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]"
-      >
-        <div className="flex flex-col gap-3">
-          {SUBSCRIPTIONS.map((s) => {
-            const v = SUB_VISUAL[s.id];
-            return (
-              <SubscriptionCard
-                key={s.id}
-                label={s.label}
-                price={s.price}
-                cadence={s.cadence}
-                tagline={s.tagline}
-                visibility={s.visibility}
-                setup={s.setup}
-                featured={!!s.featured}
-                icon={v.icon}
-                iconAccent={v.accent}
-                isCurrent={s.id === currentSub}
-                pending={pendingSubId === s.id}
-                onPick={() => selectSubscription(s.id)}
-              />
-            );
-          })}
-        </div>
-        {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
-        {isFree && (
-          <p className="text-muted-foreground text-xs">
-            On <span className="text-foreground font-semibold">Free</span> rates
-            are locked to 0% — pick Pro or Ultra to set them.
-          </p>
-        )}
-      </Section>
+      {tab === "plan" ? (
+        <>
+          <VisibilityRail plan={venue.plan} />
 
-      <Section
-        title="Promos"
-        className="bg-gradient-to-b from-white to-fuchsia-50/[0.25]"
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <ColumnHeader>First visit</ColumnHeader>
-            {(["free", "premium"] as const).map((tier) => (
-              <PromoCell
-                key={`welcome-${tier}`}
-                column={`welcome_${tier}_rate` as PromoColumn}
-                tier={tier}
-                initial={venue[`welcome_${tier}_rate`]}
-                venueId={venue.id}
-                disabled={isFree}
-              />
-            ))}
-          </div>
-          <div className="flex flex-col gap-2">
-            <ColumnHeader>Returning visits</ColumnHeader>
-            {(["free", "premium"] as const).map((tier) => (
-              <PromoCell
-                key={`default-${tier}`}
-                column={`${tier}_rate` as PromoColumn}
-                tier={tier}
-                initial={venue[`${tier}_rate`]}
-                venueId={venue.id}
-                disabled={isFree}
-              />
-            ))}
-          </div>
-        </div>
-      </Section>
+          <Section
+            title="Subscription"
+            className="shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]"
+          >
+            <div className="flex flex-col gap-3">
+              {SUBSCRIPTIONS.map((s) => {
+                const v = SUB_VISUAL[s.id];
+                return (
+                  <SubscriptionCard
+                    key={s.id}
+                    label={s.label}
+                    price={s.price}
+                    cadence={s.cadence}
+                    tagline={s.tagline}
+                    visibility={s.visibility}
+                    setup={s.setup}
+                    featured={!!s.featured}
+                    icon={v.icon}
+                    iconAccent={v.accent}
+                    isCurrent={s.id === currentSub}
+                    pending={pendingSubId === s.id}
+                    onPick={() => selectSubscription(s.id)}
+                  />
+                );
+              })}
+            </div>
+            {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
+            {isFree && (
+              <p className="text-muted-foreground text-xs">
+                On <span className="text-foreground font-semibold">Free</span>{" "}
+                rates are locked to 0% — pick Pro or Ultra to set them.
+              </p>
+            )}
+          </Section>
+        </>
+      ) : null}
 
-      <Section
-        title="Ticket cap"
-        description="Discount applies only to the first X amount of each ticket. Example: 20% on the first MX$500, then no discount on the rest."
-        className="bg-gradient-to-b from-white to-rose-50/[0.2]"
-      >
-        <TicketCapPicker
-          initial={venue.monthly_promo_cap}
-          currency={venue.currency}
-          venueId={venue.id}
-          disabled={isFree}
-        />
-      </Section>
+      {tab === "rates" ? (
+        <>
+          <Section
+            title="Promos"
+            className="bg-gradient-to-b from-white to-fuchsia-50/[0.25]"
+          >
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <ColumnHeader>First visit</ColumnHeader>
+                {(["free", "premium"] as const).map((tier) => (
+                  <PromoCell
+                    key={`welcome-${tier}`}
+                    column={`welcome_${tier}_rate` as PromoColumn}
+                    tier={tier}
+                    initial={venue[`welcome_${tier}_rate`]}
+                    venueId={venue.id}
+                    disabled={isFree}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-col gap-2">
+                <ColumnHeader>Returning visits</ColumnHeader>
+                {(["free", "premium"] as const).map((tier) => (
+                  <PromoCell
+                    key={`default-${tier}`}
+                    column={`${tier}_rate` as PromoColumn}
+                    tier={tier}
+                    initial={venue[`${tier}_rate`]}
+                    venueId={venue.id}
+                    disabled={isFree}
+                  />
+                ))}
+              </div>
+            </div>
+          </Section>
 
-      <Section
-        title="Subscription by Instagram"
-        description="Manager preview of the Instagram subscription requirement so you can see what you're buying."
-        className="bg-gradient-to-b from-white to-fuchsia-50/[0.22]"
-      >
-        <div className="bg-muted/25 border-border/60 grid grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-2">
-          <div className="flex items-center justify-between gap-2 sm:col-span-2">
-            <p className="text-[12px] font-semibold">Story posting required</p>
-            <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white">
-              Required
-            </span>
-          </div>
-
-          <label className="block">
-            <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
-              <Instagram className="h-3.5 w-3.5" />
-              Instagram to tag
-            </span>
-            <input
-              value={igTagAccount}
-              readOnly
-              aria-readonly
-              spellCheck={false}
-              autoCapitalize="none"
-              className="border-border bg-muted/35 text-foreground/85 w-full rounded-full border px-3 py-2 text-[13px] outline-none"
+          <Section
+            title="Ticket cap"
+            description="Discount applies only to the first X amount of each ticket. Example: 20% on the first MX$500, then no discount on the rest."
+            className="bg-gradient-to-b from-white to-rose-50/[0.2]"
+          >
+            <TicketCapPicker
+              initial={venue.monthly_promo_cap}
+              currency={venue.currency}
+              venueId={venue.id}
+              disabled={isFree}
             />
-          </label>
+          </Section>
+        </>
+      ) : null}
 
-          <div className="block">
-            <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
-              Story instruction
-            </span>
-            <div className="border-border bg-background text-foreground/85 rounded-xl border px-3 py-2 text-[12px] font-medium">
-              Post a positive story with a photo/video of the place or food, tag
-              this venue account, and show it at check-in (no negative content).
+      {tab === "instagram" ? (
+        <Section
+          title="Subscription by Instagram"
+          description="Manager preview of the Instagram subscription requirement so you can see what you're buying."
+          className="bg-gradient-to-b from-white to-fuchsia-50/[0.22]"
+        >
+          <div className="bg-muted/25 border-border/60 grid grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-2">
+            <div className="flex items-center justify-between gap-2 sm:col-span-2">
+              <p className="text-[12px] font-semibold">Story posting required</p>
+              <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white">
+                Required
+              </span>
+            </div>
+
+            <label className="block">
+              <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
+                <Instagram className="h-3.5 w-3.5" />
+                Instagram to tag
+              </span>
+              <input
+                value={igTagAccount}
+                readOnly
+                aria-readonly
+                spellCheck={false}
+                autoCapitalize="none"
+                className="border-border bg-muted/35 text-foreground/85 w-full rounded-full border px-3 py-2 text-[13px] outline-none"
+              />
+            </label>
+
+            <div className="block">
+              <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
+                Story instruction
+              </span>
+              <div className="border-border bg-background text-foreground/85 rounded-xl border px-3 py-2 text-[12px] font-medium">
+                Post a positive story with a photo/video of the place or food,
+                tag this venue account, and show it at check-in (no negative
+                content).
+              </div>
             </div>
           </div>
-        </div>
-        <p className="text-foreground/80 text-[11px]">
-          Selected rule:{" "}
-          <span className="font-semibold">{STORY_INSTRUCTION}</span>
-        </p>
-        <p className="text-muted-foreground text-[11px]">
-          No follow is required from guests.
-        </p>
-        <p className="text-muted-foreground text-[11px]">
-          Placeholder preview for managers only. It communicates the expected
-          Instagram requirement that comes with this subscription.
-        </p>
-      </Section>
-
-      <Section
-        title="Mesita user examples"
-        description="Includes Free and Premium users."
-        className="bg-gradient-to-b from-white to-zinc-50/70"
-      >
-        <div className="bg-muted/20 border-border/50 mb-3 rounded-xl border px-3 py-2">
-          <p className="text-muted-foreground text-xs">
-            Illustrative Mesita users across Free and Premium tiers. Most Free
-            users typically have no Instagram linked yet.
+          <p className="text-foreground/80 text-[11px]">
+            Selected rule:{" "}
+            <span className="font-semibold">{STORY_INSTRUCTION}</span>
           </p>
-        </div>
-        <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {MESITA_USER_EXAMPLES.map((guest) => (
-            <MesitaUserCard
-              key={`${guest.tier}-${guest.instagram ?? guest.totalSpendMesita}`}
-              guest={guest}
-            />
-          ))}
-        </div>
-      </Section>
+          <p className="text-muted-foreground text-[11px]">
+            No follow is required from guests.
+          </p>
+          <p className="text-muted-foreground text-[11px]">
+            Placeholder preview for managers only. It communicates the expected
+            Instagram requirement that comes with this subscription.
+          </p>
+        </Section>
+      ) : null}
+
+      {tab === "guests" ? (
+        <Section
+          title="Mesita user examples"
+          description="Includes Free and Premium users."
+          className="bg-gradient-to-b from-white to-zinc-50/70"
+        >
+          <div className="bg-muted/20 border-border/50 mb-3 rounded-xl border px-3 py-2">
+            <p className="text-muted-foreground text-xs">
+              Illustrative Mesita users across Free and Premium tiers. Most Free
+              users typically have no Instagram linked yet.
+            </p>
+          </div>
+          <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {MESITA_USER_EXAMPLES.map((guest) => (
+              <MesitaUserCard
+                key={`${guest.tier}-${guest.instagram ?? guest.totalSpendMesita}`}
+                guest={guest}
+              />
+            ))}
+          </div>
+        </Section>
+      ) : null}
     </div>
   );
 }

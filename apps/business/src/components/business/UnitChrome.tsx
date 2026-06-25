@@ -5,7 +5,7 @@ import type { MyVenue } from "@/lib/api/venues";
 
 // Carries the per-request unit data (fetched once in the unit layout) down
 // to the app bar so it can render the venue switcher without every page
-// having to re-plumb props. Consumed by Topbar.
+// having to re-plumb props. Consumed by UnitDock.
 export type UnitChrome = {
   unitId: string;
   activeVenueId: string;

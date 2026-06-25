@@ -1,15 +1,12 @@
 import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
-import { Topbar } from "@/components/business/Topbar";
+import { PageErrorState } from "@/components/business/PageErrorState";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { getUnitOverview } from "@/lib/api/unit";
+import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-// Performance is gated behind real analytics — the KPI tiles, retention
-// cohorts, and revenue-by-tier charts depend on aggregation jobs that
-// haven't shipped yet. Until then we render the standard shell + an
-// EmptyState so the page stops feeling broken.
 
 export default async function PerformancePage({
   params,
@@ -23,21 +20,49 @@ export default async function PerformancePage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/?next=/unit/${id}/performance`);
 
-  return (
-    <>
-      <Topbar
-        title="Performance"
-        subtitle="Visits, revenue, and cohort trends"
+  let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
+  let overviewError: string | null = null;
+  try {
+    overview = await getUnitOverview(supabase, id, 0);
+  } catch (err) {
+    overviewError = errMsg(err, "Could not load your venues.");
+  }
+
+  if (overviewError) {
+    return (
+      <PageErrorState
+        heading="Couldn't load stats"
+        message={overviewError}
+        retryHref={`/unit/${id}/performance`}
       />
+    );
+  }
+
+  const active = overview?.active?.venue ?? overview?.venues[0] ?? null;
+
+  if (!active) {
+    return (
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
+        <div className="mx-auto max-w-lg px-4 pt-1 pb-6">
           <EmptyState
             icon={<BarChart3 className="text-muted-foreground h-5 w-5" />}
-            title="Performance is on the way"
-            description="Daily visits, cohort retention, and revenue-by-tier charts ship once the analytics pipeline lands. We'll surface them here automatically."
+            title="No venue yet"
+            description="Add a venue to see performance stats."
           />
         </div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 pt-1 pb-6">
+        <EmptyState
+          icon={<BarChart3 className="text-muted-foreground h-5 w-5" />}
+          title="Stats coming soon"
+          description="Daily visits, retention, and revenue charts will show up here once the analytics pipeline lands."
+        />
+      </div>
+    </div>
   );
 }

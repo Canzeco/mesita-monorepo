@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { Topbar } from "@/components/business/Topbar";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListTeam, type TeamSnapshot } from "@/lib/api/team";
@@ -7,10 +6,6 @@ import { getUnitOverview } from "@/lib/api/unit";
 import { errMsg } from "@/lib/utils";
 import { TeamClient } from "./TeamClient";
 
-// Match Promos/Place: resolve everything the client needs on the server so
-// the only loading indicator the user sees is the shared Suspense fallback
-// in loading.tsx. Without this, TeamClient would mount empty and show its
-// own "Loading team…" spinner on top of the centered shell loader.
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage({
@@ -50,8 +45,6 @@ export default async function TeamPage({
   if (!initialSnapshot) {
     return (
       <PageErrorState
-        title="Team"
-        subtitle="Managers, waiters, and PRs for this venue."
         heading="Couldn't load the team"
         message={initialError ?? "No data returned."}
         retryHref={`/unit/${id}/team`}
@@ -60,22 +53,16 @@ export default async function TeamPage({
   }
 
   return (
-    <>
-      <Topbar
-        title="Team"
-        subtitle="Managers, waiters, and PRs for this venue."
-      />
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-2 pb-10 md:px-8 md:pt-4 md:pb-14">
-          <TeamClient
-            venueId={id}
-            currentUserId={user.id}
-            initialSnapshot={initialSnapshot}
-            initialWhatsappPrUrl={initialWhatsappPrUrl}
-            initialInstagramPrUrl={initialInstagramPrUrl}
-          />
-        </div>
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-2 pb-8 md:px-8 md:pt-4 md:pb-10">
+        <TeamClient
+          venueId={id}
+          currentUserId={user.id}
+          initialSnapshot={initialSnapshot}
+          initialWhatsappPrUrl={initialWhatsappPrUrl}
+          initialInstagramPrUrl={initialInstagramPrUrl}
+        />
       </div>
-    </>
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/business/MobileFrame";
 import { StatusBar } from "@/components/business/StatusBar";
-import { BottomNav } from "@/components/business/BottomNav";
+import { UnitDock } from "@/components/business/UnitDock";
 import { UnitChromeProvider } from "@/components/business/UnitChrome";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
@@ -10,15 +10,9 @@ import {
   type BusinessProfile,
 } from "@/lib/api/business";
 
-// Mobile-first venue console shell. The app bar (unit switcher + Settings +
-// Profile) and the bottom nav (Place / Promos / Scan / Team / Stats) are the
-// persistent chrome; unit data is fetched once here and shared via context.
-//
-// Auth flow is unchanged:
-//   - Require a Supabase session (middleware bounces signed-out users to /).
-//   - Load the unit overview; its `isSuperAdmin` field decides whether to
-//     enforce the onboarded-profile redirect (super-admins operate on
-//     venues they don't own, so they have no businesses row).
+// Mobile-first venue console shell:
+//   Body   — page content (SubTabs stick under StatusBar)
+//   Bottom — section tabs + logo / venues / profile
 
 export const dynamic = "force-dynamic";
 
@@ -63,10 +57,6 @@ export default async function BusinessShellLayout({
   return (
     <MobileFrame>
       <StatusBar />
-      {/* Body: each page renders its own sticky app bar (Topbar) +
-          scrollable content. flex-1/min-h-0 lets the page's overflow-y-auto
-          scroll inside the frame without pushing the BottomNav off-screen.
-          UnitChrome feeds the app bar's venue switcher. */}
       <UnitChromeProvider
         value={{
           unitId: id,
@@ -76,10 +66,12 @@ export default async function BusinessShellLayout({
         }}
       >
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {children}
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </div>
+          <UnitDock unitId={id} />
         </div>
       </UnitChromeProvider>
-      <BottomNav unitId={id} />
     </MobileFrame>
   );
 }
