@@ -30,7 +30,7 @@ type SidebarProps = {
 // reachable directly but stay off the nav.
 const NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Configuration", Icon: Settings },
-  { href: "/atlas-config", label: "Atlas Configuration", Icon: Compass },
+  { href: "/atlas-config", label: "ADEA Configuration", Icon: Compass },
   { href: "/manage-single", label: "Manage Single Unit", Icon: FilePen },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Layers },
   { href: "/global-performance", label: "Global Performance", Icon: BarChart3 },

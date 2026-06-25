@@ -3,7 +3,9 @@ import { getAtlasSettings } from "./actions";
 import { AtlasClient } from "./AtlasClient";
 
 // Atlas admin page.
-// Mesita Atlas — Venue profile research and enrichment operations.
+// ADEA — Mesita's venue-profile research & enrichment engine (the "Atlas"
+// operations area). Mirrors the reformatted ADEA Notion spec:
+// Link → Contents → Analysis nodes, tiered T0–T5.
 
 export const dynamic = "force-dynamic";
 
@@ -54,11 +56,14 @@ function Header() {
         Operations · Atlas
       </p>
       <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-        Mesita Atlas
+        ADEA
       </h1>
       <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-        Venue research &amp; enrichment. Atlas runs fresh whenever a venue is
-        created or updated — each card below tunes one stage of the pipeline.
+        Mesita&apos;s venue research &amp; enrichment engine. ADEA runs fresh
+        whenever a venue is created or updated — Link resolves each source,
+        Contents fetches from it, and Analysis perceives and reasons over
+        everything to write the canonical profile. Each card below tunes one
+        part of the pipeline.
       </p>
     </>
   );

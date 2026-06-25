@@ -3,128 +3,121 @@
 import { Fragment, useState, useTransition } from "react";
 import {
   AlertTriangle,
+  Brain,
   CheckCircle2,
   ChevronRight,
   DollarSign,
   Eye,
+  FileText,
   Globe,
   Image as ImageIcon,
   Instagram,
   Layers,
+  Link2,
   Loader2,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 import { updateAtlasConfig, type SynthesisQuality } from "./actions";
 
-// Atlas source catalog. Each source is a sub-pipeline of distinct NODES,
-// mirroring the Atlas rows: "link" resolves the source's URL, "contents"
-// scrapes that URL, "summary" runs an AI summary over it. Each node has its
-// own tier and runs when step.tier <= the configured tier ceiling. The step
-// chips in the console are READ-ONLY indicators — selection is driven
-// indirectly by the tier ceiling, not by editing the chips. Google Business
-// is the spine (always on).
-//
-// NOTE: when the enrich agent starts CONSUMING these params, it must mirror
-// this same node catalog server-side (it resolves effective-enabled from the
-// tier ceiling per node). Until then this is the config surface.
-type AtlasStep = "link" | "profile" | "posts" | "contents" | "summary";
+// ADEA node catalog — a 1:1 mirror of the reformatted "🌐 ADEA" Notion DB.
+// Each row is a NODE in the enrichment pipeline, classified three ways:
+//   • Pipeline — Link (resolve a source's URL) → Contents (fetch from it) →
+//     Analysis (perceive + reason over everything gathered).
+//   • Tier (T0–T5) — the gate. The admin's tier ceiling runs every node whose
+//     tier ≤ ceiling. T0 is the always-on spine + cognition (never gated).
+//   • Methods — the concrete providers. For Link nodes the list is the
+//     FALLBACK order (stop at the first confident hit); for Contents/Analysis
+//     it's the tool(s) the node runs.
+// These chips are READ-ONLY indicators — selection is driven by the tier
+// ceiling, not by editing chips. When the enrich agent fully consumes this, it
+// must mirror the same catalog server-side. Keep in sync with the ADEA DB.
+type Pipeline = "Link" | "Contents" | "Analysis";
 
-const STEP_LABEL: Record<AtlasStep, string> = {
-  link: "Link",
-  profile: "Profile",
-  posts: "Posts",
-  contents: "Contents",
-  summary: "AI summary",
+type Method =
+  | "Mesita Input"
+  | "Google Places"
+  | "Firecrawl Search"
+  | "Firecrawl Crawl"
+  | "Firecrawl Scrape"
+  | "Perplexity"
+  | "Apify"
+  | "OpenAI LLM"
+  | "OpenAI Vision"
+  | "Meta Graph API";
+
+type Tier = 0 | 1 | 2 | 3 | 4 | 5;
+
+type AdeaNode = {
+  name: string;
+  pipeline: Pipeline;
+  tier: Tier;
+  methods: Method[];
 };
 
-const ATLAS_SOURCES: {
-  key: string;
-  label: string;
-  locked?: boolean;
-  steps: { step: AtlasStep; tier: number }[];
-}[] = [
-  {
-    key: "google_business",
-    label: "Google Business",
-    locked: true,
-    steps: [
-      { step: "link", tier: 1 },
-      { step: "contents", tier: 1 },
-    ],
-  },
-  {
-    key: "mesita",
-    label: "Mesita",
-    locked: true,
-    steps: [
-      { step: "link", tier: 1 },
-      { step: "contents", tier: 1 },
-    ],
-  },
-  {
-    key: "website",
-    label: "Website",
-    steps: [
-      { step: "link", tier: 2 },
-      { step: "contents", tier: 2 },
-    ],
-  },
-  {
-    key: "instagram",
-    label: "Instagram",
-    steps: [
-      { step: "link", tier: 2 },
-      { step: "profile", tier: 2 },
-      { step: "posts", tier: 2 },
-    ],
-  },
-  {
-    key: "facebook",
-    label: "Facebook",
-    steps: [
-      { step: "link", tier: 2 },
-      { step: "profile", tier: 2 },
-    ],
-  },
-  {
-    key: "serp",
-    label: "SERP",
-    steps: [
-      { step: "summary", tier: 2 },
-      { step: "contents", tier: 4 },
-    ],
-  },
-  {
-    key: "opentable",
-    label: "OpenTable",
-    steps: [
-      { step: "link", tier: 3 },
-      { step: "contents", tier: 4 },
-    ],
-  },
-  {
-    key: "tripadvisor",
-    label: "TripAdvisor",
-    steps: [
-      { step: "link", tier: 3 },
-      { step: "contents", tier: 4 },
-    ],
-  },
-  { key: "yelp", label: "Yelp", steps: [{ step: "link", tier: 3 }] },
-  { key: "ubereats", label: "UberEats", steps: [{ step: "link", tier: 3 }] },
-  { key: "tiktok", label: "TikTok", steps: [{ step: "link", tier: 3 }] },
-  { key: "youtube", label: "YouTube", steps: [{ step: "link", tier: 3 }] },
+const ADEA_NODES: AdeaNode[] = [
+  // T0 — spine + cognition (always on, never gated)
+  { name: "Google Business Page Link", pipeline: "Link", tier: 0, methods: ["Mesita Input"] },
+  { name: "Mesita Page Link", pipeline: "Link", tier: 0, methods: ["Mesita Input"] },
+  { name: "Text Assets Processing", pipeline: "Analysis", tier: 0, methods: ["OpenAI LLM"] },
+  { name: "Image Assets Processing", pipeline: "Analysis", tier: 0, methods: ["OpenAI Vision"] },
+  { name: "Cognition Engine", pipeline: "Analysis", tier: 0, methods: ["OpenAI LLM"] },
+  // T1 — Google business contents + web-grounded editorial
+  { name: "Google Business Page Profile", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
+  { name: "Google Business Page Photos", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
+  { name: "Google Business Page Reviews", pipeline: "Contents", tier: 1, methods: ["Apify"] },
+  { name: "SERP Page AI Summary", pipeline: "Contents", tier: 1, methods: ["Perplexity"] },
+  // T2 — owner social & website
+  { name: "Website Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
+  { name: "Website Page Contents", pipeline: "Contents", tier: 2, methods: ["Firecrawl Crawl"] },
+  { name: "Instagram Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
+  { name: "Instagram Page Profile", pipeline: "Contents", tier: 2, methods: ["Meta Graph API", "Apify"] },
+  { name: "Instagram Page Photos", pipeline: "Contents", tier: 2, methods: ["Apify"] },
+  { name: "Facebook Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
+  { name: "Facebook Page Profile", pipeline: "Contents", tier: 2, methods: ["Apify"] },
+  // T3 — reservations & delivery links
+  { name: "OpenTable Page Link", pipeline: "Link", tier: 3, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
+  { name: "UberEats Page Link", pipeline: "Link", tier: 3, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
+  // T4 — niche social links
+  { name: "TripAdvisor Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
+  { name: "Yelp Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
+  { name: "TikTok Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
+  { name: "YouTube Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
+  // T5 — heavy third-party contents (gated on purpose)
+  { name: "OpenTable Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
+  { name: "TripAdvisor Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
+  { name: "SERP Page Contents", pipeline: "Contents", tier: 5, methods: ["Firecrawl Search", "Firecrawl Scrape"] },
 ];
 
-function stepEnabled(
-  source: { locked?: boolean },
-  step: { tier: number },
-  ceiling: number,
-): boolean {
-  if (source.locked) return true;
-  return step.tier <= ceiling;
-}
+// Tier metadata — the ceiling spans T1–T5; T0 is always on. The one-line
+// blurbs mirror the ADEA spec's tier intent.
+const TIERS: { tier: Tier; blurb: string; alwaysOn?: boolean }[] = [
+  { tier: 0, blurb: "Spine & cognition", alwaysOn: true },
+  { tier: 1, blurb: "Google business contents + editorial" },
+  { tier: 2, blurb: "Owner social & website" },
+  { tier: 3, blurb: "Reservations & delivery links" },
+  { tier: 4, blurb: "Niche social links" },
+  { tier: 5, blurb: "Heavy third-party contents" },
+];
+
+const CEILING_MIN = 1;
+const CEILING_MAX = 5;
+
+// Per-method chip styling. Short label + a tinted class keyed to the provider
+// family so the spine (Mesita), Google, Firecrawl, Apify, OpenAI and Meta read
+// at a glance. Light-themed admin surface — subtle tints only.
+const METHOD_META: Record<Method, { short: string; cls: string }> = {
+  "Mesita Input": { short: "Mesita", cls: "border-foreground/20 bg-foreground/5 text-foreground/80" },
+  "Google Places": { short: "Places", cls: "border-red-500/25 bg-red-500/10 text-red-600" },
+  "Firecrawl Search": { short: "FC Search", cls: "border-amber-500/25 bg-amber-500/10 text-amber-700" },
+  "Firecrawl Crawl": { short: "FC Crawl", cls: "border-amber-500/25 bg-amber-500/10 text-amber-700" },
+  "Firecrawl Scrape": { short: "FC Scrape", cls: "border-amber-500/25 bg-amber-500/10 text-amber-700" },
+  "Perplexity": { short: "Perplexity", cls: "border-purple-500/25 bg-purple-500/10 text-purple-600" },
+  "Apify": { short: "Apify", cls: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700" },
+  "OpenAI LLM": { short: "OpenAI", cls: "border-sky-500/25 bg-sky-500/10 text-sky-700" },
+  "OpenAI Vision": { short: "Vision", cls: "border-violet-500/25 bg-violet-500/10 text-violet-600" },
+  "Meta Graph API": { short: "Graph API", cls: "border-blue-500/25 bg-blue-500/10 text-blue-600" },
+};
 
 export function AtlasClient(props: {
   initialSourceTierCeiling: number;
@@ -234,14 +227,20 @@ function SourcesSection({
     <SectionCard
       icon={<Globe className="text-muted-foreground h-4 w-4" />}
       title="Sources"
-      subtitle="The tier ceiling gates which source steps run. Google & Mesita are the spine — always on. Chips below are read-only indicators."
+      subtitle="The tier ceiling runs every ADEA node whose tier is at or below it. T0 — the Google/Mesita spine plus the analysis brain — is always on. The grouped nodes below mirror the ADEA spec; they're read-only."
       status={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
     >
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium">Tier ceiling</label>
         <div className="flex items-center gap-1.5">
           <Layers className="text-muted-foreground h-4 w-4" />
-          {[1, 2, 3, 4].map((t) => (
+          <span
+            title="Always on — the spine and cognition layer can't be turned off"
+            className="border-foreground/30 bg-foreground/5 text-muted-foreground flex h-9 items-center gap-1 rounded-lg border px-2.5 text-xs font-semibold"
+          >
+            T0 <span className="opacity-70">· always</span>
+          </span>
+          {Array.from({ length: CEILING_MAX - CEILING_MIN + 1 }, (_, i) => CEILING_MIN + i).map((t) => (
             <button
               key={t}
               type="button"
@@ -260,48 +259,98 @@ function SourcesSection({
         </div>
       </div>
 
-      <Collapsible summary={`Sources active at tier ${ceiling}`}>
-      <div className="flex flex-col gap-2">
-        {ATLAS_SOURCES.map((src) => (
-          <div
-            key={src.key}
-            className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
-          >
-            <span className="flex items-center gap-2 text-sm font-medium">
-              {src.label}
-              {src.locked && (
-                <span className="text-muted-foreground text-[11px]">· spine</span>
-              )}
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {src.steps.map((st) => {
-                const on = stepEnabled(src, st, ceiling);
-                // Read-only indicator: the chip reflects whether this step is
-                // on at the current tier ceiling. Selection is driven by the
-                // ceiling, not by editing chips.
-                return (
-                  <span
-                    key={st.step}
-                    title={`Tier ${st.tier}`}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
-                      on
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-card text-muted-foreground opacity-60"
-                    }`}
-                  >
-                    {STEP_LABEL[st.step]}
-                    <span className="opacity-60">T{st.tier}</span>
+      <Collapsible summary={`Nodes active at tier ${ceiling}`}>
+        <div className="flex flex-col gap-5">
+          {TIERS.map(({ tier, blurb, alwaysOn }) => {
+            const tierActive = alwaysOn || tier <= ceiling;
+            const nodes = ADEA_NODES.filter((n) => n.tier === tier);
+            return (
+              <div key={tier} className={tierActive ? "" : "opacity-50"}>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <TierBadge tier={tier} on={tierActive} />
+                  <span className="text-sm font-medium">{blurb}</span>
+                  <span className="text-muted-foreground text-[11px]">
+                    {alwaysOn
+                      ? "· always on"
+                      : tierActive
+                        ? "· active"
+                        : "· above ceiling"}
                   </span>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {nodes.map((n) => (
+                    <NodeRow key={n.name} node={n} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </Collapsible>
 
       {error && <ErrorNote message={error} />}
     </SectionCard>
+  );
+}
+
+// One ADEA node: its pipeline badge + name on the left, its method chips on the
+// right. For Link nodes the methods read left→right as fallback order.
+function NodeRow({ node }: { node: AdeaNode }) {
+  return (
+    <div className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+      <span className="flex items-center gap-2 text-sm font-medium">
+        <PipelineBadge pipeline={node.pipeline} />
+        {node.name}
+      </span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {node.methods.map((m) => (
+          <MethodChip key={m} method={m} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PipelineBadge({ pipeline }: { pipeline: Pipeline }) {
+  const meta = {
+    Link: { Icon: Link2, cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
+    Contents: { Icon: FileText, cls: "border-rose-500/30 bg-rose-500/10 text-rose-600" },
+    Analysis: { Icon: Brain, cls: "border-sky-500/30 bg-sky-500/10 text-sky-700" },
+  }[pipeline];
+  const { Icon, cls } = meta;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${cls}`}
+    >
+      <Icon className="h-3 w-3" />
+      {pipeline}
+    </span>
+  );
+}
+
+function TierBadge({ tier, on }: { tier: Tier; on: boolean }) {
+  return (
+    <span
+      className={`inline-flex h-6 min-w-9 items-center justify-center rounded-md border px-1.5 text-xs font-semibold tabular-nums ${
+        on
+          ? "border-foreground bg-foreground text-background"
+          : "border-border bg-card text-muted-foreground"
+      }`}
+    >
+      T{tier}
+    </span>
+  );
+}
+
+function MethodChip({ method }: { method: Method }) {
+  const m = METHOD_META[method];
+  return (
+    <span
+      title={method}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${m.cls}`}
+    >
+      {m.short}
+    </span>
   );
 }
 
@@ -762,7 +811,7 @@ function CostSection({
             Source tier ceiling
           </span>
           <div className="flex gap-1">
-            {[1, 2, 3, 4].map((t) => (
+            {[1, 2, 3, 4, 5].map((t) => (
               <button
                 key={t}
                 type="button"
@@ -871,7 +920,9 @@ function CostSection({
       <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
         Upper bound for a fresh venue. Rates are approximate per-call estimates
         and mirror the enricher&apos;s cost model; the per-run cost cap in
-        “Analysis &amp; cost” hard-stops spend regardless.
+        “Analysis &amp; cost” hard-stops spend regardless. Tiers above T2 add
+        link resolution (T3–T4) and gated heavy contents (T5) the enricher
+        doesn&apos;t yet bill, so the estimate is flat past T2.
       </p>
       </Collapsible>
     </SectionCard>
@@ -901,23 +952,31 @@ function Collapsible({
   );
 }
 
-const PIPELINE = ["Sources", "Gather", "Vision", "Analysis"];
+const PIPELINE: { stage: Pipeline; blurb: string }[] = [
+  { stage: "Link", blurb: "resolve each source's URL" },
+  { stage: "Contents", blurb: "fetch from every source" },
+  { stage: "Analysis", blurb: "perceive, then reason" },
+];
 
-// Compact visual of the enrichment pipeline order — replaces the prose
-// walkthrough the page used to carry. Each card below tunes one stage.
+// Compact visual of the ADEA pipeline — every node is one of these three
+// stages (see the Sources card). Link resolves URLs, Contents fetches from
+// them, and Analysis (Text + Image perception → Cognition) writes the profile.
 function PipelineStrip() {
   return (
     <div className="border-border bg-card flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-5 py-3.5">
       <span className="text-muted-foreground mr-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
-        Pipeline
+        ADEA pipeline
       </span>
-      {PIPELINE.map((stage, i) => (
+      {PIPELINE.map(({ stage, blurb }, i) => (
         <Fragment key={stage}>
           <span className="flex items-center gap-1.5 text-sm font-medium">
             <span className="bg-foreground text-background flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums">
               {i + 1}
             </span>
             {stage}
+            <span className="text-muted-foreground hidden text-xs font-normal sm:inline">
+              — {blurb}
+            </span>
           </span>
           {i < PIPELINE.length - 1 && (
             <ChevronRight className="text-muted-foreground/40 h-4 w-4" />
