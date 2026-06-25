@@ -408,7 +408,6 @@ export function venueRowToDetail(
       opentable_url: str(row.opentable_url),
       resy_url: str(row.resy_url),
       uber_eats_url: str(row.uber_eats_url),
-      rappi_url: str(row.rappi_url),
       didi_food_url: str(row.didi_food_url),
     },
     reviews_maps: {

@@ -61,7 +61,6 @@ export type Venue = {
   opentable_url: string | null;
   resy_url: string | null;
   uber_eats_url: string | null;
-  rappi_url: string | null;
   x_url: string | null;
   threads_url: string | null;
   reddit_url: string | null;

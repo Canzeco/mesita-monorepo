@@ -1214,7 +1214,6 @@ export type Database = {
           premium_rate: number | null;
           price_level: number | null;
           products: Json | null;
-          rappi_url: string | null;
           reddit_url: string | null;
           requires_story: boolean;
           resy_url: string | null;
@@ -1301,7 +1300,6 @@ export type Database = {
           premium_rate?: number | null;
           price_level?: number | null;
           products?: Json | null;
-          rappi_url?: string | null;
           reddit_url?: string | null;
           requires_story?: boolean;
           resy_url?: string | null;
@@ -1388,7 +1386,6 @@ export type Database = {
           premium_rate?: number | null;
           price_level?: number | null;
           products?: Json | null;
-          rappi_url?: string | null;
           reddit_url?: string | null;
           requires_story?: boolean;
           resy_url?: string | null;

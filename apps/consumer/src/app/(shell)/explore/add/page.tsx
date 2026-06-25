@@ -416,7 +416,6 @@ function venueCardFromDraft(
     opentable_url: null,
     resy_url: null,
     uber_eats_url: null,
-    rappi_url: null,
     x_url: null,
     threads_url: null,
     reddit_url: null,

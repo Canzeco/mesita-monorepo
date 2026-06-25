@@ -203,7 +203,6 @@ export type VenueDetail = {
     opentable_url?: string;
     resy_url?: string;
     uber_eats_url?: string;
-    rappi_url?: string;
     didi_food_url?: string;
   };
   reviews_maps: {
@@ -516,7 +515,6 @@ export const mockVenue: VenueDetail = {
   reservations: {
     opentable_url: "https://www.opentable.com/mochomos-monterrey",
     uber_eats_url: "https://www.ubereats.com/store/mochomos",
-    rappi_url: "https://www.rappi.com.mx/restaurantes/mochomos",
   },
   reviews_maps: {
     tripadvisor_url: "https://www.tripadvisor.com/Restaurant_Review-mochomos",

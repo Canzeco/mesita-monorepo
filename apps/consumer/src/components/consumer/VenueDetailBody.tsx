@@ -1028,7 +1028,6 @@ const RESERVATION_DEFS = [
   { key: "opentable_url", label: "OpenTable", Icon: CalendarCheck },
   { key: "resy_url", label: "Resy", Icon: CalendarCheck },
   { key: "uber_eats_url", label: "Uber Eats", Icon: Bike },
-  { key: "rappi_url", label: "Rappi", Icon: Bike },
   { key: "didi_food_url", label: "DiDi Food", Icon: Bike },
 ] as const;
 
