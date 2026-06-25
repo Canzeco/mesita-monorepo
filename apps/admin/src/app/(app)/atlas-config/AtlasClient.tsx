@@ -423,7 +423,7 @@ function GatherSection({
       subtitle="The first funnel stage: each source pulls a capped pool of candidates. These counts set how deep to pull — website crawl depth plus images/posts per source — never how many get analyzed or saved later. Every pool arrives already ranked by the fixed per-source rule below; the counts change the depth, not the order."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <NumberField icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />} label="Website pages" value={pages} min={1} max={20} onChange={setPages} disabled={pending} />
+        <NumberField icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />} label="Website subpages" value={pages} min={1} max={20} onChange={setPages} disabled={pending} />
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts" value={posts} min={0} max={30} onChange={setPosts} disabled={pending} />
@@ -465,7 +465,7 @@ function GatherSection({
             <Instagram className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
               <span className="font-medium">Instagram</span> — most-liked posts
-              first (ties broken by comments; pinned posts boosted).
+              first, ranked purely by like count (video cover frames included).
             </span>
           </li>
         </ul>
