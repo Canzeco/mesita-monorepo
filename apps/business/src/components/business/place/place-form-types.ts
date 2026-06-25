@@ -19,7 +19,6 @@ export type PlaceFormState = {
   instagram_pr_urls: string[];
   facebook_url: string;
   tiktok_url: string;
-  youtube_url: string;
   threads_url: string;
   reddit_url: string;
   opentable_url: string;
