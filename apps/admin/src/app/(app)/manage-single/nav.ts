@@ -1,13 +1,8 @@
 import {
-  CircleUser,
-  Gauge,
-  LayoutGrid,
-  LineChart,
-  PencilLine,
-  PlusCircle,
-  ScanLine,
-  ShieldCheck,
-  Sparkles,
+  ChartLine,
+  MapPinPlus,
+  QrCode,
+  SquarePen,
   Store,
   Tag,
   UsersRound,
@@ -16,16 +11,24 @@ import {
 export const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store },
   { id: "promos", label: "Promos", Icon: Tag },
-  { id: "scan", label: "Scan", Icon: ScanLine },
-  { id: "performance", label: "Performance", Icon: Gauge },
+  { id: "scan", label: "Scan", Icon: QrCode },
+  { id: "performance", label: "Performance", Icon: ChartLine },
   { id: "team", label: "Team", Icon: UsersRound },
 ] as const;
 
 export type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];
 
 export const TOOL_ROUTES = [
-  { href: "/manage-single/create", label: "Create Single Unit", Icon: PlusCircle },
-  { href: "/manage-single/select", label: "Edit Single Unit", Icon: PencilLine },
+  {
+    href: "/manage-single/create",
+    label: "Create Single Unit",
+    Icon: MapPinPlus,
+  },
+  {
+    href: "/manage-single/select",
+    label: "Edit Single Unit",
+    Icon: SquarePen,
+  },
 ] as const;
 
 export function isUnitSection(value: string | null): value is UnitSection {

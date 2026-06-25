@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  CircleUser,
-  LayoutGrid,
-  LineChart,
+  Building2,
+  Radar,
   ShieldCheck,
+  UserRound,
 } from "lucide-react";
-import { ATLAS_ROUTES } from "@/app/(app)/atlas-config/nav";
+import { ADEA_PARENT } from "@/app/(app)/adea-config/nav";
+import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import {
   isUnitSection,
   parseUnitId,
@@ -16,14 +17,36 @@ import {
   UNIT_SECTIONS,
 } from "@/app/(app)/manage-single/nav";
 
+function isNavActive(
+  pathname: string,
+  href: string,
+  unitId: string | null,
+): boolean {
+  if (href === "/manage-single/select") {
+    return pathname === href || unitId !== null;
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 type SidebarProps = {
   onNavigate?: () => void;
 };
 
-const MAIN_NAV = [
-  { href: "/admin-config", label: "Admin Configuration", Icon: ShieldCheck },
-  { href: "/global-performance", label: "Global Performance", Icon: LineChart },
-  { href: "/manage-multiple", label: "Manage Multiple Units", Icon: LayoutGrid },
+const SIDEBAR_NAV = [
+  { href: "/global-performance", label: "Global Monitor", Icon: Radar },
+  { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
+  {
+    href: ATLAS_PARENT.href,
+    label: ATLAS_PARENT.label,
+    Icon: ATLAS_PARENT.Icon,
+  },
+  {
+    href: ADEA_PARENT.href,
+    label: ADEA_PARENT.label,
+    Icon: ADEA_PARENT.Icon,
+  },
+  { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
+  ...TOOL_ROUTES,
 ] as const;
 
 function NavLink({
@@ -44,7 +67,8 @@ function NavLink({
       href={href}
       onClick={onNavigate}
       className={
-        "flex items-center gap-2.5 rounded-2xl py-2 pr-2.5 pl-2.5 text-[13px] font-medium transition lg:gap-3 lg:py-2.5 lg:pr-3 lg:pl-3 lg:text-sm " +
+        "pl-2.5 lg:pl-3 " +
+        " flex items-center gap-2.5 rounded-2xl py-2 pr-2.5 text-[13px] font-medium transition lg:gap-3 lg:py-2.5 lg:pr-3 lg:text-sm " +
         (active
           ? "bg-secondary/10 text-secondary"
           : "text-muted-foreground hover:bg-muted hover:text-foreground")
@@ -76,7 +100,7 @@ export function SidebarNav({ onNavigate }: SidebarProps) {
       <NavLink
         href="/account"
         label="Account"
-        Icon={CircleUser}
+        Icon={UserRound}
         active={pathname === "/account" || pathname.startsWith("/account/")}
         onNavigate={onNavigate}
       />
@@ -85,42 +109,13 @@ export function SidebarNav({ onNavigate }: SidebarProps) {
       <SidebarDivider />
       <SectionGap />
 
-      {MAIN_NAV.map(({ href, label, Icon }) => (
+      {SIDEBAR_NAV.map(({ href, label, Icon }) => (
         <NavLink
           key={href}
           href={href}
           label={label}
           Icon={Icon}
-          active={pathname === href || pathname.startsWith(href + "/")}
-          onNavigate={onNavigate}
-        />
-      ))}
-
-      {ATLAS_ROUTES.map(({ href, label, Icon }) => (
-        <NavLink
-          key={href}
-          href={href}
-          label={label}
-          Icon={Icon}
-          active={pathname === href || pathname.startsWith(`${href}/`)}
-          onNavigate={onNavigate}
-        />
-      ))}
-
-      <SectionGap />
-      <SidebarDivider />
-      <SectionGap />
-
-      {TOOL_ROUTES.map(({ href, label, Icon }) => (
-        <NavLink
-          key={href}
-          href={href}
-          label={label}
-          Icon={Icon}
-          active={
-            pathname === href ||
-            (href === "/manage-single/select" && unitId !== null)
-          }
+          active={isNavActive(pathname, href, unitId)}
           onNavigate={onNavigate}
         />
       ))}

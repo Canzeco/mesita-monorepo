@@ -17,7 +17,7 @@ export default async function GlobalPerformancePage() {
     <PageContainer size="5xl">
       <PageHeader
         eyebrow="Overview · Performance"
-        title="Global Performance"
+        title="Global Monitor"
         description="Platform-wide activity, pulled on demand. Notifications surface the moments that matter — new venues, Atlas enrichments, and ownership claims — newest first."
       />
 

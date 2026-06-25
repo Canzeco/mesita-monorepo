@@ -115,7 +115,7 @@ export function CreateTab() {
         full create pipeline — Google lookup, catalog listing, and ADEA research.
         Caps, tiers, and photo analysis are configured in{" "}
         <a
-          href="/atlas-config/configuration"
+          href="/adea-config/configuration"
           className="text-foreground font-medium underline underline-offset-2"
         >
           ADEA Config

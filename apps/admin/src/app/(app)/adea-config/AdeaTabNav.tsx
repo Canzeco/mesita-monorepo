@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MULTIPLE_SUBROUTES } from "./nav";
+import { ADEA_SUBROUTES } from "./nav";
 
-export function ManageMultipleTabs() {
+export function AdeaTabNav() {
   const pathname = usePathname();
 
   return (
     <div
       role="tablist"
-      aria-label="Manage Multiple Units"
+      aria-label="ADEA Config"
       className="border-border -mx-4 mt-5 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:mt-6 sm:px-0"
     >
-      {MULTIPLE_SUBROUTES.map(({ href, label, Icon }) => {
+      {ADEA_SUBROUTES.map(({ href, label, Icon }) => {
         const active =
           pathname === href || pathname.startsWith(`${href}/`);
         return (
