@@ -454,8 +454,11 @@ function GatherSection({
           <li className="flex items-start gap-2">
             <Globe className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              <span className="font-medium">Website</span> — largest images first
-              across the crawled pages; logos, icons and sprites dropped.
+              <span className="font-medium">Website</span> — an LLM reads every
+              crawled image&apos;s filename, alt text, dimensions and page, and
+              ranks the most representative venue shots first; logos, icons,
+              badges, payment/social glyphs and text-heavy banners sink to the
+              bottom.
             </span>
           </li>
           <li className="flex items-start gap-2">
