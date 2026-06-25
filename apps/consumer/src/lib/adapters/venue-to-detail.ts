@@ -21,6 +21,18 @@ import {
 // need defensively.
 type Row = Record<string, unknown>;
 
+// Resolved tag as returned by consumer-get-venue's `tags` array: only the
+// venue's selected tags, already ordered by sort_order. We render label_es
+// (Spanish-first); facet drives the per-facet chip tint in the modal.
+export type ResolvedTag = {
+  slug: string;
+  label_es: string;
+  label_en: string;
+  facet: string;
+  section: string;
+  sort_order: number;
+};
+
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v : undefined;
 }
@@ -226,7 +238,10 @@ function hoursTable(hours: unknown): VenueDetail["hours_table"] {
   return out;
 }
 
-export function venueRowToDetail(row: Row): VenueDetail {
+export function venueRowToDetail(
+  row: Row,
+  tags?: ResolvedTag[],
+): VenueDetail {
   const categoryName =
     resolveVenueCategoryName({
       categoryLabel: str(row.category_label),
@@ -268,6 +283,14 @@ export function venueRowToDetail(row: Row): VenueDetail {
       relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently",
 
     photos: arr<string>(row.photos),
+
+    // Curated taxonomy chips — Spanish-first (label_es), ordered by the EF's
+    // sort_order. Null-safe: missing/non-array tags collapse to [].
+    tags: arr<ResolvedTag>(tags).map((t) => ({
+      slug: t.slug,
+      label: t.label_es,
+      facet: t.facet,
+    })),
 
     mesita_reviews: {
       food: num(row.mesita_stars_food) ?? 0,

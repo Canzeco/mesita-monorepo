@@ -12,6 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 import { venueRowToDetail } from "@/lib/adapters/venue-to-detail";
+import type { ResolvedTag } from "@/lib/adapters/venue-to-detail";
 import type { VenueDetail } from "@/lib/mock/venue";
 
 type VenueListingType = "partner" | "web";
@@ -161,13 +162,11 @@ export async function apiFetchVenueDetail(
   idOrSlug: string,
 ): Promise<VenueDetail | null> {
   try {
-    const { venue } = await invokeEF<{ venue: Record<string, unknown> }>(
-      client,
-      "consumer-get-venue",
-      { id: idOrSlug },
-      "Venue not found",
-    );
-    return venue ? venueRowToDetail(venue) : null;
+    const { venue, tags } = await invokeEF<{
+      venue: Record<string, unknown>;
+      tags?: ResolvedTag[];
+    }>(client, "consumer-get-venue", { id: idOrSlug }, "Venue not found");
+    return venue ? venueRowToDetail(venue, tags) : null;
   } catch {
     return null;
   }

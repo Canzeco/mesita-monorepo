@@ -42,6 +42,18 @@ export type VenueDetail = {
   // 2. Media
   photos: string[];
 
+  // Venue tags — the curated taxonomy chips the business selected (cocktails,
+  // rooftop, date night, …). Sourced from consumer-get-venue's resolved
+  // `tags` array, already ordered by sort_order and Spanish-first (label is
+  // label_es). `facet` is one of 17 taxonomy groups (payment, vibe, drinks,
+  // …) and drives the per-facet chip tint in the detail modal. Empty when the
+  // venue has none — the Details box renders nothing for tags in that case.
+  tags: Array<{
+    slug: string;
+    label: string;
+    facet: string;
+  }>;
+
   // 3. Reviews summary
   mesita_reviews: {
     food: number;
@@ -245,6 +257,14 @@ export const mockVenue: VenueDetail = {
     "https://images.unsplash.com/photo-1551803091-e20673f15770?w=900&q=80&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1604908815898-7d3e2a6dc4a7?w=900&q=80&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1485962307416-993cf1d4c2e7?w=900&q=80&auto=format&fit=crop",
+  ],
+
+  tags: [
+    { slug: "cocktails", label: "Coctelería", facet: "drinks" },
+    { slug: "rooftop", label: "Terraza", facet: "setting" },
+    { slug: "date_night", label: "Cita romántica", facet: "occasion" },
+    { slug: "live_music", label: "Música en vivo", facet: "entertainment" },
+    { slug: "pet_friendly", label: "Pet friendly", facet: "amenities" },
   ],
 
   mesita_reviews: {
