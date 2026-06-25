@@ -196,7 +196,6 @@ export type VenueDetail = {
     tiktok_url?: string;
     facebook_url?: string;
     x_url?: string;
-    youtube_url?: string;
     threads_url?: string;
     reddit_url?: string;
   };
@@ -512,7 +511,6 @@ export const mockVenue: VenueDetail = {
     instagram_url: "https://www.instagram.com/mochomos",
     facebook_url: "https://www.facebook.com/mochomos",
     x_url: "https://x.com/mochomos",
-    youtube_url: "https://www.youtube.com/@mochomos",
     whatsapp_url: "https://wa.me/528186470160",
   },
   reservations: {

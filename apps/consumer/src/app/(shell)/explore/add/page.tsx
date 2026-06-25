@@ -418,7 +418,6 @@ function venueCardFromDraft(
     uber_eats_url: null,
     rappi_url: null,
     x_url: null,
-    youtube_url: null,
     threads_url: null,
     reddit_url: null,
     didi_food_url: null,

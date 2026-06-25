@@ -1238,7 +1238,6 @@ export type Database = {
           whatsapp_pr_urls: string[];
           whatsapp_url: string | null;
           x_url: string | null;
-          youtube_url: string | null;
           zone: string | null;
         };
         Insert: {
@@ -1326,7 +1325,6 @@ export type Database = {
           whatsapp_pr_urls?: string[];
           whatsapp_url?: string | null;
           x_url?: string | null;
-          youtube_url?: string | null;
           zone?: string | null;
         };
         Update: {
@@ -1414,7 +1412,6 @@ export type Database = {
           whatsapp_pr_urls?: string[];
           whatsapp_url?: string | null;
           x_url?: string | null;
-          youtube_url?: string | null;
           zone?: string | null;
         };
         Relationships: [];

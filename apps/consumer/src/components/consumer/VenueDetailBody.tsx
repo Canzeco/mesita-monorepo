@@ -11,7 +11,6 @@ import {
   Gift,
   Instagram,
   Facebook,
-  Youtube,
   Twitter,
   AtSign,
   MessageCircle,
@@ -1021,7 +1020,6 @@ const CHANNEL_DEFS = [
   { key: "tiktok_url", label: "TikTok", Icon: Music2 },
   { key: "facebook_url", label: "Facebook", Icon: Facebook },
   { key: "x_url", label: "X", Icon: Twitter },
-  { key: "youtube_url", label: "YouTube", Icon: Youtube },
   { key: "threads_url", label: "Threads", Icon: AtSign },
   { key: "reddit_url", label: "Reddit", Icon: MessageCircle },
 ] as const;

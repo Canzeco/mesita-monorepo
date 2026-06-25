@@ -401,7 +401,6 @@ export function venueRowToDetail(
       tiktok_url: str(row.tiktok_url),
       facebook_url: str(row.facebook_url),
       x_url: str(row.x_url),
-      youtube_url: str(row.youtube_url),
       threads_url: str(row.threads_url),
       reddit_url: str(row.reddit_url),
     },

@@ -63,7 +63,6 @@ export type Venue = {
   uber_eats_url: string | null;
   rappi_url: string | null;
   x_url: string | null;
-  youtube_url: string | null;
   threads_url: string | null;
   reddit_url: string | null;
   didi_food_url: string | null;
