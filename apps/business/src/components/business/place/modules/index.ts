@@ -1,12 +1,7 @@
-export { PlaceAboutModule } from "./PlaceAboutModule";
 export { PlaceBasicsModule } from "./PlaceBasicsModule";
 export { PlaceChannelsModule } from "./PlaceChannelsModule";
-export { PlaceDetailsModule } from "./PlaceDetailsModule";
-export { PlaceHoursModule } from "./PlaceHoursModule";
-export { PlaceLocationModule } from "./PlaceLocationModule";
 export { PlaceMediaModule } from "./PlaceMediaModule";
 export { PlaceMenuModule } from "./PlaceMenuModule";
-export { PlaceProfileProgressModule } from "./PlaceProfileProgressModule";
 export { PlacePreviewModule } from "./PlacePreviewModule";
 export { PlaceRefreshModule } from "./PlaceRefreshModule";
 export { PlaceReviewsModule } from "./PlaceReviewsModule";
