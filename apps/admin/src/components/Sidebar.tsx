@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  AlertTriangle,
   BarChart3,
   Compass,
   FilePen,
   Layers,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { authSignOut } from "@/app/auth/actions";
 
@@ -23,17 +23,17 @@ type SidebarProps = {
   onNavigate?: () => void;
 };
 
-// The console is deliberately five items. Single-unit and multi-unit
-// management are split (the latter consolidates the bulk search/create/
-// update tools behind one tabbed surface at /bulk). Routes that still
-// exist but aren't part of the day-to-day surface (e.g. /verifications,
-// /central, /create) are reachable directly but stay off the nav.
+// The console is deliberately five items, Admin Configuration first.
+// "Manage Multiple Units" is a sub-routed surface (/manage-multiple/
+// {search,create,update}). Routes that still exist but aren't part of the
+// day-to-day surface (e.g. /verifications, /central, /create) are
+// reachable directly but stay off the nav.
 const NAV: NavItem[] = [
-  { href: "/atlas", label: "Atlas Configuration", Icon: Compass },
-  { href: "/update", label: "Manage Single Unit", Icon: FilePen },
-  { href: "/bulk", label: "Manage Multiple Units", Icon: Layers },
-  { href: "/performance", label: "Global Performance", Icon: BarChart3 },
-  { href: "/danger", label: "Danger Zone", Icon: AlertTriangle },
+  { href: "/admin-config", label: "Admin Configuration", Icon: Settings },
+  { href: "/atlas-config", label: "Atlas Configuration", Icon: Compass },
+  { href: "/manage-single", label: "Manage Single Unit", Icon: FilePen },
+  { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Layers },
+  { href: "/global-performance", label: "Global Performance", Icon: BarChart3 },
 ];
 
 export function Sidebar({ email, onNavigate }: SidebarProps) {
@@ -59,7 +59,7 @@ export function Sidebar({ email, onNavigate }: SidebarProps) {
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
         {NAV.map(({ href, label, Icon }) => {
-          const active = pathname === href;
+          const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}

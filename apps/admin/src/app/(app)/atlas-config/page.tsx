@@ -56,17 +56,9 @@ function Header() {
       <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
         Mesita Atlas
       </h1>
-      <p className="text-muted-foreground mt-3 max-w-3xl text-sm leading-relaxed">
-        Venue profile research &amp; enrichment. Atlas runs when a venue is
-        created or updated, fetching fresh from every configured source.
-      </p>
-      <p className="text-muted-foreground/80 mt-3 max-w-3xl text-sm leading-relaxed">
-        <span className="text-foreground font-medium">The pipeline, in order:</span>{" "}
-        ① pick the sources to run (by tier) → ② pull their data (Google is the
-        spine; reviews via Apify) → ③ pre-select &amp; save the best images per
-        source → ④ vision-analyze and rank those images → ⑤ synthesize
-        everything into the canonical profile. Each section below tunes one of
-        those steps.
+      <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
+        Venue research &amp; enrichment. Atlas runs fresh whenever a venue is
+        created or updated — each card below tunes one stage of the pipeline.
       </p>
     </>
   );

@@ -116,7 +116,7 @@ export function CreateTab() {
         listing → Atlas research &amp; image funnel. Research behaviour (caps,
         vision) is configured in{" "}
         <a
-          href="/atlas"
+          href="/atlas-config"
           className="text-foreground font-medium underline underline-offset-2"
         >
           Atlas

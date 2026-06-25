@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronRight,
   DollarSign,
   Eye,
   Globe,
@@ -146,9 +147,9 @@ export function AtlasClient(props: {
   const [updatedAt, setUpdatedAt] = useState(props.initialUpdatedAt);
 
   return (
-    <div className="mt-8 flex flex-col gap-8">
+    <div className="mt-8 flex flex-col gap-6">
       {updatedAt && (
-        <p className="text-muted-foreground -mb-4 text-[11px]">
+        <p className="text-muted-foreground text-[11px]">
           Settings last changed{" "}
           {new Date(updatedAt).toLocaleString(undefined, {
             dateStyle: "medium",
@@ -157,79 +158,45 @@ export function AtlasClient(props: {
         </p>
       )}
 
-      {/* ═══ Data sources ══════════════════════════════════════════ */}
-      <StageGroup
-        label="Data sources"
-        desc="Which sources run, and how much non-image data to pull. The tier ceiling gates each source step (Link → resolve URL, Profile/Contents → read it). Google Business & Mesita are the spine and always run. Reviews come from Google only, via Apify (all of them — no limit)."
-      >
-        <div className="flex flex-col gap-6">
-          <SourcesSection
-            initialTierCeiling={props.initialSourceTierCeiling}
-            onSaved={setUpdatedAt}
-          />
-          <SourceDepthSection
-            initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
-            onSaved={setUpdatedAt}
-          />
-        </div>
-      </StageGroup>
+      <PipelineStrip />
 
-      {/* ═══ Gather (pull per source) ══════════════════════════════ */}
-      <StageGroup
-        label="Gather — image candidates pulled per source"
-        desc="Stage 1 of the image funnel: how many image candidates to PULL per source into the pool (≤10 each). Each source is pre-sorted as it comes in — Google in Google's order, Instagram by likes, and Website by a cheap text-LLM pass that reads the crawled HTML and ranks images hero-first (square-prioritised). Fewer, higher-signal candidates = less junk downstream."
-      >
-        <GatherSection
-          initialGatherGoogleImages={props.initialGatherGoogleImages}
-          initialGatherWebsiteImages={props.initialGatherWebsiteImages}
-          initialGatherInstagramPosts={props.initialGatherInstagramPosts}
-          onSaved={setUpdatedAt}
-        />
-      </StageGroup>
-
-      {/* ═══ Vision Params (analyze → sort → save) ═════════════════ */}
-      <StageGroup
-        label="Vision Params"
-        desc="Stage 2: AI over the gathered images. A VISION model describes each (the analysis prompt; one call per image, the expensive part), then a TEXT model ranks them best→worst (the sorting prompt; no images re-sent, so it's cheap). The analyze caps bound how many gathered images per source get the vision pass; the final Save cap then keeps only the best N overall — source-independent."
-      >
-        <VisionParamsSection
-          initialImageVisionEnabled={props.initialImageVisionEnabled}
-          initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-          initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
-          initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-          initialSaveTotalImages={props.initialSaveTotalImages}
-          initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
-          initialImageSortingPrompt={props.initialImageSortingPrompt}
-          onSaved={setUpdatedAt}
-        />
-      </StageGroup>
-
-      {/* ═══ Analysis and Cost ═════════════════════════════════════ */}
-      <StageGroup
-        label="Analysis and Cost"
-        desc="Stage 3: the final synthesis model (reads everything gathered → the canonical venue profile; OpenAI, not Perplexity, so it doesn't re-search the web and drift), plus a hard per-venue spend ceiling."
-      >
-        <SynthCostSection
-          initialSynthesisQuality={props.initialSynthesisQuality}
-          initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
-          onSaved={setUpdatedAt}
-        />
-      </StageGroup>
-
-      {/* ═══ Cost estimate ══════════════════════════════════════════ */}
-      <StageGroup
-        label="Cost to create one venue"
-        desc="A what-if estimate of the external spend to research + enrich ONE new venue, broken down by source. Adjust the params below to see the impact. Numbers are upper-bound per-call estimates (USD) for a fresh venue — actual runs are usually cheaper, and the per-run cost cap hard-stops spend."
-      >
-        <CostSection
-          initialSourceTierCeiling={props.initialSourceTierCeiling}
-          initialSynthesisQuality={props.initialSynthesisQuality}
-          initialImageVisionEnabled={props.initialImageVisionEnabled}
-          initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-          initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
-          initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-        />
-      </StageGroup>
+      <SourcesSection
+        initialTierCeiling={props.initialSourceTierCeiling}
+        onSaved={setUpdatedAt}
+      />
+      <SourceDepthSection
+        initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
+        onSaved={setUpdatedAt}
+      />
+      <GatherSection
+        initialGatherGoogleImages={props.initialGatherGoogleImages}
+        initialGatherWebsiteImages={props.initialGatherWebsiteImages}
+        initialGatherInstagramPosts={props.initialGatherInstagramPosts}
+        onSaved={setUpdatedAt}
+      />
+      <VisionParamsSection
+        initialImageVisionEnabled={props.initialImageVisionEnabled}
+        initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+        initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
+        initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+        initialSaveTotalImages={props.initialSaveTotalImages}
+        initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
+        initialImageSortingPrompt={props.initialImageSortingPrompt}
+        onSaved={setUpdatedAt}
+      />
+      <SynthCostSection
+        initialSynthesisQuality={props.initialSynthesisQuality}
+        initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
+        onSaved={setUpdatedAt}
+      />
+      <CostSection
+        initialSourceTierCeiling={props.initialSourceTierCeiling}
+        initialSynthesisQuality={props.initialSynthesisQuality}
+        initialImageVisionEnabled={props.initialImageVisionEnabled}
+        initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+        initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
+        initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+      />
     </div>
   );
 }
@@ -264,26 +231,12 @@ function SourcesSection({
   };
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-center gap-2">
-        <Globe className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Sources
-        </h2>
-        {pending && <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />}
-      </div>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        Set the tier ceiling — each source step
-        (<span className="text-foreground font-medium">Link</span> resolves its
-        URL, <span className="text-foreground font-medium">Profile</span>/
-        <span className="text-foreground font-medium">Contents</span> read it,{" "}
-        <span className="text-foreground font-medium">Posts</span> pulls
-        posts/photos, <span className="text-foreground font-medium">AI summary</span>{" "}
-        condenses it) runs when its tier is at or above the ceiling. The chips
-        below just show what&apos;s on at the current ceiling — they aren&apos;t
-        edited directly. Google Business &amp; Mesita are the spine and always run.
-      </p>
-
+    <SectionCard
+      icon={<Globe className="text-muted-foreground h-4 w-4" />}
+      title="Sources"
+      subtitle="The tier ceiling gates which source steps run. Google & Mesita are the spine — always on. Chips below are read-only indicators."
+      status={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
+    >
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium">Tier ceiling</label>
         <div className="flex items-center gap-1.5">
@@ -307,7 +260,8 @@ function SourcesSection({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-2">
+      <Collapsible summary={`Sources active at tier ${ceiling}`}>
+      <div className="flex flex-col gap-2">
         {ATLAS_SOURCES.map((src) => (
           <div
             key={src.key}
@@ -344,9 +298,10 @@ function SourcesSection({
           </div>
         ))}
       </div>
+      </Collapsible>
 
       {error && <ErrorNote message={error} />}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -384,26 +339,18 @@ function SourceDepthSection({
   };
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-center gap-2">
-        <SlidersHorizontal className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Source depth
-        </h2>
-      </div>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        How much non-image data to pull per source. Reviews come from Google
-        via Apify (all of them — no limit); website pages = the menu/content
-        crawl depth.
-      </p>
-
+    <SectionCard
+      icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />}
+      title="Source depth"
+      subtitle="Non-image crawl depth. Reviews are pulled from Google in full; website pages set the content-crawl depth."
+    >
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website pages (crawl)" value={websitePages} min={1} max={20} onChange={setWebsitePages} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
       {error && <ErrorNote message={error} />}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -462,25 +409,11 @@ function GatherSection({
   };
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-center gap-2">
-        <ImageIcon className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Gather
-        </h2>
-      </div>
-      <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-relaxed">
-        How many image candidates to PULL per source — the input pool to the
-        funnel. Each source is then pre-sorted: Google in Google&apos;s own
-        order, Instagram by likes (one photo per post), and{" "}
-        <span className="text-foreground font-medium">Website</span> by a cheap
-        text-LLM pass that reads the crawled Firecrawl HTML (across the configured
-        pages) and ranks every image hero-first — square dimensions prioritised,
-        logos/icons buried. Pulling fewer, higher-signal candidates here is the
-        first defense against junk. This is NOT how many get AI-analyzed (Vision
-        Params) or finally saved (one cap below).
-      </p>
-
+    <SectionCard
+      icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
+      title="Gather"
+      subtitle="Image candidates pulled per source into the pool (≤10 each), pre-sorted as they arrive — not how many get analyzed or saved."
+    >
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
@@ -489,7 +422,7 @@ function GatherSection({
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
       {error && <ErrorNote message={error} />}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -594,21 +527,11 @@ function VisionParamsSection({
   };
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-center gap-2">
-        <Eye className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Vision Params
-        </h2>
-      </div>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        Vision describes each gathered image (analysis prompt), then a text
-        model ranks them best→worst (sorting prompt). The analyze caps bound how
-        many GATHERED images per source get the vision pass. After ranking, the
-        single <span className="text-foreground font-medium">Save (final)</span>{" "}
-        cap keeps only the best N overall — source-independent.
-      </p>
-
+    <SectionCard
+      icon={<Eye className="text-muted-foreground h-4 w-4" />}
+      title="Vision Params"
+      subtitle="Vision describes each gathered image, then a text model ranks them best→worst. Caps bound the vision pass; Save keeps the best N overall."
+    >
       <div className="mt-5">
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
@@ -620,28 +543,10 @@ function VisionParamsSection({
         </div>
       </div>
 
-      <div className="mt-4">
-        <TextAreaField
-          label="Image analysis prompt"
-          value={analysisPrompt}
-          onChange={setAnalysisPrompt}
-          disabled={savePending || !vision}
-        />
-      </div>
-
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze Website images" value={w} min={0} max={10} onChange={setW} disabled={savePending || !vision} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images" value={ig} min={0} max={20} onChange={setIg} disabled={savePending || !vision} />
-      </div>
-
-      <div className="mt-4">
-        <TextAreaField
-          label="Image sorting prompt"
-          value={sortingPrompt}
-          onChange={setSortingPrompt}
-          disabled={savePending || !vision}
-        />
       </div>
 
       <div className="mt-4">
@@ -656,9 +561,26 @@ function VisionParamsSection({
         />
       </div>
 
+      <Collapsible summary="Edit vision & sorting prompts">
+        <div className="space-y-4">
+          <TextAreaField
+            label="Image analysis prompt"
+            value={analysisPrompt}
+            onChange={setAnalysisPrompt}
+            disabled={savePending || !vision}
+          />
+          <TextAreaField
+            label="Image sorting prompt"
+            value={sortingPrompt}
+            onChange={setSortingPrompt}
+            disabled={savePending || !vision}
+          />
+        </div>
+      </Collapsible>
+
       <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
       {error && <ErrorNote message={error} />}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -714,18 +636,11 @@ function SynthCostSection({
   };
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-center gap-2">
-        <Sparkles className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Analysis &amp; cost
-        </h2>
-      </div>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        The final synthesis model (Research Backbone) and the hard spend ceiling
-        per venue.
-      </p>
-
+    <SectionCard
+      icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
+      title="Analysis & cost"
+      subtitle="The final synthesis model and the hard per-venue spend cap."
+    >
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
@@ -759,7 +674,7 @@ function SynthCostSection({
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
       {error && <ErrorNote message={error} />}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -833,16 +748,14 @@ function CostSection({
   const total = perVenue * Math.max(1, venues);
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-center gap-2">
-        <DollarSign className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Per-venue cost estimate
-        </h2>
-      </div>
-
+    <SectionCard
+      icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
+      title="Per-venue cost estimate"
+      subtitle="What-if external spend to enrich one new venue."
+    >
+      <Collapsible summary="Show cost breakdown">
       {/* Params */}
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Layers className="text-muted-foreground h-4 w-4" />
@@ -893,7 +806,7 @@ function CostSection({
           className="md:col-span-2"
           icon={<Eye className="text-muted-foreground h-4 w-4" />}
           title="Vision analysis enabled"
-          desc="When off, images are saved in source order with no AI vision/sort — the vision + sort lines drop out of the estimate."
+          desc="When off, images save in source order and the vision/sort lines drop from the estimate."
           control={<Switch on={vision} pending={false} onClick={() => setVision(!vision)} label="Toggle vision" />}
         />
 
@@ -958,33 +871,98 @@ function CostSection({
       <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
         Upper bound for a fresh venue. Rates are approximate per-call estimates
         and mirror the enricher&apos;s cost model; the per-run cost cap in
-        “Analysis and Cost” hard-stops spend regardless.
+        “Analysis &amp; cost” hard-stops spend regardless.
       </p>
-    </section>
+      </Collapsible>
+    </SectionCard>
   );
 }
 
-function StageGroup({
-  label,
-  desc,
+// ─── Layout primitives ────────────────────────────────────────────────────
+
+// Native disclosure used to tuck the page's densest blocks (the per-tier
+// source list, the vision prompts, the cost breakdown) out of the default
+// view — open on demand, no JS state.
+function Collapsible({
+  summary,
   children,
 }: {
-  label: string;
-  desc?: string;
+  summary: string;
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <h3 className="text-muted-foreground mb-1 text-xs font-semibold tracking-[0.14em] uppercase">
-        {label}
-      </h3>
-      {desc && (
-        <p className="text-muted-foreground/80 mb-4 max-w-3xl text-xs leading-relaxed">
-          {desc}
-        </p>
-      )}
-      {children}
+    <details className="group mt-5">
+      <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+        {summary}
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
+  );
+}
+
+const PIPELINE = ["Sources", "Gather", "Vision", "Analysis"];
+
+// Compact visual of the enrichment pipeline order — replaces the prose
+// walkthrough the page used to carry. Each card below tunes one stage.
+function PipelineStrip() {
+  return (
+    <div className="border-border bg-card flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-5 py-3.5">
+      <span className="text-muted-foreground mr-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
+        Pipeline
+      </span>
+      {PIPELINE.map((stage, i) => (
+        <Fragment key={stage}>
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            <span className="bg-foreground text-background flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums">
+              {i + 1}
+            </span>
+            {stage}
+          </span>
+          {i < PIPELINE.length - 1 && (
+            <ChevronRight className="text-muted-foreground/40 h-4 w-4" />
+          )}
+        </Fragment>
+      ))}
     </div>
+  );
+}
+
+// Uniform config card: icon + title + one-line subtitle + optional status,
+// then the controls. The single wrapper keeps every section consistent.
+function SectionCard({
+  icon,
+  title,
+  subtitle,
+  status,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  status?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-border bg-card rounded-2xl border p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            {icon}
+            <h2 className="font-display text-base font-semibold tracking-tight">
+              {title}
+            </h2>
+          </div>
+          {subtitle && (
+            <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {status ? <div className="shrink-0">{status}</div> : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
