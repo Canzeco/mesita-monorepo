@@ -21,7 +21,6 @@ const CHANNELS: { key: keyof AdminVenue; label: string }[] = [
   { key: "instagram_url", label: "Instagram" },
   { key: "facebook_url", label: "Facebook" },
   { key: "tiktok_url", label: "TikTok" },
-  { key: "youtube_url", label: "YouTube" },
   { key: "whatsapp_url", label: "WhatsApp" },
   { key: "google_maps_url", label: "Google Maps" },
   { key: "opentable_url", label: "OpenTable" },

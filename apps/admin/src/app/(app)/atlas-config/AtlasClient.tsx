@@ -82,7 +82,6 @@ const ADEA_NODES: AdeaNode[] = [
   { name: "TripAdvisor Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
   { name: "Yelp Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
   { name: "TikTok Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "YouTube Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
   // T3 — source gather (parallel scrapers)
   { name: "Website Page Contents", pipeline: "Contents", tier: 3, methods: ["Firecrawl Crawl"] },
   { name: "Instagram Page Profile", pipeline: "Contents", tier: 3, methods: ["Apify"] },
