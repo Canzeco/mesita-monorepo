@@ -62,7 +62,7 @@ export type LookupVenue = {
 };
 
 // What the UI needs to decide which auto-verify cards to render.
-// Returned by business-find-venue for every claim-able state. The
+// Returned by business-find-place for every claim-able state. The
 // "Talk to us" WhatsApp fallback is rendered unconditionally on the
 // FE and isn't surfaced here.
 export type LookupMethods = {
@@ -94,7 +94,7 @@ export async function apiLookupVenue(
   client: SupabaseClient,
   placeId: string,
 ): Promise<LookupResult> {
-  return invokeEF<LookupResult>(client, "business-find-venue", { placeId });
+  return invokeEF<LookupResult>(client, "business-find-place", { placeId });
 }
 
 // ── Phone OTP path ────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ export async function apiBusinessVerifiesPhone(
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "business-verify-phone", {
+  return invokeEF<VerifyOtpResult>(client, "business-verify-phone-otp", {
     verificationId,
     code,
   });
@@ -171,7 +171,7 @@ export async function apiBusinessVerifiesEmail(
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "business-verify-email", {
+  return invokeEF<VerifyOtpResult>(client, "business-verify-email-otp", {
     verificationId,
     code,
   });

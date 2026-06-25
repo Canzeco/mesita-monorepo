@@ -1,4 +1,4 @@
-// Thin client wrapper for the admin-get-identity EF. Used by the root layout
+// Thin client wrapper for the auth-get-identity EF. Used by the root layout
 // to decide whether to render the global SuperAdminBanner — every signed
 // -in render passes through here, so failures are swallowed and treated
 // as "not a super-admin" rather than crashing the page.
@@ -13,7 +13,7 @@ export type WhoamiResult = {
 };
 
 async function fetchWhoami(client: SupabaseClient): Promise<WhoamiResult> {
-  return invokeEF<WhoamiResult>(client, "admin-get-identity", {});
+  return invokeEF<WhoamiResult>(client, "auth-get-identity", {});
 }
 
 // React.cache dedupes calls within a single server render pass so the
