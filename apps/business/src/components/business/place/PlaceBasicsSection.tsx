@@ -10,7 +10,7 @@ import {
   PLACE_GOOGLE_FIELD_INFO,
   PlaceKvField,
 } from "./PlaceKvField";
-import { PlaceTagsField } from "./PlaceTagsField";
+import { PlaceTagsPicker } from "./PlaceTagsPicker";
 import type { PlaceFormState, SetPlaceForm } from "./place-form-types";
 import {
   humanizeVenueToken,
@@ -94,7 +94,7 @@ export function PlaceBasicsSection({
           />
         </PlaceKvField>
         <PlaceKvField label="Tags">
-          <PlaceTagsField
+          <PlaceTagsPicker
             value={form.tags}
             onChange={(tags) => set("tags", tags)}
           />
