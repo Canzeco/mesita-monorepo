@@ -133,7 +133,7 @@ export function AtlasClient(props: {
   initialImageAnalysisPrompt: string;
   initialImageSortingPrompt: string;
   initialSynthesisQuality: SynthesisQuality;
-  initialPerRunCostCapUsd: number;
+  initialVisionQuality: SynthesisQuality;
   initialUpdatedAt: string | null;
 }) {
   const [updatedAt, setUpdatedAt] = useState(props.initialUpdatedAt);
@@ -173,9 +173,9 @@ export function AtlasClient(props: {
         initialImageSortingPrompt={props.initialImageSortingPrompt}
         onSaved={setUpdatedAt}
       />
-      <SynthCostSection
+      <ModelsSection
         initialSynthesisQuality={props.initialSynthesisQuality}
-        initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
+        initialVisionQuality={props.initialVisionQuality}
         onSaved={setUpdatedAt}
       />
       <CostSection
@@ -638,31 +638,31 @@ function VisionParamsSection({
 const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[] = [
   { value: "economy", label: "Economy", hint: "gpt-4o-mini" },
   { value: "standard", label: "Standard", hint: "gpt-4o" },
-  { value: "high", label: "High", hint: "GPT-5.x" },
+  { value: "high", label: "High", hint: "gpt-4o" },
 ];
 
-// ─── Data analysis: synthesis & cost ───────────────────────────────────────
+// ─── Models (text synthesis model + image vision model) ─────────────────────
 
-function SynthCostSection({
+function ModelsSection({
   initialSynthesisQuality,
-  initialPerRunCostCapUsd,
+  initialVisionQuality,
   onSaved,
 }: {
   initialSynthesisQuality: SynthesisQuality;
-  initialPerRunCostCapUsd: number;
+  initialVisionQuality: SynthesisQuality;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
-  const [costCap, setCostCap] = useState(initialPerRunCostCapUsd);
+  const [text, setText] = useState<SynthesisQuality>(initialSynthesisQuality);
+  const [image, setImage] = useState<SynthesisQuality>(initialVisionQuality);
   const [saved, setSaved] = useState({
-    quality: initialSynthesisQuality,
-    costCap: initialPerRunCostCapUsd,
+    text: initialSynthesisQuality,
+    image: initialVisionQuality,
   });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty = quality !== saved.quality || costCap !== saved.costCap;
+  const dirty = text !== saved.text || image !== saved.image;
 
   const save = () => {
     if (!dirty) return;
@@ -670,17 +670,19 @@ function SynthCostSection({
     setOk(false);
     start(async () => {
       const r = await updateAtlasConfig({
-        synthesisQuality: quality,
-        perRunCostCapUsd: costCap,
+        synthesisQuality: text,
+        visionQuality: image,
       });
       if (!r.ok) {
         setError(r.error);
         return;
       }
       setSaved({
-        quality: r.data.atlasSynthesisQuality,
-        costCap: r.data.atlasPerRunCostCapUsd,
+        text: r.data.atlasSynthesisQuality,
+        image: r.data.atlasVisionQuality,
       });
+      setText(r.data.atlasSynthesisQuality);
+      setImage(r.data.atlasVisionQuality);
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -689,36 +691,24 @@ function SynthCostSection({
   return (
     <SectionCard
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
-      title="Analysis & cost"
-      subtitle="The final synthesis model and the hard per-venue spend cap."
+      title="Models"
+      subtitle="The models ADEA runs — one for text (the final profile synthesis) and one for images (the vision pass that describes and ranks photos)."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="text-muted-foreground h-4 w-4" />
-            Synthesis quality
-          </span>
-          <select
-            value={quality}
-            disabled={pending}
-            onChange={(e) => setQuality(e.target.value as SynthesisQuality)}
-            className="border-border bg-card focus:border-foreground h-9 rounded-lg border px-2 text-sm outline-none disabled:opacity-50"
-          >
-            {QUALITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label} · {o.hint}
-              </option>
-            ))}
-          </select>
-        </label>
-        <NumberField
-          icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
-          label="Cost cap (USD / venue)"
-          value={costCap}
-          min={0}
-          max={50}
-          decimals
-          onChange={setCostCap}
+        <ModelSelect
+          icon={<Brain className="text-muted-foreground h-4 w-4" />}
+          label="Text model"
+          hint="final synthesis"
+          value={text}
+          onChange={setText}
+          disabled={pending}
+        />
+        <ModelSelect
+          icon={<Eye className="text-muted-foreground h-4 w-4" />}
+          label="Image model"
+          hint="vision analysis"
+          value={image}
+          onChange={setImage}
           disabled={pending}
         />
       </div>
@@ -726,6 +716,44 @@ function SynthCostSection({
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
       {error && <ErrorNote message={error} />}
     </SectionCard>
+  );
+}
+
+function ModelSelect({
+  icon,
+  label,
+  hint,
+  value,
+  onChange,
+  disabled,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+  value: SynthesisQuality;
+  onChange: (v: SynthesisQuality) => void;
+  disabled: boolean;
+}) {
+  return (
+    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+      <span className="flex items-center gap-2 text-sm font-medium">
+        {icon}
+        {label}
+        <span className="text-muted-foreground text-[11px] font-normal">· {hint}</span>
+      </span>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value as SynthesisQuality)}
+        className="border-border bg-card focus:border-foreground h-9 rounded-lg border px-2 text-sm outline-none disabled:opacity-50"
+      >
+        {QUALITY_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label} · {o.hint}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -801,7 +829,7 @@ function CostSection({
   return (
     <SectionCard
       icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
-      title="Per-venue cost estimate"
+      title="Cost Calculator"
       subtitle="What-if external spend to enrich one new venue."
     >
       <Collapsible summary="Show cost breakdown">
@@ -921,9 +949,8 @@ function CostSection({
 
       <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
         Upper bound for a fresh venue. Rates are approximate per-call estimates
-        and mirror the enricher&apos;s cost model; the per-run cost cap in
-        “Analysis &amp; cost” hard-stops spend regardless. Tiers above T2 add
-        link resolution (T3–T4) and gated heavy contents (T5) the enricher
+        that mirror the enricher&apos;s cost model. Tiers above T2 add link
+        resolution (T3–T4) and gated heavy contents (T5) the enricher
         doesn&apos;t yet bill, so the estimate is flat past T2.
       </p>
       </Collapsible>

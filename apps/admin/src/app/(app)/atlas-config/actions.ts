@@ -24,6 +24,7 @@ type SettingsResponse = {
   atlasAnalyzeInstagramImages: number;
   atlasSaveTotalImages: number;
   atlasSynthesisQuality: SynthesisQuality;
+  atlasVisionQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
 };
@@ -55,6 +56,7 @@ type AtlasConfigResponse = {
   atlasAnalyzeInstagramImages: number;
   atlasSaveTotalImages: number;
   atlasSynthesisQuality: SynthesisQuality;
+  atlasVisionQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
   updatedAt: string | null;
 };
@@ -79,6 +81,7 @@ export async function updateAtlasConfig(patch: {
   imageAnalysisPrompt?: string;
   imageSortingPrompt?: string;
   synthesisQuality?: SynthesisQuality;
+  visionQuality?: SynthesisQuality;
   perRunCostCapUsd?: number;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
