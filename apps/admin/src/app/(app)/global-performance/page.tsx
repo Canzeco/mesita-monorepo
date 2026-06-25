@@ -1,16 +1,19 @@
-import { BarChart3, Sparkles } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { listNotifications } from "./actions";
+import { GlobalPerformanceClient } from "./GlobalPerformanceClient";
 
 export const dynamic = "force-dynamic";
 
-// Placeholder. The eventual dashboard surfaces platform-wide health —
-// venue counts, claim/verification funnel, redemptions and discount
-// volume, Atlas enrichment coverage, subscription MRR. Wired up later
-// once the underlying metrics land; the route + sidebar entry exist now
-// so the surface is reachable and we can iterate on the design.
+// Global Performance console. The first view is Notifications — a derived,
+// non-realtime feed of platform events (the operator pulls fresh data with
+// the Refresh button). Charts/metrics land here later as additional views;
+// the surface is built category-first so they slot in beside Notifications.
 
-export default function GlobalPerformancePage() {
+export default async function GlobalPerformancePage() {
+  const result = await listNotifications("all");
+
   return (
-    <div className="mx-auto max-w-3xl px-8 pt-12 pb-14">
+    <div className="mx-auto max-w-5xl px-8 pt-12 pb-14">
       <p className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
         Overview · Performance
       </p>
@@ -18,35 +21,22 @@ export default function GlobalPerformancePage() {
         Global Performance
       </h1>
       <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-        Platform-wide health at a glance — venue coverage, the claim and
-        verification funnel, discount volume, and subscription growth.
+        Platform-wide activity, pulled on demand. Notifications surface the
+        moments that matter — new venues, Atlas enrichments, and ownership
+        claims — newest first.
       </p>
 
-      <section className="border-border bg-card mt-8 flex flex-col items-center gap-4 rounded-2xl border p-10 text-center">
-        <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
-          <BarChart3 className="h-5 w-5" />
-        </span>
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          Coming soon
-        </h2>
-        <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-          We&apos;ll surface things like{" "}
-          <span className="text-foreground font-medium">
-            venues live
-          </span>{" "}
-          and{" "}
-          <span className="text-foreground font-medium">
-            discounts redeemed
-          </span>{" "}
-          here, trended over time. The metrics pipeline isn&apos;t wired
-          yet — this page is a stub so the sidebar entry has somewhere to
-          land.
-        </p>
-        <span className="bg-secondary/15 text-secondary inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase">
-          <Sparkles className="h-3 w-3" />
-          Soon
-        </span>
-      </section>
+      {result.ok ? (
+        <GlobalPerformanceClient initial={result.data} />
+      ) : (
+        <div className="border-destructive/40 bg-destructive/5 text-destructive mt-8 flex items-start gap-3 rounded-2xl border p-4 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-medium">Couldn&apos;t load notifications.</p>
+            <p className="mt-1 opacity-90">{result.error}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
