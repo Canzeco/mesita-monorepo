@@ -2,7 +2,7 @@
 //
 // The discover EFs return the FULL public venues projection on every row:
 // consumer-recommend-deck → recommender-rank-deck pulls VENUE_PUBLIC_COLUMNS
-// (only the two embedding columns are stripped), and consumer-list-venues
+// (only the two embedding columns are stripped), and consumer-list-places
 // selects the same set. So each Venue the client receives already carries
 // the raw signal columns — google_stars_overall, google_review_count,
 // instagram_followers_count, price_level, hours, timezone, zone, city,

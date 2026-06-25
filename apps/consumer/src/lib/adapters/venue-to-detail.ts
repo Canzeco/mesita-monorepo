@@ -1,4 +1,4 @@
-// Maps a public.venues row (as returned by consumer-get-venue, snake_case +
+// Maps a public.venues row (as returned by consumer-get-place, snake_case +
 // JSONB) into the rich VenueDetail shape the detail modal renders. Every
 // field is null-safe: enrichment leaves many columns empty, and the UI is
 // built to tolerate empties (no reviews → no reviews section, etc.).
@@ -21,7 +21,7 @@ import {
 // need defensively.
 type Row = Record<string, unknown>;
 
-// Resolved tag as returned by consumer-get-venue's `tags` array: only the
+// Resolved tag as returned by consumer-get-place's `tags` array: only the
 // venue's selected tags, already ordered by sort_order. We render label_es
 // (Spanish-first); facet drives the per-facet chip tint in the modal.
 export type ResolvedTag = {
@@ -310,7 +310,7 @@ export function venueRowToDetail(
     },
     instagram: { followers: num(row.instagram_followers_count) ?? 0 },
 
-    // Enricher (atlas-enrich-profile) stores each review as
+    // Enricher (atlas-enrich-place) stores each review as
     // { author, rating, text, published } — map those onto the detail shape
     // (quote/date) and keep the legacy keys as fallbacks.
     google_reviews: arr<Record<string, unknown>>(row.google_reviews).map(

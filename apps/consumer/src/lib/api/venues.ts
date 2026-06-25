@@ -148,7 +148,7 @@ export async function apiFetchPublicVenues(
 ): Promise<Venue[]> {
   const { venues } = await invokeEF<{ venues: Venue[] }>(
     client,
-    "consumer-list-venues",
+    "consumer-list-places",
     { limit },
   );
   return venues.map(stripInsecurePhotos);
@@ -165,7 +165,7 @@ export async function apiFetchVenueDetail(
     const { venue, tags } = await invokeEF<{
       venue: Record<string, unknown>;
       tags?: ResolvedTag[];
-    }>(client, "consumer-get-venue", { id: idOrSlug }, "Venue not found");
+    }>(client, "consumer-get-place", { id: idOrSlug }, "Venue not found");
     return venue ? venueRowToDetail(venue, tags) : null;
   } catch {
     return null;
@@ -200,7 +200,7 @@ export async function apiRecommendCatalog(
     summary: data.summary,
   };
 }
-// Per-row status mirrored from atlas-suggest-venue. Drives the badge
+// Per-row status mirrored from atlas-suggest-places. Drives the badge
 // in the consumer search picker:
 //   - not_in_mesita: Google has it, Mesita doesn't — show "Not on
 //     Mesita yet" + nudge users to ping us.
@@ -254,7 +254,7 @@ export type ConsumerCreateVenueResult =
 /**
  * Google Places autocomplete + Mesita merge for the consumer
  * /discover/search picker. Calls consumer-suggest-places, which
- * forwards to atlas-suggest-venue. Mirrors the business /add page
+ * forwards to atlas-suggest-places. Mirrors the business /add page
  * mechanic — same shape, same atlas pipeline — so a consumer can
  * find places that haven't onboarded to Mesita yet.
  */

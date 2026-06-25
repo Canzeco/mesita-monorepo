@@ -43,7 +43,7 @@ export type VenueDetail = {
   photos: string[];
 
   // Venue tags — the curated taxonomy chips the business selected (cocktails,
-  // rooftop, date night, …). Sourced from consumer-get-venue's resolved
+  // rooftop, date night, …). Sourced from consumer-get-place's resolved
   // `tags` array, already ordered by sort_order and Spanish-first (label is
   // label_es). `facet` is one of 17 taxonomy groups (payment, vibe, drinks,
   // …) and drives the per-facet chip tint in the detail modal. Empty when the

@@ -1,14 +1,14 @@
 // Mock SAVED_VENUES catalog used by the /discover/saved page until the
-// consumer-side wire-up of `consumer-list-saved-venues` lands. Bookmarks
+// consumer-side wire-up of `consumer-list-saved-places` lands. Bookmarks
 // created by the consumer's plain "Save" action on a venue card. Shape
 // matches the production `Venue` type so VenueCatalogCard can render
 // these unmodified. Two verified-partner venues (discount badges) plus
 // two web-listed venues (no badge) so the contextual badge logic on
 // /saved is visible across both kinds.
 //
-// TODO: swap this for a `consumer-list-saved-venues` EF call.
+// TODO: swap this for a `consumer-list-saved-places` EF call.
 // The EF + the underlying public.saved_venues table already ship — see
-// mesita-supabase/supabase/functions/consumer-list-saved-venues. What's
+// mesita-supabase/supabase/functions/consumer-list-saved-places. What's
 // pending is a hook that invokes the EF and the page reading from it.
 // Client calls the EF, never the DB directly — see api/venues.ts for
 // the existing pattern.
