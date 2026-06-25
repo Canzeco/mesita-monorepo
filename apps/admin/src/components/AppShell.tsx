@@ -11,7 +11,7 @@ type AppShellProps = {
 };
 
 // Admin shell wrapper: desktop renders the Sidebar in a static column,
-// mobile (< md) collapses it into a slide-in drawer triggered from a
+// mobile/tablet (< lg) collapses it into a slide-in drawer triggered from a
 // topbar hamburger. Drawer closes on link navigation (onNavigate passed
 // to Sidebar), backdrop click, the close button, or Esc.
 export function AppShell({ email, children }: AppShellProps) {
@@ -36,15 +36,15 @@ export function AppShell({ email, children }: AppShellProps) {
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      {/* Desktop sidebar — visible md+ */}
-      <div className="hidden md:flex">
+      {/* Desktop sidebar — visible lg+ */}
+      <div className="hidden shrink-0 lg:flex">
         <Sidebar email={email} />
       </div>
 
-      {/* Mobile drawer */}
+      {/* Mobile / tablet drawer */}
       <div
         className={
-          "md:hidden fixed inset-0 z-50 " +
+          "lg:hidden fixed inset-0 z-50 " +
           (open ? "pointer-events-auto" : "pointer-events-none")
         }
         aria-hidden={!open}
@@ -79,8 +79,8 @@ export function AppShell({ email, children }: AppShellProps) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile topbar — hidden md+ */}
-        <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/75 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur md:hidden">
+        {/* Mobile / tablet topbar — hidden lg+ */}
+        <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/75 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur lg:hidden">
           <button
             type="button"
             onClick={() => setOpen(true)}

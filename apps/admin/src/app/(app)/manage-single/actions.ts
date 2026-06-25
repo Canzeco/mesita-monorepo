@@ -28,7 +28,7 @@ export type VenueHit = {
 export async function searchVenues(query: string): Promise<Result<VenueHit[]>> {
   const q = (query ?? "").trim();
   if (q.length < 2) return { ok: true, data: [] };
-  const r = await efInvoke<{ venues: VenueHit[] }>("admin-search-venues", { query: q });
+  const r = await efInvoke<{ venues: VenueHit[] }>("admin-search-places", { query: q });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.venues };
 }
@@ -243,7 +243,7 @@ export async function findVenueByPlaceId(
     return { ok: false, error: "Paste a Google Place ID first." };
   }
 
-  const result = await efInvoke<EFResponse>("admin-find-venue", { placeId });
+  const result = await efInvoke<EFResponse>("admin-find-place", { placeId });
   if (!result.ok) {
     return { ok: false, error: result.error };
   }

@@ -2,28 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListFilter, ListPlus, ListChecks } from "lucide-react";
+import { Calculator, SlidersHorizontal } from "lucide-react";
 
 const TABS: {
   href: string;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { href: "/manage-multiple/search", label: "Search", Icon: ListFilter },
-  { href: "/manage-multiple/create", label: "Create", Icon: ListPlus },
-  { href: "/manage-multiple/update", label: "Update", Icon: ListChecks },
+  {
+    href: "/atlas-config/configuration",
+    label: "Configuration",
+    Icon: SlidersHorizontal,
+  },
+  {
+    href: "/atlas-config/calculator",
+    label: "Calculator",
+    Icon: Calculator,
+  },
 ];
 
-export function ManageMultipleTabs() {
+export function AdeaTabs() {
   const pathname = usePathname();
   return (
     <div
       role="tablist"
-      aria-label="Bulk tools"
+      aria-label="ADEA"
       className="border-border -mx-4 mt-5 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:mt-6 sm:px-0"
     >
       {TABS.map(({ href, label, Icon }) => {
-        const active = pathname === href;
+        const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={href}

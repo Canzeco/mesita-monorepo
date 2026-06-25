@@ -65,7 +65,7 @@ export function SingleUnitConsole() {
 
   if (!venue) {
     return (
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         {loadError && <ErrorNote message={loadError} />}
         <VenuePicker onPick={loadVenue} />
       </div>
@@ -73,7 +73,18 @@ export function SingleUnitConsole() {
   }
 
   return (
-    <div className="mt-8 flex flex-col-reverse gap-6 lg:flex-row">
+    <div className="mt-6 flex flex-col gap-4 sm:mt-8 sm:gap-6 lg:flex-row">
+      <MobileVenueNav
+        venue={venue}
+        section={section}
+        onSelect={setSection}
+        onChangeVenue={() => {
+          setVenue(null);
+          setSection("place");
+        }}
+        onReload={reloadVenue}
+      />
+
       <main className="min-w-0 flex-1">
         {section === "place" && <PlaceSection venue={venue} onSaved={setVenue} />}
         {section === "promos" && <PromosSection venue={venue} onSaved={setVenue} />}
@@ -83,6 +94,7 @@ export function SingleUnitConsole() {
       </main>
 
       <RightMenu
+        className="hidden lg:block"
         venue={venue}
         section={section}
         onSelect={setSection}
@@ -96,9 +108,9 @@ export function SingleUnitConsole() {
   );
 }
 
-// ── Right-hand venue menu ──────────────────────────────────────────────────
+// ── Mobile venue bar + horizontal section tabs ─────────────────────────────
 
-function RightMenu({
+function MobileVenueNav({
   venue,
   section,
   onSelect,
@@ -112,7 +124,81 @@ function RightMenu({
   onReload: () => void;
 }) {
   return (
-    <aside className="lg:w-64 lg:shrink-0">
+    <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-20 -mx-4 rounded-none border-b px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:hidden">
+      <div className="flex items-start gap-3">
+        <VenueThumb photo={(venue.photos?.[0] as string | undefined) ?? null} name={venue.name} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{venue.name}</p>
+          <p className="text-muted-foreground truncate text-xs">
+            {venue.category_label ?? venue.category ?? "—"}
+            {venue.status ? ` · ${venue.status}` : ""}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onReload}
+          title="Reload venue"
+          className="border-border hover:border-foreground/40 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+        >
+          <RefreshCcw className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={onChangeVenue}
+          className="border-border hover:border-foreground/40 inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition"
+        >
+          <Search className="h-3.5 w-3.5" /> Change venue
+        </button>
+      </div>
+      <nav
+        aria-label="Venue sections"
+        className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {NAV.map(({ id, label, Icon }) => {
+          const active = section === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelect(id)}
+              aria-current={active ? "page" : undefined}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                active
+                  ? "bg-foreground text-background"
+                  : "border-border bg-background text-foreground border"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {label}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+// ── Right-hand venue menu (desktop) ────────────────────────────────────────
+
+function RightMenu({
+  className,
+  venue,
+  section,
+  onSelect,
+  onChangeVenue,
+  onReload,
+}: {
+  className?: string;
+  venue: AdminVenue;
+  section: Section;
+  onSelect: (s: Section) => void;
+  onChangeVenue: () => void;
+  onReload: () => void;
+}) {
+  return (
+    <aside className={`lg:w-64 lg:shrink-0 ${className ?? ""}`}>
       <div className="border-border bg-card sticky top-6 rounded-2xl border p-3">
         {/* Selected venue header */}
         <div className="flex items-start gap-3 p-2">
@@ -225,7 +311,7 @@ function VenuePicker({ onPick }: { onPick: (venueId: string) => void }) {
   }, [q]);
 
   return (
-    <div className="border-border bg-card rounded-2xl border p-6">
+    <div className="border-border bg-card rounded-2xl border p-4 sm:p-6">
       <div className="flex items-center gap-2">
         <Store className="text-muted-foreground h-4 w-4" />
         <h2 className="font-display text-base font-semibold tracking-tight">Select venue</h2>

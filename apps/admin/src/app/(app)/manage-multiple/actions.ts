@@ -5,7 +5,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 // Bulk create runs each Google Place ID through the SAME create pipeline as a
 // single create: business-create-unit fetches the Google spine, synthesises
 // the catalog row, inserts an unclaimed "web" listing, and hands the venue to
-// Atlas (atlas-enrich-profile) for research + the image funnel. The admin
+// Atlas (atlas-enrich-place) for research + the image funnel. The admin
 // operator's super-admin session authorises the call. The client invokes this
 // once per Place ID (with small concurrency) so progress streams in.
 

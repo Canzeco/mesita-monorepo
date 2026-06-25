@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   AlertTriangle,
   Brain,
@@ -40,9 +40,10 @@ type Method =
   | "Mesita Input"
   | "Google Places"
   | "Firecrawl Search"
+  | "Firecrawl Search and Perplexity Agent"
   | "Firecrawl Crawl"
   | "Firecrawl Scrape"
-  | "Perplexity"
+  | "Perplexity Agent"
   | "Apify"
   | "OpenAI LLM"
   | "OpenAI Vision";
@@ -56,6 +57,12 @@ type AdeaNode = {
   methods: Method[];
 };
 
+const FC_PPLX_AGENT: Method[] = [
+  "Mesita Input",
+  "Google Places",
+  "Firecrawl Search and Perplexity Agent",
+];
+
 const ADEA_NODES: AdeaNode[] = [
   // T0 — spine + cognition (always on, never gated)
   { name: "Google Business Page Link", pipeline: "Link", tier: 0, methods: ["Mesita Input"] },
@@ -63,42 +70,40 @@ const ADEA_NODES: AdeaNode[] = [
   { name: "Text Assets Processing", pipeline: "Analysis", tier: 0, methods: ["OpenAI LLM"] },
   { name: "Image Assets Processing", pipeline: "Analysis", tier: 0, methods: ["OpenAI Vision"] },
   { name: "Cognition Engine", pipeline: "Analysis", tier: 0, methods: ["OpenAI LLM"] },
-  // T1 — Google business contents + web-grounded editorial
+  // T1 — Google business contents + editorial SERP summary
   { name: "Google Business Page Profile", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
   { name: "Google Business Page Photos", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
   { name: "Google Business Page Reviews", pipeline: "Contents", tier: 1, methods: ["Apify"] },
-  { name: "SERP Page AI Summary", pipeline: "Contents", tier: 1, methods: ["Perplexity"] },
-  // T2 — owner social & website
-  { name: "Website Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
-  { name: "Website Page Contents", pipeline: "Contents", tier: 2, methods: ["Firecrawl Crawl"] },
-  { name: "Instagram Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
-  { name: "Instagram Page Profile", pipeline: "Contents", tier: 2, methods: ["Apify"] },
-  { name: "Instagram Page Photos", pipeline: "Contents", tier: 2, methods: ["Apify"] },
-  { name: "Facebook Page Link", pipeline: "Link", tier: 2, methods: ["Mesita Input", "Google Places", "Firecrawl Search", "Perplexity"] },
-  { name: "Facebook Page Profile", pipeline: "Contents", tier: 2, methods: ["Apify"] },
-  // T3 — reservations & delivery links
-  { name: "OpenTable Page Link", pipeline: "Link", tier: 3, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
-  { name: "UberEats Page Link", pipeline: "Link", tier: 3, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
-  // T4 — niche social links
-  { name: "TripAdvisor Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
-  { name: "Yelp Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
-  { name: "TikTok Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
-  { name: "YouTube Page Link", pipeline: "Link", tier: 4, methods: ["Mesita Input", "Google Places", "Firecrawl Search"] },
-  // T5 — heavy third-party contents (gated on purpose)
+  { name: "SERP Page AI Summary", pipeline: "Contents", tier: 1, methods: ["Perplexity Agent"] },
+  // T2 — core link discovery (website, Instagram, Facebook)
+  { name: "Website Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  { name: "Instagram Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  { name: "Facebook Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  // T3 — platform & directory links
+  { name: "OpenTable Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
+  { name: "UberEats Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
+  { name: "TripAdvisor Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
+  { name: "Yelp Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
+  { name: "TikTok Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
+  { name: "YouTube Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
+  // T4 — owner social & website contents
+  { name: "Website Page Contents", pipeline: "Contents", tier: 4, methods: ["Firecrawl Crawl"] },
+  { name: "Instagram Page Profile", pipeline: "Contents", tier: 4, methods: ["Apify"] },
+  { name: "Instagram Page Photos", pipeline: "Contents", tier: 4, methods: ["Apify"] },
+  { name: "Facebook Page Profile", pipeline: "Contents", tier: 4, methods: ["Apify"] },
+  // T5 — heavy third-party page scrapes
   { name: "OpenTable Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
   { name: "TripAdvisor Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
-  { name: "SERP Page Contents", pipeline: "Contents", tier: 5, methods: ["Firecrawl Search", "Firecrawl Scrape"] },
 ];
 
-// Tier metadata — the ceiling spans T1–T5; T0 is always on. The one-line
-// blurbs mirror the ADEA spec's tier intent.
+// Tier metadata — the ceiling spans T1–T5; T0 is always on. Mirrors 🌐 ADEA Notion DB.
 const TIERS: { tier: Tier; blurb: string; alwaysOn?: boolean }[] = [
-  { tier: 0, blurb: "Spine & cognition", alwaysOn: true },
-  { tier: 1, blurb: "Google business contents + editorial" },
-  { tier: 2, blurb: "Owner social & website" },
-  { tier: 3, blurb: "Reservations & delivery links" },
-  { tier: 4, blurb: "Niche social links" },
-  { tier: 5, blurb: "Heavy third-party contents" },
+  { tier: 0, blurb: "Required links & profile writing", alwaysOn: true },
+  { tier: 1, blurb: "Google listing, photos, reviews & SERP summary" },
+  { tier: 2, blurb: "Core links — website, Instagram, Facebook" },
+  { tier: 3, blurb: "Platform links — OpenTable, Uber Eats, directories, social" },
+  { tier: 4, blurb: "Owner social & website contents" },
+  { tier: 5, blurb: "Heavy third-party page scrapes" },
 ];
 
 const CEILING_MIN = 1;
@@ -111,17 +116,18 @@ const METHOD_CLS: Record<Method, string> = {
   "Mesita Input": "border-foreground/20 bg-foreground/5 text-foreground/80",
   "Google Places": "border-red-500/25 bg-red-500/10 text-red-600",
   "Firecrawl Search": "border-amber-500/25 bg-amber-500/10 text-amber-700",
+  "Firecrawl Search and Perplexity Agent":
+    "border-orange-500/25 bg-orange-500/10 text-orange-700",
   "Firecrawl Crawl": "border-amber-500/25 bg-amber-500/10 text-amber-700",
   "Firecrawl Scrape": "border-amber-500/25 bg-amber-500/10 text-amber-700",
-  "Perplexity": "border-purple-500/25 bg-purple-500/10 text-purple-600",
+  "Perplexity Agent": "border-purple-500/25 bg-purple-500/10 text-purple-600",
   "Apify": "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
   "OpenAI LLM": "border-sky-500/25 bg-sky-500/10 text-sky-700",
   "OpenAI Vision": "border-violet-500/25 bg-violet-500/10 text-violet-600",
 };
 
-export function AtlasClient(props: {
+export function AtlasConfigurationClient(props: {
   initialSourceTierCeiling: number;
-  initialSourceOverrides: Record<string, boolean>;
   initialWebsiteCrawlMaxPages: number;
   initialGatherGoogleImages: number;
   initialGatherWebsiteImages: number;
@@ -140,7 +146,7 @@ export function AtlasClient(props: {
   const [updatedAt, setUpdatedAt] = useState(props.initialUpdatedAt);
 
   return (
-    <div className="mt-8 flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {updatedAt && (
         <p className="text-muted-foreground text-[11px]">
           Settings last changed{" "}
@@ -179,7 +185,23 @@ export function AtlasClient(props: {
         initialVisionQuality={props.initialVisionQuality}
         onSaved={setUpdatedAt}
       />
+    </div>
+  );
+}
+
+export function AtlasCalculatorClient(props: {
+  initialSourceTierCeiling: number;
+  initialSynthesisQuality: SynthesisQuality;
+  initialVisionQuality: SynthesisQuality;
+  initialImageVisionEnabled: boolean;
+  initialAnalyzeGoogleImages: number;
+  initialAnalyzeWebsiteImages: number;
+  initialAnalyzeInstagramImages: number;
+}) {
+  return (
+    <div className="flex flex-col gap-4 sm:gap-6">
       <CostSection
+        standalone
         initialSourceTierCeiling={props.initialSourceTierCeiling}
         initialSynthesisQuality={props.initialSynthesisQuality}
         initialVisionQuality={props.initialVisionQuality}
@@ -225,18 +247,18 @@ function SourcesSection({
     <SectionCard
       icon={<Globe className="text-muted-foreground h-4 w-4" />}
       title="Sources"
-      subtitle="Runs every node at or below the ceiling tier. T0 (the Google/Mesita spine + cognition) is always on. The nodes below are a read-only mirror of the ADEA spec."
+      subtitle="Choose the highest source tier to include. Tier 0 always runs — it resolves Google/Mesita links and writes the profile. Everything at or below your ceiling is included; higher tiers are skipped."
       status={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
     >
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <label className="text-sm font-medium">Tier ceiling</label>
-        <div className="flex items-center gap-1.5">
+      <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
+        <label className="text-sm font-medium">Max source tier</label>
+        <div className="flex flex-wrap items-center gap-1.5">
           <Layers className="text-muted-foreground h-4 w-4" />
           <span
-            title="Always on — the spine and cognition layer can't be turned off"
+            title="Required — core links and profile writing can't be turned off"
             className="border-foreground/30 bg-foreground/5 text-muted-foreground flex h-9 items-center gap-1 rounded-lg border px-2.5 text-xs font-semibold"
           >
-            T0 <span className="opacity-70">· always</span>
+            T0 <span className="opacity-70">· required</span>
           </span>
           {Array.from({ length: CEILING_MAX - CEILING_MIN + 1 }, (_, i) => CEILING_MIN + i).map((t) => (
             <button
@@ -257,7 +279,7 @@ function SourcesSection({
         </div>
       </div>
 
-      <Collapsible summary={`Nodes active at tier ${ceiling}`}>
+      <Collapsible summary={`Sources included through tier ${ceiling}`}>
         <div className="flex flex-col gap-5">
           {TIERS.map(({ tier, blurb, alwaysOn }) => {
             const tierActive = alwaysOn || tier <= ceiling;
@@ -269,10 +291,10 @@ function SourcesSection({
                   <span className="text-sm font-medium">{blurb}</span>
                   <span className="text-muted-foreground text-[11px]">
                     {alwaysOn
-                      ? "· always on"
+                      ? "· required"
                       : tierActive
-                        ? "· active"
-                        : "· above ceiling"}
+                        ? "· included"
+                        : "· not included"}
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -295,7 +317,7 @@ function SourcesSection({
 // right. For Link nodes the methods read left→right as fallback order.
 function NodeRow({ node }: { node: AdeaNode }) {
   return (
-    <div className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+    <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-3 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
       <span className="flex items-center gap-2 text-sm font-medium">
         <PipelineBadge pipeline={node.pipeline} />
         {node.name}
@@ -421,10 +443,10 @@ function GatherSection({
   return (
     <SectionCard
       icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
-      title="Gather"
-      subtitle="The first funnel stage: each source pulls a capped pool of candidates. These counts set how deep to pull — website crawl depth plus images/posts per source — never how many get analyzed or saved later. Every pool arrives already ranked by the fixed per-source rule below; the counts change the depth, not the order."
+      title="Collection"
+      subtitle="How much raw material ADEA collects before analysis. These limits set website crawl depth and how many images or posts to fetch — not how many end up on the profile."
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <NumberField icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />} label="Website subpages" value={pages} min={1} max={20} onChange={setPages} disabled={pending} />
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
@@ -437,37 +459,33 @@ function GatherSection({
         <div className="flex items-center gap-2">
           <Lock className="text-muted-foreground h-3.5 w-3.5" />
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
-            Fixed pre-sort
+            How each source is ranked
           </p>
         </div>
         <p className="text-muted-foreground mt-1.5 max-w-3xl text-xs leading-relaxed">
-          As candidates land, each source ranks its own pool by a fixed rule —
-          not configurable. The counts above only decide how deep to pull from
-          the top of each ranked pool; vision then analyzes the best of them.
+          Ranking is automatic and can&apos;t be changed. The numbers above only
+          control how many items ADEA takes from the top of each ranked list.
         </p>
         <ul className="mt-3 space-y-2 text-sm">
           <li className="flex items-start gap-2">
             <ImageIcon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              <span className="font-medium">Google</span> — Places default order
-              (Google&apos;s own hero-first ranking; no re-sort).
+              <span className="font-medium">Google</span> — Google Places order
+              (hero photos first).
             </span>
           </li>
           <li className="flex items-start gap-2">
             <Globe className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              <span className="font-medium">Website</span> — an LLM reads every
-              crawled image&apos;s filename, alt text, dimensions and page, and
-              ranks the most representative venue shots first; logos, icons,
-              badges, payment/social glyphs and text-heavy banners sink to the
-              bottom.
+              <span className="font-medium">Website</span> — AI ranks crawled
+              images; venue shots rise, logos and banners sink.
             </span>
           </li>
           <li className="flex items-start gap-2">
             <Instagram className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              <span className="font-medium">Instagram</span> — most-liked posts
-              first, ranked purely by like count (video cover frames included).
+              <span className="font-medium">Instagram</span> — highest-liked
+              posts first (video covers included).
             </span>
           </li>
         </ul>
@@ -582,21 +600,21 @@ function VisionParamsSection({
   return (
     <SectionCard
       icon={<Eye className="text-muted-foreground h-4 w-4" />}
-      title="Vision Params"
-      subtitle="Vision describes each gathered image, then a text model ranks them best→worst. Caps bound the vision pass; Save keeps the best N overall."
+      title="Photo Analysis"
+      subtitle="AI describes each photo, ranks them best to worst, then keeps the top picks for the profile. Turn off to skip analysis and save images in source order."
     >
       <div className="mt-5">
-        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
-          <span className="flex items-center gap-2 text-sm font-medium">
+        <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
+          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
             <Eye className="text-muted-foreground h-4 w-4" />
-            Enable vision
-            <span className="text-muted-foreground text-[11px]">(the cost driver)</span>
+            Enable image analysis
+            <span className="text-muted-foreground text-[11px]">(largest cost driver)</span>
           </span>
           <Switch on={vision} pending={togglePending} onClick={flipVision} label="Toggle image vision" />
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze Website images" value={w} min={0} max={10} onChange={setW} disabled={savePending || !vision} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images" value={ig} min={0} max={20} onChange={setIg} disabled={savePending || !vision} />
@@ -605,7 +623,7 @@ function VisionParamsSection({
       <div className="mt-4">
         <NumberField
           icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
-          label="Save (final, all sources combined)"
+          label="Photos to keep on profile (all sources combined)"
           value={saveTotal}
           min={0}
           max={20}
@@ -614,7 +632,7 @@ function VisionParamsSection({
         />
       </div>
 
-      <Collapsible summary="Edit vision & sorting prompts">
+      <Collapsible summary="Edit photo analysis prompts">
         <div className="space-y-4">
           <TextAreaField
             label="Image analysis prompt"
@@ -694,13 +712,13 @@ function ModelsSection({
     <SectionCard
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
       title="Models"
-      subtitle="The models ADEA runs — one for text (the final profile synthesis) and one for images (the vision pass that describes and ranks photos)."
+      subtitle="Which AI models write the profile (text) and analyze photos (vision)."
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
         <ModelSelect
           icon={<Brain className="text-muted-foreground h-4 w-4" />}
           label="Text model"
-          hint="final synthesis"
+          hint="writes the profile"
           value={text}
           onChange={setText}
           disabled={pending}
@@ -708,7 +726,7 @@ function ModelsSection({
         <ModelSelect
           icon={<Eye className="text-muted-foreground h-4 w-4" />}
           label="Image model"
-          hint="vision analysis"
+          hint="analyzes photos"
           value={image}
           onChange={setImage}
           disabled={pending}
@@ -764,7 +782,7 @@ function ModelSelect({
 // ─── Cost estimate ───────────────────────────────────────────────────────
 //
 // Per-call USD rate card. MIRRORS the cost constants in the enricher
-// (atlas-enrich-profile `COST`), plus the Google Places Details call that
+// (atlas-enrich-place `COST`), plus the Google Places Details call that
 // business-create-unit makes at create time. Approximate — enough to compare
 // configurations, not for billing. Keep in sync with the enricher.
 const COST_RATES = {
@@ -817,6 +835,7 @@ const fmtTime = (secs: number) => {
 };
 
 function CostSection({
+  standalone = false,
   initialSourceTierCeiling,
   initialSynthesisQuality,
   initialVisionQuality,
@@ -825,6 +844,7 @@ function CostSection({
   initialAnalyzeWebsiteImages,
   initialAnalyzeInstagramImages,
 }: {
+  standalone?: boolean;
   initialSourceTierCeiling: number;
   initialSynthesisQuality: SynthesisQuality;
   initialVisionQuality: SynthesisQuality;
@@ -842,13 +862,13 @@ function CostSection({
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
   const [venues, setVenues] = useState(1);
 
-  const social = tier >= 2; // tier ≥ 2 unlocks IG / FB / website / discovery
+  const linkDiscovery = tier >= 2; // T2+ core & platform link nodes
+  const socialContents = tier >= 4; // T4 owner social & website contents
   const synthCost =
     quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
   const synthSecs =
     quality === "economy" ? TIME_RATES.synthEconomy : TIME_RATES.synthStandard;
-  // Website + Instagram images only exist when the social layer runs (tier ≥ 2).
-  const visionImgs = vision ? g + (social ? w + ig : 0) : 0;
+  const visionImgs = vision ? g + (socialContents ? w + ig : 0) : 0;
   const visionActive = vision && visionImgs > 0;
   const visionCostPer =
     imageModel === "economy" ? COST_RATES.visionEconomy : COST_RATES.visionStandard;
@@ -868,11 +888,11 @@ function CostSection({
   const lines: Line[] = [
     { label: "Google Places details", detail: "create lookup", cost: COST_RATES.googlePlaces, secs: TIME_RATES.googlePlaces, stage: "pre", active: true },
     { label: "Google reviews + photos", detail: "Apify Maps run", cost: COST_RATES.apifyGoogleMaps, secs: TIME_RATES.apifyGoogleMaps, stage: "gather", active: true },
-    { label: "Channel discovery — search", detail: "3 × Firecrawl search", cost: COST_RATES.firecrawlSearch * 3, secs: TIME_RATES.discoverySearch, stage: "pre", active: social },
-    { label: "Channel discovery — fallback", detail: "Perplexity", cost: COST_RATES.perplexity, secs: TIME_RATES.discoveryFallback, stage: "pre", active: social },
-    { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, secs: TIME_RATES.apifyInstagram, stage: "gather", active: social },
-    { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, secs: TIME_RATES.apifyFacebook, stage: "gather", active: social },
-    { label: "Website content", detail: "Firecrawl crawl", cost: COST_RATES.firecrawlScrape, secs: TIME_RATES.firecrawlScrape, stage: "gather", active: social },
+    { label: "Channel discovery — search", detail: "3 × Firecrawl search", cost: COST_RATES.firecrawlSearch * 3, secs: TIME_RATES.discoverySearch, stage: "pre", active: linkDiscovery },
+    { label: "Channel discovery — agent", detail: "Perplexity Agent validate", cost: COST_RATES.perplexity, secs: TIME_RATES.discoveryFallback, stage: "pre", active: linkDiscovery },
+    { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, secs: TIME_RATES.apifyInstagram, stage: "gather", active: socialContents },
+    { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, secs: TIME_RATES.apifyFacebook, stage: "gather", active: socialContents },
+    { label: "Website content", detail: "Firecrawl crawl", cost: COST_RATES.firecrawlScrape, secs: TIME_RATES.firecrawlScrape, stage: "gather", active: socialContents },
     { label: "Image analysis — vision", detail: `${visionImgs} img × ${money(visionCostPer)}`, cost: visionImgs * visionCostPer, secs: visionImgs * visionSecsPer, stage: "post", active: visionActive },
     { label: "Image sorting — text", detail: "1 call", cost: COST_RATES.sort, secs: TIME_RATES.sort, stage: "post", active: visionActive },
     { label: `Synthesis — ${quality}`, detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o", cost: synthCost, secs: synthSecs, stage: "post", active: true },
@@ -894,7 +914,7 @@ function CostSection({
     <SectionCard
       icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
       title="Cost Calculator"
-      subtitle="What-if external spend and wall-clock time to enrich one new venue."
+      subtitle="Rough estimate of cost and runtime to enrich one new venue with your current settings."
     >
       {/* Headline: cost + time for the current settings, always visible. */}
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -912,13 +932,16 @@ function CostSection({
         </div>
       </div>
 
-      <Collapsible summary="Adjust inputs & show breakdown">
+      <Collapsible
+        summary={standalone ? "Inputs & breakdown" : "Adjust inputs & view breakdown"}
+        defaultOpen={standalone}
+      >
       {/* Params */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Layers className="text-muted-foreground h-4 w-4" />
-            Source tier ceiling
+            Source tier limit
           </span>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((t) => (
@@ -938,7 +961,7 @@ function CostSection({
           </div>
         </div>
 
-        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+        <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Brain className="text-muted-foreground h-4 w-4" />
             Text model
@@ -947,16 +970,16 @@ function CostSection({
         </div>
 
         <Card
-          className="md:col-span-2"
+          className="lg:col-span-2"
           icon={<Eye className="text-muted-foreground h-4 w-4" />}
-          title="Vision analysis enabled"
-          desc="When off, images save in source order and the vision/sort lines drop from the estimate."
+          title="Image analysis enabled"
+          desc="When off, photos save without AI ranking and vision costs drop to zero."
           control={<Switch on={vision} pending={false} onClick={() => setVision(!vision)} label="Toggle vision" />}
         />
 
         {vision && (
           <>
-            <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4 md:col-span-2">
+            <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between lg:col-span-2">
               <span className="flex items-center gap-2 text-sm font-medium">
                 <Eye className="text-muted-foreground h-4 w-4" />
                 Image model
@@ -964,8 +987,8 @@ function CostSection({
               <QualityPicker value={imageModel} onChange={setImageModel} />
             </div>
             <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Google" value={g} min={0} max={10} onChange={setG} disabled={false} />
-            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={!social} />
-            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={!social} />
+            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={!socialContents} />
+            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={!socialContents} />
           </>
         )}
 
@@ -973,8 +996,8 @@ function CostSection({
       </div>
 
       {/* Breakdown */}
-      <div className="border-border mt-6 overflow-hidden rounded-xl border">
-        <table className="w-full text-sm">
+      <div className="border-border -mx-4 mt-6 overflow-x-auto rounded-xl border sm:mx-0">
+        <table className="w-full min-w-[540px] text-sm">
           <thead>
             <tr className="border-border text-muted-foreground border-b text-xs uppercase tracking-wide">
               <th className="px-4 py-2.5 text-left font-medium">Source / step</th>
@@ -1030,13 +1053,10 @@ function CostSection({
       </div>
 
       <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
-        Approximate per-call estimates that mirror the enricher&apos;s cost
-        model. The ~Time column is each step&apos;s own duration; the gather
-        steps run concurrently, so per-venue wall-clock is pre + the slowest
-        gather + post — not the column sum. The ×N time assumes venues run
-        back-to-back (batches overlap, so it&apos;s an upper bound). Tiers above
-        T2 add link resolution (T3–T4) and gated heavy contents (T5) the
-        enricher doesn&apos;t yet bill, so the estimate is flat past T2.
+        Approximate per-step costs based on the enricher&apos;s rate card. Gather
+        steps run in parallel, so total time is pre-work + slowest gather step +
+        post-work — not the sum of every row. Batch time assumes venues run
+        one after another. T5 adds heavy Apify scrapes not yet reflected here.
       </p>
       </Collapsible>
     </SectionCard>
@@ -1079,12 +1099,14 @@ function QualityPicker({
 function Collapsible({
   summary,
   children,
+  defaultOpen = false,
 }: {
   summary: string;
   children: React.ReactNode;
+  defaultOpen?: boolean;
 }) {
   return (
-    <details className="group mt-5">
+    <details className="group mt-5" open={defaultOpen || undefined}>
       <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
         <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
         {summary}
@@ -1095,9 +1117,9 @@ function Collapsible({
 }
 
 const PIPELINE: { stage: Pipeline; blurb: string }[] = [
-  { stage: "Link", blurb: "resolve each source's URL" },
-  { stage: "Contents", blurb: "fetch from every source" },
-  { stage: "Analysis", blurb: "perceive, then reason" },
+  { stage: "Link", blurb: "find source URLs" },
+  { stage: "Contents", blurb: "download data from each source" },
+  { stage: "Analysis", blurb: "analyze photos & text, write profile" },
 ];
 
 // Compact visual of the ADEA pipeline — every node is one of these three
@@ -1105,26 +1127,28 @@ const PIPELINE: { stage: Pipeline; blurb: string }[] = [
 // them, and Analysis (Text + Image perception → Cognition) writes the profile.
 function PipelineStrip() {
   return (
-    <div className="border-border bg-card flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-5 py-3.5">
-      <span className="text-muted-foreground mr-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
-        ADEA pipeline
-      </span>
-      {PIPELINE.map(({ stage, blurb }, i) => (
-        <Fragment key={stage}>
-          <span className="flex items-center gap-1.5 text-sm font-medium">
-            <span className="bg-foreground text-background flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums">
+    <div className="border-border bg-card rounded-2xl border p-4 sm:p-5">
+      <p className="text-muted-foreground mb-3 text-[10px] font-semibold tracking-[0.14em] uppercase">
+        How ADEA works
+      </p>
+      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {PIPELINE.map(({ stage, blurb }, i) => (
+          <li
+            key={stage}
+            className="border-border bg-background flex gap-3 rounded-xl border p-3"
+          >
+            <span className="bg-foreground text-background flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums">
               {i + 1}
             </span>
-            {stage}
-            <span className="text-muted-foreground hidden text-xs font-normal sm:inline">
-              — {blurb}
-            </span>
-          </span>
-          {i < PIPELINE.length - 1 && (
-            <ChevronRight className="text-muted-foreground/40 h-4 w-4" />
-          )}
-        </Fragment>
-      ))}
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{stage}</p>
+              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                {blurb}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -1145,9 +1169,9 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+    <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {icon}
             <h2 className="font-display text-base font-semibold tracking-tight">
@@ -1181,8 +1205,8 @@ function Card({
   className?: string;
 }) {
   return (
-    <section className={`border-border bg-card rounded-2xl border p-6 ${className ?? ""}`}>
-      <div className="flex items-start justify-between gap-6">
+    <section className={`border-border bg-card rounded-2xl border p-4 sm:p-6 ${className ?? ""}`}>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2">
             {icon}
@@ -1277,8 +1301,8 @@ function NumberField({
   disabled: boolean;
 }) {
   return (
-    <label className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
-      <span className="flex items-center gap-2 text-sm font-medium">
+    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+      <span className="flex items-start gap-2 text-sm font-medium leading-snug">
         {icon}
         {label}
       </span>
@@ -1296,7 +1320,7 @@ function NumberField({
           const n = decimals ? Math.round(raw * 100) / 100 : Math.round(raw);
           onChange(Math.max(min, Math.min(max, n)));
         }}
-        className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+        className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
       />
     </label>
   );

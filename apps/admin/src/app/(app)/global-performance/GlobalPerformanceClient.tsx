@@ -146,7 +146,7 @@ export function GlobalPerformanceClient({
       : timeAgo(data.generatedAt, now);
 
   return (
-    <div className="mt-8 flex flex-col gap-6">
+    <div className="mt-6 flex flex-col gap-4 sm:mt-8 sm:gap-6">
       {/* Category strip */}
       <div className="flex flex-wrap items-center gap-2">
         {CATEGORIES.map((c) => {
@@ -175,8 +175,8 @@ export function GlobalPerformanceClient({
       </div>
 
       {/* Toolbar: type filters + refresh */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <FilterChip
             active={typeFilter === "all"}
             label="All"
@@ -193,7 +193,7 @@ export function GlobalPerformanceClient({
             />
           ))}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
           <span className="text-muted-foreground text-[11px]" suppressHydrationWarning>
             Updated {updatedLabel}
           </span>
@@ -252,7 +252,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition " +
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition " +
         (active
           ? "border-foreground bg-foreground text-background"
           : "border-border text-muted-foreground hover:text-foreground hover:bg-muted")
@@ -287,7 +287,7 @@ function NotificationCard({
       : timeAgo(item.occurredAt, now);
 
   return (
-    <li className="border-border bg-card flex gap-4 rounded-2xl border p-5">
+    <li className="border-border bg-card flex gap-3 rounded-2xl border p-4 sm:gap-4 sm:p-5">
       <span
         className={
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-full " +

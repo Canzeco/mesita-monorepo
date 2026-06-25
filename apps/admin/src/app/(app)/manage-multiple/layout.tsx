@@ -1,4 +1,5 @@
 import { ManageMultipleTabs } from "./TabNav";
+import { PageContainer, PageHeader } from "@/components/PageContainer";
 
 // "Manage Multiple Units" — the three bulk tools are addressable sub-routes
 // (/manage-multiple/{search,create,update}). This layout owns the shared
@@ -9,19 +10,10 @@ export default function ManageMultipleLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-5xl px-8 pt-12 pb-24">
-      <header>
-        <p className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
-          Units · Multiple
-        </p>
-        <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-          Manage Multiple Units
-        </h1>
-      </header>
-
+    <PageContainer size="5xl" className="pb-16 sm:pb-24">
+      <PageHeader eyebrow="Units · Multiple" title="Manage Multiple Units" />
       <ManageMultipleTabs />
-
-      <div className="mt-8">{children}</div>
-    </div>
+      <div className="mt-6 sm:mt-8">{children}</div>
+    </PageContainer>
   );
 }

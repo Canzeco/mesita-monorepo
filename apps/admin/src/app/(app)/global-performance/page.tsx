@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { listNotifications } from "./actions";
 import { GlobalPerformanceClient } from "./GlobalPerformanceClient";
 
@@ -13,23 +14,17 @@ export default async function GlobalPerformancePage() {
   const result = await listNotifications("all");
 
   return (
-    <div className="mx-auto max-w-5xl px-8 pt-12 pb-14">
-      <p className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
-        Overview · Performance
-      </p>
-      <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-        Global Performance
-      </h1>
-      <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-        Platform-wide activity, pulled on demand. Notifications surface the
-        moments that matter — new venues, Atlas enrichments, and ownership
-        claims — newest first.
-      </p>
+    <PageContainer size="5xl">
+      <PageHeader
+        eyebrow="Overview · Performance"
+        title="Global Performance"
+        description="Platform-wide activity, pulled on demand. Notifications surface the moments that matter — new venues, Atlas enrichments, and ownership claims — newest first."
+      />
 
       {result.ok ? (
         <GlobalPerformanceClient initial={result.data} />
       ) : (
-        <div className="border-destructive/40 bg-destructive/5 text-destructive mt-8 flex items-start gap-3 rounded-2xl border p-4 text-sm">
+        <div className="border-destructive/40 bg-destructive/5 text-destructive mt-6 flex items-start gap-3 rounded-2xl border p-4 text-sm sm:mt-8">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p className="font-medium">Couldn&apos;t load notifications.</p>
@@ -37,6 +32,6 @@ export default async function GlobalPerformancePage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

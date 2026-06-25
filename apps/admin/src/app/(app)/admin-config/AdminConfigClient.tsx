@@ -15,6 +15,7 @@ import {
   revokeAdmin,
   type AdminRow,
 } from "./actions";
+import { PageContainer, PageHeader } from "@/components/PageContainer";
 
 // Must match the EF's CONFIRM_PHRASE.
 const CONFIRM_PHRASE = "RESET";
@@ -29,23 +30,16 @@ export function AdminConfigClient({
   loadError: string | null;
 }) {
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8 px-8 pt-12 pb-14">
-      <header>
-        <p className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
-          Operations · Admin
-        </p>
-        <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-          Admin Configuration
-        </h1>
-        <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-          Manage who has admin access and reset the environment. Super-admins
-          only.
-        </p>
-      </header>
+    <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
+      <PageHeader
+        eyebrow="Operations · Admin"
+        title="Admin Configuration"
+        description="Manage who has admin access and reset the environment. Super-admins only."
+      />
 
       <AdminsCard initialAdmins={initialAdmins} self={self} loadError={loadError} />
       <ResetCard />
-    </div>
+    </PageContainer>
   );
 }
 
@@ -110,7 +104,7 @@ function AdminsCard({
   const onlyOne = admins.length <= 1;
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-6">
+    <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
       <div className="flex items-center gap-2">
         <ShieldCheck className="text-muted-foreground h-4 w-4" />
         <h2 className="font-display text-base font-semibold tracking-tight">
@@ -248,7 +242,7 @@ function ResetCard() {
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50/50 p-6">
+    <section className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50/50 p-4 sm:p-6">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
           <AlertTriangle className="h-5 w-5" />

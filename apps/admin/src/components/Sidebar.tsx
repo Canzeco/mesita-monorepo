@@ -39,7 +39,7 @@ const NAV: NavItem[] = [
 export function Sidebar({ email, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   return (
-    <aside className="border-border bg-card flex h-full w-64 shrink-0 flex-col gap-6 overflow-hidden border-r px-3 pt-5 pb-4">
+    <aside className="border-border bg-card flex h-full w-56 shrink-0 flex-col gap-6 overflow-hidden border-r px-2.5 pt-5 pb-4 lg:w-64 lg:px-3">
       <Link
         href="/central"
         onClick={onNavigate}
@@ -66,7 +66,7 @@ export function Sidebar({ email, onNavigate }: SidebarProps) {
               href={href}
               onClick={onNavigate}
               className={
-                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition " +
+                "flex items-center gap-2.5 rounded-2xl px-2.5 py-2.5 text-[13px] font-medium transition lg:gap-3 lg:px-3 lg:text-sm " +
                 (active
                   ? "bg-secondary/10 text-secondary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground")
