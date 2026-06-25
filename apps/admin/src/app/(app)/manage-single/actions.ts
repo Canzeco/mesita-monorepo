@@ -78,7 +78,6 @@ export type AdminVenue = {
   google_maps_url: string | null;
   opentable_url: string | null;
   uber_eats_url: string | null;
-  rappi_url: string | null;
   tripadvisor_url: string | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;

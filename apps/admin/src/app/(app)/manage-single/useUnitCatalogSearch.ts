@@ -7,8 +7,6 @@ type Options = {
   /** When false, skip loading the full catalog until the user types. */
   browseOnEmpty?: boolean;
   debounceMs?: number;
-  /** Label style for the meta line under the search field. */
-  variant?: "edit" | "multiple";
 };
 
 function filterUnits(units: UnitHit[], query: string): UnitHit[] {
@@ -26,7 +24,7 @@ function filterUnits(units: UnitHit[], query: string): UnitHit[] {
 }
 
 export function useUnitCatalogSearch(options: Options = {}) {
-  const { browseOnEmpty = true, debounceMs = 280, variant = "edit" } = options;
+  const { browseOnEmpty = true, debounceMs = 280 } = options;
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [catalog, setCatalog] = useState<UnitHit[]>([]);
@@ -120,19 +118,11 @@ export function useUnitCatalogSearch(options: Options = {}) {
       ? "Type to search"
       : mode === "browse"
         ? !catalogLoaded || pending
-          ? variant === "multiple"
-            ? "Loading…"
-            : "Loading catalog…"
-          : variant === "multiple"
-            ? `${hits.length} on Mesita`
-            : `Recent units · ${hits.length}`
+          ? "Loading catalog…"
+          : `Recent units · ${hits.length}`
         : pending
-          ? variant === "multiple"
-            ? "Searching…"
-            : "Searching…"
-          : variant === "multiple"
-            ? `${hits.length} match${hits.length === 1 ? "" : "es"}`
-            : `Results · ${hits.length}`;
+          ? "Searching…"
+          : `Results · ${hits.length}`;
 
   return { q, setQ, hits, pending, error, mode, metaLabel, clear: () => setQ("") };
 }

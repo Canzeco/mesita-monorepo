@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Library, ListChecks, ListFilter, ListPlus } from "lucide-react";
+import { ListChecks, ListFilter, ListPlus } from "lucide-react";
 
 export const MULTIPLE_PARENT = {
   href: "/manage-multiple",
@@ -7,11 +7,6 @@ export const MULTIPLE_PARENT = {
 } as const;
 
 export const MULTIPLE_SUBROUTES = [
-  {
-    href: "/manage-multiple/catalog",
-    label: "Catalog",
-    Icon: Library,
-  },
   {
     href: "/manage-multiple/search",
     label: "Bulk Search",

@@ -1,5 +1,5 @@
-import { CatalogTab } from "../CatalogTab";
+import { redirect } from "next/navigation";
 
 export default function ManageMultipleCatalogPage() {
-  return <CatalogTab />;
+  redirect("/manage-multiple/search");
 }

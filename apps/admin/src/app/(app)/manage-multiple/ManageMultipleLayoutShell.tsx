@@ -6,8 +6,6 @@ import { ManageMultipleTabs } from "./TabNav";
 import { MULTIPLE_SUBROUTES } from "./nav";
 
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
-  "/manage-multiple/catalog":
-    "Browse every unit already on Mesita. Open any row to edit it in the single-unit console.",
   "/manage-multiple/search":
     "Run many Google Places text searches at once and export Place IDs for bulk create.",
   "/manage-multiple/create":
@@ -27,7 +25,7 @@ export function ManageMultipleLayoutShell({
   );
   const description =
     (match && SUBPAGE_DESCRIPTION[match.href]) ??
-    SUBPAGE_DESCRIPTION["/manage-multiple/catalog"];
+    SUBPAGE_DESCRIPTION["/manage-multiple/search"];
 
   return (
     <>
