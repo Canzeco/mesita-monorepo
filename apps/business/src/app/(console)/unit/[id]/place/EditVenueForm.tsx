@@ -160,7 +160,6 @@ function venueToFormState(venue: MyVenue): PlaceFormState {
     resy_url: venue.resy_url ?? "",
     tripadvisor_url: venue.tripadvisor_url ?? "",
     google_maps_url: venue.google_maps_url ?? "",
-    rappi_url: venue.rappi_url ?? "",
     uber_eats_url: venue.uber_eats_url ?? "",
     didi_food_url: venue.didi_food_url ?? "",
   };
@@ -268,7 +267,6 @@ export function EditVenueForm({
       resy_url: nullableUrl(v.resy_url),
       tripadvisor_url: nullableUrl(v.tripadvisor_url),
       google_maps_url: nullableUrl(v.google_maps_url),
-      rappi_url: nullableUrl(v.rappi_url),
       uber_eats_url: nullableUrl(v.uber_eats_url),
       didi_food_url: nullableUrl(v.didi_food_url),
     };

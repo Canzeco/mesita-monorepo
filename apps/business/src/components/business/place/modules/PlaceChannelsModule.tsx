@@ -9,7 +9,6 @@ type SecondaryChannelKey =
   | "facebook_url"
   | "tiktok_url"
   | "opentable_url"
-  | "rappi_url"
   | "uber_eats_url"
   | "didi_food_url";
 
@@ -28,7 +27,6 @@ export function PlaceChannelsModule({
     facebook_url: false,
     tiktok_url: false,
     opentable_url: false,
-    rappi_url: false,
     uber_eats_url: false,
     didi_food_url: false,
   });
@@ -37,7 +35,6 @@ export function PlaceChannelsModule({
     form.facebook_url.trim() !== "" ||
     form.tiktok_url.trim() !== "" ||
     form.opentable_url.trim() !== "" ||
-    form.rappi_url.trim() !== "" ||
     form.uber_eats_url.trim() !== "" ||
     form.didi_food_url.trim() !== "";
 
@@ -65,11 +62,6 @@ export function PlaceChannelsModule({
       key: "opentable_url",
       label: "OpenTable",
       placeholder: "https://www.opentable.com/...",
-    },
-    {
-      key: "rappi_url",
-      label: "Rappi",
-      placeholder: "https://www.rappi.com/restaurants/...",
     },
     {
       key: "uber_eats_url",
