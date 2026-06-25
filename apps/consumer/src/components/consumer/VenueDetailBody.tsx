@@ -1039,6 +1039,63 @@ const REVIEW_DEFS = [
   { key: "google_maps_url", label: "Google Maps", Icon: MapPin },
 ] as const;
 
+// Per-facet chip tint. Each of the 17 taxonomy facets gets its own light
+// tone (bg / text / border) plus a leading dot so the cluster reads as a
+// differentiated, premium chip set rather than one flat grey wall. Mirrors
+// RatePill's "banded/tinted by value" idea, applied per facet group instead
+// of per percent. Unknown facets fall back to a neutral slate tone.
+const FACET_TINT: Record<string, { chip: string; dot: string }> = {
+  payment: { chip: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  booking: { chip: "bg-sky-50 text-sky-700 border-sky-200", dot: "bg-sky-500" },
+  service: { chip: "bg-teal-50 text-teal-700 border-teal-200", dot: "bg-teal-500" },
+  vibe: { chip: "bg-pink-50 text-pink-700 border-pink-200", dot: "bg-pink-500" },
+  occasion: { chip: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
+  amenities: { chip: "bg-indigo-50 text-indigo-700 border-indigo-200", dot: "bg-indigo-500" },
+  dietary: { chip: "bg-lime-50 text-lime-700 border-lime-200", dot: "bg-lime-500" },
+  menu: { chip: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+  drinks: { chip: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200", dot: "bg-fuchsia-500" },
+  entertainment: { chip: "bg-violet-50 text-violet-700 border-violet-200", dot: "bg-violet-500" },
+  crowd: { chip: "bg-cyan-50 text-cyan-700 border-cyan-200", dot: "bg-cyan-500" },
+  setting: { chip: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-500" },
+  hours: { chip: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+  dress: { chip: "bg-purple-50 text-purple-700 border-purple-200", dot: "bg-purple-500" },
+  wellness: { chip: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500" },
+  experiences: { chip: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500" },
+  values: { chip: "bg-yellow-50 text-yellow-700 border-yellow-200", dot: "bg-yellow-500" },
+};
+
+const FACET_TINT_FALLBACK = {
+  chip: "bg-slate-50 text-slate-700 border-slate-200",
+  dot: "bg-slate-400",
+};
+
+function TagChips({ tags }: { tags: VenueDetail["tags"] }) {
+  // Render nothing when the venue has no tags. Otherwise a flat, wrapping
+  // cluster of rounded-full pills, ordered by the incoming sort_order (the
+  // adapter preserves the EF order), each tinted by its facet group with a
+  // leading colored dot.
+  if (tags.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tags.map((t) => {
+        const tint = FACET_TINT[t.facet] ?? FACET_TINT_FALLBACK;
+        return (
+          <span
+            key={t.slug}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold",
+              tint.chip,
+            )}
+          >
+            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tint.dot)} />
+            {t.label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function DetailsBox({ venue }: { venue: VenueDetail }) {
   // Just the essentials a guest decides on — dining style, dress code,
   // reservations, payment, parking, and what it's good for. The long lists
@@ -1055,6 +1112,10 @@ function DetailsBox({ venue }: { venue: VenueDetail }) {
   ];
   return (
     <Box title="Details" icon={Tags} iconColor="text-pink-400">
+      {/* Curated taxonomy chips lead the box — a premium, differentiated
+          chip cluster (one tint per facet) above the key/value essentials.
+          Renders nothing when the venue has no tags. */}
+      <TagChips tags={venue.tags} />
       <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
           <div
