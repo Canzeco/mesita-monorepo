@@ -14,7 +14,7 @@ export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 // ── Venue search + load ──────────────────────────────────────────────────
 
-export type VenueHit = {
+export type UnitHit = {
   id: string;
   slug: string | null;
   name: string;
@@ -25,12 +25,31 @@ export type VenueHit = {
   photo: string | null;
 };
 
-export async function searchVenues(query: string): Promise<Result<VenueHit[]>> {
-  const q = (query ?? "").trim();
-  if (q.length < 2) return { ok: true, data: [] };
-  const r = await efInvoke<{ venues: VenueHit[] }>("admin-search-places", { query: q });
+/** @deprecated use UnitHit */
+export type VenueHit = UnitHit;
+
+async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>> {
+  const r = await efInvoke<{ venues: UnitHit[] }>("admin-search-places", {
+    query,
+    limit,
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.venues };
+}
+
+export async function listUnits(): Promise<Result<UnitHit[]>> {
+  return fetchUnits("");
+}
+
+export async function searchUnits(query: string): Promise<Result<UnitHit[]>> {
+  const q = (query ?? "").trim();
+  if (q.length < 2) return { ok: true, data: [] };
+  return fetchUnits(q);
+}
+
+/** @deprecated use searchUnits */
+export async function searchVenues(query: string): Promise<Result<UnitHit[]>> {
+  return searchUnits(query);
 }
 
 // The full venue row, loaded for a super-admin via business-get-overview
@@ -262,4 +281,70 @@ export async function findVenueByPlaceId(
     (process.env.BUSINESS_WEB_URL ?? "").trim() || BUSINESS_WEB_URL_FALLBACK;
   const link = `${businessOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home`;
   return { ok: true, found: true, venue, link };
+}
+
+// ── Google Places autocomplete (create flow) ─────────────────────────────
+
+export type PlacePredictionStatus =
+  | "not_in_mesita"
+  | "web_listed"
+  | "verified_partner_other"
+  | "verified_partner_self";
+
+export type PlacePrediction = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  status: PlacePredictionStatus;
+};
+
+export async function suggestPlaces(
+  input: string,
+  sessionToken: string,
+): Promise<Result<PlacePrediction[]>> {
+  const q = (input ?? "").trim();
+  if (q.length < 2) return { ok: true, data: [] };
+  if (!sessionToken.trim()) return { ok: false, error: "Missing session token" };
+
+  const r = await efInvoke<{ predictions: PlacePrediction[] }>("admin-suggest-places", {
+    input: q,
+    sessionToken,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.predictions ?? [] };
+}
+
+type CreateUnitOk = {
+  ok: true;
+  venueId: string;
+  name: string;
+  slug: string | null;
+  photoCount: number;
+  enriched: boolean;
+};
+
+type CreateUnitResponse = {
+  venue?: { id?: string; name?: string; slug?: string | null };
+  enrichment?: { photoCount?: number; profileEnriched?: boolean };
+};
+
+export async function createUnitFromPlaceId(
+  placeId: string,
+): Promise<CreateUnitOk | { ok: false; error: string }> {
+  const id = (placeId ?? "").toString().trim();
+  if (!id) return { ok: false, error: "Empty Place ID" };
+
+  const r = await efInvoke<CreateUnitResponse>("business-create-unit", { placeId: id });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  const v = r.data.venue;
+  if (!v?.id) return { ok: false, error: "No unit returned" };
+  return {
+    ok: true,
+    venueId: v.id,
+    name: v.name ?? "(unnamed)",
+    slug: v.slug ?? null,
+    photoCount: r.data.enrichment?.photoCount ?? 0,
+    enriched: r.data.enrichment?.profileEnriched ?? false,
+  };
 }

@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { Sidebar } from "@/components/Sidebar";
+import { SidebarWithSuspense } from "@/components/SidebarWithSuspense";
 
 type AppShellProps = {
-  email: string | null;
   children: React.ReactNode;
 };
 
@@ -14,7 +13,7 @@ type AppShellProps = {
 // mobile/tablet (< lg) collapses it into a slide-in drawer triggered from a
 // topbar hamburger. Drawer closes on link navigation (onNavigate passed
 // to Sidebar), backdrop click, the close button, or Esc.
-export function AppShell({ email, children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   const [open, setOpen] = useState(false);
 
   // Lock body scroll while drawer is open, and close on Esc.
@@ -38,7 +37,7 @@ export function AppShell({ email, children }: AppShellProps) {
     <div className="flex h-dvh overflow-hidden">
       {/* Desktop sidebar — visible lg+ */}
       <div className="hidden shrink-0 lg:flex">
-        <Sidebar email={email} />
+        <SidebarWithSuspense />
       </div>
 
       {/* Mobile / tablet drawer */}
@@ -64,7 +63,7 @@ export function AppShell({ email, children }: AppShellProps) {
           role="dialog"
           aria-label="Admin navigation"
         >
-          <Sidebar email={email} onNavigate={close} />
+          <SidebarWithSuspense onNavigate={close} />
           {open && (
             <button
               type="button"

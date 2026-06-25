@@ -10,7 +10,7 @@ import { authSignOut } from "@/app/auth/actions";
 //
 //   1. Signed-in via Supabase (Google OAuth). The middleware bounces
 //      anonymous users to /.
-//   2. The signed-in email is in public.super_admins. auth-get-identity
+//   2. The signed-in email is in public.super_admins. admin-get-identity
 //      does the lookup.
 //      Non-allowlisted operators get a polite "not authorised" empty state —
 //      the EFs themselves also re-check, so even if someone bypassed this
@@ -29,11 +29,43 @@ export default async function AppLayout({
   if (!user) redirect("/");
 
   const whoami = await efInvoke<{ email: string | null; isSuperAdmin: boolean }>(
-    "auth-get-identity",
+    "admin-get-identity",
     {},
   );
 
-  if (!whoami.ok || !whoami.data.isSuperAdmin) {
+  if (!whoami.ok) {
+    return (
+      <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
+        <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-4 rounded-2xl border p-6 text-center">
+          <span className="bg-muted mx-auto flex h-10 w-10 items-center justify-center rounded-full">
+            <Shield className="text-muted-foreground h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight">
+              Could not verify access
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              Signed in as{" "}
+              <span className="text-foreground font-semibold">
+                {user.email ?? "(no email)"}
+              </span>
+              , but the admin identity check failed: {whoami.error}
+            </p>
+          </div>
+          <form action={authSignOut}>
+            <button
+              type="submit"
+              className="bg-foreground text-background mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (!whoami.data.isSuperAdmin) {
     return (
       <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
         <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-4 rounded-2xl border p-6 text-center">
@@ -73,8 +105,6 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell email={whoami.data.email ?? user.email ?? null}>
-      {children}
-    </AppShell>
+    <AppShell>{children}</AppShell>
   );
 }

@@ -64,45 +64,45 @@ const FC_PPLX_AGENT: Method[] = [
 ];
 
 const ADEA_NODES: AdeaNode[] = [
-  // T0 — spine + cognition (always on, never gated)
+  // T0 — spine (always on, never gated)
   { name: "Google Business Page Link", pipeline: "Link", tier: 0, methods: ["Mesita Input"] },
   { name: "Mesita Page Link", pipeline: "Link", tier: 0, methods: ["Mesita Input"] },
-  { name: "Text Assets Processing", pipeline: "Analysis", tier: 0, methods: ["OpenAI LLM"] },
-  { name: "Image Assets Processing", pipeline: "Analysis", tier: 0, methods: ["OpenAI Vision"] },
   { name: "Cognition Engine", pipeline: "Analysis", tier: 0, methods: ["OpenAI LLM"] },
-  // T1 — Google business contents + editorial SERP summary
+  // T1 — Google spine
   { name: "Google Business Page Profile", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
   { name: "Google Business Page Photos", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
   { name: "Google Business Page Reviews", pipeline: "Contents", tier: 1, methods: ["Apify"] },
   { name: "SERP Page AI Summary", pipeline: "Contents", tier: 1, methods: ["Perplexity Agent"] },
-  // T2 — core link discovery (website, Instagram, Facebook)
+  // T2 — all link discovery (one Link Discovery Agent)
   { name: "Website Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
   { name: "Instagram Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
   { name: "Facebook Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  // T3 — platform & directory links
-  { name: "OpenTable Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
-  { name: "UberEats Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
-  { name: "TripAdvisor Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
-  { name: "Yelp Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
-  { name: "TikTok Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
-  { name: "YouTube Page Link", pipeline: "Link", tier: 3, methods: FC_PPLX_AGENT },
-  // T4 — owner social & website contents
-  { name: "Website Page Contents", pipeline: "Contents", tier: 4, methods: ["Firecrawl Crawl"] },
-  { name: "Instagram Page Profile", pipeline: "Contents", tier: 4, methods: ["Apify"] },
-  { name: "Instagram Page Photos", pipeline: "Contents", tier: 4, methods: ["Apify"] },
-  { name: "Facebook Page Profile", pipeline: "Contents", tier: 4, methods: ["Apify"] },
-  // T5 — heavy third-party page scrapes
+  { name: "OpenTable Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  { name: "UberEats Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  { name: "TripAdvisor Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  { name: "Yelp Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  { name: "TikTok Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  { name: "YouTube Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
+  // T3 — source gather (parallel scrapers)
+  { name: "Website Page Contents", pipeline: "Contents", tier: 3, methods: ["Firecrawl Crawl"] },
+  { name: "Instagram Page Profile", pipeline: "Contents", tier: 3, methods: ["Apify"] },
+  { name: "Instagram Page Photos", pipeline: "Contents", tier: 3, methods: ["Apify"] },
+  { name: "Facebook Page Profile", pipeline: "Contents", tier: 3, methods: ["Apify"] },
+  // T4 — perception
+  { name: "Text Assets Processing", pipeline: "Analysis", tier: 4, methods: ["OpenAI LLM"] },
+  { name: "Image Assets Processing", pipeline: "Analysis", tier: 4, methods: ["OpenAI Vision"] },
+  // T5 — heavy third-party scrapes
   { name: "OpenTable Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
   { name: "TripAdvisor Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
 ];
 
-// Tier metadata — the ceiling spans T1–T5; T0 is always on. Mirrors 🌐 ADEA Notion DB.
+// Tier metadata — execution stages T1–T5; T0 is always-on spine + final synthesis.
 const TIERS: { tier: Tier; blurb: string; alwaysOn?: boolean }[] = [
-  { tier: 0, blurb: "Required links & profile writing", alwaysOn: true },
-  { tier: 1, blurb: "Google listing, photos, reviews & SERP summary" },
-  { tier: 2, blurb: "Core links — website, Instagram, Facebook" },
-  { tier: 3, blurb: "Platform links — OpenTable, Uber Eats, directories, social" },
-  { tier: 4, blurb: "Owner social & website contents" },
+  { tier: 0, blurb: "Identity spine & final synthesis", alwaysOn: true },
+  { tier: 1, blurb: "Google spine — listing, photos, reviews & SERP" },
+  { tier: 2, blurb: "Link discovery — all channel URLs, one agent" },
+  { tier: 3, blurb: "Source gather — website, Instagram & Facebook" },
+  { tier: 4, blurb: "Perception — text distillation & image analysis" },
   { tier: 5, blurb: "Heavy third-party page scrapes" },
 ];
 
@@ -199,18 +199,16 @@ export function AtlasCalculatorClient(props: {
   initialAnalyzeInstagramImages: number;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
-      <CostSection
-        standalone
-        initialSourceTierCeiling={props.initialSourceTierCeiling}
-        initialSynthesisQuality={props.initialSynthesisQuality}
-        initialVisionQuality={props.initialVisionQuality}
-        initialImageVisionEnabled={props.initialImageVisionEnabled}
-        initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-        initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
-        initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-      />
-    </div>
+    <CostSection
+      standalone
+      initialSourceTierCeiling={props.initialSourceTierCeiling}
+      initialSynthesisQuality={props.initialSynthesisQuality}
+      initialVisionQuality={props.initialVisionQuality}
+      initialImageVisionEnabled={props.initialImageVisionEnabled}
+      initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+      initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
+      initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+    />
   );
 }
 
@@ -247,7 +245,7 @@ function SourcesSection({
     <SectionCard
       icon={<Globe className="text-muted-foreground h-4 w-4" />}
       title="Sources"
-      subtitle="Choose the highest source tier to include. Tier 0 always runs — it resolves Google/Mesita links and writes the profile. Everything at or below your ceiling is included; higher tiers are skipped."
+      subtitle="Choose the highest execution tier to include. Tier 0 always runs — identity links and final synthesis. Stages at or below your ceiling run in order; higher stages are skipped."
       status={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
     >
       <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
@@ -834,6 +832,323 @@ const fmtTime = (secs: number) => {
   return m ? `${h}h ${m}m` : `${h}h`;
 };
 
+const STAGE_META = {
+  pre: { label: "Setup", hint: "Runs before sources are fetched" },
+  gather: { label: "Gather", hint: "Sources fetched in parallel — time is the slowest step" },
+  post: { label: "Analyze & write", hint: "Vision, sorting, and profile synthesis" },
+} as const;
+
+type CostLine = {
+  label: string;
+  detail: string;
+  cost: number;
+  secs: number;
+  stage: "pre" | "gather" | "post";
+  active: boolean;
+};
+
+function CalcPanel({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <h3 className="text-muted-foreground mb-3 flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
+        {icon}
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function CalcStepper({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+}) {
+  const dec = () => onChange(Math.max(min, value - 1));
+  const inc = () => onChange(Math.min(max, value + 1));
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 py-1.5 ${disabled ? "opacity-40" : ""}`}
+    >
+      <span className="text-sm">{label}</span>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          disabled={disabled || value <= min}
+          onClick={dec}
+          aria-label={`Decrease ${label}`}
+          className="border-border bg-background hover:border-foreground/40 flex h-8 w-8 items-center justify-center rounded-lg border text-sm transition disabled:opacity-40"
+        >
+          −
+        </button>
+        <span className="w-9 text-center text-sm font-semibold tabular-nums">{value}</span>
+        <button
+          type="button"
+          disabled={disabled || value >= max}
+          onClick={inc}
+          aria-label={`Increase ${label}`}
+          className="border-border bg-background hover:border-foreground/40 flex h-8 w-8 items-center justify-center rounded-lg border text-sm transition disabled:opacity-40"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CalculatorView({
+  tier,
+  setTier,
+  quality,
+  setQuality,
+  imageModel,
+  setImageModel,
+  vision,
+  setVision,
+  g,
+  setG,
+  w,
+  setW,
+  ig,
+  setIg,
+  venues,
+  setVenues,
+  sourceGather,
+  perceptionLayer,
+  active,
+  lines,
+  perVenue,
+  total,
+  perVenueSecs,
+  totalSecs,
+}: {
+  tier: number;
+  setTier: (t: number) => void;
+  quality: SynthesisQuality;
+  setQuality: (q: SynthesisQuality) => void;
+  imageModel: SynthesisQuality;
+  setImageModel: (q: SynthesisQuality) => void;
+  vision: boolean;
+  setVision: (v: boolean) => void;
+  g: number;
+  setG: (v: number) => void;
+  w: number;
+  setW: (v: number) => void;
+  ig: number;
+  setIg: (v: number) => void;
+  venues: number;
+  setVenues: (v: number) => void;
+  sourceGather: boolean;
+  perceptionLayer: boolean;
+  active: CostLine[];
+  lines: CostLine[];
+  perVenue: number;
+  total: number;
+  perVenueSecs: number;
+  totalSecs: number;
+}) {
+  const tierBlurb = TIERS.find((t) => t.tier === tier)?.blurb ?? "";
+  const stages = (["pre", "gather", "post"] as const).filter((stage) =>
+    lines.some((l) => l.stage === stage && l.active),
+  );
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      <p className="text-muted-foreground mb-6 max-w-2xl text-sm leading-relaxed">
+        Estimate cost and runtime for enriching a new venue. Adjust inputs to compare
+        configurations — figures are approximate, not billing.
+      </p>
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-start">
+        <aside className="flex flex-col gap-4">
+          <CalcPanel title="Source tier" icon={<Layers className="h-3.5 w-3.5" />}>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTier(t)}
+                  className={`h-9 flex-1 rounded-lg border text-xs font-semibold transition ${
+                    tier === t
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background hover:border-foreground/40"
+                  }`}
+                >
+                  T{t}
+                </button>
+              ))}
+            </div>
+            <p className="text-muted-foreground mt-2.5 text-xs leading-relaxed">{tierBlurb}</p>
+          </CalcPanel>
+
+          <CalcPanel title="Models" icon={<Brain className="h-3.5 w-3.5" />}>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm">Profile text</span>
+                <QualityPicker value={quality} onChange={setQuality} />
+              </div>
+              <div className="border-border flex items-center justify-between gap-3 border-t pt-3">
+                <span className="text-sm">Photo analysis</span>
+                <Switch
+                  on={vision}
+                  pending={false}
+                  onClick={() => setVision(!vision)}
+                  label="Toggle photo analysis"
+                />
+              </div>
+              {vision && perceptionLayer && (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm">Image model</span>
+                    <QualityPicker value={imageModel} onChange={setImageModel} />
+                  </div>
+                  <div className="border-border space-y-0.5 border-t pt-2">
+                    <CalcStepper label="Google photos" value={g} min={0} max={10} onChange={setG} />
+                    <CalcStepper
+                      label="Website photos"
+                      value={w}
+                      min={0}
+                      max={10}
+                      onChange={setW}
+                      disabled={!sourceGather}
+                    />
+                    <CalcStepper
+                      label="Instagram photos"
+                      value={ig}
+                      min={0}
+                      max={20}
+                      onChange={setIg}
+                      disabled={!sourceGather}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </CalcPanel>
+
+          <CalcPanel title="Batch" icon={<Globe className="h-3.5 w-3.5" />}>
+            <CalcStepper label="Venues" value={venues} min={1} max={5000} onChange={setVenues} />
+          </CalcPanel>
+        </aside>
+
+        <div className="flex flex-col gap-5">
+          <div className="border-border bg-card rounded-2xl border p-5 sm:p-6">
+            <div className="grid grid-cols-2 gap-6 sm:gap-8">
+              <div>
+                <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+                  Cost
+                </p>
+                <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
+                  {money(perVenue)}
+                </p>
+                <p className="text-muted-foreground mt-1 text-sm">per venue</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+                  Time
+                </p>
+                <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
+                  ~{fmtTime(perVenueSecs)}
+                </p>
+                <p className="text-muted-foreground mt-1 text-sm">per venue</p>
+              </div>
+            </div>
+
+            {venues > 1 && (
+              <div className="border-border bg-background mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
+                <span className="text-muted-foreground text-sm">
+                  Batch total · {venues} venues
+                </span>
+                <div className="flex items-center gap-4 text-sm font-semibold tabular-nums">
+                  <span>${total.toFixed(2)}</span>
+                  <span className="text-muted-foreground font-normal">·</span>
+                  <span>~{fmtTime(totalSecs)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold">Breakdown</h3>
+            <div className="flex flex-col gap-3">
+              {stages.map((stage) => {
+                const stageLines = active.filter((l) => l.stage === stage);
+                const meta = STAGE_META[stage];
+                const stageCost = stageLines.reduce((s, l) => s + l.cost, 0);
+                const stageSecs =
+                  stage === "gather"
+                    ? stageLines.reduce((mx, l) => Math.max(mx, l.secs), 0)
+                    : stageLines.reduce((s, l) => s + l.secs, 0);
+
+                return (
+                  <section
+                    key={stage}
+                    className="border-border bg-card overflow-hidden rounded-2xl border"
+                  >
+                    <div className="border-border bg-background/60 flex items-start justify-between gap-4 border-b px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium">{meta.label}</p>
+                        <p className="text-muted-foreground mt-0.5 text-xs">{meta.hint}</p>
+                      </div>
+                      <div className="shrink-0 text-right text-sm tabular-nums">
+                        <span className="font-medium">{money(stageCost)}</span>
+                        <span className="text-muted-foreground mx-1.5">·</span>
+                        <span className="text-muted-foreground">~{fmtTime(stageSecs)}</span>
+                      </div>
+                    </div>
+                    <ul className="divide-border/60 divide-y">
+                      {stageLines.map((l) => (
+                        <li
+                          key={l.label}
+                          className="flex items-center justify-between gap-4 px-4 py-2.5"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm">{l.label}</p>
+                            <p className="text-muted-foreground truncate text-xs">{l.detail}</p>
+                          </div>
+                          <div className="shrink-0 text-right text-sm tabular-nums">
+                            <span className="text-muted-foreground">{fmtTime(l.secs)}</span>
+                            <span className="mx-2 text-muted-foreground/50">·</span>
+                            <span>{money(l.cost)}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="text-muted-foreground/80 text-xs leading-relaxed">
+            Based on the enricher rate card. Gather steps overlap, so total time is setup +
+            slowest gather + analysis — not the sum of every row. Batch time assumes venues run
+            sequentially. T5 heavy scrapes are not yet included.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CostSection({
   standalone = false,
   initialSourceTierCeiling,
@@ -862,14 +1177,15 @@ function CostSection({
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
   const [venues, setVenues] = useState(1);
 
-  const linkDiscovery = tier >= 2; // T2+ core & platform link nodes
-  const socialContents = tier >= 4; // T4 owner social & website contents
+  const linkDiscovery = tier >= 2;
+  const sourceGather = tier >= 3;
+  const perceptionLayer = tier >= 4;
   const synthCost =
     quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
   const synthSecs =
     quality === "economy" ? TIME_RATES.synthEconomy : TIME_RATES.synthStandard;
-  const visionImgs = vision ? g + (socialContents ? w + ig : 0) : 0;
-  const visionActive = vision && visionImgs > 0;
+  const visionImgs = vision ? g + (sourceGather ? w + ig : 0) : 0;
+  const visionActive = perceptionLayer && vision && visionImgs > 0;
   const visionCostPer =
     imageModel === "economy" ? COST_RATES.visionEconomy : COST_RATES.visionStandard;
   const visionSecsPer =
@@ -877,22 +1193,14 @@ function CostSection({
 
   // Each line: cost (USD) + secs (duration) + stage for the wall-clock model.
   // pre = serial before gather · gather = concurrent · post = serial after.
-  type Line = {
-    label: string;
-    detail: string;
-    cost: number;
-    secs: number;
-    stage: "pre" | "gather" | "post";
-    active: boolean;
-  };
-  const lines: Line[] = [
+  const lines: CostLine[] = [
     { label: "Google Places details", detail: "create lookup", cost: COST_RATES.googlePlaces, secs: TIME_RATES.googlePlaces, stage: "pre", active: true },
     { label: "Google reviews + photos", detail: "Apify Maps run", cost: COST_RATES.apifyGoogleMaps, secs: TIME_RATES.apifyGoogleMaps, stage: "gather", active: true },
     { label: "Channel discovery — search", detail: "3 × Firecrawl search", cost: COST_RATES.firecrawlSearch * 3, secs: TIME_RATES.discoverySearch, stage: "pre", active: linkDiscovery },
     { label: "Channel discovery — agent", detail: "Perplexity Agent validate", cost: COST_RATES.perplexity, secs: TIME_RATES.discoveryFallback, stage: "pre", active: linkDiscovery },
-    { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, secs: TIME_RATES.apifyInstagram, stage: "gather", active: socialContents },
-    { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, secs: TIME_RATES.apifyFacebook, stage: "gather", active: socialContents },
-    { label: "Website content", detail: "Firecrawl crawl", cost: COST_RATES.firecrawlScrape, secs: TIME_RATES.firecrawlScrape, stage: "gather", active: socialContents },
+    { label: "Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, secs: TIME_RATES.apifyInstagram, stage: "gather", active: sourceGather },
+    { label: "Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, secs: TIME_RATES.apifyFacebook, stage: "gather", active: sourceGather },
+    { label: "Website content", detail: "Firecrawl crawl", cost: COST_RATES.firecrawlScrape, secs: TIME_RATES.firecrawlScrape, stage: "gather", active: sourceGather },
     { label: "Image analysis — vision", detail: `${visionImgs} img × ${money(visionCostPer)}`, cost: visionImgs * visionCostPer, secs: visionImgs * visionSecsPer, stage: "post", active: visionActive },
     { label: "Image sorting — text", detail: "1 call", cost: COST_RATES.sort, secs: TIME_RATES.sort, stage: "post", active: visionActive },
     { label: `Synthesis — ${quality}`, detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o", cost: synthCost, secs: synthSecs, stage: "post", active: true },
@@ -909,6 +1217,37 @@ function CostSection({
   const postSecs = active.filter((l) => l.stage === "post").reduce((s, l) => s + l.secs, 0);
   const perVenueSecs = preSecs + gatherSecs + postSecs;
   const totalSecs = perVenueSecs * Math.max(1, venues);
+
+  if (standalone) {
+    return (
+      <CalculatorView
+        tier={tier}
+        setTier={setTier}
+        quality={quality}
+        setQuality={setQuality}
+        imageModel={imageModel}
+        setImageModel={setImageModel}
+        vision={vision}
+        setVision={setVision}
+        g={g}
+        setG={setG}
+        w={w}
+        setW={setW}
+        ig={ig}
+        setIg={setIg}
+        venues={venues}
+        setVenues={setVenues}
+        sourceGather={sourceGather}
+        perceptionLayer={perceptionLayer}
+        active={active}
+        lines={lines}
+        perVenue={perVenue}
+        total={total}
+        perVenueSecs={perVenueSecs}
+        totalSecs={totalSecs}
+      />
+    );
+  }
 
   return (
     <SectionCard
@@ -987,8 +1326,8 @@ function CostSection({
               <QualityPicker value={imageModel} onChange={setImageModel} />
             </div>
             <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Google" value={g} min={0} max={10} onChange={setG} disabled={false} />
-            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={!socialContents} />
-            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={!socialContents} />
+            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={!sourceGather} />
+            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={!sourceGather} />
           </>
         )}
 

@@ -1,25 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
-import {
-  BarChart3,
-  ChevronRight,
-  ImageOff,
-  Loader2,
-  MapPin,
-  Percent,
-  QrCode,
-  RefreshCcw,
-  Search,
-  Store,
-  Users,
-} from "lucide-react";
-import {
-  getVenue,
-  searchVenues,
-  type AdminVenue,
-  type VenueHit,
-} from "./actions";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ImageOff, RefreshCcw, Search } from "lucide-react";
+import { getVenue, type AdminVenue } from "./actions";
+import { isUnitSection, UNIT_SECTIONS, type UnitSection } from "./nav";
 import { ErrorNote, Spinner } from "./ui";
 import { PlaceSection } from "./sections/PlaceSection";
 import { PromosSection } from "./sections/PromosSection";
@@ -27,106 +13,94 @@ import { ScanSection } from "./sections/ScanSection";
 import { PerformanceSection } from "./sections/PerformanceSection";
 import { TeamSection } from "./sections/TeamSection";
 
-type Section = "place" | "promos" | "scan" | "performance" | "team";
-
-const NAV: { id: Section; label: string; Icon: typeof MapPin }[] = [
-  { id: "place", label: "Place", Icon: MapPin },
-  { id: "promos", label: "Promos", Icon: Percent },
-  { id: "scan", label: "Scan", Icon: QrCode },
-  { id: "performance", label: "Performance", Icon: BarChart3 },
-  { id: "team", label: "Team", Icon: Users },
-];
-
-export function SingleUnitConsole() {
+export function SingleUnitConsole({ unitId }: { unitId: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [venue, setVenue] = useState<AdminVenue | null>(null);
-  const [section, setSection] = useState<Section>("place");
-  const [loadingVenue, setLoadingVenue] = useState(false);
+  const [loadingVenue, setLoadingVenue] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadVenue = useCallback(async (venueId: string) => {
+  const sectionParam = searchParams.get("section");
+  const section: UnitSection = isUnitSection(sectionParam) ? sectionParam : "place";
+
+  const loadVenue = useCallback(async (id: string) => {
     setLoadingVenue(true);
     setLoadError(null);
-    const r = await getVenue(venueId);
+    const r = await getVenue(id);
     setLoadingVenue(false);
     if (!r.ok) {
+      setVenue(null);
       setLoadError(r.error);
       return;
     }
     setVenue(r.data);
   }, []);
 
-  const reloadVenue = useCallback(async () => {
-    if (venue) await loadVenue(venue.id);
-  }, [venue, loadVenue]);
+  useEffect(() => {
+    void loadVenue(unitId);
+  }, [unitId, loadVenue]);
+
+  const changeUnit = () => {
+    router.push("/manage-single/select");
+  };
 
   if (loadingVenue) {
-    return <Spinner label="Loading venue…" />;
+    return <Spinner label="Loading unit…" />;
   }
 
   if (!venue) {
     return (
-      <div className="mt-6 sm:mt-8">
+      <div>
         {loadError && <ErrorNote message={loadError} />}
-        <VenuePicker onPick={loadVenue} />
+        <button
+          type="button"
+          onClick={changeUnit}
+          className="border-border hover:border-foreground/40 mt-4 inline-flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition"
+        >
+          <Search className="h-4 w-4" /> Back to Edit Single Unit
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-4 sm:mt-8 sm:gap-6 lg:flex-row">
-      <MobileVenueNav
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <MobileUnitNav
+        unitId={unitId}
         venue={venue}
         section={section}
-        onSelect={setSection}
-        onChangeVenue={() => {
-          setVenue(null);
-          setSection("place");
-        }}
-        onReload={reloadVenue}
+        onChangeUnit={changeUnit}
+        onReload={() => void loadVenue(unitId)}
       />
 
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0">
         {section === "place" && <PlaceSection venue={venue} onSaved={setVenue} />}
         {section === "promos" && <PromosSection venue={venue} onSaved={setVenue} />}
         {section === "scan" && <ScanSection venue={venue} />}
         {section === "performance" && <PerformanceSection venue={venue} />}
         {section === "team" && <TeamSection venue={venue} />}
       </main>
-
-      <RightMenu
-        className="hidden lg:block"
-        venue={venue}
-        section={section}
-        onSelect={setSection}
-        onChangeVenue={() => {
-          setVenue(null);
-          setSection("place");
-        }}
-        onReload={reloadVenue}
-      />
     </div>
   );
 }
 
-// ── Mobile venue bar + horizontal section tabs ─────────────────────────────
-
-function MobileVenueNav({
+function MobileUnitNav({
+  unitId,
   venue,
   section,
-  onSelect,
-  onChangeVenue,
+  onChangeUnit,
   onReload,
 }: {
+  unitId: string;
   venue: AdminVenue;
-  section: Section;
-  onSelect: (s: Section) => void;
-  onChangeVenue: () => void;
+  section: UnitSection;
+  onChangeUnit: () => void;
   onReload: () => void;
 }) {
   return (
     <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-20 -mx-4 rounded-none border-b px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:hidden">
       <div className="flex items-start gap-3">
-        <VenueThumb photo={(venue.photos?.[0] as string | undefined) ?? null} name={venue.name} />
+        <UnitThumb photo={(venue.photos?.[0] as string | undefined) ?? null} name={venue.name} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{venue.name}</p>
           <p className="text-muted-foreground truncate text-xs">
@@ -137,7 +111,7 @@ function MobileVenueNav({
         <button
           type="button"
           onClick={onReload}
-          title="Reload venue"
+          title="Reload unit"
           className="border-border hover:border-foreground/40 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
         >
           <RefreshCcw className="h-3.5 w-3.5" />
@@ -146,23 +120,24 @@ function MobileVenueNav({
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          onClick={onChangeVenue}
+          onClick={onChangeUnit}
           className="border-border hover:border-foreground/40 inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition"
         >
-          <Search className="h-3.5 w-3.5" /> Change venue
+          <Search className="h-3.5 w-3.5" /> Change unit
         </button>
       </div>
       <nav
-        aria-label="Venue sections"
+        aria-label="Unit sections"
         className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {NAV.map(({ id, label, Icon }) => {
+        {UNIT_SECTIONS.map(({ id, label, Icon }) => {
           const active = section === id;
+          const href = `/manage-single/${unitId}?section=${id}`;
           return (
-            <button
+            <Link
               key={id}
-              type="button"
-              onClick={() => onSelect(id)}
+              href={href}
+              scroll={false}
               aria-current={active ? "page" : undefined}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                 active
@@ -172,7 +147,7 @@ function MobileVenueNav({
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
               {label}
-            </button>
+            </Link>
           );
         })}
       </nav>
@@ -180,82 +155,7 @@ function MobileVenueNav({
   );
 }
 
-// ── Right-hand venue menu (desktop) ────────────────────────────────────────
-
-function RightMenu({
-  className,
-  venue,
-  section,
-  onSelect,
-  onChangeVenue,
-  onReload,
-}: {
-  className?: string;
-  venue: AdminVenue;
-  section: Section;
-  onSelect: (s: Section) => void;
-  onChangeVenue: () => void;
-  onReload: () => void;
-}) {
-  return (
-    <aside className={`lg:w-64 lg:shrink-0 ${className ?? ""}`}>
-      <div className="border-border bg-card sticky top-6 rounded-2xl border p-3">
-        {/* Selected venue header */}
-        <div className="flex items-start gap-3 p-2">
-          <VenueThumb photo={(venue.photos?.[0] as string | undefined) ?? null} name={venue.name} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{venue.name}</p>
-            <p className="text-muted-foreground truncate text-xs">
-              {venue.category_label ?? venue.category ?? "—"}
-              {venue.status ? ` · ${venue.status}` : ""}
-            </p>
-          </div>
-        </div>
-        <div className="mt-1 flex gap-1 px-1">
-          <button
-            type="button"
-            onClick={onChangeVenue}
-            className="border-border hover:border-foreground/40 inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition"
-          >
-            <Search className="h-3.5 w-3.5" /> Change venue
-          </button>
-          <button
-            type="button"
-            onClick={onReload}
-            title="Reload venue"
-            className="border-border hover:border-foreground/40 inline-flex h-8 w-8 items-center justify-center rounded-lg border transition"
-          >
-            <RefreshCcw className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        <nav className="mt-3 flex flex-col gap-0.5">
-          {NAV.map(({ id, label, Icon }) => {
-            const active = section === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onSelect(id)}
-                aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  active
-                    ? "bg-foreground text-background"
-                    : "text-foreground hover:bg-background"
-                }`}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    </aside>
-  );
-}
-
-function VenueThumb({ photo, name }: { photo: string | null; name: string }) {
+function UnitThumb({ photo, name }: { photo: string | null; name: string }) {
   if (!photo) {
     return (
       <div className="border-border bg-background text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border">
@@ -270,96 +170,5 @@ function VenueThumb({ photo, name }: { photo: string | null; name: string }) {
       alt={name}
       className="border-border h-11 w-11 shrink-0 rounded-lg border object-cover"
     />
-  );
-}
-
-// ── Venue picker (search) ──────────────────────────────────────────────────
-
-function VenuePicker({ onPick }: { onPick: (venueId: string) => void }) {
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState<VenueHit[]>([]);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
-
-  // Debounced search. All state lands inside the timeout callback so nothing
-  // is set synchronously within the effect body.
-  useEffect(() => {
-    const query = q.trim();
-    const t = setTimeout(
-      () => {
-        if (query.length < 2) {
-          setHits([]);
-          setSearched(false);
-          return;
-        }
-        start(async () => {
-          setError(null);
-          const r = await searchVenues(query);
-          setSearched(true);
-          if (!r.ok) {
-            setError(r.error);
-            setHits([]);
-            return;
-          }
-          setHits(r.data);
-        });
-      },
-      query.length < 2 ? 0 : 300,
-    );
-    return () => clearTimeout(t);
-  }, [q]);
-
-  return (
-    <div className="border-border bg-card rounded-2xl border p-4 sm:p-6">
-      <div className="flex items-center gap-2">
-        <Store className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">Select venue</h2>
-      </div>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Search by name or slug, or paste a venue id.
-      </p>
-
-      <div className="border-border bg-background focus-within:border-foreground mt-5 flex items-center gap-2 rounded-xl border px-3">
-        <Search className="text-muted-foreground h-4 w-4 shrink-0" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="e.g. Tetetlán, café, a venue id…"
-          autoFocus
-          className="h-11 flex-1 bg-transparent text-sm outline-none"
-        />
-        {pending && <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />}
-      </div>
-
-      {error && <ErrorNote message={error} />}
-
-      <div className="mt-4 flex flex-col gap-2">
-        {hits.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            onClick={() => onPick(v.id)}
-            className="border-border bg-background hover:border-foreground/40 flex items-center gap-3 rounded-xl border p-3 text-left transition"
-          >
-            <VenueThumb photo={v.photo} name={v.name} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{v.name}</p>
-              <p className="text-muted-foreground truncate text-xs">
-                {v.category_label ?? v.category ?? "—"}
-                {v.status ? ` · ${v.status}` : ""}
-                {v.address ? ` · ${v.address}` : ""}
-              </p>
-            </div>
-            <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
-          </button>
-        ))}
-        {searched && !pending && hits.length === 0 && !error && (
-          <p className="text-muted-foreground py-6 text-center text-sm">
-            No venues match “{q.trim()}”.
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
