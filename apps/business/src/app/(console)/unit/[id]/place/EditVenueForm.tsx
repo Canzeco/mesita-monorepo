@@ -15,6 +15,9 @@ import {
 import {
   PLACE_DESCRIPTION_MAX,
   PLACE_HOUR_DAYS,
+  PLACE_VENUE_NAME_MAX,
+  PLACE_PR_WHATSAPP_MAX,
+  PLACE_PR_INSTAGRAM_MAX,
   PlaceBasicsModule,
   PlaceChannelsModule,
   PlaceMediaModule,
@@ -35,9 +38,10 @@ import { cn, errMsg } from "@/lib/utils";
 const DAYS = PLACE_HOUR_DAYS;
 const MAX_SHIFTS_PER_DAY = 1;
 const SAVED_TOAST_MS = 2200;
-const VENUE_NAME_MAX = 120;
+const VENUE_NAME_MAX = PLACE_VENUE_NAME_MAX;
 const DESCRIPTION_MAX = PLACE_DESCRIPTION_MAX;
 const TAG_MAX = 40;
+const TAG_MAX_COUNT = 20;
 
 function nullableUrl(v: string): string | null {
   const t = v.trim();
@@ -143,11 +147,11 @@ function venueToFormState(venue: MyVenue): PlaceFormState {
     tags: venue.tags ?? [],
     phone: venue.phone ?? "",
     whatsapp_url: venue.whatsapp_url ?? "",
-    whatsapp_pr_urls: venue.whatsapp_pr_urls ?? [],
+    whatsapp_pr_urls: (venue.whatsapp_pr_urls ?? []).slice(0, PLACE_PR_WHATSAPP_MAX),
     email: venue.email ?? "",
     website_url: venue.website_url ?? "",
     instagram_url: venue.instagram_url ?? "",
-    instagram_pr_urls: venue.instagram_pr_urls ?? [],
+    instagram_pr_urls: (venue.instagram_pr_urls ?? []).slice(0, PLACE_PR_INSTAGRAM_MAX),
     facebook_url: venue.facebook_url ?? "",
     tiktok_url: venue.tiktok_url ?? "",
     youtube_url: venue.youtube_url ?? "",
@@ -242,18 +246,21 @@ export function EditVenueForm({
       photos: v.photos.slice(0, MAX_PHOTOS),
       tags: v.tags
         .map((t) => t.trim().toLowerCase().slice(0, TAG_MAX))
-        .filter(Boolean),
+        .filter(Boolean)
+        .slice(0, TAG_MAX_COUNT),
       phone: nullable(v.phone),
       whatsapp_url: nullableUrl(v.whatsapp_url),
       whatsapp_pr_urls: v.whatsapp_pr_urls
         .map(nullableUrl)
-        .filter((u): u is string => u !== null),
+        .filter((u): u is string => u !== null)
+        .slice(0, PLACE_PR_WHATSAPP_MAX),
       email: v.email.trim() === "" ? null : v.email.trim(),
       website_url: nullableUrl(v.website_url),
       instagram_url: nullableUrl(v.instagram_url),
       instagram_pr_urls: v.instagram_pr_urls
         .map(nullableUrl)
-        .filter((u): u is string => u !== null),
+        .filter((u): u is string => u !== null)
+        .slice(0, PLACE_PR_INSTAGRAM_MAX),
       facebook_url: nullableUrl(v.facebook_url),
       tiktok_url: nullableUrl(v.tiktok_url),
       youtube_url: nullableUrl(v.youtube_url),

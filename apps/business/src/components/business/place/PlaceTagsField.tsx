@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
 
 const TAG_MAX_LEN = 40;
-const TAG_MAX_COUNT = 12;
+const TAG_MAX_COUNT = 20;
 
 export function PlaceTagsField({
   value,

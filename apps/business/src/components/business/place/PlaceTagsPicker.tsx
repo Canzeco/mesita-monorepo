@@ -16,6 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
 
+const TAG_MAX_COUNT = 20;
+
 // Grouped, searchable multi-select for the controlled tag vocabulary.
 //
 //   <PlaceTagsPicker value={form.tags} onChange={(t) => set("tags", t)} />
@@ -105,10 +107,12 @@ export function PlaceTagsPicker({
   const toggle = (slug: string) => {
     if (selected.has(slug)) {
       onChange(value.filter((item) => item !== slug));
-    } else {
+    } else if (value.length < TAG_MAX_COUNT) {
       onChange([...value, slug]);
     }
   };
+
+  const atLimit = value.length >= TAG_MAX_COUNT;
 
   const removeTag = (slug: string) => {
     onChange(value.filter((item) => item !== slug));
@@ -204,6 +208,7 @@ export function PlaceTagsPicker({
                         <button
                           key={tag.slug}
                           type="button"
+                          disabled={!isOn && atLimit}
                           // Plain buttons (not DropdownMenuItem) so a click
                           // toggles selection without closing the popover —
                           // the owner can pick several tags in one pass.
@@ -211,6 +216,7 @@ export function PlaceTagsPicker({
                           className={cn(
                             "hover:bg-muted/60 flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition",
                             isOn && "bg-muted/40",
+                            !isOn && atLimit && "cursor-not-allowed opacity-40",
                           )}
                         >
                           <span
@@ -238,7 +244,7 @@ export function PlaceTagsPicker({
       )}
 
       <p className="text-muted-foreground text-[10px] tabular-nums">
-        {value.length} selected
+        {value.length}/{TAG_MAX_COUNT} selected
       </p>
     </div>
   );
