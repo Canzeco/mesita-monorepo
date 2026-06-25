@@ -15,6 +15,7 @@ import {
   Layers,
   Link2,
   Loader2,
+  Lock,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
@@ -419,13 +420,52 @@ function GatherSection({
     <SectionCard
       icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
       title="Gather"
-      subtitle="How much to pull per source before analysis: website crawl depth, image candidates per source (≤10 each), and Instagram posts."
+      subtitle="The first funnel stage: each source pulls a capped pool of candidates. These counts set how deep to pull — website crawl depth plus images/posts per source — never how many get analyzed or saved later. Every pool arrives already ranked by the fixed per-source rule below; the counts change the depth, not the order."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <NumberField icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />} label="Website pages" value={pages} min={1} max={20} onChange={setPages} disabled={pending} />
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts" value={posts} min={0} max={30} onChange={setPosts} disabled={pending} />
+      </div>
+
+      {/* Fixed per-source pre-sort — read-only. Each pool arrives already ranked
+          by these rules as candidates land; only the counts above are tunable. */}
+      <div className="border-border bg-background mt-4 rounded-xl border p-4">
+        <div className="flex items-center gap-2">
+          <Lock className="text-muted-foreground h-3.5 w-3.5" />
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+            Fixed pre-sort
+          </p>
+        </div>
+        <p className="text-muted-foreground mt-1.5 max-w-3xl text-xs leading-relaxed">
+          As candidates land, each source ranks its own pool by a fixed rule —
+          not configurable. The counts above only decide how deep to pull from
+          the top of each ranked pool; vision then analyzes the best of them.
+        </p>
+        <ul className="mt-3 space-y-2 text-sm">
+          <li className="flex items-start gap-2">
+            <ImageIcon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-medium">Google</span> — Places default order
+              (Google&apos;s own hero-first ranking; no re-sort).
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Globe className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-medium">Website</span> — largest images first
+              across the crawled pages; logos, icons and sprites dropped.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Instagram className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-medium">Instagram</span> — most-liked posts
+              first (ties broken by comments; pinned posts boosted).
+            </span>
+          </li>
+        </ul>
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
