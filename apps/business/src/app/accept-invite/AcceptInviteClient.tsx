@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiAcceptEditorInvite } from "@/lib/api/team";
+import { placePath } from "@/lib/business-route-contract";
 import { errMsg } from "@/lib/utils";
 
 // Business-side accept page. The waiter accept flow runs from WhatsApp /
@@ -61,7 +62,7 @@ export function AcceptInviteClient() {
         setVenueId(res.venueId);
         setStatus("success");
         window.setTimeout(() => {
-          router.replace(`/unit/${res.venueId}/place`);
+          router.replace(placePath(res.venueId));
         }, 1200);
       } catch (err) {
         if (cancelled) return;
@@ -112,7 +113,7 @@ export function AcceptInviteClient() {
         </p>
         {venueId && (
           <Link
-            href={`/unit/${venueId}/place`}
+            href={placePath(venueId)}
             className="text-secondary text-xs font-semibold"
           >
             Open now

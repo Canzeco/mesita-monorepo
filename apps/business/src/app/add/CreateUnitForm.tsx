@@ -37,6 +37,7 @@ import {
 } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
+import { placePath } from "@/lib/business-route-contract";
 import { isOtpCode } from "@/lib/validators";
 
 const SEARCH_DEBOUNCE_MS = 220;
@@ -188,7 +189,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     supabase,
     signedInEmail,
     onApproved: (venueId) => {
-      router.push(`/unit/${venueId}/place`);
+      router.push(placePath(venueId));
       router.refresh();
     },
     onAwaitingAdmin: () => {

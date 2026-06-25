@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Check, Loader2, Save } from "lucide-react";
 import { SubTabs } from "@/components/business/SubTabs";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { placePath } from "@/lib/business-route-contract";
 import {
   apiUpdateVenue,
   type MyVenue,
@@ -26,7 +27,6 @@ import {
 } from "@/components/business/place";
 import {
   PLACE_SUB_TABS,
-  resolvePlaceSubTab,
   type PlaceSubTab,
 } from "@/components/business/place/place-subtabs";
 import { MAX_PHOTOS } from "@/components/business/place/place-upload-utils";
@@ -163,21 +163,18 @@ function venueToFormState(venue: MyVenue): PlaceFormState {
   };
 }
 
-export function EditVenueForm({ venue }: { venue: MyVenue }) {
+export function EditVenueForm({
+  venue,
+  tab,
+}: {
+  venue: MyVenue;
+  tab: PlaceSubTab;
+}) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const supabase = useBrowserSupabase();
 
-  const tabParam = searchParams.get("tab");
-  const tab: PlaceSubTab = resolvePlaceSubTab(tabParam);
-
   const setTab = (next: PlaceSubTab) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (next === "preview") params.delete("tab");
-    else params.set("tab", next);
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    router.replace(placePath(venue.id, next), { scroll: false });
   };
 
   const [v, setV] = useState<PlaceFormState>(() => venueToFormState(venue));

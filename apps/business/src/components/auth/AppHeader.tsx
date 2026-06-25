@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { authSignOut } from "@/app/auth/actions";
+import { placePath } from "@/lib/business-route-contract";
 
 // Slim top bar used on the non-dashboard authenticated surfaces
 // (/, /onboard, /add). Brand on the left links back to home; account
@@ -88,7 +89,7 @@ function AccountMenu({
             {venues.map((v) => (
               <DropdownMenuItem key={v.id} asChild>
                 <Link
-                  href={`/unit/${v.id}/place`}
+                  href={placePath(v.id)}
                   className="cursor-pointer truncate"
                 >
                   <MapPin className="text-muted-foreground h-3.5 w-3.5" />

@@ -17,7 +17,7 @@ import type { Database } from "./database.types";
 // requires an Edge Function call per request, which is too expensive.
 // Onboard pages and dashboards each do their own server-side check.
 
-const PROTECTED_PREFIXES = ["/unit", "/onboard", "/add", "/central"];
+const PROTECTED_PREFIXES = ["/unit", "/onboard", "/add", "/central", "/settings"];
 
 // Routes where a signed-in visitor should be bounced through
 // /auth/post-signin. Only `/` now — the legacy /sign-in and /sign-up

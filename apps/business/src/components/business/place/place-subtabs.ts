@@ -1,7 +1,7 @@
 import {
+  ClipboardList,
   Eye,
   Images,
-  LayoutList,
   Link2,
   Star,
 } from "lucide-react";
@@ -16,7 +16,7 @@ export type PlaceSubTab =
 
 export const PLACE_SUB_TABS: readonly SubTabItem<PlaceSubTab>[] = [
   { id: "preview", label: "Preview", Icon: Eye },
-  { id: "basics", label: "Basics", Icon: LayoutList },
+  { id: "basics", label: "Basics", Icon: ClipboardList },
   { id: "media", label: "Media", Icon: Images },
   { id: "channels", label: "Channels", Icon: Link2 },
   { id: "reviews", label: "Reviews", Icon: Star },

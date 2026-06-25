@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -20,9 +20,16 @@ import { cn } from "@/lib/utils";
 import { resolveVenueCategoryName } from "@/lib/venue-category";
 import type { MyVenue } from "@/lib/api/venues";
 import { useUnitChrome } from "./UnitChrome";
+import {
+  BUSINESS_ROUTES,
+  dockHrefForSection,
+  pathnameUnitId,
+  venueSwitchHref,
+} from "@/lib/business-route-contract";
+import { resolveActiveUnitId } from "@/lib/active-unit";
 
 type NavItem = {
-  slug: string;
+  slug: "place" | "promos" | "scan" | "performance" | "team";
   Icon: LucideIcon;
   label: string;
 };
@@ -35,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { slug: "team", Icon: Users, label: "Team" },
 ];
 
-export function UnitDock({ unitId }: { unitId: string }) {
+export function UnitDock() {
   const chrome = useUnitChrome();
   const pathname = usePathname() ?? "";
   const footerRef = useRef<HTMLElement>(null);
@@ -44,14 +51,29 @@ export function UnitDock({ unitId }: { unitId: string }) {
   const [mounted, setMounted] = useState(false);
 
   const venues = chrome?.venues ?? [];
+  const venueIds = useMemo(() => venues.map((v) => v.id), [venues]);
+  const urlUnitId = pathnameUnitId(pathname);
+  const activeUnitId = resolveActiveUnitId({
+    pathnameUnitId: urlUnitId,
+    cookieId: chrome?.activeVenueId ?? null,
+    venueIds,
+  });
   const activeVenue =
-    venues.find((v) => v.id === (chrome?.activeVenueId ?? unitId)) ??
-    venues[0] ??
-    null;
+    venues.find((v) => v.id === activeUnitId) ?? venues[0] ?? null;
   const isSuperAdmin = chrome?.isSuperAdmin ?? false;
-  const currentSlug =
-    pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1] ?? "place";
   const canOpenVenueMenu = !isSuperAdmin && !!activeVenue;
+
+  const currentSection = useMemo(() => {
+    if (pathname === BUSINESS_ROUTES.central) return "place";
+    const match = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
+    if (match === "place" || match === "promos" || match === "scan") {
+      return match;
+    }
+    if (match === "performance" || match === "team") return match;
+    return null;
+  }, [pathname]);
+
+  const settingsActive = pathname === BUSINESS_ROUTES.settings;
 
   useEffect(() => setMounted(true), []);
 
@@ -99,7 +121,7 @@ export function UnitDock({ unitId }: { unitId: string }) {
               {venues.map((v) => (
                 <Link
                   key={v.id}
-                  href={`/unit/${v.id}/${currentSlug}`}
+                  href={venueSwitchHref(v.id, pathname)}
                   onClick={() => setPickerOpen(false)}
                   className={cn(
                     "hover:bg-muted/40 flex items-center gap-3 px-3 py-2.5 transition",
@@ -144,11 +166,15 @@ export function UnitDock({ unitId }: { unitId: string }) {
           className="grid grid-cols-5 px-2 pt-2 pb-1"
         >
           {NAV_ITEMS.map(({ slug, Icon, label }) => {
-            const active = currentSlug === slug;
+            const active =
+              slug === "place"
+                ? pathname === BUSINESS_ROUTES.central ||
+                  currentSection === "place"
+                : currentSection === slug;
             return (
               <Link
                 key={slug}
-                href={`/unit/${unitId}/${slug}`}
+                href={dockHrefForSection(slug, activeUnitId)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex flex-col items-center gap-1 rounded-xl py-1 text-[10px] font-medium transition",
@@ -225,11 +251,11 @@ export function UnitDock({ unitId }: { unitId: string }) {
           )}
 
           <Link
-            href={`/unit/${unitId}/settings`}
+            href={BUSINESS_ROUTES.settings}
             aria-label="Account settings"
             className={cn(
               "bg-dock-surface hover:bg-dock-surface-hover flex h-11 w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl transition",
-              currentSlug === "settings" &&
+              settingsActive &&
                 "bg-primary/20 ring-primary/35 ring-1 text-primary",
             )}
           >

@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Crown,
   Instagram,
@@ -13,9 +13,9 @@ import {
 import { SubTabs } from "@/components/business/SubTabs";
 import {
   PROMOS_SUB_TABS,
-  resolvePromosSubTab,
   type PromosSubTab,
 } from "@/components/business/promos/promos-subtabs";
+import { promosPath } from "@/lib/business-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
 import { Badge } from "@/components/ui/badge";
@@ -175,20 +175,18 @@ const SUB_VISUAL: Record<
 
 // ─── Client ───────────────────────────────────────────────────────────────
 
-export function PromosClient({ venue }: { venue: MyVenue }) {
+export function PromosClient({
+  venue,
+  tab,
+}: {
+  venue: MyVenue;
+  tab: PromosSubTab;
+}) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const supabase = useBrowserSupabase();
 
-  const tab: PromosSubTab = resolvePromosSubTab(searchParams.get("tab"));
-
   const setTab = (next: PromosSubTab) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (next === "plan") params.delete("tab");
-    else params.set("tab", next);
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    router.replace(promosPath(venue.id, next), { scroll: false });
   };
 
   const [pending, startSubmit] = useTransition();

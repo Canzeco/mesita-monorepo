@@ -7,8 +7,7 @@ import type { MyVenue } from "@/lib/api/venues";
 // to the app bar so it can render the venue switcher without every page
 // having to re-plumb props. Consumed by UnitDock.
 export type UnitChrome = {
-  unitId: string;
-  activeVenueId: string;
+  activeVenueId: string | null;
   venues: MyVenue[];
   isSuperAdmin: boolean;
 };

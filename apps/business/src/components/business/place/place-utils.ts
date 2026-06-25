@@ -46,32 +46,12 @@ export type VenueVerificationPresentation = {
 };
 
 export function resolveVenueVerification(
-  venue: MyVenue,
+  _venue: MyVenue,
 ): VenueVerificationPresentation {
-  if (venue.listing_type === "partner") {
-    return { label: "Verified", tone: "verified" };
-  }
-
-  if (
-    venue.status === "pending_verification" ||
-    venue.status === "pending_review"
-  ) {
-    return {
-      label: "Pending",
-      hint: "Ownership under review",
-      tone: "pending",
-    };
-  }
-
-  if (venue.listing_type === "web") {
-    return {
-      label: "Not verified",
-      hint: "Verify ownership to become a partner",
-      tone: "unverified",
-    };
-  }
-
-  return { label: "Not verified", tone: "unverified" };
+  // MyVenue is only returned for signed-in venue members. If Place is
+  // reachable, ownership is verified — listing_type is catalog tier, not
+  // ownership (see mesita-supabase venue-ownership.ts).
+  return { label: "Verified", tone: "verified" };
 }
 
 export function resolveVenueTierLabel(venue: MyVenue): string {
