@@ -5,11 +5,14 @@ import { PageHeader } from "@/components/PageContainer";
 import { AdeaTabNav } from "./AdeaTabNav";
 import { ADEA_SUBROUTES } from "./nav";
 
+const ADEA_WHAT =
+  "ADEA — Atlas Data Enrichment Agent — builds venue profiles from the open web. When a unit is created or refreshed, it discovers sources, gathers Google and social content, analyzes photos and text, and writes the listing.";
+
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/adea-config/configuration":
-    "Tier gates, gather limits, vision, and synthesis quality for the ADEA enrichment pipeline.",
+    `${ADEA_WHAT} Parameters control source tiers, gather limits, vision, and synthesis quality.`,
   "/adea-config/calculator":
-    "Rough cost and runtime estimate to enrich one new venue with your current settings.",
+    `${ADEA_WHAT} Calculator previews cost and runtime for one enrichment run at your current settings.`,
 };
 
 export function AdeaLayoutShell({ children }: { children: React.ReactNode }) {

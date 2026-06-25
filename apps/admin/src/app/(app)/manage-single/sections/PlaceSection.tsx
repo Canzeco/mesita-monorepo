@@ -46,6 +46,10 @@ type Form = {
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
+const VENUE_NAME_MAX = 80;
+const TAGS_PER_VENUE_MAX = 20;
+const PHOTOS_MAX = 10;
+
 function venueToForm(v: AdminVenue): Form {
   const hours = {} as Record<Day, DayHours>;
   for (const d of DAYS) {
@@ -58,7 +62,7 @@ function venueToForm(v: AdminVenue): Form {
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
-    name: v.name ?? "",
+    name: (v.name ?? "").slice(0, VENUE_NAME_MAX),
     category: v.category ?? "",
     description: v.description ?? "",
     phone: v.phone ?? "",
@@ -81,13 +85,21 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
   }
   const patch: Record<string, unknown> = {
     id,
-    name: f.name.trim(),
+    name: f.name.trim().slice(0, VENUE_NAME_MAX),
     category: nz(f.category),
     description: nz(f.description),
     phone: nz(f.phone),
     email: nz(f.email),
-    tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
-    photos: f.photos.split("\n").map((p) => p.trim()).filter(Boolean),
+    tags: f.tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, TAGS_PER_VENUE_MAX),
+    photos: f.photos
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .slice(0, PHOTOS_MAX),
     hours,
   };
   for (const c of CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
@@ -150,7 +162,13 @@ export function PlaceSection({
         subtitle={`Profile for ${venue.name}. Name, category, description and contact.`}
       >
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <TextField label="Name" value={form.name} onChange={(x) => set("name", x)} disabled={pending} />
+          <TextField
+            label="Name"
+            value={form.name}
+            onChange={(x) => set("name", x.slice(0, VENUE_NAME_MAX))}
+            maxLength={VENUE_NAME_MAX}
+            disabled={pending}
+          />
           <TextField label="Category (slug)" value={form.category} onChange={(x) => set("category", x)} placeholder="e.g. cafe" disabled={pending} />
         </div>
         <div className="mt-4">
@@ -161,7 +179,17 @@ export function PlaceSection({
           <TextField label="Email" type="email" value={form.email} onChange={(x) => set("email", x)} disabled={pending} />
         </div>
         <div className="mt-4">
-          <TextField label="Tags (comma-separated)" value={form.tags} onChange={(x) => set("tags", x)} placeholder="brunch, terrace, pet-friendly" disabled={pending} />
+          <TextField
+            label="Tags (comma-separated)"
+            value={form.tags}
+            onChange={(x) => set("tags", x)}
+            placeholder="brunch, terrace, pet-friendly"
+            disabled={pending}
+          />
+          <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+            {form.tags.split(",").map((t) => t.trim()).filter(Boolean).length}/
+            {TAGS_PER_VENUE_MAX} tags
+          </p>
         </div>
       </SectionCard>
 
@@ -227,6 +255,9 @@ export function PlaceSection({
         )}
         <div className="mt-4">
           <TextArea label="Photo URLs" value={form.photos} onChange={(x) => set("photos", x)} rows={5} placeholder={"https://…\nhttps://…"} disabled={pending} />
+          <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+            {photoUrls.length}/{PHOTOS_MAX} photos
+          </p>
         </div>
       </SectionCard>
 

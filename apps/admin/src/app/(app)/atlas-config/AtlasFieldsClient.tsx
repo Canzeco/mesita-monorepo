@@ -1,66 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useMemo } from "react";
 import type { AtlasFieldsPayload } from "./actions";
 
 export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
-  const [q, setQ] = useState("");
-
-  const needle = q.trim().toLowerCase();
-  const categories = useMemo(() => {
-    if (!needle) return data.categories;
-    return data.categories.filter(
-      (c) =>
-        c.slug.includes(needle) ||
-        c.label.toLowerCase().includes(needle) ||
-        c.section.toLowerCase().includes(needle),
-    );
-  }, [data.categories, needle]);
-
-  const tags = useMemo(() => {
-    if (!needle) return data.tags;
-    return data.tags.filter(
-      (t) =>
-        t.slug.includes(needle) ||
-        t.label_en.toLowerCase().includes(needle) ||
-        t.label_es.toLowerCase().includes(needle) ||
-        t.facet.includes(needle),
-    );
-  }, [data.tags, needle]);
-
   const categoriesBySection = useMemo(() => {
-    const map = new Map<string, typeof categories>();
-    for (const c of categories) {
+    const map = new Map<string, typeof data.categories>();
+    for (const c of data.categories) {
       const list = map.get(c.section) ?? [];
       list.push(c);
       map.set(c.section, list);
     }
     return map;
-  }, [categories]);
+  }, [data.categories]);
 
   const tagsByFacet = useMemo(() => {
-    const map = new Map<string, typeof tags>();
-    for (const t of tags) {
+    const map = new Map<string, typeof data.tags>();
+    for (const t of data.tags) {
       const list = map.get(t.facet) ?? [];
       list.push(t);
       map.set(t.facet, list);
     }
     return map;
-  }, [tags]);
+  }, [data.tags]);
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="border-border bg-background focus-within:border-foreground flex items-center gap-2 rounded-xl border px-3">
-        <Search className="text-muted-foreground h-4 w-4 shrink-0" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Filter categories and tags…"
-          className="h-10 flex-1 bg-transparent text-sm outline-none"
-        />
-      </div>
-
       <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
         <h2 className="font-display text-base font-semibold tracking-tight">Field limits</h2>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -86,7 +51,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-base font-semibold tracking-tight">Categories</h2>
           <p className="text-muted-foreground text-xs">
-            {categories.length} shown · {data.counts.categories} total
+            {data.counts.categories} total
           </p>
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -112,9 +77,6 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
               </ul>
             </div>
           ))}
-          {categories.length === 0 && (
-            <p className="text-muted-foreground text-sm">No categories match.</p>
-          )}
         </div>
       </section>
 
@@ -122,8 +84,8 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-base font-semibold tracking-tight">Tags</h2>
           <p className="text-muted-foreground text-xs">
-            {tags.length} shown · {data.counts.tags} total · max{" "}
-            {data.fieldLimits.tagsPerVenue?.max ?? 12} per venue
+            {data.counts.tags} possible tags · up to{" "}
+            {data.fieldLimits.tagsPerVenue?.max ?? 20} per venue
           </p>
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -154,9 +116,6 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
               </div>
             );
           })}
-          {tags.length === 0 && (
-            <p className="text-muted-foreground text-sm">No tags match.</p>
-          )}
         </div>
       </section>
     </div>
@@ -164,6 +123,11 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
 }
 
 function humanizeKey(key: string): string {
+  if (key === "tagsPerVenue") return "Tags per venue";
+  if (key === "tagCatalogSize") return "Tag catalog";
+  if (key === "photos") return "Photos";
+  if (key === "prWhatsappNumbers") return "PR WhatsApp numbers";
+  if (key === "prInstagramAccounts") return "PR Instagram accounts";
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (c) => c.toUpperCase())
@@ -171,7 +135,18 @@ function humanizeKey(key: string): string {
 }
 
 function formatLimit(key: string, max: number): string {
-  const countKeys = new Set(["tagsPerVenue", "photos", "prLinks"]);
+  const countKeys = new Set([
+    "tagsPerVenue",
+    "tagCatalogSize",
+    "photos",
+    "prWhatsappNumbers",
+    "prInstagramAccounts",
+  ]);
+  if (key === "tagsPerVenue") return `Up to ${max.toLocaleString()}`;
+  if (key === "photos") return `Up to ${max.toLocaleString()}`;
+  if (key === "prWhatsappNumbers" || key === "prInstagramAccounts") {
+    return `Up to ${max.toLocaleString()}`;
+  }
   if (countKeys.has(key)) return max.toLocaleString();
   return `${max.toLocaleString()} chars`;
 }
