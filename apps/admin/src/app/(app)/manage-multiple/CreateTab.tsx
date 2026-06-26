@@ -113,7 +113,7 @@ export function CreateTab() {
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
         Paste Google Place IDs (one per line) or upload a CSV. Each runs the
         full create pipeline — Google lookup, catalog listing, and ADEA research.
-        Caps, tiers, and photo analysis are configured in{" "}
+        Caps, levels, and photo analysis are configured in{" "}
         <a
           href="/adea-config/configuration"
           className="text-foreground font-medium underline underline-offset-2"

@@ -22,18 +22,20 @@ import {
 } from "lucide-react";
 import { updateAtlasConfig, type SynthesisQuality } from "./actions";
 
-// ADEA node catalog — a 1:1 mirror of the reformatted "🌐 ADEA" Notion DB.
+// ADEA node catalog — a 1:1 mirror of the "🌐 Atlas" Notion DB.
 // Each row is a NODE in the enrichment pipeline, classified three ways:
 //   • Pipeline — Link (resolve a source's URL) → Contents (fetch from it) →
 //     Analysis (perceive + reason over everything gathered).
-//   • Tier (T0–T5) — the gate. The admin's tier ceiling runs every node whose
-//     tier ≤ ceiling. T0 is the always-on spine + cognition (never gated).
+//   • Source level (0–5) — the depth gate. The admin's source-level ceiling runs
+//     every node whose level ≤ ceiling. Level 0 is the always-on spine + Cognition
+//     synthesis (never gated). NOTE: the level (1–5) is the admin depth dial; the
+//     finer per-node pipeline labels are the Notion steps S0–S6.
 //   • Methods — the concrete providers. For Link nodes the list is the
 //     FALLBACK order (stop at the first confident hit); for Contents/Analysis
 //     it's the tool(s) the node runs.
-// These chips are READ-ONLY indicators — selection is driven by the tier
-// ceiling, not by editing chips. When the enrich agent fully consumes this, it
-// must mirror the same catalog server-side. Keep in sync with the ADEA DB.
+// These chips are READ-ONLY indicators — selection is driven by the source-level
+// ceiling, not by editing chips. Mirror the gating in the enricher
+// (_shared/atlas-config.ts EXEC_*_STEP). Keep in sync with the Atlas DB.
 type Pipeline = "Link" | "Contents" | "Analysis";
 
 type Method =
@@ -48,12 +50,12 @@ type Method =
   | "OpenAI LLM"
   | "OpenAI Vision";
 
-type Tier = 0 | 1 | 2 | 3 | 4 | 5;
+type Level = 0 | 1 | 2 | 3 | 4 | 5;
 
 type AdeaNode = {
   name: string;
   pipeline: Pipeline;
-  tier: Tier;
+  level: Level;
   methods: Method[];
 };
 
@@ -64,45 +66,44 @@ const FC_PPLX_AGENT: Method[] = [
 ];
 
 const ADEA_NODES: AdeaNode[] = [
-  // T0 — spine (always on, never gated)
-  { name: "Google Business Page Link", pipeline: "Link", tier: 0, methods: ["Mesita Input"] },
-  { name: "Mesita Page Link", pipeline: "Link", tier: 0, methods: ["Mesita Input"] },
-  { name: "Cognition Engine", pipeline: "Analysis", tier: 0, methods: ["OpenAI LLM"] },
-  // T1 — Google spine
-  { name: "Google Business Page Profile", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
-  { name: "Google Business Page Photos", pipeline: "Contents", tier: 1, methods: ["Google Places"] },
-  { name: "Google Business Page Reviews", pipeline: "Contents", tier: 1, methods: ["Apify"] },
-  { name: "SERP Page AI Summary", pipeline: "Contents", tier: 1, methods: ["Perplexity Agent"] },
-  // T2 — all link discovery (one Link Discovery Agent)
-  { name: "Website Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "Instagram Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "Facebook Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "OpenTable Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "UberEats Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "TripAdvisor Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "Yelp Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  { name: "TikTok Page Link", pipeline: "Link", tier: 2, methods: FC_PPLX_AGENT },
-  // T3 — source gather (parallel scrapers)
-  { name: "Website Page Contents", pipeline: "Contents", tier: 3, methods: ["Firecrawl Crawl"] },
-  { name: "Instagram Page Profile", pipeline: "Contents", tier: 3, methods: ["Apify"] },
-  { name: "Instagram Page Photos", pipeline: "Contents", tier: 3, methods: ["Apify"] },
-  { name: "Facebook Page Profile", pipeline: "Contents", tier: 3, methods: ["Apify"] },
-  // T4 — perception
-  { name: "Text Assets Processing", pipeline: "Analysis", tier: 4, methods: ["OpenAI LLM"] },
-  { name: "Image Assets Processing", pipeline: "Analysis", tier: 4, methods: ["OpenAI Vision"] },
-  // T5 — heavy third-party scrapes
-  { name: "OpenTable Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
-  { name: "TripAdvisor Page Contents", pipeline: "Contents", tier: 5, methods: ["Apify"] },
+  // Level 0 — spine (always on, never gated) · step S0
+  { name: "Google Business Page Link", pipeline: "Link", level: 0, methods: ["Mesita Input"] },
+  { name: "Mesita Page Link", pipeline: "Link", level: 0, methods: ["Mesita Input"] },
+  { name: "Cognition Engine", pipeline: "Analysis", level: 0, methods: ["OpenAI LLM"] },
+  // Level 1 — Google data · step S1
+  { name: "Google Business Page Profile", pipeline: "Contents", level: 1, methods: ["Google Places"] },
+  { name: "Google Business Page Photos", pipeline: "Contents", level: 1, methods: ["Google Places"] },
+  { name: "Google Business Page Reviews", pipeline: "Contents", level: 1, methods: ["Apify"] },
+  // Level 2 — SERP + all link discovery (one Link Discovery Agent) · steps S2–S3
+  { name: "SERP Page AI Summary", pipeline: "Contents", level: 2, methods: ["Perplexity Agent"] },
+  { name: "Website Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Instagram Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Facebook Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  { name: "OpenTable Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  { name: "UberEats Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  { name: "TripAdvisor Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Yelp Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  { name: "TikTok Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
+  // Level 3 — source gather (parallel scrapers) · step S4
+  { name: "Website Page Contents", pipeline: "Contents", level: 3, methods: ["Firecrawl Crawl"] },
+  { name: "Instagram Page Profile", pipeline: "Contents", level: 3, methods: ["Apify"] },
+  { name: "Instagram Page Photos", pipeline: "Contents", level: 3, methods: ["Apify"] },
+  { name: "Facebook Page Profile", pipeline: "Contents", level: 3, methods: ["Apify"] },
+  // Level 4 — image perception (vision funnel; text-perception leg dropped) · step S5
+  { name: "Image Assets Processing", pipeline: "Analysis", level: 4, methods: ["OpenAI Vision"] },
+  // Level 5 — heavy third-party scrapes (optional)
+  { name: "OpenTable Page Contents", pipeline: "Contents", level: 5, methods: ["Apify"] },
+  { name: "TripAdvisor Page Contents", pipeline: "Contents", level: 5, methods: ["Apify"] },
 ];
 
-// Tier metadata — execution stages T1–T5; T0 is always-on spine + final synthesis.
-const TIERS: { tier: Tier; blurb: string; alwaysOn?: boolean }[] = [
-  { tier: 0, blurb: "Identity spine & final synthesis", alwaysOn: true },
-  { tier: 1, blurb: "Google spine — listing, photos, reviews & SERP" },
-  { tier: 2, blurb: "Link discovery — all channel URLs, one agent" },
-  { tier: 3, blurb: "Source gather — website, Instagram & Facebook" },
-  { tier: 4, blurb: "Perception — text distillation & image analysis" },
-  { tier: 5, blurb: "Heavy third-party page scrapes" },
+// Source-level metadata — depth levels 1–5; level 0 is the always-on spine + final synthesis.
+const LEVELS: { level: Level; blurb: string; alwaysOn?: boolean }[] = [
+  { level: 0, blurb: "Identity spine & final synthesis (S0)", alwaysOn: true },
+  { level: 1, blurb: "Google data — listing, photos & reviews (S1)" },
+  { level: 2, blurb: "SERP + link discovery — all channel URLs, one agent (S2–S3)" },
+  { level: 3, blurb: "Source contents — website, Instagram & Facebook (S4)" },
+  { level: 4, blurb: "Image perception — vision analysis (S5)" },
+  { level: 5, blurb: "Heavy third-party page scrapes (optional)" },
 ];
 
 const CEILING_MIN = 1;
@@ -159,7 +160,7 @@ export function AtlasConfigurationClient(props: {
       <PipelineStrip />
 
       <SourcesSection
-        initialTierCeiling={props.initialSourceTierCeiling}
+        initialLevelCeiling={props.initialSourceTierCeiling}
         onSaved={setUpdatedAt}
       />
       <GatherSection
@@ -214,13 +215,13 @@ export function AtlasCalculatorClient(props: {
 // ─── Sourcing ────────────────────────────────────────────────────────────
 
 function SourcesSection({
-  initialTierCeiling,
+  initialLevelCeiling,
   onSaved,
 }: {
-  initialTierCeiling: number;
+  initialLevelCeiling: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [ceiling, setCeiling] = useState(initialTierCeiling);
+  const [ceiling, setCeiling] = useState(initialLevelCeiling);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -244,18 +245,18 @@ function SourcesSection({
     <SectionCard
       icon={<Globe className="text-muted-foreground h-4 w-4" />}
       title="Sources"
-      subtitle="Choose the highest execution tier to include. Tier 0 always runs — identity links and final synthesis. Stages at or below your ceiling run in order; higher stages are skipped."
+      subtitle="Choose the highest source level to include. Level 0 always runs — identity links and final synthesis. Levels at or below your ceiling run in order; higher levels are skipped."
       status={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
     >
       <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
-        <label className="text-sm font-medium">Max source tier</label>
+        <label className="text-sm font-medium">Max source level</label>
         <div className="flex flex-wrap items-center gap-1.5">
           <Layers className="text-muted-foreground h-4 w-4" />
           <span
             title="Required — core links and profile writing can't be turned off"
             className="border-foreground/30 bg-foreground/5 text-muted-foreground flex h-9 items-center gap-1 rounded-lg border px-2.5 text-xs font-semibold"
           >
-            T0 <span className="opacity-70">· required</span>
+            L0 <span className="opacity-70">· required</span>
           </span>
           {Array.from({ length: CEILING_MAX - CEILING_MIN + 1 }, (_, i) => CEILING_MIN + i).map((t) => (
             <button
@@ -270,26 +271,26 @@ function SourcesSection({
                   : "border-border bg-background hover:border-foreground/40"
               }`}
             >
-              T{t}
+              L{t}
             </button>
           ))}
         </div>
       </div>
 
-      <Collapsible summary={`Sources included through tier ${ceiling}`}>
+      <Collapsible summary={`Sources included through level ${ceiling}`}>
         <div className="flex flex-col gap-5">
-          {TIERS.map(({ tier, blurb, alwaysOn }) => {
-            const tierActive = alwaysOn || tier <= ceiling;
-            const nodes = ADEA_NODES.filter((n) => n.tier === tier);
+          {LEVELS.map(({ level, blurb, alwaysOn }) => {
+            const levelActive = alwaysOn || level <= ceiling;
+            const nodes = ADEA_NODES.filter((n) => n.level === level);
             return (
-              <div key={tier} className={tierActive ? "" : "opacity-50"}>
+              <div key={level} className={levelActive ? "" : "opacity-50"}>
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <TierBadge tier={tier} on={tierActive} />
+                  <LevelBadge level={level} on={levelActive} />
                   <span className="text-sm font-medium">{blurb}</span>
                   <span className="text-muted-foreground text-[11px]">
                     {alwaysOn
                       ? "· required"
-                      : tierActive
+                      : levelActive
                         ? "· included"
                         : "· not included"}
                   </span>
@@ -345,7 +346,7 @@ function PipelineBadge({ pipeline }: { pipeline: Pipeline }) {
   );
 }
 
-function TierBadge({ tier, on }: { tier: Tier; on: boolean }) {
+function LevelBadge({ level, on }: { level: Level; on: boolean }) {
   return (
     <span
       className={`inline-flex h-6 min-w-9 items-center justify-center rounded-md border px-1.5 text-xs font-semibold tabular-nums ${
@@ -354,7 +355,7 @@ function TierBadge({ tier, on }: { tier: Tier; on: boolean }) {
           : "border-border bg-card text-muted-foreground"
       }`}
     >
-      T{tier}
+      L{level}
     </span>
   );
 }
@@ -914,8 +915,8 @@ function CalcStepper({
 }
 
 function CalculatorView({
-  tier,
-  setTier,
+  level,
+  setLevel,
   quality,
   setQuality,
   imageModel,
@@ -939,8 +940,8 @@ function CalculatorView({
   perVenueSecs,
   totalSecs,
 }: {
-  tier: number;
-  setTier: (t: number) => void;
+  level: number;
+  setLevel: (t: number) => void;
   quality: SynthesisQuality;
   setQuality: (q: SynthesisQuality) => void;
   imageModel: SynthesisQuality;
@@ -964,7 +965,7 @@ function CalculatorView({
   perVenueSecs: number;
   totalSecs: number;
 }) {
-  const tierBlurb = TIERS.find((t) => t.tier === tier)?.blurb ?? "";
+  const levelBlurb = LEVELS.find((t) => t.level === level)?.blurb ?? "";
   const stages = (["pre", "gather", "post"] as const).filter((stage) =>
     lines.some((l) => l.stage === stage && l.active),
   );
@@ -978,24 +979,24 @@ function CalculatorView({
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-start">
         <aside className="flex flex-col gap-4">
-          <CalcPanel title="Source tier" icon={<Layers className="h-3.5 w-3.5" />}>
+          <CalcPanel title="Source level" icon={<Layers className="h-3.5 w-3.5" />}>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((t) => (
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setTier(t)}
+                  onClick={() => setLevel(t)}
                   className={`h-9 flex-1 rounded-lg border text-xs font-semibold transition ${
-                    tier === t
+                    level === t
                       ? "border-foreground bg-foreground text-background"
                       : "border-border bg-background hover:border-foreground/40"
                   }`}
                 >
-                  T{t}
+                  L{t}
                 </button>
               ))}
             </div>
-            <p className="text-muted-foreground mt-2.5 text-xs leading-relaxed">{tierBlurb}</p>
+            <p className="text-muted-foreground mt-2.5 text-xs leading-relaxed">{levelBlurb}</p>
           </CalcPanel>
 
           <CalcPanel title="Models" icon={<Brain className="h-3.5 w-3.5" />}>
@@ -1140,7 +1141,7 @@ function CalculatorView({
           <p className="text-muted-foreground/80 text-xs leading-relaxed">
             Based on the enricher rate card. Gather steps overlap, so total time is setup +
             slowest gather + analysis — not the sum of every row. Batch time assumes venues run
-            sequentially. T5 heavy scrapes are not yet included.
+            sequentially. Level 5 heavy scrapes are not yet included.
           </p>
         </div>
       </div>
@@ -1167,7 +1168,7 @@ function CostSection({
   initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
 }) {
-  const [tier, setTier] = useState(initialSourceTierCeiling);
+  const [level, setLevel] = useState(initialSourceTierCeiling);
   const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
   const [imageModel, setImageModel] = useState<SynthesisQuality>(initialVisionQuality);
   const [vision, setVision] = useState(initialImageVisionEnabled);
@@ -1176,9 +1177,9 @@ function CostSection({
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
   const [venues, setVenues] = useState(1);
 
-  const linkDiscovery = tier >= 2;
-  const sourceGather = tier >= 3;
-  const perceptionLayer = tier >= 4;
+  const linkDiscovery = level >= 2;
+  const sourceGather = level >= 3;
+  const perceptionLayer = level >= 4;
   const synthCost =
     quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
   const synthSecs =
@@ -1220,8 +1221,8 @@ function CostSection({
   if (standalone) {
     return (
       <CalculatorView
-        tier={tier}
-        setTier={setTier}
+        level={level}
+        setLevel={setLevel}
         quality={quality}
         setQuality={setQuality}
         imageModel={imageModel}
@@ -1279,16 +1280,16 @@ function CostSection({
         <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Layers className="text-muted-foreground h-4 w-4" />
-            Source tier limit
+            Source level limit
           </span>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((t) => (
               <button
                 key={t}
                 type="button"
-                onClick={() => setTier(t)}
+                onClick={() => setLevel(t)}
                 className={`h-8 w-8 rounded-lg border text-sm font-semibold transition ${
-                  tier === t
+                  level === t
                     ? "border-foreground bg-foreground text-background"
                     : "border-border bg-card hover:border-foreground/40"
                 }`}
@@ -1394,7 +1395,7 @@ function CostSection({
         Approximate per-step costs based on the enricher&apos;s rate card. Gather
         steps run in parallel, so total time is pre-work + slowest gather step +
         post-work — not the sum of every row. Batch time assumes venues run
-        one after another. T5 adds heavy Apify scrapes not yet reflected here.
+        one after another. Level 5 adds heavy Apify scrapes not yet reflected here.
       </p>
       </Collapsible>
     </SectionCard>
@@ -1431,7 +1432,7 @@ function QualityPicker({
 
 // ─── Layout primitives ────────────────────────────────────────────────────
 
-// Native disclosure used to tuck the page's densest blocks (the per-tier
+// Native disclosure used to tuck the page's densest blocks (the per-level
 // source list, the vision prompts, the cost breakdown) out of the default
 // view — open on demand, no JS state.
 function Collapsible({

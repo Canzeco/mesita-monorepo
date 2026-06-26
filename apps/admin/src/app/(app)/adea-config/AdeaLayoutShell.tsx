@@ -10,7 +10,7 @@ const ADEA_WHAT =
 
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/adea-config/configuration":
-    `${ADEA_WHAT} Parameters control source tiers, gather limits, vision, and synthesis quality.`,
+    `${ADEA_WHAT} Parameters control source levels, gather limits, vision, and synthesis quality.`,
   "/adea-config/calculator":
     `${ADEA_WHAT} Calculator previews cost and runtime for one enrichment run at your current settings.`,
 };
