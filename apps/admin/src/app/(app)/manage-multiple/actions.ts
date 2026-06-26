@@ -2,12 +2,15 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 
-// Bulk create runs each Google Place ID through the SAME create pipeline as a
-// single create: business-create-unit fetches the Google spine, synthesises
-// the catalog row, inserts an unclaimed "web" listing, and hands the venue to
-// Atlas (atlas-enrich-place) for research + the image funnel. The admin
-// operator's super-admin session authorises the call. The client invokes this
-// once per Place ID (with small concurrency) so progress streams in.
+// Bulk create runs each Google Place ID through the SAME synchronous create
+// pipeline as a single create: admin-create-unit awaits atlas-get-enriched-place
+// (read-only enrichment) then persists places + units via atlas-save-unit-data
+// and ranked images via atlas-save-place-media. The admin operator's session
+// authorises the call (admin allowlist). The client invokes this once per Place
+// ID (with small concurrency) so progress streams in.
+//
+// For large batches the staggered queue (admin-schedule-multiple-units-creation)
+// is the better fit once the scheduler is live; this path runs each create inline.
 
 type CreateUnitOk = {
   ok: true;
@@ -31,7 +34,7 @@ export async function createUnitFromPlaceId(
   const id = (placeId ?? "").toString().trim();
   if (!id) return { ok: false, error: "Empty Place ID" };
 
-  const r = await efInvoke<CreateUnitResponse>("business-create-unit", {
+  const r = await efInvoke<CreateUnitResponse>("admin-create-unit", {
     placeId: id,
   });
   if (!r.ok) return { ok: false, error: r.error };

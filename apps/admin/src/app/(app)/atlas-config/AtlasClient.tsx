@@ -814,8 +814,8 @@ function ModelSelect({
 // ─── Cost estimate ───────────────────────────────────────────────────────
 //
 // Per-call USD rate card. MIRRORS the cost constants in the enricher
-// (atlas-enrich-place `COST`), plus the Google Places Details call that
-// business-create-unit makes at create time. Approximate — enough to compare
+// (atlas-get-enriched-place `COST`), plus the Google Places Details call the
+// enrichment makes at create time. Approximate — enough to compare
 // configurations, not for billing. Keep in sync with the enricher.
 const COST_RATES = {
   googlePlaces: 0.017, // Places Details lookup at create (Pro SKU, ~$17/1k)
