@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Database,
   DollarSign,
   Eye,
   FileText,
@@ -22,45 +23,52 @@ import {
 } from "lucide-react";
 import { updateAtlasConfig, type SynthesisQuality } from "./actions";
 
-// ADEA node catalog — mirrors the admin-gateable source nodes of the "🌐 Atlas"
-// Notion DB. NOT a complete 1:1 mirror: this lists the 22 level-gated nodes,
-// while the Notion 🌐 Atlas DB has 27 rows. The ~5-row delta is most likely the
-// steps the admin can't gate — S6 Storage, the Agent Y false-positive/false-
-// negative passes, and category inference — but the exact set is UNVERIFIED
-// (no repo-side mirror of Notion). FLAG: reconcile the 27 Notion rows against
-// these 22 before treating this catalog as canonical.
-// Each row is a NODE in the enrichment pipeline, classified three ways:
-//   • Pipeline — Link (resolve a source's URL) → Contents (fetch from it) →
-//     Analysis (perceive + reason over everything gathered).
-//   • Source level (0–5) — the depth gate. The admin's source-level ceiling runs
-//     every node whose level ≤ ceiling. Level 0 is the always-on spine + Cognition
-//     synthesis (never gated). NOTE: the level (1–5) is the admin depth dial; the
-//     finer per-node pipeline labels are the Notion steps S0–S6.
-//   • Methods — the concrete providers. For Link nodes the list is the
-//     FALLBACK order (stop at the first confident hit); for Contents/Analysis
-//     it's the tool(s) the node runs.
-// These chips are READ-ONLY indicators — selection is driven by the source-level
-// ceiling, not by editing chips. Mirror the gating in the enricher
-// (_shared/atlas-config.ts EXEC_*_STEP). Keep in sync with the Atlas DB.
-type Pipeline = "Link" | "Contents" | "Analysis";
+// ADEA node catalog — a faithful mirror of the "🌐 Atlas" Notion DB
+// (data source 36fa9bf3…, 28 rows). Each row is a NODE carrying its canonical
+// Notion fields:
+//   • Step (S0–S6) — Notion's pipeline step (shown as the S-badge).
+//   • Pipeline — Link · Contents · Analysis · Cognition · Extra (Notion select).
+//   • Methods — providers from Notion's "Methods". For Link nodes the order is
+//     the seed→fallback chain: Mesita Input → Google Places → Agent Y.
+//   • Source level (0–5) — the admin DEPTH gate, a DIFFERENT axis than Step. It
+//     is the enricher's EXEC_*_STEP gating (_shared/atlas-config.ts) that the
+//     1–5 dial drives. Map: L1=S1 · L2=S2+S3 · L3=S4 · L4=S5 vision · L0=always
+//     on (S0 spine + the S5 synthesis "Place About/Tags/Category" + S6 storage,
+//     which all run regardless of the ceiling).
+// Read-only — selection is driven by the level ceiling, not by editing chips.
+//
+// Two Notion↔code divergences (Notion is the design source of truth):
+//   • Rappi Page Link is in Notion (S3) but the shipped enricher REMOVED Rappi
+//     (atlas-channel-discovery.ts DiscoveryField; supabase 14be08b "Uber Eats
+//     only"; admin ec5423f dropped rappi_url). Shown to match Notion; runtime
+//     currently skips it.
+//   • L5 has no nodes: the EF's heavyScrapeLayer (EXEC_HEAVY_STEP=5) is defined
+//     but UNUSED in atlas-enrich-place and Notion has no heavy-scrape rows, so
+//     the old "OpenTable/TripAdvisor Page Contents" nodes were dropped.
+type Pipeline = "Link" | "Contents" | "Analysis" | "Cognition" | "Extra";
 
+// Notion "Methods" multi-select options (verbatim, incl. the X/Y agent suffixes).
 type Method =
-  | "Mesita Input"
   | "Google Places"
-  | "Firecrawl Search"
-  | "Firecrawl Search and Perplexity Agent"
-  | "Firecrawl Crawl"
-  | "Firecrawl Scrape"
-  | "Perplexity Agent"
   | "Apify"
+  | "Mesita Input"
+  | "Firecrawl Crawl"
   | "OpenAI LLM"
-  | "OpenAI Vision";
+  | "OpenAI Vision"
+  | "Meta Graph API"
+  | "Firecrawl Scrape"
+  | "Firecrawl Search and Perplexity Agent Y"
+  | "Perplexity Agent X"
+  | "Supabase";
+
+type Step = "S0" | "S1" | "S2" | "S3" | "S4" | "S5" | "S6";
 
 type Level = 0 | 1 | 2 | 3 | 4 | 5;
 
 type AdeaNode = {
   name: string;
   pipeline: Pipeline;
+  step: Step;
   level: Level;
   methods: Method[];
 };
@@ -68,52 +76,56 @@ type AdeaNode = {
 const FC_PPLX_AGENT: Method[] = [
   "Mesita Input",
   "Google Places",
-  "Firecrawl Search and Perplexity Agent",
+  "Firecrawl Search and Perplexity Agent Y",
 ];
 
 const ADEA_NODES: AdeaNode[] = [
-  // Level 0 — spine (always on, never gated) · step S0
-  { name: "Google Business Page Link", pipeline: "Link", level: 0, methods: ["Mesita Input"] },
-  { name: "Mesita Page Link", pipeline: "Link", level: 0, methods: ["Mesita Input"] },
-  { name: "Cognition Engine", pipeline: "Analysis", level: 0, methods: ["OpenAI LLM"] },
-  // Level 1 — Google data · step S1
-  { name: "Google Business Page Profile", pipeline: "Contents", level: 1, methods: ["Google Places"] },
-  // FLAG (method, vs Notion): Google PHOTOS come mainly from Apify Google Maps in
-  // S1 (see _shared/atlas-google.ts "venue PHOTOS in one run" + this file's
-  // calculator "Google reviews + photos" Apify line); Places Details only adds a
-  // few hero shots at seed. Left as-is pending the canonical method from Notion.
-  { name: "Google Business Page Photos", pipeline: "Contents", level: 1, methods: ["Google Places"] },
-  { name: "Google Business Page Reviews", pipeline: "Contents", level: 1, methods: ["Apify"] },
-  // Level 2 — SERP + all link discovery (one Link Discovery Agent) · steps S2–S3
-  { name: "SERP Page AI Summary", pipeline: "Contents", level: 2, methods: ["Perplexity Agent"] },
-  { name: "Website Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  { name: "Instagram Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  { name: "Facebook Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  { name: "OpenTable Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  { name: "UberEats Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  { name: "TripAdvisor Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  { name: "Yelp Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  { name: "TikTok Page Link", pipeline: "Link", level: 2, methods: FC_PPLX_AGENT },
-  // Level 3 — source gather (parallel scrapers) · step S4
-  { name: "Website Page Contents", pipeline: "Contents", level: 3, methods: ["Firecrawl Crawl"] },
-  { name: "Instagram Page Profile", pipeline: "Contents", level: 3, methods: ["Apify"] },
-  { name: "Instagram Page Photos", pipeline: "Contents", level: 3, methods: ["Apify"] },
-  { name: "Facebook Page Profile", pipeline: "Contents", level: 3, methods: ["Apify"] },
-  // Level 4 — image perception (vision funnel; text-perception leg dropped) · step S5
-  { name: "Image Assets Processing", pipeline: "Analysis", level: 4, methods: ["OpenAI Vision"] },
-  // Level 5 — heavy third-party scrapes (optional)
-  { name: "OpenTable Page Contents", pipeline: "Contents", level: 5, methods: ["Apify"] },
-  { name: "TripAdvisor Page Contents", pipeline: "Contents", level: 5, methods: ["Apify"] },
+  // L0 · always-on — spine (S0), final synthesis (S5 write) & storage (S6)
+  { name: "Google Business Page Link", pipeline: "Link", step: "S0", level: 0, methods: ["Mesita Input"] },
+  { name: "Mesita Page Link", pipeline: "Link", step: "S0", level: 0, methods: ["Mesita Input"] },
+  { name: "Cognition Engine", pipeline: "Cognition", step: "S0", level: 0, methods: ["OpenAI LLM"] },
+  { name: "Place About", pipeline: "Analysis", step: "S5", level: 0, methods: ["OpenAI LLM"] },
+  { name: "Place Tags", pipeline: "Analysis", step: "S5", level: 0, methods: ["OpenAI LLM"] },
+  { name: "Place Category", pipeline: "Analysis", step: "S5", level: 0, methods: ["OpenAI LLM"] },
+  { name: "Images Storing in Supabase", pipeline: "Extra", step: "S6", level: 0, methods: ["Supabase"] },
+  // L1 · Google spine (S1)
+  { name: "Google Business Page Profile", pipeline: "Contents", step: "S1", level: 1, methods: ["Google Places"] },
+  { name: "Google Business Page Photos", pipeline: "Contents", step: "S1", level: 1, methods: ["Google Places"] },
+  { name: "Google Business Page Reviews", pipeline: "Contents", step: "S1", level: 1, methods: ["Apify"] },
+  // L2 · SERP (S2) + link discovery (S3, one Agent Y batch) — channel URLs + contacts
+  { name: "SERP Page AI Summary", pipeline: "Analysis", step: "S2", level: 2, methods: ["Perplexity Agent X"] },
+  { name: "Website Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Instagram Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Facebook Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "OpenTable Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "UberEats Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  // Rappi: in Notion (S3) but the shipped enricher REMOVED it — mirror Notion, runtime skips it.
+  { name: "Rappi Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "TripAdvisor Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Yelp Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "TikTok Page Link", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Phone Number", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  { name: "Email Address", pipeline: "Link", step: "S3", level: 2, methods: FC_PPLX_AGENT },
+  // L3 · source gather — parallel scrapers (S4)
+  { name: "Website Page Contents", pipeline: "Contents", step: "S4", level: 3, methods: ["Firecrawl Crawl"] },
+  { name: "Instagram Page Profile", pipeline: "Contents", step: "S4", level: 3, methods: ["Apify"] },
+  { name: "Instagram Page Photos", pipeline: "Contents", step: "S4", level: 3, methods: ["Apify"] },
+  { name: "Facebook Page Profile", pipeline: "Contents", step: "S4", level: 3, methods: ["Apify"] },
+  // L4 · image perception — vision funnel (S5; text-perception leg dropped)
+  { name: "Images Descriptions", pipeline: "Analysis", step: "S5", level: 4, methods: ["OpenAI Vision"] },
+  { name: "Images Ranking and Sorting", pipeline: "Analysis", step: "S5", level: 4, methods: ["OpenAI LLM"] },
+  // L5 · heavy third-party scrapes — reserved; EXEC_HEAVY_STEP unused, no Notion rows.
 ];
 
-// Source-level metadata — depth levels 1–5; level 0 is the always-on spine + final synthesis.
+// Source-level metadata — depth levels 1–5; level 0 is the always-on spine,
+// final synthesis & storage. Level 5 has no nodes (heavy-scrape layer unused).
 const LEVELS: { level: Level; blurb: string; alwaysOn?: boolean }[] = [
-  { level: 0, blurb: "Identity spine & final synthesis (S0)", alwaysOn: true },
-  { level: 1, blurb: "Google data — listing, photos & reviews (S1)" },
-  { level: 2, blurb: "SERP + link discovery — all channel URLs, one agent (S2–S3)" },
+  { level: 0, blurb: "Identity spine, final synthesis & storage (S0 · S5 write · S6)", alwaysOn: true },
+  { level: 1, blurb: "Google data — profile, photos & reviews (S1)" },
+  { level: 2, blurb: "SERP + link discovery — all channel links & contacts (S2–S3)" },
   { level: 3, blurb: "Source contents — website, Instagram & Facebook (S4)" },
-  { level: 4, blurb: "Image perception — vision analysis (S5)" },
-  { level: 5, blurb: "Heavy third-party page scrapes (optional)" },
+  { level: 4, blurb: "Image perception — vision descriptions & ranking (S5)" },
+  { level: 5, blurb: "Heavy third-party scrapes — reserved; no active nodes" },
 ];
 
 const CEILING_MIN = 1;
@@ -125,15 +137,16 @@ const CEILING_MAX = 5;
 const METHOD_CLS: Record<Method, string> = {
   "Mesita Input": "border-foreground/20 bg-foreground/5 text-foreground/80",
   "Google Places": "border-red-500/25 bg-red-500/10 text-red-600",
-  "Firecrawl Search": "border-amber-500/25 bg-amber-500/10 text-amber-700",
-  "Firecrawl Search and Perplexity Agent":
-    "border-orange-500/25 bg-orange-500/10 text-orange-700",
+  "Apify": "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
   "Firecrawl Crawl": "border-amber-500/25 bg-amber-500/10 text-amber-700",
   "Firecrawl Scrape": "border-amber-500/25 bg-amber-500/10 text-amber-700",
-  "Perplexity Agent": "border-purple-500/25 bg-purple-500/10 text-purple-600",
-  "Apify": "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
+  "Firecrawl Search and Perplexity Agent Y":
+    "border-orange-500/25 bg-orange-500/10 text-orange-700",
+  "Perplexity Agent X": "border-purple-500/25 bg-purple-500/10 text-purple-600",
   "OpenAI LLM": "border-sky-500/25 bg-sky-500/10 text-sky-700",
   "OpenAI Vision": "border-violet-500/25 bg-violet-500/10 text-violet-600",
+  "Meta Graph API": "border-blue-500/25 bg-blue-500/10 text-blue-700",
+  "Supabase": "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
 };
 
 export function AtlasConfigurationClient(props: {
@@ -321,12 +334,13 @@ function SourcesSection({
   );
 }
 
-// One ADEA node: its pipeline badge + name on the left, its method chips on the
-// right. For Link nodes the methods read left→right as fallback order.
+// One ADEA node: its step + pipeline badges + name on the left, method chips on
+// the right. For Link nodes the methods read left→right as seed→fallback order.
 function NodeRow({ node }: { node: AdeaNode }) {
   return (
     <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-3 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
       <span className="flex items-center gap-2 text-sm font-medium">
+        <StepBadge step={node.step} />
         <PipelineBadge pipeline={node.pipeline} />
         {node.name}
       </span>
@@ -339,11 +353,21 @@ function NodeRow({ node }: { node: AdeaNode }) {
   );
 }
 
+function StepBadge({ step }: { step: Step }) {
+  return (
+    <span className="border-border bg-card text-muted-foreground inline-flex h-5 min-w-[28px] items-center justify-center rounded border px-1 text-[10px] font-semibold tabular-nums">
+      {step}
+    </span>
+  );
+}
+
 function PipelineBadge({ pipeline }: { pipeline: Pipeline }) {
   const meta = {
     Link: { Icon: Link2, cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
     Contents: { Icon: FileText, cls: "border-rose-500/30 bg-rose-500/10 text-rose-600" },
-    Analysis: { Icon: Brain, cls: "border-sky-500/30 bg-sky-500/10 text-sky-700" },
+    Analysis: { Icon: Sparkles, cls: "border-sky-500/30 bg-sky-500/10 text-sky-700" },
+    Cognition: { Icon: Brain, cls: "border-purple-500/30 bg-purple-500/10 text-purple-700" },
+    Extra: { Icon: Database, cls: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
   }[pipeline];
   const { Icon, cls } = meta;
   return (
