@@ -22,7 +22,13 @@ import {
 } from "lucide-react";
 import { updateAtlasConfig, type SynthesisQuality } from "./actions";
 
-// ADEA node catalog — a 1:1 mirror of the "🌐 Atlas" Notion DB.
+// ADEA node catalog — mirrors the admin-gateable source nodes of the "🌐 Atlas"
+// Notion DB. NOT a complete 1:1 mirror: this lists the 22 level-gated nodes,
+// while the Notion 🌐 Atlas DB has 27 rows. The ~5-row delta is most likely the
+// steps the admin can't gate — S6 Storage, the Agent Y false-positive/false-
+// negative passes, and category inference — but the exact set is UNVERIFIED
+// (no repo-side mirror of Notion). FLAG: reconcile the 27 Notion rows against
+// these 22 before treating this catalog as canonical.
 // Each row is a NODE in the enrichment pipeline, classified three ways:
 //   • Pipeline — Link (resolve a source's URL) → Contents (fetch from it) →
 //     Analysis (perceive + reason over everything gathered).
@@ -72,6 +78,10 @@ const ADEA_NODES: AdeaNode[] = [
   { name: "Cognition Engine", pipeline: "Analysis", level: 0, methods: ["OpenAI LLM"] },
   // Level 1 — Google data · step S1
   { name: "Google Business Page Profile", pipeline: "Contents", level: 1, methods: ["Google Places"] },
+  // FLAG (method, vs Notion): Google PHOTOS come mainly from Apify Google Maps in
+  // S1 (see _shared/atlas-google.ts "venue PHOTOS in one run" + this file's
+  // calculator "Google reviews + photos" Apify line); Places Details only adds a
+  // few hero shots at seed. Left as-is pending the canonical method from Notion.
   { name: "Google Business Page Photos", pipeline: "Contents", level: 1, methods: ["Google Places"] },
   { name: "Google Business Page Reviews", pipeline: "Contents", level: 1, methods: ["Apify"] },
   // Level 2 — SERP + all link discovery (one Link Discovery Agent) · steps S2–S3
