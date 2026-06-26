@@ -191,7 +191,10 @@ export function PlaceSection({
             maxLength={VENUE_NAME_MAX}
             disabled={pending}
           />
-          <TextField label="Category (slug)" value={form.category} onChange={(x) => set("category", x)} placeholder="e.g. cafe" disabled={pending} />
+          {/* Category is enrichment-derived (ADEA inferVenueCategory). Show the
+              friendly label (e.g. "🪩 Nightclub"), never the snakecase slug;
+              read-only here — the slug isn't hand-edited. */}
+          <TextField label="Category" value={venue.category_label ?? form.category} placeholder="e.g. 🪩 Nightclub" disabled />
         </div>
         <div className="mt-4">
           <TextArea label="Description / About" value={form.description} onChange={(x) => set("description", x)} rows={5} maxLength={2000} disabled={pending} />
