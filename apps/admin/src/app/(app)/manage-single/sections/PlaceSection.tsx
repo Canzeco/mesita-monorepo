@@ -199,10 +199,6 @@ export function PlaceSection({
         <div className="mt-4">
           <TextArea label="Description / About" value={form.description} onChange={(x) => set("description", x)} rows={5} maxLength={2000} disabled={pending} />
         </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <TextField label="Phone" value={form.phone} onChange={(x) => set("phone", x)} disabled={pending} />
-          <TextField label="Email" type="email" value={form.email} onChange={(x) => set("email", x)} disabled={pending} />
-        </div>
         <div className="mt-4">
           <TextField
             label="Tags (comma-separated)"
@@ -221,7 +217,7 @@ export function PlaceSection({
       <SectionCard
         icon={<Globe className="text-muted-foreground h-4 w-4" />}
         title="Channels"
-        subtitle="Official links. Leave blank to clear."
+        subtitle="Official links + contact. Leave blank to clear."
       >
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {CHANNELS.map((c) => (
@@ -234,6 +230,9 @@ export function PlaceSection({
               disabled={pending}
             />
           ))}
+          {/* Phone + Email are contact channels (non-URL) — grouped here too. */}
+          <TextField label="Phone" value={form.phone} onChange={(x) => set("phone", x)} disabled={pending} />
+          <TextField label="Email" type="email" value={form.email} onChange={(x) => set("email", x)} disabled={pending} />
         </div>
       </SectionCard>
 
