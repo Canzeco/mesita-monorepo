@@ -23,14 +23,14 @@ export {
 export { PlaceProfileCompletionBar } from "./PlaceProfileCompletionBar";
 export {
   PLACE_DESCRIPTION_MAX,
-  PLACE_VENUE_NAME_MAX,
+  PLACE_PLACE_NAME_MAX,
   PLACE_PR_WHATSAPP_MAX,
   PLACE_PR_INSTAGRAM_MAX,
-  humanizeVenueToken,
-  resolveVenueCategory,
-  resolveVenuePriceLabel,
-  resolveVenueVerification,
-  resolveVenueTierLabel,
+  humanizePlaceToken,
+  resolvePlaceCategory,
+  resolvePlacePriceLabel,
+  resolvePlaceVerification,
+  resolvePlaceTierLabel,
 } from "./place-utils";
 export {
   PLACE_HOUR_DAYS,

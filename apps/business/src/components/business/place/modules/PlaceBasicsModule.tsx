@@ -1,17 +1,17 @@
-import type { MyVenue } from "@/lib/api/venues";
+import type { MyPlace } from "@/lib/api/places";
 import { PlaceBasicsSection } from "../PlaceBasicsSection";
 import type { PlaceFormState, SetPlaceForm } from "../place-form-types";
 
 export function PlaceBasicsModule({
-  venue,
+  place,
   form,
   set,
 }: {
-  venue: MyVenue;
+  place: MyPlace;
   form: PlaceFormState;
   set: SetPlaceForm;
 }) {
   return (
-    <PlaceBasicsSection venue={venue} form={form} set={set} />
+    <PlaceBasicsSection place={place} form={form} set={set} />
   );
 }

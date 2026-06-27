@@ -16,7 +16,7 @@ function titleizeCategoryWords(input: string): string {
     .join(" ");
 }
 
-export function formatVenueCategoryName(
+export function formatPlaceCategoryName(
   category: string | null | undefined,
 ): string | null {
   if (!category) return null;
@@ -31,13 +31,13 @@ export function formatVenueCategoryName(
   return titleizeCategoryWords(normalized);
 }
 
-export function resolveVenueCategoryName(input: {
+export function resolvePlaceCategoryName(input: {
   categoryLabel?: string | null;
   category?: string | null;
 }): string | null {
   return (
-    formatVenueCategoryName(input.categoryLabel) ??
-    formatVenueCategoryName(input.category) ??
+    formatPlaceCategoryName(input.categoryLabel) ??
+    formatPlaceCategoryName(input.category) ??
     null
   );
 }

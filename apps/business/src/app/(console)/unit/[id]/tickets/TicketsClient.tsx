@@ -39,12 +39,12 @@ const FILTER_EMPTY: Record<TicketFilter, string> = {
 };
 
 export function TicketsClient({
-  venueId,
-  venueCurrency,
+  projectId,
+  placeCurrency,
   initialTickets,
 }: {
-  venueId: string;
-  venueCurrency: string;
+  projectId: string;
+  placeCurrency: string;
   initialTickets: BusinessTicket[];
 }) {
   const supabase = useBrowserSupabase();
@@ -76,7 +76,7 @@ export function TicketsClient({
     setError(null);
     try {
       const rows = await apiListTickets(supabase, {
-        venueId,
+        projectId,
         limit: TICKET_LIST_LIMIT,
       });
       setTickets(rows);
@@ -92,7 +92,7 @@ export function TicketsClient({
     setError(null);
     try {
       const rows = await apiListTickets(supabase, {
-        venueId,
+        projectId,
         limit: TICKET_LIST_LIMIT,
       });
       setTickets(rows);
@@ -176,7 +176,7 @@ export function TicketsClient({
 
       {scanOpen ? (
         <ScanTicketPanel
-          venueId={venueId}
+          projectId={projectId}
           supabase={supabase}
           onCreated={(msg) => void reloadTickets(msg)}
           onError={setError}
@@ -211,7 +211,7 @@ export function TicketsClient({
               <li key={t.id}>
                 <TicketCard
                   ticket={t}
-                  venueCurrency={venueCurrency}
+                  placeCurrency={placeCurrency}
                   supabase={supabase}
                   busy={busy}
                   onMarkPaid={(id) => void markPaid(id)}

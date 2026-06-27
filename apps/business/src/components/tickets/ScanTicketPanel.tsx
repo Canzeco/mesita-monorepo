@@ -15,13 +15,13 @@ import { useState } from "react";
 import { ScanFlowPicker } from "@/components/tickets/ScanFlowPicker";
 
 export function ScanTicketPanel({
-  venueId,
+  projectId,
   supabase,
   onCreated,
   onError,
   onClose,
 }: {
-  venueId: string;
+  projectId: string;
   supabase: SupabaseClient;
   onCreated: (message: string) => void;
   onError: (message: string) => void;
@@ -47,7 +47,7 @@ export function ScanTicketPanel({
     setBusy(true);
     try {
       await apiOpenTicket(supabase, {
-        venueId,
+        projectId,
         consumerCode: code,
         kind: TICKET_KIND_BY_FLOW_TYPE[ticketType],
       });

@@ -1,17 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type VenueCategoryOption = {
+export type PlaceCategoryOption = {
   slug: string;
   label: string;
   section: string;
   sort_order: number;
 };
 
-export async function apiListVenueCategories(
+export async function apiListPlaceCategories(
   client: SupabaseClient,
-): Promise<VenueCategoryOption[]> {
+): Promise<PlaceCategoryOption[]> {
   const { data, error } = await client
-    .from("venue_categories")
+    .from("place_categories")
     .select("slug, label, section, sort_order")
     .order("sort_order", { ascending: true });
 
@@ -19,5 +19,5 @@ export async function apiListVenueCategories(
     throw new Error(error.message);
   }
 
-  return (data ?? []) as VenueCategoryOption[];
+  return (data ?? []) as PlaceCategoryOption[];
 }

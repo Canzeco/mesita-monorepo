@@ -13,7 +13,7 @@ export type TagFacet = {
   label_en: string;
 };
 
-export type VenueTagOption = {
+export type PlaceTagOption = {
   slug: string;
   label_es: string;
   label_en: string;
@@ -22,20 +22,20 @@ export type VenueTagOption = {
   sort_order: number;
 };
 
-type ListVenueTagsResult = {
+type ListPlaceTagsResult = {
   facets: TagFacet[];
-  tags: VenueTagOption[];
+  tags: PlaceTagOption[];
 };
 
 // Fetches the full tag catalog. Degrades to empty arrays on any error so a
 // transient EF/network failure leaves the picker empty rather than crashing
-// the place form (mirrors apiListVenueCategories' graceful posture — though
+// the place form (mirrors apiListPlaceCategories' graceful posture — though
 // here the helper itself swallows the error instead of the caller).
-export async function apiListVenueTags(
+export async function apiListPlaceTags(
   client: SupabaseClient,
-): Promise<ListVenueTagsResult> {
+): Promise<ListPlaceTagsResult> {
   try {
-    const data = await invokeEF<ListVenueTagsResult>(
+    const data = await invokeEF<ListPlaceTagsResult>(
       client,
       "business-list-tags",
       {},

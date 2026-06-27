@@ -35,7 +35,7 @@ function rewardLine(ticket: BusinessTicket): string | null {
 
 export function TicketCard({
   ticket,
-  venueCurrency,
+  placeCurrency,
   supabase,
   busy,
   onMarkPaid,
@@ -44,7 +44,7 @@ export function TicketCard({
   onError,
 }: {
   ticket: BusinessTicket;
-  venueCurrency: string;
+  placeCurrency: string;
   supabase: SupabaseClient;
   busy: string | null;
   onMarkPaid: (ticketId: string) => void;
@@ -138,7 +138,7 @@ export function TicketCard({
         {needsBill && !cancelled ? (
           <TicketBillForm
             ticket={ticket}
-            venueCurrency={venueCurrency}
+            placeCurrency={placeCurrency}
             supabase={supabase}
             billBusy={busy === `bill:${ticket.id}`}
             onSubmitted={onBillSubmitted}

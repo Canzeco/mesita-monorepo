@@ -23,13 +23,13 @@ import {
   PILL_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 import { PhonePicker } from "@/components/ui/phone-picker";
-import { apiUpdateVenue } from "@/lib/api/venues";
+import { apiUpdatePlace } from "@/lib/api/places";
 import {
   apiInviteEditor,
-  apiInviteWaiter,
+  apiInviteStaff,
   apiListTeam,
   apiRemoveMember,
-  apiTestWaiterChannel,
+  apiTestStaffChannel,
   apiUpdateMemberRole,
   type BusinessRole,
   type RemoveKind,
@@ -47,12 +47,12 @@ const ROLE_LABEL: Record<BusinessRole, string> = {
 const ROLE_CHOICES: BusinessRole[] = ["owner", "editor", "viewer"];
 const MANAGER_ROLE_CHOICES: BusinessRole[] = ["owner", "editor"];
 
-function waiterInvitePhoneKey(phone: string | null | undefined): string {
+function staffInvitePhoneKey(phone: string | null | undefined): string {
   if (!phone) return "";
   return phone.replace(/\D/g, "");
 }
 
-type InviteOpen = null | "manager" | "waiter";
+type InviteOpen = null | "manager" | "staff";
 
 // In-app confirmation, replacing native window.confirm so destructive
 // actions get a styled dialog instead of the browser's gray box.
@@ -65,13 +65,13 @@ type ConfirmState = {
 };
 
 export function TeamClient({
-  venueId,
+  projectId,
   currentUserId,
   initialSnapshot,
   initialWhatsappPrUrl,
   initialInstagramPrUrl,
 }: {
-  venueId: string;
+  projectId: string;
   currentUserId: string;
   initialSnapshot: TeamSnapshot;
   initialWhatsappPrUrl: string;
@@ -96,7 +96,7 @@ export function TeamClient({
 
   const refresh = useCallback(async () => {
     try {
-      const next = await apiListTeam(supabase, venueId);
+      const next = await apiListTeam(supabase, projectId);
       setSnapshot(next);
       setError(null);
       return next;
@@ -104,7 +104,7 @@ export function TeamClient({
       setError(errMsg(err, "Couldn't load the team."));
       return null;
     }
-  }, [supabase, venueId]);
+  }, [supabase, projectId]);
 
   const isOwner =
     snapshot.myRole === "owner" || snapshot.myRole === "super_admin";
@@ -112,8 +112,8 @@ export function TeamClient({
   const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
     (inv) => inv.role !== "viewer",
   );
-  const pendingWaiterInvites = snapshot.pendingWaiterInvites ?? [];
-  const activeWaiterCount = snapshot.waiters.length;
+  const pendingStaffInvites = snapshot.pendingStaffInvites ?? [];
+  const activeStaffCount = snapshot.staffs.length;
   // Wrap any mutating action in the shared busy/error/refresh frame.
   async function runAction(
     key: string,
@@ -138,7 +138,7 @@ export function TeamClient({
       "invite-manager",
       async () => {
         await apiInviteEditor(supabase, {
-          venueId,
+          projectId,
           email,
           role,
           redirectBase: window.location.origin,
@@ -160,8 +160,8 @@ export function TeamClient({
     return runAction(
       "save-pr-channels",
       async () => {
-        await apiUpdateVenue(supabase, {
-          id: venueId,
+        await apiUpdatePlace(supabase, {
+          id: projectId,
           whatsapp_pr_urls: whatsapp ? [whatsapp] : [],
           instagram_pr_urls: instagram ? [instagram] : [],
         });
@@ -172,14 +172,14 @@ export function TeamClient({
     );
   };
 
-  const applyWaiterInviteResult = (
-    res: Awaited<ReturnType<typeof apiInviteWaiter>>,
+  const applyStaffInviteResult = (
+    res: Awaited<ReturnType<typeof apiInviteStaff>>,
     channel: "whatsapp" | "sms",
   ) => {
-    const phoneKey = waiterInvitePhoneKey(res.phone);
+    const phoneKey = staffInvitePhoneKey(res.phone);
     setSnapshot((prev) => ({
       ...prev,
-      pendingWaiterInvites: [
+      pendingStaffInvites: [
         {
           id: res.inviteId,
           phone: res.phone,
@@ -188,9 +188,9 @@ export function TeamClient({
           createdAt: new Date().toISOString(),
           expiresAt: res.expiresAt,
         },
-        ...(prev.pendingWaiterInvites ?? []).filter(
+        ...(prev.pendingStaffInvites ?? []).filter(
           (p) =>
-            p.id !== res.inviteId && waiterInvitePhoneKey(p.phone) !== phoneKey,
+            p.id !== res.inviteId && staffInvitePhoneKey(p.phone) !== phoneKey,
         ),
       ],
     }));
@@ -213,36 +213,36 @@ export function TeamClient({
     }
   };
 
-  const handleInviteWaiter = (channel: "whatsapp" | "sms", phone: string) =>
+  const handleInviteStaff = (channel: "whatsapp" | "sms", phone: string) =>
     runAction(
-      "invite-waiter",
+      "invite-staff",
       async () => {
-        const res = await apiInviteWaiter(supabase, {
-          venueId,
+        const res = await apiInviteStaff(supabase, {
+          projectId,
           channel,
           phone: phone || undefined,
         });
-        applyWaiterInviteResult(res, channel);
+        applyStaffInviteResult(res, channel);
         setInviteOpen(null);
       },
-      "Couldn't create that waiter invite.",
+      "Couldn't create that staff invite.",
     );
 
-  const handleResendWaiterInvite = (
+  const handleResendStaffInvite = (
     channel: "whatsapp" | "sms",
     phone: string,
   ) =>
     runAction(
-      `resend-waiter-${phone}`,
+      `resend-staff-${phone}`,
       async () => {
-        const res = await apiInviteWaiter(supabase, {
-          venueId,
+        const res = await apiInviteStaff(supabase, {
+          projectId,
           channel,
           phone,
         });
-        applyWaiterInviteResult(res, channel);
+        applyStaffInviteResult(res, channel);
       },
-      "Couldn't resend that waiter invite.",
+      "Couldn't resend that staff invite.",
     );
 
   const handleChangeRole = (
@@ -272,10 +272,10 @@ export function TeamClient({
     isSelf: boolean,
   ) => {
     setConfirmState({
-      title: isSelf ? "Leave venue" : "Remove member",
+      title: isSelf ? "Leave place" : "Remove member",
       body: isSelf
-        ? "Leave this venue? You'll lose dashboard access."
-        : `Remove ${name} from this venue? They'll lose dashboard access.`,
+        ? "Leave this place? You'll lose dashboard access."
+        : `Remove ${name} from this place? They'll lose dashboard access.`,
       confirmLabel: isSelf ? "Leave" : "Remove",
       tone: "destructive",
       onConfirm: () =>
@@ -314,8 +314,8 @@ export function TeamClient({
         runAction(
           `ping-${phone}`,
           async () => {
-            const res = await apiTestWaiterChannel(supabase, {
-              venueId,
+            const res = await apiTestStaffChannel(supabase, {
+              projectId,
               channel,
               phone,
             });
@@ -419,7 +419,7 @@ export function TeamClient({
                   hidden={!isOwner && m.userId !== currentUserId}
                   label={
                     m.userId === currentUserId
-                      ? "Leave venue"
+                      ? "Leave place"
                       : `Remove ${m.fullName ?? m.email}`
                   }
                   onClick={() =>
@@ -464,33 +464,33 @@ export function TeamClient({
 
       <TeamModule
         icon={<PhoneIcon className="h-4 w-4" />}
-        title="Waiters"
-        active={activeWaiterCount}
-        pending={pendingWaiterInvites.length}
+        title="Staffs"
+        active={activeStaffCount}
+        pending={pendingStaffInvites.length}
         action={
           <InviteButton
             label="Add"
-            open={inviteOpen === "waiter"}
+            open={inviteOpen === "staff"}
             onClick={() =>
-              setInviteOpen(inviteOpen === "waiter" ? null : "waiter")
+              setInviteOpen(inviteOpen === "staff" ? null : "staff")
             }
           />
         }
       >
-        {inviteOpen === "waiter" && (
-          <WaiterInviteForm
-            busy={busy === "invite-waiter"}
-            onSubmit={handleInviteWaiter}
+        {inviteOpen === "staff" && (
+          <StaffInviteForm
+            busy={busy === "invite-staff"}
+            onSubmit={handleInviteStaff}
             onPing={handleTestPing}
           />
         )}
 
-        {activeWaiterCount === 0 && pendingWaiterInvites.length === 0 ? (
-          <TeamEmpty message="No waiters yet" />
+        {activeStaffCount === 0 && pendingStaffInvites.length === 0 ? (
+          <TeamEmpty message="No staffs yet" />
         ) : (
           <TeamList>
-            {snapshot.waiters.map((w) => (
-              <TeamMemberRow key={`${w.userId}:${venueId}`}>
+            {snapshot.staffs.map((w) => (
+              <TeamMemberRow key={`${w.userId}:${projectId}`}>
                 <Avatar
                   initial={(w.phone ?? "?").slice(-2)}
                   tint="bg-whatsapp/15 text-whatsapp-deep"
@@ -512,19 +512,19 @@ export function TeamClient({
                 {isOwner && (
                   <RemoveButton
                     busy={busy === `remove-${w.userId}`}
-                    label="Remove waiter"
+                    label="Remove staff"
                     onClick={() =>
                       handleRemove(
-                        `${w.userId}:${venueId}`,
-                        "waiter",
-                        "Remove this waiter?",
+                        `${w.userId}:${projectId}`,
+                        "staff",
+                        "Remove this staff?",
                       )
                     }
                   />
                 )}
               </TeamMemberRow>
             ))}
-            {pendingWaiterInvites.map((inv) => (
+            {pendingStaffInvites.map((inv) => (
               <PendingRow
                 key={inv.id}
                 icon={
@@ -539,9 +539,9 @@ export function TeamClient({
               >
                 {inv.phone && (
                   <PingButton
-                    busy={busy === `resend-waiter-${inv.phone}`}
+                    busy={busy === `resend-staff-${inv.phone}`}
                     onClick={() =>
-                      handleResendWaiterInvite(inv.channel, inv.phone!)
+                      handleResendStaffInvite(inv.channel, inv.phone!)
                     }
                     label="Resend invite"
                   />
@@ -553,8 +553,8 @@ export function TeamClient({
                     onClick={() =>
                       handleRemove(
                         inv.id,
-                        "waiterInvite",
-                        "Revoke this waiter invite?",
+                        "staffInvite",
+                        "Revoke this staff invite?",
                       )
                     }
                   />
@@ -883,7 +883,7 @@ function PrChannelEditRow({
   );
 }
 
-function WaiterInviteForm({
+function StaffInviteForm({
   busy,
   onSubmit,
   onPing,
@@ -1130,7 +1130,7 @@ function initialOf(name: string | null, email: string | null): string {
   return src.slice(0, 1).toUpperCase();
 }
 
-function buildAcceptUrl(token: string, kind?: "waiter"): string {
+function buildAcceptUrl(token: string, kind?: "staff"): string {
   if (typeof window === "undefined") return "";
   const url = new URL("/accept-invite", window.location.origin);
   url.searchParams.set("token", token);

@@ -75,7 +75,7 @@ function LandingPane() {
           </span>
         </Link>
         <span className="text-[10px] font-bold tracking-[0.2em] text-white/70 uppercase">
-          For venues
+          For places
         </span>
       </div>
 
@@ -90,7 +90,7 @@ function LandingPane() {
           <ValueProp
             Icon={Search}
             title="Get discovered"
-            blurb="Priority placement over web-only venues across swipe, catalog, map, AI search."
+            blurb="Priority placement over web-only places across swipe, catalog, map, AI search."
           />
           <ValueProp
             Icon={Star}

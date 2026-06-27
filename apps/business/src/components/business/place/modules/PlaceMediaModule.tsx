@@ -72,14 +72,14 @@ function PhotoLightbox({
 function MediaSection({
   photos,
   onChange,
-  venueId,
-  venueName,
+  projectId,
+  placeName,
   onError,
 }: {
   photos: string[];
   onChange: (next: string[]) => void;
-  venueId: string;
-  venueName: string;
+  projectId: string;
+  placeName: string;
   onError: (msg: string | null) => void;
 }) {
   const supabase = useBrowserSupabase();
@@ -121,9 +121,9 @@ function MediaSection({
       const uploadedUrls: string[] = [];
       for (const file of nextBatch) {
         const ext = extForFile(file);
-        const path = `business/${venueId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+        const path = `business/${projectId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
         const { error: uploadError } = await supabase.storage
-          .from("venue-images")
+          .from("place-images")
           .upload(path, file, {
             upsert: false,
             contentType: file.type,
@@ -135,7 +135,7 @@ function MediaSection({
           );
         }
         const { data } = supabase.storage
-          .from("venue-images")
+          .from("place-images")
           .getPublicUrl(path);
         if (data?.publicUrl) uploadedUrls.push(data.publicUrl);
       }
@@ -170,13 +170,13 @@ function MediaSection({
               <button
                 type="button"
                 onClick={() => setZoomIdx(idx)}
-                aria-label={`Open ${venueName || "venue"} photo ${idx + 1}`}
+                aria-label={`Open ${placeName || "place"} photo ${idx + 1}`}
                 className="block aspect-square w-full"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={src}
-                  alt={`${venueName || "Venue"} photo ${idx + 1}`}
+                  alt={`${placeName || "Place"} photo ${idx + 1}`}
                   className="h-full w-full object-cover transition group-hover:scale-105"
                 />
               </button>
@@ -219,7 +219,7 @@ function MediaSection({
       )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
-          id={`venue-image-upload-${venueId}`}
+          id={`place-image-upload-${projectId}`}
           type="file"
           accept={ALLOWED_IMAGE_ACCEPT}
           multiple
@@ -228,7 +228,7 @@ function MediaSection({
           className="hidden"
         />
         <label
-          htmlFor={`venue-image-upload-${venueId}`}
+          htmlFor={`place-image-upload-${projectId}`}
           className={cn(
             "border-border bg-card hover:bg-muted inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition",
             (uploading || photos.length >= MAX_PHOTOS) &&
@@ -255,7 +255,7 @@ function MediaSection({
       {zoomIdx != null && photos[zoomIdx] && (
         <PhotoLightbox
           src={photos[zoomIdx]}
-          alt={`${venueName || "Venue"} photo ${zoomIdx + 1}`}
+          alt={`${placeName || "Place"} photo ${zoomIdx + 1}`}
           onClose={() => setZoomIdx(null)}
         />
       )}
@@ -266,15 +266,15 @@ function MediaSection({
 export function PlaceMediaModule({
   photos,
   onChange,
-  venueId,
-  venueName,
+  projectId,
+  placeName,
   onError,
   hideHeader = false,
 }: {
   photos: string[];
   onChange: (photos: string[]) => void;
-  venueId: string;
-  venueName: string;
+  projectId: string;
+  placeName: string;
   onError: (msg: string | null) => void;
   hideHeader?: boolean;
 }) {
@@ -285,8 +285,8 @@ export function PlaceMediaModule({
           <MediaSection
             photos={photos}
             onChange={onChange}
-            venueId={venueId}
-            venueName={venueName}
+            projectId={projectId}
+            placeName={placeName}
             onError={onError}
           />
         </PlaceKvField>
@@ -299,8 +299,8 @@ export function PlaceMediaModule({
       <MediaSection
         photos={photos}
         onChange={onChange}
-        venueId={venueId}
-        venueName={venueName}
+        projectId={projectId}
+        placeName={placeName}
         onError={onError}
       />
     </PlaceModule>

@@ -17,14 +17,14 @@ import {
 } from "@/components/business/promos/promos-subtabs";
 import { promosPath } from "@/lib/business-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { apiUpdateVenue, type MyVenue } from "@/lib/api/venues";
+import { apiUpdatePlace, type MyPlace } from "@/lib/api/places";
 import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
   SUBSCRIPTIONS,
-  subscriptionForVenue,
+  subscriptionForPlace,
   dbStateForSubscription,
   visibilityForPlan,
   type SubscriptionId,
@@ -40,14 +40,14 @@ import {
 
 // ─── Rate picker scale ────────────────────────────────────────────────────
 
-// Four per-tier promo rates land in the venues table as smallint columns
+// Four per-tier promo rates land in the places table as smallint columns
 // constrained to this set (or null). See migration 0032. Zero is no longer
 // a legal value — to "turn off" a tier, write null.
 const RATE_CHOICES = [10, 20, 50, 70] as const;
 type RateChoice = (typeof RATE_CHOICES)[number];
 
-// Ticket cap amount — persisted to venues.monthly_promo_cap for now
-// (legacy column name), denominated in the venue's currency. Null means
+// Ticket cap amount — persisted to places.monthly_promo_cap for now
+// (legacy column name), denominated in the place's currency. Null means
 // no cap. Semantics in product/UI: applies per ticket, not per month.
 const CAP_CHOICES = [200, 500, 1000, 2000] as const;
 type CapChoice = (typeof CAP_CHOICES)[number];
@@ -134,9 +134,9 @@ const MESITA_USER_EXAMPLES: MesitaUserExample[] = [
 ];
 
 const STORY_INSTRUCTION =
-  "Guest should post a positive Instagram story with a photo/video of the place or food, tag this venue account, and show the story at check-in (no negative content).";
+  "Guest should post a positive Instagram story with a photo/video of the place or food, tag this place account, and show the story at check-in (no negative content).";
 
-// "MX$1,000" for MXN venues; falls back to a generic "$" prefix elsewhere.
+// "MX$1,000" for MXN places; falls back to a generic "$" prefix elsewhere.
 function formatMoney(amount: number, currency: string): string {
   const prefix = currency === "MXN" ? "MX$" : "$";
   return `${prefix}${amount.toLocaleString("en-US")}`;
@@ -147,7 +147,7 @@ function formatMoney(amount: number, currency: string): string {
 type Tier = "free" | "premium";
 
 // Each cell maps to one of the four DB columns: `welcome_<tier>_rate`
-// (first visit at the venue) or `<tier>_rate` (every visit afterwards).
+// (first visit at the place) or `<tier>_rate` (every visit afterwards).
 type PromoColumn =
   | "welcome_free_rate"
   | "welcome_premium_rate"
@@ -176,26 +176,26 @@ const SUB_VISUAL: Record<
 // ─── Client ───────────────────────────────────────────────────────────────
 
 export function PromosClient({
-  venue,
+  place,
   tab,
 }: {
-  venue: MyVenue;
+  place: MyPlace;
   tab: PromosSubTab;
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
   const setTab = (next: PromosSubTab) => {
-    router.replace(promosPath(venue.id, next), { scroll: false });
+    router.replace(promosPath(place.id, next), { scroll: false });
   };
 
   const [pending, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const currentSub: SubscriptionId = subscriptionForVenue(venue.plan);
+  const currentSub: SubscriptionId = subscriptionForPlace(place.plan);
   const [pendingSubId, setPendingSubId] = useState<SubscriptionId | null>(null);
   const igTagAccount =
-    deriveInstagramHandle(venue.instagram_url) || "Not found on Place page";
+    deriveInstagramHandle(place.instagram_url) || "Not found on Place page";
 
   const selectSubscription = (target: SubscriptionId) => {
     if (target === currentSub || pending) return;
@@ -204,7 +204,7 @@ export function PromosClient({
     startSubmit(async () => {
       try {
         const dbState = dbStateForSubscription(target);
-        await apiUpdateVenue(supabase, { id: venue.id, ...dbState });
+        await apiUpdatePlace(supabase, { id: place.id, ...dbState });
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save the subscription."));
@@ -229,7 +229,7 @@ export function PromosClient({
 
       {tab === "plan" ? (
         <>
-          <VisibilityRail plan={venue.plan} />
+          <VisibilityRail plan={place.plan} />
 
           <Section
             title="Subscription"
@@ -282,8 +282,8 @@ export function PromosClient({
                     key={`welcome-${tier}`}
                     column={`welcome_${tier}_rate` as PromoColumn}
                     tier={tier}
-                    initial={venue[`welcome_${tier}_rate`]}
-                    venueId={venue.id}
+                    initial={place[`welcome_${tier}_rate`]}
+                    projectId={place.id}
                     disabled={isFree}
                   />
                 ))}
@@ -295,8 +295,8 @@ export function PromosClient({
                     key={`default-${tier}`}
                     column={`${tier}_rate` as PromoColumn}
                     tier={tier}
-                    initial={venue[`${tier}_rate`]}
-                    venueId={venue.id}
+                    initial={place[`${tier}_rate`]}
+                    projectId={place.id}
                     disabled={isFree}
                   />
                 ))}
@@ -310,9 +310,9 @@ export function PromosClient({
             className="bg-gradient-to-b from-white to-rose-50/[0.2]"
           >
             <TicketCapPicker
-              initial={venue.monthly_promo_cap}
-              currency={venue.currency}
-              venueId={venue.id}
+              initial={place.monthly_promo_cap}
+              currency={place.currency}
+              projectId={place.id}
               disabled={isFree}
             />
           </Section>
@@ -354,7 +354,7 @@ export function PromosClient({
               </span>
               <div className="border-border bg-background text-foreground/85 rounded-xl border px-3 py-2 text-[12px] font-medium">
                 Post a positive story with a photo/video of the place or food,
-                tag this venue account, and show it at check-in (no negative
+                tag this place account, and show it at check-in (no negative
                 content).
               </div>
             </div>
@@ -473,18 +473,18 @@ function MesitaUserCard({ guest }: { guest: MesitaUserExample }) {
 // ─── Ticket cap picker ──────────────────────────────────────────────────────
 
 // Per-ticket eligible amount ceiling. Same optimistic save pattern as
-// PromoCell — persists each pick through apiUpdateVenue and reverts on
-// failure. "No cap" writes null. Backed by venues.monthly_promo_cap until
+// PromoCell — persists each pick through apiUpdatePlace and reverts on
+// failure. "No cap" writes null. Backed by places.monthly_promo_cap until
 // we run the column rename migration.
 function TicketCapPicker({
   initial,
   currency,
-  venueId,
+  projectId,
   disabled,
 }: {
   initial: number | null;
   currency: string;
-  venueId: string;
+  projectId: string;
   disabled: boolean;
 }) {
   const supabase = useBrowserSupabase();
@@ -498,7 +498,7 @@ function TicketCapPicker({
     setCap(next);
     setPending(true);
     setError(null);
-    void apiUpdateVenue(supabase, { id: venueId, monthly_promo_cap: next })
+    void apiUpdatePlace(supabase, { id: projectId, monthly_promo_cap: next })
       .catch((err) => {
         setCap(previous);
         setError(errMsg(err, "Couldn't save."));
@@ -550,7 +550,7 @@ function ColumnHeader({ children }: { children: React.ReactNode }) {
 // ─── Visibility rail ──────────────────────────────────────────────────────
 
 // Visibility rail. Three levels (Low → Max), one per plan. Mesita shows
-// higher-plan venues to more guests on every discovery surface (swipe,
+// higher-plan places to more guests on every discovery surface (swipe,
 // catalog, map), so the business needs to see at a glance where their
 // plan lands on the ladder. Rendered as a stepped dot-ladder with the
 // current node ringed + a "Step X of 3" headline so the answer is
@@ -725,7 +725,7 @@ function SubscriptionCard({
 // ─── Promo cell ───────────────────────────────────────────────────────────
 
 // One cell in the 2-column grid. Owns the local state for its DB column
-// and persists each pick through apiUpdateVenue (optimistic — reverts on
+// and persists each pick through apiUpdatePlace (optimistic — reverts on
 // failure). Same tier chip colors across both columns (Free cool gray,
 // Premium violet) — the "First visit" vs "Every visit" distinction lives
 // in the column header above, not in the chip styling.
@@ -733,13 +733,13 @@ function PromoCell({
   column,
   tier,
   initial,
-  venueId,
+  projectId,
   disabled,
 }: {
   column: PromoColumn;
   tier: Tier;
   initial: number | null;
-  venueId: string;
+  projectId: string;
   disabled: boolean;
 }) {
   const supabase = useBrowserSupabase();
@@ -755,7 +755,7 @@ function PromoCell({
     setRate(next);
     setPending(true);
     setError(null);
-    void apiUpdateVenue(supabase, { id: venueId, [column]: next })
+    void apiUpdatePlace(supabase, { id: projectId, [column]: next })
       .catch((err) => {
         setRate(previous);
         setError(errMsg(err, "Couldn't save."));

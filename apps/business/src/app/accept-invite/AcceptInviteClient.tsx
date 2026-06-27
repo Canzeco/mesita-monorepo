@@ -9,7 +9,7 @@ import { apiAcceptEditorInvite } from "@/lib/api/team";
 import { placePath } from "@/lib/business-route-contract";
 import { errMsg } from "@/lib/utils";
 
-// Business-side accept page. The waiter accept flow runs from WhatsApp /
+// Business-side accept page. The staff accept flow runs from WhatsApp /
 // SMS via staff-accept-invite and never lands here.
 //
 // Two preconditions: (1) a `token` query param, (2) a signed-in
@@ -23,11 +23,11 @@ function initialFromParams(
   kind: string | null,
 ): { status: Status; message: string } {
   if (!token) return { status: "error", message: "Missing invite token." };
-  if (kind === "waiter") {
+  if (kind === "staff") {
     return {
       status: "error",
       message:
-        "This invite is for a waiter — open it in WhatsApp on the validator's phone.",
+        "This invite is for a staff — open it in WhatsApp on the validator's phone.",
     };
   }
   return { status: "claiming", message: "" };
@@ -38,15 +38,15 @@ export function AcceptInviteClient() {
   const params = useSearchParams();
   const router = useRouter();
   const token = params.get("token");
-  const kind = params.get("kind"); // "waiter" → wrong app
+  const kind = params.get("kind"); // "staff" → wrong app
 
   const initial = initialFromParams(token, kind);
   const [status, setStatus] = useState<Status>(initial.status);
   const [message, setMessage] = useState<string>(initial.message);
-  const [venueId, setVenueId] = useState<string | null>(null);
+  const [projectId, setPlaceId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token || kind === "waiter") return; // static error already rendered
+    if (!token || kind === "staff") return; // static error already rendered
 
     let cancelled = false;
     (async () => {
@@ -59,10 +59,10 @@ export function AcceptInviteClient() {
       try {
         const res = await apiAcceptEditorInvite(supabase, token);
         if (cancelled) return;
-        setVenueId(res.venueId);
+        setPlaceId(res.projectId);
         setStatus("success");
         window.setTimeout(() => {
-          router.replace(placePath(res.venueId));
+          router.replace(placePath(res.projectId));
         }, 1200);
       } catch (err) {
         if (cancelled) return;
@@ -91,7 +91,7 @@ export function AcceptInviteClient() {
         <p className="font-display text-lg font-semibold">Sign in to join</p>
         <p className="text-muted-foreground text-sm">
           Sign in with the email this invite was sent to, then we&apos;ll add
-          you to the venue.
+          you to the place.
         </p>
         <Link
           href={`/?next=${encodeURIComponent(next)}`}
@@ -109,11 +109,11 @@ export function AcceptInviteClient() {
         <CheckCircle2 className="text-whatsapp-deep h-10 w-10" />
         <p className="font-display text-lg font-semibold">You&apos;re in.</p>
         <p className="text-muted-foreground text-sm">
-          Redirecting to the venue dashboard…
+          Redirecting to the place dashboard…
         </p>
-        {venueId && (
+        {projectId && (
           <Link
-            href={placePath(venueId)}
+            href={placePath(projectId)}
             className="text-secondary text-xs font-semibold"
           >
             Open now

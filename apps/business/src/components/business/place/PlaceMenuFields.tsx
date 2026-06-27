@@ -15,12 +15,12 @@ import {
 } from "./place-upload-utils";
 
 export function PlaceMenuFields({
-  venueId,
+  projectId,
   form,
   set,
   onError,
 }: {
-  venueId: string;
+  projectId: string;
   form: PlaceFormState;
   set: SetPlaceForm;
   onError: (msg: string | null) => void;
@@ -51,9 +51,9 @@ export function PlaceMenuFields({
     onError(null);
     try {
       const ext = extForMenuFile(file);
-      const path = `business/${venueId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      const path = `business/${projectId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from("venue-images")
+        .from("place-images")
         .upload(path, file, {
           upsert: false,
           contentType: file.type,
@@ -62,7 +62,7 @@ export function PlaceMenuFields({
       if (uploadError) {
         throw new Error(uploadError.message);
       }
-      const { data } = supabase.storage.from("venue-images").getPublicUrl(path);
+      const { data } = supabase.storage.from("place-images").getPublicUrl(path);
       if (!data?.publicUrl) {
         throw new Error("Couldn't get a public URL for the upload.");
       }
@@ -103,7 +103,7 @@ export function PlaceMenuFields({
       </PlaceFormField>
       <div className="flex items-center gap-3">
         <input
-          id={`menu-upload-${venueId}`}
+          id={`menu-upload-${projectId}`}
           type="file"
           accept={ALLOWED_MENU_ACCEPT}
           onChange={onFilePicked}
@@ -111,7 +111,7 @@ export function PlaceMenuFields({
           className="hidden"
         />
         <label
-          htmlFor={`menu-upload-${venueId}`}
+          htmlFor={`menu-upload-${projectId}`}
           className={cn(
             "border-border bg-card hover:bg-muted inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition",
             uploading && "pointer-events-none opacity-60",

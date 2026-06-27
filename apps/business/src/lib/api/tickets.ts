@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 import type { Database } from "@/lib/supabase/database.types";
-import type { FiscalType } from "./venues";
+import type { FiscalType } from "./places";
 
 type TicketStatus = Database["public"]["Enums"]["ticket_status"];
 type TicketKind = Database["public"]["Enums"]["ticket_kind"];
@@ -77,7 +77,7 @@ function normalizeTicketConsumer(row: RawTicket): BusinessTicket {
 
 export async function apiListTickets(
   client: SupabaseClient,
-  input: { venueId: string; limit?: number },
+  input: { projectId: string; limit?: number },
 ): Promise<BusinessTicket[]> {
   const { tickets } = await invokeEF<{ tickets: RawTicket[] }>(
     client,
@@ -115,7 +115,7 @@ export async function apiCancelTicket(
 export async function apiCreateTicket(
   client: SupabaseClient,
   input: {
-    venueId: string;
+    projectId: string;
     consumerCode: string;
     checkSubtotalCents: number;
     tipCents?: number;
@@ -129,7 +129,7 @@ export async function apiCreateTicket(
     client,
     "business-create-ticket",
     {
-      venueId: input.venueId,
+      projectId: input.projectId,
       consumerCode: input.consumerCode,
       checkSubtotalCents: input.checkSubtotalCents,
       tipCents: input.tipCents ?? 0,
@@ -144,7 +144,7 @@ export async function apiCreateTicket(
 export async function apiOpenTicket(
   client: SupabaseClient,
   input: {
-    venueId: string;
+    projectId: string;
     consumerCode: string;
     kind?: TicketKind;
   },
@@ -153,7 +153,7 @@ export async function apiOpenTicket(
     client,
     "business-create-ticket",
     {
-      venueId: input.venueId,
+      projectId: input.projectId,
       consumerCode: input.consumerCode,
       kind: input.kind ?? "dp",
       scanOnly: true,

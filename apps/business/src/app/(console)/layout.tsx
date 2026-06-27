@@ -44,10 +44,10 @@ export default async function ConsoleLayout({
 
   const cookieStore = await cookies();
   const cookieUnitId = cookieStore.get(ACTIVE_UNIT_COOKIE)?.value ?? null;
-  const venues = overview?.venues ?? [];
-  const activeVenueId = resolveActiveUnitId({
+  const places = overview?.places ?? [];
+  const activePlaceId = resolveActiveUnitId({
     cookieId: cookieUnitId,
-    venueIds: venues.map((v) => v.id),
+    projectIds: places.map((v) => v.id),
   });
 
   return (
@@ -55,8 +55,8 @@ export default async function ConsoleLayout({
       <StatusBar />
       <UnitChromeProvider
         value={{
-          activeVenueId,
-          venues,
+          activePlaceId,
+          places,
           isSuperAdmin,
         }}
       >

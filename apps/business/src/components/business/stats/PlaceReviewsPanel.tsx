@@ -6,20 +6,20 @@ import {
   Users,
 } from "lucide-react";
 import { GoogleLogo, InstagramLogo, Section } from "@/components/shared";
-import type { MyVenue } from "@/lib/api/venues";
+import type { MyPlace } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
-export function VenueReviewsPanel({ venue }: { venue: MyVenue }) {
+export function PlaceReviewsPanel({ place }: { place: MyPlace }) {
   return (
     <div className="flex flex-col gap-4">
-      <ReviewsSummarySection venue={venue} />
-      <RelevantReviewsSection venue={venue} />
+      <ReviewsSummarySection place={place} />
+      <RelevantReviewsSection place={place} />
     </div>
   );
 }
 
-function ReviewsSummarySection({ venue }: { venue: MyVenue }) {
+function ReviewsSummarySection({ place }: { place: MyPlace }) {
   const externalMetrics: {
     label: string;
     value: string | null;
@@ -30,22 +30,22 @@ function ReviewsSummarySection({ venue }: { venue: MyVenue }) {
     {
       label: "Google",
       value:
-        venue.google_stars_overall == null
+        place.google_stars_overall == null
           ? null
-          : venue.google_stars_overall.toFixed(1),
+          : place.google_stars_overall.toFixed(1),
       meta:
-        venue.google_review_count == null
+        place.google_review_count == null
           ? "reviews"
-          : `${formatCount(venue.google_review_count)} reviews`,
+          : `${formatCount(place.google_review_count)} reviews`,
       icon: "star",
       logo: <GoogleLogo size={12} />,
     },
     {
       label: "Instagram",
       value:
-        venue.instagram_followers_count == null
+        place.instagram_followers_count == null
           ? null
-          : formatCount(venue.instagram_followers_count),
+          : formatCount(place.instagram_followers_count),
       meta: "followers",
       icon: "users",
       logo: <InstagramLogo size={12} />,
@@ -59,13 +59,13 @@ function ReviewsSummarySection({ venue }: { venue: MyVenue }) {
     },
   ];
 
-  const overallMesita = venue.mesita_stars_overall ?? 5;
-  const overallCount = venue.mesita_review_count ?? 0;
+  const overallMesita = place.mesita_stars_overall ?? 5;
+  const overallCount = place.mesita_review_count ?? 0;
   const bars = [
     ["Overall", overallMesita],
-    ["Food", venue.mesita_stars_food ?? 5],
-    ["Service", venue.mesita_stars_service ?? 5],
-    ["Ambience", venue.mesita_stars_ambience ?? 5],
+    ["Food", place.mesita_stars_food ?? 5],
+    ["Service", place.mesita_stars_service ?? 5],
+    ["Ambience", place.mesita_stars_ambience ?? 5],
     ["Value", overallMesita],
   ] as const;
 
@@ -122,8 +122,8 @@ function ReviewsSummarySection({ venue }: { venue: MyVenue }) {
   );
 }
 
-function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
-  const items = extractRelevantReviews(venue);
+function RelevantReviewsSection({ place }: { place: MyPlace }) {
+  const items = extractRelevantReviews(place);
   return (
     <Section
       title="Relevant reviews"
@@ -132,7 +132,7 @@ function RelevantReviewsSection({ venue }: { venue: MyVenue }) {
     >
       {items.length === 0 ? (
         <p className="bg-muted text-muted-foreground rounded-xl px-3 py-3 text-xs">
-          No review snippets available yet for this venue.
+          No review snippets available yet for this place.
         </p>
       ) : (
         <div className="scrollbar-hide -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1">
@@ -244,14 +244,14 @@ function ExternalMetricCard({
   );
 }
 
-function extractRelevantReviews(venue: MyVenue): Array<{
+function extractRelevantReviews(place: MyPlace): Array<{
   id: string;
   source: "Mesita" | "Google";
   author: string;
   rating: number;
   text: string;
 }> {
-  const raw = venue as unknown as Record<string, unknown>;
+  const raw = place as unknown as Record<string, unknown>;
   const out: Array<{
     id: string;
     source: "Mesita" | "Google";

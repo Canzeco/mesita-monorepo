@@ -75,8 +75,8 @@ export default async function BusinessRootPage({
           }
           subtitle={
             initialMode === "signup"
-              ? "Sign up with Google or email — add your venue right after."
-              : "Sign in to manage your venues, promos, and team."
+              ? "Sign up with Google or email — add your place right after."
+              : "Sign in to manage your places, promos, and team."
           }
           chip={
             params.error === "oauth_failed" ? (

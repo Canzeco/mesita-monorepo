@@ -44,7 +44,7 @@ type Verification = {
   created_at: string;
 };
 
-export type LookupVenue = {
+export type LookupPlace = {
   id: string;
   slug: string;
   name: string;
@@ -71,26 +71,26 @@ export type LookupMethods = {
 };
 
 export type LookupResult =
-  | { state: "not_in_mesita"; venue: null }
+  | { state: "not_in_mesita"; place: null }
   | {
       state: "web_listed_unclaimed";
-      venue: LookupVenue;
+      place: LookupPlace;
       methods: LookupMethods;
     }
   | {
       state: "pending_by_me";
-      venue: LookupVenue;
+      place: LookupPlace;
       verification: Verification;
       methods: LookupMethods;
     }
-  | { state: "pending_by_other"; venue: LookupVenue; methods: LookupMethods }
+  | { state: "pending_by_other"; place: LookupPlace; methods: LookupMethods }
   | {
       state: "verified_partner";
-      venue: LookupVenue;
+      place: LookupPlace;
       owner: { id: string; email: string | null };
     };
 
-export async function apiLookupVenue(
+export async function apiLookupPlace(
   client: SupabaseClient,
   placeId: string,
 ): Promise<LookupResult> {
@@ -101,12 +101,12 @@ export async function apiLookupVenue(
 
 export type SendPhoneOtpResult = {
   verificationId: string;
-  // "call" or "sms" — chosen by the EF based on venue country (call for
+  // "call" or "sms" — chosen by the EF based on place country (call for
   // LatAm landlines, SMS for US/CA). Surfaced so the UI can phrase the
   // confirmation correctly ("We called …" vs. "We texted …").
   channel: "call" | "sms";
   phoneDialed: string;
-  /** True until VENUE_OTP_PLACE_CALLS=true — no real outbound call yet. */
+  /** True until PLACE_OTP_PLACE_CALLS=true — no real outbound call yet. */
   mockMode?: boolean;
   // Populated in mock mode so the operator can complete the loop without a call.
   mockCode: string | null;
@@ -114,11 +114,11 @@ export type SendPhoneOtpResult = {
 
 export async function apiBusinessSendsPhoneOtp(
   client: SupabaseClient,
-  venueId: string,
+  projectId: string,
   requesterEmail?: string,
 ): Promise<SendPhoneOtpResult> {
   return invokeEF<SendPhoneOtpResult>(client, "business-send-phone-otp", {
-    venueId,
+    projectId,
     ...(requesterEmail?.trim()
       ? { requesterEmail: requesterEmail.trim() }
       : {}),
@@ -126,7 +126,7 @@ export async function apiBusinessSendsPhoneOtp(
 }
 
 export type VerifyOtpResult = {
-  venueId: string;
+  projectId: string;
   // True when the EF accepted the OTP but auto-verify was off for this
   // method, so the row sits in the admin queue. False (default) means
   // ownership was granted on the spot.
@@ -155,11 +155,11 @@ export type SendEmailOtpResult = {
 
 export async function apiBusinessSendsEmailOtp(
   client: SupabaseClient,
-  venueId: string,
+  projectId: string,
   requesterEmail?: string,
 ): Promise<SendEmailOtpResult> {
   return invokeEF<SendEmailOtpResult>(client, "business-send-email-otp", {
-    venueId,
+    projectId,
     ...(requesterEmail?.trim()
       ? { requesterEmail: requesterEmail.trim() }
       : {}),

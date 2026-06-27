@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Business surface frame — the venue console is a mobile-first web app
+ * Business surface frame — the place console is a mobile-first web app
  * (mirrors mesita-web-consumer's MobileFrame).
  *
  * Two-box model:

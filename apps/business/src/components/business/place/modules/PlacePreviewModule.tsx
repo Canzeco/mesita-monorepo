@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Star } from "lucide-react";
-import type { MyVenue } from "@/lib/api/venues";
+import type { MyPlace } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import {
-  formatVenueCategoryName,
-  resolveVenueCategoryName,
-} from "@/lib/venue-category";
+  formatPlaceCategoryName,
+  resolvePlaceCategoryName,
+} from "@/lib/place-category";
 import { PlaceModule } from "../PlaceModule";
 import { PlaceProfileProgressModule } from "./PlaceProfileProgressModule";
 import { PlaceRefreshModule } from "./PlaceRefreshModule";
@@ -29,49 +29,49 @@ function shortLocationFromAddress(address: string): string {
   return parts[0] ?? "Neighborhood";
 }
 
-function resolvePreviewRewardRate(venue: MyVenue): number | null {
+function resolvePreviewRewardRate(place: MyPlace): number | null {
   const rates = [
-    venue.welcome_free_rate,
-    venue.welcome_premium_rate,
-    venue.free_rate,
-    venue.premium_rate,
+    place.welcome_free_rate,
+    place.welcome_premium_rate,
+    place.free_rate,
+    place.premium_rate,
   ].filter((rate): rate is number => typeof rate === "number" && rate > 0);
   if (rates.length === 0) return null;
   return Math.max(...rates);
 }
 
-function previewMeta(venue: MyVenue, v: PlaceFormState) {
-  const name = v.name || venue.name || "Venue name";
+function previewMeta(place: MyPlace, v: PlaceFormState) {
+  const name = v.name || place.name || "Place name";
   const category =
-    (v.category && formatVenueCategoryName(v.category)) ||
-    resolveVenueCategoryName({
-      categoryLabel: venue.category_label,
-      category: venue.category,
+    (v.category && formatPlaceCategoryName(v.category)) ||
+    resolvePlaceCategoryName({
+      categoryLabel: place.category_label,
+      category: place.category,
     }) ||
     null;
   const price =
-    venue.price_level != null ? "$".repeat(venue.price_level) : null;
+    place.price_level != null ? "$".repeat(place.price_level) : null;
   const googleRating =
-    venue.google_stars_overall != null
-      ? venue.google_stars_overall.toFixed(1)
+    place.google_stars_overall != null
+      ? place.google_stars_overall.toFixed(1)
       : null;
   const googleCount =
-    venue.google_review_count != null
-      ? formatCount(venue.google_review_count)
+    place.google_review_count != null
+      ? formatCount(place.google_review_count)
       : null;
   const instagramFollowers =
-    venue.instagram_followers_count != null
-      ? formatCount(venue.instagram_followers_count)
+    place.instagram_followers_count != null
+      ? formatCount(place.instagram_followers_count)
       : null;
-  const zone = venue.address
-    ? shortLocationFromAddress(venue.address)
+  const zone = place.address
+    ? shortLocationFromAddress(place.address)
     : "Neighborhood";
   const distance = null;
-  const status = venue.closes_at ? `Open · until ${venue.closes_at}` : null;
+  const status = place.closes_at ? `Open · until ${place.closes_at}` : null;
   const isPartner = true;
-  const rewardRate = resolvePreviewRewardRate(venue);
+  const rewardRate = resolvePreviewRewardRate(place);
   const rewardMechanic =
-    venue.fiscal_type === "informal" ? "Discount" : "Reward";
+    place.fiscal_type === "informal" ? "Discount" : "Reward";
   const promoLabel =
     rewardRate != null
       ? `Reward · ${rewardRate}% ${rewardMechanic}`
@@ -101,17 +101,17 @@ function PreviewMetaChip({ children }: { children: React.ReactNode }) {
 }
 
 function PreviewSwipeCard({
-  venue,
+  place,
   v,
 }: {
-  venue: MyVenue;
+  place: MyPlace;
   v: PlaceFormState;
 }) {
   const photos = v.photos.slice(0, MAX_PHOTOS);
   const [photoIdx, setPhotoIdx] = useState(0);
   const safeIdx = photoIdx > photos.length - 1 ? 0 : photoIdx;
   const cover = photos[safeIdx] ?? null;
-  const meta = previewMeta(venue, v);
+  const meta = previewMeta(place, v);
   const canSlide = photos.length > 1;
 
   return (
@@ -174,13 +174,13 @@ function PreviewSwipeCard({
 }
 
 export function PlacePreviewModule({
-  venue,
+  place,
   v,
   refreshRunning,
   refreshNotice,
   onRefresh,
 }: {
-  venue: MyVenue;
+  place: MyPlace;
   v: PlaceFormState;
   refreshRunning: boolean;
   refreshNotice: string | null;
@@ -189,7 +189,7 @@ export function PlacePreviewModule({
   return (
     <div className="flex flex-col gap-4">
       <PlaceModule id="preview" contentClassName="items-center">
-        <PreviewSwipeCard venue={venue} v={v} />
+        <PreviewSwipeCard place={place} v={v} />
       </PlaceModule>
       <PlaceProfileProgressModule v={v} />
       <PlaceRefreshModule

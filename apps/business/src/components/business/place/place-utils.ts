@@ -1,9 +1,9 @@
-import { resolveVenueCategoryName } from "@/lib/venue-category";
-import type { MyVenue } from "@/lib/api/venues";
-import { SUBSCRIPTIONS, subscriptionForVenue } from "@/lib/business/plans";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
+import type { MyPlace } from "@/lib/api/places";
+import { SUBSCRIPTIONS, subscriptionForPlace } from "@/lib/business/plans";
 
 export const PLACE_DESCRIPTION_MAX = 2000;
-export const PLACE_VENUE_NAME_MAX = 80;
+export const PLACE_PLACE_NAME_MAX = 80;
 export const PLACE_PR_WHATSAPP_MAX = 3;
 export const PLACE_PR_INSTAGRAM_MAX = 3;
 
@@ -19,7 +19,7 @@ const PRICE_TIER_LABEL: Record<number, string> = {
   4: "Fine dining",
 };
 
-export function humanizeVenueToken(value: string | null | undefined): string {
+export function humanizePlaceToken(value: string | null | undefined): string {
   if (!value?.trim()) return "—";
   return value
     .trim()
@@ -27,41 +27,41 @@ export function humanizeVenueToken(value: string | null | undefined): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function resolveVenueCategory(venue: MyVenue): string {
+export function resolvePlaceCategory(place: MyPlace): string {
   return (
-    resolveVenueCategoryName({
-      categoryLabel: venue.category_label,
-      category: venue.category,
+    resolvePlaceCategoryName({
+      categoryLabel: place.category_label,
+      category: place.category,
     }) ?? "—"
   );
 }
 
-export function resolveVenuePriceLabel(venue: MyVenue): string {
-  if (venue.price_level == null) return "—";
-  const level = Math.max(1, Math.min(PRICE_LEVEL_MAX, venue.price_level));
+export function resolvePlacePriceLabel(place: MyPlace): string {
+  if (place.price_level == null) return "—";
+  const level = Math.max(1, Math.min(PRICE_LEVEL_MAX, place.price_level));
   return `${PRICE_TIER_LABEL[level]} · ${"$".repeat(level)}`;
 }
 
-export type VenueVerificationPresentation = {
+export type PlaceVerificationPresentation = {
   label: string;
   hint?: string;
   tone: "verified" | "pending" | "unverified";
 };
 
-export function resolveVenueVerification(
-  _venue: MyVenue,
-): VenueVerificationPresentation {
-  // MyVenue is only returned for signed-in venue members. If Place is
+export function resolvePlaceVerification(
+  _place: MyPlace,
+): PlaceVerificationPresentation {
+  // MyPlace is only returned for signed-in place members. If Place is
   // reachable, ownership is verified — listing_type is catalog tier, not
-  // ownership (see mesita-supabase venue-ownership.ts).
+  // ownership (see mesita-supabase project-ownership.ts).
   return { label: "Verified", tone: "verified" };
 }
 
-export function resolveVenueTierLabel(venue: MyVenue): string {
+export function resolvePlaceTierLabel(place: MyPlace): string {
   const sub = SUBSCRIPTIONS.find(
-    (row) => row.id === subscriptionForVenue(venue.plan),
+    (row) => row.id === subscriptionForPlace(place.plan),
   );
-  const planLabel = sub?.label ?? humanizeVenueToken(venue.plan);
-  const partnership = venue.listing_type === "partner" ? "Partner" : "Listed";
+  const planLabel = sub?.label ?? humanizePlaceToken(place.plan);
+  const partnership = place.listing_type === "partner" ? "Partner" : "Listed";
   return `${partnership} · ${planLabel}`;
 }

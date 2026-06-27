@@ -14,8 +14,8 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetBusinessProfile } from "@/lib/api/business";
-import { resolveVenueCategoryName } from "@/lib/venue-category";
-import type { MyVenue } from "@/lib/api/venues";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
+import type { MyPlace } from "@/lib/api/places";
 import { errMsg } from "@/lib/utils";
 import {
   ACTIVE_UNIT_COOKIE,
@@ -46,7 +46,7 @@ export default async function SettingsPage() {
     return (
       <PageErrorState
         heading="Couldn't load your account"
-        message={errMsg(overviewResult.reason, "Could not load your venues.")}
+        message={errMsg(overviewResult.reason, "Could not load your places.")}
         retryHref="/settings"
       />
     );
@@ -57,14 +57,14 @@ export default async function SettingsPage() {
     profileResult.status === "fulfilled" ? profileResult.value : null;
   const isSuperAdmin = overview?.isSuperAdmin === true;
 
-  const venues = overview?.venues ?? [];
-  const activeVenueId = resolveActiveUnitId({
+  const places = overview?.places ?? [];
+  const activePlaceId = resolveActiveUnitId({
     cookieId: cookieUnitId,
-    venueIds: venues.map((v) => v.id),
+    projectIds: places.map((v) => v.id),
   });
-  const activeVenue =
-    venues.find((v) => v.id === activeVenueId) ?? venues[0] ?? null;
-  const otherVenues = venues.filter((v) => v.id !== activeVenue?.id);
+  const activePlace =
+    places.find((v) => v.id === activePlaceId) ?? places[0] ?? null;
+  const otherPlaces = places.filter((v) => v.id !== activePlace?.id);
 
   const email = user.email ?? null;
   const accountName = isSuperAdmin
@@ -76,18 +76,18 @@ export default async function SettingsPage() {
       <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pt-3 pb-8">
         <section className="flex flex-col gap-2">
           <SectionLabel>Current place</SectionLabel>
-          {activeVenue ? (
+          {activePlace ? (
             <Link
-              href={placePath(activeVenue.id)}
+              href={placePath(activePlace.id)}
               className="border-border bg-card hover:border-foreground/30 flex items-center gap-3 rounded-2xl border px-3 py-3 transition"
             >
-              <VenueAvatar name={activeVenue.name} />
+              <PlaceAvatar name={activePlace.name} />
               <div className="min-w-0 flex-1">
                 <p className="font-display truncate text-base leading-tight font-semibold tracking-tight">
-                  {activeVenue.name}
+                  {activePlace.name}
                 </p>
                 <p className="text-muted-foreground truncate text-[11px]">
-                  {venueSubtitle(activeVenue)}
+                  {placeSubtitle(activePlace)}
                 </p>
               </div>
               <Check className="text-secondary h-4 w-4 shrink-0" />
@@ -111,21 +111,21 @@ export default async function SettingsPage() {
             </Link>
           )}
 
-          {!isSuperAdmin && otherVenues.length > 0 && (
+          {!isSuperAdmin && otherPlaces.length > 0 && (
             <div className="border-border bg-card mt-1 overflow-hidden rounded-2xl border">
-              {otherVenues.map((v) => (
+              {otherPlaces.map((v) => (
                 <Link
                   key={v.id}
                   href={placePath(v.id)}
                   className="hover:bg-muted/40 flex w-full items-center gap-3 px-3 py-2.5 text-left transition"
                 >
-                  <VenueAvatar name={v.name} />
+                  <PlaceAvatar name={v.name} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm leading-tight font-semibold">
                       {v.name}
                     </p>
                     <p className="text-muted-foreground truncate text-[11px]">
-                      {venueSubtitle(v)}
+                      {placeSubtitle(v)}
                     </p>
                   </div>
                   <ArrowRight className="text-muted-foreground h-4 w-4 shrink-0" />
@@ -218,7 +218,7 @@ function BackToAdminLink() {
   );
 }
 
-function VenueAvatar({ name }: { name: string }) {
+function PlaceAvatar({ name }: { name: string }) {
   const initial = name.trim().slice(0, 1).toUpperCase() || "·";
   return (
     <span className="bg-pink-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold text-white shadow-sm">
@@ -227,10 +227,10 @@ function VenueAvatar({ name }: { name: string }) {
   );
 }
 
-function venueSubtitle(v: MyVenue): string {
+function placeSubtitle(v: MyPlace): string {
   const parts = [
     v.vibe,
-    resolveVenueCategoryName({
+    resolvePlaceCategoryName({
       categoryLabel: v.category_label,
       category: v.category,
     }),

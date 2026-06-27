@@ -7,15 +7,15 @@ import { SubTabs } from "@/components/business/SubTabs";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placePath } from "@/lib/business-route-contract";
 import {
-  apiUpdateVenue,
-  type MyVenue,
-  type UpdateVenueInput,
-  type VenueHours,
-} from "@/lib/api/venues";
+  apiUpdatePlace,
+  type MyPlace,
+  type UpdatePlaceInput,
+  type PlaceHours,
+} from "@/lib/api/places";
 import {
   PLACE_DESCRIPTION_MAX,
   PLACE_HOUR_DAYS,
-  PLACE_VENUE_NAME_MAX,
+  PLACE_PLACE_NAME_MAX,
   PLACE_PR_WHATSAPP_MAX,
   PLACE_PR_INSTAGRAM_MAX,
   PlaceBasicsModule,
@@ -38,7 +38,7 @@ import { cn, errMsg } from "@/lib/utils";
 const DAYS = PLACE_HOUR_DAYS;
 const MAX_SHIFTS_PER_DAY = 1;
 const SAVED_TOAST_MS = 2200;
-const VENUE_NAME_MAX = PLACE_VENUE_NAME_MAX;
+const PLACE_NAME_MAX = PLACE_PLACE_NAME_MAX;
 const DESCRIPTION_MAX = PLACE_DESCRIPTION_MAX;
 const TAG_MAX = 40;
 const TAG_MAX_COUNT = 20;
@@ -57,9 +57,9 @@ function nullable(v: string): string | null {
   return t === "" ? null : t;
 }
 
-function mergeOvernightSplit(h: VenueHours): VenueHours {
+function mergeOvernightSplit(h: PlaceHours): PlaceHours {
   const longKeys = DAYS.map((d) => d.long);
-  const out: VenueHours = {};
+  const out: PlaceHours = {};
   for (const k of longKeys) {
     const arr = h[k];
     if (arr) out[k] = arr.map((r) => ({ open: r.open, close: r.close }));
@@ -99,7 +99,7 @@ function mergeOvernightSplit(h: VenueHours): VenueHours {
   return out;
 }
 
-function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayShifts> {
+function placeHoursToForm(h: PlaceHours | null): Record<DayKey, DayShifts> {
   const merged = h ? mergeOvernightSplit(h) : null;
   const out = {} as Record<DayKey, DayShifts>;
   for (const d of DAYS) {
@@ -121,8 +121,8 @@ function venueHoursToForm(h: VenueHours | null): Record<DayKey, DayShifts> {
   return out;
 }
 
-function formHoursToVenue(form: Record<DayKey, DayShifts>): VenueHours {
-  const out: VenueHours = {};
+function formHoursToPlace(form: Record<DayKey, DayShifts>): PlaceHours {
+  const out: PlaceHours = {};
   for (const d of DAYS) {
     const v = form[d.key];
     if (v.closed) continue;
@@ -134,52 +134,52 @@ function formHoursToVenue(form: Record<DayKey, DayShifts>): VenueHours {
   return out;
 }
 
-function venueToFormState(venue: MyVenue): PlaceFormState {
+function placeToFormState(place: MyPlace): PlaceFormState {
   return {
-    name: venue.name ?? "",
-    category: venue.category ?? "",
-    description: venue.description ?? "",
-    hours: venueHoursToForm(venue.hours),
-    menu_links: venue.menu_pdf_url
-      ? [{ name: venue.menu_pdf_name ?? "", url: venue.menu_pdf_url }]
+    name: place.name ?? "",
+    category: place.category ?? "",
+    description: place.description ?? "",
+    hours: placeHoursToForm(place.hours),
+    menu_links: place.menu_pdf_url
+      ? [{ name: place.menu_pdf_name ?? "", url: place.menu_pdf_url }]
       : [{ name: "", url: "" }],
-    photos: (venue.photos ?? []).slice(0, MAX_PHOTOS),
-    tags: venue.tags ?? [],
-    phone: venue.phone ?? "",
-    whatsapp_url: venue.whatsapp_url ?? "",
-    whatsapp_pr_urls: (venue.whatsapp_pr_urls ?? []).slice(0, PLACE_PR_WHATSAPP_MAX),
-    email: venue.email ?? "",
-    website_url: venue.website_url ?? "",
-    instagram_url: venue.instagram_url ?? "",
-    instagram_pr_urls: (venue.instagram_pr_urls ?? []).slice(0, PLACE_PR_INSTAGRAM_MAX),
-    facebook_url: venue.facebook_url ?? "",
-    tiktok_url: venue.tiktok_url ?? "",
-    threads_url: venue.threads_url ?? "",
-    reddit_url: venue.reddit_url ?? "",
-    opentable_url: venue.opentable_url ?? "",
-    resy_url: venue.resy_url ?? "",
-    tripadvisor_url: venue.tripadvisor_url ?? "",
-    google_maps_url: venue.google_maps_url ?? "",
-    uber_eats_url: venue.uber_eats_url ?? "",
-    didi_food_url: venue.didi_food_url ?? "",
+    photos: (place.photos ?? []).slice(0, MAX_PHOTOS),
+    tags: place.tags ?? [],
+    phone: place.phone ?? "",
+    whatsapp_url: place.whatsapp_url ?? "",
+    whatsapp_pr_urls: (place.whatsapp_pr_urls ?? []).slice(0, PLACE_PR_WHATSAPP_MAX),
+    email: place.email ?? "",
+    website_url: place.website_url ?? "",
+    instagram_url: place.instagram_url ?? "",
+    instagram_pr_urls: (place.instagram_pr_urls ?? []).slice(0, PLACE_PR_INSTAGRAM_MAX),
+    facebook_url: place.facebook_url ?? "",
+    tiktok_url: place.tiktok_url ?? "",
+    threads_url: place.threads_url ?? "",
+    reddit_url: place.reddit_url ?? "",
+    opentable_url: place.opentable_url ?? "",
+    resy_url: place.resy_url ?? "",
+    tripadvisor_url: place.tripadvisor_url ?? "",
+    google_maps_url: place.google_maps_url ?? "",
+    uber_eats_url: place.uber_eats_url ?? "",
+    didi_food_url: place.didi_food_url ?? "",
   };
 }
 
-export function EditVenueForm({
-  venue,
+export function EditPlaceForm({
+  place,
   tab,
 }: {
-  venue: MyVenue;
+  place: MyPlace;
   tab: PlaceSubTab;
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
   const setTab = (next: PlaceSubTab) => {
-    router.replace(placePath(venue.id, next), { scroll: false });
+    router.replace(placePath(place.id, next), { scroll: false });
   };
 
-  const [v, setV] = useState<PlaceFormState>(() => venueToFormState(venue));
+  const [v, setV] = useState<PlaceFormState>(() => placeToFormState(place));
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -198,7 +198,7 @@ export function EditVenueForm({
   const handleDiscard = () => {
     if (!isDirty) return;
     if (!window.confirm("Discard your unsaved changes?")) return;
-    setV(venueToFormState(venue));
+    setV(placeToFormState(place));
     setIsDirty(false);
     setError(null);
     setSaved(false);
@@ -230,15 +230,15 @@ export function EditVenueForm({
     const firstMenu = v.menu_links.find((m) => m.url.trim() !== "") ??
       v.menu_links[0] ?? { name: "", url: "" };
 
-    const payload: UpdateVenueInput = {
-      id: venue.id,
-      name: trimmedName.slice(0, VENUE_NAME_MAX),
+    const payload: UpdatePlaceInput = {
+      id: place.id,
+      name: trimmedName.slice(0, PLACE_NAME_MAX),
       category: nullable(v.category),
       description:
         v.description.trim() === ""
           ? null
           : v.description.trim().slice(0, DESCRIPTION_MAX),
-      hours: formHoursToVenue(v.hours),
+      hours: formHoursToPlace(v.hours),
       menu_pdf_url: nullableUrl(firstMenu.url),
       menu_pdf_name: nullable(firstMenu.name),
       photos: v.photos.slice(0, MAX_PHOTOS),
@@ -273,7 +273,7 @@ export function EditVenueForm({
 
     startTransition(async () => {
       try {
-        await apiUpdateVenue(supabase, payload);
+        await apiUpdatePlace(supabase, payload);
         setSaved(true);
         setIsDirty(false);
         router.refresh();
@@ -297,7 +297,7 @@ export function EditVenueForm({
       <div className="flex flex-col gap-4 px-4 pt-5 pb-10">
         {tab === "preview" ? (
           <PlacePreviewModule
-            venue={venue}
+            place={place}
             v={v}
             refreshRunning={refreshRunning}
             refreshNotice={refreshNotice}
@@ -306,7 +306,7 @@ export function EditVenueForm({
         ) : null}
 
         {tab === "basics" ? (
-          <PlaceBasicsModule venue={venue} form={v} set={set} />
+          <PlaceBasicsModule place={place} form={v} set={set} />
         ) : null}
 
         {tab === "media" ? (
@@ -315,13 +315,13 @@ export function EditVenueForm({
               hideHeader
               photos={v.photos}
               onChange={(photos) => set("photos", photos)}
-              venueId={venue.id}
-              venueName={v.name}
+              projectId={place.id}
+              placeName={v.name}
               onError={setError}
             />
             <PlaceMenuModule
               hideHeader
-              venueId={venue.id}
+              projectId={place.id}
               form={v}
               set={set}
               onError={setError}
@@ -334,7 +334,7 @@ export function EditVenueForm({
         ) : null}
 
         {tab === "reviews" ? (
-          <PlaceReviewsModule venue={venue} hideHeader />
+          <PlaceReviewsModule place={place} hideHeader />
         ) : null}
       </div>
 

@@ -10,7 +10,7 @@ import { MobileFrame } from "@/components/business/MobileFrame";
 import { BusinessOnboardForm } from "./BusinessOnboardForm";
 
 // Business onboarding — captures the business operator's name after signup.
-// Distinct from venue creation; this is about the *person*, the venue
+// Distinct from place creation; this is about the *person*, the place
 // gets its own wizard step at /add.
 //
 // Server-gated:
@@ -19,7 +19,7 @@ import { BusinessOnboardForm } from "./BusinessOnboardForm";
 //   - signed in, no name → render the form
 //
 // Renders AppHeader on top so the operator has a visible sign-out
-// path mid-flow — even though they don't have a profile or venues yet,
+// path mid-flow — even though they don't have a profile or places yet,
 // they may have signed in with the wrong Google account and want to
 // switch.
 export const dynamic = "force-dynamic";
@@ -44,10 +44,10 @@ export default async function BusinessOnboardPage() {
 
   return (
     <MobileFrame>
-      <AuthShell header={<AppHeader email={user.email ?? null} venues={[]} />}>
+      <AuthShell header={<AppHeader email={user.email ?? null} places={[]} />}>
         <AuthCard
           title="Welcome to Mesita"
-          subtitle="Tell us who you are. You can add your venue right after."
+          subtitle="Tell us who you are. You can add your place right after."
         >
           <BusinessOnboardForm />
         </AuthCard>

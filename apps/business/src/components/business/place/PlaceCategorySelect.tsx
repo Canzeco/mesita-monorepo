@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiListVenueCategories,
-  type VenueCategoryOption,
-} from "@/lib/api/venue-categories";
+  apiListPlaceCategories,
+  type PlaceCategoryOption,
+} from "@/lib/api/place-categories";
 import { cn } from "@/lib/utils";
-import { resolveVenueCategoryName } from "@/lib/venue-category";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
 
 export function PlaceCategorySelect({
@@ -25,13 +25,13 @@ export function PlaceCategorySelect({
   bare?: boolean;
 }) {
   const supabase = useBrowserSupabase();
-  const [categories, setCategories] = useState<VenueCategoryOption[]>([]);
+  const [categories, setCategories] = useState<PlaceCategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    apiListVenueCategories(supabase)
+    apiListPlaceCategories(supabase)
       .then((rows) => {
         if (!cancelled) setCategories(rows);
       })
@@ -47,7 +47,7 @@ export function PlaceCategorySelect({
   }, [supabase]);
 
   const sections = useMemo(() => {
-    const grouped = new Map<string, VenueCategoryOption[]>();
+    const grouped = new Map<string, PlaceCategoryOption[]>();
     for (const row of categories) {
       const list = grouped.get(row.section) ?? [];
       list.push(row);
@@ -57,8 +57,8 @@ export function PlaceCategorySelect({
   }, [categories]);
 
   const googleHint =
-    resolveVenueCategoryName({ categoryLabel: googleCategoryLabel }) ??
-    resolveVenueCategoryName({ category: googleCategorySlug });
+    resolvePlaceCategoryName({ categoryLabel: googleCategoryLabel }) ??
+    resolvePlaceCategoryName({ category: googleCategorySlug });
 
   const showGoogleHint =
     Boolean(googleHint) &&

@@ -25,7 +25,7 @@ export default async function PerformancePage({
   try {
     overview = await getUnitOverview(supabase, id, 0);
   } catch (err) {
-    overviewError = errMsg(err, "Could not load your venues.");
+    overviewError = errMsg(err, "Could not load your places.");
   }
 
   if (overviewError) {
@@ -38,7 +38,7 @@ export default async function PerformancePage({
     );
   }
 
-  const active = overview?.active?.venue ?? overview?.venues[0] ?? null;
+  const active = overview?.active?.place ?? overview?.places[0] ?? null;
 
   if (!active) {
     return (
@@ -46,8 +46,8 @@ export default async function PerformancePage({
         <div className="mx-auto max-w-lg px-4 pt-1 pb-6">
           <EmptyState
             icon={<BarChart3 className="text-muted-foreground h-5 w-5" />}
-            title="No venue yet"
-            description="Add a venue to see performance stats."
+            title="No place yet"
+            description="Add a place to see performance stats."
           />
         </div>
       </div>
@@ -60,7 +60,7 @@ export default async function PerformancePage({
         <EmptyState
           icon={<BarChart3 className="text-muted-foreground h-5 w-5" />}
           title="Stats coming soon"
-          description="Daily visits, retention, and revenue charts will show up here once the analytics pipeline lands."
+          description="Daily visits, retention, and replace charts will show up here once the analytics pipeline lands."
         />
       </div>
     </div>

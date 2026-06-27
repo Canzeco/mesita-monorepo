@@ -1,17 +1,17 @@
-import type { MyVenue } from "@/lib/api/venues";
-import { VenueReviewsPanel } from "@/components/business/stats/VenueReviewsPanel";
+import type { MyPlace } from "@/lib/api/places";
+import { PlaceReviewsPanel } from "@/components/business/stats/PlaceReviewsPanel";
 import { PlaceModule } from "../PlaceModule";
 
 export function PlaceReviewsModule({
-  venue,
+  place,
   hideHeader = false,
 }: {
-  venue: MyVenue;
+  place: MyPlace;
   hideHeader?: boolean;
 }) {
   return (
     <PlaceModule id="reviews" hideHeader={hideHeader}>
-      <VenueReviewsPanel venue={venue} />
+      <PlaceReviewsPanel place={place} />
     </PlaceModule>
   );
 }

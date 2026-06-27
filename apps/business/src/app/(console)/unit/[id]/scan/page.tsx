@@ -33,33 +33,33 @@ export default async function ScanPage({
   if (overviewError) {
     return (
       <PageErrorState
-        heading="Couldn't load the venue"
+        heading="Couldn't load the place"
         message={overviewError}
         retryHref={`/unit/${id}/scan`}
       />
     );
   }
 
-  if (!overview || overview.venues.length === 0) {
+  if (!overview || overview.places.length === 0) {
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-10 md:px-8">
           <EmptyState
             icon={<ReceiptText className="text-muted-foreground h-5 w-5" />}
-            title="No venue available"
-            description="Add or select a venue to check tickets."
+            title="No place available"
+            description="Add or select a place to check tickets."
           />
         </div>
       </div>
     );
   }
 
-  const active = overview.active?.venue ?? overview.venues[0];
+  const active = overview.active?.place ?? overview.places[0];
   let initialTickets: Awaited<ReturnType<typeof apiListTickets>> = [];
   let ticketsError: string | null = null;
   try {
     initialTickets = await apiListTickets(supabase, {
-      venueId: active.id,
+      projectId: active.id,
       limit: 100,
     });
   } catch (err) {
@@ -80,8 +80,8 @@ export default async function ScanPage({
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto flex w-full max-w-lg flex-col px-4 pt-1 pb-8 md:px-5 md:pt-3 md:pb-10">
         <TicketsClient
-          venueId={active.id}
-          venueCurrency={active.currency}
+          projectId={active.id}
+          placeCurrency={active.currency}
           initialTickets={initialTickets}
         />
       </div>

@@ -34,7 +34,7 @@ export type StaffTicketProgressInput = Pick<
   "kind" | "status" | "story_status" | "check_subtotal_cents" | "total_cents"
 >;
 
-const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "waiter_verified"]);
+const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "staff_verified"]);
 
 const STORY_KINDS = new Set<TicketKind>(["s_dp_sf", "r_s_dp_sf"]);
 

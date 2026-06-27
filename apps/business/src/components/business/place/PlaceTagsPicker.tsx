@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiListVenueTags,
+  apiListPlaceTags,
   type TagFacet,
-  type VenueTagOption,
-} from "@/lib/api/venue-tags";
+  type PlaceTagOption,
+} from "@/lib/api/place-tags";
 import { cn } from "@/lib/utils";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
 
@@ -37,7 +37,7 @@ export function PlaceTagsPicker({
 }) {
   const supabase = useBrowserSupabase();
   const [facets, setFacets] = useState<TagFacet[]>([]);
-  const [tags, setTags] = useState<VenueTagOption[]>([]);
+  const [tags, setTags] = useState<PlaceTagOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
@@ -46,7 +46,7 @@ export function PlaceTagsPicker({
     // client, so the catalog is fetched exactly once at mount — no need to
     // re-flip loading synchronously (which also trips set-state-in-effect).
     let cancelled = false;
-    apiListVenueTags(supabase)
+    apiListPlaceTags(supabase)
       .then((data) => {
         if (cancelled) return;
         setFacets(data.facets);
@@ -67,7 +67,7 @@ export function PlaceTagsPicker({
 
   // slug → option, for resolving selected chips to their English label.
   const bySlug = useMemo(() => {
-    const map = new Map<string, VenueTagOption>();
+    const map = new Map<string, PlaceTagOption>();
     for (const tag of tags) map.set(tag.slug, tag);
     return map;
   }, [tags]);
@@ -77,7 +77,7 @@ export function PlaceTagsPicker({
   // Tags grouped by facet, in facet display order. Tags themselves arrive
   // pre-sorted by sort_order, so preserving insertion order is enough.
   const groups = useMemo(() => {
-    const byFacet = new Map<string, VenueTagOption[]>();
+    const byFacet = new Map<string, PlaceTagOption[]>();
     for (const tag of tags) {
       const list = byFacet.get(tag.facet) ?? [];
       list.push(tag);

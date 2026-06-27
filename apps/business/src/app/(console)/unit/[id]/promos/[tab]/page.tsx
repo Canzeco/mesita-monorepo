@@ -35,33 +35,33 @@ export default async function BusinessPromosTabPage({
   try {
     overview = await getUnitOverview(supabase, requestedUnit, 0);
   } catch (err) {
-    overviewError = errMsg(err, "Could not load your venues.");
+    overviewError = errMsg(err, "Could not load your places.");
   }
   if (overviewError) {
     return (
       <PageErrorState
-        heading="Couldn't load the venue"
+        heading="Couldn't load the place"
         message={overviewError}
         retryHref={promosPath(id, tab)}
       />
     );
   }
 
-  if (!overview || overview.venues.length === 0) {
+  if (!overview || overview.places.length === 0) {
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 pt-2 pb-8 md:px-8 md:pt-4 md:pb-10">
           <EmptyState
             icon={<Store className="text-muted-foreground h-5 w-5" />}
-            title="No venue yet"
-            description="Add a venue to start configuring promos."
+            title="No place yet"
+            description="Add a place to start configuring promos."
             action={
               <Link
                 href="/add"
                 className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
-                Add venue
+                Add place
               </Link>
             }
           />
@@ -70,12 +70,12 @@ export default async function BusinessPromosTabPage({
     );
   }
 
-  const active = overview.active?.venue ?? overview.venues[0];
+  const active = overview.active?.place ?? overview.places[0];
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-lg pb-6">
-        <PromosClient venue={active} tab={tab} />
+        <PromosClient place={active} tab={tab} />
       </div>
     </div>
   );

@@ -30,13 +30,13 @@ export default async function TeamPage({
       getUnitOverview(supabase, id, 0),
     ]);
     initialSnapshot = snapshot;
-    const venue =
-      overview.active?.venue ??
-      overview.venues.find((v) => v.id === id) ??
-      overview.venues[0];
-    if (venue) {
-      initialWhatsappPrUrl = venue.whatsapp_pr_urls[0] ?? "";
-      initialInstagramPrUrl = venue.instagram_pr_urls[0] ?? "";
+    const place =
+      overview.active?.place ??
+      overview.places.find((v) => v.id === id) ??
+      overview.places[0];
+    if (place) {
+      initialWhatsappPrUrl = place.whatsapp_pr_urls[0] ?? "";
+      initialInstagramPrUrl = place.instagram_pr_urls[0] ?? "";
     }
   } catch (err) {
     initialError = errMsg(err, "Couldn't load the team.");
@@ -56,7 +56,7 @@ export default async function TeamPage({
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-2 pb-8 md:px-8 md:pt-4 md:pb-10">
         <TeamClient
-          venueId={id}
+          projectId={id}
           currentUserId={user.id}
           initialSnapshot={initialSnapshot}
           initialWhatsappPrUrl={initialWhatsappPrUrl}

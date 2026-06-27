@@ -1,6 +1,6 @@
 // Shared form Field primitive — label + child input + optional hint +
 // optional required mark. Replaces local `Field` definitions previously
-// duplicated in OnboardForm, EditVenueForm, and a few others.
+// duplicated in OnboardForm, EditPlaceForm, and a few others.
 //
 // Pass any native input / select / textarea (or composite like
 // PhoneInputWithCountry) as children. The wrapper just renders the

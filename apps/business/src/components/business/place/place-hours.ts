@@ -1,4 +1,4 @@
-import type { VenueHours } from "@/lib/api/venues";
+import type { PlaceHours } from "@/lib/api/places";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type HoursRange = { open: string; close: string };
@@ -7,7 +7,7 @@ export type DayShifts = { ranges: HoursRange[]; closed: boolean };
 export const PLACE_HOUR_DAYS: {
   key: DayKey;
   label: string;
-  long: keyof VenueHours;
+  long: keyof PlaceHours;
 }[] = [
   { key: "mon", label: "Mon", long: "monday" },
   { key: "tue", label: "Tue", long: "tuesday" },

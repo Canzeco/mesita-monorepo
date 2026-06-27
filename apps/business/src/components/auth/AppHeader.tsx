@@ -13,29 +13,29 @@ import { placePath } from "@/lib/business-route-contract";
 
 // Slim top bar used on the non-dashboard authenticated surfaces
 // (/, /onboard, /add). Brand on the left links back to home; account
-// menu on the right surfaces the user's email, jump-to-venue links,
+// menu on the right surfaces the user's email, jump-to-place links,
 // and a sign-out action. Replaces the ad-hoc "Back to home" link +
 // "Signed in as foo@bar" chip we used to scatter across these pages.
 
-export type HeaderVenue = {
+export type HeaderPlace = {
   id: string;
   name: string;
 };
 
 export function AppHeader({
   email,
-  venues,
+  places,
 }: {
   email: string | null;
   // Pre-fetched on the server. Empty for first-time users — the menu
-  // adapts ("You haven't added any venues yet") instead of hiding.
-  venues: HeaderVenue[];
+  // adapts ("You haven't added any places yet") instead of hiding.
+  places: HeaderPlace[];
 }) {
   return (
     <header className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 md:px-10">
         <Brandmark />
-        <AccountMenu email={email} venues={venues} />
+        <AccountMenu email={email} places={places} />
       </div>
     </header>
   );
@@ -56,10 +56,10 @@ function Brandmark() {
 
 function AccountMenu({
   email,
-  venues,
+  places,
 }: {
   email: string | null;
-  venues: HeaderVenue[];
+  places: HeaderPlace[];
 }) {
   const initial = (email?.[0] ?? "?").toUpperCase();
   return (
@@ -81,12 +81,12 @@ function AccountMenu({
           <span className="truncate text-sm">{email ?? "(no email)"}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {venues.length > 0 ? (
+        {places.length > 0 ? (
           <>
             <DropdownMenuLabel className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
-              Your venues
+              Your places
             </DropdownMenuLabel>
-            {venues.map((v) => (
+            {places.map((v) => (
               <DropdownMenuItem key={v.id} asChild>
                 <Link
                   href={placePath(v.id)}
@@ -100,7 +100,7 @@ function AccountMenu({
           </>
         ) : (
           <p className="text-muted-foreground px-2 py-1.5 text-[12px] leading-relaxed">
-            You haven&apos;t added any venues yet.
+            You haven&apos;t added any places yet.
           </p>
         )}
         <DropdownMenuSeparator />

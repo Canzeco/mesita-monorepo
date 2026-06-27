@@ -1,12 +1,12 @@
 import { ExternalLink } from "lucide-react";
-import type { MyVenue } from "@/lib/api/venues";
+import type { MyPlace } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import {
   PLACE_GOOGLE_LOCATION_INFO,
   PlaceKvField,
 } from "./PlaceKvField";
 
-function VenueMapEmbed({
+function PlaceMapEmbed({
   lat,
   lng,
   name,
@@ -22,7 +22,7 @@ function VenueMapEmbed({
     <div className="border-border bg-card relative h-[140px] overflow-hidden rounded-xl border">
       <iframe
         src={src}
-        title={`Map of ${name ?? "this venue"}`}
+        title={`Map of ${name ?? "this place"}`}
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
         className="block h-full w-full border-0"
@@ -59,34 +59,34 @@ function OpenInGoogleMaps({
   );
 }
 
-export function PlaceLocationFields({ venue }: { venue: MyVenue }) {
-  const hasCoords = venue.lat != null && venue.lng != null;
+export function PlaceLocationFields({ place }: { place: MyPlace }) {
+  const hasCoords = place.lat != null && place.lng != null;
 
   return (
     <PlaceKvField
       label="Location"
       infoMessage={PLACE_GOOGLE_LOCATION_INFO}
-      value={venue.address?.trim() || undefined}
+      value={place.address?.trim() || undefined}
       blocked
     >
       <div className="flex flex-col gap-2">
         <div
           className={cn(
             "rounded-xl border border-border/60 bg-muted/40 px-3 py-2.5 text-[13px] leading-snug",
-            !venue.address?.trim() && "text-muted-foreground",
+            !place.address?.trim() && "text-muted-foreground",
           )}
         >
-          {venue.address?.trim() || "—"}
+          {place.address?.trim() || "—"}
         </div>
         {hasCoords ? (
-          <VenueMapEmbed
-            lat={venue.lat as number}
-            lng={venue.lng as number}
-            name={venue.name}
-            mapsUrl={venue.google_maps_url}
+          <PlaceMapEmbed
+            lat={place.lat as number}
+            lng={place.lng as number}
+            name={place.name}
+            mapsUrl={place.google_maps_url}
           />
-        ) : venue.google_maps_url ? (
-          <OpenInGoogleMaps href={venue.google_maps_url} variant="block" />
+        ) : place.google_maps_url ? (
+          <OpenInGoogleMaps href={place.google_maps_url} variant="block" />
         ) : null}
       </div>
     </PlaceKvField>

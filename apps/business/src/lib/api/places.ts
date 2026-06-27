@@ -1,4 +1,4 @@
-// Frontend API surface for venue Edge Functions.
+// Frontend API surface for place Edge Functions.
 //
 // Architectural constraints honoured:
 // - Clients NEVER query the database directly. Every read or write goes
@@ -9,8 +9,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-type VenueListingType = "partner" | "web";
-type VenueStatus =
+type PlaceListingType = "partner" | "web";
+type PlaceStatus =
   | "lead"
   | "active"
   | "paused"
@@ -19,21 +19,21 @@ type VenueStatus =
   | "pending_verification";
 
 export type FiscalType = "formal" | "informal";
-// Five-plan venue catalog: Free (default) + Pro and Ultra at each fiscal
-// type. Every Verified venue runs an instant discount applied at the bill;
+// Five-plan place catalog: Free (default) + Pro and Ultra at each fiscal
+// type. Every Verified place runs an instant discount applied at the bill;
 // Pro and Ultra differ only in price and visibility. See lib/business/plans.ts
 // for the picker catalog and visibility mappings.
-export type VenuePlan =
+export type PlacePlan =
   | "free"
   | "formal_pro"
   | "formal_ultra"
   | "informal_pro"
   | "informal_ultra";
 
-// Weekly opening hours — JSONB column on venues. Lowercase English day keys,
+// Weekly opening hours — JSONB column on places. Lowercase English day keys,
 // each holding an array of {open,close} ranges in 24h HH:MM. Closed days omit
 // the key entirely. Multiple ranges per day support split shifts.
-export type VenueHours = Partial<
+export type PlaceHours = Partial<
   Record<
     | "monday"
     | "tuesday"
@@ -46,7 +46,7 @@ export type VenueHours = Partial<
   >
 >;
 
-type Venue = {
+type Place = {
   id: string;
   slug: string;
   name: string;
@@ -55,31 +55,31 @@ type Venue = {
   vibe: string | null;
   price_level: number | null;
   // ISO 4217 currency code (e.g. "MXN", "USD"). Every monetary amount
-  // on this venue — price ranges, reward cap, future cover charges —
+  // on this place — price ranges, reward cap, future cover charges —
   // is denominated in this currency. Defaults to MXN on the DB side.
   currency: string;
-  listing_type: VenueListingType;
-  status: VenueStatus;
+  listing_type: PlaceListingType;
+  status: PlaceStatus;
   fiscal_type: FiscalType;
-  plan: VenuePlan;
+  plan: PlacePlan;
   lat: number | null;
   lng: number | null;
   address: string | null;
   timezone: string | null;
   closes_at: string | null;
-  hours: VenueHours | null;
+  hours: PlaceHours | null;
   phone: string | null;
   pitch: string | null;
   story: string | null;
   description: string | null;
   // Four per-tier promo rates (DB migration 0032). Welcome variants fire on
-  // a guest's first visit at this venue; the unprefixed variants apply on
+  // a guest's first visit at this place; the unprefixed variants apply on
   // every visit afterwards. Each is one of 10 / 20 / 50 / 70 or null.
   welcome_free_rate: number | null;
   welcome_premium_rate: number | null;
   free_rate: number | null;
   premium_rate: number | null;
-  // Venue-level monthly promo spend cap (DB migration 0038), in `currency`.
+  // Place-level monthly promo spend cap (DB migration 0038), in `currency`.
   // One of 200 / 500 / 1000 / 2000 or null (no cap).
   monthly_promo_cap: number | null;
   photos: string[];
@@ -125,7 +125,7 @@ type Venue = {
   created_at: string;
 };
 
-export type MyVenue = Venue & {
+export type MyPlace = Place & {
   my_role: "owner" | "editor" | "staff" | "viewer";
   updated_at?: string;
 };
@@ -148,7 +148,7 @@ export type PlacePrediction = {
 
 type EnrichmentReport = {
   google: boolean;
-  /** Number of photos actually persisted on the venue after the
+  /** Number of photos actually persisted on the place after the
    *  gpt-4o-mini vision rank. The EF sources up to MAX_PHOTOS (20)
    *  candidates and keeps only the top MAX_PHOTOS_TO_KEEP (10) after
    *  scoring for Mesita-fit (vibe / sharpness / evergreen). The
@@ -156,7 +156,7 @@ type EnrichmentReport = {
   photoCount: number;
   /** Raw candidate-pool size before the vision rank. Lets the admin
    *  UI tell the difference between "we only found 3 photos for this
-   *  venue" and "we found 20 and the ranker kept the best 10". */
+   *  place" and "we found 20 and the ranker kept the best 10". */
   photoCandidates?: number;
   /** True when gpt-4o-mini vision successfully scored the candidate
    *  pool. False = ranking fell back to source-priority order (CSE >
@@ -186,29 +186,29 @@ export async function apiPlacesAutocomplete(
     client,
     "business-suggest-places",
     { input: trimmed, sessionToken },
-    "Couldn't search venues right now.",
+    "Couldn't search places right now.",
   );
   return predictions;
 }
 
-type EnrichCreateVenueResponse = {
-  venue: { id: string; slug: string; name: string; status: VenueStatus };
+type EnrichCreatePlaceResponse = {
+  place: { id: string; slug: string; name: string; status: PlaceStatus };
   enrichment: EnrichmentReport;
 };
 
-export async function apiEnrichCreateVenue(
+export async function apiEnrichCreatePlace(
   client: SupabaseClient,
   placeId: string,
-): Promise<EnrichCreateVenueResponse> {
-  return invokeEF<EnrichCreateVenueResponse>(
+): Promise<EnrichCreatePlaceResponse> {
+  return invokeEF<EnrichCreatePlaceResponse>(
     client,
-    "business-create-unit",
+    "business-create-project",
     { placeId },
-    "Couldn't create that venue.",
+    "Couldn't create that place.",
   );
 }
 
-export type UpdateVenueInput = {
+export type UpdatePlaceInput = {
   id: string;
   name?: string;
   category?: string | null;
@@ -219,10 +219,10 @@ export type UpdateVenueInput = {
   currency?: string | null;
   status?: "active" | "paused" | "archived";
   fiscal_type?: FiscalType;
-  plan?: VenuePlan;
+  plan?: PlacePlan;
   address?: string | null;
   closes_at?: string | null;
-  hours?: VenueHours | null;
+  hours?: PlaceHours | null;
   phone?: string | null;
   pitch?: string | null;
   story?: string | null;
@@ -265,23 +265,23 @@ export type UpdateVenueInput = {
   segmentation_advanced_enabled?: boolean;
 };
 
-type UpdatedVenue = Venue & {
+type UpdatedPlace = Place & {
   phone: string | null;
   updated_at: string;
 };
 
-export async function apiUpdateVenue(
+export async function apiUpdatePlace(
   client: SupabaseClient,
-  input: UpdateVenueInput,
-): Promise<UpdatedVenue> {
+  input: UpdatePlaceInput,
+): Promise<UpdatedPlace> {
   // Super-admin elevation is now per-user: the EF reads the caller's JWT,
-  // checks public.super_admins, and skips venue_members for allowlisted
+  // checks public.super_admins, and skips project_members for allowlisted
   // emails. The browser doesn't need to know — supabase-js attaches the
   // JWT automatically.
-  const { venue } = await invokeEF<{ venue: UpdatedVenue }>(
+  const { place } = await invokeEF<{ place: UpdatedPlace }>(
     client,
-    "business-update-unit",
+    "business-update-project",
     input,
   );
-  return venue;
+  return place;
 }

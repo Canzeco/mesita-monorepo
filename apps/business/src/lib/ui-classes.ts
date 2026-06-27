@@ -41,7 +41,7 @@ export const TINY_LABEL_CLASS =
 export const NUMBER_CLASS = "font-display tabular-nums leading-none font-bold";
 
 // Small pill action button — the canonical header CTA ("Invite business",
-// "Add waiter", etc.). Dark fill, 12px text, pill-shaped. For a
+// "Add staff", etc.). Dark fill, 12px text, pill-shaped. For a
 // full-width form submit use PRIMARY_BUTTON_CLASS instead.
 export const PILL_BUTTON_CLASS =
   "bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90 disabled:opacity-60";

@@ -42,16 +42,16 @@ export default async function CentralPage() {
   } catch (err) {
     console.error("[central] business-get-overview:", errMsg(err, ""));
   }
-  const venues = (overview?.venues ?? []).map((v) => ({
+  const places = (overview?.places ?? []).map((v) => ({
     id: v.id,
     name: v.name,
     address: v.address ?? null,
   }));
 
-  if (venues.length === 0) {
-    return <VenuelessHub />;
+  if (places.length === 0) {
+    return <PlacelessHub />;
   }
-  return <VenueHub venues={venues} />;
+  return <PlaceHub places={places} />;
 }
 
 type EntityOption = {
@@ -68,7 +68,7 @@ const ENTITY_OPTIONS: EntityOption[] = [
   { label: "Services", Icon: Wrench, href: null },
 ];
 
-function VenuelessHub() {
+function PlacelessHub() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-2xl px-5 py-10">
@@ -125,10 +125,10 @@ function AddEntityTile({ option }: { option: EntityOption }) {
   );
 }
 
-function VenueHub({
-  venues,
+function PlaceHub({
+  places,
 }: {
-  venues: Array<{ id: string; name: string; address: string | null }>;
+  places: Array<{ id: string; name: string; address: string | null }>;
 }) {
   return (
     <div className="flex-1 overflow-y-auto">
@@ -140,7 +140,7 @@ function VenueHub({
           Pick a place to open its dashboard, or add another.
         </p>
         <div className="mt-6 grid gap-3">
-          {venues.map((v) => (
+          {places.map((v) => (
             <Link
               key={v.id}
               href={placePath(v.id)}

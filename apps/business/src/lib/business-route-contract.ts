@@ -18,19 +18,19 @@ export const BUSINESS_ROUTES = {
 
 export type UnitSection = "scan" | "performance" | "team";
 
-export function placePath(unitId: string, tab: PlaceSubTab = "preview"): string {
-  return `/unit/${unitId}/place/${tab}`;
+export function placePath(projectId: string, tab: PlaceSubTab = "preview"): string {
+  return `/unit/${projectId}/place/${tab}`;
 }
 
 export function promosPath(
-  unitId: string,
+  projectId: string,
   tab: PromosSubTab = "plan",
 ): string {
-  return `/unit/${unitId}/promos/${tab}`;
+  return `/unit/${projectId}/promos/${tab}`;
 }
 
-export function unitSectionPath(unitId: string, section: UnitSection): string {
-  return `/unit/${unitId}/${section}`;
+export function unitSectionPath(projectId: string, section: UnitSection): string {
+  return `/unit/${projectId}/${section}`;
 }
 
 export function resolvePlaceTab(segment: string | null | undefined): PlaceSubTab | null {
@@ -61,8 +61,8 @@ export function dockHrefForSection(
   return unitSectionPath(activeUnitId, section);
 }
 
-export function venueSwitchHref(
-  venueId: string,
+export function placeSwitchHref(
+  projectId: string,
   pathname: string,
 ): string {
   const placeTab = pathname.match(/\/place\/([^/]+)/)?.[1];
@@ -70,13 +70,13 @@ export function venueSwitchHref(
   const section = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
 
   if (section === "place") {
-    return placePath(venueId, resolvePlaceSubTab(placeTab ?? null));
+    return placePath(projectId, resolvePlaceSubTab(placeTab ?? null));
   }
   if (section === "promos") {
-    return promosPath(venueId, resolvePromosSubTab(promosTab ?? null));
+    return promosPath(projectId, resolvePromosSubTab(promosTab ?? null));
   }
-  if (section === "scan") return unitSectionPath(venueId, "scan");
-  if (section === "performance") return unitSectionPath(venueId, "performance");
-  if (section === "team") return unitSectionPath(venueId, "team");
-  return placePath(venueId);
+  if (section === "scan") return unitSectionPath(projectId, "scan");
+  if (section === "performance") return unitSectionPath(projectId, "performance");
+  if (section === "team") return unitSectionPath(projectId, "team");
+  return placePath(projectId);
 }

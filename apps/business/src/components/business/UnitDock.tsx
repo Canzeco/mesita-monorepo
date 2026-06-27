@@ -17,14 +17,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { resolveVenueCategoryName } from "@/lib/venue-category";
-import type { MyVenue } from "@/lib/api/venues";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
+import type { MyPlace } from "@/lib/api/places";
 import { useUnitChrome } from "./UnitChrome";
 import {
   BUSINESS_ROUTES,
   dockHrefForSection,
   pathnameUnitId,
-  venueSwitchHref,
+  placeSwitchHref,
 } from "@/lib/business-route-contract";
 import { resolveActiveUnitId } from "@/lib/active-unit";
 
@@ -52,18 +52,18 @@ export function UnitDock() {
   const [menuRect, setMenuRect] = useState({ bottom: 0, left: 0, width: 0 });
   const [mounted, setMounted] = useState(false);
 
-  const venues = chrome?.venues ?? [];
-  const venueIds = useMemo(() => venues.map((v) => v.id), [venues]);
+  const places = chrome?.places ?? [];
+  const projectIds = useMemo(() => places.map((v) => v.id), [places]);
   const urlUnitId = pathnameUnitId(pathname);
   const activeUnitId = resolveActiveUnitId({
     pathnameUnitId: urlUnitId,
-    cookieId: chrome?.activeVenueId ?? null,
-    venueIds,
+    cookieId: chrome?.activePlaceId ?? null,
+    projectIds,
   });
-  const activeVenue =
-    venues.find((v) => v.id === activeUnitId) ?? venues[0] ?? null;
+  const activePlace =
+    places.find((v) => v.id === activeUnitId) ?? places[0] ?? null;
   const isSuperAdmin = chrome?.isSuperAdmin ?? false;
-  const canOpenVenueMenu = !isSuperAdmin && !!activeVenue;
+  const canOpenPlaceMenu = !isSuperAdmin && !!activePlace;
 
   const currentSection = useMemo(() => {
     if (pathname === BUSINESS_ROUTES.central) return "place";
@@ -109,12 +109,12 @@ export function UnitDock() {
   }, [pickerOpen]);
 
   const picker =
-    pickerOpen && mounted && canOpenVenueMenu
+    pickerOpen && mounted && canOpenPlaceMenu
       ? createPortal(
           <>
             <button
               type="button"
-              aria-label="Close venue picker"
+              aria-label="Close place picker"
               onClick={() => setPickerOpen(false)}
               className="fixed inset-0 z-[100] cursor-default bg-black/30"
             />
@@ -129,24 +129,24 @@ export function UnitDock() {
               <p className="text-muted-foreground sticky top-0 border-b border-border/40 bg-card px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-[0.12em] uppercase">
                 Your places
               </p>
-              {venues.map((v) => (
+              {places.map((v) => (
                 <Link
                   key={v.id}
-                  href={venueSwitchHref(v.id, pathname)}
+                  href={placeSwitchHref(v.id, pathname)}
                   onClick={() => setPickerOpen(false)}
                   className={cn(
                     "hover:bg-muted/40 flex items-center gap-3 px-3 py-2.5 transition",
-                    v.id === activeVenue?.id && "bg-primary/5",
+                    v.id === activePlace?.id && "bg-primary/5",
                   )}
                 >
-                  <VenueAvatar name={v.name} />
+                  <PlaceAvatar name={v.name} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{v.name}</p>
                     <p className="text-muted-foreground truncate text-[11px]">
-                      {venueSubtitle(v)}
+                      {placeSubtitle(v)}
                     </p>
                   </div>
-                  {v.id === activeVenue?.id ? (
+                  {v.id === activePlace?.id ? (
                     <Check className="text-primary h-4 w-4 shrink-0" />
                   ) : null}
                 </Link>
@@ -173,7 +173,7 @@ export function UnitDock() {
         className="bg-dock text-dock-foreground border-dock-border relative z-40 shrink-0 border-t pb-[max(0.375rem,env(safe-area-inset-bottom))]"
       >
         <nav
-          aria-label="Venue sections"
+          aria-label="Place sections"
           className="grid grid-cols-5 px-2 pt-2 pb-1"
         >
           {NAV_ITEMS.map(({ slug, Icon, label }) => {
@@ -220,21 +220,21 @@ export function UnitDock() {
         </nav>
 
         <div className="border-dock-border flex items-stretch gap-2 border-t px-3 pt-1.5 pb-1.5">
-          {activeVenue ? (
-            canOpenVenueMenu ? (
+          {activePlace ? (
+            canOpenPlaceMenu ? (
               <button
                 type="button"
                 onClick={() => setPickerOpen((o) => !o)}
                 aria-expanded={pickerOpen}
-                aria-label="Switch venue or add a place"
+                aria-label="Switch place or add a place"
                 className={cn(
                   "bg-dock-surface hover:bg-dock-surface-hover flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 transition",
                   pickerOpen && "bg-dock-surface-hover ring-primary/35 ring-1",
                 )}
               >
-                <VenueChip name={activeVenue.name} />
+                <PlaceChip name={activePlace.name} />
                 <span className="truncate text-[13px] font-semibold tracking-tight">
-                  {activeVenue.name}
+                  {activePlace.name}
                 </span>
                 <ChevronDown
                   className={cn(
@@ -245,9 +245,9 @@ export function UnitDock() {
               </button>
             ) : (
               <div className="bg-dock-surface flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3">
-                <VenueChip name={activeVenue.name} />
+                <PlaceChip name={activePlace.name} />
                 <span className="truncate text-[13px] font-semibold tracking-tight">
-                  {activeVenue.name}
+                  {activePlace.name}
                 </span>
               </div>
             )
@@ -283,7 +283,7 @@ export function UnitDock() {
   );
 }
 
-function VenueChip({ name }: { name: string }) {
+function PlaceChip({ name }: { name: string }) {
   const initial = name.trim().slice(0, 1).toUpperCase() || "·";
   return (
     <span className="bg-pink-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white shadow-sm">
@@ -292,7 +292,7 @@ function VenueChip({ name }: { name: string }) {
   );
 }
 
-function VenueAvatar({ name }: { name: string }) {
+function PlaceAvatar({ name }: { name: string }) {
   const initial = name.trim().slice(0, 1).toUpperCase() || "·";
   return (
     <span className="bg-pink-gradient flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
@@ -301,10 +301,10 @@ function VenueAvatar({ name }: { name: string }) {
   );
 }
 
-function venueSubtitle(v: MyVenue): string {
+function placeSubtitle(v: MyPlace): string {
   const parts = [
     v.vibe,
-    resolveVenueCategoryName({
+    resolvePlaceCategoryName({
       categoryLabel: v.category_label,
       category: v.category,
     }),

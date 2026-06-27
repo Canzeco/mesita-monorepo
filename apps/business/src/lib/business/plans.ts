@@ -1,4 +1,4 @@
-import type { FiscalType, VenuePlan } from "@/lib/api/venues";
+import type { FiscalType, PlacePlan } from "@/lib/api/places";
 
 // Subscription catalog used by Promos (picker + label lookup).
 //
@@ -8,7 +8,7 @@ import type { FiscalType, VenuePlan } from "@/lib/api/venues";
 //   - "Pro"                  (plan=informal_pro,   fiscal=informal) · Medium · $200/yr
 //   - "Ultra"                (plan=informal_ultra, fiscal=informal) · Max    · $5,000/mo
 //
-// Mesita is discounts-only: every Verified venue runs the same instant
+// Mesita is discounts-only: every Verified place runs the same instant
 // discount applied directly at the bill, with no money flowing through
 // Mesita. Pro vs Ultra only changes price and visibility tier; the promo
 // workflow is identical. Cashback / Mesita-in-the-loop "reward" tiers are
@@ -67,23 +67,23 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
 // Legacy formal_* (reward/cashback) plans are no longer offered, but the DB
 // enum still allows them, so keep these mappings total. They fold onto their
 // informal discount counterpart for display.
-export function visibilityForPlan(p: VenuePlan): PlanVisibility {
+export function visibilityForPlan(p: PlacePlan): PlanVisibility {
   if (p === "free") return "Low";
   if (p === "informal_pro" || p === "formal_pro") return "Medium";
   return "Max"; // informal_ultra / formal_ultra
 }
 
-export function subscriptionForVenue(p: VenuePlan): SubscriptionId {
+export function subscriptionForPlace(p: PlacePlan): SubscriptionId {
   if (p === "free") return "free";
   if (p === "informal_pro" || p === "formal_pro") return "pro_discount";
   return "ultra_discount"; // informal_ultra / formal_ultra
 }
 
 // Atomic write payload for the picker — one card click sets both plan
-// and fiscal_type in a single apiUpdateVenue call. Discounts run on the
+// and fiscal_type in a single apiUpdatePlace call. Discounts run on the
 // informal (off-rail) fiscal type.
 export function dbStateForSubscription(sub: SubscriptionId): {
-  plan: VenuePlan;
+  plan: PlacePlan;
   fiscal_type?: FiscalType;
 } {
   if (sub === "free") return { plan: "free" };

@@ -20,20 +20,20 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiEnrichCreateVenue,
+  apiEnrichCreatePlace,
   apiPlacesAutocomplete,
   type PlacePrediction,
   type PredictionStatus,
-} from "@/lib/api/venues";
+} from "@/lib/api/places";
 import {
-  apiLookupVenue,
+  apiLookupPlace,
   apiBusinessSendsEmailOtp,
   apiBusinessSendsPhoneOtp,
   apiBusinessVerifiesEmail,
   apiBusinessVerifiesPhone,
   type LookupMethods,
   type LookupResult,
-  type LookupVenue,
+  type LookupPlace,
 } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -43,11 +43,11 @@ import { isOtpCode } from "@/lib/validators";
 const SEARCH_DEBOUNCE_MS = 220;
 
 // Rolling status messages cycled into the Generate button while
-// business-create-unit is running.
+// business-create-project is running.
 const GENERATE_STAGE_MS = 6000;
 const GENERATE_STAGES = [
   "Fetching Google profile…",
-  "Scanning the venue's website…",
+  "Scanning the place's website…",
   "Cross-checking social signals…",
   "Synthesising the catalog entry…",
 ];
@@ -69,7 +69,7 @@ const MESITA_OPS_EMAIL = "hello@mesita.ai";
 type VerificationCallbacks = {
   supabase: SupabaseClient;
   signedInEmail: string;
-  onApproved: (venueId: string) => void;
+  onApproved: (projectId: string) => void;
   onAwaitingAdmin: () => void;
 };
 
@@ -90,7 +90,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const [lookup, setLookup] = useState<LookupResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  // Generate-profile state (business-create-unit).
+  // Generate-profile state (business-create-project).
   const [generatePending, startGenerate] = useTransition();
   const [generateStage, setGenerateStage] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -133,10 +133,10 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
     setGenerateError(null);
     startLookup(async () => {
       try {
-        const r = await apiLookupVenue(supabase, prediction.placeId);
+        const r = await apiLookupPlace(supabase, prediction.placeId);
         setLookup(r);
       } catch (err) {
-        setLookupError(errMsg(err, "Could not look up that venue."));
+        setLookupError(errMsg(err, "Could not look up that place."));
       }
     });
   };
@@ -154,7 +154,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const refreshLookup = async () => {
     if (!selected) return;
     try {
-      const r = await apiLookupVenue(supabase, selected.placeId);
+      const r = await apiLookupPlace(supabase, selected.placeId);
       setLookup(r);
     } catch (err) {
       setLookupError(errMsg(err, "Could not refresh lookup."));
@@ -173,11 +173,11 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
 
     startGenerate(async () => {
       try {
-        await apiEnrichCreateVenue(supabase, selected.placeId);
+        await apiEnrichCreatePlace(supabase, selected.placeId);
         setGenerateStage("Done");
         await refreshLookup();
       } catch (err) {
-        setGenerateError(errMsg(err, "Could not create venue."));
+        setGenerateError(errMsg(err, "Could not create place."));
         setGenerateStage(null);
       } finally {
         window.clearInterval(stageInterval);
@@ -188,8 +188,8 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const verificationCallbacks: VerificationCallbacks = {
     supabase,
     signedInEmail,
-    onApproved: (venueId) => {
-      router.push(placePath(venueId));
+    onApproved: (projectId) => {
+      router.push(placePath(projectId));
       router.refresh();
     },
     onAwaitingAdmin: () => {
@@ -217,7 +217,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
                 }
                 if (next.trim().length < 2) setPredictions([]);
               }}
-              placeholder="Search by venue name — e.g. Casa Luminar, Strana…"
+              placeholder="Search by place name — e.g. Casa Luminar, Strana…"
               className="placeholder:text-muted-foreground/60 h-14 w-full bg-transparent text-base outline-none"
             />
             {selected && !searching && !lookupPending && (
@@ -295,7 +295,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
         predictions.length === 0 && (
           <p className="text-muted-foreground px-1 text-xs leading-relaxed">
             No matches. Try a different spelling, drop the city qualifier, or
-            paste the venue&apos;s exact Google profile name.
+            paste the place&apos;s exact Google profile name.
           </p>
         )}
 
@@ -317,7 +317,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
 
           {lookup.state === "web_listed_unclaimed" && (
             <WebListedCard
-              venue={lookup.venue}
+              place={lookup.place}
               methods={lookup.methods}
               {...verificationCallbacks}
             />
@@ -325,7 +325,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
 
           {lookup.state === "pending_by_me" && (
             <PendingByMeCard
-              venue={lookup.venue}
+              place={lookup.place}
               methods={lookup.methods}
               codeVerified={
                 typeof lookup.verification.payload.codeVerifiedAt === "string"
@@ -336,7 +336,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
 
           {lookup.state === "pending_by_other" && (
             <PendingByOtherCard
-              venue={lookup.venue}
+              place={lookup.place}
               methods={lookup.methods}
               {...verificationCallbacks}
             />
@@ -344,7 +344,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
 
           {lookup.state === "verified_partner" && (
             <VerifiedPartnerCard
-              venue={lookup.venue}
+              place={lookup.place}
               ownerEmail={lookup.owner.email}
             />
           )}
@@ -383,7 +383,7 @@ function NotInMesitaCard({
         )}
       </div>
       <p className="text-muted-foreground text-sm leading-relaxed">
-        We&apos;ll generate the Mesita profile from Google + the venue&apos;s
+        We&apos;ll generate the Mesita profile from Google + the place&apos;s
         own channels and list it as a web listing. After that you can claim
         ownership in the same step.
       </p>
@@ -417,33 +417,33 @@ function NotInMesitaCard({
 }
 
 function WebListedCard({
-  venue,
+  place,
   methods,
   ...callbacks
 }: {
-  venue: LookupVenue;
+  place: LookupPlace;
   methods: LookupMethods;
 } & VerificationCallbacks) {
   return (
     <section className="border-border bg-card flex flex-col gap-5 rounded-[22px] border p-6">
       <StatusBadge tone="info">Web listed · no verified owner</StatusBadge>
-      <VenueIdentity venue={venue} />
+      <PlaceIdentity place={place} />
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Prove you own this venue. Phone and email codes land instantly; Talk to
+        Prove you own this place. Phone and email codes land instantly; Talk to
         us is the manual path when neither works for this listing.
       </p>
-      <MethodsPicker venue={venue} methods={methods} {...callbacks} />
+      <MethodsPicker place={place} methods={methods} {...callbacks} />
     </section>
   );
 }
 
 function PendingByMeCard({
-  venue,
+  place,
   methods,
   codeVerified,
   ...callbacks
 }: {
-  venue: LookupVenue;
+  place: LookupPlace;
   methods: LookupMethods;
   // True when the operator already passed the OTP step — the row is
   // only sitting in the admin queue because auto-verify is OFF for
@@ -457,11 +457,11 @@ function PendingByMeCard({
           <CheckCircle2 className="h-3 w-3" />
           Code verified · admin reviewing
         </StatusBadge>
-        <VenueIdentity venue={venue} />
+        <PlaceIdentity place={place} />
         <p className="text-muted-foreground text-sm leading-relaxed">
           We received your code and confirmed it&apos;s correct. A Mesita admin
           is doing a final review and will grant ownership shortly — you&apos;ll
-          see this venue in your dashboard once they approve. No action needed
+          see this place in your dashboard once they approve. No action needed
           from you.
         </p>
       </section>
@@ -473,22 +473,22 @@ function PendingByMeCard({
         <Clock className="h-3 w-3" />
         Your verification is awaiting review
       </StatusBadge>
-      <VenueIdentity venue={venue} />
+      <PlaceIdentity place={place} />
       <p className="text-muted-foreground text-sm leading-relaxed">
         Re-submit below if you didn&apos;t finish the loop — the new request
         replaces the pending one.
       </p>
-      <MethodsPicker venue={venue} methods={methods} {...callbacks} />
+      <MethodsPicker place={place} methods={methods} {...callbacks} />
     </section>
   );
 }
 
 function PendingByOtherCard({
-  venue,
+  place,
   methods,
   ...callbacks
 }: {
-  venue: LookupVenue;
+  place: LookupPlace;
   methods: LookupMethods;
 } & VerificationCallbacks) {
   return (
@@ -497,21 +497,21 @@ function PendingByOtherCard({
         <Clock className="h-3 w-3" />
         Someone else is verifying — you can also submit
       </StatusBadge>
-      <VenueIdentity venue={venue} />
+      <PlaceIdentity place={place} />
       <p className="text-muted-foreground text-sm leading-relaxed">
         Another operator has a pending claim. Whoever proves ownership first
-        wins — if it&apos;s really your venue, run any of the methods below.
+        wins — if it&apos;s really your place, run any of the methods below.
       </p>
-      <MethodsPicker venue={venue} methods={methods} {...callbacks} />
+      <MethodsPicker place={place} methods={methods} {...callbacks} />
     </section>
   );
 }
 
 function VerifiedPartnerCard({
-  venue,
+  place,
   ownerEmail,
 }: {
-  venue: LookupVenue;
+  place: LookupPlace;
   ownerEmail: string | null;
 }) {
   return (
@@ -520,7 +520,7 @@ function VerifiedPartnerCard({
         <CheckCircle2 className="h-3 w-3" />
         Verified partner
       </StatusBadge>
-      <VenueIdentity venue={venue} />
+      <PlaceIdentity place={place} />
       <div className="border-border bg-background flex items-center gap-3 rounded-xl border p-3">
         <span className="bg-muted text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
           <Mail className="h-4 w-4" />
@@ -538,7 +538,7 @@ function VerifiedPartnerCard({
         {ownerEmail && (
           <a
             href={`mailto:${ownerEmail}?subject=${encodeURIComponent(
-              `About ${venue.name} on Mesita`,
+              `About ${place.name} on Mesita`,
             )}`}
             className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
           >
@@ -548,7 +548,7 @@ function VerifiedPartnerCard({
         )}
         <a
           href={`mailto:fraud@canzeco.com?subject=${encodeURIComponent(
-            `Fraud report — ${venue.name} (${venue.id})`,
+            `Fraud report — ${place.name} (${place.id})`,
           )}`}
           className="border-destructive/40 text-destructive hover:bg-destructive/5 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
         >
@@ -590,9 +590,9 @@ function ErrorCard({
 // Three verification paths share the same parent card body. All three
 // chips are always rendered — phone, email, and the manual "Talk to us"
 // fallback — so operators see the full set of supported methods even
-// when this specific venue doesn't expose a Google-listed phone or a
+// when this specific place doesn't expose a Google-listed phone or a
 // Firecrawl-discovered on-domain email. When the auto-method isn't
-// available for the venue, selecting its chip shows a short
+// available for the place, selecting its chip shows a short
 // explanatory body that points to the manual fallback. The picker
 // auto-lands on the first actionable method (phone → email → manual)
 // so a bare listing opens straight on the WhatsApp/email panel.
@@ -600,11 +600,11 @@ function ErrorCard({
 type MethodKey = "phone" | "email" | "manual";
 
 function MethodsPicker({
-  venue,
+  place,
   methods,
   ...callbacks
 }: {
-  venue: LookupVenue;
+  place: LookupPlace;
   methods: LookupMethods;
 } & VerificationCallbacks) {
   const initialMethod: MethodKey = methods.phone.available
@@ -645,23 +645,23 @@ function MethodsPicker({
 
       {method === "phone" &&
         (methods.phone.available ? (
-          <PhoneBody venue={venue} methods={methods} {...callbacks} />
+          <PhoneBody place={place} methods={methods} {...callbacks} />
         ) : (
           <MethodUnavailableBody method="phone" methods={methods} />
         ))}
       {method === "email" &&
         (methods.email.available ? (
-          <EmailBody venue={venue} methods={methods} {...callbacks} />
+          <EmailBody place={place} methods={methods} {...callbacks} />
         ) : (
           <MethodUnavailableBody method="email" methods={methods} />
         ))}
-      {method === "manual" && <WhatsAppBody venue={venue} />}
+      {method === "manual" && <WhatsAppBody place={place} />}
     </div>
   );
 }
 
 // Shown when the operator selects an auto-verify chip (phone or email)
-// that isn't available for this specific venue — e.g. the GMB profile
+// that isn't available for this specific place — e.g. the GMB profile
 // has no public phone, or no Firecrawl-discovered on-domain email.
 // Keeps the chip visible so operators see the full supported set, and
 // nudges them to the best next action: the other auto-method when it's
@@ -679,11 +679,11 @@ function MethodUnavailableBody({
   const what =
     method === "phone"
       ? "a public phone number on Google"
-      : "a verified email on the venue's website";
+      : "a verified email on the place's website";
 
   // Pick the best alternative the operator can take right now. We
   // prefer the other instant auto-method (Phone/Email) when its data
-  // is available for this venue, and only fall back to the manual
+  // is available for this place, and only fall back to the manual
   // path when both auto-methods are out of reach.
   const alternative =
     method === "phone" && methods.email.available
@@ -703,7 +703,7 @@ function MethodUnavailableBody({
       <div className="min-w-0 flex-1">
         <p className="text-foreground text-[13px] font-semibold">{title}</p>
         <p className="text-muted-foreground mt-1 text-[12.5px] leading-relaxed">
-          We couldn&apos;t find {what} for this venue. Use{" "}
+          We couldn&apos;t find {what} for this place. Use{" "}
           <span className="text-foreground font-medium">
             {alternative.label}
           </span>{" "}
@@ -722,7 +722,7 @@ function MethodChip({
 }: {
   active: boolean;
   // Renders the chip as a dimmed glyph when the auto-method isn't
-  // available for the venue. The chip still clicks through so the
+  // available for the place. The chip still clicks through so the
   // MethodUnavailableBody can explain — we just want the picker row to
   // signal "this one's not applicable here" at a glance.
   unavailable?: boolean;
@@ -768,21 +768,21 @@ type CallState =
     };
 
 function PhoneBody({
-  venue,
+  place,
   methods,
   supabase,
   signedInEmail,
   onApproved,
   onAwaitingAdmin,
 }: {
-  venue: LookupVenue;
+  place: LookupPlace;
   methods: LookupMethods;
 } & VerificationCallbacks) {
   const [state, setState] = useState<CallState>({ kind: "idle" });
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const phoneDisplay = methods.phone.displayPhone ?? venue.phone ?? "";
+  const phoneDisplay = methods.phone.displayPhone ?? place.phone ?? "";
 
   const placeCall = () => {
     if (state.kind === "placing" || state.kind === "verifying") return;
@@ -793,7 +793,7 @@ function PhoneBody({
       try {
         const r = await apiBusinessSendsPhoneOtp(
           supabase,
-          venue.id,
+          place.id,
           signedInEmail,
         );
         setState({
@@ -829,7 +829,7 @@ function PhoneBody({
     });
     void (async () => {
       try {
-        const { venueId: vId, awaitingAdmin } = await apiBusinessVerifiesPhone(
+        const { projectId: vId, awaitingAdmin } = await apiBusinessVerifiesPhone(
           supabase,
           verificationId,
           code,
@@ -879,7 +879,7 @@ function PhoneBody({
           ) : (
             <>
               <Phone className="h-5 w-5" />
-              Call my venue
+              Call my place
             </>
           )}
         </button>
@@ -911,7 +911,7 @@ function PhoneBody({
               <span className="text-foreground font-mono font-semibold">
                 {dialed}
               </span>{" "}
-              — we didn&apos;t call the venue. Type the 6-digit code below.
+              — we didn&apos;t call the place. Type the 6-digit code below.
             </>
           ) : (
             <>
@@ -992,21 +992,21 @@ type EmailState =
     };
 
 function EmailBody({
-  venue,
+  place,
   methods,
   supabase,
   signedInEmail,
   onApproved,
   onAwaitingAdmin,
 }: {
-  venue: LookupVenue;
+  place: LookupPlace;
   methods: LookupMethods;
 } & VerificationCallbacks) {
   const [state, setState] = useState<EmailState>({ kind: "idle" });
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const emailDisplay = methods.email.displayEmail ?? venue.email ?? "";
+  const emailDisplay = methods.email.displayEmail ?? place.email ?? "";
 
   const sendEmail = () => {
     if (state.kind === "sending" || state.kind === "verifying") return;
@@ -1017,7 +1017,7 @@ function EmailBody({
       try {
         const r = await apiBusinessSendsEmailOtp(
           supabase,
-          venue.id,
+          place.id,
           signedInEmail,
         );
         setState({
@@ -1047,7 +1047,7 @@ function EmailBody({
     setState({ kind: "verifying", verificationId, mockCode, sentTo, mockMode });
     void (async () => {
       try {
-        const { venueId: vId, awaitingAdmin } = await apiBusinessVerifiesEmail(
+        const { projectId: vId, awaitingAdmin } = await apiBusinessVerifiesEmail(
           supabase,
           verificationId,
           code,
@@ -1129,7 +1129,7 @@ function EmailBody({
               <span className="text-foreground font-mono font-semibold break-all">
                 {sentTo}
               </span>{" "}
-              — we didn&apos;t email the venue. Type the 6-digit code below.
+              — we didn&apos;t email the place. Type the 6-digit code below.
             </>
           ) : (
             <>
@@ -1202,13 +1202,13 @@ function EmailBody({
 // where WhatsApp isn't dominant (US, most of Europe) and also the
 // natural channel when ops asks the operator to attach proof of
 // ownership (business license, utility bill, staff photo with signage).
-function WhatsAppBody({ venue }: { venue: LookupVenue }) {
+function WhatsAppBody({ place }: { place: LookupPlace }) {
   const waNumber = MESITA_OPS_WHATSAPP_E164.replace(/[^\d]/g, "");
-  const waMessage = `Hi Mesita — I'd like to claim "${venue.name}" on Mesita. Venue ID: ${venue.id}.`;
+  const waMessage = `Hi Mesita — I'd like to claim "${place.name}" on Mesita. Place ID: ${place.id}.`;
   const waHref = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`;
 
-  const emailSubject = `Claim "${venue.name}" on Mesita`;
-  const emailBody = `Hi Mesita team,\n\nI'd like to claim "${venue.name}" on Mesita.\n\nVenue ID: ${venue.id}\n\nHappy to share proof of ownership (business license, utility bill, or a staff photo with signage) if helpful.\n\nThanks,`;
+  const emailSubject = `Claim "${place.name}" on Mesita`;
+  const emailBody = `Hi Mesita team,\n\nI'd like to claim "${place.name}" on Mesita.\n\nPlace ID: ${place.id}\n\nHappy to share proof of ownership (business license, utility bill, or a staff photo with signage) if helpful.\n\nThanks,`;
   const mailHref = `mailto:${MESITA_OPS_EMAIL}?subject=${encodeURIComponent(
     emailSubject,
   )}&body=${encodeURIComponent(emailBody)}`;
@@ -1357,17 +1357,17 @@ const PREDICTION_BADGE: Record<
   },
 };
 
-function VenueIdentity({ venue }: { venue: LookupVenue }) {
+function PlaceIdentity({ place }: { place: LookupPlace }) {
   return (
     <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4">
       <p className="font-display text-lg leading-tight font-semibold tracking-tight">
-        {venue.name}
+        {place.name}
       </p>
       <div className="text-muted-foreground flex flex-col gap-1.5 text-[12px] sm:flex-row sm:items-center sm:gap-4">
         <span className="inline-flex items-center gap-1.5">
           <Phone className="h-3.5 w-3.5 shrink-0" />
           <span className="text-foreground font-mono">
-            {venue.phone ?? (
+            {place.phone ?? (
               <span className="text-muted-foreground italic">
                 no phone listed
               </span>
@@ -1376,8 +1376,8 @@ function VenueIdentity({ venue }: { venue: LookupVenue }) {
         </span>
         <span className="inline-flex min-w-0 items-center gap-1.5">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate" title={venue.address ?? undefined}>
-            {venue.address ?? "no address"}
+          <span className="truncate" title={place.address ?? undefined}>
+            {place.address ?? "no address"}
           </span>
         </span>
       </div>

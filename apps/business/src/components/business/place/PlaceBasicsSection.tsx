@@ -1,6 +1,6 @@
 "use client";
 
-import type { MyVenue } from "@/lib/api/venues";
+import type { MyPlace } from "@/lib/api/places";
 import { PlaceAboutField } from "./PlaceAboutField";
 import { PlaceBox } from "./PlaceBox";
 import { PlaceCategorySelect } from "./PlaceCategorySelect";
@@ -13,9 +13,9 @@ import {
 import { PlaceTagsPicker } from "./PlaceTagsPicker";
 import type { PlaceFormState, SetPlaceForm } from "./place-form-types";
 import {
-  humanizeVenueToken,
-  resolveVenueTierLabel,
-  resolveVenueVerification,
+  humanizePlaceToken,
+  resolvePlaceTierLabel,
+  resolvePlaceVerification,
 } from "./place-utils";
 
 const VERIFICATION_TONE_CLASS = {
@@ -25,18 +25,18 @@ const VERIFICATION_TONE_CLASS = {
 } as const;
 
 export function PlaceBasicsSection({
-  venue,
+  place,
   form,
   set,
 }: {
-  venue: MyVenue;
+  place: MyPlace;
   form: PlaceFormState;
   set: SetPlaceForm;
 }) {
-  const name = venue.name?.trim() || "—";
-  const status = humanizeVenueToken(venue.status);
-  const verification = resolveVenueVerification(venue);
-  const tier = resolveVenueTierLabel(venue);
+  const name = place.name?.trim() || "—";
+  const status = humanizePlaceToken(place.status);
+  const verification = resolvePlaceVerification(place);
+  const tier = resolvePlaceTierLabel(place);
 
   return (
     <div className="flex flex-col gap-4">
@@ -52,8 +52,8 @@ export function PlaceBasicsSection({
             bare
             value={form.category}
             onChange={(category) => set("category", category)}
-            googleCategoryLabel={venue.category_label}
-            googleCategorySlug={venue.category}
+            googleCategoryLabel={place.category_label}
+            googleCategorySlug={place.category}
           />
         </PlaceKvField>
         <PlaceKvField label="Status" value={status} blocked />
@@ -73,7 +73,7 @@ export function PlaceBasicsSection({
       </PlaceBox>
 
       <PlaceBox>
-        <PlaceLocationFields venue={venue} />
+        <PlaceLocationFields place={place} />
       </PlaceBox>
 
       <PlaceBox>
@@ -81,7 +81,7 @@ export function PlaceBasicsSection({
           <PlaceHoursSection
             hours={form.hours}
             onChange={(hours) => set("hours", hours)}
-            timezone={venue.timezone}
+            timezone={place.timezone}
           />
         </PlaceKvField>
       </PlaceBox>

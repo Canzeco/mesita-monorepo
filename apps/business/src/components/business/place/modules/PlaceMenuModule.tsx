@@ -7,13 +7,13 @@ import { PlaceModule } from "../PlaceModule";
 import type { PlaceFormState, SetPlaceForm } from "../place-form-types";
 
 export function PlaceMenuModule({
-  venueId,
+  projectId,
   form,
   set,
   onError,
   hideHeader = false,
 }: {
-  venueId: string;
+  projectId: string;
   form: PlaceFormState;
   set: SetPlaceForm;
   onError: (msg: string | null) => void;
@@ -24,7 +24,7 @@ export function PlaceMenuModule({
       <PlaceBox>
         <PlaceKvField label="Menu">
           <PlaceMenuFields
-            venueId={venueId}
+            projectId={projectId}
             form={form}
             set={set}
             onError={onError}
@@ -37,7 +37,7 @@ export function PlaceMenuModule({
   return (
     <PlaceModule id="products" hideHeader={hideHeader}>
       <PlaceMenuFields
-        venueId={venueId}
+        projectId={projectId}
         form={form}
         set={set}
         onError={onError}

@@ -10,14 +10,14 @@ import { useState } from "react";
 
 export function TicketBillForm({
   ticket,
-  venueCurrency,
+  placeCurrency,
   supabase,
   billBusy,
   onSubmitted,
   onError,
 }: {
   ticket: BusinessTicket;
-  venueCurrency: string;
+  placeCurrency: string;
   supabase: SupabaseClient;
   billBusy: boolean;
   onSubmitted: (message: string) => void;
@@ -72,7 +72,7 @@ export function TicketBillForm({
           <span className={TINY_LABEL_CLASS}>Subtotal</span>
           <div className="relative mt-1">
             <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[10px] font-medium">
-              {venueCurrency}
+              {placeCurrency}
             </span>
             <input
               value={subtotalText}

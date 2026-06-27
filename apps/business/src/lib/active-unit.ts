@@ -5,16 +5,16 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 export function resolveActiveUnitId(options: {
   pathnameUnitId?: string | null;
   cookieId?: string | null;
-  venueIds: readonly string[];
+  projectIds: readonly string[];
 }): string | null {
-  const { pathnameUnitId, cookieId, venueIds } = options;
-  if (pathnameUnitId && venueIds.includes(pathnameUnitId)) {
+  const { pathnameUnitId, cookieId, projectIds } = options;
+  if (pathnameUnitId && projectIds.includes(pathnameUnitId)) {
     return pathnameUnitId;
   }
-  if (cookieId && venueIds.includes(cookieId)) {
+  if (cookieId && projectIds.includes(cookieId)) {
     return cookieId;
   }
-  return venueIds[0] ?? null;
+  return projectIds[0] ?? null;
 }
 
 export const activeUnitCookieOptions = {
