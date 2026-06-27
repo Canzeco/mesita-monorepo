@@ -20,6 +20,6 @@ Deployed automatically by Vercel on push to `main`.
 
 ## Sibling surfaces
 
-- [business.mesita.ai](https://business.mesita.ai) — venue console (`mesita-web-business`)
+- [business.mesita.ai](https://business.mesita.ai) — place console (`mesita-web-business`)
 - [consumer.mesita.ai](https://consumer.mesita.ai) — diner app (`mesita-web-consumer`)
 - [mesita.ai](https://mesita.ai) — marketing site (`mesita-web-landing`)
