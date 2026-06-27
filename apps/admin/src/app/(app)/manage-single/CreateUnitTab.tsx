@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import {
   createUnitFromPlaceId,
-  findVenueByPlaceId,
+  findPlaceByPlaceId,
   suggestPlaces,
   type PlacePrediction,
   type PlacePredictionStatus,
@@ -113,13 +113,13 @@ export function CreateUnitTab() {
     setSearchError(null);
 
     start(async () => {
-      const found = await findVenueByPlaceId(placeId);
+      const found = await findPlaceByPlaceId(placeId);
       if (!found.ok) {
         setError(found.error);
         return;
       }
       if (found.found) {
-        setExistsName(found.venue.name);
+        setExistsName(found.place.name);
         if (label) {
           setSelected({
             placeId,
@@ -136,7 +136,7 @@ export function CreateUnitTab() {
         setError(created.error);
         return;
       }
-      router.push(`/manage-single/${created.venueId}/place`);
+      router.push(`/manage-single/${created.projectId}/place`);
     });
   };
 

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Crown, Loader2, Percent } from "lucide-react";
-import { updateVenue, type AdminVenue } from "../actions";
+import { updatePlace, type AdminPlace } from "../actions";
 import { ErrorNote, SectionCard } from "../ui";
 
 type Sub = "free" | "pro_discount" | "ultra_discount";
@@ -37,13 +37,13 @@ function dbStateForSub(sub: Sub): { plan: string; fiscal_type?: string } {
 }
 
 export function PromosSection({
-  venue,
+  place,
   onSaved,
 }: {
-  venue: AdminVenue;
-  onSaved: (v: AdminVenue) => void;
+  place: AdminPlace;
+  onSaved: (v: AdminPlace) => void;
 }) {
-  const [v, setV] = useState(venue);
+  const [v, setV] = useState(place);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const sub = subForPlan(v.plan);
@@ -52,12 +52,12 @@ export function PromosSection({
   // Optimistic write: patch local + bubble, persist, revert on error.
   const persist = (patch: Record<string, unknown>) => {
     const prev = v;
-    const next = { ...v, ...patch } as AdminVenue;
+    const next = { ...v, ...patch } as AdminPlace;
     setV(next);
     onSaved(next);
     setError(null);
     start(async () => {
-      const r = await updateVenue({ id: v.id, ...patch });
+      const r = await updatePlace({ id: v.id, ...patch });
       if (!r.ok) {
         setV(prev);
         onSaved(prev);
@@ -73,7 +73,7 @@ export function PromosSection({
     <SectionCard
       icon={<Percent className="text-muted-foreground h-4 w-4" />}
       title="Promos"
-      subtitle="Subscription plan, discount rates per user tier & visit, and the ticket cap. Discount-only — the venue never holds money."
+      subtitle="Subscription plan, discount rates per user tier & visit, and the ticket cap. Discount-only — the place never holds money."
       action={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
     >
       {/* Plan */}

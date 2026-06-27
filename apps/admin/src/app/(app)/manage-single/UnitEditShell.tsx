@@ -3,41 +3,41 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import { getVenue, type AdminVenue } from "./actions";
+import { getPlace, type AdminPlace } from "./actions";
 import { UnitEditChrome } from "./UnitEditChrome";
-import { UnitVenueProvider } from "./UnitVenueContext";
+import { UnitPlaceProvider } from "./UnitPlaceContext";
 import { ErrorNote, Spinner } from "./ui";
 
 export function UnitEditShell({
-  unitId,
+  projectId,
   children,
 }: {
-  unitId: string;
+  projectId: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [venue, setVenue] = useState<AdminVenue | null>(null);
-  const [loadingVenue, setLoadingVenue] = useState(true);
+  const [place, setPlace] = useState<AdminPlace | null>(null);
+  const [loadingPlace, setLoadingPlace] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadVenue = useCallback(async (id: string) => {
-    setLoadingVenue(true);
+  const loadPlace = useCallback(async (id: string) => {
+    setLoadingPlace(true);
     setLoadError(null);
-    const r = await getVenue(id);
-    setLoadingVenue(false);
+    const r = await getPlace(id);
+    setLoadingPlace(false);
     if (!r.ok) {
-      setVenue(null);
+      setPlace(null);
       setLoadError(r.error);
       return;
     }
-    setVenue(r.data);
+    setPlace(r.data);
   }, []);
 
   useEffect(() => {
-    void loadVenue(unitId);
-  }, [unitId, loadVenue]);
+    void loadPlace(projectId);
+  }, [projectId, loadPlace]);
 
-  if (loadingVenue) {
+  if (loadingPlace) {
     return (
       <div className="-mx-4 -mt-8 px-4 pt-8 sm:-mx-6 sm:-mt-12 sm:px-6 lg:-mx-8 lg:px-8">
         <Spinner label="Loading unit…" />
@@ -45,7 +45,7 @@ export function UnitEditShell({
     );
   }
 
-  if (!venue) {
+  if (!place) {
     return (
       <div className="-mx-4 -mt-8 px-4 pt-8 sm:-mx-6 sm:-mt-12 sm:px-6 lg:-mx-8 lg:px-8">
         {loadError && <ErrorNote message={loadError} />}
@@ -61,19 +61,19 @@ export function UnitEditShell({
   }
 
   return (
-    <UnitVenueProvider
+    <UnitPlaceProvider
       value={{
-        unitId,
-        venue,
-        setVenue,
-        reload: () => void loadVenue(unitId),
+        projectId,
+        place,
+        setPlace,
+        reload: () => void loadPlace(projectId),
       }}
     >
       <div className="-mx-4 -mt-8 sm:-mx-6 sm:-mt-12 lg:-mx-8">
-        <UnitEditChrome unitId={unitId} venue={venue} />
+        <UnitEditChrome projectId={projectId} place={place} />
 
         <div className="px-4 pt-6 sm:px-6 lg:px-8">{children}</div>
       </div>
-    </UnitVenueProvider>
+    </UnitPlaceProvider>
   );
 }

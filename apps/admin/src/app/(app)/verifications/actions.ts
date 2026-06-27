@@ -7,7 +7,7 @@ type VerificationStatus = "pending" | "approved" | "rejected";
 
 export type AdminVerification = {
   id: string;
-  venue_id: string;
+  project_id: string;
   requester_id: string;
   method: VerificationMethod;
   payload: Record<string, unknown>;
@@ -18,7 +18,7 @@ export type AdminVerification = {
   decided_by: string | null;
   decided_via: "auto" | "admin" | null;
   created_at: string;
-  venue: {
+  place: {
     id: string;
     slug: string;
     name: string;

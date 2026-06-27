@@ -18,10 +18,10 @@ import {
 function isNavActive(
   pathname: string,
   href: string,
-  unitId: string | null,
+  projectId: string | null,
 ): boolean {
   if (href === "/manage-single/select") {
-    return pathname === href || unitId !== null;
+    return pathname === href || projectId !== null;
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -88,7 +88,7 @@ function SectionGap() {
 
 export function SidebarNav({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const unitId = parseUnitId(pathname);
+  const projectId = parseUnitId(pathname);
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
@@ -110,7 +110,7 @@ export function SidebarNav({ onNavigate }: SidebarProps) {
           href={href}
           label={label}
           Icon={Icon}
-          active={isNavActive(pathname, href, unitId)}
+          active={isNavActive(pathname, href, projectId)}
           onNavigate={onNavigate}
         />
       ))}

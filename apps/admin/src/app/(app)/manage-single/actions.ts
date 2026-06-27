@@ -3,16 +3,16 @@
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ════════════════════════════════════════════════════════════════════════
-// Single-unit console — a super-admin drives ANY venue through the existing
+// Single-unit console — a super-admin drives ANY place through the existing
 // business-* edge functions. The operator's JWT email is in super_admins, so
 // _shared/auth.ts (checkMembership / requireMembership / requireOwner) grants
-// access regardless of venue_members. No bespoke data EFs needed — only the
-// venue search below is admin-specific.
+// access regardless of project_members. No bespoke data EFs needed — only the
+// place search below is admin-specific.
 // ════════════════════════════════════════════════════════════════════════
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
-// ── Venue search + load ──────────────────────────────────────────────────
+// ── Place search + load ──────────────────────────────────────────────────
 
 export type UnitHit = {
   id: string;
@@ -26,15 +26,15 @@ export type UnitHit = {
 };
 
 /** @deprecated use UnitHit */
-export type VenueHit = UnitHit;
+export type PlaceHit = UnitHit;
 
 async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>> {
-  const r = await efInvoke<{ venues: UnitHit[] }>("admin-search-places", {
+  const r = await efInvoke<{ places: UnitHit[] }>("admin-search-places", {
     query,
     limit,
   });
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.venues };
+  return { ok: true, data: r.data.places };
 }
 
 export async function listUnits(): Promise<Result<UnitHit[]>> {
@@ -48,14 +48,14 @@ export async function searchUnits(query: string): Promise<Result<UnitHit[]>> {
 }
 
 /** @deprecated use searchUnits */
-export async function searchVenues(query: string): Promise<Result<UnitHit[]>> {
+export async function searchPlaces(query: string): Promise<Result<UnitHit[]>> {
   return searchUnits(query);
 }
 
-// The full venue row, loaded for a super-admin via business-get-overview
-// (which returns the single requested venue when the caller is super-admin).
+// The full place row, loaded for a super-admin via business-get-overview
+// (which returns the single requested place when the caller is super-admin).
 // Typed loosely — the editor only touches the known fields below.
-export type AdminVenue = {
+export type AdminPlace = {
   id: string;
   slug: string | null;
   name: string;
@@ -92,25 +92,25 @@ export type AdminVenue = {
   [k: string]: unknown;
 };
 
-export async function getVenue(venueId: string): Promise<Result<AdminVenue>> {
-  const r = await efInvoke<{ active: { venue: AdminVenue } | null }>(
+export async function getPlace(projectId: string): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{ active: { place: AdminPlace } | null }>(
     "business-get-overview",
-    { activeUnitId: venueId, ticketsLimit: 0 },
+    { activeUnitId: projectId, ticketsLimit: 0 },
   );
   if (!r.ok) return { ok: false, error: r.error };
-  const venue = r.data.active?.venue ?? null;
-  if (!venue) return { ok: false, error: "Venue not found or not loadable." };
-  return { ok: true, data: venue };
+  const place = r.data.active?.place ?? null;
+  if (!place) return { ok: false, error: "Place not found or not loadable." };
+  return { ok: true, data: place };
 }
 
-// ── Place / Promos: write venue fields ───────────────────────────────────
+// ── Place / Promos: write place fields ───────────────────────────────────
 
-export async function updateVenue(
+export async function updatePlace(
   patch: Record<string, unknown> & { id: string },
-): Promise<Result<AdminVenue>> {
-  const r = await efInvoke<{ venue: AdminVenue }>("business-update-unit", patch);
+): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{ place: AdminPlace }>("business-update-project", patch);
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.venue };
+  return { ok: true, data: r.data.place };
 }
 
 // ── Team ─────────────────────────────────────────────────────────────────
@@ -144,18 +144,18 @@ export type TeamSnapshot = {
   }[];
 };
 
-export async function listTeam(venueId: string): Promise<Result<TeamSnapshot>> {
-  const r = await efInvoke<TeamSnapshot>("business-list-team", { venueId });
+export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>> {
+  const r = await efInvoke<TeamSnapshot>("business-list-team", { projectId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
 
 export async function inviteEditor(
-  venueId: string,
+  projectId: string,
   email: string,
   role: string,
 ): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-invite-business", { venueId, email, role });
+  const r = await efInvoke<unknown>("business-invite-member", { projectId, email, role });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -197,12 +197,12 @@ export type AdminTicket = {
 };
 
 export async function listTickets(
-  venueId: string,
+  projectId: string,
   limit = 100,
 ): Promise<Result<AdminTicket[]>> {
   const r = await efInvoke<{ tickets: AdminTicket[] } | AdminTicket[]>(
     "business-list-tickets",
-    { venueId, limit },
+    { projectId, limit },
   );
   if (!r.ok) return { ok: false, error: r.error };
   const tickets = Array.isArray(r.data)
@@ -231,7 +231,7 @@ export async function cancelTicket(
 // setting BUSINESS_WEB_URL.
 const BUSINESS_WEB_URL_FALLBACK = "https://business.mesita.ai";
 
-type FoundVenue = {
+type FoundPlace = {
   id: string;
   slug: string;
   name: string;
@@ -240,21 +240,21 @@ type FoundVenue = {
   updated_at: string;
 };
 
-type EFResponse = { venue: FoundVenue | null };
+type EFResponse = { place: FoundPlace | null };
 
-export type FindVenueResult =
+export type FindPlaceResult =
   | {
       ok: true;
       found: true;
-      venue: FoundVenue;
+      place: FoundPlace;
       link: string;
     }
   | { ok: true; found: false; placeId: string }
   | { ok: false; error: string };
 
-export async function findVenueByPlaceId(
+export async function findPlaceByPlaceId(
   rawPlaceId: string,
-): Promise<FindVenueResult> {
+): Promise<FindPlaceResult> {
   const placeId = (rawPlaceId ?? "").trim();
   if (!placeId) {
     return { ok: false, error: "Paste a Google Place ID first." };
@@ -265,8 +265,8 @@ export async function findVenueByPlaceId(
     return { ok: false, error: result.error };
   }
 
-  const venue = result.data.venue;
-  if (!venue) {
+  const place = result.data.place;
+  if (!place) {
     return { ok: true, found: false, placeId };
   }
 
@@ -274,11 +274,11 @@ export async function findVenueByPlaceId(
   // middleware sees no session and bounces through / (the auth surface)
   // if needed. Once signed in (as themselves, via Google), the
   // business-get-overview EF reads their JWT, finds their email in
-  // super_admins, and grants venue access regardless of venue_members.
+  // super_admins, and grants place access regardless of project_members.
   const businessOrigin =
     (process.env.BUSINESS_WEB_URL ?? "").trim() || BUSINESS_WEB_URL_FALLBACK;
-  const link = `${businessOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(venue.id)}/home`;
-  return { ok: true, found: true, venue, link };
+  const link = `${businessOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(place.id)}/home`;
+  return { ok: true, found: true, place, link };
 }
 
 // ── Google Places autocomplete (create flow) ─────────────────────────────
@@ -314,7 +314,7 @@ export async function suggestPlaces(
 
 type CreateUnitOk = {
   ok: true;
-  venueId: string;
+  projectId: string;
   name: string;
   slug: string | null;
   photoCount: number;
@@ -322,7 +322,7 @@ type CreateUnitOk = {
 };
 
 type CreateUnitResponse = {
-  venue?: { id?: string; name?: string; slug?: string | null };
+  place?: { id?: string; name?: string; slug?: string | null };
   enrichment?: { photoCount?: number; profileEnriched?: boolean };
 };
 
@@ -332,14 +332,14 @@ export async function createUnitFromPlaceId(
   const id = (placeId ?? "").toString().trim();
   if (!id) return { ok: false, error: "Empty Place ID" };
 
-  const r = await efInvoke<CreateUnitResponse>("admin-create-unit", { placeId: id });
+  const r = await efInvoke<CreateUnitResponse>("admin-create-project", { placeId: id });
   if (!r.ok) return { ok: false, error: r.error };
 
-  const v = r.data.venue;
+  const v = r.data.place;
   if (!v?.id) return { ok: false, error: "No unit returned" };
   return {
     ok: true,
-    venueId: v.id,
+    projectId: v.id,
     name: v.name ?? "(unnamed)",
     slug: v.slug ?? null,
     photoCount: r.data.enrichment?.photoCount ?? 0,

@@ -10,11 +10,11 @@ import { efInvoke } from "@/lib/supabase-ef";
 export type NotificationCategory = "atlas";
 
 export type NotificationType =
-  | "atlas.venue_created"
-  | "atlas.venue_enriched"
+  | "atlas.place_created"
+  | "atlas.place_enriched"
   | "atlas.ownership_claimed";
 
-export type NotificationVenue = {
+export type NotificationPlace = {
   id: string;
   slug: string | null;
   name: string;
@@ -28,7 +28,7 @@ export type NotificationItem = {
   category: NotificationCategory;
   type: NotificationType;
   occurredAt: string;
-  venue: NotificationVenue;
+  place: NotificationPlace;
   actor: string | null;
   detail: string | null;
   meta: Record<string, unknown>;

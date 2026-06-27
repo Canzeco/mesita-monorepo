@@ -1,9 +1,9 @@
 "use client";
 
 import { PlaceSection } from "../../sections/PlaceSection";
-import { useUnitVenue } from "../../UnitVenueContext";
+import { useUnitPlace } from "../../UnitPlaceContext";
 
 export default function UnitPlacePage() {
-  const { venue, setVenue } = useUnitVenue();
-  return <PlaceSection venue={venue} onSaved={setVenue} />;
+  const { place, setPlace } = useUnitPlace();
+  return <PlaceSection place={place} onSaved={setPlace} />;
 }

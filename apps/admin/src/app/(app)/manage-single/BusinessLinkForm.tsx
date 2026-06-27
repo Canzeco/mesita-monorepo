@@ -9,12 +9,12 @@ import {
   Search,
   AlertTriangle,
 } from "lucide-react";
-import { findVenueByPlaceId, type FindVenueResult } from "./actions";
+import { findPlaceByPlaceId, type FindPlaceResult } from "./actions";
 import { formatShortDate } from "@/lib/format";
 
 export function BusinessLinkForm() {
   const [placeId, setPlaceId] = useState("");
-  const [result, setResult] = useState<FindVenueResult | null>(null);
+  const [result, setResult] = useState<FindPlaceResult | null>(null);
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
 
@@ -23,7 +23,7 @@ export function BusinessLinkForm() {
     setResult(null);
     setCopied(false);
     startTransition(async () => {
-      const r = await findVenueByPlaceId(placeId);
+      const r = await findPlaceByPlaceId(placeId);
       setResult(r);
     });
   };
@@ -55,7 +55,7 @@ export function BusinessLinkForm() {
             />
             <div className="border-border flex items-center justify-between gap-3 border-t px-5 py-3">
               <p className="text-muted-foreground text-xs">
-                We resolve this against the venues table and hand you a
+                We resolve this against the places table and hand you a
                 clean link. Sign into business.mesita.ai with your operator
                 account to edit.
               </p>
@@ -69,7 +69,7 @@ export function BusinessLinkForm() {
                 ) : (
                   <Search className="h-4 w-4" />
                 )}
-                {pending ? "Looking up…" : "Find venue"}
+                {pending ? "Looking up…" : "Find place"}
               </button>
             </div>
           </div>
@@ -89,7 +89,7 @@ export function BusinessLinkForm() {
             Not in Mesita yet
           </p>
           <p className="mt-1">
-            No venue has{" "}
+            No place has{" "}
             <code className="bg-muted/60 rounded px-1.5 py-0.5 font-mono text-xs">
               {result.placeId}
             </code>{" "}
@@ -102,19 +102,19 @@ export function BusinessLinkForm() {
       {result && result.ok && result.found && (
         <section className="border-border bg-pink-gradient shadow-elev relative overflow-hidden rounded-3xl border p-6">
           <p className="text-secondary text-xs font-medium tracking-[0.14em] uppercase">
-            Venue found
+            Place found
           </p>
           <p className="font-display mt-1 text-3xl font-semibold tracking-tight">
-            {result.venue.name}
+            {result.place.name}
           </p>
           <p className="text-foreground/70 mt-1 text-sm">
-            <span className="font-mono">{result.venue.slug}</span>
+            <span className="font-mono">{result.place.slug}</span>
             {" · "}
-            <span className="font-medium">{result.venue.status}</span>
+            <span className="font-medium">{result.place.status}</span>
             {" · added "}
-            {formatShortDate(result.venue.created_at)}
+            {formatShortDate(result.place.created_at)}
             {" · updated "}
-            {formatShortDate(result.venue.updated_at)}
+            {formatShortDate(result.place.updated_at)}
           </p>
 
           <div className="bg-background mt-5 rounded-2xl p-4">
@@ -150,7 +150,7 @@ export function BusinessLinkForm() {
             <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
               Plain URL — no token. Open it signed into your business
               account; the EFs check your email against super_admins and
-              grant venue access. The Topbar will show a Super-admin
+              grant place access. The Topbar will show a Super-admin
               banner so you know elevation is active.
             </p>
           </div>

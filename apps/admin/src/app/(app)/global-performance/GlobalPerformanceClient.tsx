@@ -33,12 +33,12 @@ type TypeConfig = {
 };
 
 const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
-  "atlas.venue_created": {
-    label: "New venue created",
-    shortLabel: "New venue",
+  "atlas.place_created": {
+    label: "New place created",
+    shortLabel: "New place",
     Icon: Building2,
   },
-  "atlas.venue_enriched": {
+  "atlas.place_enriched": {
     label: "Place enriched",
     shortLabel: "Enriched",
     Icon: Sparkles,
@@ -51,8 +51,8 @@ const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
 };
 
 const TYPE_ORDER: NotificationType[] = [
-  "atlas.venue_created",
-  "atlas.venue_enriched",
+  "atlas.place_created",
+  "atlas.place_enriched",
   "atlas.ownership_claimed",
 ];
 
@@ -202,7 +202,7 @@ export function GlobalPerformanceClient({
             <Inbox className="h-5 w-5" />
             <p className="text-sm">
               {data.total === 0
-                ? "No notifications yet. They'll show up here as venues are created, enriched, and claimed."
+                ? "No notifications yet. They'll show up here as places are created, enriched, and claimed."
                 : "Nothing in this filter."}
             </p>
           </div>
@@ -262,7 +262,7 @@ function NotificationRow({
 }) {
   const cfg = TYPE_CONFIG[item.type];
   const Icon = cfg.Icon;
-  const venue = item.venue;
+  const place = item.place;
   const when =
     now === null
       ? formatAbsoluteUtc(item.occurredAt)
@@ -289,18 +289,18 @@ function NotificationRow({
         </div>
 
         <p className="mt-1 truncate text-sm font-semibold">
-          {venue?.name ?? "(venue removed)"}
-          {venue?.categoryLabel && (
+          {place?.name ?? "(place removed)"}
+          {place?.categoryLabel && (
             <span className="text-muted-foreground ml-2 text-xs font-normal">
-              {venue.categoryLabel}
+              {place.categoryLabel}
             </span>
           )}
         </p>
 
-        {venue?.address && (
+        {place?.address && (
           <p className="text-muted-foreground mt-0.5 flex items-start gap-1 text-xs">
             <MapPin className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
-            <span className="min-w-0">{venue.address}</span>
+            <span className="min-w-0">{place.address}</span>
           </p>
         )}
 
@@ -319,7 +319,7 @@ function NotificationRow({
 }
 
 function ActorLine({ item }: { item: NotificationItem }) {
-  if (item.type === "atlas.venue_created" && !item.actor) {
+  if (item.type === "atlas.place_created" && !item.actor) {
     return (
       <div className="mt-2">
         <MetaTag>Unclaimed</MetaTag>
@@ -329,7 +329,7 @@ function ActorLine({ item }: { item: NotificationItem }) {
   if (!item.actor) return null;
 
   const prefix =
-    item.type === "atlas.venue_created"
+    item.type === "atlas.place_created"
       ? "Owner"
       : item.type === "atlas.ownership_claimed"
         ? "Claimed by"
@@ -347,13 +347,13 @@ function MetaRow({ item }: { item: NotificationItem }) {
   const tags: React.ReactNode[] = [];
   const m = item.meta ?? {};
 
-  if (item.type === "atlas.venue_created") {
+  if (item.type === "atlas.place_created") {
     if (typeof m.listingType === "string") tags.push(<MetaTag key="lt">{m.listingType}</MetaTag>);
     if (typeof m.status === "string") tags.push(<MetaTag key="st">{m.status}</MetaTag>);
     if (m.enriched === true) tags.push(<MetaTag key="en">enriched</MetaTag>);
   }
 
-  if (item.type === "atlas.venue_enriched") {
+  if (item.type === "atlas.place_enriched") {
     if (typeof m.detailsFields === "number" && m.detailsFields > 0) {
       tags.push(<MetaTag key="df">{m.detailsFields} detail fields</MetaTag>);
     }
@@ -373,11 +373,11 @@ function MetaRow({ item }: { item: NotificationItem }) {
     }
   }
 
-  if (item.venue?.googlePlaceId) {
+  if (item.place?.googlePlaceId) {
     tags.push(
       <a
         key="gmap"
-        href={`https://www.google.com/maps/place/?q=place_id:${item.venue.googlePlaceId}`}
+        href={`https://www.google.com/maps/place/?q=place_id:${item.place.googlePlaceId}`}
         target="_blank"
         rel="noopener noreferrer"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] font-medium transition"

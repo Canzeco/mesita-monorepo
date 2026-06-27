@@ -11,7 +11,7 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/manage-multiple/create":
     "Create many units from Google Place IDs — same pipeline as single create, with progress per row.",
   "/manage-multiple/update":
-    "Upload a CSV of venue IDs and fields to overwrite, with a diff preview before commit.",
+    "Upload a CSV of place IDs and fields to overwrite, with a diff preview before commit.",
 };
 
 export function ManageMultipleLayoutShell({

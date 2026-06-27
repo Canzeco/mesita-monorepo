@@ -510,7 +510,7 @@ function GatherSection({
             <Globe className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
               <span className="font-medium">Website</span> — AI ranks crawled
-              images; venue shots rise, logos and banners sink.
+              images; place shots rise, logos and banners sink.
             </span>
           </li>
           <li className="flex items-start gap-2">
@@ -819,7 +819,7 @@ function ModelSelect({
 // configurations, not for billing. Keep in sync with the enricher.
 const COST_RATES = {
   googlePlaces: 0.017, // Places Details lookup at create (Pro SKU, ~$17/1k)
-  apifyGoogleMaps: 0.05, // compass run: all reviews + venue photos
+  apifyGoogleMaps: 0.05, // compass run: all reviews + place photos
   firecrawlSearch: 0.002, // one channel-discovery web search
   perplexity: 0.01, // discovery fallback (sonar)
   apifyInstagram: 0.02, // IG profile scraper
@@ -833,7 +833,7 @@ const COST_RATES = {
 } as const;
 
 // Rough wall-clock seconds per step. The gather steps overlap (the enricher
-// fires them with Promise.all), so the per-venue total uses the stage model in
+// fires them with Promise.all), so the per-place total uses the stage model in
 // CostSection (pre + max(gather) + post), NOT the column sum.
 const TIME_RATES = {
   googlePlaces: 2, // Places Details lookup
@@ -963,15 +963,15 @@ function CalculatorView({
   setW,
   ig,
   setIg,
-  venues,
-  setVenues,
+  places,
+  setPlaces,
   sourceGather,
   perceptionLayer,
   active,
   lines,
-  perVenue,
+  perPlace,
   total,
-  perVenueSecs,
+  perPlaceSecs,
   totalSecs,
 }: {
   level: number;
@@ -988,15 +988,15 @@ function CalculatorView({
   setW: (v: number) => void;
   ig: number;
   setIg: (v: number) => void;
-  venues: number;
-  setVenues: (v: number) => void;
+  places: number;
+  setPlaces: (v: number) => void;
   sourceGather: boolean;
   perceptionLayer: boolean;
   active: CostLine[];
   lines: CostLine[];
-  perVenue: number;
+  perPlace: number;
   total: number;
-  perVenueSecs: number;
+  perPlaceSecs: number;
   totalSecs: number;
 }) {
   const levelBlurb = LEVELS.find((t) => t.level === level)?.blurb ?? "";
@@ -1007,7 +1007,7 @@ function CalculatorView({
   return (
     <div className="mx-auto max-w-5xl">
       <p className="text-muted-foreground mb-6 max-w-2xl text-sm leading-relaxed">
-        Estimate cost and runtime for enriching a new venue. Adjust inputs to compare
+        Estimate cost and runtime for enriching a new place. Adjust inputs to compare
         configurations — figures are approximate, not billing.
       </p>
 
@@ -1079,7 +1079,7 @@ function CalculatorView({
           </CalcPanel>
 
           <CalcPanel title="Batch" icon={<Globe className="h-3.5 w-3.5" />}>
-            <CalcStepper label="Venues" value={venues} min={1} max={5000} onChange={setVenues} />
+            <CalcStepper label="Places" value={places} min={1} max={5000} onChange={setPlaces} />
           </CalcPanel>
         </aside>
 
@@ -1091,25 +1091,25 @@ function CalculatorView({
                   Cost
                 </p>
                 <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
-                  {money(perVenue)}
+                  {money(perPlace)}
                 </p>
-                <p className="text-muted-foreground mt-1 text-sm">per venue</p>
+                <p className="text-muted-foreground mt-1 text-sm">per place</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
                   Time
                 </p>
                 <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
-                  ~{fmtTime(perVenueSecs)}
+                  ~{fmtTime(perPlaceSecs)}
                 </p>
-                <p className="text-muted-foreground mt-1 text-sm">per venue</p>
+                <p className="text-muted-foreground mt-1 text-sm">per place</p>
               </div>
             </div>
 
-            {venues > 1 && (
+            {places > 1 && (
               <div className="border-border bg-background mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
                 <span className="text-muted-foreground text-sm">
-                  Batch total · {venues} venues
+                  Batch total · {places} places
                 </span>
                 <div className="flex items-center gap-4 text-sm font-semibold tabular-nums">
                   <span>${total.toFixed(2)}</span>
@@ -1174,7 +1174,7 @@ function CalculatorView({
 
           <p className="text-muted-foreground/80 text-xs leading-relaxed">
             Based on the enricher rate card. Gather steps overlap, so total time is setup +
-            slowest gather + analysis — not the sum of every row. Batch time assumes venues run
+            slowest gather + analysis — not the sum of every row. Batch time assumes places run
             sequentially. Level 5 heavy scrapes are not yet included.
           </p>
         </div>
@@ -1209,7 +1209,7 @@ function CostSection({
   const [g, setG] = useState(initialAnalyzeGoogleImages);
   const [w, setW] = useState(initialAnalyzeWebsiteImages);
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
-  const [venues, setVenues] = useState(1);
+  const [places, setPlaces] = useState(1);
 
   const linkDiscovery = level >= 2;
   const sourceGather = level >= 3;
@@ -1241,16 +1241,16 @@ function CostSection({
   ];
 
   const active = lines.filter((l) => l.active);
-  const perVenue = active.reduce((s, l) => s + l.cost, 0);
-  const total = perVenue * Math.max(1, venues);
+  const perPlace = active.reduce((s, l) => s + l.cost, 0);
+  const total = perPlace * Math.max(1, places);
   // Wall-clock: serial pre + the SLOWEST concurrent gather + serial post.
   const preSecs = active.filter((l) => l.stage === "pre").reduce((s, l) => s + l.secs, 0);
   const gatherSecs = active
     .filter((l) => l.stage === "gather")
     .reduce((mx, l) => Math.max(mx, l.secs), 0);
   const postSecs = active.filter((l) => l.stage === "post").reduce((s, l) => s + l.secs, 0);
-  const perVenueSecs = preSecs + gatherSecs + postSecs;
-  const totalSecs = perVenueSecs * Math.max(1, venues);
+  const perPlaceSecs = preSecs + gatherSecs + postSecs;
+  const totalSecs = perPlaceSecs * Math.max(1, places);
 
   if (standalone) {
     return (
@@ -1269,15 +1269,15 @@ function CostSection({
         setW={setW}
         ig={ig}
         setIg={setIg}
-        venues={venues}
-        setVenues={setVenues}
+        places={places}
+        setPlaces={setPlaces}
         sourceGather={sourceGather}
         perceptionLayer={perceptionLayer}
         active={active}
         lines={lines}
-        perVenue={perVenue}
+        perPlace={perPlace}
         total={total}
-        perVenueSecs={perVenueSecs}
+        perPlaceSecs={perPlaceSecs}
         totalSecs={totalSecs}
       />
     );
@@ -1287,21 +1287,21 @@ function CostSection({
     <SectionCard
       icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
       title="Cost Calculator"
-      subtitle="Rough estimate of cost and runtime to enrich one new venue with your current settings."
+      subtitle="Rough estimate of cost and runtime to enrich one new place with your current settings."
     >
       {/* Headline: cost + time for the current settings, always visible. */}
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <DollarSign className="h-4 w-4" /> Per venue
+            <DollarSign className="h-4 w-4" /> Per place
           </span>
-          <span className="text-lg font-semibold tabular-nums">{money(perVenue)}</span>
+          <span className="text-lg font-semibold tabular-nums">{money(perPlace)}</span>
         </div>
         <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
           <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <Clock className="h-4 w-4" /> Per venue
+            <Clock className="h-4 w-4" /> Per place
           </span>
-          <span className="text-lg font-semibold tabular-nums">~{fmtTime(perVenueSecs)}</span>
+          <span className="text-lg font-semibold tabular-nums">~{fmtTime(perPlaceSecs)}</span>
         </div>
       </div>
 
@@ -1365,7 +1365,7 @@ function CostSection({
           </>
         )}
 
-        <NumberField icon={<Layers className="text-muted-foreground h-4 w-4" />} label="Number of venues" value={venues} min={1} max={5000} onChange={setVenues} disabled={false} />
+        <NumberField icon={<Layers className="text-muted-foreground h-4 w-4" />} label="Number of places" value={places} min={1} max={5000} onChange={setPlaces} disabled={false} />
       </div>
 
       {/* Breakdown */}
@@ -1399,19 +1399,19 @@ function CostSection({
           <tfoot>
             <tr className="bg-background border-border border-t-2">
               <td className="px-4 py-3 font-semibold" colSpan={2}>
-                Per venue
+                Per place
               </td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                ~{fmtTime(perVenueSecs)}
+                ~{fmtTime(perPlaceSecs)}
               </td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                {money(perVenue)}
+                {money(perPlace)}
               </td>
             </tr>
-            {venues > 1 && (
+            {places > 1 && (
               <tr className="bg-background border-border/60 border-t">
                 <td className="text-muted-foreground px-4 py-2.5" colSpan={2}>
-                  × {venues} venues
+                  × {places} places
                 </td>
                 <td className="text-muted-foreground px-4 py-2.5 text-right font-semibold tabular-nums">
                   ~{fmtTime(totalSecs)}
@@ -1428,7 +1428,7 @@ function CostSection({
       <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
         Approximate per-step costs based on the enricher&apos;s rate card. Gather
         steps run in parallel, so total time is pre-work + slowest gather step +
-        post-work — not the sum of every row. Batch time assumes venues run
+        post-work — not the sum of every row. Batch time assumes places run
         one after another. Level 5 adds heavy Apify scrapes not yet reflected here.
       </p>
       </Collapsible>

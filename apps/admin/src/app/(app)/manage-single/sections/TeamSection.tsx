@@ -7,14 +7,14 @@ import {
   listTeam,
   removeMember,
   updateMemberRole,
-  type AdminVenue,
+  type AdminPlace,
   type TeamSnapshot,
 } from "../actions";
 import { ErrorNote, SectionCard, Spinner } from "../ui";
 
 const ROLES = ["owner", "editor", "viewer"];
 
-export function TeamSection({ venue }: { venue: AdminVenue }) {
+export function TeamSection({ place }: { place: AdminPlace }) {
   const [snap, setSnap] = useState<TeamSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,20 +28,20 @@ export function TeamSection({ venue }: { venue: AdminVenue }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const r = await listTeam(venue.id);
+    const r = await listTeam(place.id);
     setLoading(false);
     if (!r.ok) {
       setError(r.error);
       return;
     }
     setSnap(r.data);
-  }, [venue.id]);
+  }, [place.id]);
 
   // Initial fetch: set state only after the await (load() reused for refresh).
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await listTeam(venue.id);
+      const r = await listTeam(place.id);
       if (cancelled) return;
       setLoading(false);
       if (!r.ok) {
@@ -53,7 +53,7 @@ export function TeamSection({ venue }: { venue: AdminVenue }) {
     return () => {
       cancelled = true;
     };
-  }, [venue.id]);
+  }, [place.id]);
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
     setBusy(true);
@@ -72,7 +72,7 @@ export function TeamSection({ venue }: { venue: AdminVenue }) {
   const invite = () => {
     if (!email.trim()) return;
     run(async () => {
-      const r = await inviteEditor(venue.id, email.trim(), role);
+      const r = await inviteEditor(place.id, email.trim(), role);
       if (r.ok) setEmail("");
       return r;
     });
@@ -82,7 +82,7 @@ export function TeamSection({ venue }: { venue: AdminVenue }) {
     <SectionCard
       icon={<Users className="text-muted-foreground h-4 w-4" />}
       title="Team"
-      subtitle={`Managers, pending invites and waiters for ${venue.name}.`}
+      subtitle={`Managers, pending invites and waiters for ${place.name}.`}
     >
       {error && <ErrorNote message={error} />}
 
@@ -94,7 +94,7 @@ export function TeamSection({ venue }: { venue: AdminVenue }) {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="email@venue.com"
+            placeholder="email@place.com"
             disabled={busy}
             className="border-border bg-card focus:border-foreground h-9 rounded-lg border px-3 text-sm outline-none disabled:opacity-50"
           />
@@ -178,7 +178,7 @@ export function TeamSection({ venue }: { venue: AdminVenue }) {
             {snap.waiters.map((w) => (
               <Row key={w.userId}>
                 <p className="text-sm font-medium tabular-nums">{w.phone ?? "—"}</p>
-                <RemoveBtn disabled={busy} onClick={() => run(() => removeMember(`${w.userId}:${venue.id}`, "waiter"))} />
+                <RemoveBtn disabled={busy} onClick={() => run(() => removeMember(`${w.userId}:${place.id}`, "waiter"))} />
               </Row>
             ))}
             {snap.waiters.length === 0 && <Empty>No waiters.</Empty>}

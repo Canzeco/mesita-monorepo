@@ -5,11 +5,11 @@ export default async function ManageSingleUnitPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ unitId: string }>;
+  params: Promise<{ projectId: string }>;
   searchParams: Promise<{ section?: string }>;
 }) {
-  const { unitId } = await params;
+  const { projectId } = await params;
   const { section } = await searchParams;
   const target = isUnitSection(section) ? section : "place";
-  redirect(unitSectionHref(unitId, target));
+  redirect(unitSectionHref(projectId, target));
 }

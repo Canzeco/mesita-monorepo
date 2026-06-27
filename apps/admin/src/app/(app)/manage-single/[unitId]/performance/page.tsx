@@ -1,9 +1,9 @@
 "use client";
 
 import { PerformanceSection } from "../../sections/PerformanceSection";
-import { useUnitVenue } from "../../UnitVenueContext";
+import { useUnitPlace } from "../../UnitPlaceContext";
 
 export default function UnitPerformancePage() {
-  const { venue } = useUnitVenue();
-  return <PerformanceSection venue={venue} />;
+  const { place } = useUnitPlace();
+  return <PerformanceSection place={place} />;
 }

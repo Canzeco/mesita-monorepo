@@ -5,8 +5,8 @@ export default async function ManageSingleUnitLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ unitId: string }>;
+  params: Promise<{ projectId: string }>;
 }) {
-  const { unitId } = await params;
-  return <UnitEditShell unitId={unitId}>{children}</UnitEditShell>;
+  const { projectId } = await params;
+  return <UnitEditShell projectId={projectId}>{children}</UnitEditShell>;
 }

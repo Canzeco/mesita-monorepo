@@ -1,9 +1,9 @@
 "use client";
 
 import { ScanSection } from "../../sections/ScanSection";
-import { useUnitVenue } from "../../UnitVenueContext";
+import { useUnitPlace } from "../../UnitPlaceContext";
 
 export default function UnitScanPage() {
-  const { venue } = useUnitVenue();
-  return <ScanSection venue={venue} />;
+  const { place } = useUnitPlace();
+  return <ScanSection place={place} />;
 }

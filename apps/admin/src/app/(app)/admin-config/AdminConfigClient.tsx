@@ -258,8 +258,8 @@ function ResetCard() {
       </div>
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Permanently deletes <strong>all</strong> venues, tickets, consumers,
-        businesses, staff invites, verifications and venue roles, and removes
+        Permanently deletes <strong>all</strong> places, tickets, consumers,
+        businesses, staff invites, verifications and place roles, and removes
         every auth account that isn&apos;t an admin. The admin allowlist and app
         settings are kept. This cannot be undone.
       </p>

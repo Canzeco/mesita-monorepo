@@ -12,8 +12,8 @@ export function UnitSelectCatalog() {
   const { q, setQ, hits, pending, error, metaLabel, searchedQuery, clear } =
     useUnitCatalogSearch();
 
-  const pick = (unitId: string) => {
-    router.push(unitSectionHref(unitId, "place"));
+  const pick = (projectId: string) => {
+    router.push(unitSectionHref(projectId, "place"));
   };
 
   return (

@@ -1,17 +1,17 @@
 "use client";
 
 import { BarChart3 } from "lucide-react";
-import type { AdminVenue } from "../actions";
+import type { AdminPlace } from "../actions";
 import { SectionCard } from "../ui";
 
 // Mirrors the business app's performance page — an analytics placeholder until
-// the metrics pipeline lands. Kept so the nav + venue context are consistent.
-export function PerformanceSection({ venue }: { venue: AdminVenue }) {
+// the metrics pipeline lands. Kept so the nav + place context are consistent.
+export function PerformanceSection({ place }: { place: AdminPlace }) {
   return (
     <SectionCard
       icon={<BarChart3 className="text-muted-foreground h-4 w-4" />}
       title="Performance"
-      subtitle={`Analytics for ${venue.name}.`}
+      subtitle={`Analytics for ${place.name}.`}
     >
       <div className="border-border bg-background mt-5 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-14 text-center">
         <div className="bg-card text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">

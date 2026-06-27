@@ -31,8 +31,8 @@ export const TOOL_ROUTES = [
   },
 ] as const;
 
-export function unitSectionHref(unitId: string, section: UnitSection): string {
-  return `/manage-single/${unitId}/${section}`;
+export function unitSectionHref(projectId: string, section: UnitSection): string {
+  return `/manage-single/${projectId}/${section}`;
 }
 
 export function isUnitSection(value: string | null | undefined): value is UnitSection {

@@ -29,7 +29,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
       <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
         <h2 className="font-display text-base font-semibold tracking-tight">Field limits</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Enforced in the business Place editor and business-update-unit.
+          Enforced in the business Place editor and business-update-project.
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {Object.entries(data.fieldLimits).map(([key, limit]) => (
@@ -55,7 +55,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           </p>
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Canonical slugs in <code className="text-xs">venue_categories</code>. ADEA
+          Canonical slugs in <code className="text-xs">place_categories</code>. ADEA
           inference picks from this list.
         </p>
         <div className="mt-5 flex flex-col gap-6">
@@ -85,11 +85,11 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           <h2 className="font-display text-base font-semibold tracking-tight">Tags</h2>
           <p className="text-muted-foreground text-xs">
             {data.counts.tags} possible tags · up to{" "}
-            {data.fieldLimits.tagsPerVenue?.max ?? 20} per venue
+            {data.fieldLimits.tagsPerPlace?.max ?? 20} per place
           </p>
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Controlled attribute slugs in <code className="text-xs">venue_tags</code>, grouped
+          Controlled attribute slugs in <code className="text-xs">place_tags</code>, grouped
           by facet.
         </p>
         <div className="mt-5 flex flex-col gap-6">
@@ -123,7 +123,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
 }
 
 function humanizeKey(key: string): string {
-  if (key === "tagsPerVenue") return "Tags per venue";
+  if (key === "tagsPerPlace") return "Tags per place";
   if (key === "tagCatalogSize") return "Tag catalog";
   if (key === "photos") return "Photos";
   if (key === "prWhatsappNumbers") return "PR WhatsApp numbers";
@@ -136,13 +136,13 @@ function humanizeKey(key: string): string {
 
 function formatLimit(key: string, max: number): string {
   const countKeys = new Set([
-    "tagsPerVenue",
+    "tagsPerPlace",
     "tagCatalogSize",
     "photos",
     "prWhatsappNumbers",
     "prInstagramAccounts",
   ]);
-  if (key === "tagsPerVenue") return `Up to ${max.toLocaleString()}`;
+  if (key === "tagsPerPlace") return `Up to ${max.toLocaleString()}`;
   if (key === "photos") return `Up to ${max.toLocaleString()}`;
   if (key === "prWhatsappNumbers" || key === "prInstagramAccounts") {
     return `Up to ${max.toLocaleString()}`;

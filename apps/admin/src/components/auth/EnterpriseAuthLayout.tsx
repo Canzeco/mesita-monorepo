@@ -77,7 +77,7 @@ function LandingPane() {
           <ValueProp
             Icon={Database}
             title="Direct catalog tools"
-            blurb="Create, update, bulk-edit, search, and inspect venue rows without leaving the shell."
+            blurb="Create, update, bulk-edit, search, and inspect place rows without leaving the shell."
           />
           <ValueProp
             Icon={Eye}

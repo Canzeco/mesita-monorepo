@@ -1,9 +1,9 @@
 "use client";
 
 import { TeamSection } from "../../sections/TeamSection";
-import { useUnitVenue } from "../../UnitVenueContext";
+import { useUnitPlace } from "../../UnitPlaceContext";
 
 export default function UnitTeamPage() {
-  const { venue } = useUnitVenue();
-  return <TeamSection venue={venue} />;
+  const { place } = useUnitPlace();
+  return <TeamSection place={place} />;
 }

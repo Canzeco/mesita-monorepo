@@ -6,7 +6,7 @@ export default function CreateUnitPage() {
       <PageHeader
         eyebrow="Units · Single"
         title="Manually create unit"
-        description="Add a single venue by hand. The Google Places picker plus the enrichment pass (Firecrawl + OpenAI) land here next."
+        description="Add a single place by hand. The Google Places picker plus the enrichment pass (Firecrawl + OpenAI) land here next."
       />
     </PageContainer>
   );

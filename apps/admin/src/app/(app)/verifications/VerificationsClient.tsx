@@ -244,7 +244,7 @@ function VerificationRow({
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-display text-base font-semibold tracking-tight">
-            {verification.venue?.name ?? "(deleted venue)"}
+            {verification.place?.name ?? "(deleted place)"}
           </p>
           <p className="text-muted-foreground text-[12px]">
             {METHOD_LABEL[verification.method]} · requested{" "}
@@ -259,11 +259,11 @@ function VerificationRow({
       </div>
 
       <div className="border-border bg-background grid grid-cols-1 gap-3 rounded-xl border p-3 text-[12px] sm:grid-cols-2">
-        <KV label="Venue address">
-          {verification.venue?.address ?? "—"}
+        <KV label="Place address">
+          {verification.place?.address ?? "—"}
         </KV>
         <KV label="Google-listed phone">
-          {verification.venue?.phone ?? "—"}
+          {verification.place?.phone ?? "—"}
         </KV>
         {verification.method === "video" && (
           <KV label="Video URL" wide>
@@ -287,7 +287,7 @@ function VerificationRow({
               <span className="font-mono">
                 {typeof verification.payload.phoneCalled === "string"
                   ? verification.payload.phoneCalled
-                  : "(no phone on venue)"}
+                  : "(no phone on place)"}
               </span>
             </KV>
             <KV label="OTP verified">

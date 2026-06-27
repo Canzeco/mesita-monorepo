@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ImageOff, Search } from "lucide-react";
-import type { AdminVenue } from "./actions";
+import type { AdminPlace } from "./actions";
 import { UNIT_SECTIONS, unitSectionHref } from "./nav";
 
 export function currentUnitSection(pathname: string) {
@@ -16,11 +16,11 @@ export function currentUnitSection(pathname: string) {
 }
 
 export function UnitEditChrome({
-  unitId,
-  venue,
+  projectId,
+  place,
 }: {
-  unitId: string;
-  venue: AdminVenue;
+  projectId: string;
+  place: AdminPlace;
 }) {
   const pathname = usePathname();
 
@@ -39,9 +39,9 @@ export function UnitEditChrome({
 
         <p
           className="max-w-[8rem] shrink-0 truncate text-sm font-semibold sm:max-w-[12rem] lg:max-w-none"
-          title={venue.name}
+          title={place.name}
         >
-          {venue.name}
+          {place.name}
         </p>
 
         <nav
@@ -50,7 +50,7 @@ export function UnitEditChrome({
           className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {UNIT_SECTIONS.map(({ id, label }) => {
-            const href = unitSectionHref(unitId, id);
+            const href = unitSectionHref(projectId, id);
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link

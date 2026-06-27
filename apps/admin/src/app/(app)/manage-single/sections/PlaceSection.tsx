@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, Clock, Globe, ImageOff, MapPin, Plus, X } from "lucide-react";
-import { updateVenue, type AdminVenue } from "../actions";
+import { updatePlace, type AdminPlace } from "../actions";
 import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 
 const DAYS = [
@@ -16,7 +16,7 @@ const DAYS = [
 ] as const;
 type Day = (typeof DAYS)[number];
 
-const CHANNELS: { key: keyof AdminVenue; label: string }[] = [
+const CHANNELS: { key: keyof AdminPlace; label: string }[] = [
   { key: "website_url", label: "Website" },
   { key: "instagram_url", label: "Instagram" },
   { key: "facebook_url", label: "Facebook" },
@@ -44,11 +44,11 @@ type Form = {
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
-const VENUE_NAME_MAX = 80;
-const TAGS_PER_VENUE_MAX = 20;
+const PLACE_NAME_MAX = 80;
+const TAGS_PER_PLACE_MAX = 20;
 const PHOTOS_MAX = 10;
 
-function venueToForm(v: AdminVenue): Form {
+function placeToForm(v: AdminPlace): Form {
   const hours = {} as Record<Day, DayHours>;
   for (const d of DAYS) {
     const ranges = v.hours?.[d];
@@ -60,7 +60,7 @@ function venueToForm(v: AdminVenue): Form {
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
-    name: (v.name ?? "").slice(0, VENUE_NAME_MAX),
+    name: (v.name ?? "").slice(0, PLACE_NAME_MAX),
     category: v.category ?? "",
     description: v.description ?? "",
     phone: v.phone ?? "",
@@ -72,7 +72,7 @@ function venueToForm(v: AdminVenue): Form {
   };
 }
 
-// Build the business-update-unit patch. Empty strings become null so a cleared
+// Build the business-update-project patch. Empty strings become null so a cleared
 // field actually clears; closed days are omitted from the hours object.
 function formToPatch(f: Form, id: string): Record<string, unknown> {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
@@ -83,7 +83,7 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
   }
   const patch: Record<string, unknown> = {
     id,
-    name: f.name.trim().slice(0, VENUE_NAME_MAX),
+    name: f.name.trim().slice(0, PLACE_NAME_MAX),
     category: nz(f.category),
     description: nz(f.description),
     phone: nz(f.phone),
@@ -92,7 +92,7 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean)
-      .slice(0, TAGS_PER_VENUE_MAX),
+      .slice(0, TAGS_PER_PLACE_MAX),
     photos: f.photos.slice(0, PHOTOS_MAX),
     hours,
   };
@@ -101,13 +101,13 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
 }
 
 export function PlaceSection({
-  venue,
+  place,
   onSaved,
 }: {
-  venue: AdminVenue;
-  onSaved: (v: AdminVenue) => void;
+  place: AdminPlace;
+  onSaved: (v: AdminPlace) => void;
 }) {
-  const [form, setForm] = useState<Form>(() => venueToForm(venue));
+  const [form, setForm] = useState<Form>(() => placeToForm(place));
   const [saved, setSaved] = useState<Form>(form);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -163,12 +163,12 @@ export function PlaceSection({
     setError(null);
     setOk(false);
     start(async () => {
-      const r = await updateVenue(formToPatch(form, venue.id) as { id: string });
+      const r = await updatePlace(formToPatch(form, place.id) as { id: string });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      const fresh = venueToForm(r.data);
+      const fresh = placeToForm(r.data);
       setForm(fresh);
       setSaved(fresh);
       onSaved(r.data);
@@ -181,20 +181,20 @@ export function PlaceSection({
       <SectionCard
         icon={<MapPin className="text-muted-foreground h-4 w-4" />}
         title="Place"
-        subtitle={`Profile for ${venue.name}. Name, category, description and contact.`}
+        subtitle={`Profile for ${place.name}. Name, category, description and contact.`}
       >
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <TextField
             label="Name"
             value={form.name}
-            onChange={(x) => set("name", x.slice(0, VENUE_NAME_MAX))}
-            maxLength={VENUE_NAME_MAX}
+            onChange={(x) => set("name", x.slice(0, PLACE_NAME_MAX))}
+            maxLength={PLACE_NAME_MAX}
             disabled={pending}
           />
-          {/* Category is enrichment-derived (ADEA inferVenueCategory). Show the
+          {/* Category is enrichment-derived (ADEA inferPlaceCategory). Show the
               friendly label (e.g. "🪩 Nightclub"), never the snakecase slug;
               read-only here — the slug isn't hand-edited. */}
-          <TextField label="Category" value={venue.category_label ?? form.category} placeholder="e.g. 🪩 Nightclub" disabled />
+          <TextField label="Category" value={place.category_label ?? form.category} placeholder="e.g. 🪩 Nightclub" disabled />
         </div>
         <div className="mt-4">
           <TextArea label="Description / About" value={form.description} onChange={(x) => set("description", x)} rows={5} maxLength={2000} disabled={pending} />
@@ -209,7 +209,7 @@ export function PlaceSection({
           />
           <p className="text-muted-foreground mt-1 text-xs tabular-nums">
             {form.tags.split(",").map((t) => t.trim()).filter(Boolean).length}/
-            {TAGS_PER_VENUE_MAX} tags
+            {TAGS_PER_PLACE_MAX} tags
           </p>
         </div>
       </SectionCard>
@@ -239,7 +239,7 @@ export function PlaceSection({
       <SectionCard
         icon={<Clock className="text-muted-foreground h-4 w-4" />}
         title="Hours"
-        subtitle="One range per day. Toggle Closed for days the venue isn't open."
+        subtitle="One range per day. Toggle Closed for days the place isn't open."
       >
         <div className="mt-5 flex flex-col gap-2">
           {DAYS.map((d) => {
@@ -267,7 +267,7 @@ export function PlaceSection({
       <SectionCard
         icon={<ImageOff className="text-muted-foreground h-4 w-4" />}
         title="Photos"
-        subtitle="Venue gallery — first photo is the hero. Reorder or remove; add by URL if needed."
+        subtitle="Place gallery — first photo is the hero. Reorder or remove; add by URL if needed."
       >
         <PhotosEditor
           photos={form.photos}

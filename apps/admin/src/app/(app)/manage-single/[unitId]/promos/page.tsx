@@ -1,9 +1,9 @@
 "use client";
 
 import { PromosSection } from "../../sections/PromosSection";
-import { useUnitVenue } from "../../UnitVenueContext";
+import { useUnitPlace } from "../../UnitPlaceContext";
 
 export default function UnitPromosPage() {
-  const { venue, setVenue } = useUnitVenue();
-  return <PromosSection venue={venue} onSaved={setVenue} />;
+  const { place, setPlace } = useUnitPlace();
+  return <PromosSection place={place} onSaved={setPlace} />;
 }

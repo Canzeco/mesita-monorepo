@@ -6,7 +6,7 @@ import { AdeaTabNav } from "./AdeaTabNav";
 import { ADEA_SUBROUTES } from "./nav";
 
 const ADEA_WHAT =
-  "ADEA — Atlas Data Enrichment Agent — builds venue profiles from the open web. When a unit is created or refreshed, it discovers sources, gathers Google and social content, analyzes photos and text, and writes the listing.";
+  "ADEA — Atlas Data Enrichment Agent — builds place profiles from the open web. When a unit is created or refreshed, it discovers sources, gathers Google and social content, analyzes photos and text, and writes the listing.";
 
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/adea-config/configuration":

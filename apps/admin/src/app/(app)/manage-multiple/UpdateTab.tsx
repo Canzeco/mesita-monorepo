@@ -4,7 +4,7 @@ export function UpdateTab() {
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Upload a CSV of venue IDs and fields to overwrite. The diff
+        Upload a CSV of place IDs and fields to overwrite. The diff
         preview and confirm step land here next.
       </p>
 

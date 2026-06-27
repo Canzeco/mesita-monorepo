@@ -16,7 +16,7 @@ type RowStatus =
   | { status: "running" }
   | {
       status: "ok";
-      venueId: string;
+      projectId: string;
       name: string;
       slug: string | null;
       photoCount: number;
@@ -78,7 +78,7 @@ export function CreateTab() {
             [id]: r.ok
               ? {
                   status: "ok",
-                  venueId: r.venueId,
+                  projectId: r.projectId,
                   name: r.name,
                   slug: r.slug,
                   photoCount: r.photoCount,

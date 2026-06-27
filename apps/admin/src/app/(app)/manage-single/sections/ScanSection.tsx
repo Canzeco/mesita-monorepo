@@ -7,7 +7,7 @@ import {
   listTickets,
   markTicketPaid,
   type AdminTicket,
-  type AdminVenue,
+  type AdminPlace,
 } from "../actions";
 import { ErrorNote, SectionCard, Spinner } from "../ui";
 
@@ -27,7 +27,7 @@ const STATUS_TONE: Record<string, string> = {
   cancelled: "border-border bg-muted text-muted-foreground",
 };
 
-export function ScanSection({ venue }: { venue: AdminVenue }) {
+export function ScanSection({ place }: { place: AdminPlace }) {
   const [tickets, setTickets] = useState<AdminTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,21 +37,21 @@ export function ScanSection({ venue }: { venue: AdminVenue }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const r = await listTickets(venue.id);
+    const r = await listTickets(place.id);
     setLoading(false);
     if (!r.ok) {
       setError(r.error);
       return;
     }
     setTickets(r.data);
-  }, [venue.id]);
+  }, [place.id]);
 
   // Initial fetch: set state only after the await so nothing is set
   // synchronously in the effect body (load() is reused for refresh/actions).
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await listTickets(venue.id);
+      const r = await listTickets(place.id);
       if (cancelled) return;
       setLoading(false);
       if (!r.ok) {
@@ -64,7 +64,7 @@ export function ScanSection({ venue }: { venue: AdminVenue }) {
     return () => {
       cancelled = true;
     };
-  }, [venue.id]);
+  }, [place.id]);
 
   const act = (id: string, fn: () => Promise<{ ok: boolean; error?: string }>) => {
     setBusyId(id);
@@ -84,7 +84,7 @@ export function ScanSection({ venue }: { venue: AdminVenue }) {
     <SectionCard
       icon={<QrCode className="text-muted-foreground h-4 w-4" />}
       title="Scan"
-      subtitle={`Tickets for ${venue.name}. Confirm payment or cancel open tickets.`}
+      subtitle={`Tickets for ${place.name}. Confirm payment or cancel open tickets.`}
       action={
         <button
           type="button"
