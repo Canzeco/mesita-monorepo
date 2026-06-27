@@ -6,17 +6,17 @@ import { ChevronLeft, Share2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 
 // Modal chrome for the intercepted /coupon/[id] route. Mirrors
-// VenueDetailModalShell / ReservationDetailModalShell — absolute layer
+// PlaceDetailModalShell / ReservationDetailModalShell — absolute layer
 // inside the shell's content area, two rigid rows (header + scroll
-// body). Coupon-level actions live inside the body (View venue, Show at
-// venue, Share, Open Instagram), so no action bar here.
+// body). Coupon-level actions live inside the body (View place, Show at
+// place, Share, Open Instagram), so no action bar here.
 
 export function CouponDetailModalShell({
   children,
-  venueName,
+  placeName,
 }: {
   children: React.ReactNode;
-  venueName: string;
+  placeName: string;
 }) {
   const router = useRouter();
 
@@ -30,8 +30,8 @@ export function CouponDetailModalShell({
 
   function onShare() {
     const shareData = {
-      title: `${venueName} on Mesita`,
-      text: `My coupon for ${venueName}`,
+      title: `${placeName} on Mesita`,
+      text: `My coupon for ${placeName}`,
       url: typeof window !== "undefined" ? window.location.href : "",
     };
     if (
@@ -80,7 +80,7 @@ export function CouponDetailModalShell({
         `min-h-0` is load-bearing — without it the flex-1 child grows to
         fit content, `overflow-y-auto` never triggers, and the body
         scrolls on the outer shell instead. Same trap as
-        VenueDetailModalShell / ReservationDetailModalShell.
+        PlaceDetailModalShell / ReservationDetailModalShell.
       */}
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>

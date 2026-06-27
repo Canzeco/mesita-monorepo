@@ -13,10 +13,10 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
-import type { Venue } from "@/lib/api/venues";
-import { resolveVenueCategoryName } from "@/lib/venue-category";
+import type { Place } from "@/lib/api/places";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { PartnerBadge, RatePill } from "@/components/shared";
-import { resolvePromoRateFromVenueRow } from "@/lib/promo-rates";
+import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import { placeHref } from "@/lib/place-route";
 
 // Default map centre — Monterrey, since that's the city the project is
@@ -32,7 +32,7 @@ const PARTNER_COLOR = "#E91E63";
 const WEB_COLOR = "#9ca3af";
 
 // Minimalist map styling — turns off every POI Google would otherwise draw
-// (restaurants, hospitals, schools, transit stops…) so our own venue pins
+// (restaurants, hospitals, schools, transit stops…) so our own place pins
 // are the only things on the canvas. Roads + locality labels stay so the
 // map is still navigable. Inline styles work because we don't pass a
 // mapId; switching to a cloud-based Map Style would override these.
@@ -61,12 +61,12 @@ const MINIMAL_STYLES = [
   },
 ] as const;
 
-// SVG circle path. Both venue markers + the user dot use this; we just
+// SVG circle path. Both place markers + the user dot use this; we just
 // swap fill colour. Path-symbols don't need google.maps.Size/Point so we
 // can declare them up-front instead of waiting for the SDK to load.
 const CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
-function venueIcon(isPartner: boolean) {
+function placeIcon(isPartner: boolean) {
   return {
     path: CIRCLE_PATH,
     fillColor: isPartner ? PARTNER_COLOR : WEB_COLOR,
@@ -90,14 +90,14 @@ type LatLng = { lat: number; lng: number };
 
 export function ConsumerDiscoverMap({
   apiKey,
-  venues,
+  places,
   fetchError,
-  totalVenues,
+  totalPlaces,
 }: {
   apiKey: string;
-  venues: Venue[];
+  places: Place[];
   fetchError: string | null;
-  totalVenues: number;
+  totalPlaces: number;
 }) {
   // Missing key → we can't render the SDK. Show a friendly fallback for
   // end users; the dev-mode hint (env var name + setup steps) stays in
@@ -121,7 +121,7 @@ export function ConsumerDiscoverMap({
           ) : (
             <>
               We&apos;re finishing the map view. Try Swipe, Catalog, or AI for
-              now — every venue lives there too.
+              now — every place lives there too.
             </>
           )
         }
@@ -130,28 +130,28 @@ export function ConsumerDiscoverMap({
   }
 
   if (fetchError) {
-    return <SetupCard title="Couldn't load venues" body={fetchError} />;
+    return <SetupCard title="Couldn't load places" body={fetchError} />;
   }
 
   return (
     <APIProvider apiKey={apiKey}>
-      <MapView venues={venues} totalVenues={totalVenues} />
+      <MapView places={places} totalPlaces={totalPlaces} />
     </APIProvider>
   );
 }
 
 function MapView({
-  venues,
-  totalVenues,
+  places,
+  totalPlaces,
 }: {
-  venues: Venue[];
-  totalVenues: number;
+  places: Place[];
+  totalPlaces: number;
 }) {
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   // Tapped marker — drives the bottom preview card. Clicking the card
-  // navigates to /venues/[id]; tapping the close pill clears it.
-  const [selected, setSelected] = useState<Venue | null>(null);
+  // navigates to /places/[id]; tapping the close pill clears it.
+  const [selected, setSelected] = useState<Place | null>(null);
   // Lazy init lets us reason about geolocation support up-front, before any
   // effect runs. Once mounted we move to "asking" inside the effect.
   const [locationStatus, setLocationStatus] = useState<
@@ -221,12 +221,12 @@ function MapView({
             clickable={false}
           />
         )}
-        {venues.map((v) => (
+        {places.map((v) => (
           <Marker
             key={v.id}
             position={{ lat: v.lat as number, lng: v.lng as number }}
             title={v.name}
-            icon={venueIcon(v.listing_type === "partner")}
+            icon={placeIcon(v.listing_type === "partner")}
             onClick={() => setSelected(v)}
           />
         ))}
@@ -245,7 +245,7 @@ function MapView({
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3">
         <div className="bg-card/95 text-foreground pointer-events-auto rounded-full px-3 py-1.5 text-[11px] font-semibold backdrop-blur">
           <Compass className="mr-1 inline-block h-3 w-3 -translate-y-0.5" />
-          {venues.length} of {totalVenues} near here
+          {places.length} of {totalPlaces} near here
         </div>
         <div className="bg-card/95 text-foreground pointer-events-auto flex flex-col gap-1 rounded-2xl p-2 text-[10px] font-semibold backdrop-blur">
           <LegendDot
@@ -275,11 +275,11 @@ function MapView({
         <RecentreButton target={userLocation} raised={!!selected} />
       )}
 
-      {/* Bottom preview card. Tap the card to open the full venue page, or
+      {/* Bottom preview card. Tap the card to open the full place page, or
           the X to dismiss. */}
       {selected && (
-        <VenuePreview
-          venue={selected}
+        <PlacePreview
+          place={selected}
           onDismiss={() => setSelected(null)}
           onOpen={() => router.push(placeHref(selected.id, "explore"))}
         />
@@ -301,23 +301,23 @@ function PanToSelected({ target }: { target: LatLng }) {
   return null;
 }
 
-function VenuePreview({
-  venue,
+function PlacePreview({
+  place,
   onDismiss,
   onOpen,
 }: {
-  venue: Venue;
+  place: Place;
   onDismiss: () => void;
   onOpen: () => void;
 }) {
-  const photo = venue.photos[0];
+  const photo = place.photos[0];
   // Advertised reward for the preview pill — the base first-visit rate a
   // guest sees before membership context resolves. Only Verified Partners
   // run the Mesita discount, so web listings resolve null and show nothing.
   const discountPercent =
-    venue.listing_type === "partner"
-      ? resolvePromoRateFromVenueRow(
-          venue as unknown as Record<string, unknown>,
+    place.listing_type === "partner"
+      ? resolvePromoRateFromPlaceRow(
+          place as unknown as Record<string, unknown>,
           true,
           false,
         )
@@ -326,13 +326,13 @@ function VenuePreview({
   // primary type). Vibe is a tag and belongs in the future tag-chip
   // strip, not stacked next to the category in this subtitle.
   const subtitle =
-    resolveVenueCategoryName({
-      categoryLabel: venue.category_label,
-      category: venue.category,
+    resolvePlaceCategoryName({
+      categoryLabel: place.category_label,
+      category: place.category,
     }) ?? "";
   const meta = [
-    venue.price_level != null ? "$".repeat(venue.price_level) : null,
-    venue.closes_at ? `until ${venue.closes_at}` : null,
+    place.price_level != null ? "$".repeat(place.price_level) : null,
+    place.closes_at ? `until ${place.closes_at}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -348,23 +348,23 @@ function VenuePreview({
             {photo ? (
               <Image
                 src={photo}
-                alt={venue.name}
+                alt={place.name}
                 fill
                 sizes="64px"
                 className="object-cover"
               />
             ) : (
               <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-base font-bold text-white">
-                {venue.name[0]?.toUpperCase() ?? "·"}
+                {place.name[0]?.toUpperCase() ?? "·"}
               </span>
             )}
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5">
               <span className="font-display truncate text-[15px] leading-tight font-semibold tracking-tight">
-                {venue.name}
+                {place.name}
               </span>
-              <PartnerBadge listingType={venue.listing_type} size="xs" />
+              <PartnerBadge listingType={place.listing_type} size="xs" />
             </span>
             {subtitle && (
               <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">

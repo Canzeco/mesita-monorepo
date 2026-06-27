@@ -9,38 +9,38 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Venue } from "@/lib/api/venues";
-import { neighborhoodFromAddress } from "@/lib/adapters/venue-to-detail";
-import { resolveVenueCategoryName } from "@/lib/venue-category";
-import { getOpeningStatusLabel } from "@/lib/venue-status";
+import type { Place } from "@/lib/api/places";
+import { neighborhoodFromAddress } from "@/lib/adapters/place-to-detail";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
+import { getOpeningStatusLabel } from "@/lib/place-status";
 import { PromoChip } from "./PromoChip";
 
-/** Venue fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
+/** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
 export function SwipeCardInfo({
-  venue,
+  place,
   compact = false,
 }: {
-  venue: Venue;
+  place: Place;
   compact?: boolean;
 }) {
   const priceLevelLabel =
-    venue.price_level != null ? "$".repeat(venue.price_level) : null;
+    place.price_level != null ? "$".repeat(place.price_level) : null;
   const ratingLabel =
-    venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
+    place.google_rating != null ? place.google_rating.toFixed(1) : null;
   const ratingCountLabel =
-    venue.google_count != null ? formatCount(venue.google_count) : null;
+    place.google_count != null ? formatCount(place.google_count) : null;
   const distanceLabel =
-    venue.distance_km != null ? `${venue.distance_km} km` : null;
-  const zoneLabel = resolveZoneLabel(venue);
+    place.distance_km != null ? `${place.distance_km} km` : null;
+  const zoneLabel = resolveZoneLabel(place);
   const zoneDisplay = zoneLabel ?? "Neighborhood";
-  const categoryLabel = resolveVenueCategoryName({
-    categoryLabel: venue.category_label,
-    category: venue.category,
+  const categoryLabel = resolvePlaceCategoryName({
+    categoryLabel: place.category_label,
+    category: place.category,
   });
-  const igFollowersLabel = formatFollowers(venue.instagram_followers_count);
-  const statusLabel = getOpeningStatusLabel(venue);
-  const isOpen = venue.open_now === true;
-  const isPartner = venue.listing_type === "partner";
+  const igFollowersLabel = formatFollowers(place.instagram_followers_count);
+  const statusLabel = getOpeningStatusLabel(place);
+  const isOpen = place.open_now === true;
+  const isPartner = place.listing_type === "partner";
 
   return (
     <div
@@ -52,13 +52,13 @@ export function SwipeCardInfo({
           compact ? "line-clamp-1 text-[1.3rem]" : "text-[1.95rem]",
         )}
       >
-        {venue.name}
+        {place.name}
       </h2>
 
       <div
         className={cn(
           "flex flex-wrap items-center gap-1.5",
-          // Keep compact swipe overlays to: venue name + up to 3 lines of tags.
+          // Keep compact swipe overlays to: place name + up to 3 lines of tags.
           compact && "max-h-[102px] overflow-hidden",
         )}
       >
@@ -132,7 +132,7 @@ export function SwipeCardInfo({
             </>
           )}
         </MetaChip>
-        <PromoChip venue={venue} size="md" showWhenEmpty />
+        <PromoChip place={place} size="md" showWhenEmpty />
       </div>
     </div>
   );
@@ -170,11 +170,11 @@ function formatFollowers(n: number | null | undefined): string | null {
   return String(n);
 }
 
-function resolveZoneLabel(venue: Venue): string | null {
-  if (venue.zone && venue.zone.trim().length > 0) return venue.zone;
-  const fromNeighborhood = neighborhoodFromAddress(venue.address ?? undefined);
+function resolveZoneLabel(place: Place): string | null {
+  if (place.zone && place.zone.trim().length > 0) return place.zone;
+  const fromNeighborhood = neighborhoodFromAddress(place.address ?? undefined);
   if (fromNeighborhood) return fromNeighborhood;
-  return cityFromAddress(venue.address ?? undefined);
+  return cityFromAddress(place.address ?? undefined);
 }
 
 function cityFromAddress(address: string | undefined): string | null {

@@ -62,7 +62,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
   return (
     <Link
       href={reservationPath(r.id)}
-      aria-label={`Open reservation at ${r.venueName}`}
+      aria-label={`Open reservation at ${r.placeName}`}
       className={cn(
         "border-border bg-card hover:bg-muted/40 flex flex-col gap-3 overflow-hidden rounded-2xl border p-3 transition active:scale-[0.995]",
         cancelled && "opacity-70",
@@ -70,10 +70,10 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
     >
       <div className="flex items-start gap-3">
         <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
-          {r.venuePhoto ? (
+          {r.placePhoto ? (
             <Image
-              src={r.venuePhoto}
-              alt={r.venueName}
+              src={r.placePhoto}
+              alt={r.placeName}
               fill
               sizes="64px"
               className="object-cover"
@@ -89,7 +89,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
                 cancelled && "line-through",
               )}
             >
-              {r.venueName}
+              {r.placeName}
             </h3>
             <span
               className={cn(

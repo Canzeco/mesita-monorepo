@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 // renders inside a modal on top of the underlying surface.
 //
 // Note the singular path: the list lives at /coupons (plural) and a
-// single entry at /coupon/[id] (singular). Matches /venues + /venue/...
+// single entry at /coupon/[id] (singular). Matches /places + /place/...
 // style and /reservations + /reservation/[id] in this repo.
 //
 // Mocked: ids resolve through getMockCouponById; unknown ids 404.

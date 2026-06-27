@@ -7,9 +7,9 @@ import {
   type BadgeSize,
 } from "./badge-sizing";
 
-// Venue badge that distinguishes Verified Partners (signed up at
+// Place badge that distinguishes Verified Partners (signed up at
 // business.mesita.ai, configured a coupon mechanic) from Web-Listed
-// venues (scraped from Google Business, no dashboard, no coupons).
+// places (scraped from Google Business, no dashboard, no coupons).
 export type ListingType = "partner" | "web";
 
 export function PartnerBadge({

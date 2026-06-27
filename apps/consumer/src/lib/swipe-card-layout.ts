@@ -39,7 +39,7 @@ export type SwipeCardLayoutResult = {
  * Typical portrait phone card ≈ 390×640 (cardRatio ~0.61):
  *   9:16  → imageCardRatio ~0.92  → TIWC (immersive default)
  *   3:4   → ~1.23                 → TIWC
- *   4:5   → ~1.31                 → TIWC (common IG venue photo)
+ *   4:5   → ~1.31                 → TIWC (common IG place photo)
  *   1:1   → ~1.64                 → WITC (square; split keeps fields clean)
  *   3:2   → ~2.46                 → WITC
  *   16:9  → ~2.92                 → WITC (landscape hero shots)

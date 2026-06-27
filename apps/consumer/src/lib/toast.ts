@@ -7,7 +7,7 @@
 //
 // Usage:
 //   import { toast } from "@/lib/toast";
-//   toast("Saved to your venues");
+//   toast("Saved to your places");
 //   toast("Couldn't save — try again", { tone: "error" });
 //   toast.action("Reserved", { label: "View", onClick: () => router.push("/saved") });
 

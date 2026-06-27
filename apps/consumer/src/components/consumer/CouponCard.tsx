@@ -104,7 +104,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
   return (
     <Link
       href={`/coupon/${c.id}`}
-      aria-label={`Open coupon for ${c.venueName}`}
+      aria-label={`Open coupon for ${c.placeName}`}
       className={cn(
         "block overflow-hidden rounded-2xl border transition active:scale-[0.995]",
         muted
@@ -114,10 +114,10 @@ export function CouponCard({ c }: { c: CouponItem }) {
     >
       <div className="flex">
         <div className="bg-muted relative h-auto w-20 shrink-0">
-          {c.venuePhoto ? (
+          {c.placePhoto ? (
             <Image
-              src={c.venuePhoto}
-              alt={c.venueName}
+              src={c.placePhoto}
+              alt={c.placeName}
               fill
               sizes="80px"
               className="object-cover"
@@ -129,7 +129,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="font-display truncate text-base leading-tight font-semibold">
-                {c.venueName}
+                {c.placeName}
               </h3>
               <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
                 {c.tierLabel} · {c.capLabel}

@@ -9,9 +9,9 @@ import type {
 
 /** Detail-route ticket header — uses shared visit shell layout. */
 export function TicketVisitHeader({
-  venueName,
-  venueHref,
-  venuePhotoUrl,
+  placeName,
+  placeHref,
+  placePhotoUrl,
   rewardLabel,
   visitDateLabel,
   steps,
@@ -21,9 +21,9 @@ export function TicketVisitHeader({
   transactionSummary,
   statusLine,
 }: {
-  venueName: string;
-  venueHref?: string | null;
-  venuePhotoUrl?: string | null;
+  placeName: string;
+  placeHref?: string | null;
+  placePhotoUrl?: string | null;
   rewardLabel: string;
   visitDateLabel?: string | null;
   steps: TicketFlowStepView[];
@@ -35,9 +35,9 @@ export function TicketVisitHeader({
 }) {
   return (
     <TicketVisitShell
-      venueName={venueName}
-      venueHref={venueHref}
-      venuePhotoUrl={venuePhotoUrl}
+      placeName={placeName}
+      placeHref={placeHref}
+      placePhotoUrl={placePhotoUrl}
       rewardLabel={rewardLabel}
       visitDateLabel={visitDateLabel}
       steps={steps}

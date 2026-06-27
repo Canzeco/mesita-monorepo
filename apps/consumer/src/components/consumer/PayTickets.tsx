@@ -86,8 +86,8 @@ function TicketPreviewCard({
       className="w-full text-left transition active:scale-[0.995]"
     >
       <TicketVisitShell
-        venueName={p.venue_name ?? "Partner venue"}
-        venuePhotoUrl={p.venue_photo_url}
+        placeName={p.place_name ?? "Partner place"}
+        placePhotoUrl={p.place_photo_url}
         rewardLabel={formatTicketRewardLabel(enriched, { capMxn })}
         visitDateLabel={formatTicketVisitDate(visitDateIso)}
         steps={flowSteps}
@@ -127,27 +127,27 @@ export function PayTickets({ userId }: { userId: string }) {
     const { data: ticketRows } = await supabase
       .from("tickets")
       .select(
-        "id, kind, status, story_status, story_submitted_at, discount_percent, venue_id, total_cents, created_at",
+        "id, kind, status, story_status, story_submitted_at, discount_percent, project_id, total_cents, created_at",
       )
       .in("id", ticketIds);
 
-    const venueIds = [
+    const placeIds = [
       ...new Set(
         (ticketRows ?? [])
-          .map((t) => t.venue_id)
+          .map((t) => t.project_id)
           .filter((id): id is string => Boolean(id)),
       ),
     ];
 
-    const venueCapById = new Map<string, number>();
-    if (venueIds.length > 0) {
-      const { data: venueRows } = await supabase
-        .from("venues")
+    const placeCapById = new Map<string, number>();
+    if (placeIds.length > 0) {
+      const { data: placeRows } = await supabase
+        .from("places")
         .select("id, monthly_promo_cap")
-        .in("id", venueIds);
-      for (const v of venueRows ?? []) {
+        .in("id", placeIds);
+      for (const v of placeRows ?? []) {
         if (v.monthly_promo_cap != null && v.monthly_promo_cap > 0) {
-          venueCapById.set(v.id, v.monthly_promo_cap);
+          placeCapById.set(v.id, v.monthly_promo_cap);
         }
       }
     }
@@ -161,7 +161,7 @@ export function PayTickets({ userId }: { userId: string }) {
         story_submitted_at: t.story_submitted_at,
         total_cents: t.total_cents,
         discount_percent: t.discount_percent,
-        capMxn: t.venue_id ? (venueCapById.get(t.venue_id) ?? null) : null,
+        capMxn: t.project_id ? (placeCapById.get(t.project_id) ?? null) : null,
         created_at: t.created_at,
       });
     }
@@ -223,7 +223,7 @@ export function PayTickets({ userId }: { userId: string }) {
       {bundles.length === 0 ? (
         <p className="surface-card text-muted-foreground px-4 py-8 text-center text-sm leading-relaxed">
           When staff opens your ticket at the table, it appears here with the
-          venue photo, your total reward, and steps to finish. Completed tickets
+          place photo, your total reward, and steps to finish. Completed tickets
           stay here as history.
         </p>
       ) : (

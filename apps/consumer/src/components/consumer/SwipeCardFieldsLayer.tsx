@@ -1,7 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
-import type { Venue } from "@/lib/api/venues";
+import type { Place } from "@/lib/api/places";
 import {
   isSplitLayout,
   type SwipeCardLayoutMode,
@@ -14,10 +14,10 @@ import {
 
 /** Hidden sizing clone — same inner node as SwipeCardFieldsLayer. */
 export function SwipeCardFieldsMeasure({
-  venue,
+  place,
   measureRef,
 }: {
-  venue: Venue;
+  place: Place;
   measureRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
@@ -26,7 +26,7 @@ export function SwipeCardFieldsMeasure({
       aria-hidden
     >
       <div ref={measureRef} className={SWIPE_CARD_FIELDS_INNER}>
-        <SwipeCardInfo venue={venue} compact />
+        <SwipeCardInfo place={place} compact />
       </div>
     </div>
   );
@@ -39,11 +39,11 @@ export function SwipeCardFieldsMeasure({
  * - WITC: bottom box background comes from the reflection in the photo layer.
  */
 export function SwipeCardFieldsLayer({
-  venue,
+  place,
   mode,
   fieldsHeight,
 }: {
-  venue: Venue;
+  place: Place;
   mode: SwipeCardLayoutMode;
   fieldsHeight: number;
 }) {
@@ -64,7 +64,7 @@ export function SwipeCardFieldsLayer({
       </div>
       <div className="absolute inset-x-0 bottom-0">
         <div className={SWIPE_CARD_FIELDS_INNER}>
-          <SwipeCardInfo venue={venue} compact />
+          <SwipeCardInfo place={place} compact />
         </div>
       </div>
     </div>

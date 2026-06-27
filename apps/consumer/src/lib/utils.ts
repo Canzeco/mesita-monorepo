@@ -20,7 +20,7 @@ export function firstInitial(name: string, fallback = "·"): string {
 
 // "2 days ago" style relative label from an ISO timestamp. Returns
 // undefined for missing / unparseable input so callers can fall back to
-// their own copy ("recently"). Shared by the venue detail adapter and the
+// their own copy ("recently"). Shared by the place detail adapter and the
 // card overview deriver so the freshness signal reads identically on both.
 export function relativeLabel(iso: string | undefined): string | undefined {
   if (!iso) return undefined;
@@ -41,7 +41,7 @@ export function relativeLabel(iso: string | undefined): string | undefined {
 }
 
 // Great-circle distance in kilometres between two lat/lng points
-// (haversine, mean Earth radius 6371 km). Used to turn a venue's
+// (haversine, mean Earth radius 6371 km). Used to turn a place's
 // coordinates + the consumer's geolocation into the "X km" card chip.
 // Accuracy is plenty for a "how far is this" signal — we round to one
 // decimal under 10 km and to the nearest km beyond.

@@ -11,12 +11,12 @@ export function TicketBillReceipt({
   payload,
   ticketKind,
   capMxn,
-  venueName,
+  placeName,
 }: {
   payload: TicketBillPayload;
   ticketKind?: string | null;
   capMxn?: number | null;
-  venueName?: string | null;
+  placeName?: string | null;
 }) {
   const receipt = buildTicketReceipt(payload, ticketKind, { capMxn });
   if (!receipt?.lines.length) return null;
@@ -31,7 +31,7 @@ export function TicketBillReceipt({
     <div className="border-border/80 bg-card overflow-hidden rounded-2xl border shadow-sm">
       <div className="border-border/60 bg-muted/20 border-b px-4 py-3">
         <p className="text-foreground text-base leading-tight font-semibold">
-          {venueName ?? "Your bill"}
+          {placeName ?? "Your bill"}
         </p>
         <p className="text-muted-foreground mt-0.5 text-xs">
           What you owe at the restaurant

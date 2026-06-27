@@ -92,14 +92,14 @@ export function TicketReviewForm({
   onChange,
   onSubmit,
   busy,
-  venueName,
+  placeName,
   showIntro = true,
 }: {
   draft: TicketReviewDraft;
   onChange: (draft: TicketReviewDraft) => void;
   onSubmit: () => void;
   busy?: boolean;
-  venueName?: string | null;
+  placeName?: string | null;
   showIntro?: boolean;
 }) {
   const ratingsSet =
@@ -112,8 +112,8 @@ export function TicketReviewForm({
   const canSubmit = ratingsSet && noteLen >= NOTE_MIN;
   return (
     <div className="space-y-3">
-      {venueName ? (
-        <p className="text-foreground text-sm font-medium">{venueName}</p>
+      {placeName ? (
+        <p className="text-foreground text-sm font-medium">{placeName}</p>
       ) : null}
       {showIntro !== false ? (
         <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-[13px] leading-snug">

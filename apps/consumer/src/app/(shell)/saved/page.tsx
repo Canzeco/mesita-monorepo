@@ -15,16 +15,16 @@ import {
 import { PromoChip } from "@/components/consumer/PromoChip";
 import { ClassUpsellBox } from "@/app/(shell)/coupons/ClassUpsellBox";
 import { ReservationsBody } from "@/app/(shell)/reservations/page";
-import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
+import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
-  readSavedVenuePreviews,
-  removeSavedVenuePreview,
-  useSavedVenues,
-} from "@/lib/saved-venues";
+  readSavedPlacePreviews,
+  removeSavedPlacePreview,
+  useSavedPlaces,
+} from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { apiFetchPublicVenues, type Venue } from "@/lib/api/venues";
-import { resolveVenueCategoryName } from "@/lib/venue-category";
+import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -41,11 +41,11 @@ const TABS: { id: Tab; label: string; soon?: boolean }[] = [
 // /saved is now a top-level BottomNav surface again — the "byebye
 // coupons-as-entity" checkpoint promotes saving a place to a
 // first-class action (it used to live as a Discover sub-tab at
-// /discover/saved). Saving a venue is now place-only: no coupon is
+// /discover/saved). Saving a place is now place-only: no coupon is
 // minted as a side effect.
 //
 // Content is identical to the prior Discover sub-route — a grid of
-// VenueCatalogCards with an inline Unsave button. The shell layout's
+// PlaceCatalogCards with an inline Unsave button. The shell layout's
 // TopBar renders the "Saved" title above this page.
 
 export const dynamic = "force-dynamic";
@@ -100,11 +100,11 @@ export default function SavedPage() {
 
 function PlacesBody() {
   const supabase = useBrowserSupabase();
-  const { savedIds, setSaved } = useSavedVenues();
-  const [previewCatalog] = useState<Map<string, Venue>>(() =>
-    readSavedVenuePreviews<Venue>(),
+  const { savedIds, setSaved } = useSavedPlaces();
+  const [previewCatalog] = useState<Map<string, Place>>(() =>
+    readSavedPlacePreviews<Place>(),
   );
-  const [liveCatalog, setLiveCatalog] = useState<Map<string, Venue> | null>(
+  const [liveCatalog, setLiveCatalog] = useState<Map<string, Place> | null>(
     null,
   );
 
@@ -112,16 +112,16 @@ function PlacesBody() {
     let active = true;
     (async () => {
       try {
-        const venues = await apiFetchPublicVenues(supabase, 400);
+        const places = await apiFetchPublicPlaces(supabase, 400);
         if (!active) return;
-        const next = new Map<string, Venue>();
-        for (const venue of venues) {
-          next.set(venue.id, enrichVenueOverview(venue));
+        const next = new Map<string, Place>();
+        for (const place of places) {
+          next.set(place.id, enrichPlaceOverview(place));
         }
         setLiveCatalog(next);
       } catch {
         if (!active) return;
-        // Reset-safety: if we cannot read server venues, fall back to an
+        // Reset-safety: if we cannot read server places, fall back to an
         // empty live catalog so stale local saved IDs/previews get purged.
         setLiveCatalog(new Map());
       }
@@ -132,38 +132,38 @@ function PlacesBody() {
   }, [supabase]);
 
   const catalog = useMemo(() => {
-    const merged = new Map<string, Venue>();
-    for (const [id, venue] of previewCatalog) merged.set(id, venue);
+    const merged = new Map<string, Place>();
+    for (const [id, place] of previewCatalog) merged.set(id, place);
     if (liveCatalog) {
-      for (const [id, venue] of liveCatalog) merged.set(id, venue);
+      for (const [id, place] of liveCatalog) merged.set(id, place);
     }
     return merged;
   }, [liveCatalog, previewCatalog]);
-  const venues = useMemo<Venue[]>(() => {
+  const places = useMemo<Place[]>(() => {
     const ids = [...savedIds];
     if (ids.length === 0) return [];
     return ids
       .map((id) => catalog.get(id))
-      .filter((v): v is Venue => v != null)
-      .map((v) => enrichVenueOverview(v));
+      .filter((v): v is Place => v != null)
+      .map((v) => enrichPlaceOverview(v));
   }, [savedIds, catalog]);
 
-  // If DB reset removed venues, purge stale local bookmarks so Saved truly
+  // If DB reset removed places, purge stale local bookmarks so Saved truly
   // reflects server reality after reset.
   useEffect(() => {
     if (!liveCatalog) return;
     for (const id of savedIds) {
       if (!liveCatalog.has(id)) {
         setSaved(id, false);
-        removeSavedVenuePreview(id);
+        removeSavedPlacePreview(id);
       }
     }
   }, [liveCatalog, savedIds, setSaved]);
 
-  function unsaveVenue(id: string) {
+  function unsavePlace(id: string) {
     const v = catalog.get(id);
     setSaved(id, false);
-    removeSavedVenuePreview(id);
+    removeSavedPlacePreview(id);
     if (v) toast(`Removed ${v.name} from saved`);
   }
 
@@ -177,18 +177,18 @@ function PlacesBody() {
             sticky behavior. */}
         <ClassUpsellBox />
 
-        {venues.length === 0 ? (
+        {places.length === 0 ? (
           <div className="border-border text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
             Nothing saved yet. Swipe right on the Explore deck to bookmark a
-            venue.
+            place.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {venues.map((v) => (
-              <SavedVenueTile
+            {places.map((v) => (
+              <SavedPlaceTile
                 key={v.id}
-                venue={v}
-                onUnsave={() => unsaveVenue(v.id)}
+                place={v}
+                onUnsave={() => unsavePlace(v.id)}
               />
             ))}
           </div>
@@ -198,47 +198,47 @@ function PlacesBody() {
   );
 }
 
-function SavedVenueTile({
-  venue,
+function SavedPlaceTile({
+  place,
   onUnsave,
 }: {
-  venue: Venue;
+  place: Place;
   onUnsave: () => void;
 }) {
-  const photo = venue.photos[0];
-  const category = resolveVenueCategoryName({
-    categoryLabel: venue.category_label,
-    category: venue.category,
+  const photo = place.photos[0];
+  const category = resolvePlaceCategoryName({
+    categoryLabel: place.category_label,
+    category: place.category,
   });
   const priceLevel =
-    venue.price_level != null ? "$".repeat(venue.price_level) : null;
+    place.price_level != null ? "$".repeat(place.price_level) : null;
   const ratingLabel =
-    venue.google_rating != null ? venue.google_rating.toFixed(1) : null;
+    place.google_rating != null ? place.google_rating.toFixed(1) : null;
   const ratingCountLabel =
-    venue.google_count != null ? formatCompactCount(venue.google_count) : null;
+    place.google_count != null ? formatCompactCount(place.google_count) : null;
   const distanceLabel =
-    venue.distance_km != null ? `${venue.distance_km} km` : null;
-  const isPartner = venue.listing_type === "partner";
-  const isOpen = venue.open_now === true;
-  const statusLabel = venue.opens_at
-    ? `Open · until ${venue.opens_at}`
-    : venue.closes_at
-      ? `Open · until ${venue.closes_at}`
-      : venue.open_now === false
+    place.distance_km != null ? `${place.distance_km} km` : null;
+  const isPartner = place.listing_type === "partner";
+  const isOpen = place.open_now === true;
+  const statusLabel = place.opens_at
+    ? `Open · until ${place.opens_at}`
+    : place.closes_at
+      ? `Open · until ${place.closes_at}`
+      : place.open_now === false
         ? "Closed now"
         : null;
 
   return (
     <div className="relative">
       <Link
-        href={placeHref(venue.slug || venue.id, "saved")}
+        href={placeHref(place.slug || place.id, "saved")}
         className="border-border bg-card flex min-h-[118px] w-full overflow-hidden rounded-xl border transition hover:shadow-md"
       >
         <div className="bg-muted relative w-[42%] shrink-0">
           {photo ? (
             <Image
               src={photo}
-              alt={venue.name}
+              alt={place.name}
               fill
               sizes="(max-width: 768px) 40vw, 240px"
               className="object-cover"
@@ -246,7 +246,7 @@ function SavedVenueTile({
           ) : (
             <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/80">
               <span className="font-display text-3xl font-bold tracking-tight">
-                {venue.name[0]?.toUpperCase() ?? "·"}
+                {place.name[0]?.toUpperCase() ?? "·"}
               </span>
             </div>
           )}
@@ -254,7 +254,7 @@ function SavedVenueTile({
 
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2.5 pr-10">
           <h3 className="font-display truncate text-[19px] leading-tight font-semibold tracking-tight">
-            {venue.name}
+            {place.name}
           </h3>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -314,7 +314,7 @@ function SavedVenueTile({
           </div>
 
           <div className="mt-auto">
-            <PromoChip venue={venue} size="sm" showWhenEmpty />
+            <PromoChip place={place} size="sm" showWhenEmpty />
           </div>
         </div>
       </Link>

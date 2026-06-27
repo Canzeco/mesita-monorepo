@@ -15,16 +15,16 @@ import {
   CalendarCheck,
   SlidersHorizontal,
 } from "lucide-react";
-import { VenueSwipeCardFace } from "@/components/consumer/VenueSwipeCardFace";
+import { PlaceSwipeCardFace } from "@/components/consumer/PlaceSwipeCardFace";
 import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
 import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn, haversineKm } from "@/lib/utils";
 import { useUserLocation, type Coords } from "@/lib/use-user-location";
-import { apiRecommendDeck, type Venue } from "@/lib/api/venues";
-import { upsertSavedVenuePreview, useSavedVenues } from "@/lib/saved-venues";
+import { apiRecommendDeck, type Place } from "@/lib/api/places";
+import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { enrichVenueOverview } from "@/lib/mock/enrich-overview";
+import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -37,35 +37,35 @@ const TUTORIAL_AUTO_DISMISS_MS = 5500;
 const SWIPE_STATE_STORAGE_KEY = "mesita_explore_swipe_state_v1";
 
 export function SwipeDeck({
-  venues,
+  places,
   fetchError,
 }: {
-  venues: Venue[];
+  places: Place[];
   fetchError: string | null;
 }) {
   if (fetchError) {
     return (
       <EmptyDeck
-        title="Couldn't load venues"
+        title="Couldn't load places"
         body={fetchError}
         actionHref={CONSUMER_ROUTES.explore.swipe}
         actionLabel="Try again"
       />
     );
   }
-  if (venues.length === 0) {
+  if (places.length === 0) {
     return (
       <EmptyDeck
-        title="No venues yet"
-        body="The catalog is empty. As partners onboard, their venues will show up here."
+        title="No places yet"
+        body="The catalog is empty. As partners onboard, their places will show up here."
       />
     );
   }
-  return <Deck venues={venues} />;
+  return <Deck places={places} />;
 }
 
 type SwipeDeckSnapshot = {
-  runtimeDeck: Venue[];
+  runtimeDeck: Place[];
   idx: number;
 };
 
@@ -98,16 +98,16 @@ function writeSwipeSnapshot(snapshot: SwipeDeckSnapshot) {
   }
 }
 
-function Deck({ venues }: { venues: Venue[] }) {
+function Deck({ places }: { places: Place[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = useBrowserSupabase();
-  const { isSaved, setSaved } = useSavedVenues();
+  const { isSaved, setSaved } = useSavedPlaces();
   // Seed from the server-provided deck so the first client render matches the
   // SSR HTML. The persisted snapshot is restored after mount (see below) —
   // reading sessionStorage during render trips a hydration mismatch because
   // the server has no storage to read.
-  const [runtimeDeck, setRuntimeDeck] = useState<Venue[]>(venues);
+  const [runtimeDeck, setRuntimeDeck] = useState<Place[]>(places);
   const [restarting, setRestarting] = useState(false);
   const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
@@ -211,9 +211,9 @@ function Deck({ venues }: { venues: Venue[] }) {
   };
 
   // Real "X km" distances. The SSR deck fetch has no user location, so
-  // venues arrive without distance_km (the demo row carries a mock one).
+  // places arrive without distance_km (the demo row carries a mock one).
   // Once the browser hands us a fix we recompute each card's distance
-  // from its lat/lng — a real value always wins; venues missing coords
+  // from its lat/lng — a real value always wins; places missing coords
   // (or a denied prompt) keep whatever distance they had, or fall back
   // to a "0 km" placeholder so the chip never just vanishes.
   const coords = useUserLocation();
@@ -244,7 +244,7 @@ function Deck({ venues }: { venues: Venue[] }) {
       if (exitingRef.current) return;
       if (dir === "right" && v) {
         const alreadySaved = isSaved(v.id);
-        upsertSavedVenuePreview(v);
+        upsertSavedPlacePreview(v);
         setSaved(v.id, true);
         if (!alreadySaved) {
           toast.action(
@@ -320,7 +320,7 @@ function Deck({ venues }: { venues: Venue[] }) {
         const bRank = b.listing_type === "partner" ? 0 : 1;
         return aRank - bRank;
       });
-      const enriched = sorted.map((v) => enrichVenueOverview(v));
+      const enriched = sorted.map((v) => enrichPlaceOverview(v));
       const fresh = shuffleDeck(enriched);
       setRuntimeDeck(fresh);
       setIdx(0);
@@ -469,7 +469,7 @@ function Deck({ venues }: { venues: Venue[] }) {
               }}
               aria-hidden
             >
-              <VenueSwipeCardFace venue={next} className="absolute inset-0" />
+              <PlaceSwipeCardFace place={next} className="absolute inset-0" />
             </div>
           )}
 
@@ -500,8 +500,8 @@ function Deck({ venues }: { venues: Venue[] }) {
               opacity: exiting ? 0 : 1,
             }}
           >
-            <VenueSwipeCardFace
-              venue={v}
+            <PlaceSwipeCardFace
+              place={v}
               carousel
               priority
               className="absolute inset-0"
@@ -619,25 +619,25 @@ function Deck({ venues }: { venues: Venue[] }) {
   );
 }
 
-// Resolve a venue's distance_km against the consumer's live position. A
+// Resolve a place's distance_km against the consumer's live position. A
 // real geolocated distance only ever replaces — never erases — what was
 // there. lat/lng ride along as PostgREST-serialized strings at runtime,
 // hence the coercion. When no distance can be computed (geolocation
-// pending/denied, or the venue carries no coordinates) we keep any
+// pending/denied, or the place carries no coordinates) we keep any
 // distance it already had, otherwise drop in a "0 km" placeholder so the
 // chip still renders. Real readings floor at 0.1 km, so "0 km" is
 // unambiguously the "couldn't calculate" case and never a true distance.
-function withUserDistance(venue: Venue, coords: Coords | null): Venue {
+function withUserDistance(place: Place, coords: Coords | null): Place {
   if (coords) {
-    const lat = toCoord(venue.lat);
-    const lng = toCoord(venue.lng);
+    const lat = toCoord(place.lat);
+    const lng = toCoord(place.lng);
     if (lat != null && lng != null) {
       const km = haversineKm(coords.lat, coords.lng, lat, lng);
       const rounded = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
-      return { ...venue, distance_km: Math.max(rounded, 0.1) };
+      return { ...place, distance_km: Math.max(rounded, 0.1) };
     }
   }
-  return venue.distance_km != null ? venue : { ...venue, distance_km: 0 };
+  return place.distance_km != null ? place : { ...place, distance_km: 0 };
 }
 
 function toCoord(v: unknown): number | null {
@@ -661,7 +661,7 @@ function ExhaustedDeck({
         You&apos;re caught up
       </h2>
       <p className="text-muted-foreground max-w-xs text-sm">
-        You&apos;ve seen every venue in this filter. Check the catalog or map,
+        You&apos;ve seen every place in this filter. Check the catalog or map,
         widen your filters, or start over from the top.
       </p>
       <button
@@ -686,7 +686,7 @@ function ExhaustedDeck({
   );
 }
 
-function shuffleDeck(input: Venue[]): Venue[] {
+function shuffleDeck(input: Place[]): Place[] {
   const out = [...input];
   for (let i = out.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));

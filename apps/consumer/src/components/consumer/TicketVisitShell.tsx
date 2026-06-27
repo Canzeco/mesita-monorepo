@@ -11,7 +11,7 @@ import type {
   TicketFlowStepView,
 } from "@/lib/ticket-flow-steps";
 
-function VenueThumbnail({
+function PlaceThumbnail({
   photoUrl,
   name,
 }: {
@@ -23,7 +23,7 @@ function VenueThumbnail({
       {photoUrl ? (
         <Image
           src={photoUrl}
-          alt={name ?? "Venue"}
+          alt={name ?? "Place"}
           fill
           className="object-cover"
           sizes="96px"
@@ -39,9 +39,9 @@ function VenueThumbnail({
 
 /** Ticket card layout: image + name/reward/date, steps, status summary. */
 export function TicketVisitShell({
-  venueName,
-  venueHref,
-  venuePhotoUrl,
+  placeName,
+  placeHref,
+  placePhotoUrl,
   rewardLabel,
   visitDateLabel,
   steps,
@@ -51,9 +51,9 @@ export function TicketVisitShell({
   transactionSummary,
   statusLine,
 }: {
-  venueName: string;
-  venueHref?: string | null;
-  venuePhotoUrl?: string | null;
+  placeName: string;
+  placeHref?: string | null;
+  placePhotoUrl?: string | null;
   rewardLabel: string;
   visitDateLabel?: string | null;
   steps: TicketFlowStepView[];
@@ -66,16 +66,16 @@ export function TicketVisitShell({
   const pillBase =
     "flex min-w-0 items-center rounded-xl px-3 ring-1 ring-inset";
 
-  const nameEl = venueHref ? (
+  const nameEl = placeHref ? (
     <Link
-      href={venueHref}
+      href={placeHref}
       className="text-foreground truncate text-sm font-semibold hover:opacity-80"
     >
-      {venueName}
+      {placeName}
     </Link>
   ) : (
     <p className="text-foreground truncate text-sm font-semibold">
-      {venueName}
+      {placeName}
     </p>
   );
 
@@ -83,7 +83,7 @@ export function TicketVisitShell({
     <section className="surface-card-soft ring-secondary/15 overflow-hidden ring-1">
       <div className="space-y-3 p-4">
         <div className="grid grid-cols-[104px_minmax(0,1fr)] items-stretch gap-3">
-          <VenueThumbnail photoUrl={venuePhotoUrl} name={venueName} />
+          <PlaceThumbnail photoUrl={placePhotoUrl} name={placeName} />
           <div className="grid min-w-0 grid-rows-3 gap-2">
             <div className={`${pillBase} bg-muted/50 ring-border/50`}>
               {nameEl}

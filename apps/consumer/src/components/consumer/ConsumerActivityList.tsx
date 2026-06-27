@@ -40,9 +40,9 @@ export function ConsumerActivityList({
                   )}
                   {a.handle ? " " : ""}
                   {a.verb}{" "}
-                  {a.venue && (
+                  {a.place && (
                     <strong className="text-foreground font-semibold">
-                      {a.venue}
+                      {a.place}
                     </strong>
                   )}
                 </p>
@@ -57,7 +57,7 @@ export function ConsumerActivityList({
       {anonymisedNote ? (
         <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-[11px]">
           <Sparkles className="h-3 w-3" />
-          Anonymised — handles, venues, and amounts are shuffled.
+          Anonymised — handles, places, and amounts are shuffled.
         </p>
       ) : null}
     </>

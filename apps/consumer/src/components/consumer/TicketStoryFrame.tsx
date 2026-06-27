@@ -7,17 +7,17 @@ import { cn } from "@/lib/utils";
 
 /** Instagram story aspect preview — where photo/video and tags go. */
 export function TicketStoryFrame({
-  venuePhotoUrl,
-  venueName,
-  venueInstagramHandle,
+  placePhotoUrl,
+  placeName,
+  placeInstagramHandle,
   className,
 }: {
-  venuePhotoUrl?: string | null;
-  venueName?: string | null;
-  venueInstagramHandle?: string | null;
+  placePhotoUrl?: string | null;
+  placeName?: string | null;
+  placeInstagramHandle?: string | null;
   className?: string;
 }) {
-  const venueTag = formatInstagramHandle(venueInstagramHandle);
+  const placeTag = formatInstagramHandle(placeInstagramHandle);
   const mesitaTag = "@mesita";
 
   return (
@@ -30,9 +30,9 @@ export function TicketStoryFrame({
         style={{ aspectRatio: "9 / 16" }}
         aria-label="Instagram story preview"
       >
-        {venuePhotoUrl ? (
+        {placePhotoUrl ? (
           <Image
-            src={venuePhotoUrl}
+            src={placePhotoUrl}
             alt=""
             fill
             className="object-cover opacity-35 blur-[1px]"
@@ -58,10 +58,10 @@ export function TicketStoryFrame({
           <ImageIcon className="mb-1 h-5 w-5 text-white/70" strokeWidth={1.5} />
           <p className="max-w-[110px] text-center text-[9px] leading-snug font-medium text-white/90">
             Photo or video
-            {venueName ? (
+            {placeName ? (
               <>
                 <br />
-                <span className="line-clamp-2 text-white/70">{venueName}</span>
+                <span className="line-clamp-2 text-white/70">{placeName}</span>
               </>
             ) : null}
           </p>
@@ -69,7 +69,7 @@ export function TicketStoryFrame({
 
         <div className="absolute right-2 bottom-7 left-2 flex flex-col items-start gap-1">
           <StoryMentionTag handle={mesitaTag} emphasized />
-          {venueTag ? <StoryMentionTag handle={venueTag} /> : null}
+          {placeTag ? <StoryMentionTag handle={placeTag} /> : null}
         </div>
 
         <div className="absolute right-0 bottom-1 left-0 text-center">

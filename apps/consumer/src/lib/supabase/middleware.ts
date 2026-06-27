@@ -17,7 +17,7 @@ import type { Database } from "./database.types";
 // requires an Edge Function call per request, which is too expensive.
 // Onboard pages and dashboards each do their own server-side check.
 //
-// Consumer browsing (discover, venue detail, share) is deliberately public
+// Consumer browsing (discover, place detail, share) is deliberately public
 // so anonymous visitors can swipe before signing up. /me, /pay
 // (QR / tickets / balance), /inbox, /qr (legacy → /pay/qr), and /saved
 // are private because they expose personal data.

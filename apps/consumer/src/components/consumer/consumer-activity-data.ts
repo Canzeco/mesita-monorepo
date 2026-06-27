@@ -20,7 +20,7 @@ export type ConsumerActivity = {
   /** Visible only on the global feed. Omit for private items. */
   handle?: string;
   verb: string;
-  venue?: string;
+  place?: string;
   when: string;
 };
 
@@ -44,28 +44,28 @@ export const MY_ACTIVITY: ConsumerActivity[] = [
     id: "m1",
     kind: "earned",
     verb: "You saved MX$340 with your discount at",
-    venue: "Casa Luminar",
+    place: "Casa Luminar",
     when: "yesterday",
   },
   {
     id: "m2",
     kind: "booked",
     verb: "You booked a table at",
-    venue: "Neón Bar",
+    place: "Neón Bar",
     when: "2 days ago",
   },
   {
     id: "m3",
     kind: "saved",
     verb: "You unlocked a reward at",
-    venue: "Mar Verde",
+    place: "Mar Verde",
     when: "3 days ago",
   },
   {
     id: "m4",
     kind: "upgraded",
     verb: "You upgraded to",
-    venue: "Mesita Premium",
+    place: "Mesita Premium",
     when: "1 week ago",
   },
 ];
@@ -76,7 +76,7 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     kind: "earned",
     handle: "@maria",
     verb: "saved MX$120 with a discount at",
-    venue: "Mar Verde",
+    place: "Mar Verde",
     when: "2 min ago",
   },
   {
@@ -84,7 +84,7 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     kind: "booked",
     handle: "@carlos",
     verb: "booked a table at",
-    venue: "Neón Bar",
+    place: "Neón Bar",
     when: "5 min ago",
   },
   {
@@ -92,7 +92,7 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     kind: "upgraded",
     handle: "@sofia",
     verb: "just upgraded to",
-    venue: "Mesita Premium",
+    place: "Mesita Premium",
     when: "8 min ago",
   },
   {
@@ -100,7 +100,7 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     kind: "saved",
     handle: "@diego",
     verb: "unlocked a reward at",
-    venue: "Casa Luminar",
+    place: "Casa Luminar",
     when: "12 min ago",
   },
   {
@@ -108,7 +108,7 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     kind: "earned",
     handle: "@lucia",
     verb: "saved MX$340 with a discount at",
-    venue: "Atelier Nueve",
+    place: "Atelier Nueve",
     when: "18 min ago",
   },
   {
@@ -116,7 +116,7 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     kind: "swiped",
     handle: "@pat",
     verb: "swiped right on",
-    venue: "Ferment & Co",
+    place: "Ferment & Co",
     when: "24 min ago",
   },
 ];

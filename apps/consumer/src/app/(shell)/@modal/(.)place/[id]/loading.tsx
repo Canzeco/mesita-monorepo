@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 
-// Route-scoped loading fallback for the intercepted venue-detail modal.
+// Route-scoped loading fallback for the intercepted place-detail modal.
 // Keep this intentionally minimal: while the place detail EF is in flight,
 // render only a centered spinner (no miniature skeleton/preload content).
 

@@ -1,5 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchPublicVenues, type Venue } from "@/lib/api/venues";
+import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { errMsg } from "@/lib/utils";
 import { ConsumerDiscoverMap } from "../../discover/map/ConsumerDiscoverMap";
 
@@ -7,25 +7,25 @@ export const dynamic = "force-dynamic";
 
 export default async function ExploreMapPage() {
   const supabase = await createServerSupabase();
-  let venues: Venue[] = [];
+  let places: Place[] = [];
   let fetchError: string | null = null;
   try {
-    venues = await apiFetchPublicVenues(supabase, 200);
+    places = await apiFetchPublicPlaces(supabase, 200);
   } catch (err) {
-    fetchError = errMsg(err, "Couldn't load venues.");
+    fetchError = errMsg(err, "Couldn't load places.");
   }
 
   const mapKey = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
-  const located = venues.filter(
+  const located = places.filter(
     (v) => typeof v.lat === "number" && typeof v.lng === "number",
   );
 
   return (
     <ConsumerDiscoverMap
       apiKey={mapKey}
-      venues={located}
+      places={located}
       fetchError={fetchError}
-      totalVenues={venues.length}
+      totalPlaces={places.length}
     />
   );
 }

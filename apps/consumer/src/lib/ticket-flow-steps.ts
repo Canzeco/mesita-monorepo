@@ -2,7 +2,7 @@ import { storyTagInstruction } from "@/lib/api/pay";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type TicketStepCopyContext = {
-  venueInstagramHandle?: string | null;
+  placeInstagramHandle?: string | null;
 };
 
 export type TicketKind = Database["public"]["Enums"]["ticket_kind"];
@@ -115,7 +115,7 @@ export function ticketStepNowInstructions(
     case "story":
       return [
         "Post a story on Instagram.",
-        storyTagInstruction(ctx?.venueInstagramHandle),
+        storyTagInstruction(ctx?.placeInstagramHandle),
         "Mesita's bot detects your story automatically.",
       ];
     case "pay":
@@ -159,7 +159,7 @@ export const STEP_SEQUENCE_DETAILS: Record<
     "Pay the discounted total at the table — Mesita never touches the money.",
   ],
   story: [
-    "Post an Instagram story tagging Mesita and this venue.",
+    "Post an Instagram story tagging Mesita and this place.",
     {
       text: "Upload a screenshot in the Mesita app.",
       struck: true,
@@ -191,7 +191,7 @@ export const STEP_SEQUENCE_SUMMARY: Record<
   },
   story: {
     done: "Your story was verified.",
-    upcoming: "Post an IG story tagging Mesita and the venue.",
+    upcoming: "Post an IG story tagging Mesita and the place.",
   },
   pay: {
     done: "Staff confirmed your payment.",

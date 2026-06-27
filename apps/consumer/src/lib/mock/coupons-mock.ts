@@ -32,9 +32,9 @@ export type LinkedReservationSummary = {
 
 type CouponBase = {
   id: string;
-  venueId: string;
-  venueName: string;
-  venuePhoto: string | null;
+  projectId: string;
+  placeName: string;
+  placePhoto: string | null;
   percent: number;
   tierLabel: string;
   capLabel: string;
@@ -53,9 +53,9 @@ export type CouponItem =
 export const MOCK_COUPONS: CouponItem[] = [
   {
     id: "cp-mar-verde",
-    venueId: "mar-verde",
-    venueName: "Mar Verde",
-    venuePhoto:
+    projectId: "mar-verde",
+    placeName: "Mar Verde",
+    placePhoto:
       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
     kind: "normal",
     status: "active",
@@ -72,9 +72,9 @@ export const MOCK_COUPONS: CouponItem[] = [
   },
   {
     id: "cp-neon-bar",
-    venueId: "neon-bar",
-    venueName: "Neón Bar",
-    venuePhoto:
+    projectId: "neon-bar",
+    placeName: "Neón Bar",
+    placePhoto:
       "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80",
     kind: "normal",
     status: "active",
@@ -91,9 +91,9 @@ export const MOCK_COUPONS: CouponItem[] = [
   },
   {
     id: "cp-casa-luminar",
-    venueId: "casa-luminar",
-    venueName: "Casa Luminar",
-    venuePhoto:
+    projectId: "casa-luminar",
+    placeName: "Casa Luminar",
+    placePhoto:
       "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80",
     kind: "normal",
     status: "active",
@@ -110,9 +110,9 @@ export const MOCK_COUPONS: CouponItem[] = [
   },
   {
     id: "cp-ig-ferment",
-    venueId: "ferment-co",
-    venueName: "Ferment & Co",
-    venuePhoto:
+    projectId: "ferment-co",
+    placeName: "Ferment & Co",
+    placePhoto:
       "https://images.unsplash.com/photo-1485921325833-c519f76c4927?w=800&q=80",
     kind: "instagram",
     status: "verified",
@@ -123,9 +123,9 @@ export const MOCK_COUPONS: CouponItem[] = [
   },
   {
     id: "cp-ig-rooftop",
-    venueId: "rooftop-lex",
-    venueName: "Rooftop Lex",
-    venuePhoto:
+    projectId: "rooftop-lex",
+    placeName: "Rooftop Lex",
+    placePhoto:
       "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=800&q=80",
     kind: "instagram",
     status: "under_review",
@@ -136,9 +136,9 @@ export const MOCK_COUPONS: CouponItem[] = [
   },
   {
     id: "cp-ig-azul",
-    venueId: "azul-bistro",
-    venueName: "Azul Bistro",
-    venuePhoto:
+    projectId: "azul-bistro",
+    placeName: "Azul Bistro",
+    placePhoto:
       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
     kind: "instagram",
     status: "pending_story",

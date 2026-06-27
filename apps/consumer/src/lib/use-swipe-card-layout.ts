@@ -177,7 +177,7 @@ export function useSwipeCardPhotoLayout(
   const cardSize = useObservedSize(cardRef);
   const fieldsSize = useObservedSize(fieldsRef);
   // The hidden sizing clone mirrors SwipeCardInfo exactly; use its observed
-  // height so long tag rows never clip the venue title in the live overlay.
+  // height so long tag rows never clip the place title in the live overlay.
   const fieldsHeight = Math.max(
     Math.ceil(fieldsSize?.height ?? SWIPE_CARD_FALLBACK_FIELDS_H),
     SWIPE_CARD_FALLBACK_FIELDS_H,

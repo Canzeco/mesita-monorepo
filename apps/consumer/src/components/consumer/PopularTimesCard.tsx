@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 // Interactive popular-times card. Lives in the Hours & popular times
 // h-scroll (its sibling is the Hours table). Day pills swap the bars
-// underneath. Defaults to the venue's featured day (typically the
+// underneath. Defaults to the place's featured day (typically the
 // busiest, e.g. Saturday for Mochomos).
 
 type Day = { day: string; range: string; bars: number[] };
@@ -22,7 +22,7 @@ export function PopularTimesCard({
     popularTimes.find((d) => d.day.toUpperCase() === selectedDay) ??
     popularTimes[0];
 
-  // Enriched venues may have no popular-times data — render nothing rather
+  // Enriched places may have no popular-times data — render nothing rather
   // than dereferencing an undefined "featured".
   if (!featured) return null;
 

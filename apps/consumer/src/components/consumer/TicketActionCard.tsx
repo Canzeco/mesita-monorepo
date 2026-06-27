@@ -111,9 +111,9 @@ export function TicketActionCard({
 
         {step.id === "story" && !isLocked ? (
           <TicketStoryFrame
-            venuePhotoUrl={payload.venue_photo_url}
-            venueName={payload.venue_name}
-            venueInstagramHandle={stepCopy?.venueInstagramHandle}
+            placePhotoUrl={payload.place_photo_url}
+            placeName={payload.place_name}
+            placeInstagramHandle={stepCopy?.placeInstagramHandle}
           />
         ) : null}
 
@@ -122,7 +122,7 @@ export function TicketActionCard({
             payload={payload}
             ticketKind={ticketKind}
             capMxn={capMxn}
-            venueName={payload.venue_name}
+            placeName={payload.place_name}
           />
         ) : null}
 

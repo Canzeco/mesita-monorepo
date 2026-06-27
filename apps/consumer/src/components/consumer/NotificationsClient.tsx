@@ -44,9 +44,9 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
   return (
     <article className="border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3">
       <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
-        {p.venue_photo_url ? (
+        {p.place_photo_url ? (
           <Image
-            src={p.venue_photo_url}
+            src={p.place_photo_url}
             alt=""
             fill
             className="object-cover"
@@ -61,7 +61,7 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className="text-foreground text-sm leading-snug font-semibold">
-            {p.venue_name ?? "Mesita partner"}
+            {p.place_name ?? "Mesita partner"}
           </p>
         </div>
         <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[12px]">

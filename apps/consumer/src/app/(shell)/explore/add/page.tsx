@@ -4,20 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Search, Sparkles } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiCreateVenueAsConsumerResult,
-  apiFetchPublicVenues,
+  apiCreatePlaceAsConsumerResult,
+  apiFetchPublicPlaces,
   apiSuggestPlaces,
   type PlacePrediction,
-  type Venue,
-} from "@/lib/api/venues";
-import { VenueCatalogCard } from "@/components/consumer/VenueCatalogCard";
+  type Place,
+} from "@/lib/api/places";
+import { PlaceCatalogCard } from "@/components/consumer/PlaceCatalogCard";
 import { cn, errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 
 const SEARCH_DEBOUNCE_MS = 220;
 const ADD_STATUS_ROTATE_MS = 2_000;
 const ADD_PROGRESS_STAGES = [
-  "Preparing venue draft...",
+  "Preparing place draft...",
   "Reading place profile...",
   "Collecting core fields...",
   "Normalizing address...",
@@ -35,7 +35,7 @@ const ADD_PROGRESS_STAGES = [
   "Checking photos...",
   "Ranking photos...",
   "Finalizing listing fields...",
-  "Saving venue record...",
+  "Saving place record...",
   "Publishing to Mesita...",
   "Detecting neighborhood context...",
   "Refining cuisine tags...",
@@ -81,7 +81,7 @@ const ADD_PROGRESS_STAGES = [
   "Updating map index...",
   "Updating search index...",
   "Preparing recommendation signals...",
-  "Syncing venue relationships...",
+  "Syncing place relationships...",
   "Warming cache...",
   "Running final consistency pass...",
   "Committing profile snapshot...",
@@ -112,7 +112,7 @@ export default function ExploreAddPage() {
   const [selected, setSelected] = useState<PlacePrediction | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
-  const [resultVenue, setResultVenue] = useState<Venue | null>(null);
+  const [resultPlace, setResultPlace] = useState<Place | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [addStageIdx, setAddStageIdx] = useState(0);
 
@@ -124,21 +124,21 @@ export default function ExploreAddPage() {
   }, []);
 
   useEffect(() => {
-    if (!resultVenue?.id) return;
-    if (resultVenue.photos.length > 0) return;
+    if (!resultPlace?.id) return;
+    if (resultPlace.photos.length > 0) return;
     let cancelled = false;
     void (async () => {
-      const hydrated = await hydrateResultVenue(supabase, resultVenue);
-      if (!cancelled && hydrated) setResultVenue(hydrated);
+      const hydrated = await hydrateResultPlace(supabase, resultPlace);
+      if (!cancelled && hydrated) setResultPlace(hydrated);
     })();
     return () => {
       cancelled = true;
     };
   }, [
     supabase,
-    resultVenue?.id,
-    resultVenue?.slug,
-    resultVenue?.photos.length,
+    resultPlace?.id,
+    resultPlace?.slug,
+    resultPlace?.photos.length,
   ]);
 
   const trimmed = query.trim();
@@ -195,16 +195,16 @@ export default function ExploreAddPage() {
     setAddSuccess(null);
   };
 
-  const onAddVenue = () => {
+  const onAddPlace = () => {
     if (!selected || isAdding) return;
     setAddError(null);
     setAddSuccess(null);
-    setResultVenue(null);
+    setResultPlace(null);
     setAddStageIdx(0);
     setIsAdding(true);
     void (async () => {
       try {
-        const result = await apiCreateVenueAsConsumerResult(
+        const result = await apiCreatePlaceAsConsumerResult(
           supabase,
           selected.placeId,
         );
@@ -212,9 +212,9 @@ export default function ExploreAddPage() {
           if (!mountedRef.current) return;
           setAddError(result.message);
           setAddSuccess(null);
-          setResultVenue(
+          setResultPlace(
             result.existing?.id
-              ? venueCardFromDraft(
+              ? placeCardFromDraft(
                   result.existing.id,
                   result.existing.slug ?? undefined,
                   result.existing.name ?? selected.mainText,
@@ -227,20 +227,20 @@ export default function ExploreAddPage() {
         if (!mountedRef.current) return;
         setAddSuccess(result.message);
         setAddError(null);
-        setResultVenue(
-          venueCardFromDraft(
-            result.venue.id,
-            result.venue.slug,
-            result.venue.name,
+        setResultPlace(
+          placeCardFromDraft(
+            result.place.id,
+            result.place.slug,
+            result.place.name,
             "web",
           ),
         );
       } catch (err) {
-        const errorMessage = errMsg(err, "Could not add venue.");
+        const errorMessage = errMsg(err, "Could not add place.");
         if (!mountedRef.current) return;
         setAddError(errorMessage);
         setAddSuccess(null);
-        setResultVenue(null);
+        setResultPlace(null);
       } finally {
         if (!mountedRef.current) return;
         setIsAdding(false);
@@ -264,7 +264,7 @@ export default function ExploreAddPage() {
                 setSelected(null);
                 setAddError(null);
                 setAddSuccess(null);
-                setResultVenue(null);
+                setResultPlace(null);
                 if (next.trim().length < 2) {
                   setPredictions([]);
                   setSearching(false);
@@ -323,7 +323,7 @@ export default function ExploreAddPage() {
           <button
             type="button"
             disabled={!selected || isAdding}
-            onClick={onAddVenue}
+            onClick={onAddPlace}
             className="bg-foreground text-background mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold disabled:opacity-50"
           >
             {isAdding ? (
@@ -334,7 +334,7 @@ export default function ExploreAddPage() {
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Add selected venue
+                Add selected place
               </>
             )}
           </button>
@@ -342,7 +342,7 @@ export default function ExploreAddPage() {
           {isAdding ? (
             <p className="text-muted-foreground mt-2 text-center text-[11px] leading-relaxed">
               This process can take around 3 to 5 minutes. Please stay on this
-              screen while we finish creating the venue. We generate the profile
+              screen while we finish creating the place. We generate the profile
               with AI using internet sources, and it is published as not
               verified until ownership is verified.
             </p>
@@ -366,11 +366,11 @@ export default function ExploreAddPage() {
               </p>
             </>
           )}
-          {resultVenue && (
+          {resultPlace && (
             <div className="mx-auto mt-3 w-full max-w-[280px]">
-              <VenueCatalogCard
-                venue={resultVenue}
-                href={placeHref(resultVenue.slug || resultVenue.id, "explore")}
+              <PlaceCatalogCard
+                place={resultPlace}
+                href={placeHref(resultPlace.slug || resultPlace.id, "explore")}
               />
             </div>
           )}
@@ -380,17 +380,17 @@ export default function ExploreAddPage() {
   );
 }
 
-function venueCardFromDraft(
+function placeCardFromDraft(
   id: string,
   slug: string | undefined,
   name: string | undefined,
   listingType: "partner" | "web",
-): Venue {
+): Place {
   const nowIso = new Date().toISOString();
   return {
     id,
     slug: slug ?? id,
-    name: name ?? "Venue",
+    name: name ?? "Place",
     category: null,
     category_label: null,
     vibe: null,
@@ -427,14 +427,14 @@ function venueCardFromDraft(
   };
 }
 
-async function hydrateResultVenue(
+async function hydrateResultPlace(
   supabase: ReturnType<typeof useBrowserSupabase>,
-  draft: Venue,
-): Promise<Venue | null> {
+  draft: Place,
+): Promise<Place | null> {
   try {
-    const venues = await apiFetchPublicVenues(supabase, 400);
-    const match = venues.find(
-      (venue) => venue.id === draft.id || venue.slug === draft.slug,
+    const places = await apiFetchPublicPlaces(supabase, 400);
+    const match = places.find(
+      (place) => place.id === draft.id || place.slug === draft.slug,
     );
     if (!match || match.photos.length === 0) return null;
     return match;

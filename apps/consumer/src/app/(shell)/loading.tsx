@@ -1,8 +1,8 @@
 import { Loader2 } from "lucide-react";
 
 // Children-slot Suspense fallback for the (shell) segment. Fires when
-// the underlying surface for a soft-nav (e.g. tapping a venue card →
-// /venues/[id]) is still in flight, plus on the rare first-paint of a
+// the underlying surface for a soft-nav (e.g. tapping a place card →
+// /places/[id]) is still in flight, plus on the rare first-paint of a
 // hard nav into one of the bottom-nav surfaces.
 //
 // Full-height flex centering inside the shell body band. This keeps the

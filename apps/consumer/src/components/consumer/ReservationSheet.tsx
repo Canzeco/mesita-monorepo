@@ -8,14 +8,14 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Mock reservation sheet — opens from the venue ActionBar's Reserve table
+// Mock reservation sheet — opens from the place ActionBar's Reserve table
 // (and Save+reserve) and lets the consumer pick a date, a time, and a
 // party size. Confirm persists the booking to the localStorage reservations
 // store and surfaces a toast that deep-links to /saved Reservations.
 //
-// Layout is a full-modal "bottom sheet on top of the existing venue modal".
-// We render at z-[60] (one above VenueDetailModalShell's z-50) and rely on
-// the venue's slide-in animation already covering the page underneath; the
+// Layout is a full-modal "bottom sheet on top of the existing place modal".
+// We render at z-[60] (one above PlaceDetailModalShell's z-50) and rely on
+// the place's slide-in animation already covering the page underneath; the
 // sheet itself fades in.
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -35,7 +35,7 @@ const MONTH_NAMES = [
 ];
 
 // 30-min slots from 6pm to 11pm — the realistic dinner window. Lunch +
-// brunch slots arrive when the slot config moves to per-venue data.
+// brunch slots arrive when the slot config moves to per-place data.
 const TIME_SLOTS = [
   "18:00",
   "18:30",
@@ -73,13 +73,13 @@ function buildDateOptions(count: number): DateOption[] {
 }
 
 export function ReservationSheet({
-  venueId,
-  venueName,
+  projectId,
+  placeName,
   open,
   onClose,
 }: {
-  venueId: string;
-  venueName: string;
+  projectId: string;
+  placeName: string;
   open: boolean;
   onClose: () => void;
 }) {
@@ -89,20 +89,20 @@ export function ReservationSheet({
   if (!open) return null;
   return (
     <ReservationSheetContent
-      venueId={venueId}
-      venueName={venueName}
+      projectId={projectId}
+      placeName={placeName}
       onClose={onClose}
     />
   );
 }
 
 function ReservationSheetContent({
-  venueId,
-  venueName,
+  projectId,
+  placeName,
   onClose,
 }: {
-  venueId: string;
-  venueName: string;
+  projectId: string;
+  placeName: string;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -114,7 +114,7 @@ function ReservationSheetContent({
   const [partySize, setPartySize] = useState<number>(2);
   const [submitting, setSubmitting] = useState(false);
 
-  // Escape closes the sheet, matching the venue modal's own dismiss key.
+  // Escape closes the sheet, matching the place modal's own dismiss key.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -128,14 +128,14 @@ function ReservationSheetContent({
     // Tiny artificial latency so the success state doesn't read as a
     // no-op — once the EF call lands the spinner is real anyway.
     setTimeout(() => {
-      add({ venueId, venueName, date: dateIso, time, partySize });
+      add({ projectId, placeName, date: dateIso, time, partySize });
       const prettyDate = (() => {
         const opt = dateOptions.find((d) => d.iso === dateIso);
         if (!opt) return dateIso;
         return `${opt.weekday} ${opt.month} ${opt.day}`;
       })();
       toast.action(
-        `Reserved ${venueName} · ${prettyDate} · ${time} · ${partySize} guests`,
+        `Reserved ${placeName} · ${prettyDate} · ${time} · ${partySize} guests`,
         {
           label: "View",
           onClick: () => router.push(CONSUMER_ROUTES.saved.reservations),
@@ -162,7 +162,7 @@ function ReservationSheetContent({
               Reserve table
             </p>
             <p className="font-display mt-0.5 truncate text-xl font-semibold tracking-tight">
-              {venueName}
+              {placeName}
             </p>
           </div>
           <button
@@ -277,7 +277,7 @@ function ReservationSheetContent({
           </div>
         </div>
 
-        {/* Confirm — pink CTA matching the venue ActionBar's primary. */}
+        {/* Confirm — pink CTA matching the place ActionBar's primary. */}
         <button
           type="button"
           onClick={onConfirm}
@@ -295,7 +295,7 @@ function ReservationSheetContent({
         </button>
         <p className="text-muted-foreground mt-3 text-center text-[10px]">
           Preview — once the booking integration ships this confirms with the
-          venue directly. For now the reservation lands on /saved.
+          place directly. For now the reservation lands on /saved.
         </p>
       </div>
     </div>

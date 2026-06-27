@@ -1,7 +1,7 @@
 /** Clip layer for animated swipe cards — radius + overflow on the transformed node. */
 export const SWIPE_CARD_CLIP = "overflow-hidden rounded-3xl" as const;
 
-/** Outer shell for VenueSwipeCardFace (border, shadow, compositing). */
+/** Outer shell for PlaceSwipeCardFace (border, shadow, compositing). */
 export const SWIPE_CARD_FACE =
   "border-border bg-card shadow-elev relative isolate flex flex-col overflow-hidden rounded-3xl border [transform:translateZ(0)]" as const;
 

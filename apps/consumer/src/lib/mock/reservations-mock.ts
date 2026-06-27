@@ -1,6 +1,6 @@
 // Reservation entity. Booking metadata only — no money fields. When a
 // reservation has a coupon riding along with it (the auto-issued one
-// from saving the venue, or one specifically linked at booking time),
+// from saving the place, or one specifically linked at booking time),
 // the embedded `linkedCoupon` summary travels with the reservation so
 // the card can render a "tied coupon" stub without a cross-lookup.
 
@@ -18,9 +18,9 @@ export type LinkedCouponSummary = {
 
 export type ReservationItem = {
   id: string;
-  venueId: string;
-  venueName: string;
-  venuePhoto: string | null;
+  projectId: string;
+  placeName: string;
+  placePhoto: string | null;
   when: string;
   partySize: number;
   status: ReservationStatus;
@@ -31,9 +31,9 @@ export type ReservationItem = {
 export const MOCK_RESERVATIONS: ReservationItem[] = [
   {
     id: "res-mar-verde",
-    venueId: "mar-verde",
-    venueName: "Mar Verde",
-    venuePhoto:
+    projectId: "mar-verde",
+    placeName: "Mar Verde",
+    placePhoto:
       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
     when: "Wed May 28 · 8:00 PM",
     partySize: 2,
@@ -48,14 +48,14 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
   },
   {
     id: "res-neon-bar",
-    venueId: "neon-bar",
-    venueName: "Neón Bar",
-    venuePhoto:
+    projectId: "neon-bar",
+    placeName: "Neón Bar",
+    placePhoto:
       "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80",
     when: "Sat May 31 · 9:00 PM",
     partySize: 6,
     status: "booking",
-    statusNote: "AI calling venue · expect a call in ~3 min to confirm",
+    statusNote: "AI calling place · expect a call in ~3 min to confirm",
     linkedCoupon: {
       id: "cp-neon-bar",
       percent: 20,
@@ -66,9 +66,9 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
   },
   {
     id: "res-casa-luminar",
-    venueId: "casa-luminar",
-    venueName: "Casa Luminar",
-    venuePhoto:
+    projectId: "casa-luminar",
+    placeName: "Casa Luminar",
+    placePhoto:
       "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80",
     when: "Fri Jun 6 · 8:30 PM",
     partySize: 4,
@@ -83,15 +83,15 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
   },
   {
     id: "res-atelier",
-    venueId: "atelier-nueve",
-    venueName: "Atelier Nueve",
-    venuePhoto:
+    projectId: "atelier-nueve",
+    placeName: "Atelier Nueve",
+    placePhoto:
       "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
     when: "Sun Jun 8 · 7:00 PM",
     partySize: 2,
     status: "booking",
     statusNote: "Booking via OpenTable · usually under a minute",
-    // No linkedCoupon — this venue isn't a Mesita partner.
+    // No linkedCoupon — this place isn't a Mesita partner.
   },
 ];
 

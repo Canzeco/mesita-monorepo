@@ -27,7 +27,7 @@ import { placeHref } from "@/lib/place-route";
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
 // purpose — booking metadata, the linked coupon if any, and the few
 // reservation-level actions. No payment, no bill math (that happens at
-// the table); no full venue detail (that lives on /venues/[id]).
+// the table); no full place detail (that lives on /places/[id]).
 
 const STATUS_META: Record<
   ReservationStatus,
@@ -45,7 +45,7 @@ const STATUS_META: Record<
     Icon: Clock,
     iconClass: "text-amber-600",
     banner:
-      "We're booking this for you — you'll get a confirmation as soon as the venue replies.",
+      "We're booking this for you — you'll get a confirmation as soon as the place replies.",
   },
   booked: {
     label: "Booked",
@@ -69,14 +69,14 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
   const cancelled = r.status === "cancelled";
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
-      {/* Hero — venue photo + name + status pill stacked. Larger than the
+      {/* Hero — place photo + name + status pill stacked. Larger than the
           list card so the screen reads like a ticket, not a list row. */}
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted relative aspect-[16/9] w-full">
-          {r.venuePhoto ? (
+          {r.placePhoto ? (
             <Image
-              src={r.venuePhoto}
-              alt={r.venueName}
+              src={r.placePhoto}
+              alt={r.placeName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"
               className={cn(
@@ -93,7 +93,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
               cancelled && "line-through",
             )}
           >
-            {r.venueName}
+            {r.placeName}
           </h1>
           <span
             className={cn(
@@ -144,18 +144,18 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
       )}
 
       {/* Action cluster — keep it scoped to what a reservation can do.
-          Payment, reward redemption, and the full venue page each have
+          Payment, reward redemption, and the full place page each have
           their own surfaces; we just link out. */}
       <section className="flex flex-col gap-2">
         <Link
-          href={placeHref(r.venueId, "saved")}
+          href={placeHref(r.projectId, "saved")}
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
         >
           <span className="flex items-center gap-3">
             <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
               <MapPin className="h-4 w-4" />
             </span>
-            <span className="text-sm font-semibold">View venue</span>
+            <span className="text-sm font-semibold">View place</span>
           </span>
           <span className="text-muted-foreground text-[12px]">
             Details, map, menu
@@ -189,7 +189,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
               type="button"
               onClick={() =>
                 toast.action(
-                  "Calling the venue from inside the app lands soon.",
+                  "Calling the place from inside the app lands soon.",
                   { label: "Notify me", onClick: () => {} },
                 )
               }
@@ -199,7 +199,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
                 <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
                   <Phone className="h-4 w-4" />
                 </span>
-                <span className="text-sm font-semibold">Call venue</span>
+                <span className="text-sm font-semibold">Call place</span>
               </span>
               <span className="text-muted-foreground text-[12px]">
                 If plans change

@@ -1,8 +1,8 @@
-// Shared brand marks used by the venue detail surface.
+// Shared brand marks used by the place detail surface.
 //
 // Pure JSX — no React state, no hooks — so this module works inside both
 // server and client components without needing a "use client" boundary.
-// Previously each consumer of these glyphs (VenueDetailBody, ReviewCard)
+// Previously each consumer of these glyphs (PlaceDetailBody, ReviewCard)
 // inlined them; consolidating here keeps the Google SVG paths and the
 // Mesita gradient mark in one spot.
 

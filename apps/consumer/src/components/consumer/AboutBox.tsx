@@ -15,7 +15,7 @@ const LONG_TEXT_THRESHOLD = 600;
 export function AboutBox({ text, name }: { text: string; name: string }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > LONG_TEXT_THRESHOLD;
-  // Include the venue name so this header reads as "about the place", not
+  // Include the place name so this header reads as "about the place", not
   // "about the reward" sitting directly above it.
   const heading = `About ${name}`;
 

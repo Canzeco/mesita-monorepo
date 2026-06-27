@@ -1,4 +1,4 @@
-import type { Tier } from "@/lib/mock/venue";
+import type { Tier } from "@/lib/mock/place";
 
 export type PromoTierRates = {
   free: number | null;
@@ -25,7 +25,7 @@ export function hasExplicitTierRates(row: Record<string, unknown>): boolean {
   );
 }
 
-/** Map venues row → promo matrix from the per-tier rate columns. */
+/** Map places row → promo matrix from the per-tier rate columns. */
 export function buildPromoMatrixFromRow(
   row: Record<string, unknown>,
   _listingType: "partner" | "web",
@@ -67,8 +67,8 @@ export function resolveActivePromoRate(
   );
 }
 
-/** Whether the venue runs the Mesita reward program (detail hero + matrix). */
-export function venueOffersMesitaRewards(input: {
+/** Whether the place runs the Mesita reward program (detail hero + matrix). */
+export function placeOffersMesitaRewards(input: {
   listing_type: "partner" | "web";
   promo_matrix: PromoMatrix;
   promo_configured: boolean;
@@ -80,7 +80,7 @@ export function venueOffersMesitaRewards(input: {
   return input.promo_configured;
 }
 
-export function resolvePromoRateFromVenueRow(
+export function resolvePromoRateFromPlaceRow(
   row: Record<string, unknown>,
   isFirstVisit: boolean,
   premium: boolean,
@@ -88,7 +88,7 @@ export function resolvePromoRateFromVenueRow(
   const listingType = row.listing_type === "partner" ? "partner" : "web";
   const matrix = buildPromoMatrixFromRow(row, listingType);
   if (
-    !venueOffersMesitaRewards({
+    !placeOffersMesitaRewards({
       listing_type: listingType,
       promo_matrix: matrix,
       promo_configured: hasExplicitTierRates(row),

@@ -97,7 +97,7 @@ export type Database = {
           id: string;
           role: Database["public"]["Enums"]["member_role"];
           token: string;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           claimed_at?: string | null;
@@ -109,7 +109,7 @@ export type Database = {
           id?: string;
           role?: Database["public"]["Enums"]["member_role"];
           token: string;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           claimed_at?: string | null;
@@ -121,14 +121,14 @@ export type Database = {
           id?: string;
           role?: Database["public"]["Enums"]["member_role"];
           token?: string;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "manager_invites_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "manager_invites_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
@@ -354,10 +354,10 @@ export type Database = {
           issued_at: string;
           premium_rate: number | null;
           redeemed_at: string | null;
-          saved_venue_id: string | null;
+          saved_place_id: string | null;
           status: Database["public"]["Enums"]["coupon_status"];
           updated_at: string;
-          venue_id: string;
+          project_id: string;
           welcome_free_rate: number | null;
           welcome_premium_rate: number | null;
         };
@@ -373,10 +373,10 @@ export type Database = {
           issued_at?: string;
           premium_rate?: number | null;
           redeemed_at?: string | null;
-          saved_venue_id?: string | null;
+          saved_place_id?: string | null;
           status?: Database["public"]["Enums"]["coupon_status"];
           updated_at?: string;
-          venue_id: string;
+          project_id: string;
           welcome_free_rate?: number | null;
           welcome_premium_rate?: number | null;
         };
@@ -392,10 +392,10 @@ export type Database = {
           issued_at?: string;
           premium_rate?: number | null;
           redeemed_at?: string | null;
-          saved_venue_id?: string | null;
+          saved_place_id?: string | null;
           status?: Database["public"]["Enums"]["coupon_status"];
           updated_at?: string;
-          venue_id?: string;
+          project_id?: string;
           welcome_free_rate?: number | null;
           welcome_premium_rate?: number | null;
         };
@@ -408,17 +408,17 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "coupons_saved_venue_id_fkey";
-            columns: ["saved_venue_id"];
+            foreignKeyName: "coupons_saved_place_id_fkey";
+            columns: ["saved_place_id"];
             isOneToOne: false;
-            referencedRelation: "saved_venues";
+            referencedRelation: "saved_places";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "coupons_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "coupons_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
@@ -476,7 +476,7 @@ export type Database = {
           reserved_at: string;
           status: Database["public"]["Enums"]["reservation_status"];
           updated_at: string;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           cancelled_at?: string | null;
@@ -491,7 +491,7 @@ export type Database = {
           reserved_at: string;
           status?: Database["public"]["Enums"]["reservation_status"];
           updated_at?: string;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           cancelled_at?: string | null;
@@ -506,7 +506,7 @@ export type Database = {
           reserved_at?: string;
           status?: Database["public"]["Enums"]["reservation_status"];
           updated_at?: string;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
@@ -524,46 +524,46 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "reservations_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "reservations_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
       };
-      saved_venues: {
+      saved_places: {
         Row: {
           consumer_id: string;
           created_at: string;
           id: string;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           consumer_id: string;
           created_at?: string;
           id?: string;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           consumer_id?: string;
           created_at?: string;
           id?: string;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "saved_venues_consumer_id_fkey";
+            foreignKeyName: "saved_places_consumer_id_fkey";
             columns: ["consumer_id"];
             isOneToOne: false;
             referencedRelation: "consumers";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "saved_venues_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "saved_places_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
@@ -579,7 +579,7 @@ export type Database = {
           id: string;
           phone: string | null;
           token: string;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           channel?: string;
@@ -591,7 +591,7 @@ export type Database = {
           id?: string;
           phone?: string | null;
           token: string;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           channel?: string;
@@ -603,14 +603,14 @@ export type Database = {
           id?: string;
           phone?: string | null;
           token?: string;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "staff_invites_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "staff_invites_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
@@ -654,7 +654,7 @@ export type Database = {
           state: string;
           ticket_id: string | null;
           updated_at: string;
-          venue_id: string | null;
+          project_id: string | null;
         };
         Insert: {
           consumer_id?: string | null;
@@ -667,7 +667,7 @@ export type Database = {
           state?: string;
           ticket_id?: string | null;
           updated_at?: string;
-          venue_id?: string | null;
+          project_id?: string | null;
         };
         Update: {
           consumer_id?: string | null;
@@ -680,7 +680,7 @@ export type Database = {
           state?: string;
           ticket_id?: string | null;
           updated_at?: string;
-          venue_id?: string | null;
+          project_id?: string | null;
         };
         Relationships: [
           {
@@ -698,10 +698,10 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "staff_whatsapp_sessions_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "staff_whatsapp_sessions_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
@@ -757,7 +757,7 @@ export type Database = {
           service: number;
           ticket_id: string;
           value: number | null;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           ambiance: number;
@@ -770,7 +770,7 @@ export type Database = {
           service: number;
           ticket_id: string;
           value?: number | null;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           ambiance?: number;
@@ -783,7 +783,7 @@ export type Database = {
           service?: number;
           ticket_id?: string;
           value?: number | null;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
@@ -801,10 +801,10 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "ticket_reviews_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "ticket_reviews_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
@@ -843,7 +843,7 @@ export type Database = {
           tip_cents: number | null;
           total_cents: number | null;
           updated_at: string;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           cancel_reason?: string | null;
@@ -878,7 +878,7 @@ export type Database = {
           tip_cents?: number | null;
           total_cents?: number | null;
           updated_at?: string;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           cancel_reason?: string | null;
@@ -913,7 +913,7 @@ export type Database = {
           tip_cents?: number | null;
           total_cents?: number | null;
           updated_at?: string;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
@@ -931,15 +931,15 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "tickets_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "tickets_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
       };
-      venue_categories: {
+      place_categories: {
         Row: {
           created_at: string;
           label: string;
@@ -963,7 +963,7 @@ export type Database = {
         };
         Relationships: [];
       };
-      venue_media_assets: {
+      place_media_assets: {
         Row: {
           analysis_text: string | null;
           bytes: number | null;
@@ -980,7 +980,7 @@ export type Database = {
           status: string;
           storage_path: string | null;
           updated_at: string;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           analysis_text?: string | null;
@@ -998,7 +998,7 @@ export type Database = {
           status?: string;
           storage_path?: string | null;
           updated_at?: string;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           analysis_text?: string | null;
@@ -1016,90 +1016,90 @@ export type Database = {
           status?: string;
           storage_path?: string | null;
           updated_at?: string;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "venue_media_assets_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "place_media_assets_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
       };
-      venue_members: {
+      project_members: {
         Row: {
           business_id: string;
           created_at: string;
           id: string;
           role: Database["public"]["Enums"]["member_role"];
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           business_id: string;
           created_at?: string;
           id?: string;
           role?: Database["public"]["Enums"]["member_role"];
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           business_id?: string;
           created_at?: string;
           id?: string;
           role?: Database["public"]["Enums"]["member_role"];
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "venue_members_business_id_fkey";
+            foreignKeyName: "place_members_business_id_fkey";
             columns: ["business_id"];
             isOneToOne: false;
             referencedRelation: "businesses";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "venue_members_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "place_members_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
       };
-      venue_roles: {
+      project_roles: {
         Row: {
           created_at: string;
           invited_by: string | null;
-          role: Database["public"]["Enums"]["venue_role"];
+          role: Database["public"]["Enums"]["project_role"];
           user_id: string;
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           created_at?: string;
           invited_by?: string | null;
-          role: Database["public"]["Enums"]["venue_role"];
+          role: Database["public"]["Enums"]["project_role"];
           user_id: string;
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           created_at?: string;
           invited_by?: string | null;
-          role?: Database["public"]["Enums"]["venue_role"];
+          role?: Database["public"]["Enums"]["project_role"];
           user_id?: string;
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "venue_roles_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "place_roles_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
       };
-      venue_verifications: {
+      project_verifications: {
         Row: {
           created_at: string;
           decided_at: string | null;
@@ -1112,7 +1112,7 @@ export type Database = {
           requester_email: string;
           requester_id: string;
           status: Database["public"]["Enums"]["verification_status"];
-          venue_id: string;
+          project_id: string;
         };
         Insert: {
           created_at?: string;
@@ -1126,7 +1126,7 @@ export type Database = {
           requester_email: string;
           requester_id: string;
           status?: Database["public"]["Enums"]["verification_status"];
-          venue_id: string;
+          project_id: string;
         };
         Update: {
           created_at?: string;
@@ -1140,19 +1140,19 @@ export type Database = {
           requester_email?: string;
           requester_id?: string;
           status?: Database["public"]["Enums"]["verification_status"];
-          venue_id?: string;
+          project_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "venue_verifications_venue_id_fkey";
-            columns: ["venue_id"];
+            foreignKeyName: "place_verifications_place_id_fkey";
+            columns: ["project_id"];
             isOneToOne: false;
-            referencedRelation: "venues";
+            referencedRelation: "places";
             referencedColumns: ["id"];
           },
         ];
       };
-      venues: {
+      places: {
         Row: {
           address: string | null;
           category: string | null;
@@ -1176,7 +1176,7 @@ export type Database = {
           facebook_followers: number | null;
           facebook_rating: number | null;
           facebook_url: string | null;
-          fiscal_type: Database["public"]["Enums"]["venue_fiscal_type"];
+          fiscal_type: Database["public"]["Enums"]["project_fiscal_type"];
           free_rate: number | null;
           google_business_url: string | null;
           google_maps_url: string | null;
@@ -1209,7 +1209,7 @@ export type Database = {
           phone: string | null;
           photos: string[];
           pitch: string | null;
-          plan: Database["public"]["Enums"]["venue_plan"];
+          plan: Database["public"]["Enums"]["place_plan"];
           popular_times: Json | null;
           premium_rate: number | null;
           price_level: number | null;
@@ -1221,7 +1221,7 @@ export type Database = {
           segmentation_advanced_enabled: boolean;
           segmentation_basic_enabled: boolean;
           slug: string;
-          status: Database["public"]["Enums"]["venue_status"];
+          status: Database["public"]["Enums"]["project_status"];
           story: string | null;
           tags: string[];
           threads_url: string | null;
@@ -1262,7 +1262,7 @@ export type Database = {
           facebook_followers?: number | null;
           facebook_rating?: number | null;
           facebook_url?: string | null;
-          fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"];
+          fiscal_type?: Database["public"]["Enums"]["project_fiscal_type"];
           free_rate?: number | null;
           google_business_url?: string | null;
           google_maps_url?: string | null;
@@ -1295,7 +1295,7 @@ export type Database = {
           phone?: string | null;
           photos?: string[];
           pitch?: string | null;
-          plan?: Database["public"]["Enums"]["venue_plan"];
+          plan?: Database["public"]["Enums"]["place_plan"];
           popular_times?: Json | null;
           premium_rate?: number | null;
           price_level?: number | null;
@@ -1307,7 +1307,7 @@ export type Database = {
           segmentation_advanced_enabled?: boolean;
           segmentation_basic_enabled?: boolean;
           slug: string;
-          status?: Database["public"]["Enums"]["venue_status"];
+          status?: Database["public"]["Enums"]["project_status"];
           story?: string | null;
           tags?: string[];
           threads_url?: string | null;
@@ -1348,7 +1348,7 @@ export type Database = {
           facebook_followers?: number | null;
           facebook_rating?: number | null;
           facebook_url?: string | null;
-          fiscal_type?: Database["public"]["Enums"]["venue_fiscal_type"];
+          fiscal_type?: Database["public"]["Enums"]["project_fiscal_type"];
           free_rate?: number | null;
           google_business_url?: string | null;
           google_maps_url?: string | null;
@@ -1381,7 +1381,7 @@ export type Database = {
           phone?: string | null;
           photos?: string[];
           pitch?: string | null;
-          plan?: Database["public"]["Enums"]["venue_plan"];
+          plan?: Database["public"]["Enums"]["place_plan"];
           popular_times?: Json | null;
           premium_rate?: number | null;
           price_level?: number | null;
@@ -1393,7 +1393,7 @@ export type Database = {
           segmentation_advanced_enabled?: boolean;
           segmentation_basic_enabled?: boolean;
           slug?: string;
-          status?: Database["public"]["Enums"]["venue_status"];
+          status?: Database["public"]["Enums"]["project_status"];
           story?: string | null;
           tags?: string[];
           threads_url?: string | null;
@@ -1428,7 +1428,7 @@ export type Database = {
       generate_invite_token: { Args: never; Returns: string };
       jwt_role: { Args: never; Returns: string };
       normalize_consumer_code_input: { Args: { raw: string }; Returns: string };
-      seed_venue_categories: { Args: never; Returns: undefined };
+      seed_place_categories: { Args: never; Returns: undefined };
     };
     Enums: {
       coupon_status: "active" | "redeemed" | "expired" | "cancelled";
@@ -1466,15 +1466,15 @@ export type Database = {
         | "revealed"
         | "awaiting_story"
         | "awaiting_payment_confirm";
-      venue_fiscal_type: "formal" | "informal";
-      venue_plan:
+      project_fiscal_type: "formal" | "informal";
+      place_plan:
         | "free"
         | "formal_pro"
         | "formal_ultra"
         | "informal_pro"
         | "informal_ultra";
-      venue_role: "staff" | "business";
-      venue_status:
+      project_role: "staff" | "business";
+      project_status:
         | "lead"
         | "active"
         | "paused"
@@ -1657,16 +1657,16 @@ export const Constants = {
         "awaiting_story",
         "awaiting_payment_confirm",
       ],
-      venue_fiscal_type: ["formal", "informal"],
-      venue_plan: [
+      project_fiscal_type: ["formal", "informal"],
+      place_plan: [
         "free",
         "formal_pro",
         "formal_ultra",
         "informal_pro",
         "informal_ultra",
       ],
-      venue_role: ["staff", "business"],
-      venue_status: [
+      project_role: ["staff", "business"],
+      project_status: [
         "lead",
         "active",
         "paused",

@@ -9,8 +9,8 @@ const RESERVED_PLACE_SEGMENTS = new Set([
   "add",
   "saved",
   "place",
-  "venues",
-  "venue",
+  "places",
+  "place",
 ]);
 
 export function toCanonicalPlaceHrefOrNull(

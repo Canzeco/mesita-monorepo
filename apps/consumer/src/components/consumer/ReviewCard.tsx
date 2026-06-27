@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Star } from "lucide-react";
 import { GoogleLogo, MesitaMark } from "./BrandLogos";
 import { cn, firstInitial } from "@/lib/utils";
-import type { Tier, VenueDetail } from "@/lib/mock/venue";
+import type { Tier, PlaceDetail } from "@/lib/mock/place";
 import { TIER_AVATAR_BG, TIER_TEXT } from "@/lib/tier-styles";
 
 // Individual review card — same skeleton for Mesita and Google, with the
@@ -29,12 +29,12 @@ const TIER_LABEL: Record<Tier, string> = {
 
 type MesitaPayload = {
   kind: "mesita";
-  data: VenueDetail["mesita_visitors"][number];
+  data: PlaceDetail["mesita_visitors"][number];
 };
 
 type GooglePayload = {
   kind: "google";
-  data: VenueDetail["google_reviews"][number];
+  data: PlaceDetail["google_reviews"][number];
 };
 
 export function ReviewCard(props: MesitaPayload | GooglePayload) {
@@ -249,5 +249,5 @@ function Thumbnail({
 }
 
 // Brand source badges (MesitaMark, GoogleLogo) live in BrandLogos.tsx —
-// shared with the venue detail page so the SVG and pink-gradient mark
+// shared with the place detail page so the SVG and pink-gradient mark
 // don't drift between surfaces.

@@ -11,7 +11,7 @@ import {
   payloadFromNotification,
   mockStoryDetect,
   MOCK_STORY_DETECT_ENABLED,
-  resolveVenueInstagramHandle,
+  resolvePlaceInstagramHandle,
   submitTicketReview,
   type PayNotificationRow,
   type TicketBillPayload,
@@ -49,7 +49,7 @@ export function TicketDetailsRouteClient({
     total_cents?: number | null;
     created_at?: string | null;
   } | null>(null);
-  const [venueInstagramUrl, setVenueInstagramUrl] = useState<string | null>(
+  const [placeInstagramUrl, setPlaceInstagramUrl] = useState<string | null>(
     null,
   );
   const [reviewDraft, setReviewDraft] = useState({
@@ -85,19 +85,19 @@ export function TicketDetailsRouteClient({
       .maybeSingle();
     setTicketMeta(ticketRow ?? null);
 
-    const venueId =
+    const projectId =
       (data ?? [])
-        .map((r) => payloadFromNotification(r.payload).venue_id)
+        .map((r) => payloadFromNotification(r.payload).project_id)
         .find(Boolean) ?? null;
-    if (venueId) {
-      const { data: venueRow } = await supabase
-        .from("venues")
+    if (projectId) {
+      const { data: placeRow } = await supabase
+        .from("places")
         .select("instagram_url")
-        .eq("id", venueId)
+        .eq("id", projectId)
         .maybeSingle();
-      setVenueInstagramUrl(venueRow?.instagram_url ?? null);
+      setPlaceInstagramUrl(placeRow?.instagram_url ?? null);
     } else {
-      setVenueInstagramUrl(null);
+      setPlaceInstagramUrl(null);
     }
 
     setLoading(false);
@@ -136,18 +136,18 @@ export function TicketDetailsRouteClient({
     billNotification?.created_at ??
     rows[0]?.created_at ??
     null;
-  const venueName = payload.venue_name ?? "Partner venue";
+  const placeName = payload.place_name ?? "Partner place";
   const visitDateLabel = formatTicketVisitDate(visitDateIso);
-  const venueHref = payload.venue_slug
-    ? placeHref(payload.venue_slug)
-    : payload.venue_id
-      ? placeHref(payload.venue_id)
+  const placeHref = payload.place_slug
+    ? placeHref(payload.place_slug)
+    : payload.project_id
+      ? placeHref(payload.project_id)
       : null;
   const capMxn = payload.reward_cap_mxn ?? payload.monthly_promo_cap ?? null;
   const rewardLabel = formatTicketRewardLabel(payload, { capMxn });
-  const venueInstagramHandle = useMemo(
-    () => resolveVenueInstagramHandle(payload, venueInstagramUrl),
-    [payload, venueInstagramUrl],
+  const placeInstagramHandle = useMemo(
+    () => resolvePlaceInstagramHandle(payload, placeInstagramUrl),
+    [payload, placeInstagramUrl],
   );
 
   const onMockStoryDetect = useCallback(async () => {
@@ -215,9 +215,9 @@ export function TicketDetailsRouteClient({
             ticketKind={ticketKind}
             payload={payload}
             capMxn={capMxn}
-            venueName={venueName}
+            placeName={placeName}
             visitDateLabel={visitDateLabel}
-            venueHref={venueHref}
+            placeHref={placeHref}
             rewardLabel={rewardLabel}
             ticketMeta={ticketMeta}
             review={reviewNotification}
@@ -229,7 +229,7 @@ export function TicketDetailsRouteClient({
             onSubmitReview={() => void onReview()}
             onMockStoryDetect={() => void onMockStoryDetect()}
             showMockStoryButton={MOCK_STORY_DETECT_ENABLED}
-            venueInstagramHandle={venueInstagramHandle}
+            placeInstagramHandle={placeInstagramHandle}
           />
         )}
       </div>

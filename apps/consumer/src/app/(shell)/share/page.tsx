@@ -303,7 +303,7 @@ const OTHER_GROUPS: PartnerGroup[] = [
     title: "Model & talent agencies",
     icon: Star,
     iconBg: "bg-tier-premium text-white",
-    body: "Our partner venues want your talent in the room to enhance the ambience. Make all your talent Mesita Premium, for free, no tricks.",
+    body: "Our partner places want your talent in the room to enhance the ambience. Make all your talent Mesita Premium, for free, no tricks.",
     websiteUrl: "https://www.mesita.ai",
   },
 ];

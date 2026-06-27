@@ -1,51 +1,51 @@
-// Overview enrichment for venue cards — REAL data only.
+// Overview enrichment for place cards — REAL data only.
 //
-// The discover EFs return the FULL public venues projection on every row:
-// consumer-recommend-deck → recommender-rank-deck pulls VENUE_PUBLIC_COLUMNS
+// The discover EFs return the FULL public places projection on every row:
+// consumer-recommend-swipe → recommender-rank-swipe pulls PLACE_PUBLIC_COLUMNS
 // (only the two embedding columns are stripped), and consumer-list-places
-// selects the same set. So each Venue the client receives already carries
+// selects the same set. So each Place the client receives already carries
 // the raw signal columns — google_stars_overall, google_review_count,
 // instagram_followers_count, price_level, hours, timezone, zone, city,
-// address, enriched_at. They just aren't on the `Venue` *type*, so nothing
+// address, enriched_at. They just aren't on the `Place` *type*, so nothing
 // mapped them onto the derived overview names (google_rating, open_now,
 // last_updated_label, …) that the card reads. Result: real cards stayed
 // sparse while the detail modal — which DID derive them via
-// venueRowToDetail — was rich.
+// placeRowToDetail — was rich.
 //
-// `enrichVenueOverview` closes that gap. It derives the overview-parity
+// `enrichPlaceOverview` closes that gap. It derives the overview-parity
 // fields from the raw columns already on the row, running the SAME
 // open/closed math (computeOpenState) the detail modal uses, so the card
 // mirrors the detail Overview grid with real data.
 //
 // There is no mock/seeded fallback: the demo fixture and the deterministic
 // rating/distance/IG seeds were removed. A genuinely missing cell stays
-// null and its chip simply hides — the card shows only what the venue
+// null and its chip simply hides — the card shows only what the place
 // actually has. The `??` chains here are real-vs-real (an already-mapped
 // value wins over a freshly-derived one), never real-vs-fabricated.
 
-import type { Venue } from "@/lib/api/venues";
+import type { Place } from "@/lib/api/places";
 import {
   computeOpenState,
   neighborhoodFromAddress,
-} from "@/lib/adapters/venue-to-detail";
+} from "@/lib/adapters/place-to-detail";
 import { relativeLabel } from "@/lib/utils";
 
-// Derives the overview-parity fields from the raw venues columns that ride
-// along on every Venue at runtime (present even though they're absent from
-// the `Venue` type). Mirrors venueRowToDetail so the card and the detail
+// Derives the overview-parity fields from the raw places columns that ride
+// along on every Place at runtime (present even though they're absent from
+// the `Place` type). Mirrors placeRowToDetail so the card and the detail
 // modal compute identical rating / status / zone / freshness.
-export function enrichVenueOverview(v: Venue): Venue {
+export function enrichPlaceOverview(v: Place): Place {
   const row = v as unknown as Record<string, unknown>;
   const rating = num(row.google_stars_overall);
   const count = num(row.google_review_count);
   const igFollowers = num(row.instagram_followers_count);
   const priceLevel = num(row.price_level);
   // Neighborhood (zone) priority: the real zone column → the colonia
-  // parsed out of the formatted address → the city. Most venues have no
+  // parsed out of the formatted address → the city. Most places have no
   // zone column yet but DO carry the colonia inside `address`
   // ("…, Valle del Campestre, 66266 …"), so deriving it here lights up the
   // neighborhood chip without a DB backfill, and degrades to city when the
-  // address has none (e.g. US venues).
+  // address has none (e.g. US places).
   const zone =
     str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? str(row.city);
   const freshness = relativeLabel(str(row.enriched_at) ?? str(row.created_at));
@@ -78,7 +78,7 @@ export function enrichVenueOverview(v: Venue): Venue {
     last_updated_label: v.last_updated_label ?? freshness ?? null,
     // The ticket cap (pesos) backs the promo chip's "first MX$… / visit"
     // tooltip. The per-tier rate itself is resolved in PromoChip straight off
-    // the raw row columns — and only for Verified Partners (web-listed venues
+    // the raw row columns — and only for Verified Partners (web-listed places
     // never offer rewards).
     reward_cap_mxn: v.reward_cap_mxn ?? rewardCapMxn ?? null,
   };
@@ -86,7 +86,7 @@ export function enrichVenueOverview(v: Venue): Venue {
 
 // ── local readers ─────────────────────────────────────────────────────
 // Tiny defensive accessors for the raw row (same shape as the ones in
-// venue-to-detail.ts). Kept local so this module doesn't widen that file's
+// place-to-detail.ts). Kept local so this module doesn't widen that file's
 // export surface just to read two scalars.
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v : undefined;

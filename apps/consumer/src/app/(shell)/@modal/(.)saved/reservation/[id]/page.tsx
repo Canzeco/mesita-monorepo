@@ -15,7 +15,7 @@ export default async function SavedReservationModalPage({
   if (!reservation) notFound();
 
   return (
-    <ReservationDetailModalShell venueName={reservation.venueName}>
+    <ReservationDetailModalShell placeName={reservation.placeName}>
       <ReservationDetailBody r={reservation} />
     </ReservationDetailModalShell>
   );

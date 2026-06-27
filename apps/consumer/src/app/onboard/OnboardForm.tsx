@@ -155,7 +155,7 @@ export function OnboardForm() {
         </button>
         <p className="text-muted-foreground mt-3 text-center text-[11px]">
           We use these to personalize recommendations. Your details are never
-          shared with venues.
+          shared with places.
         </p>
       </div>
     </form>

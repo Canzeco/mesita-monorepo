@@ -11,7 +11,7 @@ import type { ConsumerMembership } from "@/lib/api/profile";
 
 // Real, server-sourced membership for the signed-in consumer, shared with
 // every client surface under the (shell) layout: the TopBar class chip, the
-// Profile Plan tab, the venue promo chips, and the venue-detail reward box.
+// Profile Plan tab, the place promo chips, and the place-detail reward box.
 //
 // Seeded once per request by the layout's consumer-get-profile read. This
 // replaces the old hardcoded CURRENT_USER mock that pinned everyone to

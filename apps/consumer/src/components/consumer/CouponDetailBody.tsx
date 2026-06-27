@@ -28,7 +28,7 @@ import { reservationPath } from "@/lib/consumer-route-contract";
 
 // Shared body for /coupon/[id]. Used by both the intercepted modal
 // (CouponDetailModalShell) and the hard-nav page. Same pattern as
-// ReservationDetailBody / VenueDetailBody.
+// ReservationDetailBody / PlaceDetailBody.
 //
 // Lifecycle copy + the "what to do next" callout differ between normal
 // and Instagram coupons, so each renders its own status-meta record.
@@ -68,7 +68,7 @@ const NORMAL_STATUS: Record<NormalCouponStatus, StatusMeta> = {
     iconClass: "text-muted-foreground",
     banner: {
       tone: "muted",
-      text: "This coupon expired. Save the venue again to mint a fresh one.",
+      text: "This coupon expired. Save the place again to mint a fresh one.",
     },
   },
   cancelled: {
@@ -78,7 +78,7 @@ const NORMAL_STATUS: Record<NormalCouponStatus, StatusMeta> = {
     iconClass: "text-muted-foreground",
     banner: {
       tone: "muted",
-      text: "Cancelled. Tap the venue to mint a new coupon.",
+      text: "Cancelled. Tap the place to mint a new coupon.",
     },
   },
 };
@@ -135,7 +135,7 @@ const IG_STATUS: Record<InstagramCouponStatus, StatusMeta> = {
     iconClass: "text-muted-foreground",
     banner: {
       tone: "muted",
-      text: "This coupon expired. Save the venue again to mint a fresh one.",
+      text: "This coupon expired. Save the place again to mint a fresh one.",
     },
   },
 };
@@ -152,14 +152,14 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
-      {/* Hero — venue photo, name, status. Reward % printed huge so the
+      {/* Hero — place photo, name, status. Reward % printed huge so the
           coupon reads like a ticket, not a list row. */}
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted relative aspect-[16/9] w-full">
-          {c.venuePhoto ? (
+          {c.placePhoto ? (
             <Image
-              src={c.venuePhoto}
-              alt={c.venueName}
+              src={c.placePhoto}
+              alt={c.placeName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"
               className={cn("object-cover", muted && "opacity-80 grayscale")}
@@ -169,7 +169,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
         <div className="flex items-start gap-3 px-4 py-3">
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-xl leading-tight font-semibold tracking-tight">
-              {c.venueName}
+              {c.placeName}
             </h1>
             <p className="text-muted-foreground mt-0.5 text-[12px]">
               {c.tierLabel}
@@ -232,17 +232,17 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
 
       {/* Action cluster. Coupons are scoped to "see where I can use it" +
           "what to do next" — the discount applies at the bill, the actual
-          redemption happens at the venue via QR scan. */}
+          redemption happens at the place via QR scan. */}
       <section className="flex flex-col gap-2">
         <Link
-          href={placeHref(c.venueId, "saved")}
+          href={placeHref(c.projectId, "saved")}
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
         >
           <span className="flex items-center gap-3">
             <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
               <MapPin className="h-4 w-4" />
             </span>
-            <span className="text-sm font-semibold">View venue</span>
+            <span className="text-sm font-semibold">View place</span>
           </span>
           <span className="text-muted-foreground text-[12px]">
             Details, map, menu
@@ -270,7 +270,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
             type="button"
             onClick={() =>
               toast.action(
-                "QR redemption lands with the venue scanner integration.",
+                "QR redemption lands with the place scanner integration.",
                 { label: "Notify me", onClick: () => {} },
               )
             }
@@ -280,7 +280,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
               <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
                 <Ticket className="h-4 w-4" />
               </span>
-              <span className="text-sm font-semibold">Show at venue</span>
+              <span className="text-sm font-semibold">Show at place</span>
             </span>
             <span className="text-muted-foreground text-[12px]">
               QR for the host

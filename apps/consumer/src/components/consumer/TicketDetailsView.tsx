@@ -23,8 +23,8 @@ export type TicketDetailsViewProps = {
   ticketKind: string;
   payload: TicketBillPayload;
   capMxn?: number | null;
-  venueName: string;
-  venueHref: string | null;
+  placeName: string;
+  placeHref: string | null;
   visitDateLabel: string | null;
   rewardLabel: string;
   ticketMeta: {
@@ -50,15 +50,15 @@ export type TicketDetailsViewProps = {
   onSubmitReview: () => void;
   onMockStoryDetect?: () => void;
   showMockStoryButton?: boolean;
-  venueInstagramHandle?: string | null;
+  placeInstagramHandle?: string | null;
 };
 
 export function TicketDetailsView({
   ticketKind,
   payload,
   capMxn,
-  venueName,
-  venueHref,
+  placeName,
+  placeHref,
   visitDateLabel,
   rewardLabel,
   ticketMeta,
@@ -72,11 +72,11 @@ export function TicketDetailsView({
   onSubmitReview,
   onMockStoryDetect,
   showMockStoryButton,
-  venueInstagramHandle,
+  placeInstagramHandle,
 }: TicketDetailsViewProps) {
   const stepCopy = useMemo(
-    () => ({ venueInstagramHandle }),
-    [venueInstagramHandle],
+    () => ({ placeInstagramHandle }),
+    [placeInstagramHandle],
   );
   const progress = useMemo(
     () =>
@@ -128,9 +128,9 @@ export function TicketDetailsView({
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
       <TicketVisitHeader
-        venueName={venueName}
-        venueHref={venueHref}
-        venuePhotoUrl={payload.venue_photo_url}
+        placeName={placeName}
+        placeHref={placeHref}
+        placePhotoUrl={payload.place_photo_url}
         rewardLabel={rewardLabel}
         visitDateLabel={visitDateLabel}
         steps={flowSteps}

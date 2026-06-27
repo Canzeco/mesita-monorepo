@@ -18,8 +18,8 @@ const STORAGE_KEY = "mesita:reservations";
 
 type Reservation = {
   id: string;
-  venueId: string;
-  venueName: string;
+  projectId: string;
+  placeName: string;
   // ISO date (YYYY-MM-DD) — picked by the sheet's date pill row.
   date: string;
   // 24h time (HH:MM) — picked by the sheet's time slot grid.
@@ -47,7 +47,7 @@ function readFromStorage(): Reservation[] {
         r != null &&
         typeof r === "object" &&
         typeof (r as Reservation).id === "string" &&
-        typeof (r as Reservation).venueId === "string" &&
+        typeof (r as Reservation).projectId === "string" &&
         typeof (r as Reservation).date === "string" &&
         typeof (r as Reservation).time === "string"
       );
@@ -73,8 +73,8 @@ function ensureHydrated() {
 }
 
 function addReservation(input: {
-  venueId: string;
-  venueName: string;
+  projectId: string;
+  placeName: string;
   date: string;
   time: string;
   partySize: number;
@@ -82,8 +82,8 @@ function addReservation(input: {
   ensureHydrated();
   const r: Reservation = {
     id: crypto.randomUUID(),
-    venueId: input.venueId,
-    venueName: input.venueName,
+    projectId: input.projectId,
+    placeName: input.placeName,
     date: input.date,
     time: input.time,
     partySize: input.partySize,

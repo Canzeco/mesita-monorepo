@@ -38,7 +38,7 @@ function StepDot({
   );
 }
 
-/** Compact horizontal step progress for ticket detail (below venue summary). */
+/** Compact horizontal step progress for ticket detail (below place summary). */
 export function TicketFlowProgressBar({
   steps,
   selectedStepId,

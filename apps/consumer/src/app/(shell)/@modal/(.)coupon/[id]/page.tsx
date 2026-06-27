@@ -23,7 +23,7 @@ export default async function CouponModalPage({
   if (!coupon) notFound();
 
   return (
-    <CouponDetailModalShell venueName={coupon.venueName}>
+    <CouponDetailModalShell placeName={coupon.placeName}>
       <CouponDetailBody c={coupon} />
     </CouponDetailModalShell>
   );

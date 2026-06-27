@@ -83,7 +83,7 @@ function LandingPane() {
           <ValueProp
             Icon={MapPin}
             title="Discover real places"
-            blurb="Swipe and explore venues curated for your tier, your city, your vibe."
+            blurb="Swipe and explore places curated for your tier, your city, your vibe."
           />
           <ValueProp
             Icon={BadgePercent}
@@ -93,7 +93,7 @@ function LandingPane() {
           <ValueProp
             Icon={Camera}
             title="One story, one boost"
-            blurb="Tag the venue in your IG story to unlock the bigger reward. Easy."
+            blurb="Tag the place in your IG story to unlock the bigger reward. Easy."
           />
           <ValueProp
             Icon={Sparkles}

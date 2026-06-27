@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { VenueDetailPageBody } from "@/components/consumer/VenueDetailPageBody";
+import { PlaceDetailPageBody } from "@/components/consumer/PlaceDetailPageBody";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchVenueDetail } from "@/lib/api/venues";
+import { apiFetchPlaceDetail } from "@/lib/api/places";
 import { toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -17,13 +17,13 @@ export default async function ExplorePlacePage({
     redirect(CONSUMER_ROUTES.explore.swipe);
   }
   const supabase = await createServerSupabase();
-  const venue = await apiFetchVenueDetail(supabase, id);
-  if (!venue) {
+  const place = await apiFetchPlaceDetail(supabase, id);
+  if (!place) {
     redirect(CONSUMER_ROUTES.explore.swipe);
   }
   return (
-    <VenueDetailPageBody
-      venue={venue}
+    <PlaceDetailPageBody
+      place={place}
       backHref={CONSUMER_ROUTES.explore.swipe}
     />
   );

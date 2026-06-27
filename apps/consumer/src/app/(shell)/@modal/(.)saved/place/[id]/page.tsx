@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { VenueDetailBody } from "@/components/consumer/VenueDetailBody";
-import { VenueDetailModalShell } from "@/components/consumer/VenueDetailModalShell";
+import { PlaceDetailBody } from "@/components/consumer/PlaceDetailBody";
+import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchVenueDetail } from "@/lib/api/venues";
+import { apiFetchPlaceDetail } from "@/lib/api/places";
 import { toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -18,13 +18,13 @@ export default async function SavedPlaceModalPage({
     redirect(CONSUMER_ROUTES.saved.places);
   }
   const supabase = await createServerSupabase();
-  const venue = await apiFetchVenueDetail(supabase, id);
-  if (!venue) {
+  const place = await apiFetchPlaceDetail(supabase, id);
+  if (!place) {
     redirect(CONSUMER_ROUTES.saved.places);
   }
   return (
-    <VenueDetailModalShell venueId={venue.id} venueName={venue.name}>
-      <VenueDetailBody venue={venue} />
-    </VenueDetailModalShell>
+    <PlaceDetailModalShell projectId={place.id} placeName={place.name}>
+      <PlaceDetailBody place={place} />
+    </PlaceDetailModalShell>
   );
 }

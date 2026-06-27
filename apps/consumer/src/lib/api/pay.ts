@@ -6,12 +6,12 @@ export type PayNotificationRow =
 
 /** Stored on consumer_pay_notifications.payload for Pay → Tickets. */
 export type TicketBillPayload = {
-  venue_id?: string;
-  venue_slug?: string | null;
-  venue_name?: string;
-  venue_photo_url?: string | null;
-  /** Bare handle (no @), from venue instagram_url at billing time. */
-  venue_instagram_handle?: string | null;
+  project_id?: string;
+  place_slug?: string | null;
+  place_name?: string;
+  place_photo_url?: string | null;
+  /** Bare handle (no @), from place instagram_url at billing time. */
+  place_instagram_handle?: string | null;
   ticket_kind?: string;
   check_subtotal_cents?: number;
   tip_cents?: number;
@@ -49,22 +49,22 @@ export function instagramHandleFromUrl(
   return handle;
 }
 
-export function resolveVenueInstagramHandle(
+export function resolvePlaceInstagramHandle(
   payload: TicketBillPayload,
   fallbackUrl?: string | null,
 ): string | null {
-  const fromPayload = payload.venue_instagram_handle?.replace(/^@/, "").trim();
+  const fromPayload = payload.place_instagram_handle?.replace(/^@/, "").trim();
   if (fromPayload) return fromPayload;
   return instagramHandleFromUrl(fallbackUrl);
 }
 
-/** Story step: tag Mesita + the venue's Instagram. */
+/** Story step: tag Mesita + the place's Instagram. */
 export function storyTagInstruction(
-  venueInstagramHandle: string | null | undefined,
+  placeInstagramHandle: string | null | undefined,
 ): string {
-  const venue = formatInstagramHandle(venueInstagramHandle);
-  if (venue) {
-    return `Tag ${MESITA_IG_HANDLE} and ${venue} on your story.`;
+  const place = formatInstagramHandle(placeInstagramHandle);
+  if (place) {
+    return `Tag ${MESITA_IG_HANDLE} and ${place} on your story.`;
   }
   return `Tag ${MESITA_IG_HANDLE} and the restaurant on your story.`;
 }
@@ -114,13 +114,13 @@ export function formatTicketVisitDate(
   return `${day}/${month}/${year}`;
 }
 
-export function formatTicketVenueTitle(
+export function formatTicketPlaceTitle(
   name: string | null | undefined,
   dateIso: string | null | undefined,
 ): string {
-  const venue = name ?? "Partner venue";
+  const place = name ?? "Partner place";
   const date = formatTicketVisitDate(dateIso);
-  return date ? `${venue} · ${date}` : venue;
+  return date ? `${place} · ${date}` : place;
 }
 
 export type TicketBillDisplayLine = {

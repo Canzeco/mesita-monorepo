@@ -37,7 +37,7 @@ import {
 // Three-tab Profile. Invite is folded in as a sub-tab; the standalone
 // /invite route is primary and /share stays as a legacy deep link alias.
 // The Coupons tab was removed —
-// coupons are "hidden" (users save the place, redeem a QR at the venue),
+// coupons are "hidden" (users save the place, redeem a QR at the place),
 // so the wallet surface didn't earn its spot in the Profile.
 export type ProfileTab = "plan" | "settings";
 

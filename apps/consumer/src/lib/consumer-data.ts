@@ -1,12 +1,12 @@
 export const TIER_ORDER = ["free", "premium"] as const;
 type Tier = (typeof TIER_ORDER)[number];
 
-// NOTE: The original Lovable export shipped a large local `Venue` type
+// NOTE: The original Lovable export shipped a large local `Place` type
 // (with fields for popular-times bars, visitor avatars, etc.). Discover
-// surfaces now consume `Venue` from `@/lib/api/venues` — the EF-backed
-// shape — and the rich detail surface reads `VenueDetail` from
-// `@/lib/mock/venue`. This module no longer carries a Venue type; the
-// SAVED_VENUES export below is typed against the public api Venue.
+// surfaces now consume `Place` from `@/lib/api/places` — the EF-backed
+// shape — and the rich detail surface reads `PlaceDetail` from
+// `@/lib/mock/place`. This module no longer carries a Place type; the
+// SAVED_PLACES export below is typed against the public api Place.
 
 export const AI_SUGGESTIONS = [
   "Rooftop with a sunset view",
@@ -116,7 +116,7 @@ export function tierBadgeClass(tier: Tier): string {
 }
 
 // Compact Title-Case label per tier. Used by the swipe overlay, the
-// promo chip, the /coupons promo card, and the venue detail rewards
+// promo chip, the /coupons promo card, and the place detail rewards
 // box — anywhere we render "Mesita Free" / "Mesita Premium" alongside
 // the lower-case tier id (`free` / `premium`).
 //
@@ -132,5 +132,5 @@ export function tierProperLabel(tier: Tier | string): string {
   return TIER_LABELS[tier as Tier] ?? "Mesita";
 }
 
-// NOTE: The SAVED_VENUES mock catalog lives in `@/lib/mock/saved-venues-mock`
+// NOTE: The SAVED_PLACES mock catalog lives in `@/lib/mock/saved-places-mock`
 // alongside the other entity mocks (reservations-mock, coupons-mock).
