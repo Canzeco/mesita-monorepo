@@ -1,6 +1,6 @@
 # mesita-web-business
 
-Business console for Mesita venue owners and team members — lives at
+Business console for Mesita place owners and team members — lives at
 [business.mesita.ai](https://business.mesita.ai).
 
 Next.js 16 app (Tailwind v4 + shadcn primitives, light theme). Every
