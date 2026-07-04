@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { invokeEF } from "./_invoke";
 
 export type PlaceCategoryOption = {
   slug: string;
@@ -7,17 +8,21 @@ export type PlaceCategoryOption = {
   sort_order: number;
 };
 
+type ListPlaceCategoriesResult = {
+  categories: PlaceCategoryOption[];
+};
+
 export async function apiListPlaceCategories(
   client: SupabaseClient,
 ): Promise<PlaceCategoryOption[]> {
-  const { data, error } = await client
-    .from("place_categories")
-    .select("slug, label, section, sort_order")
-    .order("sort_order", { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
+  try {
+    const data = await invokeEF<ListPlaceCategoriesResult>(
+      client,
+      "business-list-categories",
+      {},
+    );
+    return data.categories ?? [];
+  } catch {
+    return [];
   }
-
-  return (data ?? []) as PlaceCategoryOption[];
 }
