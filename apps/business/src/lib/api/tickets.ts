@@ -1,11 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 import type { Database } from "@/lib/supabase/database.types";
-import type { FiscalType } from "./places";
 
 type TicketStatus = Database["public"]["Enums"]["ticket_status"];
 type TicketKind = Database["public"]["Enums"]["ticket_kind"];
 type StoryStatus = Database["public"]["Enums"]["story_status"];
+
+export type TicketConsumer = {
+  id: string;
+  code: string | null;
+  full_name: string | null;
+  birthday: string | null;
+  sex: string | null;
+  country: string | null;
+  tier_key: string | null;
+  tier_origin: string | null;
+};
 
 type RawTicket = {
   id: string;
@@ -31,41 +41,13 @@ type RawTicket = {
   paid_at: string | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
-  consumer:
-    | {
-        id: string;
-        code: string | null;
-        full_name: string | null;
-        birthday: string | null;
-        sex: string | null;
-        country: string | null;
-        tier_key: string | null;
-        tier_origin: string | null;
-      }
-    | Array<{
-        id: string;
-        code: string | null;
-        full_name: string | null;
-        birthday: string | null;
-        sex: string | null;
-        country: string | null;
-        tier_key: string | null;
-        tier_origin: string | null;
-      }>
-    | null;
+  // The EF's join arrives as an object or a one-element array depending on
+  // the relationship cardinality PostgREST infers; normalize before use.
+  consumer: TicketConsumer | TicketConsumer[] | null;
 };
 
 export type BusinessTicket = Omit<RawTicket, "consumer"> & {
-  consumer: {
-    id: string;
-    code: string | null;
-    full_name: string | null;
-    birthday: string | null;
-    sex: string | null;
-    country: string | null;
-    tier_key: string | null;
-    tier_origin: string | null;
-  } | null;
+  consumer: TicketConsumer | null;
 };
 
 function normalizeTicketConsumer(row: RawTicket): BusinessTicket {
@@ -109,34 +91,6 @@ export async function apiCancelTicket(
     "business-cancel-ticket",
     input,
     "Couldn't cancel ticket.",
-  );
-}
-
-export async function apiCreateTicket(
-  client: SupabaseClient,
-  input: {
-    projectId: string;
-    consumerCode: string;
-    checkSubtotalCents: number;
-    tipCents?: number;
-    redeemCents?: number;
-    fiscalType?: FiscalType;
-    kind?: TicketKind;
-  },
-): Promise<{ ticket: BusinessTicket }> {
-  const kind = input.kind ?? "dp";
-  return invokeEF<{ ticket: BusinessTicket }>(
-    client,
-    "business-create-ticket",
-    {
-      projectId: input.projectId,
-      consumerCode: input.consumerCode,
-      checkSubtotalCents: input.checkSubtotalCents,
-      tipCents: input.tipCents ?? 0,
-      redeemCents: input.redeemCents ?? 0,
-      kind,
-    },
-    "Couldn't create ticket.",
   );
 }
 

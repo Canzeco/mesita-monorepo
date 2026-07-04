@@ -26,6 +26,7 @@ export async function apiGetBusinessProfile(
     client,
     "business-get-profile",
     {},
+    "Couldn't load your business profile.",
   );
   return business;
 }
@@ -42,6 +43,7 @@ export async function apiCreateBusinessProfile(
     client,
     "business-create-profile",
     input,
+    "Couldn't create your business profile.",
   );
   return business;
 }

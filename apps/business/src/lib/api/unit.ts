@@ -30,10 +30,15 @@ async function fetchUnitOverview(
   activeUnitId: string | null,
   ticketsLimit = 20,
 ): Promise<UnitOverview> {
-  return invokeEF<UnitOverview>(client, "business-get-overview", {
-    activeUnitId: activeUnitId ?? undefined,
-    ticketsLimit,
-  });
+  return invokeEF<UnitOverview>(
+    client,
+    "business-get-overview",
+    {
+      activeUnitId: activeUnitId ?? undefined,
+      ticketsLimit,
+    },
+    "Couldn't load your overview.",
+  );
 }
 
 // `cache` dedupes by argument identity. Within a single server render pass,

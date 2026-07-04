@@ -13,7 +13,12 @@ export type WhoamiResult = {
 };
 
 async function fetchWhoami(client: SupabaseClient): Promise<WhoamiResult> {
-  return invokeEF<WhoamiResult>(client, "auth-get-identity", {});
+  return invokeEF<WhoamiResult>(
+    client,
+    "auth-get-identity",
+    {},
+    "Couldn't verify your session.",
+  );
 }
 
 // React.cache dedupes calls within a single server render pass so the

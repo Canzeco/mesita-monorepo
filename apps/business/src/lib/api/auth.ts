@@ -26,5 +26,10 @@ export type BusinessSigninResult = {
 export async function apiBusinessSigninEmail(
   client: SupabaseClient,
 ): Promise<BusinessSigninResult> {
-  return invokeEF<BusinessSigninResult>(client, "business-signin-email", {});
+  return invokeEF<BusinessSigninResult>(
+    client,
+    "business-signin-email",
+    {},
+    "Couldn't finish signing you in.",
+  );
 }

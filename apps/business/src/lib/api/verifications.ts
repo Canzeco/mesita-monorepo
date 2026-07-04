@@ -94,7 +94,12 @@ export async function apiLookupPlace(
   client: SupabaseClient,
   placeId: string,
 ): Promise<LookupResult> {
-  return invokeEF<LookupResult>(client, "business-find-place", { placeId });
+  return invokeEF<LookupResult>(
+    client,
+    "business-find-place",
+    { placeId },
+    "Couldn't look up that place.",
+  );
 }
 
 // ── Phone OTP path ────────────────────────────────────────────────────
@@ -117,12 +122,17 @@ export async function apiBusinessSendsPhoneOtp(
   projectId: string,
   requesterEmail?: string,
 ): Promise<SendPhoneOtpResult> {
-  return invokeEF<SendPhoneOtpResult>(client, "business-send-phone-otp", {
-    projectId,
-    ...(requesterEmail?.trim()
-      ? { requesterEmail: requesterEmail.trim() }
-      : {}),
-  });
+  return invokeEF<SendPhoneOtpResult>(
+    client,
+    "business-send-phone-otp",
+    {
+      projectId,
+      ...(requesterEmail?.trim()
+        ? { requesterEmail: requesterEmail.trim() }
+        : {}),
+    },
+    "Couldn't start the phone verification.",
+  );
 }
 
 export type VerifyOtpResult = {
@@ -138,10 +148,12 @@ export async function apiBusinessVerifiesPhone(
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "business-verify-phone-otp", {
-    verificationId,
-    code,
-  });
+  return invokeEF<VerifyOtpResult>(
+    client,
+    "business-verify-phone-otp",
+    { verificationId, code },
+    "Couldn't verify that code.",
+  );
 }
 
 // ── Email OTP path ────────────────────────────────────────────────────
@@ -158,12 +170,17 @@ export async function apiBusinessSendsEmailOtp(
   projectId: string,
   requesterEmail?: string,
 ): Promise<SendEmailOtpResult> {
-  return invokeEF<SendEmailOtpResult>(client, "business-send-email-otp", {
-    projectId,
-    ...(requesterEmail?.trim()
-      ? { requesterEmail: requesterEmail.trim() }
-      : {}),
-  });
+  return invokeEF<SendEmailOtpResult>(
+    client,
+    "business-send-email-otp",
+    {
+      projectId,
+      ...(requesterEmail?.trim()
+        ? { requesterEmail: requesterEmail.trim() }
+        : {}),
+    },
+    "Couldn't start the email verification.",
+  );
 }
 
 export async function apiBusinessVerifiesEmail(
@@ -171,8 +188,10 @@ export async function apiBusinessVerifiesEmail(
   verificationId: string,
   code: string,
 ): Promise<VerifyOtpResult> {
-  return invokeEF<VerifyOtpResult>(client, "business-verify-email-otp", {
-    verificationId,
-    code,
-  });
+  return invokeEF<VerifyOtpResult>(
+    client,
+    "business-verify-email-otp",
+    { verificationId, code },
+    "Couldn't verify that code.",
+  );
 }

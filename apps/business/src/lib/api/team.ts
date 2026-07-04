@@ -65,9 +65,12 @@ export async function apiListTeam(
   client: SupabaseClient,
   projectId: string,
 ): Promise<TeamSnapshot> {
-  return await invokeEF<TeamSnapshot>(client, "business-list-team", {
-    projectId,
-  });
+  return await invokeEF<TeamSnapshot>(
+    client,
+    "business-list-team",
+    { projectId },
+    "Couldn't load your team.",
+  );
 }
 
 type InviteEditorResult =
@@ -101,6 +104,7 @@ export async function apiInviteEditor(
     client,
     "business-invite-member",
     input,
+    "Couldn't send the invite.",
   );
 }
 
@@ -131,6 +135,7 @@ export async function apiInviteStaff(
     client,
     "business-invite-staff",
     input,
+    "Couldn't send the staff invite.",
   );
 }
 
@@ -142,6 +147,7 @@ export async function apiUpdateMemberRole(
     client,
     "business-update-member-role",
     input,
+    "Couldn't update that member's role.",
   );
 }
 
@@ -155,6 +161,7 @@ export async function apiRemoveMember(
     client,
     "business-remove-member",
     input,
+    "Couldn't remove that member.",
   );
 }
 
@@ -174,6 +181,7 @@ export async function apiTestStaffChannel(
     client,
     "business-test-staff-channel",
     input,
+    "Couldn't send the test message.",
   );
 }
 
@@ -185,5 +193,6 @@ export async function apiAcceptEditorInvite(
     client,
     "business-accept-invite",
     { token },
+    "Couldn't accept the invite.",
   );
 }

@@ -18,6 +18,27 @@ type EFResult<T> =
   | ({ ok: true } & T)
   | { ok: false; error: string; code?: string | null };
 
+// Thrown by invokeEF for every failure (transport non-2xx OR `ok: false`).
+// Carries the EF's machine-readable `code` and the full parsed error body so
+// call sites can branch on a code (e.g. "place_already_exists") without
+// re-implementing the raw-invoke unwrap themselves.
+export class EFError extends Error {
+  readonly code: string | null;
+  readonly fn: string;
+  readonly body: Record<string, unknown> | null;
+
+  constructor(
+    message: string,
+    opts: { fn: string; code?: string | null; body?: Record<string, unknown> | null },
+  ) {
+    super(message);
+    this.name = "EFError";
+    this.code = opts.code ?? null;
+    this.fn = opts.fn;
+    this.body = opts.body ?? null;
+  }
+}
+
 export async function invokeEF<T>(
   client: SupabaseClient,
   fn: string,
@@ -32,14 +53,21 @@ export async function invokeEF<T>(
   });
 
   if (error) {
-    const inner = await readInvokeError(error);
-    throw new Error(inner ?? error.message);
+    const parsed = await parseInvokeErrorBody(error);
+    const message = pickErrorMessage(parsed) ?? error.message;
+    const code =
+      parsed && typeof parsed.code === "string" ? parsed.code : null;
+    throw new EFError(message, { fn, code, body: parsed });
   }
   if (!data) {
-    throw new Error(fallback);
+    throw new EFError(fallback, { fn });
   }
   if (!data.ok) {
-    throw new Error(data.error ?? fallback);
+    throw new EFError(data.error ?? fallback, {
+      fn,
+      code: data.code ?? null,
+      body: data as Record<string, unknown>,
+    });
   }
   // After the ok check TS narrows away the failure arm; drop the
   // discriminator before returning.
@@ -49,28 +77,33 @@ export async function invokeEF<T>(
 
 // supabase-js wraps non-2xx responses in a FunctionsHttpError whose default
 // `.message` is the generic "Edge Function returned a non-2xx status code".
-// The real body (the EF's `{ ok: false, error: "…" }`) lives directly on
+// The real body (the EF's `{ ok: false, error, code, … }`) lives directly on
 // `error.context` — that field IS the Response, not `{ response }`. Peel it
-// off so the UI gets a useful message.
-async function readInvokeError(error: unknown): Promise<string | null> {
+// off (JSON preferred; short plain-text fallback) so both the message and any
+// structured fields survive.
+async function parseInvokeErrorBody(
+  error: unknown,
+): Promise<Record<string, unknown> | null> {
   try {
     const res = (error as { context?: Response }).context;
     if (!res || typeof res.clone !== "function") return null;
-    const body = await res
+    const json = await res
       .clone()
       .json()
       .catch(() => null);
-    if (body && typeof body === "object" && "error" in body) {
-      const msg = (body as { error?: string }).error;
-      if (typeof msg === "string" && msg.length > 0) return msg;
-    }
+    if (json && typeof json === "object") return json as Record<string, unknown>;
     const text = await res
       .clone()
       .text()
       .catch(() => null);
-    if (text && text.length < 500) return text;
+    if (text && text.length > 0 && text.length < 500) return { error: text };
     return null;
   } catch {
     return null;
   }
+}
+
+function pickErrorMessage(body: Record<string, unknown> | null): string | null {
+  const msg = body?.error;
+  return typeof msg === "string" && msg.length > 0 ? msg : null;
 }
