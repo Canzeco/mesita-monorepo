@@ -34,10 +34,12 @@ export async function POST(req: NextRequest) {
   });
 
   if (!result.ok) {
-    return NextResponse.json(
-      { ok: false, error: result.error },
-      { status: result.status === 200 ? 400 : result.status },
-    );
+    // efInvoke reports status 0 for transport errors without a usable
+    // Response and for 2xx bodies that aren't { ok: true } — Response only
+    // accepts 200–599, so anything outside 400–599 becomes a 502.
+    const status =
+      result.status >= 400 && result.status <= 599 ? result.status : 502;
+    return NextResponse.json({ ok: false, error: result.error }, { status });
   }
 
   return NextResponse.json(result.data);
