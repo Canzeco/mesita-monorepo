@@ -9,8 +9,11 @@ import { efInvoke } from "@/lib/supabase-ef";
 // authorises the call (admin allowlist). The client invokes this once per Place
 // ID (with small concurrency) so progress streams in.
 //
-// For large batches the staggered queue (admin-schedule-project-creations)
-// is the better fit once the scheduler is live; this path runs each create inline.
+// For large batches the staggered queue (scheduled_project_creations rows
+// drained by scheduler-run-project-creations) is the better fit once the
+// scheduler is live; an admin enqueue EF would need building — the old
+// admin-schedule-project-creations was removed in the 2026-07-03 audit.
+// This path runs each create inline.
 
 type CreateUnitOk = {
   ok: true;
