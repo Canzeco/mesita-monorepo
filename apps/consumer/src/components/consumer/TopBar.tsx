@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { SimpleHeader } from "./SimpleHeader";
 import { DiscoverHeader } from "./DiscoverHeader";
 import {
+  CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
@@ -26,7 +27,7 @@ export function TopBar({ userName }: { userName?: string | null }) {
   // The Reservations tab points at the saved-reservations surface; title it
   // after the tab, not the legacy Saved section. Singular prefix also covers
   // /saved/reservation/[id] details.
-  if (pathname.startsWith("/saved/reservation")) {
+  if (pathname.startsWith(CONSUMER_RESERVATION_SURFACE_PREFIX)) {
     return <SimpleHeader title="Reservations" />;
   }
   if (
@@ -41,8 +42,10 @@ export function TopBar({ userName }: { userName?: string | null }) {
   if (pathname.startsWith("/reservations")) {
     return <SimpleHeader title="My Reservations" />;
   }
+  // The pay surface is what the Rewards tab lands on — title it after the
+  // tab so the header and the tab bar tell one story.
   if (pathname.startsWith(CONSUMER_ROUTE_PREFIX.pay)) {
-    return <SimpleHeader title="QR" rightAction="share" />;
+    return <SimpleHeader title="Rewards" rightAction="share" />;
   }
   if (
     pathname.startsWith("/invite") ||

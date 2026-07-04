@@ -10,11 +10,11 @@ import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { placeHref } from "@/lib/place-route";
 import { firstInitial } from "@/lib/utils";
 
-// Favorites mode — everything saved tonight. Reads the same live
+// Favorites mode — everything the consumer has saved. Reads the same live
 // saved-places store the SwipeDeck save action writes, so a right-swipe in
 // Swipe mode shows up here the moment the consumer flips tabs. Place rows
-// resolve against the stored previews first (they carry the enriched card
-// the consumer actually saved) and fall back to the server deck.
+// resolve against the fresh server deck first (deck wins — it's live data)
+// and fall back to the stored previews for saves outside tonight's deck.
 
 export function FavoritesList({ deckPlaces }: { deckPlaces: Place[] }) {
   const { savedIds } = useSavedPlaces();
@@ -59,7 +59,7 @@ export function FavoritesList({ deckPlaces }: { deckPlaces: Place[] }) {
           <>
             <div className="mb-3 flex items-center justify-between px-1">
               <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                Saved tonight
+                Saved
               </p>
               <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px] font-bold">
                 {places.length}

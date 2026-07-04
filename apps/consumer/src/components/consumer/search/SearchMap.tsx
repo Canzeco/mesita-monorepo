@@ -165,9 +165,7 @@ function SearchMapCanvas({
       ))}
       <Recentre target={userLocation} />
       {selected && (
-        <PanTo
-          target={{ lat: selected.lat as number, lng: selected.lng as number }}
-        />
+        <PanTo lat={selected.lat as number} lng={selected.lng as number} />
       )}
     </Map>
   );
@@ -186,15 +184,17 @@ function Recentre({ target }: { target: LatLng | null }) {
   return null;
 }
 
-// Pan to whichever pin/rail card the consumer just picked.
-function PanTo({ target }: { target: LatLng }) {
+// Pan to whichever pin/rail card the consumer just picked. Primitive
+// lat/lng deps (not a fresh object literal) so the effect fires only when
+// the SELECTION changes — re-renders must never fight the user's panning.
+function PanTo({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
-    map.panTo(target);
+    map.panTo({ lat, lng });
     if ((map.getZoom() ?? DEFAULT_ZOOM) < USER_ZOOM) {
       map.setZoom(USER_ZOOM);
     }
-  }, [map, target]);
+  }, [map, lat, lng]);
   return null;
 }

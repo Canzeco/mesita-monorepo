@@ -218,6 +218,11 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   status: PlacePredictionStatus;
+  // Forward-compatible Mesita identity: consumer-suggest-places is adding
+  // these to its payload for on-Mesita rows. When present, clients navigate
+  // via placeHref(slug ?? id) directly instead of the fuzzy name join.
+  mesitaId?: string;
+  mesitaSlug?: string;
 };
 
 type ConsumerCreatePlaceResponse = {

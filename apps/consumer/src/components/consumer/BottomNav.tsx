@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
@@ -52,7 +53,7 @@ const ITEMS: Item[] = [
     Icon: CalendarCheck,
     label: "Reservations",
     // Singular prefix also catches /saved/reservation/[id] detail views.
-    match: "/saved/reservation",
+    match: CONSUMER_RESERVATION_SURFACE_PREFIX,
   },
   {
     href: CONSUMER_ROUTES.me.plan,

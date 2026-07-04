@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Flame, Heart, Users, type LucideIcon } from "lucide-react";
 import { SwipeDeck } from "@/app/(shell)/discover/swipe/SwipeDeck";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { HOME_MODE_PARAM, type HomeMode } from "./home-mode";
+import { HOME_MODE_PARAM, parseHomeMode, type HomeMode } from "./home-mode";
 import { SocialFeed } from "./SocialFeed";
 import { FavoritesList } from "./FavoritesList";
 
@@ -17,8 +16,12 @@ import { FavoritesList } from "./FavoritesList";
 // mode nav below IS the page's top chrome.
 //
 // Swipe sits center (it's the default and the tab's identity); Social and
-// Favorites flank it. URL stays shareable via ?mode= — written with
-// router.replace so switching modes never grows history or scrolls.
+// Favorites flank it. The URL is the single source of truth for the mode:
+// pills write ?mode= via window.history.replaceState — the App Router's
+// supported shallow update — so switching never re-runs the force-dynamic
+// server page (no recommender/embedding re-fetch, no history growth),
+// while useSearchParams keeps the pills in sync AND external navigations
+// (e.g. the Home tab's bare /home) naturally reset back to Swipe.
 
 const MODES: { id: HomeMode; label: string; Icon: LucideIcon }[] = [
   { id: "social", label: "Social", Icon: Users },
@@ -35,18 +38,25 @@ export function HomeHub({
   fetchError: string | null;
   initialMode: HomeMode;
 }) {
-  const router = useRouter();
-  const [mode, setMode] = useState<HomeMode>(initialMode);
+  // Derive the mode straight from the URL. During SSR/first paint the
+  // params match what the server page parsed into initialMode (same URL,
+  // same parseHomeMode), so hydration stays consistent; initialMode only
+  // covers the null-params edge so the fallback never disagrees either.
+  const searchParams = useSearchParams();
+  const mode: HomeMode = searchParams
+    ? parseHomeMode(searchParams.get(HOME_MODE_PARAM) ?? undefined)
+    : initialMode;
 
   const selectMode = (next: HomeMode) => {
     if (next === mode) return;
-    setMode(next);
     // Default mode keeps a clean /home; deep links carry ?mode= for the rest.
     const url =
       next === "swipe"
         ? CONSUMER_ROUTES.home
         : `${CONSUMER_ROUTES.home}?${HOME_MODE_PARAM}=${next}`;
-    router.replace(url, { scroll: false });
+    // Shallow update: Next syncs useSearchParams from history.replaceState,
+    // so the pill flips as pure client state — no server navigation.
+    window.history.replaceState(null, "", url);
   };
 
   return (
@@ -81,7 +91,11 @@ export function HomeHub({
           never scroll in this mode, so the deck gets a clipped flex slot. */}
       {mode === "swipe" && (
         <div className="min-h-0 flex-1 overflow-hidden">
-          <SwipeDeck places={places} fetchError={fetchError} />
+          <SwipeDeck
+            places={places}
+            fetchError={fetchError}
+            errorRetryHref={CONSUMER_ROUTES.home}
+          />
         </div>
       )}
       {mode === "social" && <SocialFeed places={places} />}

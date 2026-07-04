@@ -1,7 +1,8 @@
 // Home mode contract, shared between the /home server page (which parses
-// ?mode= for deep links) and the client hub (which writes it back via
-// router.replace). Lives outside the "use client" modules so the server
-// page can call parseHomeMode without pulling a client reference.
+// ?mode= for deep links) and the client hub (which reads it back via
+// useSearchParams and writes it via history.replaceState). Lives outside
+// the "use client" modules so the server page can call parseHomeMode
+// without pulling a client reference.
 
 export type HomeMode = "social" | "swipe" | "favorites";
 

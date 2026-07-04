@@ -87,8 +87,8 @@ export function SearchResultsPanel({
             <p className="eyebrow px-1 pt-1">From Google</p>
             {onMesita.length === 0 && settled && (
               <p className="text-muted-foreground px-1 text-[11px]">
-                Not on Mesita yet — tap Add and our Enricher builds the
-                profile for everyone.
+                Not on Mesita yet? Tap Add and we&apos;ll build its profile
+                for everyone.
               </p>
             )}
             {fromGoogle.map((p) => (

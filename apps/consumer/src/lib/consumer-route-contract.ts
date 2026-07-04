@@ -56,6 +56,11 @@ export const CONSUMER_ROUTE_PREFIX = {
   me: "/me",
 } as const;
 
+// The Reservations tab surface: the singular prefix matches both the
+// /saved/reservations list and /saved/reservation/[id] details, so nav
+// highlighting and headers share one matcher instead of string literals.
+export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/saved/reservation";
+
 export type PlaceSurface = "explore" | "saved";
 
 export function placePath(

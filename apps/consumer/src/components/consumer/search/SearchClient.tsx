@@ -10,7 +10,7 @@
 //     highlights + scrolls to the matching rail card, tapping a card opens
 //     the place page.
 //   • Typing ≥2 chars runs consumer-suggest-places (debounced, one Google
-//     session token per page visit) and swaps in SearchResultsPanel:
+//     session token per autocomplete session) and swaps in SearchResultsPanel:
 //     "On Mesita" rows navigate via placeHref, "From Google" rows expose
 //     the real Add flow (consumer-schedule-project-creation → the async
 //     n8n Enricher builds the profile in a few minutes).
@@ -75,8 +75,10 @@ export function SearchClient({
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
-  // One Places session token per page visit — every suggest call (text
-  // search AND Ask AI) bills as a single autocomplete session.
+  // Google Places session token. Per Google's session-billing semantics a
+  // session spans the keystrokes up to ONE selection — so the token is
+  // regenerated after every selection (Info / Add tap) and whenever the
+  // results panel is dismissed, scoping each autocomplete run properly.
   const sessionTokenRef = useRef(newSessionToken());
   const railRefs = useRef(new Map<string, HTMLButtonElement | null>());
 
@@ -106,6 +108,11 @@ export function SearchClient({
     [catalog, activeChips],
   );
 
+  // End the current Places autocomplete session and mint the next one.
+  const resetSearchSession = useCallback(() => {
+    sessionTokenRef.current = newSessionToken();
+  }, []);
+
   // Every query write goes through here so the derived search state stays
   // in the event handler (the set-state-in-effect lint rule bars resetting
   // it inside the effect below): short queries clear the panel, longer
@@ -115,6 +122,10 @@ export function SearchClient({
     setQuery(next);
     const nextTrimmed = next.trim();
     if (nextTrimmed.length < 2) {
+      // Dropping below the threshold dismisses the results panel — the
+      // running autocomplete session is abandoned, so end it here and
+      // start the next search on a fresh token.
+      if (trimmed.length >= 2) resetSearchSession();
       setPredictions([]);
       setSearching(false);
       setSearchError(null);
@@ -153,8 +164,8 @@ export function SearchClient({
     };
   }, [supabase, trimmed]);
 
-  // Predictions carry Google placeIds, never Mesita row ids — the shared
-  // name-match join lights up photos/meta and backs Info navigation.
+  // Predictions carry Google placeIds — the exact-name join only lights up
+  // photos/meta decoration; navigation prefers the EF-provided Mesita ids.
   const resolvePlace = useCallback(
     (prediction: PlacePrediction) =>
       matchPredictionToPlace(prediction, catalog),
@@ -163,16 +174,27 @@ export function SearchClient({
 
   const handleInfo = useCallback(
     (prediction: PlacePrediction) => {
+      // Tapping a prediction is the selection that ends a Places session.
+      resetSearchSession();
+      // When the EF hands back the Mesita identity, navigate directly —
+      // no name join, no snapshot dependency.
+      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+      if (direct) {
+        router.push(placeHref(direct, "explore"));
+        return;
+      }
       const match = matchPredictionToPlace(prediction, catalog);
       if (match) {
         router.push(placeHref(match.slug || match.id, "explore"));
         return;
       }
-      // On Mesita per the EF but outside the 200-row catalog snapshot
-      // (or still content_status='generating') — be honest, don't 404.
-      toast("That place is on Mesita but still settling in — try again soon.");
+      // On Mesita per the EF but outside the 200-newest catalog snapshot —
+      // be honest about the limitation instead of blaming the place.
+      toast(
+        "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
+      );
     },
-    [catalog, router],
+    [catalog, resetSearchSession, router],
   );
 
   // The REAL Add flow: schedule the creation, then hold the row in its
@@ -181,6 +203,8 @@ export function SearchClient({
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {
       if (addStates[prediction.placeId]) return;
+      // Add is also a selection — close out the autocomplete session.
+      resetSearchSession();
       setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
       void (async () => {
         try {
@@ -202,7 +226,7 @@ export function SearchClient({
         }
       })();
     },
-    [addStates, supabase],
+    [addStates, resetSearchSession, supabase],
   );
 
   // Ask AI's place cards come from the same live suggest EF; the panel
@@ -375,16 +399,19 @@ export function SearchClient({
         />
       )}
 
-      {/* Ask AI concierge — hidden (state kept) while a text query runs. */}
-      {aiOpen && trimmed.length === 0 && (
-        <AskAiPanel
-          onClose={() => setAiOpen(false)}
-          suggest={suggestForAi}
-          addStates={addStates}
-          resolvePlace={resolvePlace}
-          onInfo={handleInfo}
-          onAdd={handleAdd}
-        />
+      {/* Ask AI concierge — stays MOUNTED while open so the chat thread
+          survives text searches; only visually hidden while a query runs. */}
+      {aiOpen && (
+        <div className={cn(trimmed.length > 0 && "hidden")}>
+          <AskAiPanel
+            onClose={() => setAiOpen(false)}
+            suggest={suggestForAi}
+            addStates={addStates}
+            resolvePlace={resolvePlace}
+            onInfo={handleInfo}
+            onAdd={handleAdd}
+          />
+        </div>
       )}
 
       <FiltersSheet

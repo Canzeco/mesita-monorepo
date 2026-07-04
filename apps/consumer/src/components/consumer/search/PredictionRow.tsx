@@ -62,7 +62,7 @@ export function PredictionRow({
       })
     : null;
   const subtitle = added
-    ? "Being added — the Enricher is building this place; it'll appear on Mesita in a few minutes."
+    ? "Being added — we're building this place's profile; it'll appear on Mesita in a few minutes."
     : ([category, matchedPlace?.zone].filter(Boolean).join(" · ") ||
       prediction.secondaryText);
 

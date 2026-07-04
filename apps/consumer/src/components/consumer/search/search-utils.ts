@@ -28,12 +28,13 @@ function normalizeName(name: string): string {
 /**
  * Best-effort resolution of a suggest prediction to a catalog Place.
  *
- * Predictions carry the Google placeId — never the Mesita row id — and the
- * public places projection doesn't expose google_place_id, so the only
- * client-side join available is the (normalized) name. The enricher's
- * Mesita-side rows use the place name verbatim as mainText, so equality
- * hits most of the time; the contains fallback covers Google's fuller
- * formats ("Strana San Pedro" vs the place named "Strana").
+ * Predictions carry the Google placeId, and the public places projection
+ * doesn't expose google_place_id, so the only client-side join available
+ * is the (normalized) name. Exact equality ONLY: Mesita-side rows use the
+ * place name verbatim as mainText, so equality hits the honest cases,
+ * while any substring fallback misroutes look-alikes ("Casa Luminar"
+ * contains-matching "Casa Lu"). Predictions the EF stamps with a Mesita
+ * id/slug skip this join entirely.
  */
 export function matchPredictionToPlace(
   prediction: PlacePrediction,
@@ -41,20 +42,10 @@ export function matchPredictionToPlace(
 ): Place | null {
   const target = normalizeName(prediction.mainText);
   if (!target) return null;
-  let contains: Place | null = null;
   for (const place of places) {
-    const name = normalizeName(place.name);
-    if (!name) continue;
-    if (name === target) return place;
-    if (
-      !contains &&
-      (name.includes(target) || target.includes(name)) &&
-      Math.min(name.length, target.length) >= 4
-    ) {
-      contains = place;
-    }
+    if (normalizeName(place.name) === target) return place;
   }
-  return contains;
+  return null;
 }
 
 /** "1.4 km" under 10, "12 km" beyond. */

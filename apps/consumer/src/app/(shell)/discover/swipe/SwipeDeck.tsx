@@ -39,16 +39,20 @@ const SWIPE_STATE_STORAGE_KEY = "mesita_explore_swipe_state_v1";
 export function SwipeDeck({
   places,
   fetchError,
+  errorRetryHref = CONSUMER_ROUTES.explore.swipe,
 }: {
   places: Place[];
   fetchError: string | null;
+  /** Where the fetch-error "Try again" CTA lands — hosts embedding the
+      deck outside /explore/swipe (e.g. /home) pass their own route. */
+  errorRetryHref?: string;
 }) {
   if (fetchError) {
     return (
       <EmptyDeck
         title="Couldn't load places"
         body={fetchError}
-        actionHref={CONSUMER_ROUTES.explore.swipe}
+        actionHref={errorRetryHref}
         actionLabel="Try again"
       />
     );
