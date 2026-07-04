@@ -64,7 +64,8 @@ export async function apiListTickets(
   const { tickets } = await invokeEF<{ tickets: RawTicket[] }>(
     client,
     "business-list-tickets",
-    input,
+    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+    { placeId: input.projectId, limit: input.limit },
     "Couldn't load tickets.",
   );
   return (tickets ?? []).map(normalizeTicketConsumer);
@@ -107,7 +108,8 @@ export async function apiOpenTicket(
     client,
     "business-create-ticket",
     {
-      projectId: input.projectId,
+      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+      placeId: input.projectId,
       consumerCode: input.consumerCode,
       kind: input.kind ?? "dp",
       scanOnly: true,

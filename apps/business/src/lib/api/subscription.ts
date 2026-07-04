@@ -38,10 +38,12 @@ export async function apiChangeSubscription(
     cancelUrl?: string;
   },
 ): Promise<ChangeSubscriptionResult> {
+  const { projectId, ...rest } = input;
   return await invokeEF<ChangeSubscriptionResult>(
     client,
     "business-change-subscription",
-    input as unknown as Record<string, unknown>,
+    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+    { ...rest, placeId: projectId },
     "Couldn't update the subscription",
   );
 }

@@ -34,7 +34,8 @@ async function fetchUnitOverview(
     client,
     "business-get-overview",
     {
-      activeUnitId: activeUnitId ?? undefined,
+      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+      placeId: activeUnitId ?? undefined,
       ticketsLimit,
     },
     "Couldn't load your overview.",

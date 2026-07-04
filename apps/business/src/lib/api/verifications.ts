@@ -126,7 +126,8 @@ export async function apiBusinessSendsPhoneOtp(
     client,
     "business-send-phone-otp",
     {
-      projectId,
+      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+      placeId: projectId,
       ...(requesterEmail?.trim()
         ? { requesterEmail: requesterEmail.trim() }
         : {}),
@@ -174,7 +175,8 @@ export async function apiBusinessSendsEmailOtp(
     client,
     "business-send-email-otp",
     {
-      projectId,
+      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+      placeId: projectId,
       ...(requesterEmail?.trim()
         ? { requesterEmail: requesterEmail.trim() }
         : {}),

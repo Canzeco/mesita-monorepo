@@ -68,7 +68,8 @@ export async function apiListTeam(
   return await invokeEF<TeamSnapshot>(
     client,
     "business-list-team",
-    { projectId },
+    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+    { placeId: projectId },
     "Couldn't load your team.",
   );
 }
@@ -100,10 +101,12 @@ export async function apiInviteEditor(
     redirectBase?: string;
   },
 ): Promise<InviteEditorResult> {
+  const { projectId, ...rest } = input;
   return await invokeEF<InviteEditorResult>(
     client,
     "business-invite-member",
-    input,
+    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+    { ...rest, placeId: projectId },
     "Couldn't send the invite.",
   );
 }
@@ -131,10 +134,12 @@ export async function apiInviteStaff(
     redirectBase?: string;
   },
 ): Promise<InviteStaffResult> {
+  const { projectId, ...rest } = input;
   return await invokeEF<InviteStaffResult>(
     client,
     "business-invite-staff",
-    input,
+    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+    { ...rest, placeId: projectId },
     "Couldn't send the staff invite.",
   );
 }
@@ -177,10 +182,12 @@ export async function apiTestStaffChannel(
   client: SupabaseClient,
   input: { projectId: string; channel: "whatsapp" | "sms"; phone: string },
 ): Promise<TestStaffChannelResult> {
+  const { projectId, ...rest } = input;
   return await invokeEF<TestStaffChannelResult>(
     client,
     "business-test-staff-channel",
-    input,
+    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+    { ...rest, placeId: projectId },
     "Couldn't send the test message.",
   );
 }
