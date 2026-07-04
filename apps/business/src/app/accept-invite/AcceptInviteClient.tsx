@@ -9,8 +9,9 @@ import { apiAcceptEditorInvite } from "@/lib/api/team";
 import { placePath } from "@/lib/business-route-contract";
 import { errMsg } from "@/lib/utils";
 
-// Business-side accept page. The staff accept flow runs from WhatsApp /
-// SMS via staff-accept-invite and never lands here.
+// Business-side accept page. The staff accept flow runs entirely in the
+// Ops WhatsApp conversation (reply SI; twilio-whatsapp-inbound redeems via
+// _shared/staff-invite-redeem) and never lands here.
 //
 // Two preconditions: (1) a `token` query param, (2) a signed-in
 // auth.user. If the user isn't signed in we bounce them to the sign-in
