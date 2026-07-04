@@ -1,6 +1,7 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
+import { createUnitFromPlaceId as createUnitFromPlaceIdImpl } from "@/lib/create-unit-from-place";
 
 // ════════════════════════════════════════════════════════════════════════
 // Single-unit console — a super-admin drives ANY place through the existing
@@ -312,78 +313,8 @@ export async function suggestPlaces(
   return { ok: true, data: r.data.predictions ?? [] };
 }
 
-type CreateUnitOk = {
-  ok: true;
-  projectId: string;
-  name: string;
-  slug: string | null;
-  photoCount: number;
-  /** The n8n Enricher webhook accepted the job — enrichment runs async. */
-  enrichmentTriggered: boolean;
-  enrichmentError: string | null;
-};
-
-type CreatedPlace = {
-  id?: string;
-  slug?: string | null;
-  name?: string;
-  status?: string;
-};
-
-type CreateUnitResponse = {
-  place?: CreatedPlace;
-  /** Legacy alias of `place` — same object. */
-  venue?: CreatedPlace;
-  enrichment?: {
-    enrichmentTriggered?: boolean;
-    enrichmentAsync?: boolean;
-    enrichmentError?: string | null;
-    photoCount?: number;
-    channelCount?: number;
-  };
-};
-
-type CreateUnitErrorBody = {
-  code?: string;
-  error?: string;
-  existing?: { id?: string; slug?: string | null; name?: string };
-};
-
-export async function createUnitFromPlaceId(
-  placeId: string,
-): Promise<CreateUnitOk | { ok: false; error: string }> {
-  const id = (placeId ?? "").toString().trim();
-  if (!id) return { ok: false, error: "Empty Place ID" };
-
-  const r = await efInvoke<CreateUnitResponse>("admin-create-unit", { placeId: id });
-  if (!r.ok) {
-    // Duplicate: HTTP 409 with code place_already_exists (legacy:
-    // venue_already_exists) and an `existing` object.
-    const body = (r.data ?? {}) as CreateUnitErrorBody;
-    if (
-      r.status === 409 &&
-      (body.code === "place_already_exists" || body.code === "venue_already_exists")
-    ) {
-      const name = body.existing?.name;
-      return {
-        ok: false,
-        error: name
-          ? `${name} is already on Mesita — open it from Edit Single Unit.`
-          : "This place is already on Mesita — open it from Edit Single Unit.",
-      };
-    }
-    return { ok: false, error: r.error };
-  }
-
-  const v = r.data.place ?? r.data.venue;
-  if (!v?.id) return { ok: false, error: "No unit returned" };
-  return {
-    ok: true,
-    projectId: v.id,
-    name: v.name ?? "(unnamed)",
-    slug: v.slug ?? null,
-    photoCount: r.data.enrichment?.photoCount ?? 0,
-    enrichmentTriggered: r.data.enrichment?.enrichmentTriggered ?? false,
-    enrichmentError: r.data.enrichment?.enrichmentError ?? null,
-  };
+// The create-unit pipeline is shared with the bulk creator — see the single
+// canonical implementation in @/lib/create-unit-from-place.
+export async function createUnitFromPlaceId(placeId: string) {
+  return createUnitFromPlaceIdImpl(placeId);
 }

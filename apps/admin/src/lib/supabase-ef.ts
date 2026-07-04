@@ -4,10 +4,32 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // app. Auth is the operator's Supabase session (Google OAuth) — the
 // JWT is attached automatically by supabase-js. The EFs check the JWT's
 // email against public.super_admins.
+//
+// Error handling is Result-style (never throws): callers branch on `.ok`.
+// The consumer/business apps use a typed-throwing `EFError`
+// ({ code, status, fn, body }); admin keeps a deliberate Result-style
+// equivalent because every call site here already branches on `.ok`
+// (throwing would force a try/catch around ~15 sites). The failure
+// object carries the SAME machine-readable fields as EFError so call
+// sites can branch on a `code` (e.g. "place_already_exists") without
+// re-parsing `.data` — see EFFailure below.
 
-type InvokeResult<T> =
-  | { ok: true; status: number; data: T }
-  | { ok: false; status: number; error: string; data: unknown };
+/** Machine-readable failure, mirroring EFError's { code, status, fn, body }. */
+export type EFFailure = {
+  ok: false;
+  /** HTTP status from the EF response, or 0 for transport/init errors. */
+  status: number;
+  /** EF's machine-readable error code (body.code), or null if absent. */
+  code: string | null;
+  /** The invoked edge-function name. */
+  fn: string;
+  /** Human-readable message (EF body.error, else a synthesised fallback). */
+  error: string;
+  /** The parsed error body (EFError's `body`), or null. */
+  data: unknown;
+};
+
+type InvokeResult<T> = { ok: true; status: number; data: T } | EFFailure;
 
 export async function efInvoke<T>(
   fnName: string,
@@ -20,6 +42,8 @@ export async function efInvoke<T>(
     return {
       ok: false,
       status: 500,
+      code: null,
+      fn: fnName,
       error: err instanceof Error ? err.message : "Supabase client init failed.",
       data: null,
     };
@@ -32,7 +56,7 @@ export async function efInvoke<T>(
 
   if (error) {
     // FunctionsHttpError stashes the original Response on .context. Peel
-    // off the EF's `{ ok: false, error }` body for a useful message.
+    // off the EF's `{ ok: false, error, code }` body for a useful message.
     const ctx = (error as { context?: Response }).context;
     let inner: unknown = null;
     if (ctx && typeof ctx.clone === "function") {
@@ -52,11 +76,20 @@ export async function efInvoke<T>(
       inner && typeof inner === "object" && "error" in inner
         ? String((inner as { error: unknown }).error)
         : null;
+    const code =
+      inner &&
+      typeof inner === "object" &&
+      "code" in inner &&
+      typeof (inner as { code: unknown }).code === "string"
+        ? ((inner as { code: string }).code)
+        : null;
     const status =
       ctx && typeof ctx.status === "number" ? ctx.status : 0;
     return {
       ok: false,
       status,
+      code,
+      fn: fnName,
       error:
         innerError ??
         (status ? `${fnName} failed (HTTP ${status})` : null) ??
@@ -75,7 +108,14 @@ export async function efInvoke<T>(
       parsed && typeof parsed === "object" && "error" in parsed
         ? String((parsed as { error: unknown }).error)
         : `EF ${fnName} returned no ok body`;
-    return { ok: false, status: 0, error: errMsg, data: parsed };
+    const code =
+      parsed &&
+      typeof parsed === "object" &&
+      "code" in parsed &&
+      typeof (parsed as { code: unknown }).code === "string"
+        ? ((parsed as { code: string }).code)
+        : null;
+    return { ok: false, status: 0, code, fn: fnName, error: errMsg, data: parsed };
   }
 
   return { ok: true, status: 200, data: parsed as T };
