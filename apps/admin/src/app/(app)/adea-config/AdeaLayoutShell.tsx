@@ -6,11 +6,11 @@ import { AdeaTabNav } from "./AdeaTabNav";
 import { ADEA_SUBROUTES } from "./nav";
 
 const ADEA_WHAT =
-  "ADEA — Atlas Data Enrichment Agent — builds place profiles from the open web. When a unit is created or refreshed, it discovers sources, gathers Google and social content, analyzes photos and text, and writes the listing.";
+  "The Enricher builds place profiles from the open web. When a place is created, it runs every pipeline step S0→S9 — Google spine, link discovery, source harvest, image perception, and synthesis — then persists the listing.";
 
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/adea-config/configuration":
-    `${ADEA_WHAT} Parameters control source levels, gather limits, vision, and synthesis quality.`,
+    `${ADEA_WHAT} Parameters control gather limits, vision, and synthesis quality.`,
   "/adea-config/calculator":
     `${ADEA_WHAT} Calculator previews cost and runtime for one enrichment run at your current settings.`,
 };

@@ -10,7 +10,6 @@ export default async function AdeaCalculatorPage() {
 
   return (
     <AtlasCalculatorClient
-      initialSourceTierCeiling={result.data.atlasSourceTierCeiling}
       initialSynthesisQuality={result.data.atlasSynthesisQuality}
       initialVisionQuality={result.data.atlasVisionQuality ?? "economy"}
       initialImageVisionEnabled={result.data.atlasImageVisionEnabled}

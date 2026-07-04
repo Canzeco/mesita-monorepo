@@ -10,7 +10,6 @@ export default async function AdeaConfigurationPage() {
 
   return (
     <AtlasConfigurationClient
-      initialSourceTierCeiling={result.data.atlasSourceTierCeiling}
       initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
       initialGatherGoogleImages={result.data.atlasGatherGoogleImages}
       initialGatherWebsiteImages={result.data.atlasGatherWebsiteImages}
