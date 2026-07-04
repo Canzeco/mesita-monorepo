@@ -101,7 +101,8 @@ export async function apiOpenTicket(
   input: {
     projectId: string;
     consumerCode: string;
-    kind?: TicketKind;
+    /** Legacy EF wire kind (e.g. "dp", "s_dp_sf") — see ticket-staff-lifecycle. */
+    kind?: string;
   },
 ): Promise<{ ticket: BusinessTicket }> {
   return invokeEF<{ ticket: BusinessTicket }>(

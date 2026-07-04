@@ -36,9 +36,12 @@ export type StaffTicketProgressInput = Pick<
 
 const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "staff_verified"]);
 
-const STORY_KINDS = new Set<TicketKind>(["s_dp_sf", "r_s_dp_sf"]);
+// Legacy EF wire kinds (business-create-ticket contract). These are request
+// payload strings, NOT members of the regenerated DB `ticket_kind` enum
+// (now "reservation" | "coupon"), so they are typed as plain strings.
+const STORY_KINDS = new Set<string>(["s_dp_sf", "r_s_dp_sf"]);
 
-export const TICKET_KIND_BY_FLOW_TYPE: Record<TicketFlowType, TicketKind> = {
+export const TICKET_KIND_BY_FLOW_TYPE: Record<TicketFlowType, string> = {
   A: "dp",
   B: "s_dp_sf",
 };
@@ -57,7 +60,7 @@ export const FLOW_TYPE_SHORT_LABELS: Record<TicketFlowType, string> = {
 };
 
 export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
-  return STORY_KINDS.has(kind as TicketKind) ? "B" : "A";
+  return STORY_KINDS.has(kind) ? "B" : "A";
 }
 
 export function ticketHasBill(input: StaffTicketProgressInput): boolean {
@@ -93,7 +96,7 @@ export const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
 };
 
 function storyComplete(input: StaffTicketProgressInput): boolean {
-  if (!STORY_KINDS.has(input.kind as TicketKind)) return true;
+  if (!STORY_KINDS.has(input.kind)) return true;
   if (input.story_status === "not_required") return true;
   return STORY_VERIFIED.has(input.story_status as StoryStatus);
 }
@@ -225,7 +228,7 @@ export function ticketNeedsStaffPaymentConfirm(
 }
 
 export function ticketNeedsStoryConfirm(ticket: BusinessTicket): boolean {
-  if (!STORY_KINDS.has(ticket.kind as TicketKind)) return false;
+  if (!STORY_KINDS.has(ticket.kind)) return false;
   if (ticket.status === "cancelled" || !ticketHasBill(ticket)) return false;
   return (
     ticket.story_status === "pending" ||
