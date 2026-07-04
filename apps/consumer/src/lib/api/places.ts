@@ -10,7 +10,7 @@
 // place, enrichment) live in the business app — consumer never invokes them.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF } from "./_invoke";
+import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/mock/place";
@@ -277,87 +277,64 @@ export async function apiSuggestPlaces(
  * Intentionally reuses the same create pipeline as business onboarding,
  * but does NOT claim ownership: the function inserts a public web listing
  * (`listing_type=web`) with no place_members owner row.
+ *
+ * Returns a discriminated result rather than throwing on the expected
+ * "already listed" case: the EF signals it with code `place_already_exists`
+ * (as an `ok: false` body or a non-2xx FunctionsHttpError), which invokeEF
+ * surfaces uniformly via EFError.code + EFError.body.
  */
-export async function apiCreatePlaceAsConsumer(
-  client: SupabaseClient,
-  placeId: string,
-): Promise<ConsumerCreatePlaceResponse> {
-  return invokeEF<ConsumerCreatePlaceResponse>(
-    client,
-    "business-create-project",
-    { placeId },
-    "Couldn't add that place right now.",
-  );
-}
-
 export async function apiCreatePlaceAsConsumerResult(
   client: SupabaseClient,
   placeId: string,
 ): Promise<ConsumerCreatePlaceResult> {
-  const { data, error } = await client.functions.invoke<
-    | ({ ok: true } & ConsumerCreatePlaceResponse)
-    | {
-        ok: false;
-        error?: string;
-        code?: string | null;
-        existing?: {
-          id: string;
-          slug?: string | null;
-          name?: string | null;
-          status?: PlaceStatus | null;
-          listing_type?: PlaceListingType | null;
-        } | null;
-      }
-  >("business-create-project", { body: { placeId } });
-
-  if (error) {
-    const body = await readInvokeErrorBody(error);
-    if (body?.code === "place_already_exists") {
+  try {
+    const data = await invokeEF<ConsumerCreatePlaceResponse>(
+      client,
+      "business-create-project",
+      { placeId },
+      "Couldn't add that place right now.",
+    );
+    return {
+      kind: "created",
+      place: data.place,
+      message: `${data.place.name} is now listed on Mesita and visible to everyone.`,
+    };
+  } catch (err) {
+    if (err instanceof EFError && err.code === "place_already_exists") {
+      const bodyError =
+        typeof err.body?.error === "string" ? err.body.error : null;
       return {
         kind: "already_exists",
         message:
-          body.error ??
+          bodyError ??
           "This place is already on Mesita. If you manage it, contact support to claim ownership.",
-        existing: body.existing
-          ? {
-              id: body.existing.id,
-              slug: body.existing.slug ?? null,
-              name: body.existing.name ?? null,
-              status: body.existing.status ?? null,
-              listing_type: body.existing.listing_type ?? null,
-            }
-          : null,
+        existing: normalizeExistingPlace(err.body?.existing),
       };
     }
-    throw new Error(body?.error ?? error.message);
+    throw err;
   }
+}
 
-  if (!data) throw new Error("Couldn't add that place right now.");
-  if (!data.ok) {
-    if (data.code === "place_already_exists") {
-      return {
-        kind: "already_exists",
-        message:
-          data.error ??
-          "This place is already on Mesita. If you manage it, contact support to claim ownership.",
-        existing: data.existing
-          ? {
-              id: data.existing.id,
-              slug: data.existing.slug ?? null,
-              name: data.existing.name ?? null,
-              status: data.existing.status ?? null,
-              listing_type: data.existing.listing_type ?? null,
-            }
-          : null,
-      };
-    }
-    throw new Error(data.error ?? "Couldn't add that place right now.");
-  }
-
+// Narrow the untyped `existing` blob off an EFError body into the shape the
+// already_exists result promises.
+function normalizeExistingPlace(
+  raw: unknown,
+): Extract<ConsumerCreatePlaceResult, { kind: "already_exists" }>["existing"] {
+  if (!raw || typeof raw !== "object") return null;
+  const e = raw as {
+    id?: string;
+    slug?: string | null;
+    name?: string | null;
+    status?: PlaceStatus | null;
+    listing_type?: PlaceListingType | null;
+  };
+  if (!e.id) return null;
   return {
-    kind: "created",
-    place: data.place,
-    message: `${data.place.name} is now listed on Mesita and visible to everyone.`,
+    id: e.id,
+    slug: e.slug ?? null,
+    name: e.name ?? null,
+    status: e.status ?? null,
+    listing_type: e.listing_type ?? null,
   };
 }
 
@@ -365,39 +342,4 @@ export async function apiCreatePlaceAsConsumerResult(
 // would crash the whole page; filter to https before render.
 function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
   return { ...v, photos: v.photos.filter((p) => p.startsWith("https://")) };
-}
-
-async function readInvokeErrorBody(error: unknown): Promise<{
-  error?: string;
-  code?: string | null;
-  existing?: {
-    id: string;
-    slug?: string | null;
-    name?: string | null;
-    status?: PlaceStatus | null;
-    listing_type?: PlaceListingType | null;
-  } | null;
-} | null> {
-  try {
-    const res = (error as { context?: Response }).context;
-    if (!res || typeof res.clone !== "function") return null;
-    const body = await res
-      .clone()
-      .json()
-      .catch(() => null);
-    if (!body || typeof body !== "object") return null;
-    return body as {
-      error?: string;
-      code?: string | null;
-      existing?: {
-        id: string;
-        slug?: string | null;
-        name?: string | null;
-        status?: PlaceStatus | null;
-        listing_type?: PlaceListingType | null;
-      } | null;
-    };
-  } catch {
-    return null;
-  }
 }

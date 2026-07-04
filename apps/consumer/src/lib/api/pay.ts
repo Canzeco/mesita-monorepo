@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
+import { invokeEF } from "./_invoke";
 
 export type PayNotificationRow =
   Database["public"]["Tables"]["consumer_pay_notifications"]["Row"];
@@ -329,16 +330,12 @@ export async function mockStoryDetect(
   supabase: SupabaseClient<Database>,
   ticketId: string,
 ) {
-  const { data, error } = await supabase.functions.invoke(
+  return invokeEF<Record<string, unknown>>(
+    supabase,
     "consumer-mock-story-detect",
-    { body: { ticketId } },
+    { ticketId },
+    "Could not simulate story detection.",
   );
-  if (error) throw error;
-  const body = data as { ok?: boolean; error?: string };
-  if (!body?.ok) {
-    throw new Error(body?.error ?? "Could not simulate story detection.");
-  }
-  return body;
 }
 
 export async function submitTicketReview(
@@ -353,12 +350,10 @@ export async function submitTicketReview(
     comments?: string;
   },
 ) {
-  const { data, error } = await supabase.functions.invoke(
+  return invokeEF<Record<string, unknown>>(
+    supabase,
     "consumer-submit-ticket-review",
-    { body: input },
+    { ...input },
+    "Could not submit review",
   );
-  if (error) throw error;
-  const body = data as { ok?: boolean; error?: string };
-  if (!body?.ok) throw new Error(body?.error ?? "Could not submit review");
-  return body;
 }
