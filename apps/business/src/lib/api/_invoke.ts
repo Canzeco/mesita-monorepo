@@ -39,6 +39,22 @@ export class EFError extends Error {
   }
 }
 
+// For helpers that deliberately degrade to an empty result instead of
+// throwing (catalog fetches feeding filter/selector UI): report the swallowed
+// failure so it's never silent. Logs the typed EFError with its function name,
+// machine code, and parsed body — enough to diagnose from the console without
+// crashing the form the catalog feeds.
+export function logSwallowedEFError(err: unknown): void {
+  if (err instanceof EFError) {
+    console.error(`[${err.fn}] catalog fetch failed (degrading to empty): ${err.message}`, {
+      code: err.code,
+      body: err.body,
+    });
+  } else {
+    console.error("catalog fetch failed (degrading to empty):", err);
+  }
+}
+
 export async function invokeEF<T>(
   client: SupabaseClient,
   fn: string,

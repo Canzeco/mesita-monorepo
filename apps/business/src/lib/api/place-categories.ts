@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF } from "./_invoke";
+import { invokeEF, logSwallowedEFError } from "./_invoke";
 
 export type PlaceCategoryOption = {
   slug: string;
@@ -12,6 +12,10 @@ type ListPlaceCategoriesResult = {
   categories: PlaceCategoryOption[];
 };
 
+// Fetches the category catalog. Graceful posture (MESITA-28, shared with
+// apiListPlaceTags): degrades to an empty array on any error so a transient
+// EF/network failure leaves the selector empty rather than crashing the place
+// form — but the failure is always logged, never silent.
 export async function apiListPlaceCategories(
   client: SupabaseClient,
 ): Promise<PlaceCategoryOption[]> {
@@ -22,7 +26,8 @@ export async function apiListPlaceCategories(
       {},
     );
     return data.categories ?? [];
-  } catch {
+  } catch (err) {
+    logSwallowedEFError(err);
     return [];
   }
 }

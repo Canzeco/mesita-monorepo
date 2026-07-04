@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF } from "./_invoke";
+import { invokeEF, logSwallowedEFError } from "./_invoke";
 
 // Controlled tag vocabulary served by the `business-list-tags` Edge Function.
 // Clients never read the catalog table directly — every read goes through an
@@ -27,10 +27,10 @@ type ListPlaceTagsResult = {
   tags: PlaceTagOption[];
 };
 
-// Fetches the full tag catalog. Degrades to empty arrays on any error so a
+// Fetches the full tag catalog. Graceful posture (MESITA-28, shared with
+// apiListPlaceCategories): degrades to empty arrays on any error so a
 // transient EF/network failure leaves the picker empty rather than crashing
-// the place form (mirrors apiListPlaceCategories' graceful posture — though
-// here the helper itself swallows the error instead of the caller).
+// the place form — but the failure is always logged, never silent.
 export async function apiListPlaceTags(
   client: SupabaseClient,
 ): Promise<ListPlaceTagsResult> {
@@ -44,7 +44,8 @@ export async function apiListPlaceTags(
       facets: data.facets ?? [],
       tags: data.tags ?? [],
     };
-  } catch {
+  } catch (err) {
+    logSwallowedEFError(err);
     return { facets: [], tags: [] };
   }
 }
