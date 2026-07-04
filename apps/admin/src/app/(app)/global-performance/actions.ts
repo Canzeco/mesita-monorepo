@@ -66,7 +66,7 @@ export async function listNotifications(
     category,
     limit: opts.limit ?? DEFAULT_LIMIT,
     ...(opts.types && opts.types.length > 0 ? { types: opts.types } : {}),
-    ...(opts.projectId ? { projectId: opts.projectId } : {}),
+    ...(opts.projectId ? { placeId: opts.projectId } : {}),
     ...(opts.q ? { q: opts.q } : {}),
   });
   if (!r.ok) return { ok: false, error: r.error };

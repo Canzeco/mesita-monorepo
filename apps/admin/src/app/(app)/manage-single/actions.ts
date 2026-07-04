@@ -96,7 +96,7 @@ export type AdminPlace = {
 export async function getPlace(projectId: string): Promise<Result<AdminPlace>> {
   const r = await efInvoke<{ active: { place: AdminPlace } | null }>(
     "business-get-overview",
-    { activeUnitId: projectId, ticketsLimit: 0 },
+    { placeId: projectId, ticketsLimit: 0 },
   );
   if (!r.ok) return { ok: false, error: r.error };
   const place = r.data.active?.place ?? null;
@@ -146,7 +146,7 @@ export type TeamSnapshot = {
 };
 
 export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>> {
-  const r = await efInvoke<TeamSnapshot>("business-list-team", { projectId });
+  const r = await efInvoke<TeamSnapshot>("business-list-team", { placeId: projectId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -156,7 +156,11 @@ export async function inviteEditor(
   email: string,
   role: string,
 ): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-invite-member", { projectId, email, role });
+  const r = await efInvoke<unknown>("business-invite-member", {
+    placeId: projectId,
+    email,
+    role,
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -203,7 +207,7 @@ export async function listTickets(
 ): Promise<Result<AdminTicket[]>> {
   const r = await efInvoke<{ tickets: AdminTicket[] } | AdminTicket[]>(
     "business-list-tickets",
-    { projectId, limit },
+    { placeId: projectId, limit },
   );
   if (!r.ok) return { ok: false, error: r.error };
   const tickets = Array.isArray(r.data)
