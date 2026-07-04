@@ -3,7 +3,7 @@ import { Calculator, Settings2, Sparkles } from "lucide-react";
 
 export const ADEA_PARENT = {
   href: "/adea-config",
-  label: "ADEA Config",
+  label: "Enricher",
   Icon: Sparkles,
 } as const;
 
