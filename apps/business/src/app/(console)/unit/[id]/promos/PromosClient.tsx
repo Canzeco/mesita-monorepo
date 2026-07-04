@@ -163,7 +163,7 @@ const TIER_LABEL: Record<Tier, string> = {
 // ─── Subscription icons + accents ─────────────────────────────────────────
 
 // Tier icon + accent — paid discount tiers get the gold percent badge.
-// Pro vs Ultra is communicated through price/visibility on the card, not
+// Promote vs Ultra is communicated through price/visibility on the card, not
 // a separate icon.
 const SUB_VISUAL: Record<
   SubscriptionId,
