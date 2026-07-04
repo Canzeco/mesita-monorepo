@@ -23,6 +23,7 @@ import {
   fetchPayTicketList,
   type PayTicketMeta,
 } from "@/lib/api/notifications";
+import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
 
 type TicketBundle = {
   ticketId: string;
@@ -118,25 +119,9 @@ export function PayTickets({ userId }: { userId: string }) {
 
   useEffect(() => {
     void loadTickets();
-    const channel = supabase
-      .channel(`pay-tickets:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "consumer_pay_notifications",
-          filter: `consumer_id=eq.${userId}`,
-        },
-        () => {
-          void loadTickets();
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, userId, loadTickets]);
+  }, [loadTickets]);
+
+  usePayNotificationPoll(loadTickets, Boolean(userId));
 
   const bundles = useMemo(() => {
     const map = new Map<string, TicketBundle>();

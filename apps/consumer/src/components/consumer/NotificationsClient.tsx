@@ -9,6 +9,7 @@ import {
   fetchConsumerNotifications,
   type ConsumerNotification,
 } from "@/lib/api/notifications";
+import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
 import { formatPayMx } from "@/lib/api/pay";
 import { errMsg } from "@/lib/utils";
 import { payTabHref } from "@/lib/pay-route";
@@ -118,25 +119,9 @@ export function NotificationsClient({
 
   useEffect(() => {
     void load();
-    const channel = supabase
-      .channel(`notifications-page:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "consumer_pay_notifications",
-          filter: `consumer_id=eq.${userId}`,
-        },
-        () => {
-          void load();
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, userId, load]);
+  }, [load]);
+
+  usePayNotificationPoll(load, Boolean(userId));
 
   const myCount = rows.length + MY_ACTIVITY.length;
   const globalCount = GLOBAL_ACTIVITY.length;
