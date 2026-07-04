@@ -50,7 +50,7 @@ export function TextField({
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange?: (v: string) => void;
   placeholder?: string;
   type?: string;
   disabled?: boolean;
@@ -65,7 +65,8 @@ export function TextField({
         placeholder={placeholder}
         disabled={disabled}
         maxLength={maxLength}
-        onChange={(e) => onChange(e.target.value)}
+        readOnly={!onChange}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         className="border-border bg-background focus:border-foreground h-9 rounded-lg border px-3 text-sm outline-none disabled:opacity-50"
       />
     </label>
