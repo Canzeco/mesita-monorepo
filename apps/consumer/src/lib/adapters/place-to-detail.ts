@@ -1,0 +1,421 @@
+// Maps a public.places row (as returned by consumer-get-place, snake_case +
+// JSONB) into the rich PlaceDetail shape the detail modal renders. Every
+// field is null-safe: enrichment leaves many columns empty, and the UI is
+// built to tolerate empties (no reviews → no reviews section, etc.).
+//
+// Derived / not-stored fields (distance_km, open_now, price_range) get
+// sensible neutral defaults — distance is geolocation-dependent and computed
+// client-side later. The reward matrix carries only the raw per-tier rates;
+// the active tier is resolved at render time from the live membership context,
+// so this adapter never bakes in a current_tier.
+
+import type { PlaceDetail } from "@/lib/mock/place";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
+import { relativeLabel } from "@/lib/utils";
+import {
+  buildPromoMatrixFromRow,
+  hasExplicitTierRates,
+} from "@/lib/promo-rates";
+
+// Loose row type — the EF returns the full place projection; we read what we
+// need defensively.
+type Row = Record<string, unknown>;
+
+// Resolved tag as returned by consumer-get-place's `tags` array: only the
+// place's selected tags, already ordered by sort_order. We render label_es
+// (Spanish-first); facet drives the per-facet chip tint in the modal.
+export type ResolvedTag = {
+  slug: string;
+  label_es: string;
+  label_en: string;
+  facet: string;
+  section: string;
+  sort_order: number;
+};
+
+function str(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v : undefined;
+}
+function num(v: unknown): number | undefined {
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+function arr<T = unknown>(v: unknown): T[] {
+  return Array.isArray(v) ? (v as T[]) : [];
+}
+function obj(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : {};
+}
+
+// Best-effort neighborhood (colonia) pulled from a Mexican-style formatted
+// address — "Street, Colonia, NNNNN City, State" — by grabbing the segment
+// immediately before the 5-digit postal code. Any candidate containing a
+// digit is rejected, which filters out the street/building lines that
+// sometimes sit there ("Av Lázaro Cárdenas 2400-Piso 2"). US-style
+// addresses carry no colonia and yield undefined so callers fall back to
+// city. Heuristic by design — a clean value or nothing, never garbage.
+// Shared so the card (enrich-overview) and the detail page derive the
+// same neighborhood.
+export function neighborhoodFromAddress(
+  address: string | undefined,
+): string | undefined {
+  if (!address) return undefined;
+  const match = address.match(/,\s*([^,]+?),\s*\d{5}\s/);
+  const candidate = match?.[1]?.trim();
+  if (!candidate || /\d/.test(candidate)) return undefined;
+  return candidate;
+}
+
+const DAY_LABELS: Record<string, string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
+const DAY_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+
+// Week keyed Sunday-first to match JS getDay() and let us reach "yesterday"
+// for overnight ranges that started the day before.
+const WEEK_KEYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+function parseMinutes(t: unknown): number | null {
+  if (typeof t !== "string") return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+function currencyPrefix(code: string): string {
+  if (code === "MXN") return "MX$";
+  if (code === "USD") return "$";
+  if (code === "EUR") return "€";
+  return `${code} `;
+}
+
+function fallbackPriceRange(
+  priceLevel: 1 | 2 | 3 | 4,
+  currency: string,
+): string {
+  const prefix = currencyPrefix(currency);
+  const ranges: Record<1 | 2 | 3 | 4, [number, number]> = {
+    1: [100, 200],
+    2: [200, 300],
+    3: [300, 500],
+    4: [500, 800],
+  };
+  const [min, max] = ranges[priceLevel];
+  return `${prefix}${min}-${max}`;
+}
+
+function derivePriceRange(
+  row: Row,
+  priceLevel: 1 | 2 | 3 | 4,
+  currency: string,
+): string {
+  const raw = str(row.price_range);
+  // Keep explicit numeric ranges from the backend when present.
+  if (raw && /\d/.test(raw)) return raw;
+  return fallbackPriceRange(priceLevel, currency);
+}
+
+// Derives live open/closed state from the weekly `hours` jsonb in the place's
+// IANA timezone. Handles split shifts and overnight ranges (close <= open ⇒
+// closes the next day). Falls back to closed/empty when hours or tz are
+// missing/unparseable — never throws.
+//
+// Exported so the deck/catalog card deriver (lib/mock/enrich-overview.ts)
+// computes open/closed exactly the same way as the detail modal — one
+// implementation, card + detail always agree.
+export function computeOpenState(
+  hours: unknown,
+  tz: string | undefined,
+): { open_now: boolean; opens_at: string; closes_at: string } {
+  const fallback = { open_now: false, opens_at: "", closes_at: "" };
+  const h = obj(hours);
+  if (Object.keys(h).length === 0) return fallback;
+  let dayIdx: number;
+  let nowMin: number;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz || "UTC",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date());
+    const wd = parts.find((p) => p.type === "weekday")?.value ?? "";
+    const hr = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+    const mn = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+    const wdMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    dayIdx = wdMap[wd] ?? 0;
+    nowMin = hr * 60 + mn;
+  } catch {
+    return fallback;
+  }
+
+  const todayKey = WEEK_KEYS[dayIdx];
+  const yKey = WEEK_KEYS[(dayIdx + 6) % 7];
+
+  // Yesterday's overnight range still in progress this morning.
+  for (const r of arr<{ open?: string; close?: string }>(h[yKey])) {
+    const o = parseMinutes(r.open);
+    const c = parseMinutes(r.close);
+    if (o == null || c == null) continue;
+    if (c <= o && nowMin < c) {
+      return { open_now: true, opens_at: "", closes_at: r.close ?? "" };
+    }
+  }
+
+  let nextOpen: { min: number; at: string } | null = null;
+  for (const r of arr<{ open?: string; close?: string }>(h[todayKey])) {
+    const o = parseMinutes(r.open);
+    const c = parseMinutes(r.close);
+    if (o == null || c == null) continue;
+    const within = c > o ? nowMin >= o && nowMin < c : nowMin >= o; // overnight
+    if (within) {
+      return { open_now: true, opens_at: "", closes_at: r.close ?? "" };
+    }
+    if (o > nowMin && (!nextOpen || o < nextOpen.min)) {
+      nextOpen = { min: o, at: r.open ?? "" };
+    }
+  }
+  if (nextOpen)
+    return { open_now: false, opens_at: nextOpen.at, closes_at: "" };
+
+  // Closed today already — first opening of the next day with any hours.
+  for (let i = 1; i <= 7; i += 1) {
+    const k = WEEK_KEYS[(dayIdx + i) % 7];
+    const ranges = arr<{ open?: string }>(h[k]);
+    if (ranges.length > 0 && ranges[0].open) {
+      return { open_now: false, opens_at: ranges[0].open, closes_at: "" };
+    }
+  }
+  return fallback;
+}
+
+function hoursTable(hours: unknown): PlaceDetail["hours_table"] {
+  const h = obj(hours);
+  const out: PlaceDetail["hours_table"] = [];
+  for (const day of DAY_ORDER) {
+    const ranges = arr<{ open?: string; close?: string }>(h[day]);
+    if (ranges.length === 0) {
+      out.push({ day: DAY_LABELS[day], range: "Closed" });
+      continue;
+    }
+    const label = ranges
+      .map((r) => `${r.open ?? ""}–${r.close ?? ""}`)
+      .join(", ");
+    out.push({ day: DAY_LABELS[day], range: label });
+  }
+  return out;
+}
+
+export function placeRowToDetail(
+  row: Row,
+  tags?: ResolvedTag[],
+): PlaceDetail {
+  const categoryName =
+    resolvePlaceCategoryName({
+      categoryLabel: str(row.category_label),
+      category: str(row.category),
+    }) ?? "Place";
+  const currency = str(row.currency) ?? "MXN";
+  const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
+  const listingType = row.listing_type === "partner" ? "partner" : "web";
+  const details = obj(row.details);
+
+  const activePremiumRate = num(row.premium_rate) ?? num(row.free_rate) ?? 0;
+  const openState = computeOpenState(row.hours, str(row.timezone));
+
+  return {
+    id: str(row.id) ?? str(row.slug) ?? "",
+    name: str(row.name) ?? "Place",
+    category: categoryName,
+    vibe: str(row.vibe) ?? "",
+    price_level: priceLevel,
+    price_range: derivePriceRange(row, priceLevel, currency),
+    currency,
+    distance_km: 0,
+    open_now: openState.open_now,
+    opens_at: openState.opens_at,
+    closes_at: openState.closes_at || (str(row.closes_at) ?? ""),
+    timezone: str(row.timezone) ?? "",
+    city: str(row.city) ?? "",
+    address: str(row.address) ?? "",
+    zone:
+      str(row.zone) ??
+      neighborhoodFromAddress(str(row.address)) ??
+      str(row.city) ??
+      "",
+    listing_type: listingType,
+    // Real freshness from the enrichment timestamp (falls back to the
+    // creation time, then to vague copy). Same formatter the card uses so
+    // "Updated 3 days ago" reads identically on the card and the detail.
+    last_updated_label:
+      relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently",
+
+    photos: arr<string>(row.photos),
+
+    // Curated taxonomy chips — Spanish-first (label_es), ordered by the EF's
+    // sort_order. Null-safe: missing/non-array tags collapse to [].
+    tags: arr<ResolvedTag>(tags).map((t) => ({
+      slug: t.slug,
+      label: t.label_es,
+      facet: t.facet,
+    })),
+
+    mesita_reviews: {
+      food: num(row.mesita_stars_food) ?? 0,
+      service: num(row.mesita_stars_service) ?? 0,
+      ambiance: num(row.mesita_stars_ambience) ?? 0,
+      value: num(row.mesita_stars_value) ?? 0,
+      overall: num(row.mesita_stars_overall) ?? 0,
+      total: num(row.mesita_review_count) ?? 0,
+    },
+    google: {
+      rating: num(row.google_stars_overall) ?? 0,
+      count: num(row.google_review_count) ?? 0,
+    },
+    facebook: {
+      rating: num(row.facebook_rating) ?? 0,
+      followers: num(row.facebook_followers) ?? 0,
+    },
+    instagram: { followers: num(row.instagram_followers_count) ?? 0 },
+
+    // Enricher (atlas-enrich-place) stores each review as
+    // { author, rating, text, published } — map those onto the detail shape
+    // (quote/date) and keep the legacy keys as fallbacks.
+    google_reviews: arr<Record<string, unknown>>(row.google_reviews).map(
+      (r) => ({
+        author: str(r.author) ?? "Google reviewer",
+        rating: num(r.rating) ?? 0,
+        quote: str(r.text) ?? str(r.quote) ?? "",
+        date: str(r.published) ?? str(r.date) ?? "",
+        photo_url: str(r.photo_url),
+      }),
+    ),
+
+    // No Mesita-native traffic until guests visit; the UI nulls this cleanly.
+    mesita_visitors: [],
+
+    products: {
+      menu: (() => {
+        const menuItems = arr<Record<string, unknown>>(obj(row.products).menu);
+        const legacyMenus = arr<Record<string, unknown>>(row.menus);
+        const source = menuItems.length > 0 ? menuItems : legacyMenus;
+        return source.map((m) => ({
+          name: str(m.name) ?? "Product catalog",
+          pages: arr(m.items).length,
+          updated_label: "",
+        }));
+      })(),
+    },
+
+    promo: {
+      badge_label:
+        listingType === "partner" ? "Verified partner" : "Web listing",
+      reward_kind: "discount",
+      reward_value: activePremiumRate,
+    },
+
+    promo_matrix: buildPromoMatrixFromRow(row, listingType),
+    promo_configured: hasExplicitTierRates(row),
+    // Ticket cap — the promo applies to the first `monthly_promo_cap` of the
+    // bill (a peso amount in the place's currency), then full price. 0 = no
+    // cap. Reads the same column the business sets on the Promos page.
+    reward_cap_mxn: num(row.monthly_promo_cap) ?? 0,
+    requires_story: row.requires_story === true,
+
+    long_description:
+      str(row.description) ?? str(row.story) ?? str(row.pitch) ?? "",
+
+    hours_table: hoursTable(row.hours),
+    popular_times: arr<Record<string, unknown>>(row.popular_times).map((p) => ({
+      day: str(p.day) ?? "",
+      range: str(p.range) ?? "",
+      bars: arr<number>(p.bars),
+    })),
+    popular_times_featured:
+      str(arr<Record<string, unknown>>(row.popular_times)[0]?.day) ?? "",
+
+    details: {
+      category_full: categoryName,
+      zone: str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? "",
+      dining_style: str(details.dining_style) ?? "",
+      dress_code: str(details.dress_code) ?? "",
+      service_options: arr<string>(details.service_options),
+      reservations: str(details.reservations) ?? "",
+      payment_methods: arr<string>(details.payment_methods),
+      parking: str(details.parking) ?? "",
+      amenities: arr<string>(details.amenities),
+      accessibility: arr<string>(details.accessibility),
+      dietary_options: arr<string>(details.dietary_options),
+      good_for: arr<string>(details.good_for),
+      languages: arr<string>(details.languages),
+      kid_friendly:
+        typeof details.kid_friendly === "boolean"
+          ? details.kid_friendly
+          : undefined,
+      pet_friendly:
+        typeof details.pet_friendly === "boolean"
+          ? details.pet_friendly
+          : undefined,
+      established_year: num(row.established_year),
+      executive_chef: str(row.executive_chef),
+      participation: listingType === "partner" ? "Partner" : "Web listing",
+      mechanic: "Discount",
+    },
+
+    channels: {
+      website_url: str(row.website_url),
+      whatsapp_url: str(row.whatsapp_url),
+      instagram_url: str(row.instagram_url),
+      tiktok_url: str(row.tiktok_url),
+      facebook_url: str(row.facebook_url),
+      x_url: str(row.x_url),
+      threads_url: str(row.threads_url),
+      reddit_url: str(row.reddit_url),
+    },
+    reservations: {
+      opentable_url: str(row.opentable_url),
+      resy_url: str(row.resy_url),
+      uber_eats_url: str(row.uber_eats_url),
+      didi_food_url: str(row.didi_food_url),
+    },
+    reviews_maps: {
+      tripadvisor_url: str(row.tripadvisor_url),
+      google_maps_url: str(row.google_maps_url),
+    },
+
+    phone: str(row.phone),
+    email: str(row.email),
+  };
+}

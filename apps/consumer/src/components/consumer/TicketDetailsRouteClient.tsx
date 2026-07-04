@@ -138,7 +138,7 @@ export function TicketDetailsRouteClient({
     null;
   const placeName = payload.place_name ?? "Partner place";
   const visitDateLabel = formatTicketVisitDate(visitDateIso);
-  const placeHref = payload.place_slug
+  const placeLink = payload.place_slug
     ? placeHref(payload.place_slug)
     : payload.project_id
       ? placeHref(payload.project_id)
@@ -217,7 +217,7 @@ export function TicketDetailsRouteClient({
             capMxn={capMxn}
             placeName={placeName}
             visitDateLabel={visitDateLabel}
-            placeHref={placeHref}
+            placeHref={placeLink}
             rewardLabel={rewardLabel}
             ticketMeta={ticketMeta}
             review={reviewNotification}
