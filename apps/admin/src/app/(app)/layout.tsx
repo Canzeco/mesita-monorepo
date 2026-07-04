@@ -10,7 +10,7 @@ import { authSignOut } from "@/app/auth/actions";
 //
 //   1. Signed-in via Supabase (Google OAuth). The middleware bounces
 //      anonymous users to /.
-//   2. The signed-in email is in public.super_admins. admin-get-identity
+//   2. The signed-in email is in public.super_admins. auth-get-identity
 //      does the lookup.
 //      Non-allowlisted operators get a polite "not authorised" empty state —
 //      the EFs themselves also re-check, so even if someone bypassed this
@@ -29,7 +29,7 @@ export default async function AppLayout({
   if (!user) redirect("/");
 
   const whoami = await efInvoke<{ email: string | null; isSuperAdmin: boolean }>(
-    "admin-get-identity",
+    "auth-get-identity",
     {},
   );
 
