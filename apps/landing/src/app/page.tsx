@@ -394,7 +394,7 @@ function FAQ() {
     },
     {
       q: "How does a consumer reach Silver, Gold, or Diamond?",
-      a: "Two paths. The free path is Instagram followers — 1K / 5K / 20K maps to Silver / Gold / Diamond. The paid path is a Mesita subscription that grants the tier upfront: $200 MXN / month for Silver, $500 for Gold, $1,000 for Diamond. There's also a manual appeal path for models, chefs, press, founders, and other local elites.",
+      a: "Two paths. The free path is Instagram followers — 1K / 5K / 20K maps to Silver / Gold / Diamond. The paid path is a Mesita subscription that grants the tier upfront: $100 MXN / month. There's also a manual appeal path for models, chefs, press, founders, and other local elites.",
     },
     {
       q: "What's the Instagram story step about?",
