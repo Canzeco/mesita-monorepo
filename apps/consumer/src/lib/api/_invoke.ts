@@ -19,21 +19,30 @@ type EFResult<T> =
   | { ok: false; error: string; code?: string | null };
 
 // Thrown by invokeEF for every failure (transport non-2xx OR `ok: false`).
-// Carries the EF's machine-readable `code` and the full parsed error body so
-// call sites can branch on a code (e.g. "place_already_exists") without
-// re-implementing the raw-invoke unwrap themselves.
+// Carries the EF's machine-readable `code`, the HTTP `status` (when the
+// failure came with a Response), and the full parsed error body so call sites
+// can branch (e.g. status === 404, code === "place_already_exists") without
+// re-implementing the raw-invoke unwrap themselves. `status` is null on the
+// `ok: false` arm (a 2xx body, no Response to read a status from).
 export class EFError extends Error {
   readonly code: string | null;
+  readonly status: number | null;
   readonly fn: string;
   readonly body: Record<string, unknown> | null;
 
   constructor(
     message: string,
-    opts: { fn: string; code?: string | null; body?: Record<string, unknown> | null },
+    opts: {
+      fn: string;
+      code?: string | null;
+      status?: number | null;
+      body?: Record<string, unknown> | null;
+    },
   ) {
     super(message);
     this.name = "EFError";
     this.code = opts.code ?? null;
+    this.status = opts.status ?? null;
     this.fn = opts.fn;
     this.body = opts.body ?? null;
   }
@@ -57,7 +66,12 @@ export async function invokeEF<T>(
     const message = pickErrorMessage(parsed) ?? error.message;
     const code =
       parsed && typeof parsed.code === "string" ? parsed.code : null;
-    throw new EFError(message, { fn, code, body: parsed });
+    throw new EFError(message, {
+      fn,
+      code,
+      status: readInvokeStatus(error),
+      body: parsed,
+    });
   }
   if (!data) {
     throw new EFError(fallback, { fn });
@@ -106,4 +120,12 @@ async function parseInvokeErrorBody(
 function pickErrorMessage(body: Record<string, unknown> | null): string | null {
   const msg = body?.error;
   return typeof msg === "string" && msg.length > 0 ? msg : null;
+}
+
+// The FunctionsHttpError's Response (on `.context`) carries the HTTP status —
+// e.g. 404 for a not-found, 401 for an expired session. Returns null when
+// there's no readable Response (network failure before a response arrived).
+function readInvokeStatus(error: unknown): number | null {
+  const res = (error as { context?: Response }).context;
+  return res && typeof res.status === "number" ? res.status : null;
 }
