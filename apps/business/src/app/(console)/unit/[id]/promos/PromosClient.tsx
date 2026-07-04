@@ -18,6 +18,7 @@ import {
 import { promosPath } from "@/lib/business-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdatePlace, type MyPlace } from "@/lib/api/places";
+import { apiChangeSubscription } from "@/lib/api/subscription";
 import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
@@ -25,7 +26,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
   SUBSCRIPTIONS,
   subscriptionForPlace,
-  dbStateForSubscription,
+  planForSubscription,
   visibilityForPlan,
   type SubscriptionId,
   type PlanVisibility,
@@ -33,7 +34,7 @@ import {
 
 // Promos — minimal layout. Three blocks stacked top to bottom:
 //   1. Visibility    — slim 3-step rail (Low → Max), no prose
-//   2. Subscription  — Free / Pro / Ultra, all discount-only
+//   2. Subscription  — Free / Promote / Ultra, all discount-only
 //   3. Promos        — Welcome row + 4 tier rows; rate + audience count
 //
 // "OFF" is the neutral label for the rate scale, applied across every tier.
@@ -191,20 +192,44 @@ export function PromosClient({
 
   const [pending, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const currentSub: SubscriptionId = subscriptionForPlace(place.plan);
   const [pendingSubId, setPendingSubId] = useState<SubscriptionId | null>(null);
   const igTagAccount =
     deriveInstagramHandle(place.instagram_url) || "Not found on Place page";
 
+  // Paid plans are Stripe subscriptions: the EF returns a Checkout URL to
+  // redirect into (real mode) or grants instantly (mock mode). Downgrades on
+  // a live paid subscription are scheduled for period end.
   const selectSubscription = (target: SubscriptionId) => {
     if (target === currentSub || pending) return;
     setError(null);
+    setNotice(null);
     setPendingSubId(target);
     startSubmit(async () => {
       try {
-        const dbState = dbStateForSubscription(target);
-        await apiUpdatePlace(supabase, { id: place.id, ...dbState });
+        const origin = window.location.origin;
+        const returnPath = `${origin}${promosPath(place.id, "plan")}`;
+        const result = await apiChangeSubscription(supabase, {
+          projectId: place.id,
+          plan: planForSubscription(target),
+          successUrl: `${returnPath}?subscription=success`,
+          cancelUrl: `${returnPath}?subscription=cancelled`,
+        });
+        if (result.checkout_url && !result.mock) {
+          // Off to Stripe Checkout; the webhook flips the plan on payment.
+          window.location.href = result.checkout_url;
+          return;
+        }
+        if (result.scheduled_downgrade) {
+          const until = result.current_period_end
+            ? new Date(result.current_period_end).toLocaleDateString()
+            : "the end of the billing period";
+          setNotice(
+            `Subscription cancelled — the current plan stays until ${until}, then the place moves to Free.`,
+          );
+        }
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save the subscription."));
@@ -258,10 +283,15 @@ export function PromosClient({
               })}
             </div>
             {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
+            {notice && (
+              <p className="text-muted-foreground rounded-lg bg-amber-50 p-3 text-xs">
+                {notice}
+              </p>
+            )}
             {isFree && (
               <p className="text-muted-foreground text-xs">
                 On <span className="text-foreground font-semibold">Free</span>{" "}
-                rates are locked to 0% — pick Pro or Ultra to set them.
+                rates are locked to 0% — pick Promote or Ultra to set them.
               </p>
             )}
           </Section>

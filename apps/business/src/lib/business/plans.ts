@@ -1,16 +1,19 @@
-import type { FiscalType, PlacePlan } from "@/lib/api/places";
+import type { PlacePlan } from "@/lib/api/places";
 
 // Subscription catalog used by Promos (picker + label lookup).
 //
 // Three subscriptions, ordered ascending so the business reads the picker
 // left-to-right as a visibility ladder:
-//   - "Free without promos" (plan=free)                            · Low    · $0
-//   - "Pro"                  (plan=informal_pro,   fiscal=informal) · Medium · $200/yr
-//   - "Ultra"                (plan=informal_ultra, fiscal=informal) · Max    · $5,000/mo
+//   - "Free without promos" (plan=free)  · Low    · $0
+//   - "Promote"             (plan=pro)   · Medium · $100/mo
+//   - "Ultra"               (plan=ultra) · Max    · $5,000/mo
+//
+// Paid plans are monthly Stripe subscriptions: picking a card goes through
+// business-change-subscription (Stripe Checkout), never a direct plan write.
 //
 // Mesita is discounts-only: every Verified place runs the same instant
 // discount applied directly at the bill, with no money flowing through
-// Mesita. Pro vs Ultra only changes price and visibility tier; the promo
+// Mesita. Promote vs Ultra only changes price and visibility tier; the promo
 // workflow is identical. Cashback / Mesita-in-the-loop "reward" tiers are
 // deliberately deferred (see Notion → Main → Future Expansions) and are not
 // offered in the console.
@@ -45,9 +48,9 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
   },
   {
     id: "pro_discount",
-    label: "Pro",
-    price: "MX$200",
-    cadence: "/ year",
+    label: "Promote",
+    price: "MX$100",
+    cadence: "/ month",
     tagline: "Consumer shows the coupon, you discount the bill.",
     visibility: "Medium",
     setup: "1 min",
@@ -64,30 +67,21 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
   },
 ];
 
-// Legacy formal_* (reward/cashback) plans are no longer offered, but the DB
-// enum still allows them, so keep these mappings total. They fold onto their
-// informal discount counterpart for display.
 export function visibilityForPlan(p: PlacePlan): PlanVisibility {
   if (p === "free") return "Low";
-  if (p === "informal_pro" || p === "formal_pro") return "Medium";
-  return "Max"; // informal_ultra / formal_ultra
+  if (p === "pro") return "Medium";
+  return "Max"; // ultra
 }
 
 export function subscriptionForPlace(p: PlacePlan): SubscriptionId {
   if (p === "free") return "free";
-  if (p === "informal_pro" || p === "formal_pro") return "pro_discount";
-  return "ultra_discount"; // informal_ultra / formal_ultra
+  if (p === "pro") return "pro_discount";
+  return "ultra_discount"; // ultra
 }
 
-// Atomic write payload for the picker — one card click sets both plan
-// and fiscal_type in a single apiUpdatePlace call. Discounts run on the
-// informal (off-rail) fiscal type.
-export function dbStateForSubscription(sub: SubscriptionId): {
-  plan: PlacePlan;
-  fiscal_type?: FiscalType;
-} {
-  if (sub === "free") return { plan: "free" };
-  if (sub === "pro_discount")
-    return { plan: "informal_pro", fiscal_type: "informal" };
-  return { plan: "informal_ultra", fiscal_type: "informal" }; // ultra_discount
+// Plan key the billing EF expects for a picker card.
+export function planForSubscription(sub: SubscriptionId): PlacePlan {
+  if (sub === "free") return "free";
+  if (sub === "pro_discount") return "pro";
+  return "ultra"; // ultra_discount
 }

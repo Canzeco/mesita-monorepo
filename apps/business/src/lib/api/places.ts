@@ -19,16 +19,14 @@ type PlaceStatus =
   | "pending_verification";
 
 export type FiscalType = "formal" | "informal";
-// Five-plan place catalog: Free (default) + Pro and Ultra at each fiscal
-// type. Every Verified place runs an instant discount applied at the bill;
-// Pro and Ultra differ only in price and visibility. See lib/business/plans.ts
-// for the picker catalog and visibility mappings.
-export type PlacePlan =
-  | "free"
-  | "formal_pro"
-  | "formal_ultra"
-  | "informal_pro"
-  | "informal_ultra";
+// Three-plan place catalog (public.membership enum): Free (default) +
+// Promote ('pro', $100 MXN/mo) + Ultra ('ultra', $5,000 MXN/mo). Every
+// Verified place runs an instant discount applied at the bill; Promote and
+// Ultra differ only in price and visibility. Paid plans are monthly Stripe
+// subscriptions managed through business-change-subscription — see
+// lib/business/plans.ts for the picker catalog and lib/api/subscription.ts
+// for the billing call.
+export type PlacePlan = "free" | "pro" | "ultra";
 
 // Weekly opening hours — JSONB column on places. Lowercase English day keys,
 // each holding an array of {open,close} ranges in 24h HH:MM. Closed days omit
@@ -219,7 +217,8 @@ export type UpdatePlaceInput = {
   currency?: string | null;
   status?: "active" | "paused" | "archived";
   fiscal_type?: FiscalType;
-  plan?: PlacePlan;
+  // NOTE: no `plan` here — plan changes are billing and go through
+  // apiChangeSubscription (business-change-subscription EF).
   address?: string | null;
   closes_at?: string | null;
   hours?: PlaceHours | null;
