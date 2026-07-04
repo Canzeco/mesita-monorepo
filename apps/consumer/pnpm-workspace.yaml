@@ -7,4 +7,5 @@ onlyBuiltDependencies:
   - unrs-resolver
 overrides:
   '@babel/core': ^7.29.6
+  js-yaml: ^4.2.0
   postcss: 8.5.14
