@@ -41,7 +41,7 @@ export type TicketProgressInput = {
   reviewCompleted: boolean;
 };
 
-const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "waiter_verified"]);
+const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "staff_verified"]);
 
 const STORY_KINDS = new Set(["s_dp_sf", "r_s_dp_sf"]);
 
