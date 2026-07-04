@@ -26,7 +26,7 @@ export function AdeaLayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <PageHeader title="ADEA Config" description={description} />
+      <PageHeader title="Enricher Config" description={description} />
       <AdeaTabNav />
       <div className="mt-6 sm:mt-8">{children}</div>
     </>

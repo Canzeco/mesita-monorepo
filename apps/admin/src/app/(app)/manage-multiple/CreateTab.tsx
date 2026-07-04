@@ -118,7 +118,7 @@ export function CreateTab() {
           href="/adea-config/configuration"
           className="text-foreground font-medium underline underline-offset-2"
         >
-          ADEA Config
+          Enricher Config
         </a>
         .
       </p>
