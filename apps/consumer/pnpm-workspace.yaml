@@ -5,3 +5,6 @@ allowBuilds:
 onlyBuiltDependencies:
   - sharp
   - unrs-resolver
+overrides:
+  '@babel/core': ^7.29.6
+  postcss: 8.5.14
