@@ -95,8 +95,8 @@ export const TIERS: {
   {
     id: "premium",
     label: "Premium",
-    req: "1K+ IG followers · invitation · or $200 MXN / mo",
-    priceMxn: 200,
+    req: "1K+ IG followers · invitation · or $100 MXN / mo",
+    priceMxn: 100,
     followerThreshold: 1_000,
     reward: "Bigger discount",
     perk: "Better recs · more reservations",

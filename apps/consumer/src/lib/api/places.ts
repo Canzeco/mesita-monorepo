@@ -18,14 +18,10 @@ import type { PlaceDetail } from "@/lib/mock/place";
 type PlaceListingType = "partner" | "web";
 type PlaceStatus = "lead" | "active" | "paused" | "archived";
 type FiscalType = "formal" | "informal";
-// Five-plan place catalog: Free (default) + Pro and Ultra at each fiscal
-// type. Every Verified Partner runs an instant discount applied at the bill.
-type PlacePlan =
-  | "free"
-  | "formal_pro"
-  | "formal_ultra"
-  | "informal_pro"
-  | "informal_ultra";
+// Three-plan place catalog (public.membership enum): Free (default) +
+// Promote ('pro') + Ultra ('ultra'). Every Verified Partner runs an instant
+// discount applied at the bill; the paid tiers differ only in visibility.
+type PlacePlan = "free" | "pro" | "ultra";
 
 export type Place = {
   id: string;

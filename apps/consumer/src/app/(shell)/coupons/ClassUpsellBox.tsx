@@ -9,7 +9,7 @@ import {
   CreditCard,
   Mail,
 } from "lucide-react";
-import { TIER_ORDER, tierProperLabel } from "@/lib/consumer-data";
+import { TIER_ORDER, TIERS, tierProperLabel } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -19,6 +19,10 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // the three doors into Premium as the concrete actions.
 //
 // Premium holders see a maxed-out variant.
+
+// Single source of truth for the Premium price — mirrors the subscribe page
+// and profile, which also read TIERS.priceMxn (never hardcode the amount).
+const PREMIUM_PRICE_MXN = TIERS.find((t) => t.id === "premium")?.priceMxn ?? 0;
 
 export function ClassUpsellBox() {
   const { tier: current } = useMembership();
@@ -86,7 +90,7 @@ export function ClassUpsellBox() {
           {
             icon: CreditCard,
             label: "Subscribe",
-            tagline: "$200 MXN / mo.",
+            tagline: `$${PREMIUM_PRICE_MXN} MXN / mo.`,
           },
           {
             icon: Mail,

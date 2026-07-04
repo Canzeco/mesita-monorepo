@@ -11,7 +11,7 @@ import { MOCK_PREMIUM_KEY } from "@/lib/membership-context";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Premium subscribe page — the paid "door" into Mesita Premium ($200 MXN/mo).
+// Premium subscribe page — the paid "door" into Mesita Premium ($100 MXN/mo).
 // The other two doors (Instagram, invitation) are surfaced here too so the
 // page reads as "here's how to get Premium", with Subscribe as the primary
 // action wired to real Stripe Checkout. The legacy four-tier subscribe routes
