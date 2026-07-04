@@ -175,7 +175,7 @@ export async function apiRecommendDeck(
 ): Promise<RecommendDeckResponse> {
   const data = await invokeEF<RecommendDeckResponse>(
     client,
-    "consumer-recommend-deck",
+    "consumer-recommend-swipe",
     input,
   );
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
@@ -187,7 +187,7 @@ export async function apiRecommendCatalog(
 ): Promise<RecommendCatalogResponse> {
   const data = await invokeEF<RecommendCatalogResponse>(
     client,
-    "consumer-recommend-catalog",
+    "consumer-recommend-map",
     input,
   );
   return {
@@ -284,7 +284,7 @@ export async function apiCreatePlaceAsConsumer(
 ): Promise<ConsumerCreatePlaceResponse> {
   return invokeEF<ConsumerCreatePlaceResponse>(
     client,
-    "business-create-unit",
+    "business-create-project",
     { placeId },
     "Couldn't add that place right now.",
   );
@@ -308,7 +308,7 @@ export async function apiCreatePlaceAsConsumerResult(
           listing_type?: PlaceListingType | null;
         } | null;
       }
-  >("business-create-unit", { body: { placeId } });
+  >("business-create-project", { body: { placeId } });
 
   if (error) {
     const body = await readInvokeErrorBody(error);

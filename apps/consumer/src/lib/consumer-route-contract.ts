@@ -5,6 +5,10 @@
 export const CONSUMER_ROUTES = {
   onboard: "/onboard",
   share: "/share",
+  // Discovery hub (Swipe / Social / Favorites modes are client state, not routes).
+  home: "/home",
+  // Map + catalog search + Ask AI concierge (panels are client state, not routes).
+  search: "/search",
   explore: {
     swipe: "/explore/swipe",
     map: "/explore/map",
@@ -43,6 +47,8 @@ export const CONSUMER_ROUTES = {
 } as const;
 
 export const CONSUMER_ROUTE_PREFIX = {
+  home: "/home",
+  search: "/search",
   explore: "/explore",
   saved: "/saved",
   pay: "/pay",
