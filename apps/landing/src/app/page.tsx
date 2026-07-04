@@ -212,7 +212,7 @@ function ForConsumers() {
   }[] = [
     {
       title: "Experience intelligence",
-      body: "The most complete catalog in your city — ratings, prices, vibes, photos, and where Bronze, Silver, Gold, and Diamond consumers are going right now. Swipe, map, catalog, or just ask the AI.",
+      body: "The most complete catalog in your city — ratings, prices, vibes, photos, and where people are going right now. Swipe, map, catalog, or just ask the AI.",
       Icon: Compass,
     },
     {
@@ -221,8 +221,8 @@ function ForConsumers() {
       Icon: CalendarCheck,
     },
     {
-      title: "Classes and rewards",
-      body: "Bronze is free for everyone. Earn Silver, Gold, or Diamond through Instagram followers or a Mesita subscription — and unlock bigger discounts at every partner, plus priority tables, private openings, and other perks that scale with your class.",
+      title: "Free and Premium",
+      body: "Mesita is free for everyone. Go Premium with a single subscription — $100 MXN / month — to unlock bigger discounts at every partner, plus priority tables, private openings, and other perks reserved for members.",
       Icon: Gift,
     },
   ];
@@ -239,9 +239,8 @@ function ForConsumers() {
             </h2>
           </div>
           <p className="text-muted-foreground max-w-sm text-sm">
-            Mesita Bronze is free forever. Silver, Gold, and Diamond grant
-            bigger discounts at every partner — earned with Instagram followers
-            or a monthly subscription.
+            Mesita is free forever. Premium grants bigger discounts at every
+            partner and members-only perks for $100 MXN / month.
           </p>
         </header>
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -301,7 +300,7 @@ function ForVenues() {
     },
     {
       title: "Win the magnetic & rich customers",
-      body: "Set discount rates per tier — Bronze, Silver, Gold, Diamond. Reward the consumers who actually fill the room and post it to thousands; pay base rates to walk-ins.",
+      body: "Set a base discount for everyone and a bigger one for Premium members — the consumers who actually fill the room and post it to thousands. Reward the visits that move the needle; pay base rates to walk-ins.",
       Icon: Sparkles,
     },
     {
@@ -311,7 +310,7 @@ function ForVenues() {
     },
     {
       title: "Easier reservations",
-      body: "Bookings come in through your existing channel — IG DM, WhatsApp, voice, OpenTable, or email. No new tools, no new tablet at the host stand. You see tier and party size before the visit.",
+      body: "Bookings come in through your existing channel — IG DM, WhatsApp, voice, OpenTable, or email. No new tools, no new tablet at the host stand. You see membership and party size before the visit.",
       Icon: CalendarCheck,
     },
     {
@@ -334,8 +333,8 @@ function ForVenues() {
           </div>
           <p className="text-muted-foreground max-w-sm text-sm">
             Compete for consumers with social presence, not for everyone
-            equally. Configure rates by tier, receive organic IG stories, and
-            measure every attributed peso.
+            equally. Set base and Premium discount rates, receive organic IG
+            stories, and measure every attributed peso.
           </p>
         </header>
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -393,12 +392,16 @@ function FAQ() {
       a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.ai and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Team dashboard.",
     },
     {
-      q: "How does a consumer reach Silver, Gold, or Diamond?",
-      a: "Two paths. The free path is Instagram followers — 1K / 5K / 20K maps to Silver / Gold / Diamond. The paid path is a Mesita subscription that grants the tier upfront: $100 MXN / month. There's also a manual appeal path for models, chefs, press, founders, and other local elites.",
+      q: "What's the difference between Free and Premium for consumers?",
+      a: "Every consumer starts Free — full discovery, AI reservations, and the base discount at every partner. Premium is a single subscription — $100 MXN / month — that unlocks bigger discounts everywhere, plus priority tables, private openings, and other members-only perks. There's also a manual appeal path to Premium for models, chefs, press, founders, and other local elites.",
+    },
+    {
+      q: "What plans do venues get?",
+      a: "Three, all discounts-only — the same instant discount applied right at the bill. Free lists your venue with AI reservations at no cost. Pro and Ultra are paid subscriptions that run the identical coupon workflow; they differ in price and visibility — Pro gets medium reach, Ultra maximum reach across swipe, map, catalog, and the AI planner. Every signed-up partner gets the Membership / Rewards / Analytics / Team dashboard. You configure your discount mechanic at business.mesita.ai in about 10 minutes.",
     },
     {
       q: "What's the Instagram story step about?",
-      a: "Consumers whose Silver / Gold / Diamond class came from follower count have to post an IG story tagging the venue to claim their reward. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. The discount is applied at the bill before verification clears — that's the only mechanical risk.",
+      a: "Consumers post an IG story tagging the venue to claim their reward. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. The discount is applied at the bill before verification clears — that's the only mechanical risk.",
     },
     {
       q: "Do I need hardware or POS integration?",
