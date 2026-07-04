@@ -19,6 +19,10 @@ import {
   type TicketBillPayload,
 } from "@/lib/api/pay";
 import { ticketPath } from "@/lib/consumer-route-contract";
+import {
+  fetchPayTicketList,
+  type PayTicketMeta,
+} from "@/lib/api/notifications";
 
 type TicketBundle = {
   ticketId: string;
@@ -27,16 +31,7 @@ type TicketBundle = {
   review?: PayNotificationRow;
 };
 
-type TicketMeta = {
-  kind?: string;
-  status?: string;
-  story_status?: string;
-  story_submitted_at?: string | null;
-  total_cents?: number | null;
-  discount_percent?: number | null;
-  capMxn?: number | null;
-  created_at?: string | null;
-};
+type TicketMeta = PayTicketMeta;
 
 function TicketPreviewCard({
   bundle,
@@ -109,64 +104,17 @@ export function PayTickets({ userId }: { userId: string }) {
   );
 
   const loadTickets = useCallback(async () => {
-    const { data, error: qErr } = await supabase
-      .from("consumer_pay_notifications")
-      .select("*")
-      .eq("consumer_id", userId)
-      .order("created_at", { ascending: false });
-    if (qErr || !data) return;
-
-    setRows(data);
-
-    const ticketIds = [...new Set(data.map((n) => n.ticket_id))];
-    if (ticketIds.length === 0) {
+    try {
+      const { notifications, ticketMetaById } = await fetchPayTicketList(
+        supabase,
+      );
+      setRows(notifications);
+      setTicketMetaById(ticketMetaById);
+    } catch {
+      setRows([]);
       setTicketMetaById(new Map());
-      return;
     }
-
-    const { data: ticketRows } = await supabase
-      .from("tickets")
-      .select(
-        "id, kind, status, story_status, story_submitted_at, discount_percent, project_id, total_cents, created_at",
-      )
-      .in("id", ticketIds);
-
-    const placeIds = [
-      ...new Set(
-        (ticketRows ?? [])
-          .map((t) => t.project_id)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
-
-    const placeCapById = new Map<string, number>();
-    if (placeIds.length > 0) {
-      const { data: placeRows } = await supabase
-        .from("places")
-        .select("id, monthly_promo_cap")
-        .in("id", placeIds);
-      for (const v of placeRows ?? []) {
-        if (v.monthly_promo_cap != null && v.monthly_promo_cap > 0) {
-          placeCapById.set(v.id, v.monthly_promo_cap);
-        }
-      }
-    }
-
-    const meta = new Map<string, TicketMeta>();
-    for (const t of ticketRows ?? []) {
-      meta.set(t.id, {
-        kind: t.kind,
-        status: t.status,
-        story_status: t.story_status,
-        story_submitted_at: t.story_submitted_at,
-        total_cents: t.total_cents,
-        discount_percent: t.discount_percent,
-        capMxn: t.project_id ? (placeCapById.get(t.project_id) ?? null) : null,
-        created_at: t.created_at,
-      });
-    }
-    setTicketMetaById(meta);
-  }, [supabase, userId]);
+  }, [supabase]);
 
   useEffect(() => {
     void loadTickets();

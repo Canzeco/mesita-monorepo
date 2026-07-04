@@ -22,6 +22,10 @@ import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
+  fetchPayTicketBundle,
+  type PayTicketMeta,
+} from "@/lib/api/notifications";
+import {
   isTicketFlowComplete,
   ticketProgressFromBundle,
 } from "@/lib/ticket-flow-steps";
@@ -41,14 +45,7 @@ export function TicketDetailsRouteClient({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ticketMeta, setTicketMeta] = useState<{
-    kind?: string;
-    status?: string;
-    story_status?: string;
-    story_submitted_at?: string | null;
-    total_cents?: number | null;
-    created_at?: string | null;
-  } | null>(null);
+  const [ticketMeta, setTicketMeta] = useState<PayTicketMeta | null>(null);
   const [placeInstagramUrl, setPlaceInstagramUrl] = useState<string | null>(
     null,
   );
@@ -63,45 +60,18 @@ export function TicketDetailsRouteClient({
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error: qErr } = await supabase
-      .from("consumer_pay_notifications")
-      .select("*")
-      .eq("consumer_id", userId)
-      .eq("ticket_id", ticketId)
-      .order("created_at", { ascending: false });
-    if (qErr) {
-      setError(errMsg(qErr, "Couldn't load ticket."));
-      setLoading(false);
-      return;
+    try {
+      const { notifications, ticketMeta, placeInstagramUrl } =
+        await fetchPayTicketBundle(supabase, ticketId);
+      setRows(notifications);
+      setTicketMeta(ticketMeta);
+      setPlaceInstagramUrl(placeInstagramUrl);
+      setError(null);
+    } catch (e) {
+      setError(errMsg(e, "Couldn't load ticket."));
     }
-    setRows(data ?? []);
-
-    const { data: ticketRow } = await supabase
-      .from("tickets")
-      .select(
-        "kind, status, story_status, story_submitted_at, total_cents, created_at",
-      )
-      .eq("id", ticketId)
-      .maybeSingle();
-    setTicketMeta(ticketRow ?? null);
-
-    const projectId =
-      (data ?? [])
-        .map((r) => payloadFromNotification(r.payload).project_id)
-        .find(Boolean) ?? null;
-    if (projectId) {
-      const { data: placeRow } = await supabase
-        .from("places")
-        .select("instagram_url")
-        .eq("id", projectId)
-        .maybeSingle();
-      setPlaceInstagramUrl(placeRow?.instagram_url ?? null);
-    } else {
-      setPlaceInstagramUrl(null);
-    }
-
     setLoading(false);
-  }, [supabase, userId, ticketId]);
+  }, [supabase, ticketId]);
 
   useEffect(() => {
     void load();
