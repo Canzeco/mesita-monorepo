@@ -13,8 +13,6 @@ type SettingsResponse = {
   atlasGatherGoogleImages: number;
   atlasGatherWebsiteImages: number;
   atlasGatherInstagramPosts: number;
-  atlasSourceTierCeiling: number;
-  atlasSourceOverrides: Record<string, boolean>;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
@@ -45,8 +43,6 @@ type AtlasConfigResponse = {
   atlasGatherGoogleImages: number;
   atlasGatherWebsiteImages: number;
   atlasGatherInstagramPosts: number;
-  atlasSourceTierCeiling: number;
-  atlasSourceOverrides: Record<string, boolean>;
   atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
@@ -67,8 +63,6 @@ type UpdateAtlasConfigResult =
 
 // Partial update — pass only the fields you want to change.
 export async function updateAtlasConfig(patch: {
-  sourceTierCeiling?: number;
-  sourceOverrides?: Record<string, boolean>;
   websiteCrawlMaxPages?: number;
   gatherGoogleImages?: number;
   gatherWebsiteImages?: number;
