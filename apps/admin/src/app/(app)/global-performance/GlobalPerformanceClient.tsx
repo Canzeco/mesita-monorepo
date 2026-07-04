@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -11,6 +18,7 @@ import {
   CreditCard,
   ExternalLink,
   Inbox,
+  ListChecks,
   MapPin,
   RefreshCw,
   ShieldCheck,
@@ -48,13 +56,23 @@ const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     shortLabel: "Claimed",
     Icon: BadgeCheck,
   },
+  "atlas.enrichment_step": {
+    label: "Enrichment step",
+    shortLabel: "Steps",
+    Icon: ListChecks,
+  },
 };
 
 const TYPE_ORDER: NotificationType[] = [
   "atlas.place_created",
   "atlas.place_enriched",
   "atlas.ownership_claimed",
+  "atlas.enrichment_step",
 ];
+
+// Poll cadence for the background auto-refresh (paused while the tab is
+// hidden — the operator still has the manual Refresh button).
+const AUTO_REFRESH_MS = 30_000;
 
 const CLAIM_METHOD_LABEL: Record<string, string> = {
   ai_call: "Phone OTP",
@@ -86,6 +104,7 @@ export function GlobalPerformanceClient({
   const [data, setData] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [placeQuery, setPlaceQuery] = useState("");
   const [pending, startRefresh] = useTransition();
 
   const [now, setNow] = useState<number | null>(null);
@@ -99,26 +118,40 @@ export function GlobalPerformanceClient({
     };
   }, []);
 
-  const refresh = () => {
-    if (pending) return;
+  // Guard against overlapping fetches (manual click + poll tick).
+  const inFlightRef = useRef(false);
+  const refresh = useCallback(() => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setError(null);
     startRefresh(async () => {
       const r = await listNotifications("all");
+      inFlightRef.current = false;
       if (!r.ok) {
         setError(r.error);
         return;
       }
       setData(r.data);
     });
-  };
+  }, []);
 
-  const visible = useMemo(
-    () =>
-      typeFilter === "all"
-        ? data.notifications
-        : data.notifications.filter((n) => n.type === typeFilter),
-    [data.notifications, typeFilter],
-  );
+  // Auto-refresh while the tab is visible; document.hidden pauses the poll.
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (document.hidden) return;
+      refresh();
+    }, AUTO_REFRESH_MS);
+    return () => clearInterval(iv);
+  }, [refresh]);
+
+  const visible = useMemo(() => {
+    const q = placeQuery.trim().toLowerCase();
+    return data.notifications.filter(
+      (n) =>
+        (typeFilter === "all" || n.type === typeFilter) &&
+        (q === "" || (n.place?.name ?? "").toLowerCase().includes(q)),
+    );
+  }, [data.notifications, typeFilter, placeQuery]);
 
   const updatedLabel =
     now === null
@@ -170,6 +203,14 @@ export function GlobalPerformanceClient({
           ))}
 
           <div className="ml-auto flex shrink-0 items-center gap-2 border-l px-3 py-2 sm:px-4">
+            <input
+              type="text"
+              value={placeQuery}
+              onChange={(e) => setPlaceQuery(e.target.value)}
+              placeholder="Filter by place…"
+              spellCheck={false}
+              className="border-border bg-background focus:border-foreground h-9 w-36 rounded-lg border px-3 text-sm outline-none sm:w-44"
+            />
             <span
               className="text-muted-foreground hidden text-[11px] sm:inline"
               suppressHydrationWarning
@@ -203,7 +244,9 @@ export function GlobalPerformanceClient({
             <p className="text-sm">
               {data.total === 0
                 ? "No notifications yet. They'll show up here as places are created, enriched, and claimed."
-                : "Nothing in this filter."}
+                : placeQuery.trim() !== ""
+                  ? "Nothing matches this place filter."
+                  : "Nothing in this filter."}
             </p>
           </div>
         ) : (
@@ -253,6 +296,13 @@ function FilterSegment({
   );
 }
 
+// Runtime fallback — the EF may ship new types before this client knows them.
+const UNKNOWN_TYPE_CONFIG: TypeConfig = {
+  label: "Notification",
+  shortLabel: "Other",
+  Icon: Inbox,
+};
+
 function NotificationRow({
   item,
   now,
@@ -260,7 +310,7 @@ function NotificationRow({
   item: NotificationItem;
   now: number | null;
 }) {
-  const cfg = TYPE_CONFIG[item.type];
+  const cfg = TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG;
   const Icon = cfg.Icon;
   const place = item.place;
   const when =
@@ -373,6 +423,22 @@ function MetaRow({ item }: { item: NotificationItem }) {
     }
   }
 
+  if (item.type === "atlas.enrichment_step") {
+    const step = typeof m.step === "string" ? m.step : null;
+    const stepName = typeof m.stepName === "string" ? m.stepName : null;
+    if (step || stepName) {
+      tags.push(
+        <MetaTag key="step">
+          <span className="font-mono">{step ?? "S?"}</span>
+          {stepName ? <span>&nbsp;·&nbsp;{stepName}</span> : null}
+        </MetaTag>,
+      );
+    }
+    if (typeof m.status === "string") {
+      tags.push(<StepStatusTag key="ss" status={m.status} />);
+    }
+  }
+
   if (item.place?.googlePlaceId) {
     tags.push(
       <a
@@ -396,6 +462,41 @@ function MetaTag({ children }: { children: React.ReactNode }) {
   return (
     <span className="bg-muted text-muted-foreground inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium">
       {children}
+    </span>
+  );
+}
+
+// Status chip for enrichment step events: completed = green-ish (secondary
+// accent, same as approved claims), failed = destructive, started/skipped =
+// muted secondary chips.
+function StepStatusTag({ status }: { status: string }) {
+  if (status === "completed") {
+    return (
+      <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+        <CheckCircle2 className="h-3 w-3" />
+        completed
+      </span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+        <XCircle className="h-3 w-3" />
+        failed
+      </span>
+    );
+  }
+  if (status === "started") {
+    return (
+      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+        <Clock className="h-3 w-3" />
+        started
+      </span>
+    );
+  }
+  return (
+    <span className="bg-muted text-muted-foreground/70 inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium">
+      {status}
     </span>
   );
 }

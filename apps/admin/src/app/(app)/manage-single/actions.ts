@@ -318,12 +318,35 @@ type CreateUnitOk = {
   name: string;
   slug: string | null;
   photoCount: number;
-  enriched: boolean;
+  /** The n8n Enricher webhook accepted the job — enrichment runs async. */
+  enrichmentTriggered: boolean;
+  enrichmentError: string | null;
+};
+
+type CreatedPlace = {
+  id?: string;
+  slug?: string | null;
+  name?: string;
+  status?: string;
 };
 
 type CreateUnitResponse = {
-  place?: { id?: string; name?: string; slug?: string | null };
-  enrichment?: { photoCount?: number; profileEnriched?: boolean };
+  place?: CreatedPlace;
+  /** Legacy alias of `place` — same object. */
+  venue?: CreatedPlace;
+  enrichment?: {
+    enrichmentTriggered?: boolean;
+    enrichmentAsync?: boolean;
+    enrichmentError?: string | null;
+    photoCount?: number;
+    channelCount?: number;
+  };
+};
+
+type CreateUnitErrorBody = {
+  code?: string;
+  error?: string;
+  existing?: { id?: string; slug?: string | null; name?: string };
 };
 
 export async function createUnitFromPlaceId(
@@ -332,10 +355,27 @@ export async function createUnitFromPlaceId(
   const id = (placeId ?? "").toString().trim();
   if (!id) return { ok: false, error: "Empty Place ID" };
 
-  const r = await efInvoke<CreateUnitResponse>("admin-create-project", { placeId: id });
-  if (!r.ok) return { ok: false, error: r.error };
+  const r = await efInvoke<CreateUnitResponse>("admin-create-unit", { placeId: id });
+  if (!r.ok) {
+    // Duplicate: HTTP 409 with code place_already_exists (legacy:
+    // venue_already_exists) and an `existing` object.
+    const body = (r.data ?? {}) as CreateUnitErrorBody;
+    if (
+      r.status === 409 &&
+      (body.code === "place_already_exists" || body.code === "venue_already_exists")
+    ) {
+      const name = body.existing?.name;
+      return {
+        ok: false,
+        error: name
+          ? `${name} is already on Mesita — open it from Edit Single Unit.`
+          : "This place is already on Mesita — open it from Edit Single Unit.",
+      };
+    }
+    return { ok: false, error: r.error };
+  }
 
-  const v = r.data.place;
+  const v = r.data.place ?? r.data.venue;
   if (!v?.id) return { ok: false, error: "No unit returned" };
   return {
     ok: true,
@@ -343,6 +383,7 @@ export async function createUnitFromPlaceId(
     name: v.name ?? "(unnamed)",
     slug: v.slug ?? null,
     photoCount: r.data.enrichment?.photoCount ?? 0,
-    enriched: r.data.enrichment?.profileEnriched ?? false,
+    enrichmentTriggered: r.data.enrichment?.enrichmentTriggered ?? false,
+    enrichmentError: r.data.enrichment?.enrichmentError ?? null,
   };
 }

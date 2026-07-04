@@ -20,7 +20,7 @@ type RowStatus =
       name: string;
       slug: string | null;
       photoCount: number;
-      enriched: boolean;
+      enrichmentTriggered: boolean;
     }
   | { status: "error"; error: string };
 
@@ -82,7 +82,7 @@ export function CreateTab() {
                   name: r.name,
                   slug: r.slug,
                   photoCount: r.photoCount,
-                  enriched: r.enriched,
+                  enrichmentTriggered: r.enrichmentTriggered,
                 }
               : { status: "error", error: r.error },
           }));
@@ -111,8 +111,9 @@ export function CreateTab() {
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Paste Google Place IDs (one per line) or upload a CSV. Each runs the
-        full create pipeline — Google lookup, catalog listing, and ADEA research.
+        Paste Google Place IDs (one per line) or upload a CSV. Each create does
+        the Google lookup and catalog listing, then hands off to the Enricher —
+        deep ADEA research runs in the background.
         Caps, levels, and photo analysis are configured in{" "}
         <a
           href="/adea-config/configuration"
@@ -218,7 +219,13 @@ export function CreateTab() {
                       <p className="text-muted-foreground text-[11px]">
                         {r.slug ? `${r.slug} · ` : ""}
                         {r.photoCount} photo{r.photoCount === 1 ? "" : "s"} ·{" "}
-                        {r.enriched ? "enriched" : "enrich pending/failed"}
+                        {r.enrichmentTriggered ? (
+                          "enriching…"
+                        ) : (
+                          <span className="text-destructive font-medium">
+                            enrich trigger failed
+                          </span>
+                        )}
                       </p>
                     )}
                     {r.status === "error" && (

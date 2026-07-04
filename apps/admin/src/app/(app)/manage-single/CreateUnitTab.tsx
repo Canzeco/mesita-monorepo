@@ -60,6 +60,7 @@ export function CreateUnitTab() {
   const [selected, setSelected] = useState<PlacePrediction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [existsName, setExistsName] = useState<string | null>(null);
+  const [createdName, setCreatedName] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const trimmed = query.trim();
@@ -103,6 +104,7 @@ export function CreateUnitTab() {
     setSearchError(null);
     setError(null);
     setExistsName(null);
+    setCreatedName(null);
     sessionTokenRef.current = newSessionToken();
     setSearchedQuery(null);
   };
@@ -110,6 +112,7 @@ export function CreateUnitTab() {
   const createFromPlaceId = (placeId: string, label?: string) => {
     setError(null);
     setExistsName(null);
+    setCreatedName(null);
     setSearchError(null);
 
     start(async () => {
@@ -136,6 +139,9 @@ export function CreateUnitTab() {
         setError(created.error);
         return;
       }
+      // Enrichment now runs async in the background — surface that, then
+      // hand the operator over to the place editor as before.
+      setCreatedName(created.name);
       router.push(`/manage-single/${created.projectId}/place`);
     });
   };
@@ -283,14 +289,24 @@ export function CreateUnitTab() {
           </p>
         )}
 
-      {selected && pending && (
+      {selected && pending && !createdName && (
         <div className="border-border bg-background mt-4 rounded-xl border p-4">
           <p className="text-sm font-medium">{selected.mainText}</p>
           {selected.secondaryText && (
             <p className="text-muted-foreground mt-1 text-xs">{selected.secondaryText}</p>
           )}
           <p className="text-muted-foreground mt-3 text-xs">
-            Creating unit and running ADEA enrichment…
+            Creating unit… Deep enrichment runs in the background once it exists.
+          </p>
+        </div>
+      )}
+
+      {createdName && (
+        <div className="border-border bg-background mt-4 flex items-start gap-2 rounded-xl border p-4 text-sm">
+          <CheckCircle2 className="text-secondary mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            <span className="font-medium">{createdName}</span> created — the
+            Enricher is running in the background. Opening the place…
           </p>
         </div>
       )}

@@ -12,7 +12,8 @@ export type NotificationCategory = "atlas";
 export type NotificationType =
   | "atlas.place_created"
   | "atlas.place_enriched"
-  | "atlas.ownership_claimed";
+  | "atlas.ownership_claimed"
+  | "atlas.enrichment_step";
 
 export type NotificationPlace = {
   id: string;
@@ -46,11 +47,27 @@ export type NotificationsResult =
   | { ok: true; data: NotificationsPayload }
   | { ok: false; error: string };
 
+// Optional server-side narrowing supported by the EF. `limit` caps the feed
+// size (step events are chatty, so we fetch a bigger window by default).
+export type ListNotificationsOptions = {
+  types?: NotificationType[];
+  projectId?: string;
+  q?: string;
+  limit?: number;
+};
+
+const DEFAULT_LIMIT = 150;
+
 export async function listNotifications(
   category: NotificationCategory | "all" = "all",
+  opts: ListNotificationsOptions = {},
 ): Promise<NotificationsResult> {
   const r = await efInvoke<NotificationsPayload>("admin-list-notifications", {
     category,
+    limit: opts.limit ?? DEFAULT_LIMIT,
+    ...(opts.types && opts.types.length > 0 ? { types: opts.types } : {}),
+    ...(opts.projectId ? { projectId: opts.projectId } : {}),
+    ...(opts.q ? { q: opts.q } : {}),
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };

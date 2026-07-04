@@ -5,10 +5,11 @@ import { GlobalPerformanceClient } from "./GlobalPerformanceClient";
 
 export const dynamic = "force-dynamic";
 
-// Global Performance console. The first view is Notifications — a derived,
-// non-realtime feed of platform events (the operator pulls fresh data with
-// the Refresh button). Charts/metrics land here later as additional views;
-// the surface is built category-first so they slot in beside Notifications.
+// Global Performance console. The first view is Notifications — a derived
+// feed of platform events (auto-refreshed every 30 s while the tab is
+// visible, plus a manual Refresh button). Charts/metrics land here later as
+// additional views; the surface is built category-first so they slot in
+// beside Notifications.
 
 export default async function GlobalPerformancePage() {
   const result = await listNotifications("all");
