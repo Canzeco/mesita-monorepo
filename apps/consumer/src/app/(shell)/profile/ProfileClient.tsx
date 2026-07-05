@@ -28,6 +28,7 @@ import {
   UserPen,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
 import { EditProfileSheet } from "@/components/consumer/EditProfileSheet";
 import {
   VerifySocialSheet,
@@ -777,6 +778,7 @@ function SettingsTab({
   const { origin, followers } = useConsumerClass();
   const igConnected = origin === "instagram";
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [publicProfile, togglePublicProfile] = useProfileVisibilityFlag(
     profile,
     "profile_public",
@@ -906,15 +908,13 @@ function SettingsTab({
           sub={MESITA_PRIVACY_EMAIL}
         />
         <RowDivider />
-        <SettingsLinkRow
+        <SettingsActionRow
           Icon={Trash2}
           tint="destructive"
-          href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
-            "Delete my Mesita account",
-          )}`}
           label="Delete account"
-          sub="Request account deletion"
+          sub="Permanently delete your account"
           destructive
+          onClick={() => setDeleteOpen(true)}
         />
       </SettingsGroup>
 
@@ -935,6 +935,11 @@ function SettingsTab({
       <p className="text-muted-foreground -mt-3 text-center text-[11px]">
         Mesita · v2.4.1
       </p>
+
+      <DeleteAccountSheet
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }
@@ -1036,12 +1041,14 @@ function SettingsActionRow({
   tint,
   label,
   sub,
+  destructive,
   onClick,
 }: {
   Icon: LucideIcon;
   tint: RowTint;
   label: string;
   sub?: string;
+  destructive?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -1053,7 +1060,7 @@ function SettingsActionRow({
       <IconCircle tint={tint}>
         <Icon className="h-[18px] w-[18px]" />
       </IconCircle>
-      <RowText label={label} sub={sub} />
+      <RowText label={label} sub={sub} destructive={destructive} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
     </button>
   );
