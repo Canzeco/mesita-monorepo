@@ -58,17 +58,8 @@ const ClassContext = createContext<ConsumerClassState>(FREE_CLASS);
 // ships.
 export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 
-// Client-side mock Instagram verification. The Verify Instagram sheet sets this
-// flag instead of calling a real social-graph check, so the "connect Instagram
-// → instant Premium" door is demoable before the verification backend ships.
-// Premium sourced this way reports origin === "instagram" with a follower count
-// safely above the 1,000 threshold. Remove with the sheet's mock once the real
-// verify flow lands.
-export const MOCK_INSTAGRAM_KEY = "mesita:mock-instagram";
-
-// Mocked follower reach reported once Instagram is "connected" — comfortably
-// past the premium followerThreshold (1,000) so the unlocked perk reads true.
-const MOCK_INSTAGRAM_FOLLOWERS = 4200;
+// (The old MOCK_INSTAGRAM_KEY path is gone — the Verify Instagram sheet now
+// calls consumer-web-claim-instagram for a real server-side grant, MESITA-74.)
 
 // SSR-safe localStorage flag read. useSyncExternalStore returns the server
 // snapshot (always false) for the hydration render so server and client markup
@@ -102,23 +93,10 @@ export function ClassProvider({
   // first (hydration) render sees the server-seeded class; the real
   // localStorage values fold in immediately after.
   const mockPremium = useLocalStorageFlag(MOCK_PREMIUM_KEY);
-  const mockInstagram = useLocalStorageFlag(MOCK_INSTAGRAM_KEY);
 
   const value = useMemo<ConsumerClassState>(() => {
     // A real server-seeded Premium always wins — never downgrade or relabel it.
     if (base.key === "premium") return base;
-    // Instagram verification takes precedence over the subscription mock: it's
-    // the more specific door (origin + follower reach), and the verify sheet is
-    // the only thing that sets it.
-    if (mockInstagram) {
-      return {
-        ...base,
-        key: "premium",
-        origin: "instagram",
-        renewsAt: null,
-        followers: MOCK_INSTAGRAM_FOLLOWERS,
-      };
-    }
     if (mockPremium) {
       const renews = new Date();
       renews.setMonth(renews.getMonth() + 1);
@@ -130,7 +108,7 @@ export function ClassProvider({
       };
     }
     return base;
-  }, [base, mockPremium, mockInstagram]);
+  }, [base, mockPremium]);
 
   return (
     <ClassContext.Provider value={value}>{children}</ClassContext.Provider>

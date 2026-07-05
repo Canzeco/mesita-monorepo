@@ -826,9 +826,13 @@ function SettingsTab({
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Instagram</span>
               <span className="text-muted-foreground block truncate text-[11px]">
-                {followers > 0
-                  ? `${followers.toLocaleString("en-US")} followers · connected`
-                  : "Connected"}
+                {[
+                  profile?.instagram_handle && `@${profile.instagram_handle}`,
+                  followers > 0 &&
+                    `${followers.toLocaleString("en-US")} followers`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Connected"}
               </span>
             </span>
             <BadgeCheck className="h-5 w-5 shrink-0 text-emerald-600" />

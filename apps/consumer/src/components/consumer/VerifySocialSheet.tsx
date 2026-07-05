@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { BadgeCheck, Instagram } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
-import { MOCK_INSTAGRAM_KEY } from "@/lib/class-context";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
@@ -18,6 +20,17 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export type SocialPlatform = "instagram";
 
+// The @mesita.bot DM bot doesn't exist yet, so the follower count can't be
+// read from a real social-graph check. Until the bot ships, any 8-digit code
+// verifies and the claim is sent with this demo count (comfortably past the
+// 1,000 premium threshold) — but the grant itself is REAL: the EF persists
+// the handle + count and sets class_key=premium / origin=instagram
+// server-side, so every surface reads the class from the profile, not a
+// device flag. Swap the constant for the bot-reported count when it lands.
+const DEMO_FOLLOWERS = 4200;
+
+const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
+
 export function VerifySocialSheet({
   platform: _platform,
   open,
@@ -27,20 +40,31 @@ export function VerifySocialSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  const supabase = useBrowserSupabase();
+  const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
 
-  // Mock verification: any 8-digit code "connects" Instagram and grants Premium
-  // via the instagram origin. Flips the localStorage flag the class
-  // provider reads, then hard-navigates so the shell re-seeds with the unlocked
-  // class and the Profile lands on its success toast. Mirrors the
-  // MOCK_SUBSCRIPTION path in subscribe/[classKey]; swap for the real verify
-  // call once the social-graph check ships.
-  function mockVerify() {
-    if (code.length < 8 || verifying) return;
+  const canVerify =
+    HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
+
+  // Real claim through consumer-web-claim-instagram: persists the @handle and
+  // follower count, grants Premium (origin "instagram") at 1,000+ followers.
+  // Hard-navigates on success so the shell re-seeds with the unlocked class
+  // and the Profile lands on its success toast.
+  async function verify() {
+    if (!canVerify) return;
     setVerifying(true);
-    window.localStorage.setItem(MOCK_INSTAGRAM_KEY, "1");
-    window.location.href = `${CONSUMER_ROUTES.me.class}?instagram=success`;
+    try {
+      await apiClaimInstagram(supabase, {
+        followers: DEMO_FOLLOWERS,
+        handle: handle.trim().replace(/^@/, "").toLowerCase(),
+      });
+      window.location.href = `${CONSUMER_ROUTES.me.class}?instagram=success`;
+    } catch (e) {
+      toast(errMsg(e, "Couldn't verify your Instagram — try again."));
+      setVerifying(false);
+    }
   }
 
   const cfg = {
@@ -107,10 +131,20 @@ export function VerifySocialSheet({
           ))}
         </ol>
         <input
+          value={handle}
+          onChange={(e) => setHandle(e.target.value)}
+          placeholder="@your.instagram"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-4 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+          maxLength={31}
+        />
+        <input
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Paste 8-digit code"
-          className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-4 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+          className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-2 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
           maxLength={8}
         />
         <div className="mt-3 flex gap-2">
@@ -123,8 +157,8 @@ export function VerifySocialSheet({
           </button>
           <button
             type="button"
-            onClick={mockVerify}
-            disabled={code.length < 8 || verifying}
+            onClick={verify}
+            disabled={!canVerify}
             className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
           >
             {verifying ? (

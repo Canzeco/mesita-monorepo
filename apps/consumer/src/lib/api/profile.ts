@@ -24,6 +24,8 @@ export type ConsumerProfile = {
   birthday: string | null;
   country: string | null;
   phone: string | null;
+  // Claimed Instagram username (MESITA-74) — normalized, no leading @.
+  instagram_handle: string | null;
   // Account-level visibility flags (MESITA-76) — Settings → Social toggles.
   profile_public: boolean;
   profile_show_saves: boolean;
@@ -105,6 +107,29 @@ export async function apiFetchConsumerProfile(
     class: ConsumerClass;
   }>(client, "consumer-web-get-profile", {});
   return { consumer, consumerClass };
+}
+
+// ─── Instagram claim ─────────────────────────────────────────────────────
+
+// consumer-web-claim-instagram: the social door into Premium. 1,000+
+// followers grants Premium with origin "instagram"; below the threshold an
+// instagram-origin Premium is dropped back to Free. The handle is persisted
+// to consumers.instagram_handle.
+export type InstagramClaimResult = {
+  tier: "free" | "premium";
+  followers: number;
+  handle: string | null;
+};
+
+export async function apiClaimInstagram(
+  client: SupabaseClient,
+  input: { followers: number; handle: string },
+): Promise<InstagramClaimResult> {
+  return await invokeEF<InstagramClaimResult>(
+    client,
+    "consumer-web-claim-instagram",
+    input,
+  );
 }
 
 // ─── Display helpers ─────────────────────────────────────────────────────
