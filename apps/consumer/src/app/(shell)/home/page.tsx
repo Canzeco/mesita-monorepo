@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 // catalog behind the consumer's saved ids. Mode switching is instant client
 // state inside HomeHub; ?mode= deep links land on the right pill.
 //
-// Fetch mirrors /explore/swipe exactly: recommender deck first, public
+// Fetch mirrors the home swipe deck: recommender deck first, public
 // catalog as the fallback, partner rows floated to the top, overview
 // enrichment applied so cards carry rating / zone / open-state.
 export default async function HomePage({

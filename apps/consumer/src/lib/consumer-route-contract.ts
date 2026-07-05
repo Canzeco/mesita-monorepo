@@ -13,11 +13,8 @@ export const CONSUMER_ROUTES = {
   // its own route). This is the canonical "view my saved places" destination —
   // the old standalone /saved/places grid was a duplicate and was removed.
   favorites: "/home?mode=favorites",
-  explore: {
-    swipe: "/explore/swipe",
-    map: "/explore/map",
-    add: "/explore/add",
-    placePrefix: "/explore/place/",
+  place: {
+    prefix: "/place/",
   },
   saved: {
     reservations: "/saved/reservations",
@@ -55,7 +52,7 @@ export const CONSUMER_ROUTES = {
 export const CONSUMER_ROUTE_PREFIX = {
   home: "/home",
   search: "/search",
-  explore: "/explore",
+  place: "/place",
   saved: "/saved",
   pay: "/pay",
   inbox: "/inbox",
@@ -67,16 +64,16 @@ export const CONSUMER_ROUTE_PREFIX = {
 // highlighting and headers share one matcher instead of string literals.
 export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/saved/reservation";
 
-export type PlaceSurface = "explore" | "saved";
+export type PlaceSurface = "place" | "saved";
 
 export function placePath(
   idOrSlug: string,
-  surface: PlaceSurface = "explore",
+  surface: PlaceSurface = "place",
 ): string {
   const prefix =
     surface === "saved"
       ? CONSUMER_ROUTES.saved.placePrefix
-      : CONSUMER_ROUTES.explore.placePrefix;
+      : CONSUMER_ROUTES.place.prefix;
   return `${prefix}${idOrSlug}`;
 }
 
@@ -101,7 +98,7 @@ export function ticketPath(id: string): string {
 
 export function isModalContractPath(pathname: string): boolean {
   return (
-    pathname.startsWith(CONSUMER_ROUTES.explore.placePrefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.saved.placePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.saved.reservationPrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.pay.ticketPrefix) ||

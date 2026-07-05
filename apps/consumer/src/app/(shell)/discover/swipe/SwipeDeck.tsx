@@ -34,17 +34,17 @@ const MIN_FLICK_DISTANCE = 16;
 const EXIT_ANIMATION_MS = 300;
 const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
 const TUTORIAL_AUTO_DISMISS_MS = 5500;
-const SWIPE_STATE_STORAGE_KEY = "mesita_explore_swipe_state_v1";
+const SWIPE_STATE_STORAGE_KEY = "mesita_swipe_state_v1";
 
 export function SwipeDeck({
   places,
   fetchError,
-  errorRetryHref = CONSUMER_ROUTES.explore.swipe,
+  errorRetryHref = CONSUMER_ROUTES.home,
 }: {
   places: Place[];
   fetchError: string | null;
   /** Where the fetch-error "Try again" CTA lands — hosts embedding the
-      deck outside /explore/swipe (e.g. /home) pass their own route. */
+      deck outside /home pass their own route. */
   errorRetryHref?: string;
 }) {
   if (fetchError) {
@@ -424,7 +424,7 @@ function Deck({ places }: { places: Place[] }) {
   useEffect(() => () => clearAdvanceTimer(), [clearAdvanceTimer]);
 
   useEffect(() => {
-    if (!pathname.startsWith(CONSUMER_ROUTES.explore.placePrefix)) {
+    if (!pathname.startsWith(CONSUMER_ROUTES.place.prefix)) {
       infoOpeningRef.current = false;
     }
   }, [pathname]);
@@ -441,8 +441,8 @@ function Deck({ places }: { places: Place[] }) {
 
   useEffect(() => {
     if (!v) return;
-    router.prefetch(placeHref(v.id, "explore"));
-    if (next) router.prefetch(placeHref(next.id, "explore"));
+    router.prefetch(placeHref(v.id));
+    if (next) router.prefetch(placeHref(next.id));
   }, [router, v, next]);
 
   if (exhausted || !v) {
@@ -456,7 +456,7 @@ function Deck({ places }: { places: Place[] }) {
   const openInfo = () => {
     if (infoOpeningRef.current) return;
     infoOpeningRef.current = true;
-    router.push(placeHref(v.id, "explore"), { scroll: false });
+    router.push(placeHref(v.id), { scroll: false });
   };
 
   return (

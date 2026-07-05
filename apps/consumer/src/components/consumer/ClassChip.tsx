@@ -10,7 +10,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // Top-right header chip — class-colored avatar. For Premium it shows HOW the
 // member earned it (Instagram icon; crown for subscription/invitation/default
 // Premium); Free shows the Mesita Free smile. Tap routes to the
-// Me > Class tab. Rendered inline by DiscoverHeader and through
+// Me > Class tab. Rendered inline by headers and through
 // SimpleHeader elsewhere.
 
 export function ClassChip({ size = "md" }: { size?: "sm" | "md" }) {

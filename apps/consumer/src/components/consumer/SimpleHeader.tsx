@@ -5,7 +5,7 @@ import { ClassChip } from "./ClassChip";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Shared header for Saved, QR, Inbox, Me (profile), Invite, Reservations, etc.
-// Explore is the exception — it uses DiscoverHeader.
+// SimpleHeader is the default top chrome for most shell routes.
 //
 //   share — [Logo] · title (true center) · [Share][Plan] — share overlays, not in flow
 //   class — [Logo] · title · [Plan]

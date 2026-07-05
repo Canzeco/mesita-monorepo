@@ -15,7 +15,7 @@ const RESERVED_PLACE_SEGMENTS = new Set([
 
 export function toCanonicalPlaceHrefOrNull(
   idOrSlug: string,
-  surface: PlaceSurface = "explore",
+  surface: PlaceSurface = "place",
 ): string | null {
   const normalized = idOrSlug.trim().toLowerCase();
   if (!normalized || RESERVED_PLACE_SEGMENTS.has(normalized)) return null;
@@ -24,7 +24,7 @@ export function toCanonicalPlaceHrefOrNull(
 
 export function placeHref(
   idOrSlug: string,
-  surface: PlaceSurface = "explore",
+  surface: PlaceSurface = "place",
 ): string {
   return placePath(idOrSlug, surface);
 }

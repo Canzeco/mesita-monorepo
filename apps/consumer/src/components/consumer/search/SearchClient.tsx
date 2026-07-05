@@ -181,12 +181,12 @@ export function SearchClient({
       // no name join, no snapshot dependency.
       const direct = prediction.mesitaSlug ?? prediction.mesitaId;
       if (direct) {
-        router.push(placeHref(direct, "explore"));
+        router.push(placeHref(direct));
         return;
       }
       const match = matchPredictionToPlace(prediction, catalog);
       if (match) {
-        router.push(placeHref(match.slug || match.id, "explore"));
+        router.push(placeHref(match.slug || match.id));
         return;
       }
       // On Mesita per the EF but outside the 200-newest catalog snapshot —
@@ -359,7 +359,7 @@ export function SearchClient({
                   place={place}
                   selected={place.id === selectedId}
                   onOpen={() =>
-                    router.push(placeHref(place.slug || place.id, "explore"))
+                    router.push(placeHref(place.slug || place.id))
                   }
                   cardRef={(el) => {
                     railRefs.current.set(place.id, el);

@@ -6,7 +6,7 @@
 //   through an Edge Function via `supabase.functions.invoke`.
 // - Each helper calls exactly one Edge Function.
 //
-// apiSuggestPlaces already lives in ./places (it backs the /explore/add
+// apiSuggestPlaces already lives in ./places (it backs the search add-place
 // picker); re-exported here so the Search surface has a single import
 // site for both halves of its search→add pipeline.
 

@@ -78,9 +78,9 @@ export function BottomNav({ userId }: { userId?: string }) {
             // while those routes redirect.
             (match === CONSUMER_ROUTE_PREFIX.me &&
               pathname.startsWith(CONSUMER_ROUTES.legacy.profile)) ||
-            // Old discovery surfaces map to Home until their links migrate.
+            // Place detail modals opened from Home keep the Home tab lit.
             (match === CONSUMER_ROUTE_PREFIX.home &&
-              pathname.startsWith(CONSUMER_ROUTE_PREFIX.explore));
+              pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
           return (
             <Link
               key={href}

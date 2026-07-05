@@ -99,7 +99,7 @@ export function SocialFeed({ places }: { places: Place[] }) {
                 {/* Place → detail (real place when the deck has one) */}
                 {place ? (
                   <Link
-                    href={placeHref(place.slug || place.id, "explore")}
+                    href={placeHref(place.slug || place.id)}
                     className="border-border bg-background/80 flex shrink-0 items-center gap-2 rounded-xl border p-1.5 pr-2 transition hover:shadow-sm active:scale-[0.99]"
                   >
                     <PlaceThumb name={place.name} photo={place.photos[0]} />

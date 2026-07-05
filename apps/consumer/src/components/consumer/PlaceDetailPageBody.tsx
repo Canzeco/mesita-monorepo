@@ -3,6 +3,7 @@
 import { PlaceDetailActionBar, PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceDetailPageHeader } from "./PlaceDetailPageHeader";
 import type { PlaceDetail } from "@/lib/mock/place";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Client wrapper for the hard-nav /place/[id] page. Mirrors the modal
 // shell's three-row layout so the action bar sits as a sibling of the
@@ -12,7 +13,7 @@ import type { PlaceDetail } from "@/lib/mock/place";
 // mounted here — see PlaceDetailActionBar.)
 export function PlaceDetailPageBody({
   place,
-  backHref = "/explore/swipe",
+  backHref = CONSUMER_ROUTES.home,
 }: {
   place: PlaceDetail;
   backHref?: string;

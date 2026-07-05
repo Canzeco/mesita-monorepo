@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/shared";
 
-// Deck-shaped loading silhouette shared by the /home and /explore/swipe
+// Deck-shaped loading silhouette shared by /home swipe mode.
 // loading boundaries. Mirrors SwipeDeck's real layout — px-3 pt-2 pb-3
 // band, one full-bleed rounded-3xl card filling the flex slot, then the
 // five-action h-12 button row — so the deck appears to "arrive" in place

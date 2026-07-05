@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { SimpleHeader } from "./SimpleHeader";
-import { DiscoverHeader } from "./DiscoverHeader";
 import { MeHeaderTitle } from "./MeHeaderTitle";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
@@ -21,9 +20,6 @@ export function TopBar() {
     pathname.startsWith(CONSUMER_ROUTE_PREFIX.search)
   ) {
     return null;
-  }
-  if (pathname.startsWith(CONSUMER_ROUTE_PREFIX.explore)) {
-    return <DiscoverHeader />;
   }
   // The Reservations tab points at the saved-reservations surface; title it
   // after the tab, not the legacy Saved section. Singular prefix also covers

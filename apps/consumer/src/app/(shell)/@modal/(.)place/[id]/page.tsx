@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { PlaceDetailPageBody } from "@/components/consumer/PlaceDetailPageBody";
+import { PlaceDetailBody } from "@/components/consumer/PlaceDetailBody";
+import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPlaceDetail } from "@/lib/api/places";
 import { toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
@@ -7,24 +8,23 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
-export default async function ExplorePlacePage({
+export default async function PlaceModalPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (!toCanonicalPlaceHrefOrNull(id, "explore")) {
-    redirect(CONSUMER_ROUTES.explore.swipe);
+  if (!toCanonicalPlaceHrefOrNull(id, "place")) {
+    redirect(CONSUMER_ROUTES.home);
   }
   const supabase = await createServerSupabase();
   const place = await apiFetchPlaceDetail(supabase, id);
   if (!place) {
-    redirect(CONSUMER_ROUTES.explore.swipe);
+    redirect(CONSUMER_ROUTES.home);
   }
   return (
-    <PlaceDetailPageBody
-      place={place}
-      backHref={CONSUMER_ROUTES.explore.swipe}
-    />
+    <PlaceDetailModalShell projectId={place.id} placeName={place.name}>
+      <PlaceDetailBody place={place} />
+    </PlaceDetailModalShell>
   );
 }

@@ -297,7 +297,7 @@ function MapView({
         <PlacePreview
           place={selected}
           onDismiss={() => setSelected(null)}
-          onOpen={() => router.push(placeHref(selected.id, "explore"))}
+          onOpen={() => router.push(placeHref(selected.id))}
         />
       )}
     </div>

@@ -106,7 +106,7 @@ export function PlaceCatalogCard({
     return <div className={className}>{inner}</div>;
   }
   return (
-    <Link href={href ?? placeHref(place.id, "explore")} className={className}>
+    <Link href={href ?? placeHref(place.id)} className={className}>
       {inner}
     </Link>
   );

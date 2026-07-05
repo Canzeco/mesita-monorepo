@@ -17,7 +17,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export function PlaceDetailPageHeader({
   placeId,
   placeName,
-  backHref = "/explore/swipe",
+  backHref = CONSUMER_ROUTES.home,
 }: {
   placeId: string;
   placeName: string;

@@ -89,7 +89,7 @@ function FavoriteRow({ place }: { place: Place }) {
 
   return (
     <Link
-      href={placeHref(place.slug || place.id, "explore")}
+      href={placeHref(place.slug || place.id)}
       className="border-border bg-card flex w-full items-center gap-3 rounded-2xl border p-3 transition hover:shadow-md active:scale-[0.99]"
     >
       <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
