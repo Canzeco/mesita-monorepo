@@ -136,18 +136,18 @@ function PrimaryCta({
 }
 
 function FriendsTab() {
-  const giftCode = "8F2K — 9XQ7";
+  const inviteCode = "8F2K — 9XQ7";
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(giftCode.replace(/\s+/g, ""));
+      await navigator.clipboard.writeText(inviteCode.replace(/\s+/g, ""));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
     } catch {
       // Clipboard unavailable — silent.
     }
   };
-  const treated = [
+  const joined = [
     { initials: "CV", name: "Camila", date: "May 2" },
     { initials: "MF", name: "Mateo", date: "May 5" },
   ];
@@ -155,13 +155,13 @@ function FriendsTab() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-[13px] leading-snug">
-        You&apos;ve got {slots} $50 MXN gift cards. Share your code; the first
-        friends to use it each get $50 on us.
+        Send a friend their way into Mesita — a warm invite into the club. No
+        points, no catch, just a nicer way to eat out together.
       </p>
 
-      {/* Gift voucher — a filled pink-gradient card. Bow + amount up top,
-          the shareable code in a frosted pill at the bottom with one-tap
-          copy. */}
+      {/* Invite card — a filled pink-gradient gift card. It gifts a seat at
+          Mesita, not money: bow + a warm headline up top, and your shareable
+          code in a frosted pill at the bottom with one-tap copy. */}
       <div className="bg-pink-gradient shadow-glow relative overflow-hidden rounded-2xl p-5 text-white">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -177,11 +177,11 @@ function FriendsTab() {
           </span>
         </div>
 
-        <p className="font-display mt-6 text-5xl leading-none font-semibold tracking-tight">
-          $50
-          <span className="ml-1.5 align-middle text-base font-semibold tracking-[0.3em] text-white/80">
-            MXN
-          </span>
+        <p className="font-display mt-6 text-4xl leading-none font-semibold tracking-tight">
+          You&apos;re invited
+        </p>
+        <p className="mt-2 text-[13px] text-white/85">
+          Your seat at the table.
         </p>
 
         <div className="mt-6 flex items-center justify-between gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 backdrop-blur">
@@ -190,7 +190,7 @@ function FriendsTab() {
               Code
             </p>
             <p className="mt-0.5 font-mono text-[15px] font-bold tracking-wide">
-              {giftCode}
+              {inviteCode}
             </p>
           </div>
           <button
@@ -211,15 +211,15 @@ function FriendsTab() {
       <div>
         <div className="flex items-center justify-between px-1">
           <p className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
-            Friends you&apos;ve treated
+            Friends who joined
           </p>
           <p className="text-secondary text-[10px] font-semibold">
-            {treated.length} gifted · {slots - treated.length} to go
+            {joined.length} joined
           </p>
         </div>
         <div className="mt-2 grid grid-cols-5 gap-1.5">
           {Array.from({ length: slots }).map((_, i) => {
-            const f = treated[i];
+            const f = joined[i];
             if (f) {
               return (
                 <div key={i} className="flex flex-col items-center gap-1">
@@ -246,7 +246,7 @@ function FriendsTab() {
                   <Plus className="h-4 w-4" />
                 </div>
                 <p className="text-muted-foreground text-center text-[9px] font-medium tracking-wider uppercase">
-                  Waiting
+                  Invite
                 </p>
               </div>
             );
@@ -258,8 +258,8 @@ function FriendsTab() {
         <PrimaryCta
           label="Send a gift to a friend"
           share={{
-            title: "Mesita — your first visit is on me",
-            text: `Use my code ${giftCode.replace(/\s+/g, "")} for $50 MXN on your first Mesita visit.`,
+            title: "Come join me on Mesita",
+            text: `Join me on Mesita — here's my invite code ${inviteCode.replace(/\s+/g, "")}.`,
           }}
         />
       </div>
