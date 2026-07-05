@@ -42,8 +42,10 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiFetchConsumerProfile,
+  apiUpdateProfileVisibility,
   type ConsumerClass,
   type ConsumerProfile,
+  type ProfileVisibilityPatch,
 } from "@/lib/api/profile";
 
 // Two-tab Profile under an Instagram-style identity hero: story-ring avatar,
@@ -746,9 +748,10 @@ const MESITA_SUPPORT_EMAIL = "support@mesita.ai";
 const MESITA_PRIVACY_EMAIL = "privacy@mesita.ai";
 
 // Device-level flags. Notification prefs persist here until the push
-// integration lands; the profile-visibility flags persist here until the
-// consumers table grows a visibility column (follow-up wiring — EF deploys
-// are currently queued behind MESITA-23).
+// integration lands. The profile-visibility flags are account-level
+// (consumers.profile_* via consumer-web-update-profile, MESITA-76); their
+// localStorage keys survive as the render cache / offline fallback that
+// useProfileVisibilityFlag keeps in sync with the server.
 const NOTIF_PUSH_KEY = "mesita:notif:push";
 const NOTIF_EMAIL_KEY = "mesita:notif:email";
 const PROFILE_PUBLIC_KEY = "mesita:profile:public";
@@ -774,17 +777,20 @@ function SettingsTab({
   const { origin, followers } = useConsumerClass();
   const igConnected = origin === "instagram";
 
-  const [publicProfile, togglePublicProfile] = useStoredFlag(
+  const [publicProfile, togglePublicProfile] = useProfileVisibilityFlag(
+    profile,
+    "profile_public",
     PROFILE_PUBLIC_KEY,
-    true,
   );
-  const [showSaves, toggleShowSaves] = useStoredFlag(
+  const [showSaves, toggleShowSaves] = useProfileVisibilityFlag(
+    profile,
+    "profile_show_saves",
     PROFILE_SHOW_SAVES_KEY,
-    true,
   );
-  const [showVisits, toggleShowVisits] = useStoredFlag(
+  const [showVisits, toggleShowVisits] = useProfileVisibilityFlag(
+    profile,
+    "profile_show_visits",
     PROFILE_SHOW_VISITS_KEY,
-    true,
   );
 
   const detailsSub = loading
@@ -1143,6 +1149,45 @@ function useStoredFlag(key: string, defaultOn: boolean): [boolean, () => void] {
     () => writeFlag(key, !readFlag(key, defaultOn)),
     [key, defaultOn],
   );
+  return [on, toggle];
+}
+
+// Account-level visibility flag (MESITA-76). Renders off the same
+// hydration-safe localStorage store as useStoredFlag, but the server value
+// from consumer-web-get-profile wins once the profile loads, and toggles
+// persist through consumer-web-update-profile — optimistic flip first,
+// reverted with a toast if the write fails. localStorage doubles as the
+// offline fallback.
+type ProfileVisibilityField = keyof ProfileVisibilityPatch;
+
+function useProfileVisibilityFlag(
+  profile: ConsumerProfile | null,
+  field: ProfileVisibilityField,
+  storageKey: string,
+): [boolean, () => void] {
+  const supabase = useBrowserSupabase();
+  const on = useSyncExternalStore(
+    subscribeToFlags,
+    () => readFlag(storageKey, true),
+    () => true,
+  );
+
+  useEffect(() => {
+    const server = profile?.[field];
+    if (typeof server === "boolean" && server !== readFlag(storageKey, true)) {
+      writeFlag(storageKey, server);
+    }
+  }, [profile, field, storageKey]);
+
+  const toggle = useCallback(() => {
+    const next = !readFlag(storageKey, true);
+    writeFlag(storageKey, next);
+    apiUpdateProfileVisibility(supabase, { [field]: next }).catch(() => {
+      writeFlag(storageKey, !next);
+      toast("Couldn't save that setting — check your connection.");
+    });
+  }, [supabase, field, storageKey]);
+
   return [on, toggle];
 }
 
