@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  Search,
-  QrCode,
-  CalendarCheck,
-  User,
-  type LucideIcon,
-} from "lucide-react";
+import type { ComponentType } from "react";
+import { Search, QrCode, CalendarCheck, User } from "lucide-react";
+import { MesitaMark } from "./MesitaMark";
 import { cn } from "@/lib/utils";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
@@ -22,9 +17,11 @@ import {
 // map, catalog search, and Ask AI. Rewards/Reservations/Profile reuse the
 // existing pay, saved-reservations, and me surfaces unchanged.
 
+// Icon is either a lucide glyph or the Mesita brand mark (Home) — both take
+// a className and (harmlessly) a strokeWidth, so the render stays uniform.
 type Item = {
   href: string;
-  Icon: LucideIcon;
+  Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   match: string;
 };
@@ -32,7 +29,8 @@ type Item = {
 const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.home,
-    Icon: Home,
+    // Brand mark instead of a generic house — Home doubles as the Mesita anchor.
+    Icon: MesitaMark,
     label: "Home",
     match: CONSUMER_ROUTE_PREFIX.home,
   },

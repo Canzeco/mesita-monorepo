@@ -2,8 +2,17 @@
 // (SVG optimization is disabled — see next.config). Mirrors
 // public/brand/mesita-mark.svg. `fill="currentColor"` lets callers tint it
 // via text color; the brand pink is text-secondary on consumer surfaces.
-
-export function MesitaMark({ className }: { className?: string }) {
+//
+// `strokeWidth` is accepted (and ignored) purely for call-site uniformity
+// with lucide icons — the bottom nav renders every tab glyph with one, and
+// the Home tab uses this mark. It has no visual effect: the poppy is a
+// filled shape, not a stroked line icon.
+export function MesitaMark({
+  className,
+}: {
+  className?: string;
+  strokeWidth?: number;
+}) {
   return (
     <svg
       viewBox="0 0 100 100"
