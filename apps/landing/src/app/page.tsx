@@ -397,7 +397,7 @@ function FAQ() {
     },
     {
       q: "What plans do venues get?",
-      a: "Three, all discounts-only — the same instant discount applied right at the bill. Free lists your venue with AI reservations at no cost. Promote and Ultra are paid subscriptions that run the identical coupon workflow; they differ in price and visibility — Promote gets medium reach, Ultra maximum reach across swipe, map, catalog, and the AI planner. Every signed-up partner gets the Membership / Rewards / Analytics / Team dashboard. You configure your discount mechanic at business.mesita.ai in about 10 minutes.",
+      a: "Three, all discounts-only — the same instant discount applied right at the bill. Free lists your venue with AI reservations at no cost. Pro and Ultra are paid subscriptions that run the identical coupon workflow; they differ in price and visibility — Pro gets medium reach, Ultra maximum reach across swipe, map, catalog, and the AI planner. Every signed-up partner gets the Membership / Rewards / Analytics / Team dashboard. You configure your discount mechanic at business.mesita.ai in about 10 minutes.",
     },
     {
       q: "What's the Instagram story step about?",
