@@ -29,10 +29,12 @@ export function PayClient({
   tab,
   userId,
   code,
+  name,
 }: {
   tab: PayTab;
   userId: string;
   code: string;
+  name?: string;
 }) {
   const router = useRouter();
   const pendingTickets = usePendingNotificationCount(userId);
@@ -81,7 +83,7 @@ export function PayClient({
         {tab === "tickets" ? (
           <PayTickets userId={userId} />
         ) : (
-          <MyQrCard code={code} />
+          <MyQrCard code={code} name={name} />
         )}
       </div>
     </div>
