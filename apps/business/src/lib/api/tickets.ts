@@ -13,8 +13,8 @@ export type TicketConsumer = {
   birthday: string | null;
   sex: string | null;
   country: string | null;
-  tier_key: string | null;
-  tier_origin: string | null;
+  class_key: string | null;
+  class_origin: string | null;
 };
 
 type RawTicket = {

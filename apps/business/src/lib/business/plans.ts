@@ -5,7 +5,7 @@ import type { PlacePlan } from "@/lib/api/places";
 // Three subscriptions, ordered ascending so the business reads the picker
 // left-to-right as a visibility ladder:
 //   - "Free without promos" (plan=free)  · Low    · $0
-//   - "Promote"             (plan=pro)   · Medium · $100/mo
+//   - "Pro"                 (plan=pro)   · Medium · $100/mo
 //   - "Ultra"               (plan=ultra) · Max    · $5,000/mo
 //
 // Paid plans are monthly Stripe subscriptions: picking a card goes through
@@ -13,7 +13,7 @@ import type { PlacePlan } from "@/lib/api/places";
 //
 // Mesita is discounts-only: every Verified place runs the same instant
 // discount applied directly at the bill, with no money flowing through
-// Mesita. Promote vs Ultra only changes price and visibility tier; the promo
+// Mesita. Pro vs Ultra only changes price and visibility tier; the promo
 // workflow is identical. Cashback / Mesita-in-the-loop "reward" tiers are
 // deliberately deferred (see Notion → Main → Future Expansions) and are not
 // offered in the console.
@@ -48,7 +48,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
   },
   {
     id: "pro_discount",
-    label: "Promote",
+    label: "Pro",
     price: "MX$100",
     cadence: "/ month",
     tagline: "Consumer shows the coupon, you discount the bill.",

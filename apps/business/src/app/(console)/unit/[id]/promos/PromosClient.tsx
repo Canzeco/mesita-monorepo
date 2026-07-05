@@ -34,7 +34,7 @@ import {
 
 // Promos — minimal layout. Three blocks stacked top to bottom:
 //   1. Visibility    — slim 3-step rail (Low → Max), no prose
-//   2. Subscription  — Free / Promote / Ultra, all discount-only
+//   2. Subscription  — Free / Pro / Ultra, all discount-only
 //   3. Promos        — Welcome row + 4 tier rows; rate + audience count
 //
 // "OFF" is the neutral label for the rate scale, applied across every tier.
@@ -163,7 +163,7 @@ const TIER_LABEL: Record<Tier, string> = {
 // ─── Subscription icons + accents ─────────────────────────────────────────
 
 // Tier icon + accent — paid discount tiers get the gold percent badge.
-// Promote vs Ultra is communicated through price/visibility on the card, not
+// Pro vs Ultra is communicated through price/visibility on the card, not
 // a separate icon.
 const SUB_VISUAL: Record<
   SubscriptionId,
@@ -291,7 +291,7 @@ export function PromosClient({
             {isFree && (
               <p className="text-muted-foreground text-xs">
                 On <span className="text-foreground font-semibold">Free</span>{" "}
-                rates are locked to 0% — pick Promote or Ultra to set them.
+                rates are locked to 0% — pick Pro or Ultra to set them.
               </p>
             )}
           </Section>
@@ -411,7 +411,7 @@ export function PromosClient({
         >
           <div className="bg-muted/20 border-border/50 mb-3 rounded-xl border px-3 py-2">
             <p className="text-muted-foreground text-xs">
-              Illustrative Mesita users across Free and Premium tiers. Most Free
+              Illustrative Mesita users across Free and Premium classes. Most Free
               users typically have no Instagram linked yet.
             </p>
           </div>
