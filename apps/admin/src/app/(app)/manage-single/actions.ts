@@ -114,6 +114,30 @@ export async function updatePlace(
   return { ok: true, data: r.data.place };
 }
 
+// ── Per-photo Enricher metadata (admin-only) ─────────────────────────────
+// Internal enricher output for the Place gallery ⓘ inspector, keyed by the
+// image's public_url (matches AdminPlace.photos[]). Super-admin gated EF.
+
+export type PlaceMediaMeta = {
+  source: string | null;
+  status: string | null;
+  analysis_text: string | null;
+  caption: string | null;
+  likes_count: number | null;
+  source_url: string | null;
+};
+
+export async function getPlaceMedia(
+  projectId: string,
+): Promise<Result<Record<string, PlaceMediaMeta>>> {
+  const r = await efInvoke<{ media: Record<string, PlaceMediaMeta> }>(
+    "admin-web-get-place-media",
+    { projectId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.media ?? {} };
+}
+
 // ── Team ─────────────────────────────────────────────────────────────────
 
 export type TeamSnapshot = {

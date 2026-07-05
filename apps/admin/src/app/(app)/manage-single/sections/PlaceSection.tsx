@@ -1,8 +1,24 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, Clock, Globe, ImageOff, MapPin, Plus, X } from "lucide-react";
-import { updatePlace, type AdminPlace } from "../actions";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Clock,
+  ExternalLink,
+  Globe,
+  ImageOff,
+  Info,
+  MapPin,
+  Plus,
+  X,
+} from "lucide-react";
+import {
+  getPlaceMedia,
+  updatePlace,
+  type AdminPlace,
+  type PlaceMediaMeta,
+} from "../actions";
 import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 
 const DAYS = [
@@ -155,6 +171,20 @@ export function PlaceSection({
 
   const removePhoto = (idx: number) => setPhotos(form.photos.filter((_, i) => i !== idx));
 
+  // Admin-only: per-photo Enricher metadata (source + vision analysis) for the
+  // ⓘ inspector, keyed by image URL. Lazy-loaded once per place.
+  const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
+  const [metaFor, setMetaFor] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getPlaceMedia(place.id).then((r) => {
+      if (alive) setMedia(r.ok ? r.data : {});
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
+
   const save = () => {
     if (!dirty || !form.name.trim()) {
       if (!form.name.trim()) setError("Name is required.");
@@ -277,6 +307,8 @@ export function PlaceSection({
           onAdd={addPhotoUrl}
           onMove={movePhoto}
           onRemove={removePhoto}
+          media={media}
+          onInfo={setMetaFor}
         />
       </SectionCard>
 
@@ -284,6 +316,14 @@ export function PlaceSection({
         <SaveBar pending={pending} dirty={dirty} ok={ok} onSave={save} />
         {error && <ErrorNote message={error} />}
       </div>
+
+      {metaFor !== null && (
+        <MediaMetaDialog
+          url={metaFor}
+          meta={media[metaFor] ?? null}
+          onClose={() => setMetaFor(null)}
+        />
+      )}
     </div>
   );
 }
@@ -296,6 +336,8 @@ function PhotosEditor({
   onAdd,
   onMove,
   onRemove,
+  media,
+  onInfo,
 }: {
   photos: string[];
   pending: boolean;
@@ -304,6 +346,8 @@ function PhotosEditor({
   onAdd: () => void;
   onMove: (from: number, dir: -1 | 1) => void;
   onRemove: (idx: number) => void;
+  media: Record<string, PlaceMediaMeta>;
+  onInfo: (url: string) => void;
 }) {
   return (
     <div className="mt-5">
@@ -348,15 +392,28 @@ function PhotosEditor({
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => onRemove(idx)}
-                  className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
-                  aria-label="Remove photo"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex gap-1">
+                  {media[src] && (
+                    <button
+                      type="button"
+                      onClick={() => onInfo(src)}
+                      className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
+                      aria-label="Photo metadata"
+                      title="Image metadata"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => onRemove(idx)}
+                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
+                    aria-label="Remove photo"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -394,6 +451,138 @@ function PhotosEditor({
       <p className="text-muted-foreground mt-2 text-xs tabular-nums">
         {photos.length}/{PHOTOS_MAX} photos
       </p>
+    </div>
+  );
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  google: "Google",
+  website: "Website",
+  instagram: "Instagram",
+};
+
+const SOURCE_CHIP: Record<string, string> = {
+  google: "bg-blue-500/10 text-blue-600",
+  website: "bg-muted text-muted-foreground",
+  instagram: "bg-pink-500/10 text-pink-600",
+};
+
+// Light markdown-ish renderer: preserves newlines and bolds **…** segments.
+// The enricher analysis_text looks like "**Category:** … \n\n**Description:** …".
+function AnalysisText({ text }: { text: string }) {
+  return (
+    <div className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">
+      {text.split(/\*\*/).map((seg, i) =>
+        i % 2 === 1 ? <strong key={i}>{seg}</strong> : <span key={i}>{seg}</span>,
+      )}
+    </div>
+  );
+}
+
+// Admin-only inspector: shows one image's Enricher metadata (source + vision
+// analysis, plus caption/likes for Instagram) in a small modal.
+function MediaMetaDialog({
+  url,
+  meta,
+  onClose,
+}: {
+  url: string;
+  meta: PlaceMediaMeta | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const source = meta?.source ?? null;
+  const sourceLabel = source ? (SOURCE_LABEL[source] ?? source) : "Unknown source";
+  const chip = (source && SOURCE_CHIP[source]) || "bg-muted text-muted-foreground";
+  const analysis = meta?.analysis_text?.trim() || null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="border-border bg-card flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-border flex items-center justify-between gap-3 border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Info className="text-muted-foreground h-4 w-4" />
+            <h3 className="text-sm font-semibold">Image metadata</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 overflow-y-auto p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt="Photo"
+            className="border-border aspect-[16/9] w-full rounded-lg border object-cover"
+          />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground text-xs font-medium">Source</span>
+            <span
+              className={
+                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+                chip
+              }
+            >
+              {sourceLabel}
+            </span>
+            {typeof meta?.likes_count === "number" && (
+              <span className="text-muted-foreground text-xs tabular-nums">
+                ♥ {meta.likes_count.toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          {meta?.caption && (
+            <div>
+              <p className="text-muted-foreground mb-1 text-xs font-medium">Caption</p>
+              <p className="text-foreground/90 text-sm italic">“{meta.caption}”</p>
+            </div>
+          )}
+
+          <div>
+            <p className="text-muted-foreground mb-1 text-xs font-medium">Analysis</p>
+            {analysis ? (
+              <AnalysisText text={analysis} />
+            ) : (
+              <p className="text-muted-foreground text-sm italic">
+                Not analyzed — this image was saved but not vision-described.
+              </p>
+            )}
+          </div>
+
+          {meta?.source_url && (
+            <a
+              href={meta.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs font-medium"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View original source
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
