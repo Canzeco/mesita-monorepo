@@ -190,7 +190,7 @@ export type AdminTicket = {
   kind: string;
   status: string;
   story_status?: string | null;
-  consumer: { code?: string | null; full_name?: string | null; tier_key?: string | null } | null;
+  consumer: { code?: string | null; full_name?: string | null; class_key?: string | null } | null;
   check_subtotal_cents: number | null;
   total_cents: number | null;
   discount_cents: number | null;

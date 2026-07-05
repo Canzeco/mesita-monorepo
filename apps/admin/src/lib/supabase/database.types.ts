@@ -187,6 +187,45 @@ export type Database = {
         }
         Relationships: []
       }
+      classes: {
+        Row: {
+          created_at: string
+          currency: string
+          follower_threshold: number | null
+          key: string
+          label: string
+          monthly_reservation_limit: number | null
+          price_cents: number
+          rank: number
+          recommendation_weight: number
+          stripe_price_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          follower_threshold?: number | null
+          key: string
+          label: string
+          monthly_reservation_limit?: number | null
+          price_cents?: number
+          rank: number
+          recommendation_weight?: number
+          stripe_price_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          follower_threshold?: number | null
+          key?: string
+          label?: string
+          monthly_reservation_limit?: number | null
+          price_cents?: number
+          rank?: number
+          recommendation_weight?: number
+          stripe_price_id?: string | null
+        }
+        Relationships: []
+      }
       consumer_code_counter: {
         Row: {
           id: number
@@ -304,6 +343,10 @@ export type Database = {
         Row: {
           avatar_url: string | null
           birthday: string | null
+          class_expires_at: string | null
+          class_granted_at: string | null
+          class_key: string
+          class_origin: string
           code: string | null
           consumer_instagram_followers_count: number | null
           country: string | null
@@ -314,14 +357,14 @@ export type Database = {
           last_name: string | null
           phone: string | null
           sex: string | null
-          tier_expires_at: string | null
-          tier_granted_at: string | null
-          tier_key: string
-          tier_origin: string
         }
         Insert: {
           avatar_url?: string | null
           birthday?: string | null
+          class_expires_at?: string | null
+          class_granted_at?: string | null
+          class_key?: string
+          class_origin?: string
           code?: string | null
           consumer_instagram_followers_count?: number | null
           country?: string | null
@@ -332,14 +375,14 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           sex?: string | null
-          tier_expires_at?: string | null
-          tier_granted_at?: string | null
-          tier_key?: string
-          tier_origin?: string
         }
         Update: {
           avatar_url?: string | null
           birthday?: string | null
+          class_expires_at?: string | null
+          class_granted_at?: string | null
+          class_key?: string
+          class_origin?: string
           code?: string | null
           consumer_instagram_followers_count?: number | null
           country?: string | null
@@ -350,17 +393,13 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           sex?: string | null
-          tier_expires_at?: string | null
-          tier_granted_at?: string | null
-          tier_key?: string
-          tier_origin?: string
         }
         Relationships: [
           {
             foreignKeyName: "consumers_tier_key_fkey"
-            columns: ["tier_key"]
+            columns: ["class_key"]
             isOneToOne: false
-            referencedRelation: "plans"
+            referencedRelation: "classes"
             referencedColumns: ["key"]
           },
         ]
@@ -830,45 +869,6 @@ export type Database = {
           x_url?: string | null
           yelp_url?: string | null
           zone?: string | null
-        }
-        Relationships: []
-      }
-      plans: {
-        Row: {
-          created_at: string
-          currency: string
-          follower_threshold: number | null
-          key: string
-          label: string
-          monthly_reservation_limit: number | null
-          price_cents: number
-          rank: number
-          recommendation_weight: number
-          stripe_price_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          follower_threshold?: number | null
-          key: string
-          label: string
-          monthly_reservation_limit?: number | null
-          price_cents?: number
-          rank: number
-          recommendation_weight?: number
-          stripe_price_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          follower_threshold?: number | null
-          key?: string
-          label?: string
-          monthly_reservation_limit?: number | null
-          price_cents?: number
-          rank?: number
-          recommendation_weight?: number
-          stripe_price_id?: string | null
         }
         Relationships: []
       }
