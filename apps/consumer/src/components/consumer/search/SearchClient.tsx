@@ -385,24 +385,41 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Live text-search results — On Mesita / From Google. */}
+      {/* Live text-search results — On Mesita / From Google. The panel is
+          content-height with map showing below; tapping that map area (or the
+          side strips) clears the query and dismisses — X isn't the only way. */}
       {trimmed.length > 0 && (
-        <SearchResultsPanel
-          query={query}
-          searching={searching}
-          searchError={searchError}
-          predictions={predictions}
-          addStates={addStates}
-          resolvePlace={resolvePlace}
-          onInfo={handleInfo}
-          onAdd={handleAdd}
-        />
+        <>
+          <button
+            type="button"
+            aria-label="Dismiss search results"
+            onClick={() => updateQuery("")}
+            className="absolute inset-x-0 top-[60px] bottom-0 z-30 cursor-default"
+          />
+          <SearchResultsPanel
+            query={query}
+            searching={searching}
+            searchError={searchError}
+            predictions={predictions}
+            addStates={addStates}
+            resolvePlace={resolvePlace}
+            onInfo={handleInfo}
+            onAdd={handleAdd}
+          />
+        </>
       )}
 
       {/* Ask AI concierge — stays MOUNTED while open so the chat thread
           survives text searches; only visually hidden while a query runs. */}
       {aiOpen && (
         <div className={cn(trimmed.length > 0 && "hidden")}>
+          {/* Tap the map area below/around the concierge to dismiss it. */}
+          <button
+            type="button"
+            aria-label="Dismiss Ask AI"
+            onClick={() => setAiOpen(false)}
+            className="absolute inset-x-0 top-[60px] bottom-0 z-30 cursor-default"
+          />
           <AskAiPanel
             onClose={() => setAiOpen(false)}
             suggest={suggestForAi}

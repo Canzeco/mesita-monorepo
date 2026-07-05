@@ -125,7 +125,7 @@ export function AskAiPanel({
   };
 
   return (
-    <div className="border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] bottom-3 z-40 flex flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
+    <div className="border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 flex max-h-[72%] flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
       {/* Header */}
       <div className="border-border flex items-center justify-between gap-2 border-b px-4 py-3">
         <div className="flex items-center gap-2">
@@ -150,7 +150,10 @@ export function AskAiPanel({
       </div>
 
       {/* Thread */}
-      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
+      >
         {messages.map((m) => {
           if (m.kind === "text") {
             const isUser = m.role === "user";
