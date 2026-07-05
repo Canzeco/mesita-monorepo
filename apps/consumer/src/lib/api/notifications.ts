@@ -43,7 +43,7 @@ export async function fetchConsumerNotifications(
 ): Promise<ConsumerNotification[]> {
   const data = await invokeEF<ListPayNotificationsResult>(
     client,
-    "consumer-list-pay-notifications",
+    "consumer-web-list-pay-notifications",
     { limit },
   );
   return (data.notifications ?? []).map(enrichNotification);
@@ -59,7 +59,7 @@ export async function fetchPayTicketBundle(
 }> {
   const data = await invokeEF<ListPayNotificationsResult>(
     client,
-    "consumer-list-pay-notifications",
+    "consumer-web-list-pay-notifications",
     { ticketId },
   );
   return {
@@ -77,7 +77,7 @@ export async function fetchPayTicketList(
 }> {
   const data = await invokeEF<ListPayNotificationsResult>(
     client,
-    "consumer-list-pay-notifications",
+    "consumer-web-list-pay-notifications",
     {},
   );
   const ticketMetaById = new Map<string, PayTicketMeta>(
@@ -96,7 +96,7 @@ export async function fetchPendingNotificationCount(
   try {
     const data = await invokeEF<{ pendingCount: number }>(
       client,
-      "consumer-list-pay-notifications",
+      "consumer-web-list-pay-notifications",
       { pendingCountOnly: true },
     );
     return data.pendingCount ?? 0;

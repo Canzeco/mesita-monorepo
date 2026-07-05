@@ -7,7 +7,7 @@
 // so the useSyncExternalStore subscriber plumbing the older revision
 // carried has been removed.
 //
-// localStorage is still written so that when `consumer-list-reservations`
+// localStorage is still written so that when `consumer-web-list-reservations`
 // lands a future migration can replay it as a backfill, and so the
 // /reservations page can light up the moment that EF replaces the static
 // mock without losing in-flight bookings.

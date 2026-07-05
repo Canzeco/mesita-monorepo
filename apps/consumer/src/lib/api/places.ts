@@ -142,7 +142,7 @@ export async function apiFetchPublicPlaces(
 ): Promise<Place[]> {
   const { places } = await invokeEF<{ places: Place[] }>(
     client,
-    "consumer-list-places",
+    "consumer-web-list-places",
     { limit },
   );
   return places.map(stripInsecurePhotos);
@@ -163,7 +163,7 @@ export async function apiFetchPlaceDetail(
     const { place, tags } = await invokeEF<{
       place: Record<string, unknown>;
       tags?: ResolvedTag[];
-    }>(client, "consumer-get-place", { id: idOrSlug }, "Place not found");
+    }>(client, "consumer-web-get-place", { id: idOrSlug }, "Place not found");
     return place ? placeRowToDetail(place, tags) : null;
   } catch (err) {
     if (!(err instanceof EFError && err.status === 404)) {
@@ -181,7 +181,7 @@ export async function apiRecommendDeck(
 ): Promise<RecommendDeckResponse> {
   const data = await invokeEF<RecommendDeckResponse>(
     client,
-    "consumer-recommend-swipe",
+    "consumer-web-recommend-swipe",
     input,
   );
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
@@ -193,7 +193,7 @@ export async function apiRecommendCatalog(
 ): Promise<RecommendCatalogResponse> {
   const data = await invokeEF<RecommendCatalogResponse>(
     client,
-    "consumer-recommend-map",
+    "consumer-web-recommend-map",
     input,
   );
   return {
@@ -276,7 +276,7 @@ export async function apiSuggestPlaces(
   if (trimmed.length < 2) return [];
   const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
     client,
-    "consumer-suggest-places",
+    "consumer-web-suggest-places",
     { input: trimmed, sessionToken },
   );
   return predictions;
@@ -301,8 +301,8 @@ export async function apiCreatePlaceAsConsumerResult(
   try {
     const data = await invokeEF<ConsumerCreatePlaceResponse>(
       client,
-      "business-create-project",
-      { placeId },
+      "business-web-create-project",
+      { googlePlaceId: placeId },
       "Couldn't add that place right now.",
     );
     return {

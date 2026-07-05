@@ -12,7 +12,7 @@ export async function apiCreateSubscriptionCheckout(
 ): Promise<{ checkout_url: string }> {
   return invokeEF<{ checkout_url: string }>(
     client,
-    "consumer-create-subscription",
+    "consumer-web-create-subscription",
     { successUrl: opts.successUrl, cancelUrl: opts.cancelUrl },
     "Couldn't start checkout",
   );

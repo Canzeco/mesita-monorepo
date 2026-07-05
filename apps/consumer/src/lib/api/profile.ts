@@ -67,7 +67,7 @@ export async function apiUpdateConsumerProfile(
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,
-    "consumer-update-profile",
+    "consumer-web-update-profile",
     input,
   );
   return consumer;
@@ -79,7 +79,7 @@ export async function apiFetchConsumerProfile(
   const { consumer, membership } = await invokeEF<{
     consumer: ConsumerProfile;
     membership: ConsumerMembership;
-  }>(client, "consumer-get-profile", {});
+  }>(client, "consumer-web-get-profile", {});
   return { consumer, membership };
 }
 

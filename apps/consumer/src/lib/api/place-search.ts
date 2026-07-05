@@ -44,7 +44,7 @@ export async function apiScheduleProjectCreation(
   if (input.exec_at) body.exec_at = input.exec_at;
   return invokeEF<ScheduledProjectCreation>(
     client,
-    "consumer-schedule-project-creation",
+    "consumer-web-schedule-project-creation",
     body,
     "Couldn't queue that place right now.",
   );

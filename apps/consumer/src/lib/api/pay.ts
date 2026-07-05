@@ -332,7 +332,7 @@ export async function mockStoryDetect(
 ) {
   return invokeEF<Record<string, unknown>>(
     supabase,
-    "consumer-mock-story-detect",
+    "consumer-web-mock-story-detect",
     { ticketId },
     "Could not simulate story detection.",
   );
@@ -352,7 +352,7 @@ export async function submitTicketReview(
 ) {
   return invokeEF<Record<string, unknown>>(
     supabase,
-    "consumer-submit-ticket-review",
+    "consumer-web-submit-ticket-review",
     { ...input },
     "Could not submit review",
   );

@@ -1,14 +1,14 @@
 // Mock SAVED_PLACES catalog used by the /discover/saved page until the
-// consumer-side wire-up of `consumer-list-saved-places` lands. Bookmarks
+// consumer-side wire-up of `consumer-web-list-saved-places` lands. Bookmarks
 // created by the consumer's plain "Save" action on a place card. Shape
 // matches the production `Place` type so PlaceCatalogCard can render
 // these unmodified. Two verified-partner places (discount badges) plus
 // two web-listed places (no badge) so the contextual badge logic on
 // /saved is visible across both kinds.
 //
-// TODO: swap this for a `consumer-list-saved-places` EF call.
+// TODO: swap this for a `consumer-web-list-saved-places` EF call.
 // The EF + the underlying public.saved_places table already ship — see
-// mesita-supabase/supabase/functions/consumer-list-saved-places. What's
+// mesita-supabase/supabase/functions/consumer-web-list-saved-places. What's
 // pending is a hook that invokes the EF and the page reading from it.
 // Client calls the EF, never the DB directly — see api/places.ts for
 // the existing pattern.
