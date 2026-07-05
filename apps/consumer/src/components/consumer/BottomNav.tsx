@@ -56,7 +56,7 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.me.class,
     Icon: User,
-    label: "Profile",
+    label: "Me · Class",
     match: CONSUMER_ROUTE_PREFIX.me,
   },
 ];
