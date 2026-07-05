@@ -14,12 +14,14 @@ import {
   X,
 } from "lucide-react";
 import {
-  getPlaceMedia,
+  getPlaceEnrichment,
   updatePlace,
   type AdminPlace,
+  type PlaceEnrichmentStatus,
   type PlaceMediaMeta,
 } from "../actions";
 import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
+import { formatAbsoluteUtc } from "@/lib/format";
 
 const DAYS = [
   "monday",
@@ -171,14 +173,18 @@ export function PlaceSection({
 
   const removePhoto = (idx: number) => setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Admin-only: per-photo Enricher metadata (source + vision analysis) for the
-  // ⓘ inspector, keyed by image URL. Lazy-loaded once per place.
+  // Admin-only: per-place Enricher inspector data — per-photo metadata (source
+  // + vision analysis) for the ⓘ dialog, keyed by image URL, plus the place's
+  // enrichment status. Lazy-loaded once per place.
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
+  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(null);
   const [metaFor, setMetaFor] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
-    getPlaceMedia(place.id).then((r) => {
-      if (alive) setMedia(r.ok ? r.data : {});
+    getPlaceEnrichment(place.id).then((r) => {
+      if (!alive) return;
+      setMedia(r.ok ? r.data.media : {});
+      setEnrichStatus(r.ok ? r.data.status : null);
     });
     return () => {
       alive = false;
@@ -225,6 +231,9 @@ export function PlaceSection({
               friendly label (e.g. "🪩 Nightclub"), never the snakecase slug;
               read-only here — the slug isn't hand-edited. */}
           <TextField label="Category" value={place.category_label ?? form.category} placeholder="e.g. 🪩 Nightclub" disabled />
+        </div>
+        <div className="mt-4">
+          <EnrichmentStatusField status={enrichStatus} />
         </div>
         <div className="mt-4">
           <TextArea label="Description / About" value={form.description} onChange={(x) => set("description", x)} rows={5} maxLength={2000} disabled={pending} />
@@ -451,6 +460,55 @@ function PhotosEditor({
       <p className="text-muted-foreground mt-2 text-xs tabular-nums">
         {photos.length}/{PHOTOS_MAX} photos
       </p>
+    </div>
+  );
+}
+
+// Derives a display badge from the raw enrichment status. Prefers the live
+// place_research stage; falls back to the project's content_status when the
+// place has no research row yet (created but never enriched).
+function enrichmentBadge(s: PlaceEnrichmentStatus | null): { text: string; cls: string } {
+  const stage = s?.stage ?? null;
+  if (stage === "done") return { text: "Enriched", cls: "bg-green-500/10 text-green-600" };
+  if (stage === "failed") return { text: "Failed", cls: "bg-red-500/10 text-red-600" };
+  if (stage === "research" || stage === "analysis" || stage === "contents") {
+    return { text: `Enriching… (${stage})`, cls: "bg-blue-500/10 text-blue-600" };
+  }
+  switch (s?.content_status) {
+    case "ready":
+      return { text: "Enriched", cls: "bg-green-500/10 text-green-600" };
+    case "generating":
+      return { text: "Enriching…", cls: "bg-blue-500/10 text-blue-600" };
+    case "failed":
+      return { text: "Failed", cls: "bg-red-500/10 text-red-600" };
+    default:
+      return { text: "Not enriched", cls: "bg-muted text-muted-foreground" };
+  }
+}
+
+function EnrichmentStatusField({ status }: { status: PlaceEnrichmentStatus | null }) {
+  const badge = enrichmentBadge(status);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium">Enrichment status</span>
+      <div className="border-border bg-background flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2.5">
+        <span
+          className={
+            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+            badge.cls
+          }
+        >
+          {badge.text}
+        </span>
+        {status?.last_enriched_at && (
+          <span className="text-muted-foreground text-xs">
+            Last enriched {formatAbsoluteUtc(status.last_enriched_at)}
+          </span>
+        )}
+        {status?.stage === "failed" && status?.error && (
+          <span className="text-xs text-red-600">· {status.error}</span>
+        )}
+      </div>
     </div>
   );
 }

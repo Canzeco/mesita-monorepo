@@ -114,9 +114,10 @@ export async function updatePlace(
   return { ok: true, data: r.data.place };
 }
 
-// ── Per-photo Enricher metadata (admin-only) ─────────────────────────────
-// Internal enricher output for the Place gallery ⓘ inspector, keyed by the
-// image's public_url (matches AdminPlace.photos[]). Super-admin gated EF.
+// ── Per-place Enricher inspector (admin-only) ────────────────────────────
+// Internal enricher output for the Place editor: per-photo metadata for the
+// ⓘ inspector (keyed by public_url, matches AdminPlace.photos[]) + the place's
+// enrichment status. Super-admin gated EF.
 
 export type PlaceMediaMeta = {
   source: string | null;
@@ -127,15 +128,29 @@ export type PlaceMediaMeta = {
   source_url: string | null;
 };
 
-export async function getPlaceMedia(
+export type PlaceEnrichmentStatus = {
+  content_status: string | null;
+  stage: string | null;
+  stage_status: string | null;
+  error: string | null;
+  last_enriched_at: string | null;
+  updated_at: string | null;
+};
+
+export type PlaceEnrichment = {
+  media: Record<string, PlaceMediaMeta>;
+  status: PlaceEnrichmentStatus | null;
+};
+
+export async function getPlaceEnrichment(
   projectId: string,
-): Promise<Result<Record<string, PlaceMediaMeta>>> {
-  const r = await efInvoke<{ media: Record<string, PlaceMediaMeta> }>(
-    "admin-web-get-place-media",
-    { projectId },
-  );
+): Promise<Result<PlaceEnrichment>> {
+  const r = await efInvoke<{
+    media: Record<string, PlaceMediaMeta>;
+    status: PlaceEnrichmentStatus | null;
+  }>("admin-web-get-place-enrichment", { projectId });
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.media ?? {} };
+  return { ok: true, data: { media: r.data.media ?? {}, status: r.data.status ?? null } };
 }
 
 // ── Team ─────────────────────────────────────────────────────────────────
