@@ -162,26 +162,15 @@ export function GlobalPerformanceClient({
     <div className="-mx-4 mt-6 sm:-mx-6 sm:mt-8 lg:-mx-8">
       <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-y backdrop-blur-md">
         <div className="flex items-stretch overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {CATEGORIES.map((c) => {
+          {CATEGORIES.filter((c) => c.live).map((c) => {
             const Icon = c.Icon;
             return (
               <span
                 key={c.key}
-                title={c.live ? undefined : "Coming soon"}
-                className={
-                  "inline-flex shrink-0 items-center gap-1.5 border-r px-3 py-2.5 text-sm font-medium sm:px-4 " +
-                  (c.live
-                    ? "bg-secondary/10 text-secondary"
-                    : "text-muted-foreground/50 cursor-not-allowed")
-                }
+                className="bg-secondary/10 text-secondary inline-flex shrink-0 items-center gap-1.5 border-r px-3 py-2.5 text-sm font-medium sm:px-4"
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {c.label}
-                {!c.live && (
-                  <span className="text-[10px] font-semibold tracking-wide uppercase">
-                    soon
-                  </span>
-                )}
               </span>
             );
           })}
