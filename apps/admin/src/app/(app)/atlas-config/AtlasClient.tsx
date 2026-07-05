@@ -222,7 +222,7 @@ const STEP_GROUPS: { step: Step; blurb: string }[] = [
   { step: "S5", blurb: "Image descriptions — one vision call per analyzed photo" },
   { step: "S6", blurb: "Image ranking — sort & select the final gallery" },
   { step: "S7", blurb: "Synthesis — About, category & tags from the closed vocab" },
-  { step: "S8", blurb: "Persist profile — enricher-write-place-data (flips status to ready)" },
+  { step: "S8", blurb: "Persist profile — write place data (flips status to ready)" },
   { step: "S9", blurb: "Persist images — mirror the selected gallery to Storage" },
 ];
 
