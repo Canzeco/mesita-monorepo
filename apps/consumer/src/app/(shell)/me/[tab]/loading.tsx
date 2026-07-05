@@ -23,10 +23,7 @@ export default function MeTabLoading() {
           </div>
           <Skeleton className="mt-4 h-5 w-40 rounded" />
           <Skeleton className="mt-2 h-3.5 w-28 rounded" />
-          <div className="mt-4 flex gap-2">
-            <Skeleton className="h-10 flex-1 rounded-xl" />
-            <Skeleton className="h-10 flex-1 rounded-xl" />
-          </div>
+          <Skeleton className="mt-4 h-10 w-full rounded-xl" />
         </header>
 
         {/* Sticky Class / Settings sub-tab bar. */}

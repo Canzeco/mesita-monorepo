@@ -234,10 +234,7 @@ function ProfileHero({
         </div>
         <div className="bg-muted mt-4 h-5 w-40 animate-pulse rounded" />
         <div className="bg-muted mt-2 h-3.5 w-28 animate-pulse rounded" />
-        <div className="mt-4 flex gap-2">
-          <div className="bg-muted h-10 flex-1 animate-pulse rounded-xl" />
-          <div className="bg-muted h-10 flex-1 animate-pulse rounded-xl" />
-        </div>
+        <div className="bg-muted mt-4 h-10 w-full animate-pulse rounded-xl" />
       </header>
     );
   }
@@ -320,20 +317,17 @@ function ProfileHero({
         </p>
       </div>
 
-      <div className="mt-4 flex gap-2">
+      {/* Edit profile only — inviting friends lives on the top-bar share icon
+          (SimpleHeader rightAction="share" → /share), so a second entry point
+          here would be redundant. */}
+      <div className="mt-4">
         <button
           type="button"
           onClick={onEditProfile}
-          className="border-border bg-card hover:bg-muted flex-1 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+          className="border-border bg-card hover:bg-muted w-full rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
         >
           Edit profile
         </button>
-        <Link
-          href={CONSUMER_ROUTES.share}
-          className="bg-pink-gradient flex-1 rounded-xl py-2.5 text-center text-[13px] font-semibold text-white shadow-sm transition hover:opacity-95 active:scale-[0.99]"
-        >
-          Invite friends
-        </Link>
       </div>
     </header>
   );
