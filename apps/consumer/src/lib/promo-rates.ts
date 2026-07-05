@@ -1,4 +1,4 @@
-import type { Tier } from "@/lib/mock/place";
+import type { ConsumerClass } from "@/lib/mock/place";
 
 export type PromoTierRates = {
   free: number | null;
@@ -57,11 +57,11 @@ export function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
 
 export function resolveActivePromoRate(
   matrix: PromoMatrix,
-  tier: Tier,
+  classKey: ConsumerClass,
   isFirstVisit = matrix.is_first_visit,
 ): number | null {
-  const welcome = matrix.welcome[tier];
-  const returning = matrix.default[tier];
+  const welcome = matrix.welcome[classKey];
+  const returning = matrix.default[classKey];
   return (
     (isFirstVisit ? (welcome ?? returning) : (returning ?? welcome)) ?? null
   );

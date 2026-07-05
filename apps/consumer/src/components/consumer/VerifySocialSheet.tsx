@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BadgeCheck, Instagram, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MOCK_INSTAGRAM_KEY } from "@/lib/membership-context";
+import { MOCK_INSTAGRAM_KEY } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
@@ -23,11 +23,11 @@ export function VerifySocialSheet({
   const [verifying, setVerifying] = useState(false);
 
   // Mock verification: any 8-digit code "connects" Instagram and grants Premium
-  // via the instagram origin. Flips the localStorage flag the membership
+  // via the instagram origin. Flips the localStorage flag the class
   // provider reads, then hard-navigates so the shell re-seeds with the unlocked
-  // membership and the Profile lands on its success toast. Mirrors the
-  // MOCK_SUBSCRIPTION path in subscribe/[tier]; swap for the real verify call
-  // once the social-graph check ships.
+  // class and the Profile lands on its success toast. Mirrors the
+  // MOCK_SUBSCRIPTION path in subscribe/[classKey]; swap for the real verify
+  // call once the social-graph check ships.
   function mockVerify() {
     if (code.length < 8 || verifying) return;
     setVerifying(true);

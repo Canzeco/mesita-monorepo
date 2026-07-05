@@ -5,28 +5,31 @@ import Link from "next/link";
 import { Copy, Check, Instagram, Crown, Ticket, Sparkles } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { displayConsumerCode } from "@/lib/consumer-code";
-import { useMembership, type Membership } from "@/lib/membership-context";
+import {
+  useConsumerClass,
+  type ConsumerClassState,
+} from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// The Rewards → QR tab. Not a receipt: a membership *passport*. A single
+// The Rewards → QR tab. Not a receipt: a class *passport*. A single
 // premium dark-gradient card carries the QR, the Mesita code, and an
-// identity strip (name · plan · Instagram reach) so showing it at the table
+// identity strip (name · class · Instagram reach) so showing it at the table
 // reads like flashing a card. Mirrors the Lovable "Mesita" prototype's
 // QrView (src/routes/rewards.tsx).
 
-function classPresentation(m: Membership): {
+function classPresentation(c: ConsumerClassState): {
   label: string;
   Glyph: typeof Instagram;
   glyphClass: string;
 } {
-  if (m.tier !== "premium") {
+  if (c.key !== "premium") {
     return {
       label: "Free",
       Glyph: Ticket,
       glyphClass: "bg-white/12 text-white",
     };
   }
-  switch (m.origin) {
+  switch (c.origin) {
     case "instagram":
       return {
         label: "Premium · Instagram",
@@ -67,11 +70,11 @@ function formatFollowers(n: number): string {
 
 export function MyQrCard({ code, name }: { code: string; name?: string }) {
   const displayCode = displayConsumerCode(code);
-  const membership = useMembership();
-  const { label, Glyph, glyphClass } = classPresentation(membership);
+  const consumerClass = useConsumerClass();
+  const { label, Glyph, glyphClass } = classPresentation(consumerClass);
   const displayName = name?.trim() || "Mesita member";
-  const isFree = membership.tier !== "premium";
-  const isInstagram = membership.origin === "instagram";
+  const isFree = consumerClass.key !== "premium";
+  const isInstagram = consumerClass.origin === "instagram";
 
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
@@ -135,8 +138,8 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
             <p className="truncate text-sm font-bold">{displayName}</p>
             <p className="text-[10px] font-semibold tracking-widest text-white/60 uppercase">
               {label}
-              {isInstagram && membership.followers > 0
-                ? ` · ${formatFollowers(membership.followers)} followers`
+              {isInstagram && consumerClass.followers > 0
+                ? ` · ${formatFollowers(consumerClass.followers)} followers`
                 : ""}
             </p>
           </div>

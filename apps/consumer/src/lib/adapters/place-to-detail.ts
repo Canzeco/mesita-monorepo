@@ -5,9 +5,9 @@
 //
 // Derived / not-stored fields (distance_km, open_now, price_range) get
 // sensible neutral defaults — distance is geolocation-dependent and computed
-// client-side later. The reward matrix carries only the raw per-tier rates;
-// the active tier is resolved at render time from the live membership context,
-// so this adapter never bakes in a current_tier.
+// client-side later. The reward matrix carries only the raw per-class rates;
+// the active class is resolved at render time from the live class context,
+// so this adapter never bakes in a current_class.
 
 import type { PlaceDetail } from "@/lib/mock/place";
 import { resolvePlaceCategoryName } from "@/lib/place-category";

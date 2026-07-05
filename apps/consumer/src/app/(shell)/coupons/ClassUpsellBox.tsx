@@ -9,26 +9,28 @@ import {
   CreditCard,
   Mail,
 } from "lucide-react";
-import { TIER_ORDER, TIERS, tierProperLabel } from "@/lib/consumer-data";
-import { useMembership } from "@/lib/membership-context";
+import { CLASS_ORDER, CLASSES, classProperLabel } from "@/lib/consumer-data";
+import { useConsumerClass } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Promo strip at the top of /coupons. Folds the two plans, the coupon
+// Promo strip at the top of /coupons. Folds the two classes, the coupon
 // reward range, and the lifestyle perks into one connected pitch, then lists
 // the three doors into Premium as the concrete actions.
 //
 // Premium holders see a maxed-out variant.
 
 // Single source of truth for the Premium price — mirrors the subscribe page
-// and profile, which also read TIERS.priceMxn (never hardcode the amount).
-const PREMIUM_PRICE_MXN = TIERS.find((t) => t.id === "premium")?.priceMxn ?? 0;
+// and profile, which also read CLASSES.priceMxn (never hardcode the amount).
+const PREMIUM_PRICE_MXN = CLASSES.find((c) => c.id === "premium")?.priceMxn ?? 0;
 
 export function ClassUpsellBox() {
-  const { tier: current } = useMembership();
-  const currentLabel = tierProperLabel(current);
-  const currentIdx = TIER_ORDER.indexOf(current as (typeof TIER_ORDER)[number]);
-  const isMaxedOut = currentIdx === TIER_ORDER.length - 1;
+  const { key: current } = useConsumerClass();
+  const currentLabel = classProperLabel(current);
+  const currentIdx = CLASS_ORDER.indexOf(
+    current as (typeof CLASS_ORDER)[number],
+  );
+  const isMaxedOut = currentIdx === CLASS_ORDER.length - 1;
 
   if (isMaxedOut) {
     return (
@@ -41,7 +43,7 @@ export function ClassUpsellBox() {
             Mesita Premium
           </p>
           <p className="font-display mt-0.5 text-base font-semibold">
-            Top plan. Partners give you their best rates.
+            Top class. Partners give you their best rates.
           </p>
         </div>
       </div>
@@ -68,7 +70,7 @@ export function ClassUpsellBox() {
       </div>
 
       <p className="mt-3 text-[13px] leading-snug text-white/90">
-        Mesita has two plans: Free and Premium. Premium unlocks bigger
+        Mesita has two classes: Free and Premium. Premium unlocks bigger
         discounts, better recommendations, and unlimited reservations — some
         partners compete with discounts up to 70%.
       </p>
@@ -117,13 +119,13 @@ export function ClassUpsellBox() {
         ))}
       </div>
 
-      {/* Plan ladder dots — Free · Premium + where the user sits. */}
+      {/* Class ladder dots — Free · Premium + where the user sits. */}
       <div className="mt-5 flex items-center gap-1.5">
-        {TIER_ORDER.map((tier) => {
-          const reached = TIER_ORDER.indexOf(tier) <= currentIdx;
+        {CLASS_ORDER.map((classKey) => {
+          const reached = CLASS_ORDER.indexOf(classKey) <= currentIdx;
           return (
             <span
-              key={tier}
+              key={classKey}
               className={cn(
                 "h-1.5 flex-1 rounded-full",
                 reached ? "bg-white" : "bg-white/25",

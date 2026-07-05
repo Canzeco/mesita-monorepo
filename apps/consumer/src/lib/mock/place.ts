@@ -6,7 +6,7 @@
 // When wiring real data, write an adapter that maps the EF response →
 // PlaceDetail; the view stays untouched.
 
-export type Tier = "free" | "premium";
+export type ConsumerClass = "free" | "premium";
 
 export type PlaceDetail = {
   // Stable identifier — matches public.places.id once the real fetch lands.
@@ -86,7 +86,7 @@ export type PlaceDetail = {
   mesita_visitors: Array<{
     name: string;
     handle: string;
-    tier: Tier;
+    class_key: ConsumerClass;
     community: string;
     followers: number;
     quote: string;
@@ -119,15 +119,15 @@ export type PlaceDetail = {
     reward_value: number;
   };
 
-  // 8. Reward by class — four per-tier promo rates (Welcome × tier on
-  // first visit, default × tier afterwards) + whether this is the guest's
+  // 8. Reward by class — four per-class promo rates (Welcome × class on
+  // first visit, default × class afterwards) + whether this is the guest's
   // first visit at this place. Active reward is
-  // `is_first_visit ? promo_matrix.welcome[tier] : promo_matrix.default[tier]`,
-  // where `tier` is the guest's live membership tier, resolved at render time
-  // from the membership context — not baked into the row, since the server
+  // `is_first_visit ? promo_matrix.welcome[classKey] : promo_matrix.default[classKey]`,
+  // where `classKey` is the guest's live class, resolved at render time
+  // from the class context — not baked into the row, since the server
   // adapter can't know who's viewing.
   // Mirrors mesita-supabase migration 0032 / public.places columns. Each
-  // rate is one of 10 / 20 / 50 / 70 or null (= no promo at that tier).
+  // rate is one of 10 / 20 / 50 / 70 or null (= no promo at that class).
   promo_matrix: {
     welcome: {
       free: number | null;
@@ -318,7 +318,7 @@ export const mockPlace: PlaceDetail = {
     {
       name: "Valentina R.",
       handle: "@valenrose",
-      tier: "premium",
+      class_key: "premium",
       community: "Tec",
       followers: 126000,
       quote:
@@ -334,7 +334,7 @@ export const mockPlace: PlaceDetail = {
     {
       name: "Lucas M.",
       handle: "@lucasm",
-      tier: "premium",
+      class_key: "premium",
       community: "Stanford",
       followers: 78400,
       quote:
@@ -350,7 +350,7 @@ export const mockPlace: PlaceDetail = {
     {
       name: "Renata G.",
       handle: "@renatagomez",
-      tier: "free",
+      class_key: "free",
       community: "Ibero",
       followers: 42100,
       quote:
@@ -363,7 +363,7 @@ export const mockPlace: PlaceDetail = {
     {
       name: "Andrés P.",
       handle: "@andrespv",
-      tier: "premium",
+      class_key: "premium",
       community: "Harvard",
       followers: 214000,
       quote:

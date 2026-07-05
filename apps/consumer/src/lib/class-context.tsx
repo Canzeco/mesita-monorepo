@@ -7,20 +7,20 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import type { ConsumerMembership } from "@/lib/api/profile";
+import type { ConsumerClass } from "@/lib/api/profile";
 
-// Real, server-sourced membership for the signed-in consumer, shared with
+// Real, server-sourced class for the signed-in consumer, shared with
 // every client surface under the (shell) layout: the TopBar class chip, the
-// Profile Plan tab, the place promo chips, and the place-detail reward box.
+// Profile Class tab, the place promo chips, and the place-detail reward box.
 //
-// Seeded once per request by the layout's consumer-get-profile read. This
+// Seeded once per request by the layout's consumer-web-get-profile read. This
 // replaces the old hardcoded CURRENT_USER mock that pinned everyone to
-// Premium — tier now reflects the real consumers.tier_key, so the instant-
+// Premium — key now reflects the real consumers.class_key, so the instant-
 // Premium mock subscription flow becomes visible the moment the post-checkout
 // redirect reloads the shell.
 
-export type Membership = {
-  tier: "free" | "premium";
+export type ConsumerClassState = {
+  key: "free" | "premium";
   origin: "default" | "instagram" | "subscription" | "invitation";
   /** Subscription renewal date (ISO). Only meaningful when
    *  origin === "subscription"; null for every other origin. */
@@ -32,29 +32,30 @@ export type Membership = {
 // account. Nothing is ever gated *open* by this default — the worst case is a
 // real Premium member momentarily shown as Free, which the server-seeded
 // value corrects on first paint.
-const FREE_MEMBERSHIP: Membership = {
-  tier: "free",
+const FREE_CLASS: ConsumerClassState = {
+  key: "free",
   origin: "default",
   renewsAt: null,
   followers: 0,
 };
 
-function normalize(m: ConsumerMembership | null | undefined): Membership {
-  if (!m) return FREE_MEMBERSHIP;
+function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
+  if (!c) return FREE_CLASS;
   return {
-    tier: m.tier === "premium" ? "premium" : "free",
-    origin: m.origin ?? "default",
-    renewsAt: m.subscription?.current_period_end ?? m.expires_at ?? null,
-    followers: m.followers ?? 0,
+    key: c.key === "premium" ? "premium" : "free",
+    origin: c.origin ?? "default",
+    renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
+    followers: c.followers ?? 0,
   };
 }
 
-const MembershipContext = createContext<Membership>(FREE_MEMBERSHIP);
+const ClassContext = createContext<ConsumerClassState>(FREE_CLASS);
 
 // Client-side mock upgrade. The Premium "Continue to checkout" button sets this
 // localStorage flag instead of running Stripe, so the full upgrade UX is
-// demoable before consumer-create-subscription is live. Remove together with
-// the MOCK_SUBSCRIPTION path in subscribe/[tier] once real billing ships.
+// demoable before consumer-web-create-subscription is live. Remove together
+// with the MOCK_SUBSCRIPTION path in subscribe/[classKey] once real billing
+// ships.
 export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 
 // Client-side mock Instagram verification. The Verify Instagram sheet sets this
@@ -88,31 +89,31 @@ function useLocalStorageFlag(key: string): boolean {
   );
 }
 
-export function MembershipProvider({
-  membership,
+export function ClassProvider({
+  consumerClass,
   children,
 }: {
-  membership: ConsumerMembership | null;
+  consumerClass: ConsumerClass | null;
   children: ReactNode;
 }) {
-  const base = useMemo(() => normalize(membership), [membership]);
+  const base = useMemo(() => normalize(consumerClass), [consumerClass]);
 
   // Client-only mock flags, read SSR-safe so the upgrade UX is demoable. The
-  // first (hydration) render sees the server-seeded membership; the real
+  // first (hydration) render sees the server-seeded class; the real
   // localStorage values fold in immediately after.
   const mockPremium = useLocalStorageFlag(MOCK_PREMIUM_KEY);
   const mockInstagram = useLocalStorageFlag(MOCK_INSTAGRAM_KEY);
 
-  const value = useMemo<Membership>(() => {
+  const value = useMemo<ConsumerClassState>(() => {
     // A real server-seeded Premium always wins — never downgrade or relabel it.
-    if (base.tier === "premium") return base;
+    if (base.key === "premium") return base;
     // Instagram verification takes precedence over the subscription mock: it's
     // the more specific door (origin + follower reach), and the verify sheet is
     // the only thing that sets it.
     if (mockInstagram) {
       return {
         ...base,
-        tier: "premium",
+        key: "premium",
         origin: "instagram",
         renewsAt: null,
         followers: MOCK_INSTAGRAM_FOLLOWERS,
@@ -123,7 +124,7 @@ export function MembershipProvider({
       renews.setMonth(renews.getMonth() + 1);
       return {
         ...base,
-        tier: "premium",
+        key: "premium",
         origin: "subscription",
         renewsAt: renews.toISOString(),
       };
@@ -132,12 +133,10 @@ export function MembershipProvider({
   }, [base, mockPremium, mockInstagram]);
 
   return (
-    <MembershipContext.Provider value={value}>
-      {children}
-    </MembershipContext.Provider>
+    <ClassContext.Provider value={value}>{children}</ClassContext.Provider>
   );
 }
 
-export function useMembership(): Membership {
-  return useContext(MembershipContext);
+export function useConsumerClass(): ConsumerClassState {
+  return useContext(ClassContext);
 }

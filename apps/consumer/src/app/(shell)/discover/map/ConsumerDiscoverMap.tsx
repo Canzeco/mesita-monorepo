@@ -312,7 +312,7 @@ function PlacePreview({
 }) {
   const photo = place.photos[0];
   // Advertised reward for the preview pill — the base first-visit rate a
-  // guest sees before membership context resolves. Only Verified Partners
+  // guest sees before the class context resolves. Only Verified Partners
   // run the Mesita discount, so web listings resolve null and show nothing.
   const discountPercent =
     place.listing_type === "partner"

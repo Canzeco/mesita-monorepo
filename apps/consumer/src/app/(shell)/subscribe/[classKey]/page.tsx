@@ -4,18 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { ArrowLeft, Check, Instagram, Mail, Sparkles } from "lucide-react";
-import { TIERS } from "@/lib/consumer-data";
+import { CLASSES } from "@/lib/consumer-data";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
-import { MOCK_PREMIUM_KEY } from "@/lib/membership-context";
+import { MOCK_PREMIUM_KEY } from "@/lib/class-context";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Premium subscribe page — the paid "door" into Mesita Premium ($100 MXN/mo).
 // The other two doors (Instagram, invitation) are surfaced here too so the
 // page reads as "here's how to get Premium", with Subscribe as the primary
-// action wired to real Stripe Checkout. The legacy four-tier subscribe routes
-// collapsed to this single page; the [tier] segment is kept so existing
+// action wired to real Stripe Checkout. The legacy four-class subscribe routes
+// collapsed to this single page; the [classKey] segment is kept so existing
 // /subscribe/premium links resolve, but only "premium" is valid.
 
 const PERKS = [
@@ -25,10 +25,10 @@ const PERKS = [
 ];
 
 export default function SubscribePage() {
-  const params = useParams<{ tier: string }>();
-  if (params?.tier !== "premium") notFound();
+  const params = useParams<{ classKey: string }>();
+  if (params?.classKey !== "premium") notFound();
 
-  const premium = TIERS.find((t) => t.id === "premium");
+  const premium = CLASSES.find((c) => c.id === "premium");
   if (!premium) notFound();
 
   return (
@@ -54,7 +54,7 @@ export default function SubscribePage() {
       <div className="flex flex-col gap-5 px-5 py-5">
         <section className="bg-tier-premium shadow-elev rounded-2xl p-5 text-white">
           <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
-            Mesita Plan
+            Mesita Class
           </p>
           <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">
             Mesita Premium
@@ -163,7 +163,7 @@ function PremiumCheckoutButton() {
   }
 
   // Mock path: no Stripe, no DB write. Persist the Premium flag and hard-reload
-  // into the profile success state so the membership provider re-seeds Premium.
+  // into the profile success state so the class provider re-seeds Premium.
   function mockSubscribe() {
     setLoading(true);
     window.localStorage.setItem(MOCK_PREMIUM_KEY, "1");

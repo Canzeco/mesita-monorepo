@@ -46,8 +46,8 @@ import {
 } from "@/components/consumer/BrandLogos";
 import { SectionAnchor } from "@/components/consumer/PlaceSectionNav";
 import { useSavedPlaces } from "@/lib/saved-places";
-import { tierProperLabel } from "@/lib/consumer-data";
-import { useMembership } from "@/lib/membership-context";
+import { classProperLabel } from "@/lib/consumer-data";
+import { useConsumerClass } from "@/lib/class-context";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
@@ -56,7 +56,7 @@ import {
 } from "@/lib/promo-rates";
 
 import { cn, firstInitial } from "@/lib/utils";
-import type { Tier, PlaceDetail } from "@/lib/mock/place";
+import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 
 // Pure presentation for the place detail surface. The two callers (full
 // page at /places/[id] and the intercepted modal at @modal/(.)places/[id])
@@ -664,9 +664,9 @@ function HoursTableCard({ place }: { place: PlaceDetail }) {
 // ── Reward (hero + Free/Premium × first/returning matrix) ───────────────
 
 function RewardsBox({ place }: { place: PlaceDetail }) {
-  const membership = useMembership();
+  const consumerClass = useConsumerClass();
   const { welcome, default: returning, is_first_visit } = place.promo_matrix;
-  const tier = membership.tier;
+  const classKey = consumerClass.key;
 
   const offersRewards = placeOffersMesitaRewards({
     listing_type: place.listing_type,
@@ -700,17 +700,17 @@ function RewardsBox({ place }: { place: PlaceDetail }) {
   }
 
   // Active reward = welcome variant on a first visit, default variant
-  // otherwise. Null means the place offers nothing at this tier — the
+  // otherwise. Null means the place offers nothing at this class — the
   // hero still renders so the user knows where they stand.
   const activeValue = resolveActivePromoRate(
     place.promo_matrix,
-    tier,
+    classKey,
     is_first_visit,
   );
   // Every Verified Partner runs an instant discount. Lowercase it when
   // reading inline with the percentage ("20% discount").
   const mechanicWord = place.details.mechanic.toLowerCase();
-  // Short suffix for the tier tiles, consistent with the hero — "70% off".
+  // Short suffix for the class tiles, consistent with the hero — "70% off".
   const mechanicShort = "off";
   // Ticket cap (pesos): the reward applies to the first N of the bill, then
   // full price — it is not a ceiling on the reward. 0/null means no cap, so
@@ -719,12 +719,12 @@ function RewardsBox({ place }: { place: PlaceDetail }) {
     place.reward_cap_mxn != null && place.reward_cap_mxn > 0
       ? `MX$${place.reward_cap_mxn.toLocaleString("en-US")}`
       : null;
-  // Concise one-line context (the tier is already shown — highlighted — in
+  // Concise one-line context (the class is already shown — highlighted — in
   // the matrix below, so we don't repeat "as Mesita Premium" here).
   const visitLabel = is_first_visit ? "First visit" : "Returning visit";
   const subtitle =
     activeValue == null
-      ? `No reward at Mesita ${tierProperLabel(tier)} yet`
+      ? `No reward at Mesita ${classProperLabel(classKey)} yet`
       : capLabel
         ? `${visitLabel} · on your first ${capLabel}`
         : visitLabel;
@@ -733,9 +733,9 @@ function RewardsBox({ place }: { place: PlaceDetail }) {
   //                     Premium reward)
   //   Premium (paid)  → one Pay-with-QR button, reward applies automatically
   //   Premium via IG  → one button: Pay with QR *and* post an Instagram story,
-  //                     since the story is what re-verifies the IG Premium tier
-  const isFree = membership.tier === "free";
-  const isPremiumViaInstagram = !isFree && membership.origin === "instagram";
+  //                     since the story is what re-verifies the IG Premium class
+  const isFree = consumerClass.key === "free";
+  const isPremiumViaInstagram = !isFree && consumerClass.origin === "instagram";
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — the active reward, mechanic, and cap. The box header already
@@ -783,12 +783,12 @@ function RewardsBox({ place }: { place: PlaceDetail }) {
       <RewardMatrix
         welcome={welcome}
         returning={returning}
-        currentTier={tier}
+        currentClass={classKey}
         isFirstVisit={is_first_visit}
         suffix={mechanicShort}
       />
 
-      {/* CTAs — tier- and source-aware so the exact action is unambiguous.
+      {/* CTAs — class- and source-aware so the exact action is unambiguous.
           Free: Pay + Upgrade. Paid Premium: one Pay button. Instagram
           Premium: one Pay-and-post-story button. */}
       <div className="flex flex-col gap-2">
@@ -875,19 +875,19 @@ function RewardStep({
 }
 
 // Compact reward matrix — First / Returning rows × Free / Premium columns.
-// Mirrors the Plan comparison table on the Profile (FreeVsPremium) for
-// visual consistency. The active cell (current tier × current visit axis)
+// Mirrors the Class comparison table on the Profile (FreeVsPremium) for
+// visual consistency. The active cell (current class × current visit axis)
 // is highlighted so "you are here" is obvious.
 function RewardMatrix({
   welcome,
   returning,
-  currentTier,
+  currentClass,
   isFirstVisit,
   suffix,
 }: {
   welcome: { free: number | null; premium: number | null };
   returning: { free: number | null; premium: number | null };
-  currentTier: Tier;
+  currentClass: ConsumerClass;
   isFirstVisit: boolean;
   /** Reward unit shown after the percent, e.g. "off". */
   suffix: string;
@@ -935,13 +935,13 @@ function RewardMatrix({
             <RewardCell
               value={r.vals.free}
               suffix={suffix}
-              active={r.onAxis && currentTier === "free"}
+              active={r.onAxis && currentClass === "free"}
             />
             <RewardCell
               value={r.vals.premium}
               suffix={suffix}
               accent
-              active={r.onAxis && currentTier === "premium"}
+              active={r.onAxis && currentClass === "premium"}
             />
           </div>
         ))}

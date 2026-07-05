@@ -26,16 +26,16 @@ export type ConsumerProfile = {
   phone: string | null;
 };
 
-// Membership payload returned alongside the profile by consumer-get-profile.
-// The real tier/origin/subscription state for the signed-in consumer — what
-// the (shell) layout feeds into the MembershipProvider so every client
-// surface renders the consumer's actual plan instead of a hardcoded mock.
-export type ConsumerMembership = {
-  tier: "free" | "premium";
+// Class payload returned alongside the profile by consumer-web-get-profile.
+// The real class/origin/subscription state for the signed-in consumer — what
+// the (shell) layout feeds into the ClassProvider so every client
+// surface renders the consumer's actual class instead of a hardcoded mock.
+export type ConsumerClass = {
+  key: "free" | "premium";
   origin: "default" | "instagram" | "subscription" | "invitation";
   label: string;
   followers: number | null;
-  /** consumers.tier_expires_at — when a non-default tier lapses. */
+  /** consumers.class_expires_at — when a non-default class lapses. */
   expires_at: string | null;
   subscription: {
     status: string;
@@ -75,12 +75,12 @@ export async function apiUpdateConsumerProfile(
 
 export async function apiFetchConsumerProfile(
   client: SupabaseClient,
-): Promise<{ consumer: ConsumerProfile; membership: ConsumerMembership }> {
-  const { consumer, membership } = await invokeEF<{
+): Promise<{ consumer: ConsumerProfile; consumerClass: ConsumerClass }> {
+  const { consumer, class: consumerClass } = await invokeEF<{
     consumer: ConsumerProfile;
-    membership: ConsumerMembership;
+    class: ConsumerClass;
   }>(client, "consumer-web-get-profile", {});
-  return { consumer, membership };
+  return { consumer, consumerClass };
 }
 
 // ─── Display helpers ─────────────────────────────────────────────────────

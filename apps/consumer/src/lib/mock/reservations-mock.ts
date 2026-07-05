@@ -10,7 +10,7 @@ export type ReservationStatus = "booking" | "booked" | "cancelled";
 export type LinkedCouponSummary = {
   id: string;
   percent: number;
-  tierLabel: string;
+  classLabel: string;
   kind: "normal" | "instagram";
   /** Lifecycle hint — surfaced as a small pill. Subset of the full status. */
   state: "active" | "pending";
@@ -41,7 +41,7 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     linkedCoupon: {
       id: "cp-mar-verde",
       percent: 20,
-      tierLabel: "Mesita Premium",
+      classLabel: "Mesita Premium",
       kind: "normal",
       state: "active",
     },
@@ -59,7 +59,7 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     linkedCoupon: {
       id: "cp-neon-bar",
       percent: 20,
-      tierLabel: "Mesita Premium",
+      classLabel: "Mesita Premium",
       kind: "normal",
       state: "active",
     },
@@ -76,7 +76,7 @@ export const MOCK_RESERVATIONS: ReservationItem[] = [
     linkedCoupon: {
       id: "cp-casa-luminar",
       percent: 10,
-      tierLabel: "Mesita Premium",
+      classLabel: "Mesita Premium",
       kind: "normal",
       state: "active",
     },

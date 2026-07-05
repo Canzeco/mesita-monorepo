@@ -33,8 +33,8 @@ import {
   VerifySocialSheet,
   type SocialPlatform,
 } from "@/components/consumer/VerifySocialSheet";
-import { COUNTRIES, TIERS, tierBadgeClass } from "@/lib/consumer-data";
-import { useMembership } from "@/lib/membership-context";
+import { COUNTRIES, CLASSES, classBadgeClass } from "@/lib/consumer-data";
+import { useConsumerClass } from "@/lib/class-context";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -42,7 +42,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiFetchConsumerProfile,
-  type ConsumerMembership,
+  type ConsumerClass,
   type ConsumerProfile,
 } from "@/lib/api/profile";
 
@@ -70,7 +70,7 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
   // sheet — one consumer-web-get-profile read per profile visit. The (shell)
   // layout already guarantees the row is complete (onboarding gate).
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
-  const [usage, setUsage] = useState<ConsumerMembership["usage"] | null>(null);
+  const [usage, setUsage] = useState<ConsumerClass["usage"] | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -78,13 +78,13 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
     let cancelled = false;
     (async () => {
       try {
-        const [{ consumer, membership }, authRes] = await Promise.all([
+        const [{ consumer, consumerClass }, authRes] = await Promise.all([
           apiFetchConsumerProfile(supabase),
           supabase.auth.getUser(),
         ]);
         if (cancelled) return;
         setProfile(consumer);
-        setUsage(membership.usage);
+        setUsage(consumerClass.usage);
         setEmail(authRes.data.user?.email ?? null);
       } catch (e) {
         if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
@@ -208,9 +208,9 @@ function ProfileHero({
   onEditProfile: () => void;
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  const { tier, origin, followers } = useMembership();
+  const { key, origin, followers } = useConsumerClass();
   const { savedIds } = useSavedPlaces();
-  const isPremium = tier === "premium";
+  const isPremium = key === "premium";
   const igConnected = origin === "instagram";
 
   if (loading) {
@@ -247,7 +247,7 @@ function ProfileHero({
     `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() ||
     name.charAt(0).toUpperCase();
   const country = COUNTRIES.find((c) => c.name === profile?.country);
-  const classLabel = TIERS.find((t) => t.id === tier)?.label ?? "Free";
+  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
 
   return (
     <header className="px-5 pt-5">
@@ -306,7 +306,7 @@ function ProfileHero({
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] leading-none font-bold",
-              tierBadgeClass(tier),
+              classBadgeClass(key),
             )}
           >
             {isPremium && <Crown className="h-3 w-3 fill-current" />}
@@ -499,9 +499,9 @@ function WaysToClimb({
 }: {
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  const premium = TIERS.find((t) => t.id === "premium")!;
-  const { tier, origin, followers } = useMembership();
-  const isFree = tier === "free";
+  const premium = CLASSES.find((c) => c.id === "premium")!;
+  const { key, origin, followers } = useConsumerClass();
+  const isFree = key === "free";
 
   const cards: ClimbCardData[] = [
     {
@@ -692,10 +692,10 @@ function CurrentClassCard() {
   // Current-class banner — class name + an origin icon and a short "via …"
   // line so a Premium member sees how they got it (Instagram / subscription
   // / invitation). No follower count — just the door.
-  const { tier, origin } = useMembership();
-  const meta = TIERS.find((t) => t.id === tier)!;
+  const { key, origin } = useConsumerClass();
+  const meta = CLASSES.find((c) => c.id === key)!;
   const brand = `Mesita ${meta.label}`;
-  const isPremium = tier === "premium";
+  const isPremium = key === "premium";
   const { Icon, via } = (() => {
     if (!isPremium) return { Icon: Smile, via: null as string | null };
     switch (origin) {
@@ -713,7 +713,7 @@ function CurrentClassCard() {
     <div
       className={cn(
         "flex items-center gap-3 rounded-2xl px-4 py-4 shadow-sm",
-        tierBadgeClass(tier),
+        classBadgeClass(key),
       )}
     >
       <span
@@ -769,7 +769,7 @@ function SettingsTab({
   onEditProfile: () => void;
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  const { origin, followers } = useMembership();
+  const { origin, followers } = useConsumerClass();
   const igConnected = origin === "instagram";
 
   const [publicProfile, togglePublicProfile] = useStoredFlag(

@@ -314,10 +314,10 @@ export type Database = {
           last_name: string | null;
           phone: string | null;
           sex: string | null;
-          tier_expires_at: string | null;
-          tier_granted_at: string | null;
-          tier_key: string;
-          tier_origin: string;
+          class_expires_at: string | null;
+          class_granted_at: string | null;
+          class_key: string;
+          class_origin: string;
         };
         Insert: {
           avatar_url?: string | null;
@@ -332,10 +332,10 @@ export type Database = {
           last_name?: string | null;
           phone?: string | null;
           sex?: string | null;
-          tier_expires_at?: string | null;
-          tier_granted_at?: string | null;
-          tier_key?: string;
-          tier_origin?: string;
+          class_expires_at?: string | null;
+          class_granted_at?: string | null;
+          class_key?: string;
+          class_origin?: string;
         };
         Update: {
           avatar_url?: string | null;
@@ -350,17 +350,17 @@ export type Database = {
           last_name?: string | null;
           phone?: string | null;
           sex?: string | null;
-          tier_expires_at?: string | null;
-          tier_granted_at?: string | null;
-          tier_key?: string;
-          tier_origin?: string;
+          class_expires_at?: string | null;
+          class_granted_at?: string | null;
+          class_key?: string;
+          class_origin?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "consumers_tier_key_fkey";
-            columns: ["tier_key"];
+            foreignKeyName: "consumers_class_key_fkey";
+            columns: ["class_key"];
             isOneToOne: false;
-            referencedRelation: "plans";
+            referencedRelation: "classes";
             referencedColumns: ["key"];
           },
         ];
@@ -833,7 +833,7 @@ export type Database = {
         };
         Relationships: [];
       };
-      plans: {
+      classes: {
         Row: {
           created_at: string;
           currency: string;

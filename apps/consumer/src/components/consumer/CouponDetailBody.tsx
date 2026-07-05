@@ -172,7 +172,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
               {c.placeName}
             </h1>
             <p className="text-muted-foreground mt-0.5 text-[12px]">
-              {c.tierLabel}
+              {c.classLabel}
             </p>
           </div>
           <div className="text-right">
@@ -215,9 +215,9 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
         </p>
       )}
 
-      {/* Coupon metadata list — tier, cap, expiry. iOS Settings-style. */}
+      {/* Coupon metadata list — class, cap, expiry. iOS Settings-style. */}
       <section className="border-border bg-card divide-border/70 divide-y overflow-hidden rounded-2xl border">
-        <MetaRow Icon={Ticket} label="Tier" value={c.tierLabel} />
+        <MetaRow Icon={Ticket} label="Class" value={c.classLabel} />
         <MetaRow Icon={Sparkles} label="Cap" value={c.capLabel} />
         <MetaRow
           Icon={Calendar}

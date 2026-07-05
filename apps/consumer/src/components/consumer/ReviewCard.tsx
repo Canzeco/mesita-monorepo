@@ -5,11 +5,11 @@ import Image from "next/image";
 import { Star } from "lucide-react";
 import { GoogleLogo, MesitaMark } from "./BrandLogos";
 import { cn, firstInitial } from "@/lib/utils";
-import type { Tier, PlaceDetail } from "@/lib/mock/place";
-import { TIER_AVATAR_BG, TIER_TEXT } from "@/lib/tier-styles";
+import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
+import { CLASS_AVATAR_BG, CLASS_TEXT } from "@/lib/class-styles";
 
 // Individual review card — same skeleton for Mesita and Google, with the
-// source-specific bits (italic-serif quote vs sans, tier chip vs none,
+// source-specific bits (italic-serif quote vs sans, class chip vs none,
 // per-category ratings vs star row) toggled by the `kind` prop. Lives in
 // its own client file because the long-quote read-more toggle needs state.
 //
@@ -22,7 +22,7 @@ import { TIER_AVATAR_BG, TIER_TEXT } from "@/lib/tier-styles";
 
 const LONG_QUOTE_THRESHOLD = 220;
 
-const TIER_LABEL: Record<Tier, string> = {
+const CLASS_LABEL: Record<ConsumerClass, string> = {
   free: "FREE",
   premium: "PREMIUM",
 };
@@ -50,7 +50,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
             <div
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white/90",
-                TIER_AVATAR_BG[v.tier],
+                CLASS_AVATAR_BG[v.class_key],
               )}
             >
               {firstInitial(v.name)}
@@ -62,10 +62,10 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
             <span
               className={cn(
                 "rounded-full border border-current/30 px-1.5 py-0 text-[8px] font-bold tracking-wider uppercase",
-                TIER_TEXT[v.tier],
+                CLASS_TEXT[v.class_key],
               )}
             >
-              {TIER_LABEL[v.tier]}
+              {CLASS_LABEL[v.class_key]}
             </span>
           }
           sourceLogo={<MesitaMark />}

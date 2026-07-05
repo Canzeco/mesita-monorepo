@@ -1,5 +1,5 @@
-export const TIER_ORDER = ["free", "premium"] as const;
-type Tier = (typeof TIER_ORDER)[number];
+export const CLASS_ORDER = ["free", "premium"] as const;
+type Class = (typeof CLASS_ORDER)[number];
 
 // NOTE: The original Lovable export shipped a large local `Place` type
 // (with fields for popular-times bars, visitor avatars, etc.). Discover
@@ -68,11 +68,11 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
   COUNTRIES.map((c) => [c.code, c]),
 );
 
-export const TIERS: {
-  id: Tier;
+export const CLASSES: {
+  id: Class;
   label: string;
   req: string;
-  /** Monthly subscription price in MXN. 0 for Free (the default tier).
+  /** Monthly subscription price in MXN. 0 for Free (the default class).
    *  Granted upfront — no spend accumulation required. */
   priceMxn: number;
   /** Follower threshold via Instagram verification. 0 = no threshold. */
@@ -80,9 +80,9 @@ export const TIERS: {
   reward: string;
   perk: string;
 }[] = [
-  // The tier IS the brand — rendered as "Mesita Free" / "Mesita Premium" in
+  // The class IS the brand — rendered as "Mesita Free" / "Mesita Premium" in
   // marketing and subscribe surfaces. The compact `label` here is used inside
-  // tight UI (tier badges, table rows) where the "Mesita" prefix is noise.
+  // tight UI (class badges, table rows) where the "Mesita" prefix is noise.
   {
     id: "free",
     label: "Free",
@@ -103,11 +103,11 @@ export const TIERS: {
   },
 ];
 
-// Canonical bg + text class per tier. Used wherever a tier needs the
+// Canonical bg + text class per class. Used wherever a class needs the
 // brand-color chip treatment (avatars, pills, hero rows). Compose with
 // cn() at the call site when extra modifiers (size, rounding) are needed.
-export function tierBadgeClass(tier: Tier): string {
-  switch (tier) {
+export function classBadgeClass(classKey: Class): string {
+  switch (classKey) {
     case "free":
       return "bg-tier-free text-foreground";
     case "premium":
@@ -115,21 +115,21 @@ export function tierBadgeClass(tier: Tier): string {
   }
 }
 
-// Compact Title-Case label per tier. Used by the swipe overlay, the
+// Compact Title-Case label per class. Used by the swipe overlay, the
 // promo chip, the /coupons promo card, and the place detail rewards
 // box — anywhere we render "Mesita Free" / "Mesita Premium" alongside
-// the lower-case tier id (`free` / `premium`).
+// the lower-case class id (`free` / `premium`).
 //
-// Accepts a strictly-typed Tier or a plain string so callers can hand us
-// either (e.g. a server-sourced tier_key that flows as string) without an
+// Accepts a strictly-typed Class or a plain string so callers can hand us
+// either (e.g. a server-sourced class_key that flows as string) without an
 // extra cast; unknown values fall back to the "Mesita" brand word.
-const TIER_LABELS: Record<Tier, string> = {
+const CLASS_LABELS: Record<Class, string> = {
   free: "Free",
   premium: "Premium",
 };
 
-export function tierProperLabel(tier: Tier | string): string {
-  return TIER_LABELS[tier as Tier] ?? "Mesita";
+export function classProperLabel(classKey: Class | string): string {
+  return CLASS_LABELS[classKey as Class] ?? "Mesita";
 }
 
 // NOTE: The SAVED_PLACES mock catalog lives in `@/lib/mock/saved-places-mock`

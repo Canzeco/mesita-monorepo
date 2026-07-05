@@ -132,7 +132,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
                 {c.placeName}
               </h3>
               <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
-                {c.tierLabel} · {c.capLabel}
+                {c.classLabel} · {c.capLabel}
               </p>
             </div>
             <div className="text-right">

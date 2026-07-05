@@ -271,7 +271,7 @@ function LinkedCouponCard({ coupon }: { coupon: LinkedCouponSummary }) {
         <p className="text-foreground mt-0.5 text-[14px] leading-tight font-semibold">
           <span className="text-pink-600">{coupon.percent}%</span> discount{" "}
           <span className="text-muted-foreground font-normal">
-            · {coupon.tierLabel}
+            · {coupon.classLabel}
           </span>
         </p>
       </div>

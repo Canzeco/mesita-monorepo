@@ -1,8 +1,8 @@
 "use client";
 
 import { Gift } from "lucide-react";
-import { tierProperLabel } from "@/lib/consumer-data";
-import { useMembership } from "@/lib/membership-context";
+import { classProperLabel } from "@/lib/consumer-data";
+import { useConsumerClass } from "@/lib/class-context";
 import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import type { Place } from "@/lib/api/places";
 
@@ -10,12 +10,12 @@ import type { Place } from "@/lib/api/places";
 //
 // Renders the "X% OFF welcome / return-visit discount" pink-gradient pill
 // at the bottom of both the swipe overlay and the catalog/saved tile. Owns
-// the per-tier rate resolution, kind logic, and the tier+cap tooltip so the
+// the per-class rate resolution, kind logic, and the class+cap tooltip so the
 // two surfaces can't drift.
 //
-// The rate is REAL: it's read from the place's per-tier promo columns
+// The rate is REAL: it's read from the place's per-class promo columns
 // (welcome_/default_ × free/premium, migration 0032) for the current
-// guest's tier.
+// guest's class.
 //
 // Rewards are a Verified-Partner-only capability. Web-listed places never
 // offer rewards — a hard rule the chip enforces by short-circuiting on
@@ -42,7 +42,7 @@ export function PromoChip({
    *  clean; the swipe card opts in to state the absence explicitly. */
   showWhenEmpty?: boolean;
 }) {
-  const { tier } = useMembership();
+  const { key: classKey } = useConsumerClass();
   const sizing =
     size === "md" ? "px-2.5 py-1 text-[11.5px]" : "px-2.5 py-1 text-[10.5px]";
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
@@ -53,10 +53,10 @@ export function PromoChip({
   const promoPercent = resolvePromoRateFromPlaceRow(
     place as unknown as Record<string, unknown>,
     isFirstVisit,
-    tier === "premium",
+    classKey === "premium",
   );
 
-  // No reward at the current tier. Hidden by default; when the caller opts
+  // No reward at the current class. Hidden by default; when the caller opts
   // in, the absence is stated with a neutral pill rather than vanishing — the
   // same "mention it" treatment as the place-detail Reward section.
   if (promoPercent == null) {
@@ -73,7 +73,7 @@ export function PromoChip({
 
   const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
   const mechanicWord = "discount";
-  const tierLabel = tierProperLabel(tier);
+  const classLabel = classProperLabel(classKey);
   const capPrefix = place.currency === "MXN" ? "MX$" : "$";
   // Ticket cap: the reward applies to the first N of the bill, then full
   // price — not a ceiling on the reward itself. 0/null means no cap.
@@ -87,8 +87,8 @@ export function PromoChip({
       className={`bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-md whitespace-nowrap text-white ${sizing}`}
       title={
         capLabel
-          ? `at Mesita ${tierLabel} · ${capLabel}`
-          : `at Mesita ${tierLabel}`
+          ? `at Mesita ${classLabel} · ${capLabel}`
+          : `at Mesita ${classLabel}`
       }
     >
       <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />

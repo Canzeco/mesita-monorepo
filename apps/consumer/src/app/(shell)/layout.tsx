@@ -9,9 +9,9 @@ import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiFetchConsumerProfile,
-  type ConsumerMembership,
+  type ConsumerClass,
 } from "@/lib/api/profile";
-import { MembershipProvider } from "@/lib/membership-context";
+import { ClassProvider } from "@/lib/class-context";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -50,11 +50,11 @@ export default async function ConsumerShellLayout({
   // consumer-get-profile lazily creates the row, so a brand-new account still
   // reads back successfully (just with null fields). If the EF throws, we
   // surface the error route — better than rendering a half-broken shell.
-  // Only the membership is threaded into the shell now — the Profile TopBar
+  // Only the class is threaded into the shell now — the Profile TopBar
   // titles itself "me" + current class rather than the display name.
-  let membership: ConsumerMembership | null = null;
+  let consumerClass: ConsumerClass | null = null;
   try {
-    const { consumer: profile, membership: m } =
+    const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
     const onboarded =
       !!profile.full_name &&
@@ -62,7 +62,7 @@ export default async function ConsumerShellLayout({
       !!profile.birthday &&
       !!profile.sex;
     if (!onboarded) redirect("/onboard");
-    membership = m;
+    consumerClass = c;
   } catch {
     redirect("/onboard");
   }
@@ -83,7 +83,7 @@ export default async function ConsumerShellLayout({
   return (
     <MobileFrame>
       <StatusBar />
-      <MembershipProvider membership={membership}>
+      <ClassProvider consumerClass={consumerClass}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <TopBar />
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -97,7 +97,7 @@ export default async function ConsumerShellLayout({
             {modal}
           </div>
         </div>
-      </MembershipProvider>
+      </ClassProvider>
       <Toaster />
     </MobileFrame>
   );
