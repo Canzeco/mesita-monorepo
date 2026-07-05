@@ -22,6 +22,6 @@ export default async function ConsumerProfilePage({
     if (Array.isArray(v)) v.forEach((item) => qs.append(k, item));
   }
   redirect(
-    `${CONSUMER_ROUTES.me.plan}${qs.toString() ? `?${qs.toString()}` : ""}`,
+    `${CONSUMER_ROUTES.me.class}${qs.toString() ? `?${qs.toString()}` : ""}`,
   );
 }

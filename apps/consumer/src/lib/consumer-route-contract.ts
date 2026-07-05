@@ -31,11 +31,14 @@ export const CONSUMER_ROUTES = {
     global: "/inbox/global",
   },
   me: {
-    plan: "/me/plan",
+    // Consumers have a CLASS (Free / Premium), never a "plan" — plans belong
+    // to businesses. The old /me/plan segment redirects here.
+    class: "/me/class",
     settings: "/me/settings",
   },
   legacy: {
     profile: "/profile",
+    mePlan: "/me/plan",
     notifications: "/notifications",
     inboxMine: "/inbox/my-activity",
     inboxGlobal: "/inbox/global-activity",

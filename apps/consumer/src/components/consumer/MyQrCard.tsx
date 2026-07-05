@@ -14,7 +14,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // reads like flashing a card. Mirrors the Lovable "Mesita" prototype's
 // QrView (src/routes/rewards.tsx).
 
-function planPresentation(m: Membership): {
+function classPresentation(m: Membership): {
   label: string;
   Glyph: typeof Instagram;
   glyphClass: string;
@@ -68,7 +68,7 @@ function formatFollowers(n: number): string {
 export function MyQrCard({ code, name }: { code: string; name?: string }) {
   const displayCode = displayConsumerCode(code);
   const membership = useMembership();
-  const { label, Glyph, glyphClass } = planPresentation(membership);
+  const { label, Glyph, glyphClass } = classPresentation(membership);
   const displayName = name?.trim() || "Mesita member";
   const isFree = membership.tier !== "premium";
   const isInstagram = membership.origin === "instagram";
@@ -157,7 +157,7 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
       {/* Premium nudge — Free only */}
       {isFree ? (
         <Link
-          href={CONSUMER_ROUTES.me.plan}
+          href={CONSUMER_ROUTES.me.class}
           className="border-border surface-card flex items-center gap-3 rounded-2xl px-4 py-3.5 transition active:scale-[0.99]"
         >
           <span className="bg-tier-premium grid size-10 shrink-0 place-items-center rounded-xl text-white">

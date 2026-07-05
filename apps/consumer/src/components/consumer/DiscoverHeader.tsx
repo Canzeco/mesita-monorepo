@@ -12,7 +12,7 @@ export function DiscoverHeader() {
     <div className="border-border/60 relative z-30 flex h-16 shrink-0 items-center border-b px-3">
       <div className="flex w-full items-center gap-2">
         <Link
-          href={CONSUMER_ROUTES.me.plan}
+          href={CONSUMER_ROUTES.me.class}
           className="bg-primary shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl leading-none"
           aria-label="Mesita — profile"
         >

@@ -35,7 +35,7 @@ export default function SubscribePage() {
     <div className="bg-background flex flex-1 flex-col overflow-y-auto">
       <header className="border-border bg-background/95 sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3 backdrop-blur">
         <Link
-          href={CONSUMER_ROUTES.me.plan}
+          href={CONSUMER_ROUTES.me.class}
           aria-label="Back to profile"
           className="bg-muted text-foreground hover:bg-muted/70 flex h-9 w-9 items-center justify-center rounded-full transition"
         >
@@ -150,7 +150,7 @@ function PremiumCheckoutButton() {
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
       const { checkout_url } = await apiCreateSubscriptionCheckout(supabase, {
-        successUrl: `${origin}${CONSUMER_ROUTES.me.plan}?subscription=success`,
+        successUrl: `${origin}${CONSUMER_ROUTES.me.class}?subscription=success`,
         cancelUrl: `${origin}/subscribe/premium?subscription=cancelled`,
       });
       window.location.href = checkout_url;
@@ -167,7 +167,7 @@ function PremiumCheckoutButton() {
   function mockSubscribe() {
     setLoading(true);
     window.localStorage.setItem(MOCK_PREMIUM_KEY, "1");
-    window.location.href = `${CONSUMER_ROUTES.me.plan}?subscription=success`;
+    window.location.href = `${CONSUMER_ROUTES.me.class}?subscription=success`;
   }
 
   return (

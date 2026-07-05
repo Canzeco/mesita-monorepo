@@ -798,7 +798,7 @@ function RewardsBox({ place }: { place: PlaceDetail }) {
               <QrCode className="h-4 w-4" />
               Pay with QR
             </Link>
-            <Link href={CONSUMER_ROUTES.me.plan} className={REWARD_UPGRADE_BTN}>
+            <Link href={CONSUMER_ROUTES.me.class} className={REWARD_UPGRADE_BTN}>
               <Crown className="h-4 w-4" />
               Upgrade plan
             </Link>

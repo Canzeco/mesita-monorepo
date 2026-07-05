@@ -32,7 +32,7 @@ export function VerifySocialSheet({
     if (code.length < 8 || verifying) return;
     setVerifying(true);
     window.localStorage.setItem(MOCK_INSTAGRAM_KEY, "1");
-    window.location.href = `${CONSUMER_ROUTES.me.plan}?instagram=success`;
+    window.location.href = `${CONSUMER_ROUTES.me.class}?instagram=success`;
   }
 
   const cfg = {

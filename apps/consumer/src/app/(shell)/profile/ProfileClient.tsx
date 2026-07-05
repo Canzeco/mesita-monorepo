@@ -1,70 +1,104 @@
 "use client";
 
-import { useEffect, useState, Fragment, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  Fragment,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
-  Instagram,
-  ChevronRight,
-  Check,
   BadgeCheck,
-  Crown,
-  Share2,
-  Smile,
-  User as UserIcon,
-  CreditCard,
   Bell,
-  Shield,
+  Bookmark,
+  Check,
+  ChevronRight,
+  Crown,
+  Download,
+  Globe,
   HelpCircle,
+  Instagram,
+  Mail,
+  MapPin,
+  Smile,
+  Trash2,
+  UserPen,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { EditProfileSheet } from "@/components/consumer/EditProfileSheet";
 import {
   VerifySocialSheet,
   type SocialPlatform,
 } from "@/components/consumer/VerifySocialSheet";
-import { TIERS, tierBadgeClass } from "@/lib/consumer-data";
+import { COUNTRIES, TIERS, tierBadgeClass } from "@/lib/consumer-data";
 import { useMembership } from "@/lib/membership-context";
+import { useSavedPlaces } from "@/lib/saved-places";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiFetchConsumerProfile,
-  apiUpdateConsumerProfile,
+  type ConsumerMembership,
   type ConsumerProfile,
 } from "@/lib/api/profile";
 
-// Three-tab Profile. Invite is folded in as a sub-tab; the standalone
-// /invite route is primary and /share stays as a legacy deep link alias.
-// The Coupons tab was removed —
-// coupons are "hidden" (users save the place, redeem a QR at the place),
-// so the wallet surface didn't earn its spot in the Profile.
-export type ProfileTab = "plan" | "settings";
+// Two-tab Profile under an Instagram-style identity hero: story-ring avatar,
+// real stats (saved places / reservations / IG followers), Edit profile +
+// Invite friends. Consumers have a CLASS (Free / Premium) — the old "Plan"
+// tab kept its content but was renamed, and /me/plan now redirects to
+// /me/class.
+export type ProfileTab = "class" | "settings";
 
 const TABS: { id: ProfileTab; label: string; href: string }[] = [
-  { id: "plan", label: "Plan", href: CONSUMER_ROUTES.me.plan },
+  { id: "class", label: "Class", href: CONSUMER_ROUTES.me.class },
   { id: "settings", label: "Settings", href: CONSUMER_ROUTES.me.settings },
 ];
 
-// Profile shell. The previous large avatar + name + "country · age ·
-// sex" hero block was removed — the TopBar already renders the user's
-// display name in the center column and the class chip on the right,
-// so the inline block was duplicate chrome that ate vertical space.
-// Identity-driven copy ships back here when there's something
-// genuinely useful to surface (e.g. a per-user CTA), not before.
-//
-// The consumer (shell) layout enforces onboarding completion before
-// this page renders, so all identity fields are already guaranteed
-// real upstream.
-
 export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
   const tab = initialTab;
+  const supabase = useBrowserSupabase();
   const [verifyPlatform, setVerifyPlatform] = useState<SocialPlatform | null>(
     null,
   );
+  const [editOpen, setEditOpen] = useState(false);
+
+  // Identity payload shared by the hero, the Settings tab, and the edit
+  // sheet — one consumer-web-get-profile read per profile visit. The (shell)
+  // layout already guarantees the row is complete (onboarding gate).
+  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
+  const [usage, setUsage] = useState<ConsumerMembership["usage"] | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ consumer, membership }, authRes] = await Promise.all([
+          apiFetchConsumerProfile(supabase),
+          supabase.auth.getUser(),
+        ]);
+        if (cancelled) return;
+        setProfile(consumer);
+        setUsage(membership.usage);
+        setEmail(authRes.data.user?.email ?? null);
+      } catch (e) {
+        if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   // Post-checkout landing. The subscribe flow redirects to
-  // /me/plan?subscription=success once the membership grant lands (instant in
+  // /me/class?subscription=success once the membership grant lands (instant in
   // the demo mock, post-webhook with real Stripe). Confirm it with a toast;
   // the full page load already re-seeded the real Premium membership upstream.
   // Read straight off the URL (client-only, fires once) rather than
@@ -86,35 +120,50 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-4 pt-4">
-        <div className="border-border bg-card flex rounded-lg border p-1">
-          {TABS.map((t) => (
-            <Link
-              key={t.id}
-              href={t.href}
-              scroll={false}
-              className={cn(
-                "flex-1 rounded-md px-2 py-1.5 text-center text-[12px] font-medium whitespace-nowrap transition",
-                tab === t.id
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
       <div className="scrollbar-hide flex-1 overflow-y-auto">
-        {tab === "plan" && (
-          <div className="px-5 pt-5 pb-8">
+        <ProfileHero
+          profile={profile}
+          loading={loading}
+          reservationsUsed={usage?.reservations_used ?? 0}
+          onEditProfile={() => setEditOpen(true)}
+          onConnectSocial={(p) => setVerifyPlatform(p)}
+        />
+
+        {/* Tab bar pins under the top chrome while the hero scrolls away. */}
+        <div className="bg-background/95 sticky top-0 z-20 px-4 pt-3 pb-2 backdrop-blur">
+          <div className="border-border bg-card flex rounded-lg border p-1">
+            {TABS.map((t) => (
+              <Link
+                key={t.id}
+                href={t.href}
+                scroll={false}
+                className={cn(
+                  "flex-1 rounded-md px-2 py-1.5 text-center text-[12px] font-medium whitespace-nowrap transition",
+                  tab === t.id
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {tab === "class" && (
+          <div className="px-5 pt-3 pb-8">
             <ClassTab onConnectSocial={(p) => setVerifyPlatform(p)} />
           </div>
         )}
         {tab === "settings" && (
-          <div className="px-5 pt-5 pb-8">
-            <SettingsTab />
+          <div className="px-5 pt-3 pb-8">
+            <SettingsTab
+              profile={profile}
+              email={email}
+              loading={loading}
+              onEditProfile={() => setEditOpen(true)}
+              onConnectSocial={(p) => setVerifyPlatform(p)}
+            />
           </div>
         )}
       </div>
@@ -125,9 +174,205 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
           onClose={() => setVerifyPlatform(null)}
         />
       )}
+      {editOpen && profile && (
+        <EditProfileSheet
+          profile={profile}
+          email={email}
+          onClose={() => setEditOpen(false)}
+          onSaved={(updated) => setProfile(updated)}
+        />
+      )}
     </div>
   );
 }
+
+// ─── Identity hero ────────────────────────────────────────────────────────
+
+function compact(n: number): string {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n);
+}
+
+function ProfileHero({
+  profile,
+  loading,
+  reservationsUsed,
+  onEditProfile,
+  onConnectSocial,
+}: {
+  profile: ConsumerProfile | null;
+  loading: boolean;
+  reservationsUsed: number;
+  onEditProfile: () => void;
+  onConnectSocial: (platform: SocialPlatform) => void;
+}) {
+  const { tier, origin, followers } = useMembership();
+  const { savedIds } = useSavedPlaces();
+  const isPremium = tier === "premium";
+  const igConnected = origin === "instagram";
+
+  if (loading) {
+    return (
+      <header className="px-5 pt-5">
+        <div className="flex items-center gap-5">
+          <div className="bg-muted h-[86px] w-[86px] shrink-0 animate-pulse rounded-full" />
+          <div className="flex flex-1 items-center justify-around">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="bg-muted h-10 w-14 animate-pulse rounded-lg"
+              />
+            ))}
+          </div>
+        </div>
+        <div className="bg-muted mt-4 h-5 w-40 animate-pulse rounded" />
+        <div className="bg-muted mt-2 h-3.5 w-28 animate-pulse rounded" />
+        <div className="mt-4 flex gap-2">
+          <div className="bg-muted h-10 flex-1 animate-pulse rounded-xl" />
+          <div className="bg-muted h-10 flex-1 animate-pulse rounded-xl" />
+        </div>
+      </header>
+    );
+  }
+
+  const first = profile?.first_name ?? "";
+  const last = profile?.last_name ?? "";
+  const name =
+    [first, last].filter(Boolean).join(" ") ||
+    profile?.full_name ||
+    "Mesita member";
+  const initials =
+    `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() ||
+    name.charAt(0).toUpperCase();
+  const country = COUNTRIES.find((c) => c.name === profile?.country);
+  const classLabel = TIERS.find((t) => t.id === tier)?.label ?? "Free";
+
+  return (
+    <header className="px-5 pt-5">
+      <div className="flex items-center gap-5">
+        {/* Story-ring avatar: class-tinted gradient ring around initials. */}
+        <div
+          className={cn(
+            "shrink-0 rounded-full p-[2.5px]",
+            isPremium ? "bg-tier-premium" : "bg-pink-gradient",
+          )}
+        >
+          <div className="bg-background rounded-full p-[2.5px]">
+            <div className="bg-muted flex h-[76px] w-[76px] items-center justify-center rounded-full">
+              <span className="font-display text-foreground/70 text-2xl font-bold tracking-tight">
+                {initials}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-1 items-center justify-around">
+          <Stat
+            value={compact(savedIds.size)}
+            label="Saved"
+            href={CONSUMER_ROUTES.saved.places}
+          />
+          <Stat
+            value={compact(reservationsUsed)}
+            label="Reservations"
+            href={CONSUMER_ROUTES.saved.reservations}
+          />
+          <Stat
+            value={igConnected ? compact(followers) : "—"}
+            label="Followers"
+            onClick={
+              igConnected ? undefined : () => onConnectSocial("instagram")
+            }
+          />
+        </div>
+      </div>
+
+      <div className="mt-3.5">
+        <h1 className="font-display flex items-center gap-1.5 text-[21px] leading-tight font-bold tracking-tight">
+          {name}
+          {isPremium && (
+            <BadgeCheck className="text-premium h-5 w-5 shrink-0" />
+          )}
+        </h1>
+        <p className="text-muted-foreground mt-1 flex items-center gap-1.5 text-[12.5px] leading-snug">
+          {country && (
+            <span>
+              {country.flag} {country.name}
+            </span>
+          )}
+          {country && <span aria-hidden>·</span>}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] leading-none font-bold",
+              tierBadgeClass(tier),
+            )}
+          >
+            {isPremium && <Crown className="h-3 w-3 fill-current" />}
+            {classLabel}
+          </span>
+        </p>
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={onEditProfile}
+          className="border-border bg-card hover:bg-muted flex-1 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+        >
+          Edit profile
+        </button>
+        <Link
+          href={CONSUMER_ROUTES.share}
+          className="bg-pink-gradient flex-1 rounded-xl py-2.5 text-center text-[13px] font-semibold text-white shadow-sm transition hover:opacity-95 active:scale-[0.99]"
+        >
+          Invite friends
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+function Stat({
+  value,
+  label,
+  href,
+  onClick,
+}: {
+  value: string;
+  label: string;
+  href?: string;
+  onClick?: () => void;
+}) {
+  const body = (
+    <span className="flex flex-col items-center">
+      <span className="font-display text-[17px] leading-tight font-bold tracking-tight">
+        {value}
+      </span>
+      <span className="text-muted-foreground text-[11px] leading-snug">
+        {label}
+      </span>
+    </span>
+  );
+  if (href) {
+    return (
+      <Link href={href} className="px-1">
+        {body}
+      </Link>
+    );
+  }
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="px-1">
+        {body}
+      </button>
+    );
+  }
+  return <span className="px-1">{body}</span>;
+}
+
+// ─── Class tab ────────────────────────────────────────────────────────────
 
 function ClassTab({
   onConnectSocial,
@@ -139,7 +384,7 @@ function ClassTab({
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
-        <SectionEyebrow>Current plan</SectionEyebrow>
+        <SectionEyebrow>Current class</SectionEyebrow>
         <CurrentClassCard />
       </section>
       <section className="flex flex-col gap-2">
@@ -147,7 +392,7 @@ function ClassTab({
         <FreeVsPremium />
       </section>
       <section className="flex flex-col gap-2">
-        <SectionEyebrow>Plans</SectionEyebrow>
+        <SectionEyebrow>Classes</SectionEyebrow>
         <WaysToClimb onConnectSocial={onConnectSocial} />
       </section>
     </div>
@@ -230,9 +475,9 @@ function CompareHead({ label, accent }: { label: string; accent?: boolean }) {
 
 // ─── Ways to climb ────────────────────────────────────────────────────────
 
-// Horizontal scroller, one card per path: stay Free, or reach Premium by
-// Instagram / Subscription / Invitation. Each card states the requirement +
-// its action; the user's current path is flagged.
+// Vertical stack, one card per path: stay Free, or reach Premium by
+// Instagram / Subscription. Each card states the requirement + its action;
+// the user's current path is flagged.
 type ClimbCardData = {
   key: string;
   icon: LucideIcon;
@@ -268,7 +513,7 @@ function WaysToClimb({
       priceNote: "always free",
       desc: "Your default account at no cost. Get a base discount at Verified Partners, standard recommendations, and book up to 2 reservations every month.",
       reached: isFree,
-      reachedLabel: "Current plan",
+      reachedLabel: "Current class",
       note: isFree ? undefined : "Included in every account",
     },
     {
@@ -287,8 +532,11 @@ function WaysToClimb({
       action: { label: "Connect", onClick: () => onConnectSocial("instagram") },
     },
     {
+      // Subscription path. Crown icon on purpose — no card imagery anywhere
+      // in the app (there is no Mesita Pay / wallet); Stripe checkout owns
+      // the payment UI.
       key: "subscription",
-      icon: CreditCard,
+      icon: Crown,
       iconBg: "bg-pink-gradient text-white",
       title: "Premium",
       via: "Subscription",
@@ -441,7 +689,7 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
 }
 
 function CurrentClassCard() {
-  // Current-plan banner — plan name + an origin icon and a short "via …"
+  // Current-class banner — class name + an origin icon and a short "via …"
   // line so a Premium member sees how they got it (Instagram / subscription
   // / invitation). No follower count — just the door.
   const { tier, origin } = useMembership();
@@ -490,208 +738,187 @@ function CurrentClassCard() {
   );
 }
 
-// Settings row config — each row carries the route it should drive when
-// the corresponding screen ships. Rows where we already have a real route
-// link directly; the rest fire a toast pointing at the support email so
-// users have somewhere to go right now.
+// ─── Settings tab ─────────────────────────────────────────────────────────
 
 const MESITA_SUPPORT_EMAIL = "support@mesita.ai";
 const MESITA_PRIVACY_EMAIL = "privacy@mesita.ai";
+
+// Device-level flags. Notification prefs persist here until the push
+// integration lands; the profile-visibility flags persist here until the
+// consumers table grows a visibility column (follow-up wiring — EF deploys
+// are currently queued behind MESITA-23).
 const NOTIF_PUSH_KEY = "mesita:notif:push";
 const NOTIF_EMAIL_KEY = "mesita:notif:email";
+const PROFILE_PUBLIC_KEY = "mesita:profile:public";
+const PROFILE_SHOW_SAVES_KEY = "mesita:profile:show-saves";
+const PROFILE_SHOW_VISITS_KEY = "mesita:profile:show-visits";
 
-// Single-page settings. Everything is configured inline here — no nested
-// drill-in screens. Personal details write through consumer-update-profile;
-// notification toggles persist on the device until the push integration
-// lands; privacy + support are direct contact links.
-function SettingsTab() {
-  const supabase = useBrowserSupabase();
+// Grouped, row-based settings — identity edits happen in the EditProfileSheet
+// (same one the hero button opens), socials connect inline, privacy + support
+// are direct contact links. No payment rows: there is no Mesita Pay / wallet.
+function SettingsTab({
+  profile,
+  email,
+  loading,
+  onEditProfile,
+  onConnectSocial,
+}: {
+  profile: ConsumerProfile | null;
+  email: string | null;
+  loading: boolean;
+  onEditProfile: () => void;
+  onConnectSocial: (platform: SocialPlatform) => void;
+}) {
+  const { origin, followers } = useMembership();
+  const igConnected = origin === "instagram";
 
-  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [publicProfile, togglePublicProfile] = useStoredFlag(
+    PROFILE_PUBLIC_KEY,
+    true,
+  );
+  const [showSaves, toggleShowSaves] = useStoredFlag(
+    PROFILE_SHOW_SAVES_KEY,
+    true,
+  );
+  const [showVisits, toggleShowVisits] = useStoredFlag(
+    PROFILE_SHOW_VISITS_KEY,
+    true,
+  );
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [{ consumer }, authRes] = await Promise.all([
-          apiFetchConsumerProfile(supabase),
-          supabase.auth.getUser(),
-        ]);
-        if (cancelled) return;
-        setProfile(consumer);
-        setFirstName(consumer.first_name ?? "");
-        setLastName(consumer.last_name ?? "");
-        setPhone(consumer.phone ?? authRes.data.user?.phone ?? "");
-        setEmail(authRes.data.user?.email ?? null);
-      } catch (e) {
-        if (!cancelled) toast(errMsg(e, "Couldn't load your details."));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
-
-  const dirty =
-    !!profile &&
-    (firstName.trim() !== (profile.first_name ?? "") ||
-      lastName.trim() !== (profile.last_name ?? "") ||
-      phone.trim() !== (profile.phone ?? ""));
-
-  const saveDetails = async () => {
-    if (!profile || !dirty || saving) return;
-    if (!firstName.trim() || !lastName.trim()) {
-      toast("First and last name are required.");
-      return;
-    }
-    setSaving(true);
-    try {
-      // Preserve the fields not edited here (sex/birthday/country) so the
-      // required-field EF contract stays satisfied.
-      const updated = await apiUpdateConsumerProfile(supabase, {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        sex: (profile.sex as "male" | "female" | "other") ?? "other",
-        birthday: profile.birthday ?? "",
-        country: profile.country ?? "",
-        phone: phone.trim() || undefined,
-      });
-      setProfile(updated);
-      toast("Details saved.");
-    } catch (e) {
-      toast(errMsg(e, "Couldn't save your details."));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const detailsSub = loading
+    ? "Loading…"
+    : [profile?.full_name, profile?.phone].filter(Boolean).join(" · ") ||
+      "Add your details";
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Invite — promoted out of the bottom tab bar into Profile. Kept
-          prominent (pink-gradient card) since it's a growth surface. */}
-      <Link
-        href={CONSUMER_ROUTES.share}
-        className="bg-pink-gradient shadow-glow flex items-center gap-3 rounded-2xl p-4 text-white transition hover:opacity-95"
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
-          <Share2 className="h-5 w-5" />
-        </span>
-        <span className="flex-1">
-          <span className="block text-sm font-semibold">Invite friends</span>
-          <span className="block text-xs text-white/85">
-            Share Mesita — you both get rewards
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 text-white/80" />
-      </Link>
+      <SettingsGroup title="Account">
+        <SettingsActionRow
+          Icon={UserPen}
+          tint="primary"
+          label="Edit profile"
+          sub={detailsSub}
+          onClick={onEditProfile}
+        />
+        <RowDivider />
+        <SettingsStaticRow
+          Icon={Mail}
+          tint="muted"
+          label="Email"
+          sub={email ?? "—"}
+        />
+      </SettingsGroup>
 
-      {/* Personal details — editable inline. */}
-      <SettingsSection Icon={UserIcon} title="Personal details">
-        {loading ? (
-          <p className="text-muted-foreground px-4 py-3 text-sm">Loading…</p>
-        ) : (
-          <div className="flex flex-col gap-3 p-4">
-            <div className="grid grid-cols-2 gap-3">
-              <SettingsField
-                label="First name"
-                value={firstName}
-                onChange={setFirstName}
-                placeholder="First name"
-              />
-              <SettingsField
-                label="Last name"
-                value={lastName}
-                onChange={setLastName}
-                placeholder="Last name"
-              />
-            </div>
-            <SettingsField
-              label="Phone"
-              value={phone}
-              onChange={setPhone}
-              placeholder="+52 …"
-              inputMode="tel"
-            />
-            <div>
-              <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
-                Email
+      <SettingsGroup title="Social">
+        {igConnected ? (
+          <div className="flex w-full items-center gap-3 px-4 py-3">
+            <IconCircle tint="instagram">
+              <Instagram className="h-[18px] w-[18px]" />
+            </IconCircle>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Instagram</span>
+              <span className="text-muted-foreground block truncate text-[11px]">
+                {followers > 0
+                  ? `${followers.toLocaleString("en-US")} followers · connected`
+                  : "Connected"}
               </span>
-              <p className="border-border bg-muted/40 text-muted-foreground rounded-lg border px-3 py-2 text-sm">
-                {email ?? "—"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void saveDetails()}
-              disabled={!dirty || saving}
-              className="btn-primary mt-1 py-2.5 text-sm disabled:opacity-50"
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
+            </span>
+            <BadgeCheck className="h-5 w-5 shrink-0 text-emerald-600" />
+          </div>
+        ) : (
+          <SettingsActionRow
+            Icon={Instagram}
+            tint="instagram"
+            label="Connect Instagram"
+            sub="1,000+ followers unlocks Premium — free"
+            onClick={() => onConnectSocial("instagram")}
+          />
+        )}
+        <RowDivider />
+        <ToggleRow
+          Icon={Globe}
+          tint="sky"
+          label="Public profile"
+          sub={
+            publicProfile
+              ? "Friends can see your social activity"
+              : "Only you can see your activity"
+          }
+          on={publicProfile}
+          onToggle={togglePublicProfile}
+        />
+        {publicProfile && (
+          <div className="border-border/60 bg-muted/25 border-t">
+            <NestedToggleRow
+              Icon={Bookmark}
+              label="Show saved places"
+              on={showSaves}
+              onToggle={toggleShowSaves}
+            />
+            <NestedToggleRow
+              Icon={MapPin}
+              label="Show visits & reviews"
+              on={showVisits}
+              onToggle={toggleShowVisits}
+            />
           </div>
         )}
-      </SettingsSection>
+      </SettingsGroup>
 
-      {/* Notifications — device-level toggles until push lands. */}
-      <SettingsSection Icon={Bell} title="Notifications">
-        <div className="flex flex-col">
-          <NotificationToggle
-            storageKey={NOTIF_PUSH_KEY}
-            label="Push notifications"
-            sub="Ticket updates and rewards"
-          />
-          <div className="border-border border-t" />
-          <NotificationToggle
-            storageKey={NOTIF_EMAIL_KEY}
-            label="Email"
-            sub="Receipts and news"
-          />
-        </div>
-      </SettingsSection>
+      <SettingsGroup title="Notifications">
+        <StoredToggleRow
+          Icon={Bell}
+          tint="amber"
+          storageKey={NOTIF_PUSH_KEY}
+          label="Push notifications"
+          sub="Ticket updates and rewards"
+        />
+        <RowDivider />
+        <StoredToggleRow
+          Icon={Mail}
+          tint="violet"
+          storageKey={NOTIF_EMAIL_KEY}
+          label="Email"
+          sub="Receipts and news"
+        />
+      </SettingsGroup>
 
-      {/* Privacy & data + Help — direct contact links. */}
-      <SettingsSection Icon={Shield} title="Privacy & data">
-        <div className="flex flex-col">
-          <SettingsLinkRow
-            href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
-              "Export my Mesita data",
-            )}`}
-            label="Export my data"
-            sub={MESITA_PRIVACY_EMAIL}
-          />
-          <div className="border-border border-t" />
-          <SettingsLinkRow
-            href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
-              "Delete my Mesita account",
-            )}`}
-            label="Delete account"
-            sub="Request account deletion"
-          />
-        </div>
-      </SettingsSection>
+      <SettingsGroup title="Privacy & data">
+        <SettingsLinkRow
+          Icon={Download}
+          tint="emerald"
+          href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
+            "Export my Mesita data",
+          )}`}
+          label="Export my data"
+          sub={MESITA_PRIVACY_EMAIL}
+        />
+        <RowDivider />
+        <SettingsLinkRow
+          Icon={Trash2}
+          tint="destructive"
+          href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
+            "Delete my Mesita account",
+          )}`}
+          label="Delete account"
+          sub="Request account deletion"
+          destructive
+        />
+      </SettingsGroup>
 
-      <SettingsSection Icon={HelpCircle} title="Help & support">
-        <div className="flex flex-col">
-          <SettingsLinkRow
-            href={`mailto:${MESITA_SUPPORT_EMAIL}`}
-            label="Contact us"
-            sub={MESITA_SUPPORT_EMAIL}
-          />
-        </div>
-      </SettingsSection>
+      <SettingsGroup title="Help & support">
+        <SettingsLinkRow
+          Icon={HelpCircle}
+          tint="muted"
+          href={`mailto:${MESITA_SUPPORT_EMAIL}`}
+          label="Contact us"
+          sub={MESITA_SUPPORT_EMAIL}
+        />
+      </SettingsGroup>
 
       <SignOutButton
         redirectTo="/"
-        className="border-border bg-card hover:bg-muted flex w-full items-center justify-center gap-2 rounded-lg border py-4 text-sm font-semibold transition"
+        className="border-border bg-card hover:bg-muted flex w-full items-center justify-center gap-2 rounded-2xl border py-4 text-sm font-semibold transition"
       />
       <p className="text-muted-foreground -mt-3 text-center text-[11px]">
         Mesita · v2.4.1
@@ -700,21 +927,18 @@ function SettingsTab() {
   );
 }
 
-function SettingsSection({
-  Icon,
+// ─── Settings building blocks ─────────────────────────────────────────────
+
+function SettingsGroup({
   title,
   children,
 }: {
-  Icon: LucideIcon;
   title: string;
   children: ReactNode;
 }) {
   return (
-    <section>
-      <p className="text-muted-foreground mb-2 flex items-center gap-1.5 text-[11px] font-medium tracking-[0.18em] uppercase">
-        <Icon className="h-3.5 w-3.5" />
-        {title}
-      </p>
+    <section className="flex flex-col gap-2">
+      <SectionEyebrow>{title}</SectionEyebrow>
       <div className="border-border bg-card overflow-hidden rounded-2xl border">
         {children}
       </div>
@@ -722,115 +946,309 @@ function SettingsSection({
   );
 }
 
-function SettingsField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  inputMode,
+function RowDivider() {
+  return <div className="border-border/60 border-t" />;
+}
+
+type RowTint =
+  | "primary"
+  | "muted"
+  | "instagram"
+  | "emerald"
+  | "amber"
+  | "sky"
+  | "violet"
+  | "destructive";
+
+const TINT_CLASSES: Record<RowTint, string> = {
+  primary: "bg-primary/10 text-primary",
+  muted: "bg-muted text-foreground/70",
+  instagram:
+    "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white",
+  emerald: "bg-emerald-500/10 text-emerald-600",
+  amber: "bg-amber-500/10 text-amber-600",
+  sky: "bg-sky-500/10 text-sky-600",
+  violet: "bg-violet-500/10 text-violet-600",
+  destructive: "bg-destructive/10 text-destructive",
+};
+
+function IconCircle({
+  tint,
+  children,
 }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  inputMode?: "text" | "tel";
+  tint: RowTint;
+  children: ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
-        {label}
-      </span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        inputMode={inputMode}
-        className="border-border bg-background focus:border-primary w-full rounded-lg border px-3 py-2 text-sm outline-none"
-      />
-    </label>
+    <span
+      className={cn(
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+        TINT_CLASSES[tint],
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
-function NotificationToggle({
-  storageKey,
+function RowText({
   label,
   sub,
+  destructive,
 }: {
-  storageKey: string;
   label: string;
-  sub: string;
+  sub?: string;
+  destructive?: boolean;
 }) {
-  const [on, setOn] = useState(true);
+  return (
+    <span className="min-w-0 flex-1">
+      <span
+        className={cn(
+          "block text-sm font-semibold",
+          destructive && "text-destructive",
+        )}
+      >
+        {label}
+      </span>
+      {sub && (
+        <span className="text-muted-foreground block truncate text-[11px]">
+          {sub}
+        </span>
+      )}
+    </span>
+  );
+}
 
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (stored != null) setOn(stored === "1");
-    } catch {
-      // localStorage unavailable — keep the default.
-    }
-  }, [storageKey]);
-
-  const toggle = () => {
-    setOn((prev) => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem(storageKey, next ? "1" : "0");
-      } catch {
-        // best-effort persistence
-      }
-      return next;
-    });
-  };
-
+function SettingsActionRow({
+  Icon,
+  tint,
+  label,
+  sub,
+  onClick,
+}: {
+  Icon: LucideIcon;
+  tint: RowTint;
+  label: string;
+  sub?: string;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
-      onClick={toggle}
-      role="switch"
-      aria-checked={on}
+      onClick={onClick}
       className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
     >
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{label}</span>
-        <span className="text-muted-foreground block text-[11px]">{sub}</span>
-      </span>
-      <span
-        className={cn(
-          "relative h-6 w-10 shrink-0 rounded-full transition",
-          on ? "bg-pink-gradient" : "bg-muted",
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all",
-            on ? "left-[18px]" : "left-0.5",
-          )}
-        />
-      </span>
+      <IconCircle tint={tint}>
+        <Icon className="h-[18px] w-[18px]" />
+      </IconCircle>
+      <RowText label={label} sub={sub} />
+      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
     </button>
   );
 }
 
-function SettingsLinkRow({
-  href,
+function SettingsStaticRow({
+  Icon,
+  tint,
   label,
   sub,
 }: {
+  Icon: LucideIcon;
+  tint: RowTint;
+  label: string;
+  sub?: string;
+}) {
+  return (
+    <div className="flex w-full items-center gap-3 px-4 py-3">
+      <IconCircle tint={tint}>
+        <Icon className="h-[18px] w-[18px]" />
+      </IconCircle>
+      <RowText label={label} sub={sub} />
+    </div>
+  );
+}
+
+function SettingsLinkRow({
+  Icon,
+  tint,
+  href,
+  label,
+  sub,
+  destructive,
+}: {
+  Icon: LucideIcon;
+  tint: RowTint;
   href: string;
   label: string;
-  sub: string;
+  sub?: string;
+  destructive?: boolean;
 }) {
   return (
     <a
       href={href}
       className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
     >
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{label}</span>
-        <span className="text-muted-foreground block text-[11px]">{sub}</span>
-      </span>
-      <ChevronRight className="text-muted-foreground h-4 w-4" />
+      <IconCircle tint={tint}>
+        <Icon className="h-[18px] w-[18px]" />
+      </IconCircle>
+      <RowText label={label} sub={sub} destructive={destructive} />
+      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
     </a>
+  );
+}
+
+// Device-persisted boolean flags. useSyncExternalStore keeps the hydration
+// render on the server snapshot (the default) so markup matches, then swaps
+// in the stored value — no setState-in-effect cascade. The local listener
+// set notifies same-tab subscribers on writes; the storage event covers
+// other tabs.
+const flagListeners = new Set<() => void>();
+
+function subscribeToFlags(onChange: () => void): () => void {
+  flagListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    flagListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readFlag(key: string, defaultOn: boolean): boolean {
+  try {
+    const stored = window.localStorage.getItem(key);
+    return stored == null ? defaultOn : stored === "1";
+  } catch {
+    return defaultOn;
+  }
+}
+
+function writeFlag(key: string, on: boolean) {
+  try {
+    window.localStorage.setItem(key, on ? "1" : "0");
+  } catch {
+    // best-effort persistence
+  }
+  flagListeners.forEach((l) => l());
+}
+
+function useStoredFlag(key: string, defaultOn: boolean): [boolean, () => void] {
+  const on = useSyncExternalStore(
+    subscribeToFlags,
+    () => readFlag(key, defaultOn),
+    () => defaultOn,
+  );
+  const toggle = useCallback(
+    () => writeFlag(key, !readFlag(key, defaultOn)),
+    [key, defaultOn],
+  );
+  return [on, toggle];
+}
+
+function Switch({ on, small }: { on: boolean; small?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "relative shrink-0 rounded-full transition",
+        small ? "h-5 w-9" : "h-6 w-10",
+        on ? "bg-pink-gradient" : "bg-muted",
+      )}
+    >
+      <span
+        className={cn(
+          "absolute top-0.5 rounded-full bg-white shadow transition-all",
+          small ? "h-4 w-4" : "h-5 w-5",
+          on ? "left-[18px]" : "left-0.5",
+        )}
+      />
+    </span>
+  );
+}
+
+function ToggleRow({
+  Icon,
+  tint,
+  label,
+  sub,
+  on,
+  onToggle,
+}: {
+  Icon: LucideIcon;
+  tint: RowTint;
+  label: string;
+  sub?: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      role="switch"
+      aria-checked={on}
+      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
+    >
+      <IconCircle tint={tint}>
+        <Icon className="h-[18px] w-[18px]" />
+      </IconCircle>
+      <RowText label={label} sub={sub} />
+      <Switch on={on} />
+    </button>
+  );
+}
+
+function StoredToggleRow({
+  Icon,
+  tint,
+  storageKey,
+  label,
+  sub,
+}: {
+  Icon: LucideIcon;
+  tint: RowTint;
+  storageKey: string;
+  label: string;
+  sub?: string;
+}) {
+  const [on, toggle] = useStoredFlag(storageKey, true);
+  return (
+    <ToggleRow
+      Icon={Icon}
+      tint={tint}
+      label={label}
+      sub={sub}
+      on={on}
+      onToggle={toggle}
+    />
+  );
+}
+
+// Indented child option under the Public-profile toggle — visually nested
+// (inset background, smaller icon + switch) so the hierarchy reads at a
+// glance.
+function NestedToggleRow({
+  Icon,
+  label,
+  on,
+  onToggle,
+}: {
+  Icon: LucideIcon;
+  label: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      role="switch"
+      aria-checked={on}
+      className="hover:bg-muted/60 flex w-full items-center gap-3 py-2.5 pr-4 pl-[30px] text-left transition"
+    >
+      <span className="bg-card text-foreground/60 border-border flex h-7 w-7 shrink-0 items-center justify-center rounded-full border">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0 flex-1 text-[13px] font-medium">{label}</span>
+      <Switch on={on} small />
+    </button>
   );
 }

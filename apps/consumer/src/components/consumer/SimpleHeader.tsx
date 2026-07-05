@@ -22,7 +22,7 @@ export function SimpleHeader({
     <header className="border-border relative flex h-16 shrink-0 items-center border-b px-4">
       <div className="relative z-10 flex w-10 shrink-0 items-center">
         <Link
-          href={CONSUMER_ROUTES.me.plan}
+          href={CONSUMER_ROUTES.me.class}
           className="bg-primary shadow-glow flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl leading-none"
           aria-label="Mesita — profile"
         >
