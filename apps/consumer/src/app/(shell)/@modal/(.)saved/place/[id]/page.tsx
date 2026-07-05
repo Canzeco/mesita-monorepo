@@ -15,12 +15,12 @@ export default async function SavedPlaceModalPage({
 }) {
   const { id } = await params;
   if (!toCanonicalPlaceHrefOrNull(id, "saved")) {
-    redirect(CONSUMER_ROUTES.saved.places);
+    redirect(CONSUMER_ROUTES.favorites);
   }
   const supabase = await createServerSupabase();
   const place = await apiFetchPlaceDetail(supabase, id);
   if (!place) {
-    redirect(CONSUMER_ROUTES.saved.places);
+    redirect(CONSUMER_ROUTES.favorites);
   }
   return (
     <PlaceDetailModalShell projectId={place.id} placeName={place.name}>

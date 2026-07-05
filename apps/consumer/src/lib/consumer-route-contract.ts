@@ -9,6 +9,10 @@ export const CONSUMER_ROUTES = {
   home: "/home",
   // Map + catalog search + Ask AI concierge (panels are client state, not routes).
   search: "/search",
+  // The saved-places list lives on Home > Favorites (a client-state mode, not
+  // its own route). This is the canonical "view my saved places" destination —
+  // the old standalone /saved/places grid was a duplicate and was removed.
+  favorites: "/home?mode=favorites",
   explore: {
     swipe: "/explore/swipe",
     map: "/explore/map",
@@ -16,7 +20,6 @@ export const CONSUMER_ROUTES = {
     placePrefix: "/explore/place/",
   },
   saved: {
-    places: "/saved/places",
     reservations: "/saved/reservations",
     placePrefix: "/saved/place/",
     reservationPrefix: "/saved/reservation/",

@@ -14,17 +14,17 @@ export default async function SavedPlacePage({
 }) {
   const { id } = await params;
   if (!toCanonicalPlaceHrefOrNull(id, "saved")) {
-    redirect(CONSUMER_ROUTES.saved.places);
+    redirect(CONSUMER_ROUTES.favorites);
   }
   const supabase = await createServerSupabase();
   const place = await apiFetchPlaceDetail(supabase, id);
   if (!place) {
-    redirect(CONSUMER_ROUTES.saved.places);
+    redirect(CONSUMER_ROUTES.favorites);
   }
   return (
     <PlaceDetailPageBody
       place={place}
-      backHref={CONSUMER_ROUTES.saved.places}
+      backHref={CONSUMER_ROUTES.favorites}
     />
   );
 }

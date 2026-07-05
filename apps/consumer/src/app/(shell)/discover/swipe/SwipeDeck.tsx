@@ -253,7 +253,10 @@ function Deck({ places }: { places: Place[] }) {
         if (!alreadySaved) {
           toast.action(
             `Saved ${v.name}`,
-            { label: "View", onClick: () => router.push("/saved/places") },
+            {
+              label: "View",
+              onClick: () => router.push(CONSUMER_ROUTES.favorites),
+            },
             { tone: "success" },
           );
         }

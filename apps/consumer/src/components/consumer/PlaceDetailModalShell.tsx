@@ -70,7 +70,7 @@ export function PlaceDetailModalShell({
         `Saved ${placeName}`,
         {
           label: "View",
-          onClick: () => router.push(CONSUMER_ROUTES.saved.places),
+          onClick: () => router.push(CONSUMER_ROUTES.favorites),
         },
         { tone: "success" },
       );
