@@ -50,9 +50,8 @@ export default async function ConsumerShellLayout({
   // consumer-get-profile lazily creates the row, so a brand-new account still
   // reads back successfully (just with null fields). If the EF throws, we
   // surface the error route — better than rendering a half-broken shell.
-  // Also captures the consumer's display name so the /profile TopBar can
-  // render it instead of the literal word "Profile".
-  let userName: string | null = null;
+  // Only the membership is threaded into the shell now — the Profile TopBar
+  // titles itself "me" + current class rather than the display name.
   let membership: ConsumerMembership | null = null;
   try {
     const { consumer: profile, membership: m } =
@@ -64,10 +63,6 @@ export default async function ConsumerShellLayout({
       !!profile.sex;
     if (!onboarded) redirect("/onboard");
     membership = m;
-    userName =
-      profile.first_name && profile.last_name
-        ? `${profile.first_name} ${profile.last_name}`
-        : (profile.first_name ?? profile.last_name ?? profile.full_name);
   } catch {
     redirect("/onboard");
   }
@@ -90,7 +85,7 @@ export default async function ConsumerShellLayout({
       <StatusBar />
       <MembershipProvider membership={membership}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
-          <TopBar userName={userName} />
+          <TopBar />
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>
           </div>

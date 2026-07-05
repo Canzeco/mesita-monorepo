@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Share2 } from "lucide-react";
 import { ClassChip } from "./ClassChip";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -12,7 +13,7 @@ export function SimpleHeader({
   title,
   rightAction = "class",
 }: {
-  title: string;
+  title: ReactNode;
   rightAction?: "class" | "share";
 }) {
   const isShare = rightAction === "share";

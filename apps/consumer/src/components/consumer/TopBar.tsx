@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { SimpleHeader } from "./SimpleHeader";
 import { DiscoverHeader } from "./DiscoverHeader";
+import { MeHeaderTitle } from "./MeHeaderTitle";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/consumer-route-contract";
 
 // Route-driven top chrome for the consumer shell.
-export function TopBar({ userName }: { userName?: string | null }) {
+export function TopBar() {
   const pathname = usePathname() ?? "";
 
   // Home and Search own their top UI (mode pill nav / floating search bar),
@@ -53,13 +54,14 @@ export function TopBar({ userName }: { userName?: string | null }) {
   ) {
     return <SimpleHeader title="Invite" />;
   }
+  // The Profile tab is titled "me" and carries the member's current class
+  // (Free / Premium) inline — see MeHeaderTitle. The right-side ClassChip
+  // stays as the tap-to-plan control.
   if (
     pathname.startsWith(CONSUMER_ROUTE_PREFIX.me) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.profile)
   ) {
-    return (
-      <SimpleHeader title={userName?.trim() || "Profile"} rightAction="share" />
-    );
+    return <SimpleHeader title={<MeHeaderTitle />} rightAction="share" />;
   }
   return null;
 }
