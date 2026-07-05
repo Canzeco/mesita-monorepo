@@ -6,6 +6,7 @@ import type { ComponentType } from "react";
 import { Search, QrCode, CalendarCheck, User } from "lucide-react";
 import { MesitaMark } from "./MesitaMark";
 import { cn } from "@/lib/utils";
+import { useConsumerClass } from "@/lib/class-context";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
@@ -56,7 +57,9 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.me.class,
     Icon: User,
-    label: "Me · Class",
+    // Base label; the live class ("Me · Premium" / "Me · Free") is stitched in
+    // at render from the server-seeded class context — see BottomNav below.
+    label: "Me",
     match: CONSUMER_ROUTE_PREFIX.me,
   },
 ];
@@ -67,6 +70,11 @@ export function BottomNav({ userId }: { userId?: string }) {
   // site doesn't churn while other agents work this tree.
   void userId;
   const pathname = usePathname();
+  // Real, server-seeded class → the Me tab reads "Me · Premium" / "Me · Free"
+  // instead of a literal "Class". Defaults to Free before the shell seeds the
+  // profile (harmless: a Premium member is shown Free for one paint at most).
+  const { key: classKey } = useConsumerClass();
+  const classLabel = classKey === "premium" ? "Premium" : "Free";
 
   return (
     <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-0.5 pt-2 backdrop-blur">
@@ -81,6 +89,12 @@ export function BottomNav({ userId }: { userId?: string }) {
             // Place detail modals opened from Home keep the Home tab lit.
             (match === CONSUMER_ROUTE_PREFIX.home &&
               pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
+          // The Me tab carries the live class suffix; every other tab keeps
+          // its static label.
+          const displayLabel =
+            match === CONSUMER_ROUTE_PREFIX.me
+              ? `${label} · ${classLabel}`
+              : label;
           return (
             <Link
               key={href}
@@ -104,7 +118,9 @@ export function BottomNav({ userId }: { userId?: string }) {
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
               </span>
-              <span className="w-full truncate text-center">{label}</span>
+              <span className="w-full truncate text-center">
+                {displayLabel}
+              </span>
             </Link>
           );
         })}
