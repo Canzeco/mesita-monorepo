@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
+import { RewardsInfoBanner } from "@/components/consumer/RewardsInfoBanner";
 import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
 import { payTabHref, type PayTab } from "@/lib/pay-route";
 import { PayTicketListSkeleton } from "./PayTabLoading";
@@ -49,7 +50,8 @@ export function PayClient({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="px-4 pt-4">
-        <div className="segment-control grid grid-cols-2 gap-0">
+        <RewardsInfoBanner />
+        <div className="segment-control mt-3 grid grid-cols-2 gap-0">
           {TABS.map((t) => (
             <button
               key={t.id}
