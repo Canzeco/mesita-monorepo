@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
+import {
+  APIProvider,
+  APILoadingStatus,
+  Map,
+  Marker,
+  useApiLoadingStatus,
+  useMap,
+} from "@vis.gl/react-google-maps";
 import {
   Compass,
   MapPin as MapPinIcon,
@@ -15,7 +22,7 @@ import {
 } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { PartnerBadge, RatePill } from "@/components/shared";
+import { PartnerBadge, RatePill, Skeleton, Spinner } from "@/components/shared";
 import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import { placeHref } from "@/lib/place-route";
 
@@ -149,6 +156,10 @@ function MapView({
 }) {
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+  // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
+  // beat — hold a muted skeleton veil over it until tiles land.
+  const [mapReady, setMapReady] = useState(false);
+  const handleMapReady = useCallback(() => setMapReady(true), []);
   // Tapped marker — drives the bottom preview card. Clicking the card
   // navigates to /places/[id]; tapping the close pill clears it.
   const [selected, setSelected] = useState<Place | null>(null);
@@ -212,6 +223,7 @@ function MapView({
         styles={
           MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
         }
+        onTilesLoaded={handleMapReady}
       >
         {userLocation && (
           <Marker
@@ -240,6 +252,10 @@ function MapView({
           />
         )}
       </Map>
+
+      {/* Loading veil over the blank canvas — sits above the map, below the
+          z-10 chrome overlays, so the counts/legend chrome stays visible. */}
+      {!mapReady && <MapLoadingVeil />}
 
       {/* Top overlay: counts + legend */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3">
@@ -284,6 +300,31 @@ function MapView({
           onOpen={() => router.push(placeHref(selected.id, "explore"))}
         />
       )}
+    </div>
+  );
+}
+
+// Muted skeleton veil that hides the blank canvas until tiles paint.
+// Renders nothing once the SDK reports a load failure — an error state
+// must never sit under an eternal skeleton. No z-index: it stacks above
+// the map by DOM order but under the z-10 counts/legend chrome.
+function MapLoadingVeil() {
+  const status = useApiLoadingStatus();
+  if (
+    status === APILoadingStatus.FAILED ||
+    status === APILoadingStatus.AUTH_FAILURE
+  ) {
+    return null;
+  }
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      <Skeleton className="absolute inset-0 rounded-none" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Spinner
+          label="Loading map"
+          className="border-border border-t-primary"
+        />
+      </div>
     </div>
   );
 }

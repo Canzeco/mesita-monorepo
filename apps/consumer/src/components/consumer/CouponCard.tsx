@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { couponPath } from "@/lib/consumer-route-contract";
 import {
   Instagram,
   Sparkles,
@@ -103,7 +104,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
   // inside the same link so the whole ticket pair is one tap target.
   return (
     <Link
-      href={`/coupon/${c.id}`}
+      href={couponPath(c.id)}
       aria-label={`Open coupon for ${c.placeName}`}
       className={cn(
         "block overflow-hidden rounded-2xl border transition active:scale-[0.995]",

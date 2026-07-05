@@ -1,12 +1,8 @@
-import { Loader2 } from "lucide-react";
+import { TicketDetailsSkeleton } from "@/components/consumer/TicketDetailsSkeleton";
 
-export default function PayTicketModalLoading() {
-  return (
-    <div className="bg-background pointer-events-auto absolute inset-0 z-50 flex items-center justify-center">
-      <Loader2
-        className="text-muted-foreground h-5 w-5 animate-spin"
-        aria-label="Loading ticket"
-      />
-    </div>
-  );
+// Renders inside the BottomSheetShell mounted by layout.tsx. Same skeleton
+// as the dynamic-import and client-fetch fallbacks, so the whole wait —
+// route resolve → chunk load → data load — reads as ONE continuous frame.
+export default function TicketModalLoading() {
+  return <TicketDetailsSkeleton />;
 }

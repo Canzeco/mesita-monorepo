@@ -11,7 +11,8 @@
 // real chat EF once it exists.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Loader2, Sparkles, X } from "lucide-react";
+import { ArrowUp, Sparkles, X } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { cn } from "@/lib/utils";
@@ -190,7 +191,7 @@ export function AskAiPanel({
         {thinking && (
           <div className="flex justify-start">
             <div className="border-border bg-card text-muted-foreground flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Spinner size="sm" label="Thinking" />
               Scouting spots…
             </div>
           </div>

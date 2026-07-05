@@ -1,12 +1,16 @@
-import { Loader2 } from "lucide-react";
+import { PlaceBodySkeleton } from "@/components/consumer/overlay/DetailSkeletons";
+import { Skeleton } from "@/components/shared/Skeleton";
 
-export default function ExplorePlacePageLoading() {
+// Hard-nav place page: in-band skeleton in the shell body (chrome stays put).
+export default function PlacePageLoading() {
   return (
-    <div className="bg-background pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center">
-      <Loader2
-        className="text-muted-foreground h-6 w-6 animate-spin"
-        aria-label="Loading place"
-      />
+    <div className="h-full min-h-0 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-3">
+        <Skeleton className="h-9 w-9 rounded-lg" />
+        <Skeleton className="mx-auto h-4 w-32" />
+        <Skeleton className="h-9 w-9 rounded-lg" />
+      </div>
+      <PlaceBodySkeleton />
     </div>
   );
 }

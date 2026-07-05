@@ -1042,23 +1042,71 @@ const REVIEW_DEFS = [
 // RatePill's "banded/tinted by value" idea, applied per facet group instead
 // of per percent. Unknown facets fall back to a neutral slate tone.
 const FACET_TINT: Record<string, { chip: string; dot: string }> = {
-  payment: { chip: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  payment: {
+    chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dot: "bg-emerald-500",
+  },
   booking: { chip: "bg-sky-50 text-sky-700 border-sky-200", dot: "bg-sky-500" },
-  service: { chip: "bg-teal-50 text-teal-700 border-teal-200", dot: "bg-teal-500" },
-  vibe: { chip: "bg-pink-50 text-pink-700 border-pink-200", dot: "bg-pink-500" },
-  occasion: { chip: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
-  amenities: { chip: "bg-indigo-50 text-indigo-700 border-indigo-200", dot: "bg-indigo-500" },
-  dietary: { chip: "bg-lime-50 text-lime-700 border-lime-200", dot: "bg-lime-500" },
-  menu: { chip: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  drinks: { chip: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200", dot: "bg-fuchsia-500" },
-  entertainment: { chip: "bg-violet-50 text-violet-700 border-violet-200", dot: "bg-violet-500" },
-  crowd: { chip: "bg-cyan-50 text-cyan-700 border-cyan-200", dot: "bg-cyan-500" },
-  setting: { chip: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-500" },
-  hours: { chip: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  dress: { chip: "bg-purple-50 text-purple-700 border-purple-200", dot: "bg-purple-500" },
-  wellness: { chip: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500" },
-  experiences: { chip: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500" },
-  values: { chip: "bg-yellow-50 text-yellow-700 border-yellow-200", dot: "bg-yellow-500" },
+  service: {
+    chip: "bg-teal-50 text-teal-700 border-teal-200",
+    dot: "bg-teal-500",
+  },
+  vibe: {
+    chip: "bg-pink-50 text-pink-700 border-pink-200",
+    dot: "bg-pink-500",
+  },
+  occasion: {
+    chip: "bg-rose-50 text-rose-700 border-rose-200",
+    dot: "bg-rose-500",
+  },
+  amenities: {
+    chip: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    dot: "bg-indigo-500",
+  },
+  dietary: {
+    chip: "bg-lime-50 text-lime-700 border-lime-200",
+    dot: "bg-lime-500",
+  },
+  menu: {
+    chip: "bg-amber-50 text-amber-700 border-amber-200",
+    dot: "bg-amber-500",
+  },
+  drinks: {
+    chip: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+    dot: "bg-fuchsia-500",
+  },
+  entertainment: {
+    chip: "bg-violet-50 text-violet-700 border-violet-200",
+    dot: "bg-violet-500",
+  },
+  crowd: {
+    chip: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    dot: "bg-cyan-500",
+  },
+  setting: {
+    chip: "bg-orange-50 text-orange-700 border-orange-200",
+    dot: "bg-orange-500",
+  },
+  hours: {
+    chip: "bg-blue-50 text-blue-700 border-blue-200",
+    dot: "bg-blue-500",
+  },
+  dress: {
+    chip: "bg-purple-50 text-purple-700 border-purple-200",
+    dot: "bg-purple-500",
+  },
+  wellness: {
+    chip: "bg-green-50 text-green-700 border-green-200",
+    dot: "bg-green-500",
+  },
+  experiences: {
+    chip: "bg-red-50 text-red-700 border-red-200",
+    dot: "bg-red-500",
+  },
+  values: {
+    chip: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    dot: "bg-yellow-500",
+  },
 };
 
 const FACET_TINT_FALLBACK = {
@@ -1084,7 +1132,9 @@ function TagChips({ tags }: { tags: PlaceDetail["tags"] }) {
               tint.chip,
             )}
           >
-            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tint.dot)} />
+            <span
+              className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tint.dot)}
+            />
             {t.label}
           </span>
         );

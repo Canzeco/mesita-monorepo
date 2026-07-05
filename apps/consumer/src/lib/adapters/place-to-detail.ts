@@ -238,10 +238,7 @@ function hoursTable(hours: unknown): PlaceDetail["hours_table"] {
   return out;
 }
 
-export function placeRowToDetail(
-  row: Row,
-  tags?: ResolvedTag[],
-): PlaceDetail {
+export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
   const categoryName =
     resolvePlaceCategoryName({
       categoryLabel: str(row.category_label),

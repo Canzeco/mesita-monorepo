@@ -22,6 +22,7 @@ import type {
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
+import { couponPath } from "@/lib/consumer-route-contract";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
@@ -254,7 +255,7 @@ function LinkedCouponCard({ coupon }: { coupon: LinkedCouponSummary }) {
   const ig = coupon.kind === "instagram";
   return (
     <Link
-      href={`/coupon/${coupon.id}`}
+      href={couponPath(coupon.id)}
       className="flex items-center gap-3 rounded-2xl border border-pink-500/15 bg-pink-500/[0.04] px-4 py-3.5 transition hover:bg-pink-500/[0.06]"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-500/15 ring-1 ring-pink-500/20">

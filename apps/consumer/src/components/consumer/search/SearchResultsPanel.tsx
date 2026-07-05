@@ -4,7 +4,8 @@
 // grouped "On Mesita" / "From Google". Google-only rows can be generated
 // into Mesita on the spot via the Add flow (PredictionRow).
 
-import { Loader2, SearchX } from "lucide-react";
+import { SearchX } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { PredictionRow, type AddState } from "./PredictionRow";
@@ -43,7 +44,7 @@ export function SearchResultsPanel({
 
         {searching && predictions.length === 0 && (
           <div className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-xs">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Spinner size="sm" label="Searching" />
             Searching Mesita and Google…
           </div>
         )}
@@ -87,8 +88,8 @@ export function SearchResultsPanel({
             <p className="eyebrow px-1 pt-1">From Google</p>
             {onMesita.length === 0 && settled && (
               <p className="text-muted-foreground px-1 text-[11px]">
-                Not on Mesita yet? Tap Add and we&apos;ll build its profile
-                for everyone.
+                Not on Mesita yet? Tap Add and we&apos;ll build its profile for
+                everyone.
               </p>
             )}
             {fromGoogle.map((p) => (

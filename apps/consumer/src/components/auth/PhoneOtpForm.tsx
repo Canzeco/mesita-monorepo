@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { COUNTRY_BY_CODE } from "@/lib/consumer-data";
 import { PhoneInputWithCountry } from "./PhoneInputWithCountry";
@@ -117,7 +118,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
         >
           {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Spinner size="sm" className="border-white/40 border-t-white" />
           ) : (
             <>
               <MessageCircle className="h-4 w-4" />
@@ -180,7 +181,11 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         disabled={loading || code.length !== 6}
         className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+        {loading ? (
+          <Spinner size="sm" className="border-white/40 border-t-white" />
+        ) : (
+          "Verify"
+        )}
       </button>
 
       <button

@@ -168,16 +168,18 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
         )}
       </div>
 
-      {verifyPlatform && (
-        <VerifySocialSheet
-          platform={verifyPlatform}
-          onClose={() => setVerifyPlatform(null)}
-        />
-      )}
-      {editOpen && profile && (
+      {/* Kept mounted; LocalSheet's open/onClose contract plays the exit
+          animation before it leaves the DOM. */}
+      <VerifySocialSheet
+        platform={verifyPlatform ?? "instagram"}
+        open={verifyPlatform !== null}
+        onClose={() => setVerifyPlatform(null)}
+      />
+      {profile && (
         <EditProfileSheet
           profile={profile}
           email={email}
+          open={editOpen}
           onClose={() => setEditOpen(false)}
           onSaved={(updated) => setProfile(updated)}
         />

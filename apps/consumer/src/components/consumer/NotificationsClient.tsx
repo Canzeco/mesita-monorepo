@@ -21,6 +21,7 @@ import {
   ConsumerActivityList,
   InboxSegmentTabs,
 } from "@/components/consumer/ConsumerActivityList";
+import { SkeletonRow } from "@/components/shared/Skeleton";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export type InboxTab = "mine" | "global";
@@ -167,12 +168,17 @@ export function NotificationsClient({
           <ConsumerActivityList items={GLOBAL_ACTIVITY} anonymisedNote />
         </div>
       ) : loading ? (
-        <p className="text-muted-foreground mt-8 text-center text-sm">
-          Loading…
-        </p>
+        <div className="mt-4 flex flex-col gap-2" aria-hidden>
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonRow
+              key={i}
+              className="border-border bg-card rounded-2xl border"
+            />
+          ))}
+        </div>
       ) : (
         <div className="mt-4 flex flex-col gap-4">
-          {rows.length === 0 && MY_ACTIVITY.length === 0 ? (
+          {rows.length === 0 && MY_ACTIVITY.length === 0 && !error ? (
             <div className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-8 text-center text-sm">
               <Bell className="text-muted-foreground/50 mx-auto mb-3 h-10 w-10" />
               No notifications yet.

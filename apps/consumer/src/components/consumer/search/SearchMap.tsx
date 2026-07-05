@@ -10,10 +10,18 @@
 // behaviour. Pin taps report up via onSelectPlace so the page can sync
 // the catalog rail instead of opening a preview card.
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
-import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
+import {
+  APIProvider,
+  APILoadingStatus,
+  Map,
+  Marker,
+  useApiLoadingStatus,
+  useMap,
+} from "@vis.gl/react-google-maps";
 import type { Place } from "@/lib/api/places";
+import { Skeleton, Spinner } from "@/components/shared";
 
 // Default map centre — Monterrey, the launch city. When geolocation
 // resolves we re-centre on the consumer instead.
@@ -89,12 +97,18 @@ export function SearchMap({
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
 }) {
+  // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
+  // beat — hold a muted skeleton veil over it until tiles actually land
+  // (or the SDK load fails, so the veil can't sit there forever).
+  const [mapReady, setMapReady] = useState(false);
+  const handleMapReady = useCallback(() => setMapReady(true), []);
+
   // No key → the overlays (search, Ask AI, rail) still work; the base
   // layer degrades to a branded hero wash instead of a dead screen.
   if (!apiKey) {
     return (
       <div className="bg-hero absolute inset-0">
-        <div className="text-muted-foreground absolute bottom-40 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-card/90 px-3 py-1.5 text-[11px] font-medium shadow-elev backdrop-blur">
+        <div className="text-muted-foreground bg-card/90 shadow-elev absolute bottom-40 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium backdrop-blur">
           <MapPin className="h-3 w-3" />
           Live map coming soon
         </div>
@@ -110,8 +124,35 @@ export function SearchMap({
           userLocation={userLocation}
           selectedId={selectedId}
           onSelectPlace={onSelectPlace}
+          onReady={handleMapReady}
         />
+        {!mapReady && <MapLoadingVeil />}
       </APIProvider>
+    </div>
+  );
+}
+
+// Muted skeleton veil that hides the blank canvas until tiles paint.
+// Renders nothing once the SDK reports a load failure — an error state
+// must never sit under an eternal skeleton. z-10 keeps it above the map
+// but below the page's floating search chrome (z-20/z-30).
+function MapLoadingVeil() {
+  const status = useApiLoadingStatus();
+  if (
+    status === APILoadingStatus.FAILED ||
+    status === APILoadingStatus.AUTH_FAILURE
+  ) {
+    return null;
+  }
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
+      <Skeleton className="absolute inset-0 rounded-none" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Spinner
+          label="Loading map"
+          className="border-border border-t-primary"
+        />
+      </div>
     </div>
   );
 }
@@ -121,11 +162,13 @@ function SearchMapCanvas({
   userLocation,
   selectedId,
   onSelectPlace,
+  onReady,
 }: {
   places: Place[];
   userLocation: LatLng | null;
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
+  onReady: () => void;
 }) {
   const located = places.filter(
     (p) => typeof p.lat === "number" && typeof p.lng === "number",
@@ -145,6 +188,7 @@ function SearchMapCanvas({
       className="absolute inset-0 h-full w-full"
       colorScheme="LIGHT"
       styles={MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]}
+      onTilesLoaded={onReady}
     >
       {userLocation && (
         <Marker
@@ -159,7 +203,10 @@ function SearchMapCanvas({
           key={place.id}
           position={{ lat: place.lat as number, lng: place.lng as number }}
           title={place.name}
-          icon={placeIcon(place.listing_type === "partner", place.id === selectedId)}
+          icon={placeIcon(
+            place.listing_type === "partner",
+            place.id === selectedId,
+          )}
           onClick={() => onSelectPlace(place)}
         />
       ))}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { ArrowLeft, Check, Instagram, Mail, Sparkles } from "lucide-react";
 import { CLASSES } from "@/lib/consumer-data";
+import { Spinner } from "@/components/shared/Spinner";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
 import { MOCK_PREMIUM_KEY } from "@/lib/class-context";
@@ -177,7 +178,12 @@ function PremiumCheckoutButton() {
       disabled={loading}
       className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold text-white disabled:opacity-70"
     >
-      <Sparkles className="h-4 w-4" />
+      {loading ? (
+        // White-on-gradient recolor of the brand ring.
+        <Spinner size="sm" className="border-white/40 border-t-white" />
+      ) : (
+        <Sparkles className="h-4 w-4" />
+      )}
       {loading ? "Activating Premium…" : "Continue to checkout"}
     </button>
   );

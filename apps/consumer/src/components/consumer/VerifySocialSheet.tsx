@@ -1,22 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Instagram, Loader2 } from "lucide-react";
+import { BadgeCheck, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { Spinner } from "@/components/shared/Spinner";
 import { MOCK_INSTAGRAM_KEY } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
 // Premium. 1,000+ followers (and a story per visit) unlocks Premium. Extracted
 // from ProfileClient so the profile tabs stay lean.
+//
+// Built on LocalSheet: state-driven (parent keeps it mounted and flips
+// `open`) so the exit animation plays, backdrop covers the whole MobileFrame
+// card (TopBar/BottomNav included), and ESC closes it.
 
 export type SocialPlatform = "instagram";
 
 export function VerifySocialSheet({
   platform: _platform,
+  open,
   onClose,
 }: {
   platform: SocialPlatform;
+  open: boolean;
   onClose: () => void;
 }) {
   const [code, setCode] = useState("");
@@ -56,14 +64,8 @@ export function VerifySocialSheet({
   };
   const { Icon } = cfg;
   return (
-    <div className="absolute inset-0 z-50 flex items-end">
-      <div
-        className="bg-foreground/30 absolute inset-0 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="bg-card shadow-elev relative z-10 w-full rounded-t-3xl p-5">
-        <div className="bg-foreground/30 mx-auto mb-3 h-1 w-12 rounded-full" />
+    <LocalSheet open={open} onClose={onClose} ariaLabel={cfg.title}>
+      <div className="scrollbar-hide min-h-0 overflow-y-auto p-5 pt-3">
         <div className="flex items-start gap-3">
           <span
             className={cn(
@@ -126,7 +128,7 @@ export function VerifySocialSheet({
             className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
           >
             {verifying ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Spinner size="sm" className="border-white/40 border-t-white" />
             ) : (
               <BadgeCheck className="h-4 w-4" />
             )}
@@ -137,6 +139,6 @@ export function VerifySocialSheet({
           We never ask for your {cfg.platformLabel} password.
         </p>
       </div>
-    </div>
+    </LocalSheet>
   );
 }

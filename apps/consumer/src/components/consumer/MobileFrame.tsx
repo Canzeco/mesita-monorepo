@@ -23,6 +23,11 @@ import { cn } from "@/lib/utils";
  * \`min-h-dvh\` made that worse on mobile because address-bar show/hide
  * recomputes the viewport mid-paint.
  */
+// Portal target for overlays that must cover the WHOLE card (chrome bands
+// included) without using `fixed` — fixed escapes the card on desktop.
+// LocalSheet/LocalDialog and the Toaster anchor to this element.
+export const APP_CARD_ID = "mesita-app-card";
+
 export function MobileFrame({
   children,
   className,
@@ -33,8 +38,9 @@ export function MobileFrame({
   return (
     <div className="bg-background md:bg-hero flex h-dvh items-stretch justify-center md:h-auto md:min-h-dvh md:py-6">
       <div
+        id={APP_CARD_ID}
         className={cn(
-          "bg-background flex h-full w-full max-w-md flex-col overflow-hidden",
+          "bg-background relative flex h-full w-full max-w-md flex-col overflow-hidden",
           // Card chrome + height cap only kick in at md+.
           "md:border-border md:shadow-elev md:h-auto md:max-h-[min(900px,calc(100dvh-3rem))] md:rounded-3xl md:border",
         )}

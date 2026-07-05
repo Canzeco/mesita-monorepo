@@ -3,12 +3,13 @@
 import { useState, type ReactNode } from "react";
 import { X, Tag, MapPin, Calendar, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 
 // Discovery filters, lifted out of the old inline What/Where/When band into a
 // bottom sheet opened from the Filter button in the swipe action bar. State is
 // local and presentational for now — wiring to real results lands with the
-// search backend. Kept mounted (toggled via `open`) so selections survive a
-// close.
+// search backend. Rides the shared LocalSheet (portals into the app card,
+// animated open/close, ESC) with keepMounted so selections survive a close.
 
 type WhatOption = { id: string; label: string; soon: boolean };
 const WHAT_OPTIONS: WhatOption[] = [
@@ -68,113 +69,97 @@ export function FilterSheet({
   };
 
   return (
-    <div
-      aria-hidden={!open}
-      className={cn(
-        "fixed inset-0 z-50 transition-opacity duration-300",
-        open ? "opacity-100" : "pointer-events-none opacity-0",
-      )}
+    <LocalSheet
+      open={open}
+      onClose={onClose}
+      ariaLabel="Discovery filters"
+      keepMounted
     >
-      <button
-        type="button"
-        aria-label="Close filters"
-        onClick={onClose}
-        className="absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm"
-      />
-      <div
-        className={cn(
-          "border-border bg-popover shadow-elev absolute inset-x-0 bottom-0 flex max-h-[82vh] flex-col rounded-t-3xl border-t transition-transform duration-300 ease-out",
-          open ? "translate-y-0" : "translate-y-full",
-        )}
-      >
-        <div className="bg-foreground/20 mx-auto mt-2 h-1 w-10 shrink-0 rounded-full" />
-
-        <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-3">
-          <h2 className="font-display text-foreground text-lg font-semibold">
-            Filters
-          </h2>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={reset}
-              className="text-muted-foreground hover:text-foreground rounded-full px-3 py-1.5 text-xs font-medium transition"
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-8 w-8 items-center justify-center rounded-full transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="scrollbar-hide flex-1 space-y-5 overflow-y-auto px-4 pb-2">
-          <Section icon={Tag} label="What">
-            <div className="flex flex-wrap gap-2">
-              {WHAT_OPTIONS.map((o) => (
-                <Chip
-                  key={o.id}
-                  active={o.id === whatId}
-                  soon={o.soon}
-                  onClick={() => setWhatId(o.id)}
-                >
-                  {o.label}
-                </Chip>
-              ))}
-            </div>
-          </Section>
-
-          <Section icon={MapPin} label="Where">
-            <ChipRow>
-              {CITIES.map((c) => (
-                <Chip key={c} active={c === city} onClick={() => setCity(c)}>
-                  {c}
-                </Chip>
-              ))}
-            </ChipRow>
-          </Section>
-
-          <Section icon={Calendar} label="When">
-            <ChipRow>
-              {DATES.map((d) => (
-                <Chip
-                  key={d}
-                  active={d === whenDate}
-                  onClick={() => setWhenDate(d)}
-                >
-                  {d}
-                </Chip>
-              ))}
-            </ChipRow>
-            <ChipRow className="mt-2">
-              {TIMES.map((t) => (
-                <Chip
-                  key={t}
-                  active={t === whenTime}
-                  onClick={() => setWhenTime(t)}
-                >
-                  {t}
-                </Chip>
-              ))}
-            </ChipRow>
-          </Section>
-        </div>
-
-        <div className="border-border/60 shrink-0 border-t p-4">
+      <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-3">
+        <h2 className="font-display text-foreground text-lg font-semibold">
+          Filters
+        </h2>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={reset}
+            className="text-muted-foreground hover:text-foreground rounded-full px-3 py-1.5 text-xs font-medium transition"
+          >
+            Reset
+          </button>
           <button
             type="button"
             onClick={onClose}
-            className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-lg text-sm font-semibold text-white"
+            aria-label="Close"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-8 w-8 items-center justify-center rounded-full transition"
           >
-            Show places
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
-    </div>
+
+      <div className="scrollbar-hide flex-1 space-y-5 overflow-y-auto px-4 pb-2">
+        <Section icon={Tag} label="What">
+          <div className="flex flex-wrap gap-2">
+            {WHAT_OPTIONS.map((o) => (
+              <Chip
+                key={o.id}
+                active={o.id === whatId}
+                soon={o.soon}
+                onClick={() => setWhatId(o.id)}
+              >
+                {o.label}
+              </Chip>
+            ))}
+          </div>
+        </Section>
+
+        <Section icon={MapPin} label="Where">
+          <ChipRow>
+            {CITIES.map((c) => (
+              <Chip key={c} active={c === city} onClick={() => setCity(c)}>
+                {c}
+              </Chip>
+            ))}
+          </ChipRow>
+        </Section>
+
+        <Section icon={Calendar} label="When">
+          <ChipRow>
+            {DATES.map((d) => (
+              <Chip
+                key={d}
+                active={d === whenDate}
+                onClick={() => setWhenDate(d)}
+              >
+                {d}
+              </Chip>
+            ))}
+          </ChipRow>
+          <ChipRow className="mt-2">
+            {TIMES.map((t) => (
+              <Chip
+                key={t}
+                active={t === whenTime}
+                onClick={() => setWhenTime(t)}
+              >
+                {t}
+              </Chip>
+            ))}
+          </ChipRow>
+        </Section>
+      </div>
+
+      <div className="border-border/60 shrink-0 border-t p-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-lg text-sm font-semibold text-white"
+        >
+          Show places
+        </button>
+      </div>
+    </LocalSheet>
   );
 }
 

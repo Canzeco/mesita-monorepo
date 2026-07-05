@@ -7,16 +7,15 @@ import { cn } from "@/lib/utils";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { usePendingNotificationCount } from "@/lib/hooks/usePendingNotificationCount";
 import { payTabHref, type PayTab } from "@/lib/pay-route";
+import { PayTicketListSkeleton } from "./PayTabLoading";
 
 const PayTickets = dynamic(
   () =>
     import("@/components/consumer/PayTickets").then((mod) => mod.PayTickets),
   {
-    loading: () => (
-      <div className="border-border bg-card text-muted-foreground rounded-lg border px-4 py-6 text-center text-sm">
-        Loading tickets…
-      </div>
-    ),
+    // Same silhouette PayTickets renders while its own fetch is pending, so
+    // chunk-load → data-load reads as one continuous skeleton frame.
+    loading: () => <PayTicketListSkeleton />,
   },
 );
 

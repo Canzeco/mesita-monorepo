@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { COUNTRIES } from "@/lib/consumer-data";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateConsumerProfile } from "@/lib/api/profile";
 import { errMsg } from "@/lib/utils";
-import { Field } from "@/components/shared";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { Field, Spinner } from "@/components/shared";
 import {
   ERROR_BOX_CLASS,
   INPUT_CLASS,
@@ -59,7 +60,7 @@ export function OnboardForm() {
           birthday,
           country,
         });
-        router.push("/explore/swipe");
+        router.push(CONSUMER_ROUTES.home);
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));
@@ -146,7 +147,7 @@ export function OnboardForm() {
           className={PRIMARY_BUTTON_CLASS}
         >
           {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Spinner size="sm" className="border-white/40 border-t-white" />
           ) : (
             <>
               Continue <ArrowRight className="h-4 w-4" />

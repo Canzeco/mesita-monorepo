@@ -14,8 +14,13 @@ export function usePendingNotificationCount(userId: string | undefined) {
       setPending(0);
       return;
     }
-    const n = await fetchPendingNotificationCount(supabase, userId);
-    setPending(n);
+    try {
+      const n = await fetchPendingNotificationCount(supabase, userId);
+      setPending(n);
+    } catch {
+      // Failed poll tick (offline, EF hiccup): keep the last known count
+      // instead of surfacing an unhandled rejection every 15s.
+    }
   }, [supabase, userId]);
 
   useEffect(() => {

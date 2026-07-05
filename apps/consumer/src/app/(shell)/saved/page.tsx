@@ -24,6 +24,7 @@ import {
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placeHref } from "@/lib/place-route";
@@ -107,6 +108,9 @@ function PlacesBody() {
   const [liveCatalog, setLiveCatalog] = useState<Map<string, Place> | null>(
     null,
   );
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const pending = liveCatalog === null && !fetchFailed;
 
   useEffect(() => {
     let active = true;
@@ -119,17 +123,20 @@ function PlacesBody() {
           next.set(place.id, enrichPlaceOverview(place));
         }
         setLiveCatalog(next);
+        setFetchFailed(false);
       } catch {
         if (!active) return;
-        // Reset-safety: if we cannot read server places, fall back to an
-        // empty live catalog so stale local saved IDs/previews get purged.
-        setLiveCatalog(new Map());
+        // A FAILED fetch must never purge local bookmarks: leave liveCatalog
+        // null so the reset-safety purge below (which trusts the live
+        // catalog as server truth) cannot run against an empty map. The
+        // cached previews keep rendering; the error panel covers the rest.
+        setFetchFailed(true);
       }
     })();
     return () => {
       active = false;
     };
-  }, [supabase]);
+  }, [supabase, retryKey]);
 
   const catalog = useMemo(() => {
     const merged = new Map<string, Place>();
@@ -177,7 +184,34 @@ function PlacesBody() {
             sticky behavior. */}
         <ClassUpsellBox />
 
-        {places.length === 0 ? (
+        {pending && places.length === 0 ? (
+          // Fetch in flight and no cached previews to show — skeleton tiles,
+          // never the real "Nothing saved yet" copy.
+          <div className="flex flex-col gap-3" aria-hidden>
+            <SavedTileSkeleton />
+            <SavedTileSkeleton />
+            <SavedTileSkeleton />
+          </div>
+        ) : fetchFailed && places.length === 0 ? (
+          <div className="border-destructive/30 bg-destructive/5 rounded-xl border px-4 py-8 text-center">
+            <p className="text-destructive text-sm font-semibold">
+              Couldn&apos;t load your saved places.
+            </p>
+            <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+              Your bookmarks are safe — check your connection and try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setFetchFailed(false);
+                setRetryKey((k) => k + 1);
+              }}
+              className="border-border bg-card hover:bg-muted mt-4 rounded-lg border px-5 py-2 text-sm font-semibold transition"
+            >
+              Retry
+            </button>
+          </div>
+        ) : places.length === 0 ? (
           <div className="border-border text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
             Nothing saved yet. Swipe right on the Explore deck to bookmark a
             place.
@@ -193,6 +227,25 @@ function PlacesBody() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Pulsing placeholder matching the SavedPlaceTile silhouette: photo band on
+// the left, name + meta-tag row + promo chip on the right.
+function SavedTileSkeleton() {
+  return (
+    <div className="border-border bg-card flex min-h-[118px] w-full overflow-hidden rounded-xl border">
+      <Skeleton className="w-[42%] shrink-0 rounded-none" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2.5">
+        <Skeleton className="h-5 w-2/3" />
+        <div className="flex flex-wrap gap-1.5">
+          <Skeleton className="h-6 w-16 rounded-md" />
+          <Skeleton className="h-6 w-10 rounded-md" />
+          <Skeleton className="h-6 w-14 rounded-md" />
+        </div>
+        <Skeleton className="mt-auto h-6 w-28 rounded-full" />
       </div>
     </div>
   );

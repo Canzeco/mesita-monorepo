@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { TicketDetailModalShell } from "@/components/consumer/TicketDetailModalShell";
 import { TicketDetailsRouteClientDynamic } from "@/components/consumer/TicketDetailsRouteClientDynamic";
 import { payTicketPath } from "@/lib/consumer-route-contract";
 
@@ -19,12 +18,10 @@ export default async function PayTicketModalPage({
   if (!user) redirect(`/?next=${encodeURIComponent(payTicketPath(id))}`);
 
   return (
-    <TicketDetailModalShell>
-      <TicketDetailsRouteClientDynamic
-        userId={user.id}
-        ticketId={id}
-        variant="modal"
-      />
-    </TicketDetailModalShell>
+    <TicketDetailsRouteClientDynamic
+      userId={user.id}
+      ticketId={id}
+      variant="modal"
+    />
   );
 }

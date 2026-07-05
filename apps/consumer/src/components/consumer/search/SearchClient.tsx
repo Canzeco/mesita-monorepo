@@ -41,6 +41,7 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { AskAiPanel } from "./AskAiPanel";
@@ -557,91 +558,75 @@ function FiltersSheet({
 }) {
   const count = activeIds.length;
   return (
-    <div
-      aria-hidden={!open}
-      className={cn(
-        "absolute inset-0 z-50 transition-opacity duration-300",
-        open ? "opacity-100" : "pointer-events-none opacity-0",
-      )}
+    <LocalSheet
+      open={open}
+      onClose={onClose}
+      ariaLabel="Search filters"
+      keepMounted
     >
-      <button
-        type="button"
-        aria-label="Close filters"
-        onClick={onClose}
-        className="absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm"
-      />
-      <div
-        className={cn(
-          "border-border bg-popover shadow-elev absolute inset-x-0 bottom-0 flex max-h-[85%] flex-col rounded-t-3xl border-t transition-transform duration-300 ease-out",
-          open ? "translate-y-0" : "translate-y-full",
-        )}
-      >
-        <div className="bg-foreground/20 mx-auto mt-2 h-1 w-10 shrink-0 rounded-full" />
-
-        <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-xl">
-              <SlidersHorizontal className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="font-display text-base leading-tight font-semibold">
-                Filters
-              </p>
-              <p className="text-muted-foreground text-[11px]">
-                Pick any combination
-              </p>
-            </div>
+      <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-xl">
+            <SlidersHorizontal className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="font-display text-base leading-tight font-semibold">
+              Filters
+            </p>
+            <p className="text-muted-foreground text-[11px]">
+              Pick any combination
+            </p>
           </div>
-          <div className="flex items-center gap-1">
-            {count > 0 && (
-              <button
-                type="button"
-                onClick={onClear}
-                className="text-muted-foreground hover:text-foreground rounded-full px-3 py-1.5 text-xs font-medium transition"
-              >
-                Clear all
-              </button>
-            )}
+        </div>
+        <div className="flex items-center gap-1">
+          {count > 0 && (
             <button
               type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-8 w-8 items-center justify-center rounded-full transition"
+              onClick={onClear}
+              className="text-muted-foreground hover:text-foreground rounded-full px-3 py-1.5 text-xs font-medium transition"
             >
-              <X className="h-4 w-4" />
+              Clear all
             </button>
-          </div>
-        </div>
-
-        <div className="scrollbar-hide flex-1 space-y-5 overflow-y-auto px-4 pb-2">
-          {CHIP_GROUPS.map((group) => (
-            <div key={group.key}>
-              <p className="eyebrow mb-2">{group.label}</p>
-              <div className="flex flex-wrap gap-2">
-                {group.chips.map((chip) => (
-                  <SheetChip
-                    key={chip.id}
-                    chip={chip}
-                    active={activeIds.includes(chip.id)}
-                    onToggle={onToggle}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-border/60 shrink-0 border-t p-4">
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition active:scale-[0.99]"
+            aria-label="Close"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-8 w-8 items-center justify-center rounded-full transition"
           >
-            Apply{count > 0 ? ` (${count})` : ""}
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
-    </div>
+
+      <div className="scrollbar-hide flex-1 space-y-5 overflow-y-auto px-4 pb-2">
+        {CHIP_GROUPS.map((group) => (
+          <div key={group.key}>
+            <p className="eyebrow mb-2">{group.label}</p>
+            <div className="flex flex-wrap gap-2">
+              {group.chips.map((chip) => (
+                <SheetChip
+                  key={chip.id}
+                  chip={chip}
+                  active={activeIds.includes(chip.id)}
+                  onToggle={onToggle}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-border/60 shrink-0 border-t p-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition active:scale-[0.99]"
+        >
+          Apply{count > 0 ? ` (${count})` : ""}
+        </button>
+      </div>
+    </LocalSheet>
   );
 }
 

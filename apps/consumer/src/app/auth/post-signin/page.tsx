@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiConsumerSigninPhone } from "@/lib/api/auth";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Post-sign-in router. The sign-in surface redirects here. We:
 //
@@ -41,5 +42,7 @@ export default async function PostSigninPage({
     console.error("[post-signin] consumer-signin-phone:", err);
   }
   if (explicitNext) redirect(explicitNext);
-  redirect(consumerResult?.onboarded ? "/explore/swipe" : "/onboard");
+  redirect(
+    consumerResult?.onboarded ? CONSUMER_ROUTES.home : CONSUMER_ROUTES.onboard,
+  );
 }

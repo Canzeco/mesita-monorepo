@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, Search, Sparkles } from "lucide-react";
+import { CheckCircle2, Search, Sparkles } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCreatePlaceAsConsumerResult,
@@ -274,9 +275,7 @@ export default function ExploreAddPage() {
               placeholder="Search place by name"
               className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
             />
-            {searching && (
-              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-            )}
+            {searching && <Spinner size="sm" label="Searching" />}
           </label>
 
           {!hasStartedSearch && (
@@ -328,7 +327,7 @@ export default function ExploreAddPage() {
           >
             {isAdding ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size="sm" className="border-white/40 border-t-white" />
                 {ADD_PROGRESS_STAGES[addStageIdx]}
               </>
             ) : (

@@ -16,12 +16,12 @@ import {
   BadgeCheck,
   Check,
   Globe,
-  Loader2,
   MapPin,
   Star,
   Store,
   Wand2,
 } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
@@ -63,8 +63,8 @@ export function PredictionRow({
     : null;
   const subtitle = added
     ? "Being added — we're building this place's profile; it'll appear on Mesita in a few minutes."
-    : ([category, matchedPlace?.zone].filter(Boolean).join(" · ") ||
-      prediction.secondaryText);
+    : [category, matchedPlace?.zone].filter(Boolean).join(" · ") ||
+      prediction.secondaryText;
 
   return (
     <div
@@ -133,9 +133,7 @@ export function PredictionRow({
         <span
           className={cn(
             "block text-[11px] leading-snug",
-            added
-              ? "text-emerald-700"
-              : "text-muted-foreground truncate",
+            added ? "text-emerald-700" : "text-muted-foreground truncate",
           )}
         >
           {subtitle}
@@ -178,7 +176,7 @@ export function PredictionRow({
           className="bg-pink-gradient shadow-glow flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition active:scale-95 disabled:opacity-70"
         >
           {adding ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Spinner size="sm" className="border-white/40 border-t-white" />
           ) : (
             <Wand2 className="h-3 w-3" />
           )}

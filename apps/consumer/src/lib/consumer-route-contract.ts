@@ -81,6 +81,13 @@ export function reservationPath(id: string): string {
   return `${CONSUMER_ROUTES.saved.reservationPrefix}${id}`;
 }
 
+// Coupon detail is singular /coupon/[id] (list lives at /coupons).
+export const COUPON_PATH_PREFIX = "/coupon/";
+
+export function couponPath(id: string): string {
+  return `${COUPON_PATH_PREFIX}${id}`;
+}
+
 export function payTicketPath(id: string): string {
   return `${CONSUMER_ROUTES.pay.ticketPrefix}${id}`;
 }
@@ -94,6 +101,7 @@ export function isModalContractPath(pathname: string): boolean {
     pathname.startsWith(CONSUMER_ROUTES.explore.placePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.saved.placePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.saved.reservationPrefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.pay.ticketPrefix)
+    pathname.startsWith(CONSUMER_ROUTES.pay.ticketPrefix) ||
+    pathname.startsWith(COUPON_PATH_PREFIX)
   );
 }

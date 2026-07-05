@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { Spinner } from "@/components/shared/Spinner";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -14,15 +15,22 @@ import {
 // profile" button and the Settings → Account row. Writes through
 // consumer-web-update-profile; email is the auth identity and stays
 // read-only here.
+//
+// Built on LocalSheet: parent keeps it mounted and flips `open`, so the
+// sheet animates both ways, the backdrop covers the whole MobileFrame card,
+// and ESC closes it. Field state survives a close (draft-friendly) and the
+// dirty check tracks the latest saved profile.
 
 export function EditProfileSheet({
   profile,
   email,
+  open,
   onClose,
   onSaved,
 }: {
   profile: ConsumerProfile;
   email: string | null;
+  open: boolean;
   onClose: () => void;
   onSaved: (updated: ConsumerProfile) => void;
 }) {
@@ -70,15 +78,8 @@ export function EditProfileSheet({
   }
 
   return (
-    <div className="absolute inset-0 z-50 flex items-end">
-      <div
-        className="bg-foreground/30 absolute inset-0 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="bg-card shadow-elev relative z-10 w-full rounded-t-3xl p-5">
-        <div className="bg-foreground/30 mx-auto mb-3 h-1 w-12 rounded-full" />
-
+    <LocalSheet open={open} onClose={onClose} ariaLabel="Edit profile">
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
         <div className="flex items-center gap-3">
           <span className="bg-pink-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white">
             <span className="font-display text-[15px] font-bold tracking-tight">
@@ -144,12 +145,14 @@ export function EditProfileSheet({
               (!dirty || saving) && "opacity-60",
             )}
           >
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving && (
+              <Spinner size="sm" className="border-white/40 border-t-white" />
+            )}
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
       </div>
-    </div>
+    </LocalSheet>
   );
 }
 

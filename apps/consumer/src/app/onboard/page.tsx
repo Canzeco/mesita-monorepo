@@ -5,6 +5,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { OnboardForm } from "./OnboardForm";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Consumer onboarding — server-side gated. The middleware already blocks
 // signed-out users from /profile and friends, but onboard sits
@@ -43,7 +44,7 @@ export default async function ConsumerOnboardPage() {
     // surface a real error if persistence is broken.
     console.error("[consumer/onboard] consumer-get-profile:", err);
   }
-  if (onboarded) redirect("/explore/swipe");
+  if (onboarded) redirect(CONSUMER_ROUTES.home);
 
   // Phone-OTP is the consumer auth method, so the identity is usually a
   // phone; fall back to email for accounts created another way. Surfacing

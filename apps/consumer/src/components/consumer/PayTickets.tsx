@@ -24,6 +24,7 @@ import {
   type PayTicketMeta,
 } from "@/lib/api/notifications";
 import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
+import { TicketCardSkeleton } from "@/app/(shell)/pay/PayTabLoading";
 
 type TicketBundle = {
   ticketId: string;
@@ -103,17 +104,23 @@ export function PayTickets({ userId }: { userId: string }) {
   const [ticketMetaById, setTicketMetaById] = useState<Map<string, TicketMeta>>(
     new Map(),
   );
+  // "loading" until the FIRST fetch settles — the real empty-state copy must
+  // never flash while the request is still in flight. After a successful
+  // load, a failed poll tick keeps the last known list ("ready") instead of
+  // wiping it; the error panel is only for "we have nothing real to show".
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
 
   const loadTickets = useCallback(async () => {
     try {
-      const { notifications, ticketMetaById } = await fetchPayTicketList(
-        supabase,
-      );
+      const { notifications, ticketMetaById } =
+        await fetchPayTicketList(supabase);
       setRows(notifications);
       setTicketMetaById(ticketMetaById);
+      setStatus("ready");
     } catch {
-      setRows([]);
-      setTicketMetaById(new Map());
+      setStatus((prev) => (prev === "ready" ? prev : "error"));
     }
   }, [supabase]);
 
@@ -122,6 +129,11 @@ export function PayTickets({ userId }: { userId: string }) {
   }, [loadTickets]);
 
   usePayNotificationPoll(loadTickets, Boolean(userId));
+
+  const retry = useCallback(() => {
+    setStatus("loading");
+    void loadTickets();
+  }, [loadTickets]);
 
   const bundles = useMemo(() => {
     const map = new Map<string, TicketBundle>();
@@ -153,7 +165,28 @@ export function PayTickets({ userId }: { userId: string }) {
         <p className="text-muted-foreground text-[11px]">Open + completed</p>
       </div>
 
-      {bundles.length === 0 ? (
+      {status === "loading" ? (
+        <>
+          <TicketCardSkeleton />
+          <TicketCardSkeleton />
+        </>
+      ) : status === "error" ? (
+        <div className="border-destructive/30 bg-destructive/5 rounded-2xl border px-4 py-6 text-center">
+          <p className="text-destructive text-sm font-semibold">
+            Couldn&apos;t load your tickets.
+          </p>
+          <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+            Check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={retry}
+            className="border-border bg-card hover:bg-muted mt-4 rounded-lg border px-5 py-2 text-sm font-semibold transition"
+          >
+            Retry
+          </button>
+        </div>
+      ) : bundles.length === 0 ? (
         <p className="surface-card text-muted-foreground px-4 py-8 text-center text-sm leading-relaxed">
           When staff opens your ticket at the table, it appears here with the
           place photo, your total reward, and steps to finish. Completed tickets
