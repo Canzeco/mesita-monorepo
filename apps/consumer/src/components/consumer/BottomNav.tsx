@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   Search,
-  Gift,
+  QrCode,
   CalendarCheck,
   User,
   type LucideIcon,
@@ -44,7 +44,7 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTES.pay.qr,
-    Icon: Gift,
+    Icon: QrCode,
     label: "Rewards",
     match: CONSUMER_ROUTE_PREFIX.pay,
   },
