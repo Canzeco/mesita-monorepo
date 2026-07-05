@@ -18,7 +18,7 @@ type ResetResult =
 // Calls the admin-reset-database EF. The EF re-checks super_admins and
 // requires confirm === "RESET", so this action is only a thin pass-through.
 export async function resetDatabase(confirm: string): Promise<ResetResult> {
-  const r = await efInvoke<ResetResponse>("admin-reset-database", { confirm });
+  const r = await efInvoke<ResetResponse>("admin-web-reset-database", { confirm });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
@@ -41,7 +41,7 @@ type ListResult =
 
 export async function listAdmins(): Promise<ListResult> {
   const r = await efInvoke<{ admins: AdminRow[]; self: string | null }>(
-    "admin-list-admins",
+    "admin-web-list-admins",
     {},
   );
   if (!r.ok) return { ok: false, error: r.error };
@@ -56,7 +56,7 @@ export async function grantAdmin(
   email: string,
   note: string,
 ): Promise<GrantResult> {
-  const r = await efInvoke<{ admin: AdminRow }>("admin-grant-admin", {
+  const r = await efInvoke<{ admin: AdminRow }>("admin-web-grant-admin", {
     email,
     note,
   });
@@ -69,7 +69,7 @@ type RevokeResult =
   | { ok: false; error: string };
 
 export async function revokeAdmin(email: string): Promise<RevokeResult> {
-  const r = await efInvoke<{ removed: number }>("admin-revoke-admin", { email });
+  const r = await efInvoke<{ removed: number }>("admin-web-revoke-admin", { email });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, removed: r.data.removed ?? 0 };
 }

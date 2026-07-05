@@ -62,7 +62,7 @@ export async function listNotifications(
   category: NotificationCategory | "all" = "all",
   opts: ListNotificationsOptions = {},
 ): Promise<NotificationsResult> {
-  const r = await efInvoke<NotificationsPayload>("admin-list-notifications", {
+  const r = await efInvoke<NotificationsPayload>("admin-web-list-notifications", {
     category,
     limit: opts.limit ?? DEFAULT_LIMIT,
     ...(opts.types && opts.types.length > 0 ? { types: opts.types } : {}),

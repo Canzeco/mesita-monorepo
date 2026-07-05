@@ -41,7 +41,7 @@ type ListResult =
   | { ok: false; error: string };
 
 export async function listVerifications(): Promise<ListResult> {
-  const r = await efInvoke<ListResponse>("admin-list-verifications", {});
+  const r = await efInvoke<ListResponse>("admin-web-list-verifications", {});
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -55,7 +55,7 @@ export async function decideVerification(
   decision: "approved" | "rejected",
   rejectReason: string,
 ): Promise<DecideResult> {
-  const r = await efInvoke<unknown>("admin-decide-verification", {
+  const r = await efInvoke<unknown>("admin-web-decide-verification", {
     verificationId,
     decision,
     rejectReason: decision === "rejected" ? rejectReason : undefined,
@@ -83,7 +83,7 @@ export async function setAutoVerify(
     autoVerifyAiCall: boolean;
     autoVerifyVideo: boolean;
     autoVerifyUpdatedAt: string | null;
-  }>("admin-set-auto-verify", { method, enabled });
+  }>("admin-web-set-auto-verify", { method, enabled });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,

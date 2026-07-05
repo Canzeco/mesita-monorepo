@@ -53,7 +53,7 @@ export async function createUnitFromPlaceId(
   const id = (placeId ?? "").toString().trim();
   if (!id) return { ok: false, error: "Empty Place ID" };
 
-  const r = await efInvoke<CreateUnitResponse>("admin-create-unit", {
+  const r = await efInvoke<CreateUnitResponse>("admin-web-create-unit", {
     placeId: id,
   });
   if (!r.ok) {

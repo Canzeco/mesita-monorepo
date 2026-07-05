@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const maxResultsPerQuery =
     typeof body.maxResultsPerQuery === "number" ? body.maxResultsPerQuery : 60;
 
-  const result = await efInvoke<SearchResponse>("admin-discover-places", {
+  const result = await efInvoke<SearchResponse>("admin-web-discover-places", {
     queries,
     regionCode,
     maxResultsPerQuery,

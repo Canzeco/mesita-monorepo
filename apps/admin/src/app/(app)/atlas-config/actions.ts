@@ -32,7 +32,7 @@ type GetSettingsResult =
   | { ok: false; error: string };
 
 export async function getAtlasSettings(): Promise<GetSettingsResult> {
-  const r = await efInvoke<SettingsResponse>("admin-get-settings", {});
+  const r = await efInvoke<SettingsResponse>("admin-web-get-settings", {});
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -79,7 +79,7 @@ export async function updateAtlasConfig(patch: {
   perRunCostCapUsd?: number;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
-    "admin-update-atlas-config",
+    "admin-web-update-atlas-config",
     patch,
   );
   if (!r.ok) return { ok: false, error: r.error };
@@ -127,7 +127,7 @@ export type AtlasFieldsPayload = {
 export async function getAtlasFields(): Promise<
   { ok: true; data: AtlasFieldsPayload } | { ok: false; error: string }
 > {
-  const r = await efInvoke<AtlasFieldsPayload>("admin-get-atlas-fields", {});
+  const r = await efInvoke<AtlasFieldsPayload>("admin-web-get-atlas-fields", {});
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }

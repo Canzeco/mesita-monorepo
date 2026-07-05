@@ -30,7 +30,7 @@ export type UnitHit = {
 export type PlaceHit = UnitHit;
 
 async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>> {
-  const r = await efInvoke<{ places: UnitHit[] }>("admin-search-places", {
+  const r = await efInvoke<{ places: UnitHit[] }>("admin-web-search-places", {
     query,
     limit,
   });
@@ -95,7 +95,7 @@ export type AdminPlace = {
 
 export async function getPlace(projectId: string): Promise<Result<AdminPlace>> {
   const r = await efInvoke<{ active: { place: AdminPlace } | null }>(
-    "business-get-overview",
+    "business-web-get-overview",
     { placeId: projectId, ticketsLimit: 0 },
   );
   if (!r.ok) return { ok: false, error: r.error };
@@ -109,7 +109,7 @@ export async function getPlace(projectId: string): Promise<Result<AdminPlace>> {
 export async function updatePlace(
   patch: Record<string, unknown> & { id: string },
 ): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>("business-update-project", patch);
+  const r = await efInvoke<{ place: AdminPlace }>("business-web-update-project", patch);
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
 }
@@ -146,7 +146,7 @@ export type TeamSnapshot = {
 };
 
 export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>> {
-  const r = await efInvoke<TeamSnapshot>("business-list-team", { placeId: projectId });
+  const r = await efInvoke<TeamSnapshot>("business-web-list-team", { placeId: projectId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -156,7 +156,7 @@ export async function inviteEditor(
   email: string,
   role: string,
 ): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-invite-member", {
+  const r = await efInvoke<unknown>("business-web-invite-member", {
     placeId: projectId,
     email,
     role,
@@ -169,7 +169,7 @@ export async function updateMemberRole(
   memberId: string,
   role: string,
 ): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-update-member-role", { memberId, role });
+  const r = await efInvoke<unknown>("business-web-update-member-role", { memberId, role });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -178,7 +178,7 @@ export async function removeMember(
   id: string,
   kind: "editor" | "waiter" | "editorInvite" | "waiterInvite",
 ): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-remove-member", { id, kind });
+  const r = await efInvoke<unknown>("business-web-remove-member", { id, kind });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -206,7 +206,7 @@ export async function listTickets(
   limit = 100,
 ): Promise<Result<AdminTicket[]>> {
   const r = await efInvoke<{ tickets: AdminTicket[] } | AdminTicket[]>(
-    "business-list-tickets",
+    "business-web-list-tickets",
     { placeId: projectId, limit },
   );
   if (!r.ok) return { ok: false, error: r.error };
@@ -217,7 +217,7 @@ export async function listTickets(
 }
 
 export async function markTicketPaid(ticketId: string): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-mark-ticket-paid", { ticketId });
+  const r = await efInvoke<unknown>("business-web-mark-ticket-paid", { ticketId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -226,7 +226,7 @@ export async function cancelTicket(
   ticketId: string,
   reason?: string,
 ): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-cancel-ticket", { ticketId, reason });
+  const r = await efInvoke<unknown>("business-web-cancel-ticket", { ticketId, reason });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -265,7 +265,7 @@ export async function findPlaceByPlaceId(
     return { ok: false, error: "Paste a Google Place ID first." };
   }
 
-  const result = await efInvoke<EFResponse>("admin-find-place", { placeId });
+  const result = await efInvoke<EFResponse>("admin-web-find-place", { placeId });
   if (!result.ok) {
     return { ok: false, error: result.error };
   }
@@ -309,7 +309,7 @@ export async function suggestPlaces(
   if (q.length < 2) return { ok: true, data: [] };
   if (!sessionToken.trim()) return { ok: false, error: "Missing session token" };
 
-  const r = await efInvoke<{ predictions: PlacePrediction[] }>("admin-suggest-places", {
+  const r = await efInvoke<{ predictions: PlacePrediction[] }>("admin-web-suggest-places", {
     input: q,
     sessionToken,
   });

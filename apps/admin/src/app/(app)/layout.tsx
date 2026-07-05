@@ -29,7 +29,7 @@ export default async function AppLayout({
   if (!user) redirect("/");
 
   const whoami = await efInvoke<{ email: string | null; isSuperAdmin: boolean }>(
-    "auth-get-identity",
+    "admin-web-get-identity",
     {},
   );
 
