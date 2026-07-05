@@ -37,8 +37,7 @@ export function RewardsInfoBanner() {
           <p className="text-foreground text-[12.5px] leading-snug">
             <span className="font-semibold">Premium boosts them.</span>{" "}
             <span className="text-muted-foreground">
-              Free gets the base discount; Premium unlocks bigger discounts,
-              personalized picks &amp; unlimited reservations.
+              Free gets the base discount; Premium unlocks bigger discounts.
             </span>
           </p>
         </div>
