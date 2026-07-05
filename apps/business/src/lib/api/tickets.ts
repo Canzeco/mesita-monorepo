@@ -63,7 +63,7 @@ export async function apiListTickets(
 ): Promise<BusinessTicket[]> {
   const { tickets } = await invokeEF<{ tickets: RawTicket[] }>(
     client,
-    "business-list-tickets",
+    "business-web-list-tickets",
     // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
     { placeId: input.projectId, limit: input.limit },
     "Couldn't load tickets.",
@@ -77,7 +77,7 @@ export async function apiMarkTicketPaid(
 ): Promise<{ status?: string; alreadyPaid?: boolean }> {
   return invokeEF<{ status?: string; alreadyPaid?: boolean }>(
     client,
-    "business-mark-ticket-paid",
+    "business-web-mark-ticket-paid",
     { ticketId },
     "Couldn't mark ticket as paid.",
   );
@@ -89,7 +89,7 @@ export async function apiCancelTicket(
 ): Promise<{ alreadyCancelled?: boolean }> {
   return invokeEF<{ alreadyCancelled?: boolean }>(
     client,
-    "business-cancel-ticket",
+    "business-web-cancel-ticket",
     input,
     "Couldn't cancel ticket.",
   );
@@ -107,7 +107,7 @@ export async function apiOpenTicket(
 ): Promise<{ ticket: BusinessTicket }> {
   return invokeEF<{ ticket: BusinessTicket }>(
     client,
-    "business-create-ticket",
+    "business-web-create-ticket",
     {
       // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
       placeId: input.projectId,
@@ -131,7 +131,7 @@ export async function apiSubmitTicketBill(
 ): Promise<{ ticket: BusinessTicket }> {
   return invokeEF<{ ticket: BusinessTicket }>(
     client,
-    "business-submit-ticket-bill",
+    "business-web-submit-ticket-bill",
     {
       ticketId: input.ticketId,
       checkSubtotalCents: input.checkSubtotalCents,

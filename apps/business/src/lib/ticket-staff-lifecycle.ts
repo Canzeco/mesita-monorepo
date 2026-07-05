@@ -36,7 +36,7 @@ export type StaffTicketProgressInput = Pick<
 
 const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "staff_verified"]);
 
-// Legacy EF wire kinds (business-create-ticket contract). These are request
+// Legacy EF wire kinds (business-web-create-ticket contract). These are request
 // payload strings, NOT members of the regenerated DB `ticket_kind` enum
 // (now "reservation" | "coupon"), so they are typed as plain strings.
 const STORY_KINDS = new Set<string>(["s_dp_sf", "r_s_dp_sf"]);

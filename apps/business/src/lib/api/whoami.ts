@@ -1,4 +1,4 @@
-// Thin client wrapper for the auth-get-identity EF. Used by the root layout
+// Thin client wrapper for the business-web-get-identity EF. Used by the root layout
 // to decide whether to render the global SuperAdminBanner — every signed
 // -in render passes through here, so failures are swallowed and treated
 // as "not a super-admin" rather than crashing the page.
@@ -15,7 +15,7 @@ export type WhoamiResult = {
 async function fetchWhoami(client: SupabaseClient): Promise<WhoamiResult> {
   return invokeEF<WhoamiResult>(
     client,
-    "auth-get-identity",
+    "business-web-get-identity",
     {},
     "Couldn't verify your session.",
   );

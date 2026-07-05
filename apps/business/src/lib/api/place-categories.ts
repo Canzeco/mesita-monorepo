@@ -22,7 +22,7 @@ export async function apiListPlaceCategories(
   try {
     const data = await invokeEF<ListPlaceCategoriesResult>(
       client,
-      "business-list-categories",
+      "business-web-list-categories",
       {},
     );
     return data.categories ?? [];

@@ -53,7 +53,7 @@ export default async function BusinessRootPage({
     try {
       profile = await apiGetBusinessProfile(supabase);
     } catch (err) {
-      console.error("[/] business-get-profile:", errMsg(err, ""));
+      console.error("[/] business-web-get-profile:", errMsg(err, ""));
     }
     if (!profile?.full_name) redirect("/onboard");
     redirect("/central");

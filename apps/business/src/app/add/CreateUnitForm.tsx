@@ -44,7 +44,7 @@ import { isOtpCode } from "@/lib/validators";
 const SEARCH_DEBOUNCE_MS = 220;
 
 // Rolling status messages cycled into the Generate button while
-// business-create-project is running.
+// business-web-create-project is running.
 const GENERATE_STAGE_MS = 6000;
 const GENERATE_STAGES = [
   "Fetching Google profile…",
@@ -91,7 +91,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
   const [lookup, setLookup] = useState<LookupResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  // Generate-profile state (business-create-project).
+  // Generate-profile state (business-web-create-project).
   const [generatePending, startGenerate] = useTransition();
   const [generateStage, setGenerateStage] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);

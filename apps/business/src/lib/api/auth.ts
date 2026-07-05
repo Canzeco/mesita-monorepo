@@ -28,7 +28,7 @@ export async function apiBusinessSigninEmail(
 ): Promise<BusinessSigninResult> {
   return invokeEF<BusinessSigninResult>(
     client,
-    "business-signin-email",
+    "business-web-signin-email",
     {},
     "Couldn't finish signing you in.",
   );

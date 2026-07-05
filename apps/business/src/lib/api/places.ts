@@ -23,7 +23,7 @@ export type FiscalType = "formal" | "informal";
 // Promote ('pro', $100 MXN/mo) + Ultra ('ultra', $5,000 MXN/mo). Every
 // Verified place runs an instant discount applied at the bill; Promote and
 // Ultra differ only in price and visibility. Paid plans are monthly Stripe
-// subscriptions managed through business-change-subscription — see
+// subscriptions managed through business-web-change-subscription — see
 // lib/business/plans.ts for the picker catalog and lib/api/subscription.ts
 // for the billing call.
 export type PlacePlan = "free" | "pro" | "ultra";
@@ -182,7 +182,7 @@ export async function apiPlacesAutocomplete(
   if (trimmed.length < 2) return [];
   const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
     client,
-    "business-suggest-places",
+    "business-web-suggest-places",
     { input: trimmed, sessionToken },
     "Couldn't search places right now.",
   );
@@ -196,12 +196,14 @@ type EnrichCreatePlaceResponse = {
 
 export async function apiEnrichCreatePlace(
   client: SupabaseClient,
-  placeId: string,
+  googlePlaceId: string,
 ): Promise<EnrichCreatePlaceResponse> {
   return invokeEF<EnrichCreatePlaceResponse>(
     client,
-    "business-create-project",
-    { placeId },
+    "business-web-create-project",
+    // Canonical Google Place ID key (MESITA-53 Addendum 9). The EF still
+    // accepts legacy `placeId` server-side, but new callers send googlePlaceId.
+    { googlePlaceId },
     "Couldn't create that place.",
   );
 }
@@ -218,7 +220,7 @@ export type UpdatePlaceInput = {
   status?: "active" | "paused" | "archived";
   fiscal_type?: FiscalType;
   // NOTE: no `plan` here — plan changes are billing and go through
-  // apiChangeSubscription (business-change-subscription EF).
+  // apiChangeSubscription (business-web-change-subscription EF).
   address?: string | null;
   closes_at?: string | null;
   hours?: PlaceHours | null;
@@ -279,7 +281,7 @@ export async function apiUpdatePlace(
   // JWT automatically.
   const { place } = await invokeEF<{ place: UpdatedPlace }>(
     client,
-    "business-update-project",
+    "business-web-update-project",
     input,
   );
   return place;

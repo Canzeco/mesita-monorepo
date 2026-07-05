@@ -31,7 +31,7 @@ export default async function CreateUnitPage() {
     const overview = await getUnitOverview(supabase, null, 0);
     places = (overview?.places ?? []).map((v) => ({ id: v.id, name: v.name }));
   } catch (err) {
-    console.error("[add] business-get-overview:", err);
+    console.error("[add] business-web-get-overview:", err);
   }
 
   return (

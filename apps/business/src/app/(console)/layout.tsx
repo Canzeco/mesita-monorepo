@@ -34,7 +34,7 @@ export default async function ConsoleLayout({
   if (overviewResult.status === "fulfilled") {
     overview = overviewResult.value;
   } else {
-    console.error("[console] business-get-overview:", overviewResult.reason);
+    console.error("[console] business-web-get-overview:", overviewResult.reason);
   }
 
   const business =

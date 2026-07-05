@@ -10,7 +10,7 @@ import { isEmail } from "@/lib/validators";
 // reset (businesses will self-serve via a dedicated flow once we ship it).
 // Sign-in / sign-up are server actions so the session cookie lands on the
 // SSR client; the role stamping + profile creation happens on
-// /auth/post-signin which calls business-signin-email.
+// /auth/post-signin which calls business-web-signin-email.
 
 export type AuthFormState = {
   error?: string;

@@ -1,4 +1,4 @@
-// Frontend helper for the business-get-overview Edge Function.
+// Frontend helper for the business-web-get-overview Edge Function.
 //
 // Wrapped in React.cache so the business layout and the active page (which
 // both need the bundle) reuse a single Edge Function round trip per render.
@@ -32,7 +32,7 @@ async function fetchUnitOverview(
 ): Promise<UnitOverview> {
   return invokeEF<UnitOverview>(
     client,
-    "business-get-overview",
+    "business-web-get-overview",
     {
       // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
       placeId: activeUnitId ?? undefined,

@@ -13,7 +13,7 @@
 //
 // The third "Talk to us" option is now a direct wa.me deep-link to
 // Mesita ops — no EF round-trip, no admin queue row. See the WhatsApp
-// constant in CreateUnitForm. The legacy business-request-manual-review
+// constant in CreateUnitForm. The legacy business-web-request-manual-review
 // EF still exists server-side for historical rows but is no longer
 // wrapped here.
 //
@@ -62,7 +62,7 @@ export type LookupPlace = {
 };
 
 // What the UI needs to decide which auto-verify cards to render.
-// Returned by business-find-place for every claim-able state. The
+// Returned by business-web-find-place for every claim-able state. The
 // "Talk to us" WhatsApp fallback is rendered unconditionally on the
 // FE and isn't surfaced here.
 export type LookupMethods = {
@@ -92,12 +92,14 @@ export type LookupResult =
 
 export async function apiLookupPlace(
   client: SupabaseClient,
-  placeId: string,
+  googlePlaceId: string,
 ): Promise<LookupResult> {
   return invokeEF<LookupResult>(
     client,
-    "business-find-place",
-    { placeId },
+    "business-web-find-place",
+    // Canonical Google Place ID key (MESITA-53 Addendum 9). Legacy `placeId`
+    // is still accepted server-side; new callers send googlePlaceId.
+    { googlePlaceId },
     "Couldn't look up that place.",
   );
 }
@@ -124,7 +126,7 @@ export async function apiBusinessSendsPhoneOtp(
 ): Promise<SendPhoneOtpResult> {
   return invokeEF<SendPhoneOtpResult>(
     client,
-    "business-send-phone-otp",
+    "business-web-send-phone-otp",
     {
       // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
       placeId: projectId,
@@ -151,7 +153,7 @@ export async function apiBusinessVerifiesPhone(
 ): Promise<VerifyOtpResult> {
   return invokeEF<VerifyOtpResult>(
     client,
-    "business-verify-phone-otp",
+    "business-web-verify-phone-otp",
     { verificationId, code },
     "Couldn't verify that code.",
   );
@@ -173,7 +175,7 @@ export async function apiBusinessSendsEmailOtp(
 ): Promise<SendEmailOtpResult> {
   return invokeEF<SendEmailOtpResult>(
     client,
-    "business-send-email-otp",
+    "business-web-send-email-otp",
     {
       // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
       placeId: projectId,
@@ -192,7 +194,7 @@ export async function apiBusinessVerifiesEmail(
 ): Promise<VerifyOtpResult> {
   return invokeEF<VerifyOtpResult>(
     client,
-    "business-verify-email-otp",
+    "business-web-verify-email-otp",
     { verificationId, code },
     "Couldn't verify that code.",
   );

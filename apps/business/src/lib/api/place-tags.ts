@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF, logSwallowedEFError } from "./_invoke";
 
-// Controlled tag vocabulary served by the `business-list-tags` Edge Function.
+// Controlled tag vocabulary served by the `business-web-list-tags` Edge Function.
 // Clients never read the catalog table directly — every read goes through an
 // EF (project rule). The EF returns 17 facets (display groups) and 101 tags,
 // each tag carrying the `facet` slug it belongs to.
@@ -37,7 +37,7 @@ export async function apiListPlaceTags(
   try {
     const data = await invokeEF<ListPlaceTagsResult>(
       client,
-      "business-list-tags",
+      "business-web-list-tags",
       {},
     );
     return {

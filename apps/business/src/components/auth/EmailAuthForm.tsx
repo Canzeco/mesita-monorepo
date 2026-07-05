@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 // surfaces. Spec is intentionally narrow — no magic link, no OAuth.
 //
 // The bound server action handles the signInWithPassword / signUp call
-// + redirect; the post-signin EF (business-signin-email or admin-signin-
+// + redirect; the post-signin EF (business-web-signin-email or admin-signin-
 // email) runs from the /auth/post-signin server page that the action
 // redirects to.
 

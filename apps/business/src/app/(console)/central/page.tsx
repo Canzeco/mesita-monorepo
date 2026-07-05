@@ -32,7 +32,7 @@ export default async function CentralPage() {
   try {
     profile = await apiGetBusinessProfile(supabase);
   } catch (err) {
-    console.error("[central] business-get-profile:", errMsg(err, ""));
+    console.error("[central] business-web-get-profile:", errMsg(err, ""));
   }
   if (!profile?.full_name) redirect("/onboard");
 
@@ -40,7 +40,7 @@ export default async function CentralPage() {
   try {
     overview = await getUnitOverview(supabase, null, 0);
   } catch (err) {
-    console.error("[central] business-get-overview:", errMsg(err, ""));
+    console.error("[central] business-web-get-overview:", errMsg(err, ""));
   }
   const places = (overview?.places ?? []).map((v) => ({
     id: v.id,

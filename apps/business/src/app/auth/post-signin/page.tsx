@@ -36,7 +36,7 @@ export default async function PostSigninPage({
   try {
     result = await apiBusinessSigninEmail(supabase);
   } catch (err) {
-    console.error("[post-signin] business-signin-email:", err);
+    console.error("[post-signin] business-web-signin-email:", err);
   }
   if (explicitNext) redirect(explicitNext);
   redirect(result?.onboarded ? "/central" : "/onboard");

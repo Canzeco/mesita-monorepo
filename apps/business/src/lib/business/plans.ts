@@ -9,7 +9,7 @@ import type { PlacePlan } from "@/lib/api/places";
 //   - "Ultra"               (plan=ultra) · Max    · $5,000/mo
 //
 // Paid plans are monthly Stripe subscriptions: picking a card goes through
-// business-change-subscription (Stripe Checkout), never a direct plan write.
+// business-web-change-subscription (Stripe Checkout), never a direct plan write.
 //
 // Mesita is discounts-only: every Verified place runs the same instant
 // discount applied directly at the bill, with no money flowing through

@@ -1,6 +1,6 @@
 import { Shield } from "lucide-react";
 
-// Rendered globally by the root layout whenever auth-get-identity reports
+// Rendered globally by the root layout whenever business-web-get-identity reports
 // `isSuperAdmin: true` — i.e. the signed-in operator's email is in
 // public.super_admins. Visible across every page (auth surface aside,
 // since no session yet) so the operator always knows they're acting on

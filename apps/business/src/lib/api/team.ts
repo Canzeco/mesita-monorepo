@@ -67,7 +67,7 @@ export async function apiListTeam(
 ): Promise<TeamSnapshot> {
   return await invokeEF<TeamSnapshot>(
     client,
-    "business-list-team",
+    "business-web-list-team",
     // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
     { placeId: projectId },
     "Couldn't load your team.",
@@ -104,7 +104,7 @@ export async function apiInviteEditor(
   const { projectId, ...rest } = input;
   return await invokeEF<InviteEditorResult>(
     client,
-    "business-invite-member",
+    "business-web-invite-member",
     // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
     { ...rest, placeId: projectId },
     "Couldn't send the invite.",
@@ -137,7 +137,7 @@ export async function apiInviteStaff(
   const { projectId, ...rest } = input;
   return await invokeEF<InviteStaffResult>(
     client,
-    "business-invite-staff",
+    "business-web-invite-staff",
     // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
     { ...rest, placeId: projectId },
     "Couldn't send the staff invite.",
@@ -150,7 +150,7 @@ export async function apiUpdateMemberRole(
 ): Promise<{ memberId: string; role: BusinessRole }> {
   return await invokeEF<{ memberId: string; role: BusinessRole }>(
     client,
-    "business-update-member-role",
+    "business-web-update-member-role",
     input,
     "Couldn't update that member's role.",
   );
@@ -164,7 +164,7 @@ export async function apiRemoveMember(
 ): Promise<{ id: string; kind: RemoveKind }> {
   return await invokeEF<{ id: string; kind: RemoveKind }>(
     client,
-    "business-remove-member",
+    "business-web-remove-member",
     input,
     "Couldn't remove that member.",
   );
@@ -185,7 +185,7 @@ export async function apiTestStaffChannel(
   const { projectId, ...rest } = input;
   return await invokeEF<TestStaffChannelResult>(
     client,
-    "business-test-staff-channel",
+    "business-web-test-staff-channel",
     // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
     { ...rest, placeId: projectId },
     "Couldn't send the test message.",
@@ -198,7 +198,7 @@ export async function apiAcceptEditorInvite(
 ): Promise<{ projectId: string; role: BusinessRole }> {
   return await invokeEF<{ projectId: string; role: BusinessRole }>(
     client,
-    "business-accept-invite",
+    "business-web-accept-invite",
     { token },
     "Couldn't accept the invite.",
   );
