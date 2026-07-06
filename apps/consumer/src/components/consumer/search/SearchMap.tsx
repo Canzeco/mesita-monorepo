@@ -29,9 +29,11 @@ const DEFAULT_CENTER = { lat: 25.6714, lng: -100.3094 };
 const DEFAULT_ZOOM = 13;
 const USER_ZOOM = 14;
 
-// Same partner/web pin split as the discover map.
-const PARTNER_COLOR = "#E91E63";
-const WEB_COLOR = "#9ca3af";
+// Every place shows as a neutral gray dot; the one currently held in the
+// rail (selected) turns red. No partner/web colour split here — selection
+// is the only thing the pin colour encodes on this page.
+const DOT_COLOR = "#9ca3af"; // Gray — default resting state
+const SELECTED_COLOR = "#EF4444"; // Red — the picked/held place
 
 // Hide every Google POI so Mesita pins own the canvas; keep roads +
 // locality labels for orientation. Inline styles work because no mapId.
@@ -62,10 +64,10 @@ const MINIMAL_STYLES = [
 
 const CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
-function placeIcon(isPartner: boolean, isSelected: boolean) {
+function placeIcon(isSelected: boolean) {
   return {
     path: CIRCLE_PATH,
-    fillColor: isPartner ? PARTNER_COLOR : WEB_COLOR,
+    fillColor: isSelected ? SELECTED_COLOR : DOT_COLOR,
     fillOpacity: 1,
     strokeColor: "#ffffff",
     strokeWeight: isSelected ? 3.5 : 2.5,
@@ -90,12 +92,14 @@ export function SearchMap({
   userLocation,
   selectedId,
   onSelectPlace,
+  onOpenPlace,
 }: {
   apiKey: string;
   places: Place[];
   userLocation: LatLng | null;
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
+  onOpenPlace: (place: Place) => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
   // beat — hold a muted skeleton veil over it until tiles actually land
@@ -124,6 +128,7 @@ export function SearchMap({
           userLocation={userLocation}
           selectedId={selectedId}
           onSelectPlace={onSelectPlace}
+          onOpenPlace={onOpenPlace}
           onReady={handleMapReady}
         />
         {!mapReady && <MapLoadingVeil />}
@@ -162,12 +167,14 @@ function SearchMapCanvas({
   userLocation,
   selectedId,
   onSelectPlace,
+  onOpenPlace,
   onReady,
 }: {
   places: Place[];
   userLocation: LatLng | null;
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
+  onOpenPlace: (place: Place) => void;
   onReady: () => void;
 }) {
   const located = places.filter(
@@ -203,11 +210,14 @@ function SearchMapCanvas({
           key={place.id}
           position={{ lat: place.lat as number, lng: place.lng as number }}
           title={place.name}
-          icon={placeIcon(
-            place.listing_type === "partner",
-            place.id === selectedId,
-          )}
-          onClick={() => onSelectPlace(place)}
+          icon={placeIcon(place.id === selectedId)}
+          // First tap picks the place (pin turns red, rail syncs); tapping
+          // the already-selected pin again opens it.
+          onClick={() =>
+            place.id === selectedId
+              ? onOpenPlace(place)
+              : onSelectPlace(place)
+          }
         />
       ))}
       <Recentre target={userLocation} />

@@ -267,6 +267,9 @@ export function SearchClient({
         userLocation={userLocation}
         selectedId={selectedId}
         onSelectPlace={handleSelectPlace}
+        onOpenPlace={(place) =>
+          router.push(placeHref(place.slug || place.id))
+        }
       />
 
       {/* Floating top overlay — split search bar + idle chip row. */}

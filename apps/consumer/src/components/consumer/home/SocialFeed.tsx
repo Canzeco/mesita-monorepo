@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Crown, Instagram } from "lucide-react";
+import { Crown, Instagram, RefreshCw } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { cn, firstInitial } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
@@ -16,11 +16,12 @@ import {
 import { SocialProfileModal } from "./SocialProfileModal";
 
 // Two ways to order the activity feed: most-recent-first, or by how relevant
-// the person is (weighted engagement, see socialRelevance). Recent is default.
+// the person is (weighted engagement, see socialRelevance). Relevance is
+// the default and leads the toggle.
 type SocialSort = "recent" | "relevance";
 const SORT_MODES: { key: SocialSort; label: string }[] = [
-  { key: "recent", label: "Recent" },
   { key: "relevance", label: "Relevance" },
+  { key: "recent", label: "Recent" },
 ];
 
 // Social mode — the live activity feed. Each row splits into two tap
@@ -33,14 +34,37 @@ const SORT_MODES: { key: SocialSort; label: string }[] = [
 
 export function SocialFeed({ places }: { places: Place[] }) {
   const [profile, setProfile] = useState<SocialPerson | null>(null);
-  const [sort, setSort] = useState<SocialSort>("recent");
+  const [sort, setSort] = useState<SocialSort>("relevance");
+  // No websocket yet — the feed refreshes on demand via this button. Bumping
+  // refreshKey re-derives the list; this is the hook point for the future
+  // social EF read (TODO(EF)).
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refresh = () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setRefreshKey((k) => k + 1);
+    // Brief spin so the manual refresh reads as a real fetch.
+    setTimeout(() => setRefreshing(false), 500);
+  };
 
   const people = useMemo(() => {
-    const rows = [...SOCIAL_PEOPLE];
-    return sort === "recent"
-      ? rows.sort((a, b) => a.minutesAgo - b.minutesAgo)
-      : rows.sort((a, b) => socialRelevance(b) - socialRelevance(a));
-  }, [sort]);
+    // refreshKey forces a fresh derivation on each manual refresh. Until the
+    // social backend lands there's no new data to pull, so add a small
+    // per-refresh jitter to the sort key — the feed visibly reshuffles like
+    // new activity arriving. Precomputed per row so the comparator stays valid.
+    void refreshKey;
+    const scored = SOCIAL_PEOPLE.map((p) => ({
+      p,
+      recent: p.minutesAgo + Math.random() * 20,
+      relevance: socialRelevance(p) + Math.random() * 10,
+    }));
+    scored.sort((a, b) =>
+      sort === "recent" ? a.recent - b.recent : b.relevance - a.relevance,
+    );
+    return scored.map((s) => s.p);
+  }, [sort, refreshKey]);
 
   return (
     <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">
@@ -49,16 +73,29 @@ export function SocialFeed({ places }: { places: Place[] }) {
           <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Activity
           </p>
-          <span className="text-primary flex items-center gap-1.5 text-[10px] font-semibold">
-            <span className="relative flex h-2 w-2">
-              <span className="bg-primary absolute inset-0 animate-ping rounded-full opacity-75" />
-              <span className="bg-primary relative h-2 w-2 rounded-full" />
+          <div className="flex items-center gap-2.5">
+            <span className="text-primary flex items-center gap-1.5 text-[10px] font-semibold">
+              <span className="relative flex h-2 w-2">
+                <span className="bg-primary absolute inset-0 animate-ping rounded-full opacity-75" />
+                <span className="bg-primary relative h-2 w-2 rounded-full" />
+              </span>
+              Live
             </span>
-            Live
-          </span>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={refreshing}
+              aria-label="Refresh activity"
+              className="text-muted-foreground hover:text-foreground transition active:scale-90 disabled:opacity-60"
+            >
+              <RefreshCw
+                className={cn("h-3.5 w-3.5", refreshing && "animate-spin")}
+              />
+            </button>
+          </div>
         </div>
 
-        {/* Sort toggle — Recent (default) vs Relevance */}
+        {/* Sort toggle — Relevance (default) vs Recent */}
         <div className="bg-muted/60 mb-3 flex gap-1 rounded-xl p-1">
           {SORT_MODES.map((mode) => (
             <button
