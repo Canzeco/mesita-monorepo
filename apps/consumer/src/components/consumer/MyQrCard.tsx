@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Copy, Check, Instagram, Crown, Ticket, Sparkles } from "lucide-react";
+import {
+  Copy,
+  Check,
+  Instagram,
+  Crown,
+  Ticket,
+  Sparkles,
+  Percent,
+} from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { displayConsumerCode } from "@/lib/consumer-code";
 import {
@@ -89,55 +97,83 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
 
   return (
     <div className="space-y-3">
-      {/* Passport card */}
+      {/* Passport card — two columns: passport/QR (left) + how-rewards-work
+          info (right); the identity strip spans the bottom. */}
       <section className="overflow-hidden rounded-[24px] bg-[linear-gradient(150deg,#0f0a26_0%,#1a1140_58%,#2b1a5c_100%)] p-4 text-white shadow-[0_20px_48px_-24px_rgba(15,10,40,0.55)]">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold tracking-[0.25em] text-white/60 uppercase">
-            Mesita Card
-          </span>
-          <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">
-            MX · MTY
-          </span>
+        <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-4">
+          {/* LEFT — passport / QR */}
+          <div className="flex flex-col">
+            <span className="text-[9px] font-bold tracking-[0.22em] text-white/60 uppercase">
+              Mesita Card
+            </span>
+            <div className="mt-2 w-full rounded-2xl bg-white p-2">
+              <QRCodeSVG
+                value={`mesita:${displayCode}`}
+                size={220}
+                className="h-auto w-full"
+                bgColor="#ffffff"
+                fgColor="#0f0a26"
+                // High error correction (30%) so the QR still scans with the
+                // Mesita mark excavated into the center.
+                level="H"
+                marginSize={0}
+                imageSettings={{
+                  src: "/brand/mesita-mark.svg",
+                  height: 44,
+                  width: 44,
+                  excavate: true,
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={onCopy}
+              aria-label={copied ? "Code copied" : "Copy code"}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/5 py-1.5 font-mono text-[13px] font-semibold tracking-[0.15em] text-white transition active:scale-[0.99]"
+            >
+              {displayCode}
+              {copied ? (
+                <Check className="size-3 text-white/70" />
+              ) : (
+                <Copy className="size-3 text-white/50" />
+              )}
+            </button>
+          </div>
+
+          {/* RIGHT — how rewards work + info */}
+          <div className="flex flex-col justify-center gap-2.5">
+            <span className="text-[9px] font-bold tracking-[0.18em] text-white/50 uppercase">
+              How Rewards work
+            </span>
+            <div className="flex items-start gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                <Percent className="h-3.5 w-3.5" strokeWidth={2.25} />
+              </span>
+              <p className="text-[11px] leading-snug text-white/65">
+                <span className="font-semibold text-white">
+                  Instant discounts.
+                </span>{" "}
+                Straight off the bill when you show your code.
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                <Crown className="h-3.5 w-3.5 fill-current" />
+              </span>
+              <p className="text-[11px] leading-snug text-white/65">
+                <span className="font-semibold text-white">
+                  Premium boosts them.
+                </span>{" "}
+                Bigger discounts than Free.
+              </p>
+            </div>
+            <p className="text-[10px] leading-snug text-white/45">
+              Show this at the check — staff scan it or type your code.
+            </p>
+          </div>
         </div>
 
-        {/* QR */}
-        <div className="mx-auto mt-3 w-full max-w-[196px] rounded-2xl bg-white p-2.5">
-          <QRCodeSVG
-            value={`mesita:${displayCode}`}
-            size={220}
-            className="h-auto w-full"
-            bgColor="#ffffff"
-            fgColor="#0f0a26"
-            // High error correction (30%) so the QR still scans with the
-            // Mesita mark excavated into the center.
-            level="H"
-            marginSize={0}
-            imageSettings={{
-              src: "/brand/mesita-mark.svg",
-              height: 44,
-              width: 44,
-              excavate: true,
-            }}
-          />
-        </div>
-
-        {/* Code */}
-        <button
-          type="button"
-          onClick={onCopy}
-          aria-label={copied ? "Code copied" : "Copy code"}
-          className="mx-auto mt-3 flex w-full max-w-[220px] items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-1.5 font-mono text-sm font-semibold tracking-[0.3em] text-white transition active:scale-[0.99]"
-        >
-          {displayCode}
-          {copied ? (
-            <Check className="size-3.5 text-white/70" />
-          ) : (
-            <Copy className="size-3.5 text-white/50" />
-          )}
-        </button>
-
-        {/* Identity strip */}
+        {/* Identity strip — spans both columns */}
         <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-3">
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-sm font-bold text-white ring-2 ring-white/15">
             {initialsOf(displayName)}
@@ -158,11 +194,6 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
           </span>
         </div>
       </section>
-
-      {/* Helper caption */}
-      <p className="text-muted-foreground px-4 text-center text-[11px] leading-snug">
-        Show this at the check — staff scan it or type your code.
-      </p>
 
       {/* Premium nudge — Free only */}
       {isFree ? (

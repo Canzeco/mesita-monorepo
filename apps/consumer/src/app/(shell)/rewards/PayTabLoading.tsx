@@ -45,15 +45,13 @@ export function PayTicketListSkeleton() {
 }
 
 export function PayTabLoading() {
-  // Silhouette of the single Rewards page: explainer banner, the Mesita
-  // passport card (QR square), then the tickets stack. The per-section
+  // Silhouette of the single Rewards page: the Mesita passport card (QR +
+  // how-it-works, two columns), then the tickets stack. The per-section
   // skeletons take over once the client mounts.
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col px-4 pt-4 pb-6">
-      {/* Rewards explainer banner (RewardsInfoBanner) */}
-      <Skeleton className="h-[92px] rounded-2xl" />
       {/* Mesita passport card (MyQrCard) */}
-      <Skeleton className="mt-3 h-[316px] rounded-[24px]" />
+      <Skeleton className="h-[300px] rounded-[24px]" />
       {/* Tickets stack */}
       <div className="mt-4">
         <PayTicketListSkeleton />
