@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Flame, Heart, Users, type LucideIcon } from "lucide-react";
+import { Flame, Heart, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { SwipeDeck } from "@/app/(shell)/discover/swipe/SwipeDeck";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { HOME_MODE_PARAM, parseHomeMode, type HomeMode } from "./home-mode";
+import { AskAiTab } from "./AskAiTab";
 import { SocialFeed } from "./SocialFeed";
 import { FavoritesList } from "./FavoritesList";
 
@@ -16,17 +17,19 @@ import { FavoritesList } from "./FavoritesList";
 // refetch on switch. The shell renders no TopBar for /home, so the pill
 // mode nav below IS the page's top chrome.
 //
-// Swipe sits center (it's the default and the tab's identity); Social and
-// Favorites flank it. The URL is the single source of truth for the mode:
-// pills write ?mode= via window.history.replaceState — the App Router's
-// supported shallow update — so switching never re-runs the force-dynamic
-// server page (no recommender/embedding re-fetch, no history growth),
-// while useSearchParams keeps the pills in sync AND external navigations
-// (e.g. the Home tab's bare /home) naturally reset back to Swipe.
+// Swipe leads (it's the default and the tab's identity); Ask AI — the Memo
+// concierge — sits right after it, then Social and Favorites. The URL is the
+// single source of truth for the mode: pills write ?mode= via
+// window.history.replaceState — the App Router's supported shallow update — so
+// switching never re-runs the force-dynamic server page (no recommender/
+// embedding re-fetch, no history growth), while useSearchParams keeps the pills
+// in sync AND external navigations (e.g. the Home tab's bare /home) naturally
+// reset back to Swipe.
 
 const MODES: { id: HomeMode; label: string; Icon: LucideIcon }[] = [
-  { id: "social", label: "Social", Icon: Users },
   { id: "swipe", label: "Swipe", Icon: Flame },
+  { id: "askAi", label: "Ask AI", Icon: Sparkles },
+  { id: "social", label: "Social", Icon: Users },
   { id: "favorites", label: "Favorites", Icon: Heart },
 ];
 
@@ -113,6 +116,13 @@ export function HomeHub({
             fetchError={fetchError}
             errorRetryHref={CONSUMER_ROUTES.home}
           />
+        </div>
+      )}
+      {/* Ask AI (Memo) — full-height inline chat, clipped like the deck so the
+          page never scrolls behind the fixed composer. */}
+      {mode === "askAi" && (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <AskAiTab places={places} />
         </div>
       )}
       {mode === "social" && <SocialFeed places={places} />}

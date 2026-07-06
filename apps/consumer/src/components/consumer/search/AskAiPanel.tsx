@@ -1,6 +1,7 @@
 "use client";
 
-// Ask AI — the Search page's concierge chat, powered by Memo.
+// Ask AI — the Memo concierge chat. Lives as a full tab on Home (inline
+// layout); the "overlay" layout is retained for any floating-panel host.
 //
 // Every turn calls Memo (consumer-web-ask-memo), Mesita's AI concierge agent:
 // Perplexity (sonar-pro, web-grounded) writes the natural-language reply while
@@ -47,14 +48,21 @@ export function AskAiPanel({
   resolvePlace,
   onInfo,
   onAdd,
+  layout = "overlay",
 }: {
-  onClose: () => void;
+  /** Only meaningful in "overlay" layout (renders the floating close button). */
+  onClose?: () => void;
   /** Real concierge call (consumer-web-ask-memo) owned by the page. */
   ask: (text: string, history: MemoTurn[]) => Promise<MemoAnswer>;
   addStates: Record<string, AddState>;
   resolvePlace: (prediction: PlacePrediction) => Place | null;
   onInfo: (prediction: PlacePrediction) => void;
   onAdd: (prediction: PlacePrediction) => void;
+  /**
+   * "overlay" — floating card pinned over the map (legacy Search usage).
+   * "inline" — fills its container as a full section (the Home Ask AI tab).
+   */
+  layout?: "overlay" | "inline";
 }) {
   const [messages, setMessages] = useState<AiMessage[]>([
     { id: msgId(), role: "ai", kind: "text", text: GREETING },
@@ -118,16 +126,26 @@ export function AskAiPanel({
   };
 
   return (
-    <div className="border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 flex max-h-[88%] min-h-[72%] flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
-      {/* Floating close — no header, to save vertical space */}
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close Ask AI"
-        className="border-border bg-background/90 text-foreground hover:bg-muted absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm backdrop-blur-sm transition active:scale-95"
-      >
-        <X className="h-5 w-5" />
-      </button>
+    <div
+      className={cn(
+        "flex flex-col overflow-hidden",
+        layout === "overlay"
+          ? "border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 max-h-[88%] min-h-[72%] rounded-2xl border backdrop-blur-xl"
+          : "h-full min-h-0",
+      )}
+    >
+      {/* Floating close — overlay only; the inline tab is dismissed via the
+          Home mode nav, so it needs no close affordance. */}
+      {layout === "overlay" && onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close Ask AI"
+          className="border-border bg-background/90 text-foreground hover:bg-muted absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm backdrop-blur-sm transition active:scale-95"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      )}
 
       {/* Thread */}
       <div

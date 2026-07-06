@@ -3,9 +3,9 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
-//   • Top overlay: split search bar (catalog text search | Ask AI) with a
-//     quick chip row + filter sheet while idle. Active chips filter BOTH
-//     the catalog rail and the map pins via applyChipFilters.
+//   • Top overlay: full-width search bar with a quick chip row + filter sheet
+//     while idle. Active chips filter BOTH the catalog rail and the map pins
+//     via applyChipFilters. (Ask AI / Memo now lives as a tab on Home.)
 //   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
 //     highlights + scrolls to the matching rail card, tapping a card opens
 //     the place page.
@@ -14,9 +14,6 @@
 //     "On Mesita" rows navigate via placeHref, "From Google" rows expose
 //     the real Add flow (consumer-web-create-place creates the place
 //     immediately; the async Enricher builds the profile in minutes).
-//   • Ask AI opens AskAiPanel — Memo (consumer-web-ask-memo) writes the
-//     concierge prose (Perplexity) AND returns the place cards (Google +
-//     Mesita), which reuse the same Info / Add mechanics.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,7 +23,6 @@ import {
   MapPin,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Star,
   X,
 } from "lucide-react";
@@ -37,7 +33,6 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from "@/lib/api/place-search";
-import { apiAskMemo, type MemoTurn } from "@/lib/api/memo";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
@@ -46,7 +41,6 @@ import { cn, errMsg } from "@/lib/utils";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
-import { AskAiPanel } from "./AskAiPanel";
 import type { AddState } from "./PredictionRow";
 import {
   CHIP_GROUPS,
@@ -87,9 +81,8 @@ export function SearchClient({
   const railScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [query, setQuery] = useState("");
-  const [aiOpen, setAiOpen] = useState(false);
   // Opened by tapping the search field — the results/suggest panel appears on
-  // one tap, before any typing (symmetric with Ask AI opening on one tap).
+  // one tap, before any typing.
   const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeChips, setActiveChips] = useState<string[]>([]);
@@ -103,9 +96,9 @@ export function SearchClient({
   const [railIndex, setRailIndex] = useState(0);
 
   const trimmed = query.trim();
-  // Idle = the map moment: no text query, concierge closed. The chip row
-  // and catalog rail only exist here; panels own the other states.
-  const idle = trimmed.length === 0 && !aiOpen && !searchOpen;
+  // Idle = the map moment: no text query, search panel closed. The chip row
+  // and catalog rail only exist here; the results panel owns the other state.
+  const idle = trimmed.length === 0 && !searchOpen;
 
   // Distances ride on the consumer's live location (chip hides until the
   // grant); chips then facet the SAME array the map pins and rail render.
@@ -240,22 +233,6 @@ export function SearchClient({
     [addStates, resetSearchSession, supabase],
   );
 
-  // Ask AI runs Memo (consumer-web-ask-memo): the EF writes the concierge
-  // prose (Perplexity) AND returns the place cards (Google + Mesita). The
-  // panel passes its own turn history; we pass the live location for
-  // "near me" asks.
-  const askMemo = useCallback(
-    (text: string, history: MemoTurn[]) =>
-      apiAskMemo(supabase, { query: text, location: userLocation, history }),
-    [supabase, userLocation],
-  );
-
-  const openAi = () => {
-    setSearchOpen(false);
-    setAiOpen(true);
-    updateQuery("");
-  };
-
   // A filter change reshuffles the rail, so snap the pager back to the first
   // card (and the scroll container with it) to keep the count honest.
   const resetRail = () => {
@@ -315,7 +292,8 @@ export function SearchClient({
         onOpenPlace={(place) => router.push(placeHref(place.slug || place.id))}
       />
 
-      {/* Floating top overlay — split search bar + idle chip row. */}
+      {/* Floating top overlay — full-width search bar + idle chip row.
+          (Ask AI moved to the Home tab's Memo concierge.) */}
       <div className="absolute inset-x-3 top-3 z-30">
         <div className="border-border bg-card/95 shadow-elev flex items-stretch overflow-hidden rounded-2xl border backdrop-blur-xl">
           <label className="flex h-11 min-w-0 flex-1 items-center gap-2 px-3">
@@ -323,10 +301,7 @@ export function SearchClient({
             <input
               value={query}
               onChange={(e) => updateQuery(e.target.value)}
-              onFocus={() => {
-                setAiOpen(false);
-                setSearchOpen(true);
-              }}
+              onFocus={() => setSearchOpen(true)}
               placeholder="Search places…"
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
             />
@@ -344,19 +319,6 @@ export function SearchClient({
               </button>
             )}
           </label>
-          <div className="bg-border my-2 w-px shrink-0" />
-          <button
-            type="button"
-            onClick={openAi}
-            className="hover:bg-muted/40 flex h-11 min-w-0 flex-1 items-center gap-2 px-3 text-left transition"
-          >
-            <span className="bg-primary/10 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-              <Sparkles className="h-3.5 w-3.5" />
-            </span>
-            <span className="text-muted-foreground min-w-0 flex-1 truncate text-sm">
-              Ask AI…
-            </span>
-          </button>
         </div>
 
         {fetchError && idle && (
@@ -495,28 +457,6 @@ export function SearchClient({
             </div>
           )}
         </>
-      )}
-
-      {/* Ask AI concierge — stays MOUNTED while open so the chat thread
-          survives text searches; only visually hidden while a query runs. */}
-      {aiOpen && (
-        <div className={cn(trimmed.length > 0 && "hidden")}>
-          {/* Tap the map area below/around the concierge to dismiss it. */}
-          <button
-            type="button"
-            aria-label="Dismiss Ask AI"
-            onClick={() => setAiOpen(false)}
-            className="absolute inset-x-0 top-[60px] bottom-0 z-30 cursor-default"
-          />
-          <AskAiPanel
-            onClose={() => setAiOpen(false)}
-            ask={askMemo}
-            addStates={addStates}
-            resolvePlace={resolvePlace}
-            onInfo={handleInfo}
-            onAdd={handleAdd}
-          />
-        </div>
       )}
 
       <FiltersSheet
