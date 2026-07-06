@@ -25,22 +25,22 @@ function filterUnits(units: UnitHit[], query: string): UnitHit[] {
   );
 }
 
+// Catalog browse + debounced remote search for the unit picker. The effects do
+// nothing but async work (their setState calls land after an await), while the
+// visible state — hits, mode, pending, searchedQuery, error — is derived during
+// render from the query, the loaded catalog, and the last query-keyed result.
 export function useUnitCatalogSearch(options: Options = {}) {
   const { browseOnEmpty = true, debounceMs = SEARCH_DEBOUNCE_MS } = options;
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [catalog, setCatalog] = useState<UnitHit[]>([]);
   const [catalogLoaded, setCatalogLoaded] = useState(false);
-  const [hits, setHits] = useState<UnitHit[]>([]);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
-  const [mode, setMode] = useState<"browse" | "search" | "idle">(
-    browseOnEmpty ? "browse" : "idle",
-  );
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [remote, setRemote] = useState<{ query: string; hits: UnitHit[] } | null>(null);
+  const [remoteError, setRemoteError] = useState<{ query: string; message: string } | null>(null);
   const requestIdRef = useRef(0);
 
-  // Load catalog once.
+  // Load the browse catalog once.
   useEffect(() => {
     if (!browseOnEmpty) return;
     let cancelled = false;
@@ -48,84 +48,69 @@ export function useUnitCatalogSearch(options: Options = {}) {
       const r = await listUnits();
       if (cancelled) return;
       if (!r.ok) {
-        setError(r.error);
         setCatalog([]);
-        setCatalogLoaded(true);
-        return;
+        setCatalogError(r.error);
+      } else {
+        setCatalog(r.data);
       }
-      setCatalog(r.data);
       setCatalogLoaded(true);
-      setHits(r.data);
-      setMode("browse");
     })();
     return () => {
       cancelled = true;
     };
   }, [browseOnEmpty]);
 
-  // Debounce search input — wait for typing to stop before searching.
+  // Debounce the query — schedule only, never setState synchronously.
   useEffect(() => {
-    const trimmed = q.trim();
-    if (trimmed.length >= 2) {
-      setSearchedQuery(null);
-    }
-    const t = setTimeout(() => setDebouncedQ(trimmed), debounceMs);
+    const t = setTimeout(() => setDebouncedQ(q.trim()), debounceMs);
     return () => clearTimeout(t);
   }, [q, debounceMs]);
 
-  // Run search only after debounce settles.
+  // Run the authoritative remote search once the debounce settles. Results and
+  // errors are keyed by their query so render can tell fresh from stale.
   useEffect(() => {
-    const query = debouncedQ;
-    if (query.length === 0) {
-      if (browseOnEmpty && catalogLoaded) {
-        setHits(catalog);
-        setMode("browse");
-      } else if (!browseOnEmpty) {
-        setHits([]);
-        setMode("idle");
-      }
-      setSearchedQuery(null);
-      setPending(false);
-      return;
-    }
-    if (query.length < 2) {
-      if (browseOnEmpty && catalogLoaded) {
-        setHits(catalog);
-        setMode("browse");
-      } else {
-        setHits([]);
-        setMode("idle");
-      }
-      setSearchedQuery(null);
-      setPending(false);
-      return;
-    }
-
-    setMode("search");
-    if (catalog.length > 0) {
-      setHits(filterUnits(catalog, query));
-    }
-
+    const query = debouncedQ.trim();
+    if (query.length < 2) return;
     const id = ++requestIdRef.current;
-    setPending(true);
-    setError(null);
-
-    void searchUnits(query).then((r) => {
+    void (async () => {
+      const r = await searchUnits(query);
       if (id !== requestIdRef.current) return;
-      setPending(false);
-      setSearchedQuery(query);
       if (!r.ok) {
-        setError(r.error);
+        setRemoteError({ query, message: r.error });
         return;
       }
-      setHits(r.data);
-    });
-  }, [debouncedQ, catalog, catalogLoaded, browseOnEmpty]);
+      setRemoteError(null);
+      setRemote({ query, hits: r.data });
+    })();
+  }, [debouncedQ]);
 
-  const trimmed = q.trim();
-  const waiting =
-    trimmed.length >= 2 && trimmed !== debouncedQ;
-  const searching = pending || waiting;
+  // ─── Derived view state (no effects, no cascading renders) ───
+  const dq = debouncedQ.trim();
+  const qTrimmed = q.trim();
+  const remoteReady = remote !== null && remote.query === dq;
+  const remoteFailed = remoteError !== null && remoteError.query === dq;
+
+  const browseHits = browseOnEmpty && catalogLoaded ? catalog : [];
+  const hits: UnitHit[] =
+    dq.length < 2
+      ? browseHits
+      : remote !== null && remote.query === dq
+        ? remote.hits
+        : catalog.length > 0
+          ? filterUnits(catalog, dq) // optimistic local filter until remote lands
+          : [];
+
+  const searchedQuery = remoteReady ? dq : null;
+  const error = remoteFailed && remoteError ? remoteError.message : catalogError;
+
+  const mode: "browse" | "search" | "idle" =
+    dq.length >= 2 ? "search" : browseOnEmpty ? "browse" : "idle";
+
+  // Spinner is on while the debounce is still settling (user typed ≥2) or a
+  // remote search is in flight for the settled query.
+  const waiting = qTrimmed.length >= 2 && qTrimmed !== dq;
+  const fetching = dq.length >= 2 && !remoteReady && !remoteFailed;
+  const searching = waiting || fetching;
 
   const metaLabel =
     mode === "idle"
@@ -141,7 +126,6 @@ export function useUnitCatalogSearch(options: Options = {}) {
   const clear = () => {
     setQ("");
     setDebouncedQ("");
-    setSearchedQuery(null);
   };
 
   return {

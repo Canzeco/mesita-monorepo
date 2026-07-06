@@ -4,25 +4,27 @@ import { useMemo } from "react";
 import type { AtlasFieldsPayload } from "./actions";
 
 export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
+  const { categories, tags } = data;
+
   const categoriesBySection = useMemo(() => {
-    const map = new Map<string, typeof data.categories>();
-    for (const c of data.categories) {
+    const map = new Map<string, typeof categories>();
+    for (const c of categories) {
       const list = map.get(c.section) ?? [];
       list.push(c);
       map.set(c.section, list);
     }
     return map;
-  }, [data.categories]);
+  }, [categories]);
 
   const tagsByFacet = useMemo(() => {
-    const map = new Map<string, typeof data.tags>();
-    for (const t of data.tags) {
+    const map = new Map<string, typeof tags>();
+    for (const t of tags) {
       const list = map.get(t.facet) ?? [];
       list.push(t);
       map.set(t.facet, list);
     }
     return map;
-  }, [data.tags]);
+  }, [tags]);
 
   return (
     <div className="flex flex-col gap-8">

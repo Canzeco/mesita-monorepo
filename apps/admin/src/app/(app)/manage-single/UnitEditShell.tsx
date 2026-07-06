@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { getPlace, type AdminPlace } from "./actions";
@@ -17,25 +17,47 @@ export function UnitEditShell({
 }) {
   const router = useRouter();
   const [place, setPlace] = useState<AdminPlace | null>(null);
-  const [loadingPlace, setLoadingPlace] = useState(true);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const reqRef = useRef(0);
 
+  // Loading is derived, not stored: the shell shows the spinner whenever the
+  // last-loaded id lags the requested projectId. This keeps the effect free of
+  // synchronous setState and makes stale responses harmless (reqRef guards the
+  // write). reload() re-fetches in the background without flashing the spinner.
   const loadPlace = useCallback(async (id: string) => {
-    setLoadingPlace(true);
-    setLoadError(null);
+    const req = ++reqRef.current;
     const r = await getPlace(id);
-    setLoadingPlace(false);
+    if (req !== reqRef.current) return; // superseded by a newer request
     if (!r.ok) {
       setPlace(null);
       setLoadError(r.error);
-      return;
+    } else {
+      setPlace(r.data);
+      setLoadError(null);
     }
-    setPlace(r.data);
+    setLoadedId(id);
   }, []);
 
+  // Fetch inline (not via loadPlace) so every setState sits after the await —
+  // the same reqRef guard makes a superseded response a no-op.
   useEffect(() => {
-    void loadPlace(projectId);
-  }, [projectId, loadPlace]);
+    const req = ++reqRef.current;
+    void (async () => {
+      const r = await getPlace(projectId);
+      if (req !== reqRef.current) return;
+      if (!r.ok) {
+        setPlace(null);
+        setLoadError(r.error);
+      } else {
+        setPlace(r.data);
+        setLoadError(null);
+      }
+      setLoadedId(projectId);
+    })();
+  }, [projectId]);
+
+  const loadingPlace = loadedId !== projectId;
 
   if (loadingPlace) {
     return (

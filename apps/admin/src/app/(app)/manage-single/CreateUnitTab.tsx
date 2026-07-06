@@ -67,14 +67,12 @@ export function CreateUnitTab() {
   const placeIdMode = looksLikePlaceId(trimmed);
 
   useEffect(() => {
-    if (selected || trimmed.length < 2 || placeIdMode) {
-      if (trimmed.length < 2 || placeIdMode) setPredictions([]);
-      setSearching(false);
-      return;
-    }
+    // Debounced Google Places lookup. Short inputs, place-id mode, and an
+    // already-selected prediction are handled by the input's onChange (which
+    // clears the spinner) and the render guards below — so this effect only
+    // schedules/cancels the search and never resets state synchronously.
+    if (selected || placeIdMode || trimmed.length < 2) return;
 
-    setSearching(false);
-    setSearchedQuery(null);
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       setSearching(true);
@@ -101,6 +99,7 @@ export function CreateUnitTab() {
     setQuery("");
     setPredictions([]);
     setSelected(null);
+    setSearching(false);
     setSearchError(null);
     setError(null);
     setExistsName(null);
@@ -147,6 +146,9 @@ export function CreateUnitTab() {
   };
 
   const onPick = (prediction: PlacePrediction) => {
+    // Picking cancels any in-flight lookup (the effect guard-returns once
+    // `selected` is set), so clear the spinner here.
+    setSearching(false);
     if (prediction.status !== "not_in_mesita") {
       setError(null);
       setExistsName(prediction.mainText);
@@ -194,10 +196,10 @@ export function CreateUnitTab() {
               setError(null);
               setExistsName(null);
               setSearchError(null);
-              if (next.trim().length < 2) {
-                setPredictions([]);
-                setSearching(false);
-              }
+              // Each keystroke supersedes any in-flight lookup — drop the
+              // spinner now; the effect turns it back on when the debounce fires.
+              setSearching(false);
+              if (next.trim().length < 2) setPredictions([]);
             }}
             placeholder="Place name or Google Place ID…"
             spellCheck={false}
