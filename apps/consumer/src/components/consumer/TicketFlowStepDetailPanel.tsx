@@ -47,7 +47,10 @@ function StepMarker({
 
 export function TicketFlowStepDetailPanel({
   steps,
-  progress,
+  // `progress` is kept on the prop contract for call-site symmetry with the
+  // other ticket-flow panels, but this presentational panel derives everything
+  // it needs from `steps`.
+  progress: _progress,
   renderActiveContent,
 }: {
   steps: TicketFlowStepView[];

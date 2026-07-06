@@ -12,7 +12,6 @@ import {
 import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
 import { formatPayMx } from "@/lib/api/pay";
 import { errMsg } from "@/lib/utils";
-import { payTabHref } from "@/lib/pay-route";
 import {
   GLOBAL_ACTIVITY,
   MY_ACTIVITY,
@@ -32,13 +31,12 @@ function kindLabel(kind: string): string {
   return "Update";
 }
 
-function kindIcon(kind: string) {
-  if (kind === "review") return Star;
-  return Bell;
+function KindIcon({ kind, className }: { kind: string; className?: string }) {
+  if (kind === "review") return <Star className={className} />;
+  return <Bell className={className} />;
 }
 
 function NotificationRow({ n }: { n: ConsumerNotification }) {
-  const Icon = kindIcon(n.kind);
   const p = n.bill;
   const reward =
     p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
@@ -67,7 +65,7 @@ function NotificationRow({ n }: { n: ConsumerNotification }) {
           </p>
         </div>
         <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[12px]">
-          <Icon className="h-3.5 w-3.5 shrink-0" />
+          <KindIcon kind={n.kind} className="h-3.5 w-3.5 shrink-0" />
           {kindLabel(n.kind)}
         </p>
         {reward > 0 ? (
@@ -97,7 +95,16 @@ export function NotificationsClient({
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
+  // `tab` is optimistic: onTabChange flips it immediately, then router.push
+  // re-renders with the route-derived `initialTab`. Rather than sync the prop
+  // into state via an effect (cascading render), adjust state during render
+  // when the incoming prop changes — React's recommended pattern.
   const [tab, setTab] = useState<InboxTab>(initialTab);
+  const [prevInitialTab, setPrevInitialTab] = useState<InboxTab>(initialTab);
+  if (initialTab !== prevInitialTab) {
+    setPrevInitialTab(initialTab);
+    setTab(initialTab);
+  }
   const [rows, setRows] = useState<ConsumerNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,13 +121,27 @@ export function NotificationsClient({
     }
   }, [supabase, userId]);
 
+  // Initial load: run the async fetch inline in the effect body (cancellation
+  // guarded) so setState isn't called synchronously on mount.
   useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchConsumerNotifications(supabase, userId);
+        if (!cancelled) {
+          setRows(data);
+          setError(null);
+        }
+      } catch (e) {
+        if (!cancelled) setError(errMsg(e, "Couldn't load notifications."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, userId]);
 
   usePayNotificationPoll(load, Boolean(userId));
 

@@ -31,11 +31,12 @@ import {
 } from "@/lib/ticket-flow-steps";
 
 export function TicketDetailsRouteClient({
-  userId,
   ticketId,
   variant = "page",
 }: {
-  userId: string;
+  // userId is accepted for call-site symmetry with sibling ticket clients but
+  // not needed here — the bundle fetch is scoped by ticketId + session.
+  userId?: string;
   ticketId: string;
   variant?: "page" | "modal";
 }) {
@@ -43,6 +44,14 @@ export function TicketDetailsRouteClient({
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<PayNotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Reset to the skeleton when navigating to a different ticket. Done during
+  // render (prop-change pattern) so it isn't a synchronous setState in the
+  // load effect below.
+  const [prevTicketId, setPrevTicketId] = useState(ticketId);
+  if (ticketId !== prevTicketId) {
+    setPrevTicketId(ticketId);
+    setLoading(true);
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticketMeta, setTicketMeta] = useState<PayTicketMeta | null>(null);
@@ -73,9 +82,29 @@ export function TicketDetailsRouteClient({
     setLoading(false);
   }, [supabase, ticketId]);
 
+  // Initial + on-ticket-change load: run the fetch inline in the effect body
+  // (cancellation guarded) so no setState fires synchronously on mount.
   useEffect(() => {
-    void load();
-  }, [load, ticketId]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const { notifications, ticketMeta, placeInstagramUrl } =
+          await fetchPayTicketBundle(supabase, ticketId);
+        if (cancelled) return;
+        setRows(notifications);
+        setTicketMeta(ticketMeta);
+        setPlaceInstagramUrl(placeInstagramUrl);
+        setError(null);
+      } catch (e) {
+        if (!cancelled) setError(errMsg(e, "Couldn't load ticket."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, ticketId]);
 
   const payload = useMemo<TicketBillPayload>(() => {
     const merged: TicketBillPayload = {};

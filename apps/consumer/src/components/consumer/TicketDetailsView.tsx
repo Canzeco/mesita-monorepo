@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { TicketActionCard } from "@/components/consumer/TicketActionCard";
 import { TicketVisitComplete } from "@/components/consumer/TicketVisitComplete";
 import { TicketVisitHeader } from "@/components/consumer/TicketVisitHeader";
@@ -12,7 +12,6 @@ import {
   ticketProgressFromBundle,
   type TicketFlowStepId,
   type TicketFlowStepView,
-  type TicketProgressInput,
 } from "@/lib/ticket-flow-steps";
 import type {
   TicketBillPayload,
@@ -97,9 +96,14 @@ export function TicketDetailsView({
   const activeStep = flowSteps.find((s) => s.state === "active");
   const [peekStepId, setPeekStepId] = useState<TicketFlowStepId | null>(null);
 
-  useEffect(() => {
+  // Clear any peeked step when the active step advances. Done during render
+  // (prop-change pattern) rather than an effect, so no synchronous setState
+  // fires inside useEffect.
+  const [prevActiveStepId, setPrevActiveStepId] = useState(activeStep?.id);
+  if (activeStep?.id !== prevActiveStepId) {
+    setPrevActiveStepId(activeStep?.id);
     setPeekStepId(null);
-  }, [activeStep?.id]);
+  }
 
   const displayStepId: TicketFlowStepId = useMemo(() => {
     if (peekStepId && flowSteps.some((s) => s.id === peekStepId)) {

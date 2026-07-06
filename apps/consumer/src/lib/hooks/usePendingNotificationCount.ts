@@ -9,6 +9,15 @@ export function usePendingNotificationCount(userId: string | undefined) {
   const supabase = useBrowserSupabase();
   const [pending, setPending] = useState(0);
 
+  // When there's no signed-in user the count is zero. Reset during render
+  // (prop-change pattern) rather than in an effect so no synchronous setState
+  // fires from useEffect.
+  const [prevUserId, setPrevUserId] = useState(userId);
+  if (userId !== prevUserId) {
+    setPrevUserId(userId);
+    if (!userId) setPending(0);
+  }
+
   const refresh = useCallback(async () => {
     if (!userId) {
       setPending(0);
@@ -23,9 +32,23 @@ export function usePendingNotificationCount(userId: string | undefined) {
     }
   }, [supabase, userId]);
 
+  // Initial fetch: run the async work inline in the effect body (with a
+  // cancellation guard) so setState isn't called synchronously on mount.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const n = await fetchPendingNotificationCount(supabase, userId);
+        if (!cancelled) setPending(n);
+      } catch {
+        // Keep last known count; see refresh().
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, userId]);
 
   usePayNotificationPoll(refresh, Boolean(userId));
 

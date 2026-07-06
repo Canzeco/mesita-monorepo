@@ -32,39 +32,50 @@ const SORT_MODES: { key: SocialSort; label: string }[] = [
 //
 // TODO(EF): social feed — people + events are mock (see social-feed-data.ts).
 
+// Per-refresh jitter so the mock feed visibly reshuffles like new activity
+// arriving. Randomness must live OUTSIDE render (react-hooks/purity) — we mint
+// a fresh jitter table in the refresh event handler / on first mount instead.
+type Jitter = { recent: number; relevance: number };
+function makeJitter(): Map<string, Jitter> {
+  return new Map(
+    SOCIAL_PEOPLE.map((p) => [
+      p.id,
+      { recent: Math.random() * 20, relevance: Math.random() * 10 },
+    ]),
+  );
+}
+
 export function SocialFeed({ places }: { places: Place[] }) {
   const [profile, setProfile] = useState<SocialPerson | null>(null);
   const [sort, setSort] = useState<SocialSort>("relevance");
-  // No websocket yet — the feed refreshes on demand via this button. Bumping
-  // refreshKey re-derives the list; this is the hook point for the future
-  // social EF read (TODO(EF)).
-  const [refreshKey, setRefreshKey] = useState(0);
+  // No websocket yet — the feed refreshes on demand via this button. Each
+  // refresh swaps in a fresh jitter table (minted in the handler, off the
+  // render path); this is the hook point for the future social EF read.
+  const [jitter, setJitter] = useState<Map<string, Jitter>>(makeJitter);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = () => {
     if (refreshing) return;
     setRefreshing(true);
-    setRefreshKey((k) => k + 1);
+    setJitter(makeJitter());
     // Brief spin so the manual refresh reads as a real fetch.
     setTimeout(() => setRefreshing(false), 500);
   };
 
   const people = useMemo(() => {
-    // refreshKey forces a fresh derivation on each manual refresh. Until the
-    // social backend lands there's no new data to pull, so add a small
-    // per-refresh jitter to the sort key — the feed visibly reshuffles like
-    // new activity arriving. Precomputed per row so the comparator stays valid.
-    void refreshKey;
-    const scored = SOCIAL_PEOPLE.map((p) => ({
-      p,
-      recent: p.minutesAgo + Math.random() * 20,
-      relevance: socialRelevance(p) + Math.random() * 10,
-    }));
+    const scored = SOCIAL_PEOPLE.map((p) => {
+      const j = jitter.get(p.id);
+      return {
+        p,
+        recent: p.minutesAgo + (j?.recent ?? 0),
+        relevance: socialRelevance(p) + (j?.relevance ?? 0),
+      };
+    });
     scored.sort((a, b) =>
       sort === "recent" ? a.recent - b.recent : b.relevance - a.relevance,
     );
     return scored.map((s) => s.p);
-  }, [sort, refreshKey]);
+  }, [sort, jitter]);
 
   return (
     <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">

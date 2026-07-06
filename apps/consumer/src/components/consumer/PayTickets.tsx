@@ -124,9 +124,29 @@ export function PayTickets({ userId }: { userId: string }) {
     }
   }, [supabase]);
 
+  // Initial load: run the fetch inline in the effect body (cancellation
+  // guarded) so setState isn't called synchronously on mount.
   useEffect(() => {
-    void loadTickets();
-  }, [loadTickets]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const { notifications, ticketMetaById } =
+          await fetchPayTicketList(supabase);
+        if (!cancelled) {
+          setRows(notifications);
+          setTicketMetaById(ticketMetaById);
+          setStatus("ready");
+        }
+      } catch {
+        if (!cancelled) {
+          setStatus((prev) => (prev === "ready" ? prev : "error"));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   usePayNotificationPoll(loadTickets, Boolean(userId));
 
