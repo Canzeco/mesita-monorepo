@@ -22,7 +22,6 @@ import {
   Mail,
   Smile,
   Trash2,
-  UserPen,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
@@ -157,8 +156,6 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
             <SettingsTab
               profile={profile}
               email={email}
-              loading={loading}
-              onEditProfile={() => setEditOpen(true)}
               onConnectSocial={(p) => setVerifyPlatform(p)}
             />
           </div>
@@ -737,14 +734,10 @@ const NOTIF_EMAIL_KEY = "mesita:notif:email";
 function SettingsTab({
   profile,
   email,
-  loading,
-  onEditProfile,
   onConnectSocial,
 }: {
   profile: ConsumerProfile | null;
   email: string | null;
-  loading: boolean;
-  onEditProfile: () => void;
   onConnectSocial: (platform: SocialPlatform) => void;
 }) {
   const { origin, followers } = useConsumerClass();
@@ -752,22 +745,11 @@ function SettingsTab({
 
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const detailsSub = loading
-    ? "Loading…"
-    : [profile?.full_name, profile?.phone].filter(Boolean).join(" · ") ||
-      "Add your details";
-
   return (
     <div className="flex flex-col gap-6">
+      {/* Edit profile lives on the hero button above; a second entry point
+          here would be redundant. This group holds read-only account facts. */}
       <SettingsGroup title="Account">
-        <SettingsActionRow
-          Icon={UserPen}
-          tint="primary"
-          label="Edit profile"
-          sub={detailsSub}
-          onClick={onEditProfile}
-        />
-        <RowDivider />
         <SettingsStaticRow
           Icon={Mail}
           tint="muted"
