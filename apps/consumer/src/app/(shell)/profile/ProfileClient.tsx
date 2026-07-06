@@ -24,7 +24,7 @@ import { ClassModal } from "@/components/consumer/me/ClassModal";
 import { CommunitiesModal } from "@/components/consumer/me/CommunitiesModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
-import { COUNTRIES, CLASSES, classBadgeClass } from "@/lib/consumer-data";
+import { COUNTRIES, CLASSES } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { useCommunities } from "@/lib/communities";
 import { cn, errMsg } from "@/lib/utils";
@@ -223,19 +223,18 @@ function ProfileSummaryCard({
 
   if (loading) {
     return (
-      <div className="border-border bg-card rounded-3xl border p-5">
-        <div className="flex items-center gap-4">
-          <div className="bg-muted h-[76px] w-[76px] shrink-0 animate-pulse rounded-full" />
+      <div className="border-border bg-card rounded-3xl border p-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-muted h-[54px] w-[54px] shrink-0 animate-pulse rounded-full" />
           <div className="flex-1 space-y-2">
-            <div className="bg-muted h-5 w-40 animate-pulse rounded" />
-            <div className="bg-muted h-3.5 w-28 animate-pulse rounded" />
+            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="bg-muted h-[68px] animate-pulse rounded-2xl"
+              className="bg-muted h-[54px] animate-pulse rounded-2xl"
             />
           ))}
         </div>
@@ -260,13 +259,19 @@ function ProfileSummaryCard({
   // the real verification mechanic (a subscription doesn't verify identity).
   const verified = Boolean(handle) || origin === "instagram";
 
+  const communitiesValue =
+    joined.length > 0
+      ? joined.length === 1
+        ? "1 joined"
+        : `${joined.length} joined`
+      : "None yet";
+
   return (
     <section className="border-border overflow-hidden rounded-3xl border">
-      {/* Hero — a branded gradient wash so the card reads like a membership
-          passport, not a plain panel (richer tint for Premium). */}
+      {/* Hero — compact branded gradient wash (richer tint for Premium). */}
       <div
         className={cn(
-          "flex items-center gap-4 px-5 pt-5 pb-4",
+          "flex items-center gap-3 px-4 py-3",
           isPremium
             ? "from-primary/[0.10] via-secondary/[0.08] to-accent/[0.10] bg-gradient-to-br"
             : "from-primary/[0.05] via-secondary/[0.05] to-accent/[0.05] bg-gradient-to-br",
@@ -275,22 +280,22 @@ function ProfileSummaryCard({
         {/* Story-ring avatar: class-tinted gradient ring around initials. */}
         <div
           className={cn(
-            "shrink-0 rounded-full p-[2.5px]",
+            "shrink-0 rounded-full p-[2px]",
             isPremium ? "bg-tier-premium" : "bg-pink-gradient",
           )}
         >
-          <div className="bg-card rounded-full p-[2.5px]">
-            <div className="bg-muted relative flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full">
+          <div className="bg-card rounded-full p-[2px]">
+            <div className="bg-muted relative flex h-[50px] w-[50px] items-center justify-center overflow-hidden rounded-full">
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
                   alt={name}
                   fill
-                  sizes="68px"
+                  sizes="50px"
                   className="object-cover"
                 />
               ) : (
-                <span className="font-display text-foreground/70 text-xl font-bold tracking-tight">
+                <span className="font-display text-foreground/70 text-lg font-bold tracking-tight">
                   {initials}
                 </span>
               )}
@@ -298,39 +303,16 @@ function ProfileSummaryCard({
           </div>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display flex items-center gap-1.5 text-[20px] leading-tight font-bold tracking-tight">
-            <span className="truncate">{name}</span>
-            {isPremium && (
-              <BadgeCheck className="text-premium h-5 w-5 shrink-0" />
-            )}
-          </h2>
-          <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] leading-none font-bold",
-                classBadgeClass(key),
-              )}
-            >
-              {isPremium && <Crown className="h-3 w-3 fill-current" />}
-              {classLabel}
-            </span>
-            {verified ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/[0.12] px-2 py-0.5 text-[10.5px] leading-none font-bold text-emerald-600">
-                <BadgeCheck className="h-3 w-3" />
-                Verified
-              </span>
-            ) : (
-              <span className="text-muted-foreground bg-muted inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] leading-none font-medium">
-                Unverified
-              </span>
-            )}
-          </p>
-        </div>
+        <h2 className="font-display flex min-w-0 flex-1 items-center gap-1.5 text-[19px] leading-tight font-bold tracking-tight">
+          <span className="truncate">{name}</span>
+          {verified && (
+            <BadgeCheck className="text-premium h-5 w-5 shrink-0" />
+          )}
+        </h2>
       </div>
 
-      {/* Fact tiles — a 2×2 grid of styled chips (tinted icon circle + label
-          + value) instead of a flat divided list. */}
+      {/* Everything as compact fact tiles — phone, Instagram, class, verified,
+          country, communities — one short 2-column grid. */}
       <div className="bg-card grid grid-cols-2 gap-2 p-3">
         <FactTile
           Icon={Phone}
@@ -353,48 +335,47 @@ function ProfileSummaryCard({
           value={`Mesita ${classLabel}`}
         />
         <FactTile
+          Icon={BadgeCheck}
+          tint={verified ? "emerald" : "neutral"}
+          label="Verified"
+          value={verified ? "Verified" : "Unverified"}
+          muted={!verified}
+        />
+        <FactTile
           emoji={country?.flag ?? "🌐"}
           tint="neutral"
           label="Country"
           value={country?.name ?? "Not set"}
           muted={!country}
         />
-      </div>
-
-      {/* Joined communities, if any. */}
-      <div className="bg-card border-border/60 border-t px-4 pt-3 pb-4">
-        <p className="text-muted-foreground mb-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">
-          Communities
-        </p>
-        {joined.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {joined.map((c) => (
-              <span
-                key={c.id}
-                className="bg-muted text-foreground/80 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium"
-              >
-                <span aria-hidden>{c.emoji}</span>
-                {c.short ?? c.name}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-[12px]">
-            No communities yet
-          </p>
-        )}
+        <FactTile
+          Icon={Users}
+          tint="violet"
+          label="Communities"
+          value={communitiesValue}
+          muted={joined.length === 0}
+        />
       </div>
     </section>
   );
 }
 
-type FactTint = "sky" | "pink" | "premium" | "amber" | "neutral";
+type FactTint =
+  | "sky"
+  | "pink"
+  | "premium"
+  | "amber"
+  | "emerald"
+  | "violet"
+  | "neutral";
 
 const FACT_TINT: Record<FactTint, string> = {
   sky: "bg-sky-500/[0.12] text-sky-600",
   pink: "bg-pink-gradient text-white",
   premium: "bg-tier-premium text-white",
   amber: "bg-amber-500/15 text-amber-600",
+  emerald: "bg-emerald-500/[0.12] text-emerald-600",
+  violet: "bg-violet-500/[0.12] text-violet-600",
   neutral: "bg-muted text-foreground/70",
 };
 
@@ -414,22 +395,26 @@ function FactTile({
   muted?: boolean;
 }) {
   return (
-    <div className="bg-muted/35 ring-border/50 flex flex-col gap-2 rounded-2xl p-3 ring-1 ring-inset">
+    <div className="bg-muted/35 ring-border/50 flex items-center gap-2.5 rounded-2xl p-2.5 ring-1 ring-inset">
       <span
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[15px] shadow-sm",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px] shadow-sm",
           FACT_TINT[tint],
         )}
       >
-        {Icon ? <Icon className="h-4 w-4" /> : <span aria-hidden>{emoji}</span>}
+        {Icon ? (
+          <Icon className="h-[18px] w-[18px]" />
+        ) : (
+          <span aria-hidden>{emoji}</span>
+        )}
       </span>
       <div className="min-w-0">
-        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.1em] uppercase">
+        <p className="text-muted-foreground text-[9.5px] leading-none font-semibold tracking-[0.1em] uppercase">
           {label}
         </p>
         <p
           className={cn(
-            "truncate text-[13.5px] font-bold",
+            "mt-1 truncate text-[13px] font-bold",
             muted && "text-muted-foreground font-medium",
           )}
         >
