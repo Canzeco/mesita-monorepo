@@ -1,8 +1,8 @@
 import { efInvoke } from "@/lib/supabase-ef";
 
-// Shared create-unit helper. Both the single-unit console and the bulk
+// Shared create-place helper. Both the single-place console and the bulk
 // creator run each Google Place ID through the SAME create pipeline:
-// admin-create-unit fetches Google data, persists places + units + photos,
+// admin-web-create-project fetches Google data, persists the place + photos,
 // then triggers the n8n Enricher webhook — deep enrichment runs ASYNC in
 // the background. The admin operator's session authorises the call (admin
 // allowlist). Callers invoke this once per Place ID (with small concurrency
@@ -53,7 +53,7 @@ export async function createUnitFromPlaceId(
   const id = (placeId ?? "").toString().trim();
   if (!id) return { ok: false, error: "Empty Place ID" };
 
-  const r = await efInvoke<CreateUnitResponse>("admin-web-create-unit", {
+  const r = await efInvoke<CreateUnitResponse>("admin-web-create-project", {
     placeId: id,
   });
   if (!r.ok) {
