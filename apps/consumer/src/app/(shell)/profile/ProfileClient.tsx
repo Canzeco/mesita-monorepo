@@ -37,14 +37,12 @@ import {
   setMockClass,
   type MockClass,
 } from "@/lib/class-context";
-import { useSavedPlaces } from "@/lib/saved-places";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiFetchConsumerProfile,
-  type ConsumerClass,
   type ConsumerProfile,
 } from "@/lib/api/profile";
 
@@ -72,7 +70,6 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
   // sheet — one consumer-web-get-profile read per profile visit. The (shell)
   // layout already guarantees the row is complete (onboarding gate).
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
-  const [usage, setUsage] = useState<ConsumerClass["usage"] | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,13 +77,12 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
     let cancelled = false;
     (async () => {
       try {
-        const [{ consumer, consumerClass }, authRes] = await Promise.all([
+        const [{ consumer }, authRes] = await Promise.all([
           apiFetchConsumerProfile(supabase),
           supabase.auth.getUser(),
         ]);
         if (cancelled) return;
         setProfile(consumer);
-        setUsage(consumerClass.usage);
         setEmail(authRes.data.user?.email ?? null);
       } catch (e) {
         if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
@@ -126,7 +122,6 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
         <ProfileHero
           profile={profile}
           loading={loading}
-          reservationsUsed={usage?.reservations_used ?? 0}
           onEditProfile={() => setEditOpen(true)}
         />
 
@@ -189,44 +184,28 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
 
 // ─── Identity hero ────────────────────────────────────────────────────────
 
-function compact(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(n);
-}
-
 function ProfileHero({
   profile,
   loading,
-  reservationsUsed,
   onEditProfile,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  reservationsUsed: number;
   onEditProfile: () => void;
 }) {
   const { key } = useConsumerClass();
-  const { savedIds } = useSavedPlaces();
   const isPremium = key === "premium";
 
   if (loading) {
     return (
       <header className="px-5 pt-5">
-        <div className="flex items-center gap-5">
-          <div className="bg-muted h-[86px] w-[86px] shrink-0 animate-pulse rounded-full" />
-          <div className="flex flex-1 items-center justify-around">
-            {[0, 1].map((i) => (
-              <div
-                key={i}
-                className="bg-muted h-10 w-14 animate-pulse rounded-lg"
-              />
-            ))}
+        <div className="flex items-center gap-4">
+          <div className="bg-muted h-[76px] w-[76px] shrink-0 animate-pulse rounded-full" />
+          <div className="flex-1 space-y-2">
+            <div className="bg-muted h-5 w-40 animate-pulse rounded" />
+            <div className="bg-muted h-3.5 w-28 animate-pulse rounded" />
           </div>
         </div>
-        <div className="bg-muted mt-4 h-5 w-40 animate-pulse rounded" />
-        <div className="bg-muted mt-2 h-3.5 w-28 animate-pulse rounded" />
         <div className="bg-muted mt-4 h-10 w-full animate-pulse rounded-xl" />
       </header>
     );
@@ -246,7 +225,8 @@ function ProfileHero({
 
   return (
     <header className="px-5 pt-5">
-      <div className="flex items-center gap-5">
+      {/* Avatar beside the identity block — no vanity counters. */}
+      <div className="flex items-center gap-4">
         {/* Story-ring avatar: class-tinted gradient ring around initials. */}
         <div
           className={cn(
@@ -255,52 +235,39 @@ function ProfileHero({
           )}
         >
           <div className="bg-background rounded-full p-[2.5px]">
-            <div className="bg-muted flex h-[76px] w-[76px] items-center justify-center rounded-full">
-              <span className="font-display text-foreground/70 text-2xl font-bold tracking-tight">
+            <div className="bg-muted flex h-[68px] w-[68px] items-center justify-center rounded-full">
+              <span className="font-display text-foreground/70 text-xl font-bold tracking-tight">
                 {initials}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-1 items-center justify-around">
-          <Stat
-            value={compact(savedIds.size)}
-            label="Saved"
-            href={CONSUMER_ROUTES.favorites}
-          />
-          <Stat
-            value={compact(reservationsUsed)}
-            label="Reservations"
-            href={CONSUMER_ROUTES.saved.reservations}
-          />
-        </div>
-      </div>
-
-      <div className="mt-3.5">
-        <h1 className="font-display flex items-center gap-1.5 text-[21px] leading-tight font-bold tracking-tight">
-          {name}
-          {isPremium && (
-            <BadgeCheck className="text-premium h-5 w-5 shrink-0" />
-          )}
-        </h1>
-        <p className="text-muted-foreground mt-1 flex items-center gap-1.5 text-[12.5px] leading-snug">
-          {country && (
-            <span>
-              {country.flag} {country.name}
-            </span>
-          )}
-          {country && <span aria-hidden>·</span>}
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] leading-none font-bold",
-              classBadgeClass(key),
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display flex items-center gap-1.5 text-[21px] leading-tight font-bold tracking-tight">
+            <span className="truncate">{name}</span>
+            {isPremium && (
+              <BadgeCheck className="text-premium h-5 w-5 shrink-0" />
             )}
-          >
-            {isPremium && <Crown className="h-3 w-3 fill-current" />}
-            {classLabel}
-          </span>
-        </p>
+          </h1>
+          <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[12.5px] leading-snug">
+            {country && (
+              <span>
+                {country.flag} {country.name}
+              </span>
+            )}
+            {country && <span aria-hidden>·</span>}
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] leading-none font-bold",
+                classBadgeClass(key),
+              )}
+            >
+              {isPremium && <Crown className="h-3 w-3 fill-current" />}
+              {classLabel}
+            </span>
+          </p>
+        </div>
       </div>
 
       {/* Edit profile only — inviting friends lives on the top-bar share icon
@@ -317,44 +284,6 @@ function ProfileHero({
       </div>
     </header>
   );
-}
-
-function Stat({
-  value,
-  label,
-  href,
-  onClick,
-}: {
-  value: string;
-  label: string;
-  href?: string;
-  onClick?: () => void;
-}) {
-  const body = (
-    <span className="flex flex-col items-center">
-      <span className="font-display text-[17px] leading-tight font-bold tracking-tight">
-        {value}
-      </span>
-      <span className="text-muted-foreground text-[11px] leading-snug">
-        {label}
-      </span>
-    </span>
-  );
-  if (href) {
-    return (
-      <Link href={href} className="px-1">
-        {body}
-      </Link>
-    );
-  }
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className="px-1">
-        {body}
-      </button>
-    );
-  }
-  return <span className="px-1">{body}</span>;
 }
 
 // ─── Class tab ────────────────────────────────────────────────────────────
