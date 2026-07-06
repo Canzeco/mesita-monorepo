@@ -6,8 +6,14 @@ import Link from "next/link";
 import { Heart, Navigation } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
-import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
+import {
+  readSavedPlacePreviews,
+  removeSavedPlacePreview,
+  upsertSavedPlacePreview,
+  useSavedPlaces,
+} from "@/lib/saved-places";
 import { placeHref } from "@/lib/place-route";
+import { toast } from "@/lib/toast";
 import { firstInitial } from "@/lib/utils";
 
 // Favorites mode — everything the consumer has saved. Reads the same live
@@ -17,7 +23,22 @@ import { firstInitial } from "@/lib/utils";
 // and fall back to the stored previews for saves outside tonight's deck.
 
 export function FavoritesList({ deckPlaces }: { deckPlaces: Place[] }) {
-  const { savedIds } = useSavedPlaces();
+  const { savedIds, setSaved } = useSavedPlaces();
+
+  // Unsave from the list itself, with an Undo — an accidental tap shouldn't
+  // lose a save. Undo restores both the saved id and the preview snapshot so
+  // the row comes back even if the place isn't in tonight's deck.
+  const handleRemove = (place: Place) => {
+    setSaved(place.id, false);
+    removeSavedPlacePreview(place.id);
+    toast.action("Removed from saved", {
+      label: "Undo",
+      onClick: () => {
+        upsertSavedPlacePreview(place);
+        setSaved(place.id, true);
+      },
+    });
+  };
   // Previews re-read on every mount — the component remounts on each mode
   // switch, so saves made moments ago in Swipe mode are always picked up.
   const [previewCatalog] = useState<Map<string, Place>>(() =>
@@ -67,7 +88,11 @@ export function FavoritesList({ deckPlaces }: { deckPlaces: Place[] }) {
             </div>
             <div className="flex flex-col gap-2.5">
               {places.map((place) => (
-                <FavoriteRow key={place.id} place={place} />
+                <FavoriteRow
+                  key={place.id}
+                  place={place}
+                  onRemove={() => handleRemove(place)}
+                />
               ))}
             </div>
           </>
@@ -77,7 +102,13 @@ export function FavoritesList({ deckPlaces }: { deckPlaces: Place[] }) {
   );
 }
 
-function FavoriteRow({ place }: { place: Place }) {
+function FavoriteRow({
+  place,
+  onRemove,
+}: {
+  place: Place;
+  onRemove: () => void;
+}) {
   const photo = place.photos[0];
   // distance_km === 0 is the SwipeDeck's "couldn't calculate" placeholder —
   // treat it as unknown here so the row never claims a fake 0 km.
@@ -88,43 +119,53 @@ function FavoriteRow({ place }: { place: Place }) {
   const subtitle = [place.zone, distanceLabel].filter(Boolean).join(" · ");
 
   return (
-    <Link
-      href={placeHref(place.slug || place.id)}
-      className="border-border bg-card flex w-full items-center gap-3 rounded-2xl border p-3 transition hover:shadow-md active:scale-[0.99]"
-    >
-      <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
-        {photo ? (
-          <Image
-            src={photo}
-            alt={place.name}
-            fill
-            sizes="64px"
-            className="object-cover"
-          />
-        ) : (
-          <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/85">
-            <span className="font-display text-xl font-bold tracking-tight">
-              {firstInitial(place.name)}
-            </span>
-          </div>
-        )}
-      </div>
+    <div className="border-border bg-card flex w-full items-center gap-3 rounded-2xl border p-3 transition hover:shadow-md">
+      {/* Photo + text navigate to the place; the heart is a separate control
+          (interactive elements can't nest inside an <a>). */}
+      <Link
+        href={placeHref(place.slug || place.id)}
+        className="flex min-w-0 flex-1 items-center gap-3 transition active:scale-[0.99]"
+      >
+        <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
+          {photo ? (
+            <Image
+              src={photo}
+              alt={place.name}
+              fill
+              sizes="64px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/85">
+              <span className="font-display text-xl font-bold tracking-tight">
+                {firstInitial(place.name)}
+              </span>
+            </div>
+          )}
+        </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-foreground truncate text-[15px] font-semibold tracking-tight">
-          {place.name}
-        </p>
-        {subtitle && (
-          <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">
-            <Navigation className="h-3 w-3 shrink-0" />
-            <span className="truncate">{subtitle}</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-foreground truncate text-[15px] font-semibold tracking-tight">
+            {place.name}
           </p>
-        )}
-      </div>
+          {subtitle && (
+            <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">
+              <Navigation className="h-3 w-3 shrink-0" />
+              <span className="truncate">{subtitle}</span>
+            </p>
+          )}
+        </div>
+      </Link>
 
-      <div className="bg-rose-500/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+      {/* Tap the filled heart to unsave (with an Undo toast). */}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${place.name} from saved`}
+        className="bg-rose-500/10 hover:bg-rose-500/20 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition active:scale-90"
+      >
         <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
-      </div>
-    </Link>
+      </button>
+    </div>
   );
 }
