@@ -146,11 +146,13 @@ export function SettingsStaticRow({
   tint,
   label,
   sub,
+  trailing,
 }: {
   Icon: LucideIcon;
   tint: RowTint;
   label: string;
   sub?: string;
+  trailing?: ReactNode;
 }) {
   return (
     <div className="flex w-full items-center gap-3 px-4 py-3">
@@ -158,6 +160,7 @@ export function SettingsStaticRow({
         <Icon className="h-[18px] w-[18px]" />
       </IconCircle>
       <RowText label={label} sub={sub} />
+      {trailing}
     </div>
   );
 }

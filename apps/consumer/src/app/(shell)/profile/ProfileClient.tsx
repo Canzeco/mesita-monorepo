@@ -13,7 +13,6 @@ import {
   Settings as SettingsIcon,
   Share2,
   UserRound,
-  Users,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
@@ -21,12 +20,10 @@ import { EditProfileSheet } from "@/components/consumer/EditProfileSheet";
 import { VerifySocialSheet } from "@/components/consumer/VerifySocialSheet";
 import { ShareModal } from "@/components/consumer/me/ShareModal";
 import { ClassModal } from "@/components/consumer/me/ClassModal";
-import { CommunitiesModal } from "@/components/consumer/me/CommunitiesModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { COUNTRIES, CLASSES } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { useCommunities } from "@/lib/communities";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -37,7 +34,7 @@ import {
 
 // The Me surface — a static identity summary followed by a stack of modular
 // boxes, each opening its own bottom-sheet modal: Share, Class, Instagram,
-// Communities, Personal details, Settings, and Contact. The old two-tab
+// Personal details, Settings, and Contact. The old two-tab
 // (Class / Settings) layout was replaced; both /me/class and /me/settings
 // still render this page, and /me/settings opens the Settings box on arrival.
 export type ProfileTab = "class" | "settings";
@@ -57,7 +54,6 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [classOpen, setClassOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
-  const [communitiesOpen, setCommunitiesOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(initialTab === "settings");
   const [contactOpen, setContactOpen] = useState(false);
@@ -127,8 +123,6 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
 
           <InstagramBox profile={profile} onClick={() => setVerifyOpen(true)} />
 
-          <CommunitiesBox onClick={() => setCommunitiesOpen(true)} />
-
           <BoxRow
             Icon={UserRound}
             tint="sky"
@@ -176,10 +170,6 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
         platform="instagram"
         open={verifyOpen}
         onClose={() => setVerifyOpen(false)}
-      />
-      <CommunitiesModal
-        open={communitiesOpen}
-        onClose={() => setCommunitiesOpen(false)}
       />
       {profile && (
         <EditProfileSheet
@@ -552,19 +542,3 @@ function InstagramBox({
   );
 }
 
-function CommunitiesBox({ onClick }: { onClick: () => void }) {
-  const { joinedIds } = useCommunities();
-  const summary =
-    joinedIds.length > 0
-      ? `${joinedIds.length} joined · tap to add more`
-      : "Join your campus circles";
-  return (
-    <BoxShell
-      iconTint="violet"
-      icon={<Users className="h-[22px] w-[22px]" />}
-      title="Communities"
-      summary={summary}
-      onClick={onClick}
-    />
-  );
-}

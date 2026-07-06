@@ -11,6 +11,7 @@ import {
   ScrollText,
   Settings as SettingsIcon,
   Trash2,
+  Users,
 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -18,9 +19,18 @@ import {
   SettingsActionRow,
   SettingsGroup,
   SettingsLinkRow,
+  SettingsStaticRow,
   StoredSelectRow,
   StoredToggleRow,
 } from "@/components/consumer/me/settings-rows";
+
+function SoonPill() {
+  return (
+    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+      Soon
+    </span>
+  );
+}
 
 // Device-level preferences, grouped. Everything here is client-only (no EF
 // yet): the toggles + selects persist to localStorage; the legal links open
@@ -91,6 +101,16 @@ export function SettingsModal({
               storageKey={PREF_KEYS.push}
               label="Push notifications"
               sub="Ticket updates and rewards"
+            />
+          </SettingsGroup>
+
+          <SettingsGroup title="Community">
+            <SettingsStaticRow
+              Icon={Users}
+              tint="violet"
+              label="Communities"
+              sub="Join your campus circles"
+              trailing={<SoonPill />}
             />
           </SettingsGroup>
 
