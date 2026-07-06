@@ -6,7 +6,7 @@
 // yet — but the place cards it returns are REAL: every user message runs
 // through consumer-suggest-places and the matching On Mesita / From
 // Google rows render with the same Info / Add mechanics as text search
-// (Add fires the real consumer-web-create-project flow).
+// (Add fires the real consumer-web-create-place flow).
 // TODO(EF): consumer-ask-concierge — replace buildConciergeReply with the
 // real chat EF once it exists.
 

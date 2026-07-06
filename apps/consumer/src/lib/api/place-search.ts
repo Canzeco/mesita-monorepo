@@ -28,7 +28,7 @@ export type CreatedProject = {
 /**
  * Create a Google-only search result on Mesita immediately.
  *
- * Calls consumer-web-create-project, which runs the shared create core
+ * Calls consumer-web-create-place, which runs the shared create core
  * inline (dedupe → Google spine → 'generating' rows → seed place_research);
  * the cron-driven Enricher pipeline then enriches asynchronously. The place
  * lands with content_status='generating' and flips to 'ready' once enriched
@@ -43,7 +43,7 @@ export async function apiCreateProject(
   // platform-wide (MESITA-51 addendum 9).
   return invokeEF<CreatedProject>(
     client,
-    "consumer-web-create-project",
+    "consumer-web-create-place",
     { googlePlaceId: input.placeId },
     "Couldn't add that place right now.",
   );

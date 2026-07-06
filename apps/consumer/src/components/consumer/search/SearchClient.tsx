@@ -12,7 +12,7 @@
 //   • Typing ≥2 chars runs consumer-suggest-places (debounced, one Google
 //     session token per autocomplete session) and swaps in SearchResultsPanel:
 //     "On Mesita" rows navigate via placeHref, "From Google" rows expose
-//     the real Add flow (consumer-web-create-project creates the place
+//     the real Add flow (consumer-web-create-place creates the place
 //     immediately; the async Enricher builds the profile in minutes).
 //   • Ask AI opens AskAiPanel — mock concierge prose (TODO(EF) lives in
 //     the panel) around REAL suggest-backed place cards that reuse the
