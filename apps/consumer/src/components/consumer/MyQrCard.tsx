@@ -109,8 +109,16 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
             className="h-auto w-full"
             bgColor="#ffffff"
             fgColor="#0f0a26"
-            level="M"
+            // High error correction (30%) so the QR still scans with the
+            // Mesita mark excavated into the center.
+            level="H"
             marginSize={0}
+            imageSettings={{
+              src: "/brand/mesita-mark.svg",
+              height: 44,
+              width: 44,
+              excavate: true,
+            }}
           />
         </div>
 
