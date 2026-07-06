@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  Copy,
   ChevronRight,
   Check,
   Plus,
@@ -109,17 +108,6 @@ function PrimaryCta({
 // ─── Consumers (the gift card) ─────────────────────────────────────────────
 
 function ConsumersCard() {
-  const inviteCode = "8F2K — 9XQ7";
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteCode.replace(/\s+/g, ""));
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // Clipboard unavailable — silent.
-    }
-  };
   const joined = [
     { initials: "CV", name: "Camila", date: "May 2" },
     { initials: "MF", name: "Mateo", date: "May 5" },
@@ -133,9 +121,9 @@ function ConsumersCard() {
       </p>
 
       {/* Invite card — a filled pink-gradient gift card. It gifts a seat at
-          Mesita, not money: bow + a warm headline up top, and your shareable
-          code in a frosted pill at the bottom with one-tap copy. */}
-      <div className="bg-pink-gradient shadow-glow relative overflow-hidden rounded-2xl p-5 text-white">
+          Mesita, not money and not a code: bow + a warm headline, shared
+          straight from the "Send a gift" button (no code to redeem). */}
+      <div className="bg-pink-gradient shadow-glow relative overflow-hidden rounded-2xl p-6 text-white">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[10px] font-bold tracking-[0.2em] text-white/80 uppercase">
@@ -150,35 +138,12 @@ function ConsumersCard() {
           </span>
         </div>
 
-        <p className="font-display mt-6 text-4xl leading-none font-semibold tracking-tight">
+        <p className="font-display mt-8 text-4xl leading-none font-semibold tracking-tight">
           You&apos;re invited
         </p>
-        <p className="mt-2 text-[13px] text-white/85">
+        <p className="mt-2 mb-1 text-[13px] text-white/85">
           Your seat at the table.
         </p>
-
-        <div className="mt-6 flex items-center justify-between gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 backdrop-blur">
-          <div className="min-w-0">
-            <p className="text-[9px] font-bold tracking-[0.2em] text-white/70 uppercase">
-              Code
-            </p>
-            <p className="mt-0.5 font-mono text-[15px] font-bold tracking-wide">
-              {inviteCode}
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label={copied ? "Copied" : "Copy code"}
-            onClick={onCopy}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/20"
-          >
-            {copied ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </button>
-        </div>
       </div>
 
       <div>
@@ -232,7 +197,7 @@ function ConsumersCard() {
           label="Send a gift to a friend"
           share={{
             title: "Come join me on Mesita",
-            text: `Join me on Mesita — here's my invite code ${inviteCode.replace(/\s+/g, "")}.`,
+            text: "Join me on Mesita — your seat at the table.",
           }}
         />
       </div>
