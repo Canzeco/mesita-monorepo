@@ -112,11 +112,7 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
   return (
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
-        <h1 className="font-display px-1 text-[26px] leading-none font-bold tracking-tight">
-          Me
-        </h1>
-
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           <ProfileSummaryCard profile={profile} loading={loading} />
 
           <BoxRow
@@ -222,18 +218,23 @@ function ProfileSummaryCard({
 
   if (loading) {
     return (
-      <div className="border-border bg-card rounded-3xl border p-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-muted h-[54px] w-[54px] shrink-0 animate-pulse rounded-full" />
-          <div className="flex-1 space-y-2">
-            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
-          </div>
+      <div
+        className={cn(
+          "border-border overflow-hidden rounded-3xl border p-4",
+          isPremium
+            ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
+            : "from-primary/[0.07] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br",
+        )}
+      >
+        <div className="flex flex-col items-center gap-2 pb-3">
+          <div className="bg-muted h-[68px] w-[68px] shrink-0 animate-pulse rounded-full" />
+          <div className="bg-muted h-4 w-40 animate-pulse rounded" />
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="bg-muted h-[54px] animate-pulse rounded-2xl"
+              className="bg-card/70 h-[54px] animate-pulse rounded-2xl"
             />
           ))}
         </div>
@@ -259,35 +260,37 @@ function ProfileSummaryCard({
   const verified = Boolean(handle) || origin === "instagram";
 
   return (
-    <section className="border-border overflow-hidden rounded-3xl border">
-      {/* Hero — compact branded gradient wash (richer tint for Premium). */}
-      <div
-        className={cn(
-          "flex items-center gap-3 px-4 py-3",
-          isPremium
-            ? "from-primary/[0.10] via-secondary/[0.08] to-accent/[0.10] bg-gradient-to-br"
-            : "from-primary/[0.05] via-secondary/[0.05] to-accent/[0.05] bg-gradient-to-br",
-        )}
-      >
+    <section
+      className={cn(
+        "border-border overflow-hidden rounded-3xl border p-4",
+        // Tinted card so it reads as a distinct panel from the white option
+        // boxes below; the white fact tiles pop against it (richer for Premium).
+        isPremium
+          ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
+          : "from-primary/[0.07] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br",
+      )}
+    >
+      {/* Centered hero — avatar on top, name centered below it. */}
+      <div className="flex flex-col items-center gap-2 pb-3 text-center">
         {/* Story-ring avatar: class-tinted gradient ring around initials. */}
         <div
           className={cn(
-            "shrink-0 rounded-full p-[2px]",
+            "shrink-0 rounded-full p-[2.5px]",
             isPremium ? "bg-tier-premium" : "bg-pink-gradient",
           )}
         >
-          <div className="bg-card rounded-full p-[2px]">
-            <div className="bg-muted relative flex h-[50px] w-[50px] items-center justify-center overflow-hidden rounded-full">
+          <div className="bg-card rounded-full p-[2.5px]">
+            <div className="bg-muted relative flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full">
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
                   alt={name}
                   fill
-                  sizes="50px"
+                  sizes="64px"
                   className="object-cover"
                 />
               ) : (
-                <span className="font-display text-foreground/70 text-lg font-bold tracking-tight">
+                <span className="font-display text-foreground/70 text-xl font-bold tracking-tight">
                   {initials}
                 </span>
               )}
@@ -295,7 +298,7 @@ function ProfileSummaryCard({
           </div>
         </div>
 
-        <h2 className="font-display flex min-w-0 flex-1 items-center gap-1.5 text-[19px] leading-tight font-bold tracking-tight">
+        <h2 className="font-display flex max-w-full items-center justify-center gap-1.5 text-[19px] leading-tight font-bold tracking-tight">
           <span className="truncate">{name}</span>
           {verified && (
             <BadgeCheck className="text-premium h-5 w-5 shrink-0" />
@@ -303,8 +306,9 @@ function ProfileSummaryCard({
         </h2>
       </div>
 
-      {/* Four compact fact tiles — phone, Instagram, class, country. */}
-      <div className="bg-card grid grid-cols-2 gap-2 p-3">
+      {/* Four white fact tiles — phone, Instagram, class, country — popping
+          against the tinted card. */}
+      <div className="grid grid-cols-2 gap-2">
         <FactTile
           Icon={Phone}
           tint="sky"
@@ -372,7 +376,7 @@ function FactTile({
   muted?: boolean;
 }) {
   return (
-    <div className="bg-muted/35 ring-border/50 flex items-center gap-2.5 rounded-2xl p-2.5 ring-1 ring-inset">
+    <div className="bg-card ring-border/50 flex items-center gap-2.5 rounded-2xl p-2.5 shadow-sm ring-1">
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px] shadow-sm",
