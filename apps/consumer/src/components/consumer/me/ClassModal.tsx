@@ -15,11 +15,6 @@ import {
 } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
 
-// The demo class-preview toggle (below) flips the signed-in consumer's own
-// membership from the client, so it's gated behind an explicit build flag —
-// real users never see it; set NEXT_PUBLIC_MESITA_DEMO=1 in preview/dev.
-const DEMO_ENABLED = process.env.NEXT_PUBLIC_MESITA_DEMO === "1";
-
 // The full class surface, lifted out of the old Class tab into a bottom sheet
 // the Me page opens from the Class box. Three labeled sections top to bottom:
 // current class, a Free-vs-Premium comparison, and the ways to reach Premium.
@@ -54,7 +49,7 @@ export function ClassModal({
         </div>
 
         <div className="flex flex-col gap-6">
-          {DEMO_ENABLED && <ClassPreviewToggle />}
+          <ClassPreviewToggle />
           <section className="flex flex-col gap-2">
             <SectionEyebrow>Current class</SectionEyebrow>
             <CurrentClassCard />
