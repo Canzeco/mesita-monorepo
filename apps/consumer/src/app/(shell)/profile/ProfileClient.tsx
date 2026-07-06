@@ -218,7 +218,6 @@ function ProfileSummaryCard({
   loading: boolean;
 }) {
   const { key, origin } = useConsumerClass();
-  const { joined } = useCommunities();
   const isPremium = key === "premium";
 
   if (loading) {
@@ -231,7 +230,7 @@ function ProfileSummaryCard({
           </div>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
               className="bg-muted h-[54px] animate-pulse rounded-2xl"
@@ -258,13 +257,6 @@ function ProfileSummaryCard({
   // The profile is "verified" once an Instagram account is claimed — that's
   // the real verification mechanic (a subscription doesn't verify identity).
   const verified = Boolean(handle) || origin === "instagram";
-
-  const communitiesValue =
-    joined.length > 0
-      ? joined.length === 1
-        ? "1 joined"
-        : `${joined.length} joined`
-      : "None yet";
 
   return (
     <section className="border-border overflow-hidden rounded-3xl border">
@@ -311,8 +303,7 @@ function ProfileSummaryCard({
         </h2>
       </div>
 
-      {/* Everything as compact fact tiles — phone, Instagram, class, verified,
-          country, communities — one short 2-column grid. */}
+      {/* Four compact fact tiles — phone, Instagram, class, country. */}
       <div className="bg-card grid grid-cols-2 gap-2 p-3">
         <FactTile
           Icon={Phone}
@@ -335,25 +326,11 @@ function ProfileSummaryCard({
           value={`Mesita ${classLabel}`}
         />
         <FactTile
-          Icon={BadgeCheck}
-          tint={verified ? "emerald" : "neutral"}
-          label="Verified"
-          value={verified ? "Verified" : "Unverified"}
-          muted={!verified}
-        />
-        <FactTile
           emoji={country?.flag ?? "🌐"}
           tint="neutral"
           label="Country"
           value={country?.name ?? "Not set"}
           muted={!country}
-        />
-        <FactTile
-          Icon={Users}
-          tint="violet"
-          label="Communities"
-          value={communitiesValue}
-          muted={joined.length === 0}
         />
       </div>
     </section>
