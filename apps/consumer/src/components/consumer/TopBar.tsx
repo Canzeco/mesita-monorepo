@@ -25,7 +25,7 @@ export function TopBar() {
   // after the tab, not the legacy Saved section. Singular prefix also covers
   // /saved/reservation/[id] details.
   if (pathname.startsWith(CONSUMER_RESERVATION_SURFACE_PREFIX)) {
-    return <SimpleHeader title="Reservations" />;
+    return <SimpleHeader title="Reservations" rightAction="share" />;
   }
   if (
     pathname.startsWith(CONSUMER_ROUTE_PREFIX.inbox) ||
