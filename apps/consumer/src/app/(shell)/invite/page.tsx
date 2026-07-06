@@ -19,9 +19,15 @@ import { cn } from "@/lib/utils";
 const MESITA_CONTACT_EMAIL = "support@mesita.ai";
 
 // The Invite page is just five gift cards — one per audience — each a
-// standard-size gradient card with its own Share button on top. No codes, no
-// rewards, no tabs. The header (SimpleHeader title="Invite") is owned by the
-// shell layout via TopBar.
+// credit-card-proportioned gradient tile (ISO/IEC 7810 ID-1, 85.6×53.98) with
+// its own Share button on top. No codes, no rewards, no tabs. The header
+// (SimpleHeader title="Invite") is owned by the shell layout via TopBar.
+//
+// Copy is second-order (Pato, 2026-07-06): partner cards address the referrer
+// ("Know a restaurant or bar?") — Share forwards the link to someone you know,
+// Contact is the direct line for the audience themselves. The friend card stays
+// first-person. This widens each card's reach beyond only self-identifying
+// members of the audience.
 //
 // Order (Pato, 2026-07-05): Consumers · Businesses · Influencers · Marketing
 // agencies · Modeling agencies.
@@ -56,8 +62,8 @@ const CARDS: GiftCard[] = [
   },
   {
     id: "businesses",
-    audience: "Restaurants & bars",
-    line: "More customers, higher spend. Setup takes ~8 minutes.",
+    audience: "Know a restaurant or bar?",
+    line: "Refer it, or run one — setup takes ~8 minutes.",
     gradient: "bg-gradient-to-br from-amber-400 to-orange-500",
     Icon: UtensilsCrossed,
     share: {
@@ -69,7 +75,7 @@ const CARDS: GiftCard[] = [
   },
   {
     id: "influencers",
-    audience: "Influencers",
+    audience: "A creator, or know one?",
     line: "20% of Mesita's equity is reserved for creators.",
     gradient: "bg-gradient-to-br from-fuchsia-500 to-purple-600",
     Icon: Megaphone,
@@ -82,8 +88,8 @@ const CARDS: GiftCard[] = [
   },
   {
     id: "agencies",
-    audience: "Marketing agencies",
-    line: "Manage restaurants or bars? Add Mesita to your stack.",
+    audience: "Know a marketing agency?",
+    line: "Refer one, or run one — add Mesita to the stack.",
     gradient: "bg-gradient-to-br from-sky-400 to-blue-600",
     Icon: Briefcase,
     share: {
@@ -95,8 +101,8 @@ const CARDS: GiftCard[] = [
   },
   {
     id: "models",
-    audience: "Model & talent agencies",
-    line: "Your talent, Mesita Premium — free, no tricks.",
+    audience: "Know a talent agency?",
+    line: "Their talent goes Mesita Premium — free, no tricks.",
     gradient: "bg-gradient-to-br from-neutral-800 to-neutral-950",
     Icon: Sparkles,
     share: {
@@ -152,7 +158,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
   return (
     <div
       className={cn(
-        "shadow-glow relative flex min-h-[150px] flex-col overflow-hidden rounded-2xl p-5 text-white",
+        "shadow-glow relative flex aspect-[85.6/53.98] flex-col overflow-hidden rounded-2xl p-5 text-white",
         card.gradient,
       )}
     >
