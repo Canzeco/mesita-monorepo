@@ -181,7 +181,7 @@ export function TicketDetailsRouteClient({
 
   const onBack = () => {
     if (variant === "modal") router.back();
-    else router.push(CONSUMER_ROUTE_PREFIX.pay);
+    else router.push(CONSUMER_ROUTE_PREFIX.rewards);
   };
 
   return (

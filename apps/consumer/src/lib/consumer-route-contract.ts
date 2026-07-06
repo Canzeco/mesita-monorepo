@@ -33,10 +33,12 @@ export const CONSUMER_ROUTES = {
     placePrefix: "/saved/place/",
     reservationPrefix: "/saved/reservation/",
   },
-  pay: {
-    qr: "/pay/qr",
-    tickets: "/pay/tickets",
-    ticketPrefix: "/pay/ticket/",
+  // Rewards is a single page (banner + Mesita passport + tickets). The tab
+  // used to live at /pay — that whole tree now redirects here. Ticket detail
+  // is /rewards/ticket/[id].
+  rewards: {
+    root: "/rewards",
+    ticketPrefix: "/rewards/ticket/",
   },
   inbox: {
     mine: "/inbox/mine",
@@ -58,6 +60,9 @@ export const CONSUMER_ROUTES = {
     placePrefix: "/place/",
     reservationPrefix: "/reservation/",
     ticketPrefix: "/ticket/",
+    // The Rewards surface used to be /pay; these paths redirect to /rewards.
+    pay: "/pay",
+    payTicketPrefix: "/pay/ticket/",
     payTicketsPrefix: "/pay/tickets/",
   },
 } as const;
@@ -67,7 +72,7 @@ export const CONSUMER_ROUTE_PREFIX = {
   search: "/search",
   place: "/place",
   saved: "/saved",
-  pay: "/pay",
+  rewards: "/rewards",
   inbox: "/inbox",
   me: "/me",
 } as const;
@@ -101,12 +106,12 @@ export function couponPath(id: string): string {
   return `${COUPON_PATH_PREFIX}${id}`;
 }
 
-export function payTicketPath(id: string): string {
-  return `${CONSUMER_ROUTES.pay.ticketPrefix}${id}`;
+export function rewardsTicketPath(id: string): string {
+  return `${CONSUMER_ROUTES.rewards.ticketPrefix}${id}`;
 }
 
 export function ticketPath(id: string): string {
-  return payTicketPath(id);
+  return rewardsTicketPath(id);
 }
 
 export function isModalContractPath(pathname: string): boolean {
@@ -114,7 +119,7 @@ export function isModalContractPath(pathname: string): boolean {
     pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.saved.placePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.saved.reservationPrefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.pay.ticketPrefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.rewards.ticketPrefix) ||
     pathname.startsWith(COUPON_PATH_PREFIX)
   );
 }

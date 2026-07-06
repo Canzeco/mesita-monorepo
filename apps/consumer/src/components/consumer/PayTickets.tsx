@@ -24,7 +24,7 @@ import {
   type PayTicketMeta,
 } from "@/lib/api/notifications";
 import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
-import { TicketCardSkeleton } from "@/app/(shell)/pay/PayTabLoading";
+import { TicketCardSkeleton } from "@/app/(shell)/rewards/PayTabLoading";
 
 type TicketBundle = {
   ticketId: string;

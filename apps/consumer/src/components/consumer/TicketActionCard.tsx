@@ -128,7 +128,7 @@ export function TicketActionCard({
 
         {step.id === "scan" && !isLocked ? (
           <Link
-            href={CONSUMER_ROUTE_PREFIX.pay}
+            href={CONSUMER_ROUTE_PREFIX.rewards}
             className={cn(
               "btn-primary flex items-center justify-center gap-2 py-3.5 text-base",
               !isActive && "opacity-75",
