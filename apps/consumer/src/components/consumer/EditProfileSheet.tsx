@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -38,12 +39,15 @@ export function EditProfileSheet({
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
   const [lastName, setLastName] = useState(profile.last_name ?? "");
   const [phone, setPhone] = useState(profile.phone ?? "");
+  // birthday is stored as YYYY-MM-DD; a native date input round-trips it.
+  const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
 
   const dirty =
     firstName.trim() !== (profile.first_name ?? "") ||
     lastName.trim() !== (profile.last_name ?? "") ||
-    phone.trim() !== (profile.phone ?? "");
+    phone.trim() !== (profile.phone ?? "") ||
+    birthday !== (profile.birthday ?? "");
 
   const initials =
     `${firstName.trim().charAt(0)}${lastName.trim().charAt(0)}`.toUpperCase() ||
@@ -57,13 +61,13 @@ export function EditProfileSheet({
     }
     setSaving(true);
     try {
-      // Preserve the fields not edited here (sex/birthday/country) so the
+      // Preserve the fields not edited here (sex/country) so the
       // required-field EF contract stays satisfied.
       const updated = await apiUpdateConsumerProfile(supabase, {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         sex: (profile.sex as "male" | "female" | "other") ?? "other",
-        birthday: profile.birthday ?? "",
+        birthday: birthday || "",
         country: profile.country ?? "",
         phone: phone.trim() || undefined,
       });
@@ -80,20 +84,31 @@ export function EditProfileSheet({
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Edit profile">
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
-        <div className="flex items-center gap-3">
-          <span className="bg-pink-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white">
-            <span className="font-display text-[15px] font-bold tracking-tight">
-              {initials}
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          Personal details
+        </h2>
+        <p className="text-muted-foreground text-[12px]">
+          How you appear across Mesita
+        </p>
+
+        {/* Tappable avatar — photo upload isn't wired to storage yet, so it
+            surfaces a coming-soon toast rather than a dead control. */}
+        <div className="mt-5 flex justify-center">
+          <button
+            type="button"
+            onClick={() => toast("Photo uploads are coming soon.")}
+            className="group relative"
+            aria-label="Change profile photo"
+          >
+            <span className="bg-pink-gradient flex h-20 w-20 items-center justify-center rounded-full text-white shadow-sm">
+              <span className="font-display text-2xl font-bold tracking-tight">
+                {initials}
+              </span>
             </span>
-          </span>
-          <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
-              Edit profile
-            </h2>
-            <p className="text-muted-foreground text-[12px]">
-              How you appear across Mesita
-            </p>
-          </div>
+            <span className="border-background bg-foreground text-background absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition group-active:scale-95">
+              <Camera className="h-3.5 w-3.5" />
+            </span>
+          </button>
         </div>
 
         <div className="mt-5 flex flex-col gap-3">
@@ -118,6 +133,17 @@ export function EditProfileSheet({
             placeholder="+52 …"
             inputMode="tel"
           />
+          <label className="block">
+            <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+              Birthday
+            </span>
+            <input
+              type="date"
+              value={birthday}
+              onChange={(e) => setBirthday(e.target.value)}
+              className="border-border bg-background focus:border-primary w-full rounded-lg border px-3 py-2 text-sm outline-none"
+            />
+          </label>
           <div>
             <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
               Email
