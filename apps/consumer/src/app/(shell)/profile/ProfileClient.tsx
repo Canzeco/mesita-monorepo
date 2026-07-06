@@ -204,6 +204,7 @@ function ProfileSummaryCard({
   loading: boolean;
 }) {
   const { key, origin, followers } = useConsumerClass();
+  const isPremium = key === "premium";
 
   if (loading) {
     return (
@@ -258,27 +259,43 @@ function ProfileSummaryCard({
     : "Not connected";
 
   return (
-    // Neutral gray panel (no color) — distinct from the white option boxes
-    // below; the facts are thin-bordered on the same gray so they read as
-    // identity facts, not rows.
-    <section className="border-border bg-muted/50 overflow-hidden rounded-3xl border p-4">
+    // Branded tinted panel — a soft class-tinted gradient so the identity card
+    // reads as premium and distinct from the white option boxes below (richer
+    // for Premium). The facts sit frameless on the tint as identity facts.
+    <section
+      className={cn(
+        "border-border overflow-hidden rounded-3xl border p-4",
+        isPremium
+          ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
+          : "from-primary/[0.08] via-secondary/[0.06] to-accent/[0.08] bg-gradient-to-br",
+      )}
+    >
       {/* Centered hero — avatar on top, name centered below it. */}
       <div className="flex flex-col items-center gap-2 pb-3 text-center">
-        {/* Plain avatar — no ring/border. */}
-        <div className="bg-muted relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full">
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={name}
-              fill
-              sizes="72px"
-              className="object-cover"
-            />
-          ) : (
-            <span className="font-display text-foreground/70 text-2xl font-bold tracking-tight">
-              {initials}
-            </span>
+        {/* Story-ring avatar: class-tinted gradient ring around initials. */}
+        <div
+          className={cn(
+            "shrink-0 rounded-full p-[2.5px]",
+            isPremium ? "bg-tier-premium" : "bg-pink-gradient",
           )}
+        >
+          <div className="bg-card rounded-full p-[2.5px]">
+            <div className="bg-muted relative flex h-[66px] w-[66px] items-center justify-center overflow-hidden rounded-full">
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt={name}
+                  fill
+                  sizes="66px"
+                  className="object-cover"
+                />
+              ) : (
+                <span className="font-display text-foreground/70 text-2xl font-bold tracking-tight">
+                  {initials}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         <h2 className="font-display max-w-full truncate text-[19px] leading-tight font-bold tracking-tight">
@@ -286,33 +303,33 @@ function ProfileSummaryCard({
         </h2>
       </div>
 
-      {/* Four facts — phone, Instagram, class, country — thin-bordered on the
-          same tinted background (no fill) so they're delineated without reading
-          as tappable rows. */}
+      {/* Four facts — phone, Instagram, class, country — each with its own
+          tinted icon so the card reads colorful, not gray. Thin-bordered on
+          the tint so they stay identity facts, not tappable rows. */}
       <div className="grid grid-cols-2 gap-2">
         <FactTile
           Icon={Phone}
-          tint="neutral"
+          tint="sky"
           label="Phone"
           value={profile?.phone || "Not added"}
           muted={!profile?.phone}
         />
         <FactTile
           Icon={Instagram}
-          tint="neutral"
+          tint="pink"
           label="Instagram"
           value={igValue}
           muted={!igConnected}
         />
         <FactTile
           Icon={Crown}
-          tint="neutral"
+          tint={isPremium ? "premium" : "amber"}
           label="Class"
           value={`Mesita ${classLabel}`}
         />
         <FactTile
           emoji={country?.flag ?? "🌐"}
-          tint="neutral"
+          tint="teal"
           label="Country"
           value={country?.name ?? "Not set"}
           muted={!country}
@@ -329,15 +346,19 @@ type FactTint =
   | "amber"
   | "emerald"
   | "violet"
+  | "teal"
   | "neutral";
 
+// Firm opacities (≥18%) so each hue reads as a distinct color on the tinted
+// card instead of washing out to gray.
 const FACT_TINT: Record<FactTint, string> = {
-  sky: "bg-sky-500/[0.12] text-sky-600",
+  sky: "bg-sky-500/20 text-sky-600",
   pink: "bg-pink-gradient text-white",
   premium: "bg-tier-premium text-white",
-  amber: "bg-amber-500/15 text-amber-600",
-  emerald: "bg-emerald-500/[0.12] text-emerald-600",
-  violet: "bg-violet-500/[0.12] text-violet-600",
+  amber: "bg-amber-400/25 text-amber-700",
+  emerald: "bg-emerald-500/20 text-emerald-600",
+  violet: "bg-violet-500/20 text-violet-600",
+  teal: "bg-teal-500/20 text-teal-600",
   neutral: "bg-muted text-foreground/70",
 };
 
@@ -397,17 +418,25 @@ function FactTile({
 
 // ─── Modular boxes ─────────────────────────────────────────────────────────
 
-type BoxTint = "pink" | "sky" | "emerald" | "violet" | "muted" | "premium";
+type BoxTint =
+  | "pink"
+  | "sky"
+  | "emerald"
+  | "violet"
+  | "amber"
+  | "muted"
+  | "premium";
 
-// The Me page is intentionally monochrome (white / gray / black) — every
-// option-box icon uses the same neutral gray fill, no brand colors.
+// Each option-box icon gets its own tinted circle so the Me page reads as a
+// premium, colorful surface (never a flat gray stack).
 const BOX_TINT: Record<BoxTint, string> = {
-  pink: "bg-muted text-foreground/70",
-  sky: "bg-muted text-foreground/70",
-  emerald: "bg-muted text-foreground/70",
-  violet: "bg-muted text-foreground/70",
+  pink: "bg-pink-gradient text-white",
+  sky: "bg-sky-500/15 text-sky-600",
+  emerald: "bg-emerald-500/15 text-emerald-600",
+  violet: "bg-violet-500/15 text-violet-600",
+  amber: "bg-amber-400/20 text-amber-700",
   muted: "bg-muted text-foreground/70",
-  premium: "bg-muted text-foreground/70",
+  premium: "bg-tier-premium text-white",
 };
 
 function BoxShell({
@@ -493,7 +522,7 @@ function ClassBox({ onClick }: { onClick: () => void }) {
   const via = isPremium && origin !== "default" ? ` · via ${origin}` : "";
   return (
     <BoxShell
-      iconTint={isPremium ? "premium" : "muted"}
+      iconTint={isPremium ? "premium" : "amber"}
       icon={<Crown className="h-[22px] w-[22px]" />}
       title="Class"
       summary={`Mesita ${label}${via}`}
