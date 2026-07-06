@@ -1,5 +1,5 @@
 // Frontend API surface for the Search page — live catalog text search +
-// the consumer "Add to Mesita" scheduling flow.
+// the consumer "Add to Mesita" create flow.
 //
 // Architectural constraints honoured (same as places.ts):
 // - Clients NEVER query the database directly. Every read or write goes
@@ -19,33 +19,32 @@ export {
   type PlacePredictionStatus,
 } from "./places";
 
-export type ScheduledProjectCreation = {
-  /** Row id in public.scheduled_project_creations. */
-  scheduled_id: string;
-  /** ISO timestamp the poller will fire the create at (defaults to now). */
-  exec_at: string;
+export type CreatedProject = {
+  ok: boolean;
+  /** The freshly created place row (content_status='generating'). */
+  place: { id: string; slug: string; name: string; status: string };
 };
 
 /**
- * Queue a Google-only search result for creation on Mesita.
+ * Create a Google-only search result on Mesita immediately.
  *
- * Calls consumer-schedule-project-creation, which inserts into the
- * scheduled_project_creations queue; the pg_cron poller then fires the
- * service-gated create pipeline and the n8n Enricher asynchronously.
- * The place lands with content_status='generating' and flips to 'ready'
- * once enriched — typically within ~5 minutes — so the UI should show a
- * persistent "being added" state rather than waiting on this promise.
+ * Calls consumer-web-create-project, which runs the shared create core
+ * inline (dedupe → Google spine → 'generating' rows → seed place_research);
+ * the cron-driven Enricher pipeline then enriches asynchronously. The place
+ * lands with content_status='generating' and flips to 'ready' once enriched
+ * — typically within ~5 minutes — so the UI should show a persistent
+ * "being added" state rather than waiting on this promise.
  */
-export async function apiScheduleProjectCreation(
+export async function apiCreateProject(
   client: SupabaseClient,
-  input: { placeId: string; exec_at?: string },
-): Promise<ScheduledProjectCreation> {
-  const body: Record<string, unknown> = { placeId: input.placeId };
-  if (input.exec_at) body.exec_at = input.exec_at;
-  return invokeEF<ScheduledProjectCreation>(
+  input: { placeId: string },
+): Promise<CreatedProject> {
+  // `googlePlaceId` on the wire: `placeId` is reserved for place-row UUIDs
+  // platform-wide (MESITA-51 addendum 9).
+  return invokeEF<CreatedProject>(
     client,
-    "consumer-web-schedule-project-creation",
-    body,
-    "Couldn't queue that place right now.",
+    "consumer-web-create-project",
+    { googlePlaceId: input.placeId },
+    "Couldn't add that place right now.",
   );
 }

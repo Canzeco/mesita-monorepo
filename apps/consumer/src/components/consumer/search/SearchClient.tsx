@@ -12,8 +12,8 @@
 //   • Typing ≥2 chars runs consumer-suggest-places (debounced, one Google
 //     session token per autocomplete session) and swaps in SearchResultsPanel:
 //     "On Mesita" rows navigate via placeHref, "From Google" rows expose
-//     the real Add flow (consumer-schedule-project-creation → the async
-//     n8n Enricher builds the profile in a few minutes).
+//     the real Add flow (consumer-web-create-project creates the place
+//     immediately; the async Enricher builds the profile in minutes).
 //   • Ask AI opens AskAiPanel — mock concierge prose (TODO(EF) lives in
 //     the panel) around REAL suggest-backed place cards that reuse the
 //     same Info / Add mechanics.
@@ -32,7 +32,7 @@ import {
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import {
-  apiScheduleProjectCreation,
+  apiCreateProject,
   apiSuggestPlaces,
   type PlacePrediction,
 } from "@/lib/api/place-search";
@@ -198,9 +198,10 @@ export function SearchClient({
     [catalog, resetSearchSession, router],
   );
 
-  // The REAL Add flow: schedule the creation, then hold the row in its
-  // "added / Enriching" state — the n8n Enricher finishes asynchronously,
-  // so there is nothing further to await client-side.
+  // The REAL Add flow: the place is created immediately; only enrichment is
+  // scheduled (the cron-driven Enricher pipeline finishes asynchronously),
+  // so hold the row in its "added / Enriching" state — nothing further to
+  // await client-side.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {
       if (addStates[prediction.placeId]) return;
@@ -209,12 +210,12 @@ export function SearchClient({
       setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
       void (async () => {
         try {
-          await apiScheduleProjectCreation(supabase, {
+          await apiCreateProject(supabase, {
             placeId: prediction.placeId,
           });
           setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
           toast.success(
-            `${prediction.mainText} is queued — it'll appear on Mesita in a few minutes.`,
+            `${prediction.mainText} is on Mesita — its profile will be ready in a few minutes.`,
           );
         } catch (err) {
           // Roll back so the button is tappable again.
@@ -223,7 +224,7 @@ export function SearchClient({
             delete next[prediction.placeId];
             return next;
           });
-          toast.error(errMsg(err, "Couldn't queue that place right now."));
+          toast.error(errMsg(err, "Couldn't add that place right now."));
         }
       })();
     },

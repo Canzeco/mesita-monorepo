@@ -7,9 +7,9 @@
 // The prediction comes from consumer-suggest-places (Google + Mesita
 // merge). Rows already on Mesita get an Info button → place page; rows
 // Google knows but Mesita doesn't get the Add button, which fires the
-// real consumer-schedule-project-creation flow. Once scheduled, the row
-// flips to a persistent "Being added" state — the Enricher builds the
-// place asynchronously, so there's nothing further to wait on here.
+// real consumer-web-create-project flow. The place is created immediately;
+// the row flips to a persistent "Being added" state while the Enricher
+// enriches it asynchronously, so there's nothing further to wait on here.
 
 import Image from "next/image";
 import {
