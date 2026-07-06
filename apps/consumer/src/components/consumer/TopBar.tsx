@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { SimpleHeader } from "./SimpleHeader";
-import { MeHeaderTitle } from "./MeHeaderTitle";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
@@ -53,14 +52,14 @@ export function TopBar() {
   ) {
     return <SimpleHeader title="Invite" rightAction="share" />;
   }
-  // The Profile tab is titled "me" and carries the member's current class
-  // (Free / Premium) inline — see MeHeaderTitle. The right-side ClassChip
-  // stays as the tap-to-plan control.
+  // The Profile tab is titled "Me". The member's class is already carried by
+  // the right-side ClassChip crown and shown in full in the hero below, so the
+  // header title stays a plain label — no redundant inline class pill.
   if (
     pathname.startsWith(CONSUMER_ROUTE_PREFIX.me) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.profile)
   ) {
-    return <SimpleHeader title={<MeHeaderTitle />} rightAction="share" />;
+    return <SimpleHeader title="Me" rightAction="share" />;
   }
   return null;
 }
