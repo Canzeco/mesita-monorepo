@@ -11,7 +11,7 @@
 // sent as history so Memo can follow up.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Sparkles, X } from "lucide-react";
+import { ArrowUp, RotateCcw, Sparkles, X } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
@@ -41,6 +41,22 @@ function msgId(): string {
   return `ai-msg-${nextId}`;
 }
 
+// Thread persistence — the Ask AI tab is a route now, so switching Home tabs
+// unmounts it. Keep the conversation in a module-level cache so it survives
+// remounts within the session. Writes happen only on the client (in a save
+// effect / event handlers), so the server module stays null across requests
+// and the first render always matches SSR (greeting) — no hydration mismatch,
+// and no set-state-in-effect. Intentionally NOT localStorage: a full reload
+// starts fresh, which keeps this clean and avoids a client-only initial read.
+type StoredThread = { messages: AiMessage[]; related: string[] };
+const THREAD_CAP = 40; // bound the retained history
+
+let threadCache: StoredThread | null = null;
+
+function greetingThread(): AiMessage[] {
+  return [{ id: msgId(), role: "ai", kind: "text", text: GREETING }];
+}
+
 export function AskAiPanel({
   onClose,
   ask,
@@ -64,18 +80,38 @@ export function AskAiPanel({
    */
   layout?: "overlay" | "inline";
 }) {
-  const [messages, setMessages] = useState<AiMessage[]>([
-    { id: msgId(), role: "ai", kind: "text", text: GREETING },
-  ]);
+  // Lazy init from the session cache (populated by a previous mount this
+  // session). Null on a fresh load / SSR → greeting, so hydration matches.
+  const [messages, setMessages] = useState<AiMessage[]>(
+    () => threadCache?.messages ?? greetingThread(),
+  );
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [related, setRelated] = useState<string[]>([]);
+  const [related, setRelated] = useState<string[]>(
+    () => threadCache?.related ?? [],
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Persist to the session cache on every change (writes a module var, not
+  // state — no set-state-in-effect). A lone greeting resets the cache to fresh.
+  useEffect(() => {
+    threadCache =
+      messages.length > 1
+        ? { messages: messages.slice(-THREAD_CAP), related }
+        : null;
+  }, [messages, related]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, thinking, related]);
+
+  const clearThread = () => {
+    setMessages(greetingThread());
+    setRelated([]);
+    setInput("");
+    threadCache = null;
+  };
 
   const send = (raw?: string) => {
     const text = (raw ?? input).trim();
@@ -144,6 +180,23 @@ export function AskAiPanel({
           className="border-border bg-background/90 text-foreground hover:bg-muted absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm backdrop-blur-sm transition active:scale-95"
         >
           <X className="h-5 w-5" />
+        </button>
+      )}
+
+      {/* Clear the conversation — only once there's more than the greeting.
+          Offset left of the overlay close when both are present. */}
+      {messages.length > 1 && (
+        <button
+          type="button"
+          onClick={clearThread}
+          aria-label="Clear chat"
+          className={cn(
+            "border-border bg-background/90 text-muted-foreground hover:text-foreground hover:bg-muted absolute top-2 z-10 flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs shadow-sm backdrop-blur-sm transition active:scale-95",
+            layout === "overlay" ? "right-12" : "right-2",
+          )}
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Clear
         </button>
       )}
 
