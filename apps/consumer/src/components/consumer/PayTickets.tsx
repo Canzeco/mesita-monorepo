@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Ticket } from "lucide-react";
 import {
   isTicketFlowComplete,
   resolveTicketFlowSteps,
@@ -190,7 +191,7 @@ export function PayTickets({ userId }: { userId: string }) {
   }, [rows, ticketMetaById]);
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2 px-0.5">
         <h2 className="text-foreground text-sm font-semibold">Tickets</h2>
         <p className="text-muted-foreground text-[11px]">Most recent first</p>
@@ -218,11 +219,19 @@ export function PayTickets({ userId }: { userId: string }) {
           </button>
         </div>
       ) : bundles.length === 0 ? (
-        <p className="surface-card text-muted-foreground px-4 py-8 text-center text-sm leading-relaxed">
-          When staff opens your ticket at the table, it appears here with the
-          place photo, your total reward, and steps to finish. Completed tickets
-          stay here as history.
-        </p>
+        <div className="surface-card flex min-h-[240px] flex-1 flex-col items-center justify-center gap-3 rounded-2xl px-6 py-10 text-center">
+          <span className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-2xl">
+            <Ticket className="h-7 w-7" />
+          </span>
+          <p className="text-foreground text-[15px] font-semibold">
+            No tickets yet
+          </p>
+          <p className="text-muted-foreground max-w-[300px] text-[13px] leading-relaxed">
+            When staff opens your ticket at the table, it appears here with the
+            place photo, your total reward, and steps to finish. Completed
+            tickets stay here as history.
+          </p>
+        </div>
       ) : (
         bundles.map((b) => (
           <TicketPreviewCard

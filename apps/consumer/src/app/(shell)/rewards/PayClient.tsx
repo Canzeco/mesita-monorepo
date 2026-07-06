@@ -29,7 +29,7 @@ export function PayClient({
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4 pb-6">
       <MyQrCard code={code} name={name} />
 
-      <div className="mt-4">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col">
         <PayTickets userId={userId} />
       </div>
     </div>
