@@ -404,6 +404,7 @@ export function SearchClient({
                     key={place.id}
                     place={place}
                     selected={place.id === selectedId}
+                    onSelect={() => handleSelectPlace(place)}
                     onOpen={() =>
                       router.push(placeHref(place.slug || place.id))
                     }
@@ -504,14 +505,18 @@ function activeToneClasses(tone: ChipTone): string {
 }
 
 // One floating catalog card on the bottom rail.
+// Two-step tap: the first tap on an unselected card just selects it (highlight +
+// centre the rail/map on it); tapping the already-selected card opens its detail.
 function RailCard({
   place,
   selected,
+  onSelect,
   onOpen,
   cardRef,
 }: {
   place: Place;
   selected: boolean;
+  onSelect: () => void;
   onOpen: () => void;
   cardRef: (el: HTMLButtonElement | null) => void;
 }) {
@@ -530,7 +535,7 @@ function RailCard({
     <button
       ref={cardRef}
       type="button"
-      onClick={onOpen}
+      onClick={selected ? onOpen : onSelect}
       className={cn(
         "border-border bg-card/95 shadow-elev w-[180px] shrink-0 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
         selected && "border-primary ring-primary/30 ring-2",
