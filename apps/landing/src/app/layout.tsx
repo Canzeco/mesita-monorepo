@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Mesita",
-    description: "Discover. Reserve. Get paid to go out.",
+    description: "Discover. Reserve. Pay less every time.",
   },
 };
 
