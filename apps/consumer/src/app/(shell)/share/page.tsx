@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Share2 } from "lucide-react";
+import {
+  Check,
+  Share2,
+  UserPlus,
+  UtensilsCrossed,
+  Megaphone,
+  Briefcase,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The Invite page is just five gift cards — one per audience — each a
@@ -18,6 +27,8 @@ type GiftCard = {
   line: string;
   /** Card gradient — differentiated per audience. */
   gradient: string;
+  /** Faint oversized emblem watermark — the audience's motif. */
+  Icon: LucideIcon;
   share: { title: string; text: string; url?: string };
 };
 
@@ -27,6 +38,7 @@ const CARDS: GiftCard[] = [
     audience: "Invite a friend",
     line: "Your seat at the table.",
     gradient: "bg-pink-gradient",
+    Icon: UserPlus,
     share: {
       title: "Come join me on Mesita",
       text: "Join me on Mesita — your seat at the table.",
@@ -37,6 +49,7 @@ const CARDS: GiftCard[] = [
     audience: "Restaurants & bars",
     line: "More customers, higher spend. Setup takes ~8 minutes.",
     gradient: "bg-gradient-to-br from-amber-400 to-orange-500",
+    Icon: UtensilsCrossed,
     share: {
       title: "Mesita for restaurants",
       text: "I think you'd love Mesita — setup is ~8 min and free to start.",
@@ -48,6 +61,7 @@ const CARDS: GiftCard[] = [
     audience: "Influencers",
     line: "20% of Mesita's equity is reserved for creators.",
     gradient: "bg-gradient-to-br from-fuchsia-500 to-purple-600",
+    Icon: Megaphone,
     share: {
       title: "Mesita for creators",
       text: "Mesita reserves 20% of its equity for creators — you should partner with them.",
@@ -59,6 +73,7 @@ const CARDS: GiftCard[] = [
     audience: "Marketing agencies",
     line: "Manage restaurants or bars? Add Mesita to your stack.",
     gradient: "bg-gradient-to-br from-sky-400 to-blue-600",
+    Icon: Briefcase,
     share: {
       title: "Mesita for marketing agencies",
       text: "If you run marketing for restaurants or bars, Mesita is worth adding to your stack.",
@@ -70,6 +85,7 @@ const CARDS: GiftCard[] = [
     audience: "Model & talent agencies",
     line: "Your talent, Mesita Premium — free, no tricks.",
     gradient: "bg-gradient-to-br from-neutral-800 to-neutral-950",
+    Icon: Sparkles,
     share: {
       title: "Mesita for talent agencies",
       text: "Mesita makes your talent Premium for free — partner places want them in the room.",
@@ -117,6 +133,8 @@ function GiftCardTile({ card }: { card: GiftCard }) {
     }
   };
 
+  const Emblem = card.Icon;
+
   return (
     <div
       className={cn(
@@ -124,8 +142,20 @@ function GiftCardTile({ card }: { card: GiftCard }) {
         card.gradient,
       )}
     >
+      {/* Gift-card gloss: a soft diagonal sheen across the gradient. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20"
+      />
+      {/* Faint oversized audience emblem, bleeding off the bottom-right edge. */}
+      <Emblem
+        aria-hidden
+        className="pointer-events-none absolute -right-3 -bottom-4 h-28 w-28 text-white/10"
+        strokeWidth={1.5}
+      />
+
       {/* Button on top: eyebrow (left) + Share (right). */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="relative flex items-start justify-between gap-3">
         <p className="text-[10px] font-bold tracking-[0.2em] text-white/80 uppercase">
           Mesita · Gift card
         </p>
@@ -155,7 +185,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
 
       {/* Audience + one-liner pinned to the bottom so every card reads the
           same regardless of copy length. */}
-      <div className="mt-auto pt-6">
+      <div className="relative mt-auto pt-6">
         <p className="font-display text-2xl leading-tight font-semibold tracking-tight">
           {card.audience}
         </p>
