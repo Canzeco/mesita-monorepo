@@ -20,7 +20,7 @@ import {
   ChevronRight,
   Utensils,
   Users,
-  Bookmark,
+  Heart,
   Clock,
   Tags,
   Link2,
@@ -1312,7 +1312,7 @@ export function PlaceDetailActionBar({
             : "border-border bg-card text-foreground hover:bg-muted",
         )}
       >
-        <Bookmark
+        <Heart
           className={cn("h-4 w-4", saved && "fill-current")}
           strokeWidth={2}
         />
