@@ -44,15 +44,15 @@ export const CONSUMER_ROUTES = {
     mine: "/inbox/mine",
     global: "/inbox/global",
   },
-  me: {
-    // Consumers have a CLASS (Free / Premium), never a "plan" — plans belong
-    // to businesses. The old /me/plan segment redirects here.
-    class: "/me/class",
-    settings: "/me/settings",
-  },
+  // The Me tab is a single flat page — identity hero + modular boxes that open
+  // as modals (Class, Settings, …). There are NO nested tab routes; /me is the
+  // whole surface. Legacy /me/class, /me/settings, and /me/plan redirect here.
+  me: "/me",
   legacy: {
     profile: "/profile",
     invite: "/invite",
+    meClass: "/me/class",
+    meSettings: "/me/settings",
     mePlan: "/me/plan",
     notifications: "/notifications",
     inboxMine: "/inbox/my-activity",

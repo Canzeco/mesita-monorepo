@@ -60,7 +60,7 @@ export function VerifySocialSheet({
         followers: DEMO_FOLLOWERS,
         handle: handle.trim().replace(/^@/, "").toLowerCase(),
       });
-      window.location.href = `${CONSUMER_ROUTES.me.class}?instagram=success`;
+      window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
     } catch (e) {
       toast(errMsg(e, "Couldn't verify your Instagram — try again."));
       setVerifying(false);

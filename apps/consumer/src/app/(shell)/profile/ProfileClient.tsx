@@ -34,12 +34,14 @@ import {
 
 // The Me surface — a static identity summary followed by a stack of modular
 // boxes, each opening its own bottom-sheet modal: Share, Class, Instagram,
-// Personal details, Settings, and Contact. The old two-tab
-// (Class / Settings) layout was replaced; both /me/class and /me/settings
-// still render this page, and /me/settings opens the Settings box on arrival.
-export type ProfileTab = "class" | "settings";
-
-export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
+// Personal details, Settings, and Contact. This is a single flat page at /me
+// (the old two-tab /me/class · /me/settings layout is retired); `openSettings`
+// opens the Settings box on arrival for the legacy /me/settings deep link.
+export function ProfileClient({
+  openSettings = false,
+}: {
+  openSettings?: boolean;
+}) {
   const supabase = useBrowserSupabase();
 
   // One consumer-web-get-profile read per visit; the (shell) layout already
@@ -49,13 +51,14 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
   const [loading, setLoading] = useState(true);
 
   // Modal state. Only one is meaningfully open at a time; each is a LocalSheet
-  // kept mounted so its exit animation plays. /me/settings deep-links open the
-  // Settings box — seeded from the prop so there is no setState-in-effect.
+  // kept mounted so its exit animation plays. The legacy /me/settings deep link
+  // opens the Settings box — seeded from the prop so there is no
+  // setState-in-effect.
   const [shareOpen, setShareOpen] = useState(false);
   const [classOpen, setClassOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(initialTab === "settings");
+  const [settingsOpen, setSettingsOpen] = useState(openSettings);
   const [contactOpen, setContactOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 

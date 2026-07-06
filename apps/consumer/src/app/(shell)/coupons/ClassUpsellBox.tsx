@@ -52,7 +52,7 @@ export function ClassUpsellBox() {
 
   return (
     <Link
-      href={CONSUMER_ROUTES.me.class}
+      href={CONSUMER_ROUTES.me}
       className="bg-pink-gradient shadow-glow group relative block overflow-hidden rounded-2xl p-5 text-white transition active:scale-[0.99]"
     >
       <Sparkles

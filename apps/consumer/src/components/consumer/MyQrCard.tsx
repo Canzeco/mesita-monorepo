@@ -198,7 +198,7 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
       {/* Premium nudge — Free only */}
       {isFree ? (
         <Link
-          href={CONSUMER_ROUTES.me.class}
+          href={CONSUMER_ROUTES.me}
           className="border-border surface-card flex items-center gap-3 rounded-2xl px-3.5 py-2.5 transition active:scale-[0.99]"
         >
           <span className="bg-tier-premium grid size-9 shrink-0 place-items-center rounded-xl text-white">

@@ -57,7 +57,7 @@ const ITEMS: Item[] = [
     match: CONSUMER_RESERVATION_SURFACE_PREFIX,
   },
   {
-    href: CONSUMER_ROUTES.me.class,
+    href: CONSUMER_ROUTES.me,
     Icon: User,
     // Base label; the live class ("Me · Premium" / "Me · Free") is stitched in
     // at render from the server-seeded class context — see BottomNav below.
