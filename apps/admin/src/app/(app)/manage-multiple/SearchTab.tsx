@@ -10,9 +10,12 @@ import {
   Download,
   ChevronRight,
   CheckCircle2,
+  Star,
+  SlidersHorizontal,
 } from "lucide-react";
 import { PlacesMap } from "@/components/PlacesMap";
 import type {
+  PlaceLite,
   QueryResult,
   SearchResponse,
   SearchErrorResponse,
@@ -25,12 +28,12 @@ const MIN_RESULTS = 1;
 const PAGE_SIZE = 20;
 
 // Google Places Text Search pricing (SKU model effective 2025-03-01).
-// The backend field mask includes places.location, which lands every
-// request in the Text Search Pro SKU regardless of the other fields.
-// Pricing for the 0–100K monthly tier — beyond that the tier rate
-// drops, so this is a worst-case estimate. The first 5,000 Pro requests
-// each month are free, shared across the whole project; surfaced in
-// the tooltip rather than discounted from the headline number, since
+// The backend field mask includes places.location, rating and
+// userRatingCount — all Text Search Pro SKU fields, so every request lands
+// in Pro regardless. Pricing for the 0–100K monthly tier — beyond that the
+// tier rate drops, so this is a worst-case estimate. The first 5,000 Pro
+// requests each month are free, shared across the whole project; surfaced
+// in the tooltip rather than discounted from the headline number, since
 // the remaining free quota isn't visible from the browser.
 const PRICE_PER_REQUEST_USD = 0.032;
 const FREE_PRO_REQUESTS_PER_MONTH = 5000;
@@ -41,10 +44,28 @@ const EXAMPLE_QUERIES = [
   "Coffee shops in Mexico City",
 ];
 
+// Quality-filter presets. 0 = off ("Any"). Rating is a Google 1–5 score;
+// reviews is a userRatingCount floor. A place must clear BOTH to survive.
+const RATING_OPTIONS: { label: string; value: number }[] = [
+  { label: "Any", value: 0 },
+  { label: "3.5+", value: 3.5 },
+  { label: "4.0+", value: 4 },
+  { label: "4.5+", value: 4.5 },
+];
+const REVIEW_OPTIONS: { label: string; value: number }[] = [
+  { label: "Any", value: 0 },
+  { label: "10+", value: 10 },
+  { label: "50+", value: 50 },
+  { label: "100+", value: 100 },
+  { label: "500+", value: 500 },
+];
+
 export function SearchTab() {
   const [queriesText, setQueriesText] = useState("");
   const [regionCode, setRegionCode] = useState("MX");
   const [maxResults, setMaxResults] = useState(MAX_RESULTS);
+  const [minRating, setMinRating] = useState(0);
+  const [minReviews, setMinReviews] = useState(0);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,9 +89,6 @@ export function SearchTab() {
   const estimatedApiCalls = queries.length * pagesPerQuery;
   const estimatedCostUsd = estimatedApiCalls * PRICE_PER_REQUEST_USD;
   const failedQueries = result?.queries.filter((q) => q.error !== null) ?? [];
-  const totalRawCount =
-    result?.queries.reduce((n, q) => n + q.places.length, 0) ?? 0;
-  const duplicatesCount = result ? totalRawCount - result.uniqueCount : 0;
 
   async function runSearch() {
     if (queries.length === 0 || overLimit) return;
@@ -85,6 +103,8 @@ export function SearchTab() {
           queries,
           regionCode: regionCode.trim().toUpperCase() || "MX",
           maxResultsPerQuery: maxResults,
+          minRating,
+          minUserRatingCount: minReviews,
         }),
       });
       const data: SearchResponse | SearchErrorResponse = await res.json();
@@ -113,7 +133,7 @@ export function SearchTab() {
   function downloadCsv() {
     if (!result) return;
     const rows: string[] = [
-      "query,place_id,name,address,in_mesita,created_at,updated_at",
+      "query,place_id,name,address,rating,reviews,in_mesita,created_at,updated_at",
     ];
     for (const q of result.queries) {
       for (const p of q.places) {
@@ -123,6 +143,8 @@ export function SearchTab() {
             p.id,
             p.displayName,
             p.formattedAddress,
+            p.rating === null ? "" : String(p.rating),
+            p.userRatingCount === null ? "" : String(p.userRatingCount),
             p.existsInMesita ? "yes" : "no",
             p.createdAt ?? "",
             p.updatedAt ?? "",
@@ -148,95 +170,146 @@ export function SearchTab() {
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        One Google Places query per line. Each runs through the Places
-        Text Search API; the deduped union of Place IDs comes back below.
+        Paste one Google Places query per line — each runs through the Places
+        Text Search API, and the deduped union of Place IDs comes back below,
+        ready for bulk create. Use the quality filters to drop low-signal
+        listings before they hit the results.
       </p>
 
-      {/* Form */}
-      <section className="mt-8 space-y-4">
-        <div className="border-border bg-card shadow-elev rounded-3xl border p-1">
-          <div className="border-border bg-background rounded-[20px] border">
-            <textarea
-              id="queries"
-              value={queriesText}
-              onChange={(e) => setQueriesText(e.target.value)}
-              rows={7}
-              placeholder={EXAMPLE_QUERIES.join("\n")}
-              spellCheck={false}
-              className="placeholder:text-muted-foreground/50 block w-full resize-y rounded-[20px] bg-transparent px-5 py-4 font-mono text-sm leading-relaxed outline-none"
-            />
-            <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3 text-xs">
-              <div className="flex items-center gap-3">
-                <span>
-                  ~{estimatedApiCalls} Google API call
-                  {estimatedApiCalls === 1 ? "" : "s"}
-                </span>
-                {queries.length === 0 && (
-                  <>
-                    <span className="text-muted-foreground/50">·</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setQueriesText(EXAMPLE_QUERIES.join("\n"))
-                      }
-                      className="text-secondary hover:text-secondary/80 font-medium underline-offset-2 hover:underline"
-                    >
-                      Try examples
-                    </button>
-                  </>
-                )}
+      <section className="mt-8 space-y-8">
+        {/* Step 1 — queries */}
+        <div className="space-y-3">
+          <StepHeading
+            step={1}
+            title="Queries"
+            hint="One search per line. Duplicates and blank lines are ignored."
+          />
+          <div className="border-border bg-card shadow-elev rounded-3xl border p-1">
+            <div className="border-border bg-background rounded-[20px] border">
+              <textarea
+                id="queries"
+                value={queriesText}
+                onChange={(e) => setQueriesText(e.target.value)}
+                rows={7}
+                placeholder={EXAMPLE_QUERIES.join("\n")}
+                spellCheck={false}
+                className="placeholder:text-muted-foreground/50 block w-full resize-y rounded-[20px] bg-transparent px-5 py-4 font-mono text-sm leading-relaxed outline-none"
+              />
+              <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3 text-xs">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={
+                      overLimit
+                        ? "text-destructive font-medium"
+                        : "text-foreground/70 font-medium"
+                    }
+                  >
+                    {queries.length} {queries.length === 1 ? "query" : "queries"}
+                    {overLimit && ` · over the ${MAX_QUERIES} max`}
+                  </span>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span>
+                    ~{estimatedApiCalls} Google API call
+                    {estimatedApiCalls === 1 ? "" : "s"}
+                  </span>
+                  {queries.length === 0 && (
+                    <>
+                      <span className="text-muted-foreground/50">·</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQueriesText(EXAMPLE_QUERIES.join("\n"))
+                        }
+                        className="text-secondary hover:text-secondary/80 font-medium underline-offset-2 hover:underline"
+                      >
+                        Try examples
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Three big param cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <ParamCard
-            label="Queries"
-            footer={`of ${MAX_QUERIES} max`}
-            tone={overLimit ? "warn" : "default"}
-          >
-            <span className="font-display text-5xl font-semibold tracking-tight tabular-nums">
-              {queries.length}
-            </span>
-          </ParamCard>
+        {/* Step 2 — search settings */}
+        <div className="space-y-3">
+          <StepHeading
+            step={2}
+            title="Search settings"
+            hint="How many results to pull per query, and which country to bias toward."
+          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ParamCard
+              label="Results per query"
+              footer={`${MIN_RESULTS}–${MAX_RESULTS} · more = higher cost`}
+            >
+              <input
+                type="number"
+                min={MIN_RESULTS}
+                max={MAX_RESULTS}
+                value={maxResults}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (Number.isNaN(n)) return;
+                  setMaxResults(
+                    Math.min(MAX_RESULTS, Math.max(MIN_RESULTS, Math.round(n))),
+                  );
+                }}
+                aria-label="Max results per query"
+                className="font-display w-full bg-transparent text-center text-5xl font-semibold tracking-tight tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </ParamCard>
 
-          <ParamCard
-            label="Results per query"
-            footer={`${MIN_RESULTS}–${MAX_RESULTS} range`}
-          >
-            <input
-              type="number"
-              min={MIN_RESULTS}
-              max={MAX_RESULTS}
-              value={maxResults}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                if (Number.isNaN(n)) return;
-                setMaxResults(
-                  Math.min(MAX_RESULTS, Math.max(MIN_RESULTS, Math.round(n))),
-                );
-              }}
-              aria-label="Max results per query"
-              className="font-display w-full bg-transparent text-center text-5xl font-semibold tracking-tight tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
-          </ParamCard>
+            <ParamCard label="Region" footer="ISO-3166-1 alpha-2">
+              <input
+                value={regionCode}
+                onChange={(e) =>
+                  setRegionCode(
+                    e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase(),
+                  )
+                }
+                maxLength={2}
+                placeholder="MX"
+                aria-label="Region code"
+                className="font-display block w-full bg-transparent text-center font-mono text-5xl font-semibold tracking-tight uppercase outline-none"
+              />
+            </ParamCard>
+          </div>
+        </div>
 
-          <ParamCard label="Region" footer="ISO-3166-1 alpha-2">
-            <input
-              value={regionCode}
-              onChange={(e) =>
-                setRegionCode(
-                  e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase(),
-                )
-              }
-              maxLength={2}
-              placeholder="MX"
-              aria-label="Region code"
-              className="font-display block w-full bg-transparent text-center font-mono text-5xl font-semibold tracking-tight uppercase outline-none"
-            />
-          </ParamCard>
+        {/* Step 3 — quality filters */}
+        <div className="space-y-3">
+          <StepHeading
+            step={3}
+            title="Quality filters"
+            icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
+            hint="Places with many Google reviews and a high rating are almost always real, good venues. Filter out the noise — the results tell you how many each query dropped, so you never mistake a filter for an empty search."
+          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FilterCard
+              label="Minimum rating"
+              footer="Google star score"
+              active={minRating > 0}
+            >
+              <ChipRow
+                options={RATING_OPTIONS}
+                value={minRating}
+                onChange={setMinRating}
+              />
+            </FilterCard>
+            <FilterCard
+              label="Minimum reviews"
+              footer="Google review count"
+              active={minReviews > 0}
+            >
+              <ChipRow
+                options={REVIEW_OPTIONS}
+                value={minReviews}
+                onChange={setMinReviews}
+              />
+            </FilterCard>
+          </div>
         </div>
 
         <CostCalculator
@@ -277,63 +350,12 @@ export function SearchTab() {
       {/* Results */}
       {result && (
         <div className="mt-10 space-y-6">
-          <section className="border-border bg-pink-gradient shadow-elev relative overflow-hidden rounded-3xl border p-7">
-            <div className="flex flex-wrap items-end justify-between gap-5">
-              <div>
-                <p className="text-secondary text-xs font-medium tracking-[0.14em] uppercase">
-                  Result
-                </p>
-                <p className="font-display mt-1 text-5xl font-semibold tracking-tight md:text-6xl">
-                  {result.uniqueCount.toLocaleString()}
-                </p>
-                <p className="text-foreground/70 mt-1 text-sm">
-                  unique {result.uniqueCount === 1 ? "Place ID" : "Place IDs"}{" "}
-                  · from {result.queries.length}{" "}
-                  {result.queries.length === 1 ? "query" : "queries"}
-                  {duplicatesCount > 0 && (
-                    <> · {duplicatesCount} duplicates filtered</>
-                  )}{" "}
-                  · region {result.regionCode}
-                  {result.mesitaLookupError === null && (
-                    <>
-                      {" · "}
-                      <span className="text-foreground font-medium">
-                        {result.mesitaMatchCount}
-                      </span>{" "}
-                      already in Mesita
-                    </>
-                  )}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    copyText(
-                      result.uniquePlaces.map((p) => p.id).join("\n"),
-                      "all",
-                    )
-                  }
-                  className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-sm transition"
-                >
-                  {copied === "all" ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                  {copied === "all" ? "Copied" : "Copy all IDs"}
-                </button>
-                <button
-                  type="button"
-                  onClick={downloadCsv}
-                  className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-sm transition"
-                >
-                  <Download className="h-4 w-4" />
-                  Download CSV
-                </button>
-              </div>
-            </div>
-          </section>
+          <ResultSummary
+            result={result}
+            copied={copied}
+            onCopy={copyText}
+            onDownload={downloadCsv}
+          />
 
           {failedQueries.length > 0 && (
             <section className="border-destructive/40 bg-destructive/5 text-destructive rounded-2xl border p-4 text-sm">
@@ -387,6 +409,35 @@ export function SearchTab() {
   );
 }
 
+function StepHeading({
+  step,
+  title,
+  hint,
+  icon,
+}: {
+  step: number;
+  title: string;
+  hint: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="bg-primary/10 text-primary font-display mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums">
+        {step}
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-foreground flex items-center gap-1.5 text-sm font-semibold">
+          {icon}
+          {title}
+        </h2>
+        <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+          {hint}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ParamCard({
   label,
   footer,
@@ -417,6 +468,189 @@ function ParamCard({
   );
 }
 
+function FilterCard({
+  label,
+  footer,
+  active,
+  children,
+}: {
+  label: string;
+  footer: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={
+        "bg-card shadow-elev flex flex-col gap-3 rounded-2xl border px-5 py-4 transition " +
+        (active ? "border-primary/50" : "border-border")
+      }
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+          {label}
+        </span>
+        <span className="text-muted-foreground/70 text-[11px]">{footer}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ChipRow({
+  options,
+  value,
+  onChange,
+}: {
+  options: { label: string; value: number }[];
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            aria-pressed={selected}
+            className={
+              "rounded-xl px-3 py-1.5 text-sm font-medium tabular-nums transition " +
+              (selected
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground")
+            }
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ResultSummary({
+  result,
+  copied,
+  onCopy,
+  onDownload,
+}: {
+  result: SearchResponse;
+  copied: string | null;
+  onCopy: (text: string, key: string) => void;
+  onDownload: () => void;
+}) {
+  const totalRawCount = result.queries.reduce((n, q) => n + q.rawCount, 0);
+  const duplicatesCount =
+    result.queries.reduce((n, q) => n + q.places.length, 0) -
+    result.uniqueCount;
+  const filtersActive =
+    result.minRating > 0 || result.minUserRatingCount > 0;
+  return (
+    <section className="border-border bg-pink-gradient shadow-elev relative overflow-hidden rounded-3xl border p-7">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className="text-secondary text-xs font-medium tracking-[0.14em] uppercase">
+            Result
+          </p>
+          <p className="font-display mt-1 text-5xl font-semibold tracking-tight md:text-6xl">
+            {result.uniqueCount.toLocaleString()}
+          </p>
+          <p className="text-foreground/70 mt-1 text-sm">
+            unique {result.uniqueCount === 1 ? "Place ID" : "Place IDs"} · from{" "}
+            {result.queries.length}{" "}
+            {result.queries.length === 1 ? "query" : "queries"}
+            {duplicatesCount > 0 && <> · {duplicatesCount} duplicates filtered</>}{" "}
+            · region {result.regionCode}
+            {result.mesitaLookupError === null && (
+              <>
+                {" · "}
+                <span className="text-foreground font-medium">
+                  {result.mesitaMatchCount}
+                </span>{" "}
+                already in Mesita
+              </>
+            )}
+          </p>
+          {filtersActive && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-foreground/60 inline-flex items-center gap-1 font-medium uppercase tracking-wide">
+                <SlidersHorizontal className="h-3 w-3" />
+                Filters
+              </span>
+              {result.minRating > 0 && (
+                <span className="bg-background/70 text-foreground/80 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium">
+                  <Star className="h-3 w-3 fill-current" />
+                  {result.minRating.toFixed(1)}+
+                </span>
+              )}
+              {result.minUserRatingCount > 0 && (
+                <span className="bg-background/70 text-foreground/80 rounded-full px-2.5 py-0.5 font-medium">
+                  {result.minUserRatingCount.toLocaleString()}+ reviews
+                </span>
+              )}
+              <span className="text-foreground/60">
+                · {result.filteredOutCount.toLocaleString()} of{" "}
+                {totalRawCount.toLocaleString()} dropped below the bar
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              onCopy(result.uniquePlaces.map((p) => p.id).join("\n"), "all")
+            }
+            className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-sm transition"
+          >
+            {copied === "all" ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            {copied === "all" ? "Copied" : "Copy all IDs"}
+          </button>
+          <button
+            type="button"
+            onClick={onDownload}
+            className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-sm transition"
+          >
+            <Download className="h-4 w-4" />
+            Download CSV
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RatingBadge({ place }: { place: PlaceLite }) {
+  if (place.rating === null && place.userRatingCount === null) {
+    return (
+      <span className="text-muted-foreground/70 inline-flex items-center gap-1 text-[11px]">
+        no Google rating yet
+      </span>
+    );
+  }
+  return (
+    <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
+      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+      <span className="text-foreground/80 font-medium tabular-nums">
+        {place.rating === null ? "—" : place.rating.toFixed(1)}
+      </span>
+      {place.userRatingCount !== null && (
+        <span className="tabular-nums">
+          · {place.userRatingCount.toLocaleString()}{" "}
+          {place.userRatingCount === 1 ? "review" : "reviews"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function QueryRow({
   q,
   copied,
@@ -429,6 +663,7 @@ function QueryRow({
   const [open, setOpen] = useState(false);
   const hasResults = q.places.length > 0;
   const mesitaHits = q.places.filter((p) => p.existsInMesita).length;
+  const filteredOut = q.rawCount - q.places.length;
   const copyKey = `q:${q.query}`;
   return (
     <li>
@@ -451,12 +686,17 @@ function QueryRow({
             {mesitaHits} in Mesita
           </span>
         )}
+        {filteredOut > 0 && !q.error && (
+          <span className="text-muted-foreground bg-muted/60 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
+            {filteredOut} filtered
+          </span>
+        )}
         {q.error ? (
           <span className="text-destructive bg-destructive/10 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
             error
           </span>
         ) : (
-          <span className="text-foreground/70 bg-muted shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
+          <span className="text-foreground/70 bg-muted shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
             {q.places.length}
             {q.truncated ? "+" : ""}{" "}
             {q.places.length === 1 ? "result" : "results"}
@@ -471,11 +711,25 @@ function QueryRow({
             </p>
           ) : !hasResults ? (
             <p className="text-muted-foreground bg-muted/40 rounded-xl p-3 text-xs">
-              No results.
+              {q.rawCount > 0
+                ? `${q.rawCount} ${q.rawCount === 1 ? "place" : "places"} found, but ${
+                    q.rawCount === 1 ? "it was" : "all were"
+                  } below your quality filters. Loosen the filters to see ${
+                    q.rawCount === 1 ? "it" : "them"
+                  }.`
+                : "No results."}
             </p>
           ) : (
             <div>
-              <div className="mb-2 flex items-center justify-end">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                {filteredOut > 0 ? (
+                  <span className="text-muted-foreground text-xs">
+                    Showing {q.places.length} of {q.rawCount} — {filteredOut}{" "}
+                    below your quality filters
+                  </span>
+                ) : (
+                  <span />
+                )}
                 <button
                   type="button"
                   onClick={() =>
@@ -514,33 +768,36 @@ function QueryRow({
                       <p className="text-muted-foreground truncate">
                         {p.formattedAddress}
                       </p>
-                      {p.existsInMesita && (p.createdAt || p.updatedAt) && (
-                        <p className="text-muted-foreground/80 mt-0.5 truncate text-[11px]">
-                          {p.createdAt && (
-                            <>
-                              added{" "}
-                              <span
-                                className="text-foreground/70 font-medium"
-                                title={p.createdAt}
-                              >
-                                {formatShortDate(p.createdAt)}
-                              </span>
-                            </>
-                          )}
-                          {p.createdAt && p.updatedAt && " · "}
-                          {p.updatedAt && (
-                            <>
-                              updated{" "}
-                              <span
-                                className="text-foreground/70 font-medium"
-                                title={p.updatedAt}
-                              >
-                                {formatShortDate(p.updatedAt)}
-                              </span>
-                            </>
-                          )}
-                        </p>
-                      )}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <RatingBadge place={p} />
+                        {p.existsInMesita && (p.createdAt || p.updatedAt) && (
+                          <p className="text-muted-foreground/80 truncate text-[11px]">
+                            {p.createdAt && (
+                              <>
+                                · added{" "}
+                                <span
+                                  className="text-foreground/70 font-medium"
+                                  title={p.createdAt}
+                                >
+                                  {formatShortDate(p.createdAt)}
+                                </span>
+                              </>
+                            )}
+                            {p.createdAt && p.updatedAt && " · "}
+                            {p.updatedAt && (
+                              <>
+                                updated{" "}
+                                <span
+                                  className="text-foreground/70 font-medium"
+                                  title={p.updatedAt}
+                                >
+                                  {formatShortDate(p.updatedAt)}
+                                </span>
+                              </>
+                            )}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <code className="text-muted-foreground bg-muted/40 max-w-full truncate rounded-lg px-2 py-1 font-mono">
                       {p.id}
@@ -603,21 +860,13 @@ function CostCalculator({
       </div>
 
       <div className="border-border mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs sm:grid-cols-4">
-        <CalcStep
-          label="Queries"
-          value={queries.toLocaleString()}
-          op=""
-        />
+        <CalcStep label="Queries" value={queries.toLocaleString()} op="" />
         <CalcStep
           label="Pages / query"
           value={pagesPerQuery.toLocaleString()}
           op="×"
         />
-        <CalcStep
-          label="Price / call"
-          value={pricePerCallLabel}
-          op="×"
-        />
+        <CalcStep label="Price / call" value={pricePerCallLabel} op="×" />
         <CalcStep
           label="Total calls"
           value={totalCalls.toLocaleString()}
@@ -627,10 +876,11 @@ function CostCalculator({
       </div>
 
       <p className="text-muted-foreground/70 mt-3 text-[11px] leading-relaxed">
-        Worst-case estimate. The first {freeTierLabel} Pro calls each month
-        are free across the whole Google Cloud project, and per-call price
-        drops in higher volume tiers. Each page of 20 results is one
-        billable request.
+        Worst-case estimate. Quality filters don&apos;t change the cost — every
+        page of 20 results is one billable request whether or not the places
+        pass the filters. The first {freeTierLabel} Pro calls each month are
+        free across the whole Google Cloud project, and per-call price drops in
+        higher volume tiers.
       </p>
     </div>
   );
@@ -670,4 +920,3 @@ function CalcStep({
     </div>
   );
 }
-

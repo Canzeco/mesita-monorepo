@@ -6,6 +6,8 @@ type RequestBody = {
   queries?: unknown;
   regionCode?: unknown;
   maxResultsPerQuery?: unknown;
+  minRating?: unknown;
+  minUserRatingCount?: unknown;
 };
 
 export async function POST(req: NextRequest) {
@@ -26,11 +28,21 @@ export async function POST(req: NextRequest) {
     typeof body.regionCode === "string" ? body.regionCode.trim().toUpperCase() : "MX";
   const maxResultsPerQuery =
     typeof body.maxResultsPerQuery === "number" ? body.maxResultsPerQuery : 60;
+  // Quality filters. The edge function clamps these too, but keep the wire
+  // payload clean: numbers only, 0 = off.
+  const minRating =
+    typeof body.minRating === "number" && body.minRating > 0 ? body.minRating : 0;
+  const minUserRatingCount =
+    typeof body.minUserRatingCount === "number" && body.minUserRatingCount > 0
+      ? Math.floor(body.minUserRatingCount)
+      : 0;
 
   const result = await efInvoke<SearchResponse>("admin-web-discover-places", {
     queries,
     regionCode,
     maxResultsPerQuery,
+    minRating,
+    minUserRatingCount,
   });
 
   if (!result.ok) {
