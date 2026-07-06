@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   BadgeCheck,
+  MapPin,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -82,6 +83,7 @@ export function SearchClient({
   // results panel is dismissed, scoping each autocomplete run properly.
   const sessionTokenRef = useRef(newSessionToken());
   const railRefs = useRef(new Map<string, HTMLButtonElement | null>());
+  const railScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [query, setQuery] = useState("");
   const [aiOpen, setAiOpen] = useState(false);
@@ -92,6 +94,9 @@ export function SearchClient({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 1-based position of the card nearest the rail's scroll start — powers
+  // the "3 / 12 places" pager so the horizontal rail reads as browsable.
+  const [railIndex, setRailIndex] = useState(0);
 
   const trimmed = query.trim();
   // Idle = the map moment: no text query, concierge closed. The chip row
@@ -243,10 +248,33 @@ export function SearchClient({
     updateQuery("");
   };
 
-  const toggleChip = (id: string) =>
+  // A filter change reshuffles the rail, so snap the pager back to the first
+  // card (and the scroll container with it) to keep the count honest.
+  const resetRail = () => {
+    setRailIndex(0);
+    railScrollRef.current?.scrollTo({ left: 0 });
+  };
+
+  // Card width (180) + flex gap (8) → the horizontal stride between cards.
+  const RAIL_STRIDE = 188;
+  const handleRailScroll = () => {
+    const el = railScrollRef.current;
+    if (!el || visible.length === 0) return;
+    const idx = Math.round(el.scrollLeft / RAIL_STRIDE);
+    setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
+  };
+
+  const toggleChip = (id: string) => {
+    resetRail();
     setActiveChips((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+  };
+
+  const clearChips = () => {
+    resetRail();
+    setActiveChips([]);
+  };
 
   // Pin tap → highlight + scroll the rail to the matching card. The map
   // pans itself via SearchMap's selectedId.
@@ -268,9 +296,7 @@ export function SearchClient({
         userLocation={userLocation}
         selectedId={selectedId}
         onSelectPlace={handleSelectPlace}
-        onOpenPlace={(place) =>
-          router.push(placeHref(place.slug || place.id))
-        }
+        onOpenPlace={(place) => router.push(placeHref(place.slug || place.id))}
       />
 
       {/* Floating top overlay — split search bar + idle chip row. */}
@@ -338,7 +364,7 @@ export function SearchClient({
                   type="button"
                   onClick={() => toggleChip(chip.id)}
                   className={cn(
-                    "shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold whitespace-nowrap shadow-sm backdrop-blur transition active:scale-95",
+                    "flex h-11 shrink-0 items-center justify-center rounded-full border px-4 text-xs font-semibold whitespace-nowrap shadow-sm backdrop-blur transition active:scale-95",
                     activeChips.includes(chip.id)
                       ? activeToneClasses(chip.tone)
                       : "border-border bg-card/95 text-foreground",
@@ -356,21 +382,38 @@ export function SearchClient({
       {idle && (
         <div className="absolute inset-x-0 bottom-3 z-20">
           {visible.length > 0 ? (
-            <div className="scrollbar-hide flex gap-2 overflow-x-auto px-3 pb-1">
-              {visible.map((place) => (
-                <RailCard
-                  key={place.id}
-                  place={place}
-                  selected={place.id === selectedId}
-                  onOpen={() =>
-                    router.push(placeHref(place.slug || place.id))
-                  }
-                  cardRef={(el) => {
-                    railRefs.current.set(place.id, el);
-                  }}
-                />
-              ))}
-            </div>
+            <>
+              {visible.length > 1 && (
+                <div className="mb-2 flex justify-center">
+                  <span className="border-border bg-card/95 text-muted-foreground flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold tabular-nums shadow-sm backdrop-blur">
+                    <MapPin className="text-primary h-3 w-3" />
+                    {Math.min(railIndex + 1, visible.length)} / {visible.length}
+                    <span className="text-muted-foreground/70 font-normal">
+                      places
+                    </span>
+                  </span>
+                </div>
+              )}
+              <div
+                ref={railScrollRef}
+                onScroll={handleRailScroll}
+                className="scrollbar-hide flex gap-2 overflow-x-auto px-3 pb-1"
+              >
+                {visible.map((place) => (
+                  <RailCard
+                    key={place.id}
+                    place={place}
+                    selected={place.id === selectedId}
+                    onOpen={() =>
+                      router.push(placeHref(place.slug || place.id))
+                    }
+                    cardRef={(el) => {
+                      railRefs.current.set(place.id, el);
+                    }}
+                  />
+                ))}
+              </div>
+            </>
           ) : (
             catalog.length > 0 && (
               <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur">
@@ -379,7 +422,7 @@ export function SearchClient({
                 </p>
                 <button
                   type="button"
-                  onClick={() => setActiveChips([])}
+                  onClick={clearChips}
                   className="text-primary text-xs font-semibold"
                 >
                   Clear filters
@@ -440,7 +483,7 @@ export function SearchClient({
         open={filtersOpen}
         activeIds={activeChips}
         onToggle={toggleChip}
-        onClear={() => setActiveChips([])}
+        onClear={clearChips}
         onClose={() => setFiltersOpen(false)}
       />
     </div>
