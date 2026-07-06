@@ -14,9 +14,9 @@ import {
 } from "@/lib/consumer-route-contract";
 
 // Five top-level surfaces: Home, Search, Rewards, Reservations, Profile.
-// Home hosts the discovery modes (Swipe / Social / Favorites); Search hosts the
-// map, catalog search, and Ask AI. Rewards/Reservations/Profile reuse the
-// existing pay, saved-reservations, and me surfaces unchanged.
+// Home hosts the discovery routes (Swipe / Ask AI / Social / Favorites);
+// Search hosts the map + catalog search. Rewards/Reservations/Profile reuse
+// the existing pay, saved-reservations, and me surfaces unchanged.
 
 // Icon is either a lucide glyph or the Mesita brand mark (Home) — both take
 // a className and (harmlessly) a strokeWidth, so the render stays uniform.
@@ -29,7 +29,9 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    href: CONSUMER_ROUTES.home,
+    // Land straight on the default sub-route so the bare /home redirect hop
+    // isn't hit on every tab tap; the /home prefix still lights the tab.
+    href: CONSUMER_ROUTES.homeDefault,
     // Brand mark instead of a generic house — Home doubles as the Mesita anchor.
     Icon: MesitaMark,
     label: "Home",

@@ -8,14 +8,24 @@ export const CONSUMER_ROUTES = {
   // (gift cards, friends who joined), so the page is the noun and "share"
   // is only the action on it. /share is the legacy path (redirects here).
   invite: "/invite",
-  // Discovery hub (Swipe / Social / Favorites modes are client state, not routes).
+  // Discovery hub. The modes are REAL nested routes (/home/{swipe,ai,social,
+  // favorites}); bare /home redirects to the default (swipe).
   home: "/home",
-  // Map + catalog search + Ask AI concierge (panels are client state, not routes).
+  homeTabs: {
+    swipe: "/home/swipe",
+    ai: "/home/ai",
+    social: "/home/social",
+    favorites: "/home/favorites",
+  },
+  // Default landing for the Home tab — link straight here so the bare /home
+  // redirect hop is only hit by direct URLs / legacy deep links.
+  homeDefault: "/home/swipe",
+  // Map + catalog search (Ask AI now lives on Home).
   search: "/search",
-  // The saved-places list lives on Home > Favorites (a client-state mode, not
-  // its own route). This is the canonical "view my saved places" destination —
-  // the old standalone /saved/places grid was a duplicate and was removed.
-  favorites: "/home?mode=favorites",
+  // The saved-places list lives on the Home > Favorites route. This is the
+  // canonical "view my saved places" destination — the old standalone
+  // /saved/places grid was a duplicate and was removed.
+  favorites: "/home/favorites",
   place: {
     prefix: "/place/",
   },
