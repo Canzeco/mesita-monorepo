@@ -100,7 +100,7 @@ export function ShareModal({
         </div>
 
         <Link
-          href={CONSUMER_ROUTES.invite}
+          href={CONSUMER_ROUTES.share}
           onClick={onClose}
           className={cn(
             "text-muted-foreground hover:text-foreground mt-4 block text-center text-[12.5px] font-medium underline underline-offset-4",
