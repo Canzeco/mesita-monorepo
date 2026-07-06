@@ -30,11 +30,11 @@ export function PayClient({
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4 pb-6">
       <RewardsInfoBanner />
 
-      <div className="mt-4">
+      <div className="mt-3">
         <MyQrCard code={code} name={name} />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <PayTickets userId={userId} />
       </div>
     </div>

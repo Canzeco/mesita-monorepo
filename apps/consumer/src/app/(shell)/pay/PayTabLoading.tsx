@@ -51,11 +51,11 @@ export function PayTabLoading() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col px-4 pt-4 pb-6">
       {/* Rewards explainer banner (RewardsInfoBanner) */}
-      <Skeleton className="h-[116px] rounded-2xl" />
+      <Skeleton className="h-[92px] rounded-2xl" />
       {/* Mesita passport card (MyQrCard) */}
-      <Skeleton className="mt-4 h-[430px] rounded-[28px]" />
+      <Skeleton className="mt-3 h-[300px] rounded-[24px]" />
       {/* Tickets stack */}
-      <div className="mt-6">
+      <div className="mt-4">
         <PayTicketListSkeleton />
       </div>
     </div>

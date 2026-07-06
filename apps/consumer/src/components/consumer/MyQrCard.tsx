@@ -88,9 +88,9 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Passport card */}
-      <section className="overflow-hidden rounded-[28px] bg-[linear-gradient(150deg,#0f0a26_0%,#1a1140_58%,#2b1a5c_100%)] p-5 text-white shadow-[0_24px_60px_-24px_rgba(15,10,40,0.55)]">
+      <section className="overflow-hidden rounded-[24px] bg-[linear-gradient(150deg,#0f0a26_0%,#1a1140_58%,#2b1a5c_100%)] p-4 text-white shadow-[0_20px_48px_-24px_rgba(15,10,40,0.55)]">
         {/* Header */}
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-[0.25em] text-white/60 uppercase">
@@ -102,10 +102,10 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
         </div>
 
         {/* QR */}
-        <div className="mx-auto mt-5 w-full max-w-[260px] rounded-3xl bg-white p-4">
+        <div className="mx-auto mt-3 w-full max-w-[176px] rounded-2xl bg-white p-3">
           <QRCodeSVG
             value={`mesita:${displayCode}`}
-            size={260}
+            size={220}
             className="h-auto w-full"
             bgColor="#ffffff"
             fgColor="#0f0a26"
@@ -119,7 +119,7 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
           type="button"
           onClick={onCopy}
           aria-label={copied ? "Code copied" : "Copy code"}
-          className="mx-auto mt-4 flex w-full max-w-[260px] items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-2 font-mono text-sm font-semibold tracking-[0.3em] text-white transition active:scale-[0.99]"
+          className="mx-auto mt-3 flex w-full max-w-[220px] items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-1.5 font-mono text-sm font-semibold tracking-[0.3em] text-white transition active:scale-[0.99]"
         >
           {displayCode}
           {copied ? (
@@ -130,8 +130,8 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
         </button>
 
         {/* Identity strip */}
-        <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/12 text-sm font-bold text-white ring-2 ring-white/15">
+        <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-sm font-bold text-white ring-2 ring-white/15">
             {initialsOf(displayName)}
           </span>
           <div className="min-w-0 flex-1">
@@ -152,24 +152,24 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
       </section>
 
       {/* Helper caption */}
-      <p className="text-muted-foreground px-6 text-center text-[12px] leading-snug">
-        Show this when you ask for the check. Staff scan the QR or type your
-        8-digit code in WhatsApp or their console.
+      <p className="text-muted-foreground px-4 text-center text-[11px] leading-snug">
+        Show this when you ask for the check — staff scan the QR or type your
+        8-digit code.
       </p>
 
       {/* Premium nudge — Free only */}
       {isFree ? (
         <Link
           href={CONSUMER_ROUTES.me.class}
-          className="border-border surface-card flex items-center gap-3 rounded-2xl px-4 py-3.5 transition active:scale-[0.99]"
+          className="border-border surface-card flex items-center gap-3 rounded-2xl px-3.5 py-2.5 transition active:scale-[0.99]"
         >
-          <span className="bg-tier-premium grid size-10 shrink-0 place-items-center rounded-xl text-white">
+          <span className="bg-tier-premium grid size-9 shrink-0 place-items-center rounded-xl text-white">
             <Sparkles className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-foreground text-sm font-bold">Unlock Premium</p>
-            <p className="text-muted-foreground text-[11px]">
-              Bigger discounts and Type B rewards — free with Instagram.
+            <p className="text-muted-foreground text-[11px] leading-snug">
+              Bigger discounts — free with Instagram.
             </p>
           </div>
           <span className="bg-tier-premium shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold tracking-widest text-white uppercase">
