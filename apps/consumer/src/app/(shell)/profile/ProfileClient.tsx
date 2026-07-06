@@ -203,7 +203,7 @@ function ProfileSummaryCard({
   profile: ConsumerProfile | null;
   loading: boolean;
 }) {
-  const { key } = useConsumerClass();
+  const { key, origin, followers } = useConsumerClass();
   const isPremium = key === "premium";
 
   if (loading) {
@@ -251,6 +251,17 @@ function ProfileSummaryCard({
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
   const handle = profile?.instagram_handle ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
+  // Instagram is "connected" via a claimed handle OR an Instagram-origin
+  // membership; when connected, show username + followers + a verified check.
+  const igConnected = origin === "instagram" || Boolean(handle);
+  const igValue = igConnected
+    ? [
+        handle && `@${handle}`,
+        followers > 0 && `${formatFollowerCount(followers)} followers`,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Connected"
+    : "Not connected";
 
   return (
     <section
@@ -303,8 +314,9 @@ function ProfileSummaryCard({
           Icon={Instagram}
           tint="neutral"
           label="Instagram"
-          value={handle ? `@${handle}` : "Not connected"}
-          muted={!handle}
+          value={igValue}
+          muted={!igConnected}
+          verified={igConnected}
         />
         <FactTile
           Icon={Crown}
@@ -343,6 +355,14 @@ const FACT_TINT: Record<FactTint, string> = {
   neutral: "bg-muted text-foreground/70",
 };
 
+// Compact follower count for the tight Instagram fact tile (e.g. 4.2K, 1.1M).
+function formatFollowerCount(n: number): string {
+  if (n >= 1_000_000)
+    return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return `${n}`;
+}
+
 function FactTile({
   Icon,
   emoji,
@@ -350,6 +370,7 @@ function FactTile({
   label,
   value,
   muted,
+  verified,
 }: {
   Icon?: LucideIcon;
   emoji?: string;
@@ -357,6 +378,7 @@ function FactTile({
   label: string;
   value: string;
   muted?: boolean;
+  verified?: boolean;
 }) {
   return (
     <div className="border-border/70 flex items-center gap-2.5 rounded-2xl border p-2.5">
@@ -376,14 +398,19 @@ function FactTile({
         <p className="text-muted-foreground text-[9.5px] leading-none font-semibold tracking-[0.1em] uppercase">
           {label}
         </p>
-        <p
-          className={cn(
-            "mt-1 truncate text-[13px] font-bold",
-            muted && "text-muted-foreground font-medium",
+        <div className="mt-1 flex items-center gap-1">
+          <p
+            className={cn(
+              "truncate text-[13px] font-bold",
+              muted && "text-muted-foreground font-medium",
+            )}
+          >
+            {value}
+          </p>
+          {verified && (
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
           )}
-        >
-          {value}
-        </p>
+        </div>
       </div>
     </div>
   );
