@@ -223,7 +223,7 @@ function ProfileSummaryCard({
 
   if (loading) {
     return (
-      <div className="border-border bg-card rounded-2xl border p-5">
+      <div className="border-border bg-card rounded-3xl border p-5">
         <div className="flex items-center gap-4">
           <div className="bg-muted h-[76px] w-[76px] shrink-0 animate-pulse rounded-full" />
           <div className="flex-1 space-y-2">
@@ -231,7 +231,14 @@ function ProfileSummaryCard({
             <div className="bg-muted h-3.5 w-28 animate-pulse rounded" />
           </div>
         </div>
-        <div className="bg-muted mt-4 h-16 w-full animate-pulse rounded-xl" />
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-muted h-[68px] animate-pulse rounded-2xl"
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -254,8 +261,17 @@ function ProfileSummaryCard({
   const verified = Boolean(handle) || origin === "instagram";
 
   return (
-    <section className="border-border bg-card overflow-hidden rounded-2xl border">
-      <div className="flex items-center gap-4 p-5">
+    <section className="border-border overflow-hidden rounded-3xl border">
+      {/* Hero — a branded gradient wash so the card reads like a membership
+          passport, not a plain panel (richer tint for Premium). */}
+      <div
+        className={cn(
+          "flex items-center gap-4 px-5 pt-5 pb-4",
+          isPremium
+            ? "from-primary/[0.10] via-secondary/[0.08] to-accent/[0.10] bg-gradient-to-br"
+            : "from-primary/[0.05] via-secondary/[0.05] to-accent/[0.05] bg-gradient-to-br",
+        )}
+      >
         {/* Story-ring avatar: class-tinted gradient ring around initials. */}
         <div
           className={cn(
@@ -313,41 +329,40 @@ function ProfileSummaryCard({
         </div>
       </div>
 
-      {/* Static fact list — phone, Instagram, class, country. */}
-      <div className="border-border/60 border-t">
-        <SummaryFact
+      {/* Fact tiles — a 2×2 grid of styled chips (tinted icon circle + label
+          + value) instead of a flat divided list. */}
+      <div className="bg-card grid grid-cols-2 gap-2 p-3">
+        <FactTile
           Icon={Phone}
+          tint="sky"
           label="Phone"
           value={profile?.phone || "Not added"}
           muted={!profile?.phone}
         />
-        <div className="border-border/60 border-t" />
-        <SummaryFact
+        <FactTile
           Icon={Instagram}
+          tint="pink"
           label="Instagram"
           value={handle ? `@${handle}` : "Not connected"}
           muted={!handle}
         />
-        <div className="border-border/60 border-t" />
-        <SummaryFact
+        <FactTile
           Icon={Crown}
+          tint={isPremium ? "premium" : "amber"}
           label="Class"
           value={`Mesita ${classLabel}`}
         />
-        {country && (
-          <>
-            <div className="border-border/60 border-t" />
-            <SummaryFact
-              emoji={country.flag}
-              label="Country"
-              value={country.name}
-            />
-          </>
-        )}
+        <FactTile
+          emoji={country?.flag ?? "🌐"}
+          tint="neutral"
+          label="Country"
+          value={country?.name ?? "Not set"}
+          muted={!country}
+        />
       </div>
 
       {/* Joined communities, if any. */}
-      <div className="border-border/60 border-t px-4 py-3.5">
+      <div className="bg-card border-border/60 border-t px-4 pt-3 pb-4">
         <p className="text-muted-foreground mb-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">
           Communities
         </p>
@@ -373,35 +388,54 @@ function ProfileSummaryCard({
   );
 }
 
-function SummaryFact({
+type FactTint = "sky" | "pink" | "premium" | "amber" | "neutral";
+
+const FACT_TINT: Record<FactTint, string> = {
+  sky: "bg-sky-500/[0.12] text-sky-600",
+  pink: "bg-pink-gradient text-white",
+  premium: "bg-tier-premium text-white",
+  amber: "bg-amber-500/15 text-amber-600",
+  neutral: "bg-muted text-foreground/70",
+};
+
+function FactTile({
   Icon,
   emoji,
+  tint,
   label,
   value,
   muted,
 }: {
   Icon?: LucideIcon;
   emoji?: string;
+  tint: FactTint;
   label: string;
   value: string;
   muted?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <span className="bg-muted text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[15px]">
-        {Icon ? <Icon className="h-4 w-4" /> : <span aria-hidden>{emoji}</span>}
-      </span>
-      <span className="text-muted-foreground w-24 shrink-0 text-[12px] font-medium">
-        {label}
-      </span>
+    <div className="bg-muted/35 ring-border/50 flex flex-col gap-2 rounded-2xl p-3 ring-1 ring-inset">
       <span
         className={cn(
-          "min-w-0 flex-1 truncate text-right text-[13px] font-semibold",
-          muted && "text-muted-foreground font-medium",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[15px] shadow-sm",
+          FACT_TINT[tint],
         )}
       >
-        {value}
+        {Icon ? <Icon className="h-4 w-4" /> : <span aria-hidden>{emoji}</span>}
       </span>
+      <div className="min-w-0">
+        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.1em] uppercase">
+          {label}
+        </p>
+        <p
+          className={cn(
+            "truncate text-[13.5px] font-bold",
+            muted && "text-muted-foreground font-medium",
+          )}
+        >
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
