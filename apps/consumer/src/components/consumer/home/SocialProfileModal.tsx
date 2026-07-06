@@ -89,16 +89,13 @@ export function SocialProfileModal({
               </a>
             </p>
 
-            <div className="mt-3 flex gap-2">
-              {shown.plan === "premium" && (
+            {shown.plan === "premium" && (
+              <div className="mt-3 flex gap-2">
                 <span className="bg-tier-premium inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold text-white">
                   <Crown className="h-3 w-3 fill-current" /> Premium
                 </span>
-              )}
-              <span className="bg-muted text-muted-foreground inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold">
-                Public profile
-              </span>
-            </div>
+              </div>
+            )}
 
             <div className="mt-4 grid grid-cols-4 gap-2 text-center">
               {stats.map((s) => (
