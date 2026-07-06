@@ -28,9 +28,9 @@ const GREETING =
 const AI_ERROR =
   "Hmm, my line dropped for a second — give it another try in a moment.";
 
-// Cap how many cards one reply drops into the thread — a wall of ten
-// cards reads like search results, not a recommendation.
-const MAX_CARDS = 4;
+// Cap how many cards one reply drops into the thread — a tight, curated
+// shortlist reads like a recommendation, not search results.
+const MAX_CARDS = 3;
 // Cap the follow-up chips Memo suggests under a reply.
 const MAX_RELATED = 3;
 
