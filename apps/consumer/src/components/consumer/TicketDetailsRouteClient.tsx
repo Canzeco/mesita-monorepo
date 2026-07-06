@@ -20,7 +20,7 @@ import { TicketDetailsSkeleton } from "@/components/consumer/TicketDetailsSkelet
 import { TicketDetailsView } from "@/components/consumer/TicketDetailsView";
 import { errMsg } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTE_PREFIX } from "@/lib/consumer-route-contract";
 import {
   fetchPayTicketBundle,
   type PayTicketMeta,
@@ -181,7 +181,7 @@ export function TicketDetailsRouteClient({
 
   const onBack = () => {
     if (variant === "modal") router.back();
-    else router.push(CONSUMER_ROUTES.pay.tickets);
+    else router.push(CONSUMER_ROUTE_PREFIX.pay);
   };
 
   return (

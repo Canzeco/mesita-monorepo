@@ -175,14 +175,25 @@ export function PayTickets({ userId }: { userId: string }) {
         b.payload = { ...b.payload, ...payloadFromNotification(n.payload) };
       }
     }
-    return [...map.values()];
-  }, [rows]);
+    // Pure time sort, most recent first — no active/history split. Same
+    // timestamp the card shows as its visit date (ticket created_at, falling
+    // back to the bill/review notification time).
+    const timeOf = (b: TicketBundle): number => {
+      const iso =
+        ticketMetaById.get(b.ticketId)?.created_at ??
+        b.bill?.created_at ??
+        b.review?.created_at ??
+        null;
+      return iso ? new Date(iso).getTime() : 0;
+    };
+    return [...map.values()].sort((a, b) => timeOf(b) - timeOf(a));
+  }, [rows, ticketMetaById]);
 
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2 px-0.5">
         <h2 className="text-foreground text-sm font-semibold">Tickets</h2>
-        <p className="text-muted-foreground text-[11px]">Open + completed</p>
+        <p className="text-muted-foreground text-[11px]">Most recent first</p>
       </div>
 
       {status === "loading" ? (

@@ -1,10 +1,10 @@
 import { Skeleton } from "@/components/shared/Skeleton";
 
-// The pay tab's ONE skeleton language. PayTabLoading is the dynamic()
-// fallback for the whole tab client (segment control + QR passport card);
+// The Rewards page's ONE skeleton language. PayTabLoading is the dynamic()
+// fallback for the whole page client (banner + passport card + tickets);
 // TicketCardSkeleton mirrors the TicketVisitShell silhouette and is reused
 // by PayTickets' pending state and PayClient's tickets fallback, so every
-// loading frame on this tab looks like the content it becomes.
+// loading frame on this page looks like the content it becomes.
 //
 // This module stays a leaf (Skeleton only) on purpose: both PayClient and
 // PayTickets import from it, and pulling anything heavier in here would
@@ -45,24 +45,18 @@ export function PayTicketListSkeleton() {
 }
 
 export function PayTabLoading() {
-  // Tab-AGNOSTIC on purpose: this fires for both /pay/qr and /pay/tickets
-  // (route loading.tsx can't see the segment param, and the dynamic()
-  // fallback covers whichever tab is mounting), so the silhouette is a
-  // neutral content card — not the QR square — to avoid promising the wrong
-  // tab's layout. The per-tab skeletons (PayTicketListSkeleton, the QR card)
-  // take over once the client mounts.
+  // Silhouette of the single Rewards page: explainer banner, the Mesita
+  // passport card (QR square), then the tickets stack. The per-section
+  // skeletons take over once the client mounts.
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col px-4 pt-4 pb-6">
       {/* Rewards explainer banner (RewardsInfoBanner) */}
       <Skeleton className="h-[116px] rounded-2xl" />
-      {/* Segment control */}
-      <Skeleton className="mt-3 h-10 rounded-full" />
-      {/* Neutral content card */}
-      <div className="border-border bg-card mt-4 flex flex-col gap-3 rounded-2xl border p-5">
-        <Skeleton className="h-5 w-1/2" />
-        <Skeleton className="h-28 rounded-xl" />
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-4 w-1/3" />
+      {/* Mesita passport card (MyQrCard) */}
+      <Skeleton className="mt-4 h-[430px] rounded-[28px]" />
+      {/* Tickets stack */}
+      <div className="mt-6">
+        <PayTicketListSkeleton />
       </div>
     </div>
   );

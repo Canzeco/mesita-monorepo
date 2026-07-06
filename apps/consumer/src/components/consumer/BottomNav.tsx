@@ -44,7 +44,7 @@ const ITEMS: Item[] = [
     match: CONSUMER_ROUTE_PREFIX.search,
   },
   {
-    href: CONSUMER_ROUTES.pay.qr,
+    href: CONSUMER_ROUTE_PREFIX.pay,
     Icon: QrCode,
     label: "Rewards",
     match: CONSUMER_ROUTE_PREFIX.pay,

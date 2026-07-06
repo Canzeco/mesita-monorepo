@@ -14,7 +14,7 @@ import {
   type TicketStepCopyContext,
 } from "@/lib/ticket-flow-steps";
 import type { TicketBillPayload } from "@/lib/api/pay";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTE_PREFIX } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 
 export function TicketActionCard({
@@ -128,7 +128,7 @@ export function TicketActionCard({
 
         {step.id === "scan" && !isLocked ? (
           <Link
-            href={CONSUMER_ROUTES.pay.qr}
+            href={CONSUMER_ROUTE_PREFIX.pay}
             className={cn(
               "btn-primary flex items-center justify-center gap-2 py-3.5 text-base",
               !isActive && "opacity-75",
