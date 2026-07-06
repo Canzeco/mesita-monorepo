@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Share2, Bookmark } from "lucide-react";
+import { ArrowLeft, Share2, Heart } from "lucide-react";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -93,7 +93,7 @@ export function PlaceDetailPageHeader({
             : "bg-card text-foreground border-border hover:bg-muted border",
         )}
       >
-        <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+        <Heart className={cn("h-4 w-4", saved && "fill-current")} />
       </button>
       <button
         type="button"

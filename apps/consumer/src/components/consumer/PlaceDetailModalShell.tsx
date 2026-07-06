@@ -1,6 +1,6 @@
 "use client";
 
-import { Share2, Bookmark } from "lucide-react";
+import { Share2, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PlaceDetailActionBar } from "./PlaceDetailBody";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
@@ -97,7 +97,7 @@ export function PlaceDetailModalShell({
                   : "bg-card text-foreground border-border hover:bg-muted border",
               )}
             >
-              <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+              <Heart className={cn("h-4 w-4", saved && "fill-current")} />
             </button>
             <button
               type="button"
