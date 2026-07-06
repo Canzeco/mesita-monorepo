@@ -34,10 +34,60 @@ import {
   type NotificationType,
 } from "./actions";
 
+// Per-type accent so the feed is scannable by color: icon tile, uppercase
+// kicker, and tinted chips. Mirrors the tinted-chip language of the Atlas
+// Config enricher catalog (bg-X-500/10 text-X-700).
+type Tone = {
+  tile: string;
+  kicker: string;
+  chip: string;
+  dot: string;
+};
+
+const TONES = {
+  indigo: {
+    tile: "bg-indigo-500/10 text-indigo-600",
+    kicker: "text-indigo-600",
+    chip: "bg-indigo-500/10 text-indigo-700",
+    dot: "bg-indigo-500",
+  },
+  violet: {
+    tile: "bg-violet-500/10 text-violet-600",
+    kicker: "text-violet-600",
+    chip: "bg-violet-500/10 text-violet-700",
+    dot: "bg-violet-500",
+  },
+  amber: {
+    tile: "bg-amber-500/10 text-amber-600",
+    kicker: "text-amber-600",
+    chip: "bg-amber-500/10 text-amber-700",
+    dot: "bg-amber-500",
+  },
+  emerald: {
+    tile: "bg-emerald-500/10 text-emerald-600",
+    kicker: "text-emerald-600",
+    chip: "bg-emerald-500/10 text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  sky: {
+    tile: "bg-sky-500/10 text-sky-600",
+    kicker: "text-sky-600",
+    chip: "bg-sky-500/10 text-sky-700",
+    dot: "bg-sky-500",
+  },
+  muted: {
+    tile: "bg-muted text-muted-foreground",
+    kicker: "text-muted-foreground",
+    chip: "bg-muted text-muted-foreground",
+    dot: "bg-foreground/25",
+  },
+} satisfies Record<string, Tone>;
+
 type TypeConfig = {
   label: string;
   shortLabel: string;
   Icon: React.ComponentType<{ className?: string }>;
+  tone: Tone;
 };
 
 const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
@@ -45,23 +95,69 @@ const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     label: "New place created",
     shortLabel: "New place",
     Icon: Building2,
+    tone: TONES.indigo,
   },
   "atlas.place_enriched": {
     label: "Place enriched",
     shortLabel: "Enriched",
     Icon: Sparkles,
+    tone: TONES.violet,
   },
   "atlas.ownership_claimed": {
     label: "Ownership claimed",
     shortLabel: "Claimed",
     Icon: BadgeCheck,
+    tone: TONES.amber,
   },
   "atlas.enrichment_step": {
     label: "Enrichment step",
     shortLabel: "Steps",
     Icon: ListChecks,
+    tone: TONES.muted,
   },
 };
+
+// The Enricher runs as three cron EFs (supabase-cron-enrich-place-*); each
+// step event carries its S-code, which maps a step onto one of the phases.
+// Colors follow the catalog: Research≈Link=emerald, Analysis=sky,
+// Contents/Persist=amber.
+type EnricherPhase = {
+  label: string;
+  blurb: string;
+  tone: Tone;
+};
+
+const ENRICHER_PHASES: Record<"research" | "analysis" | "contents", EnricherPhase> = {
+  research: {
+    label: "Research",
+    blurb:
+      "Gathers the raw material (S0–S4): Google profile, reviews & SERP, channel links, source harvest.",
+    tone: TONES.emerald,
+  },
+  analysis: {
+    label: "Analysis",
+    blurb:
+      "Vision pass over candidate photos (S5–S6): describes each one, then ranks and selects the gallery.",
+    tone: TONES.sky,
+  },
+  contents: {
+    label: "Contents",
+    blurb:
+      "Writes the profile (S7–S9): synthesizes About, category & tags, then persists data and images.",
+    tone: TONES.amber,
+  },
+};
+
+function enricherPhase(meta: Record<string, unknown>): EnricherPhase | null {
+  const step = typeof meta.step === "string" ? meta.step : null;
+  const m = step ? /^S(\d+)/i.exec(step.trim()) : null;
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (n <= 4) return ENRICHER_PHASES.research;
+  if (n <= 6) return ENRICHER_PHASES.analysis;
+  if (n <= 9) return ENRICHER_PHASES.contents;
+  return null;
+}
 
 const TYPE_ORDER: NotificationType[] = [
   "atlas.place_created",
@@ -187,6 +283,7 @@ export function GlobalPerformanceClient({
               active={typeFilter === t}
               label={TYPE_CONFIG[t].shortLabel}
               count={data.counts[t] ?? 0}
+              dot={TYPE_CONFIG[t].tone.dot}
               onClick={() => setTypeFilter(t)}
             />
           ))}
@@ -254,11 +351,13 @@ function FilterSegment({
   active,
   label,
   count,
+  dot,
   onClick,
 }: {
   active: boolean;
   label: string;
   count: number;
+  dot?: string;
   onClick: () => void;
 }) {
   return (
@@ -272,6 +371,7 @@ function FilterSegment({
           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")
       }
     >
+      {dot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />}
       {label}
       <span
         className={
@@ -290,6 +390,7 @@ const UNKNOWN_TYPE_CONFIG: TypeConfig = {
   label: "Notification",
   shortLabel: "Other",
   Icon: Inbox,
+  tone: TONES.muted,
 };
 
 function NotificationRow({
@@ -302,6 +403,10 @@ function NotificationRow({
   const cfg = TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG;
   const Icon = cfg.Icon;
   const place = item.place;
+  const phase =
+    item.type === "atlas.enrichment_step" ? enricherPhase(item.meta ?? {}) : null;
+  const tone = phase?.tone ?? cfg.tone;
+  const kicker = phase ? `Enricher · ${phase.label}` : cfg.label;
   const when =
     now === null
       ? formatAbsoluteUtc(item.occurredAt)
@@ -309,14 +414,19 @@ function NotificationRow({
 
   return (
     <li className="hover:bg-muted/30 flex gap-3 px-4 py-3.5 transition sm:gap-4 sm:px-5 sm:py-4">
-      <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tone.tile}`}
+      >
         <Icon className="h-4 w-4" />
       </span>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
-            {cfg.label}
+          <p
+            className={`text-[11px] font-semibold tracking-[0.12em] uppercase ${tone.kicker}`}
+            title={phase?.blurb}
+          >
+            {kicker}
           </p>
           <time
             className="text-muted-foreground shrink-0 text-[11px]"
@@ -415,9 +525,17 @@ function MetaRow({ item }: { item: NotificationItem }) {
   if (item.type === "atlas.enrichment_step") {
     const step = typeof m.step === "string" ? m.step : null;
     const stepName = typeof m.stepName === "string" ? m.stepName : null;
+    const phase = enricherPhase(m);
+    if (phase) {
+      tags.push(
+        <MetaTag key="phase" className={phase.tone.chip} title={phase.blurb}>
+          {phase.label}
+        </MetaTag>,
+      );
+    }
     if (step || stepName) {
       tags.push(
-        <MetaTag key="step">
+        <MetaTag key="step" title={phase?.blurb}>
           <span className="font-mono">{step ?? "S?"}</span>
           {stepName ? <span>&nbsp;·&nbsp;{stepName}</span> : null}
         </MetaTag>,
@@ -447,9 +565,22 @@ function MetaRow({ item }: { item: NotificationItem }) {
   return <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">{tags}</div>;
 }
 
-function MetaTag({ children }: { children: React.ReactNode }) {
+function MetaTag({
+  children,
+  className,
+  title,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  title?: string;
+}) {
   return (
-    <span className="bg-muted text-muted-foreground inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium">
+    <span
+      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
+        className ?? "bg-muted text-muted-foreground"
+      }`}
+      title={title}
+    >
       {children}
     </span>
   );
