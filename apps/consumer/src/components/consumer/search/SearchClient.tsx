@@ -14,9 +14,9 @@
 //     "On Mesita" rows navigate via placeHref, "From Google" rows expose
 //     the real Add flow (consumer-web-create-place creates the place
 //     immediately; the async Enricher builds the profile in minutes).
-//   • Ask AI opens AskAiPanel — mock concierge prose (TODO(EF) lives in
-//     the panel) around REAL suggest-backed place cards that reuse the
-//     same Info / Add mechanics.
+//   • Ask AI opens AskAiPanel — Memo (consumer-web-ask-memo) writes the
+//     concierge prose (Perplexity) AND returns the place cards (Google +
+//     Mesita), which reuse the same Info / Add mechanics.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -37,6 +37,7 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from "@/lib/api/place-search";
+import { apiAskMemo, type MemoTurn } from "@/lib/api/memo";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
@@ -239,11 +240,14 @@ export function SearchClient({
     [addStates, resetSearchSession, supabase],
   );
 
-  // Ask AI's place cards come from the same live suggest EF; the panel
-  // owns the (mock) concierge prose around them.
-  const suggestForAi = useCallback(
-    (text: string) => apiSuggestPlaces(supabase, text, sessionTokenRef.current),
-    [supabase],
+  // Ask AI runs Memo (consumer-web-ask-memo): the EF writes the concierge
+  // prose (Perplexity) AND returns the place cards (Google + Mesita). The
+  // panel passes its own turn history; we pass the live location for
+  // "near me" asks.
+  const askMemo = useCallback(
+    (text: string, history: MemoTurn[]) =>
+      apiAskMemo(supabase, { query: text, location: userLocation, history }),
+    [supabase, userLocation],
   );
 
   const openAi = () => {
@@ -506,7 +510,7 @@ export function SearchClient({
           />
           <AskAiPanel
             onClose={() => setAiOpen(false)}
-            suggest={suggestForAi}
+            ask={askMemo}
             addStates={addStates}
             resolvePlace={resolvePlace}
             onInfo={handleInfo}

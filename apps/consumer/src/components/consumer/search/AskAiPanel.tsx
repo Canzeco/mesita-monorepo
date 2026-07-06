@@ -1,20 +1,20 @@
 "use client";
 
-// Ask AI — the Search page's concierge chat.
+// Ask AI — the Search page's concierge chat, powered by Memo.
 //
-// The conversational layer is mocked for now — there is no concierge EF
-// yet — but the place cards it returns are REAL: every user message runs
-// through consumer-suggest-places and the matching On Mesita / From
-// Google rows render with the same Info / Add mechanics as text search
-// (Add fires the real consumer-web-create-place flow).
-// TODO(EF): consumer-ask-concierge — replace buildConciergeReply with the
-// real chat EF once it exists.
+// Every turn calls Memo (consumer-web-ask-memo), Mesita's AI concierge agent:
+// Perplexity (sonar-pro, web-grounded) writes the natural-language reply while
+// Google Places + the Mesita catalog supply the place cards. Both the prose
+// AND the cards are real; the cards reuse the same Info / Add mechanics as text
+// search (Add fires the real consumer-web-create-place flow). Prior turns are
+// sent as history so Memo can follow up.
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Sparkles, X } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
+import type { MemoAnswer, MemoTurn } from "@/lib/api/memo";
 import { cn } from "@/lib/utils";
 import { PredictionRow, type AddState } from "./PredictionRow";
 
@@ -23,11 +23,16 @@ type AiMessage =
   | { id: string; role: "ai"; kind: "place"; prediction: PlacePrediction };
 
 const GREETING =
-  "Hola ✨ I'm your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.";
+  "Hola ✨ I'm Memo, your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.";
+
+const AI_ERROR =
+  "Hmm, my line dropped for a second — give it another try in a moment.";
 
 // Cap how many cards one reply drops into the thread — a wall of ten
 // cards reads like search results, not a recommendation.
 const MAX_CARDS = 4;
+// Cap the follow-up chips Memo suggests under a reply.
+const MAX_RELATED = 3;
 
 let nextId = 0;
 function msgId(): string {
@@ -35,38 +40,17 @@ function msgId(): string {
   return `ai-msg-${nextId}`;
 }
 
-// TODO(EF): consumer-ask-concierge — mocked reply copy. The counts are
-// real (they come from the live suggest call); only the prose is canned.
-function buildConciergeReply(
-  query: string,
-  onMesita: number,
-  fromGoogle: number,
-): string {
-  if (onMesita === 0 && fromGoogle === 0) {
-    return `I couldn't find spots matching “${query}” — try a place name, a dish, or a neighborhood.`;
-  }
-  const parts: string[] = [];
-  if (onMesita > 0)
-    parts.push(`${onMesita} on Mesita${onMesita > 1 ? "" : ""}`);
-  if (fromGoogle > 0) parts.push(`${fromGoogle} from Google`);
-  const lead =
-    onMesita > 0
-      ? "Here's what I'd check out"
-      : "Nothing on Mesita yet, but I found these";
-  return `${lead} for “${query}” — ${parts.join(" and ")}. Tap Add on a Google spot and I'll build its profile.`;
-}
-
 export function AskAiPanel({
   onClose,
-  suggest,
+  ask,
   addStates,
   resolvePlace,
   onInfo,
   onAdd,
 }: {
   onClose: () => void;
-  /** Real suggest call (consumer-suggest-places) owned by the page. */
-  suggest: (text: string) => Promise<PlacePrediction[]>;
+  /** Real concierge call (consumer-web-ask-memo) owned by the page. */
+  ask: (text: string, history: MemoTurn[]) => Promise<MemoAnswer>;
   addStates: Record<string, AddState>;
   resolvePlace: (prediction: PlacePrediction) => Place | null;
   onInfo: (prediction: PlacePrediction) => void;
@@ -77,42 +61,49 @@ export function AskAiPanel({
   ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [related, setRelated] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, thinking]);
+  }, [messages, thinking, related]);
 
-  const send = () => {
-    const text = input.trim();
+  const send = (raw?: string) => {
+    const text = (raw ?? input).trim();
     if (!text || thinking) return;
     setInput("");
+    setRelated([]);
+
+    // Snapshot the prior text turns as history BEFORE appending this one, so
+    // Memo can follow up on the conversation.
+    const history: MemoTurn[] = messages
+      .filter((m): m is Extract<AiMessage, { kind: "text" }> => m.kind === "text")
+      .map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.text,
+      }));
+
     setMessages((m) => [
       ...m,
       { id: msgId(), role: "user", kind: "text", text },
     ]);
     setThinking(true);
     void (async () => {
-      let predictions: PlacePrediction[] = [];
-      let failed = false;
+      let reply: MemoAnswer | null = null;
       try {
-        predictions = await suggest(text);
+        reply = await ask(text, history);
       } catch {
-        failed = true;
+        reply = null;
       }
-      const shown = predictions.slice(0, MAX_CARDS);
-      const onMesita = shown.filter((p) => p.status !== "not_in_mesita").length;
-      const fromGoogle = shown.length - onMesita;
+      const shown = (reply?.predictions ?? []).slice(0, MAX_CARDS);
       setMessages((m) => [
         ...m,
         {
           id: msgId(),
           role: "ai",
           kind: "text",
-          text: failed
-            ? "Hmm, my search line dropped — give it another try in a moment."
-            : buildConciergeReply(text, onMesita, fromGoogle),
+          text: reply?.answer?.trim() ? reply.answer : AI_ERROR,
         },
         ...shown.map<AiMessage>((prediction) => ({
           id: msgId(),
@@ -121,6 +112,7 @@ export function AskAiPanel({
           prediction,
         })),
       ]);
+      setRelated((reply?.related ?? []).slice(0, MAX_RELATED));
       setThinking(false);
     })();
   };
@@ -184,6 +176,22 @@ export function AskAiPanel({
           </div>
         )}
       </div>
+
+      {/* Follow-up chips — Memo's suggested next questions */}
+      {related.length > 0 && !thinking && (
+        <div className="border-border flex flex-wrap gap-1.5 border-t px-3 pt-2">
+          {related.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => send(q)}
+              className="border-border bg-muted/50 text-foreground hover:bg-muted max-w-full truncate rounded-full border px-3 py-1 text-xs transition active:scale-95"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Composer */}
       <div className="border-border bg-background/80 border-t p-2">
