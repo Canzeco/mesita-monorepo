@@ -44,11 +44,14 @@ export function TopBar() {
   if (pathname.startsWith(CONSUMER_ROUTE_PREFIX.pay)) {
     return <SimpleHeader title="Rewards" rightAction="share" />;
   }
+  // The Invite page keeps the header share icon even though the page is all
+  // share actions — the icon is part of the shell's standard chrome (Pato,
+  // 2026-07-05: redundancy is fine).
   if (
-    pathname.startsWith("/invite") ||
-    pathname.startsWith(CONSUMER_ROUTES.share)
+    pathname.startsWith(CONSUMER_ROUTES.invite) ||
+    pathname.startsWith(CONSUMER_ROUTES.legacy.share)
   ) {
-    return <SimpleHeader title="Invite" />;
+    return <SimpleHeader title="Invite" rightAction="share" />;
   }
   // The Profile tab is titled "me" and carries the member's current class
   // (Free / Premium) inline — see MeHeaderTitle. The right-side ClassChip

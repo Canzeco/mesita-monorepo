@@ -43,7 +43,7 @@ export function SimpleHeader({
 
       {isShare ? (
         <Link
-          href={CONSUMER_ROUTES.share}
+          href={CONSUMER_ROUTES.invite}
           aria-label="Invite friends"
           className="border-border bg-card text-foreground/70 hover:bg-muted absolute top-1/2 right-[calc(1rem+2.5rem+0.5rem)] z-10 flex h-10 w-10 shrink-0 -translate-y-1/2 items-center justify-center rounded-2xl border transition active:scale-[0.98]"
         >
