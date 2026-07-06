@@ -34,7 +34,7 @@ export function SearchResultsPanel({
   const settled = !searching && query.trim().length >= 2;
 
   return (
-    <div className="border-border bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 flex max-h-[85%] min-h-[60%] flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
+    <div className="border-border bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 flex max-h-[88%] min-h-[72%] flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {query.trim().length < 2 && (
           <p className="text-muted-foreground px-1 py-6 text-center text-xs">

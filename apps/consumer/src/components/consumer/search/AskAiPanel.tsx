@@ -126,29 +126,16 @@ export function AskAiPanel({
   };
 
   return (
-    <div className="border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 flex max-h-[85%] min-h-[60%] flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
-      {/* Header */}
-      <div className="border-border flex items-center justify-between gap-2 border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="font-display text-sm leading-tight font-semibold">
-              Mesita AI
-            </p>
-            <p className="eyebrow">Concierge</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close Ask AI"
-          className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-8 w-8 items-center justify-center rounded-full transition"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+    <div className="border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 flex max-h-[88%] min-h-[72%] flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
+      {/* Floating close — no header, to save vertical space */}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close Ask AI"
+        className="border-border bg-background/90 text-foreground hover:bg-muted absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm backdrop-blur-sm transition active:scale-95"
+      >
+        <X className="h-5 w-5" />
+      </button>
 
       {/* Thread */}
       <div
