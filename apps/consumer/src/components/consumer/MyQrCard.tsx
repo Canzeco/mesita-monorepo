@@ -102,7 +102,7 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
         </div>
 
         {/* QR */}
-        <div className="mx-auto mt-3 w-full max-w-[176px] rounded-2xl bg-white p-3">
+        <div className="mx-auto mt-3 w-full max-w-[196px] rounded-2xl bg-white p-2.5">
           <QRCodeSVG
             value={`mesita:${displayCode}`}
             size={220}
@@ -153,8 +153,7 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
 
       {/* Helper caption */}
       <p className="text-muted-foreground px-4 text-center text-[11px] leading-snug">
-        Show this when you ask for the check — staff scan the QR or type your
-        8-digit code.
+        Show this at the check — staff scan it or type your code.
       </p>
 
       {/* Premium nudge — Free only */}
