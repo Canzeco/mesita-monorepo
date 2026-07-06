@@ -244,7 +244,9 @@ function ProfileSummaryCard({
   const handle = profile?.instagram_handle ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
   // Instagram is "connected" via a claimed handle OR an Instagram-origin
-  // membership; when connected, show username + followers + a verified check.
+  // membership; when connected, show the username + follower count. (The
+  // verified check lives only on the Instagram box below — that's what's
+  // actually verified — not on this summary tile.)
   const igConnected = origin === "instagram" || Boolean(handle);
   const igValue = igConnected
     ? [
@@ -301,7 +303,6 @@ function ProfileSummaryCard({
           label="Instagram"
           value={igValue}
           muted={!igConnected}
-          verified={igConnected}
         />
         <FactTile
           Icon={Crown}
@@ -355,7 +356,6 @@ function FactTile({
   label,
   value,
   muted,
-  verified,
 }: {
   Icon?: LucideIcon;
   emoji?: string;
@@ -363,7 +363,6 @@ function FactTile({
   label: string;
   value: string;
   muted?: boolean;
-  verified?: boolean;
 }) {
   return (
     <div className="border-border/70 flex items-center gap-2.5 rounded-2xl border p-2.5">
@@ -383,19 +382,14 @@ function FactTile({
         <p className="text-muted-foreground text-[9.5px] leading-none font-semibold tracking-[0.1em] uppercase">
           {label}
         </p>
-        <div className="mt-1 flex items-center gap-1">
-          <p
-            className={cn(
-              "truncate text-[13px] font-bold",
-              muted && "text-muted-foreground font-medium",
-            )}
-          >
-            {value}
-          </p>
-          {verified && (
-            <BadgeCheck className="text-foreground/70 h-3.5 w-3.5 shrink-0" />
+        <p
+          className={cn(
+            "mt-1 truncate text-[13px] font-bold",
+            muted && "text-muted-foreground font-medium",
           )}
-        </div>
+        >
+          {value}
+        </p>
       </div>
     </div>
   );
