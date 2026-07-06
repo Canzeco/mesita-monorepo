@@ -62,8 +62,19 @@ export type SocialPerson = {
   /** Chip copy when the catalog is empty and no real place resolves. */
   fallbackPlaceName: string;
   time: string;
+  /** Numeric recency for the "Recent" sort — minutes since the event. */
+  minutesAgo: number;
   stats: { visits: number; likes: number; stories: number; rewards: number };
 };
+
+// Relevance score — how much this person should surface in the "Relevance"
+// sort. Weighted engagement (rewards + likes count most), with a premium
+// bump. Higher = more relevant. Pure function of the row so it stays stable.
+export function socialRelevance(p: SocialPerson): number {
+  const { visits, likes, stories, rewards } = p.stats;
+  const engagement = visits + likes * 2 + stories + rewards * 3;
+  return p.plan === "premium" ? Math.round(engagement * 1.15) : engagement;
+}
 
 export const SOCIAL_PEOPLE: SocialPerson[] = [
   {
@@ -76,6 +87,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 0,
     fallbackPlaceName: "Casa Luminar",
     time: "2m",
+    minutesAgo: 2,
     stats: { visits: 42, likes: 18, stories: 9, rewards: 7 },
   },
   {
@@ -88,6 +100,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 0,
     fallbackPlaceName: "Casa Luminar",
     time: "just now",
+    minutesAgo: 0,
     stats: { visits: 11, likes: 23, stories: 14, rewards: 2 },
   },
   {
@@ -100,6 +113,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 1,
     fallbackPlaceName: "Neón Bar",
     time: "8m",
+    minutesAgo: 8,
     stats: { visits: 35, likes: 61, stories: 4, rewards: 12 },
   },
   {
@@ -112,6 +126,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 2,
     fallbackPlaceName: "Mar Verde",
     time: "4m",
+    minutesAgo: 4,
     stats: { visits: 8, likes: 15, stories: 22, rewards: 1 },
   },
   {
@@ -124,6 +139,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 0,
     fallbackPlaceName: "Casa Luminar",
     time: "22m",
+    minutesAgo: 22,
     stats: { visits: 57, likes: 30, stories: 6, rewards: 19 },
   },
   {
@@ -136,6 +152,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 2,
     fallbackPlaceName: "Mar Verde",
     time: "28m",
+    minutesAgo: 28,
     stats: { visits: 16, likes: 9, stories: 3, rewards: 4 },
   },
   {
@@ -148,6 +165,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 3,
     fallbackPlaceName: "Atelier Nueve",
     time: "1h",
+    minutesAgo: 60,
     stats: { visits: 28, likes: 44, stories: 11, rewards: 8 },
   },
   {
@@ -160,6 +178,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 4,
     fallbackPlaceName: "Ferment & Co",
     time: "1h",
+    minutesAgo: 60,
     stats: { visits: 13, likes: 7, stories: 2, rewards: 5 },
   },
   {
@@ -172,6 +191,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 5,
     fallbackPlaceName: "Panadería Sur",
     time: "4h",
+    minutesAgo: 240,
     stats: { visits: 6, likes: 12, stories: 17, rewards: 1 },
   },
   {
@@ -184,6 +204,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 6,
     fallbackPlaceName: "Azul Club",
     time: "5h",
+    minutesAgo: 300,
     stats: { visits: 49, likes: 26, stories: 31, rewards: 10 },
   },
   {
@@ -196,6 +217,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 3,
     fallbackPlaceName: "Atelier Nueve",
     time: "6h",
+    minutesAgo: 360,
     stats: { visits: 33, likes: 52, stories: 5, rewards: 14 },
   },
   {
@@ -208,6 +230,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     placeSlot: 5,
     fallbackPlaceName: "Panadería Sur",
     time: "8h",
+    minutesAgo: 480,
     stats: { visits: 21, likes: 19, stories: 8, rewards: 6 },
   },
 ];

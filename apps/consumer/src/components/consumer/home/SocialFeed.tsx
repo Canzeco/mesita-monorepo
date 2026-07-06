@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Crown, Instagram } from "lucide-react";
@@ -10,9 +10,18 @@ import { placeHref } from "@/lib/place-route";
 import {
   SOCIAL_ACTION_META,
   SOCIAL_PEOPLE,
+  socialRelevance,
   type SocialPerson,
 } from "./social-feed-data";
 import { SocialProfileModal } from "./SocialProfileModal";
+
+// Two ways to order the activity feed: most-recent-first, or by how relevant
+// the person is (weighted engagement, see socialRelevance). Recent is default.
+type SocialSort = "recent" | "relevance";
+const SORT_MODES: { key: SocialSort; label: string }[] = [
+  { key: "recent", label: "Recent" },
+  { key: "relevance", label: "Relevance" },
+];
 
 // Social mode — the live activity feed. Each row splits into two tap
 // targets: the person (opens the profile modal) and the place chip on the
@@ -24,6 +33,14 @@ import { SocialProfileModal } from "./SocialProfileModal";
 
 export function SocialFeed({ places }: { places: Place[] }) {
   const [profile, setProfile] = useState<SocialPerson | null>(null);
+  const [sort, setSort] = useState<SocialSort>("recent");
+
+  const people = useMemo(() => {
+    const rows = [...SOCIAL_PEOPLE];
+    return sort === "recent"
+      ? rows.sort((a, b) => a.minutesAgo - b.minutesAgo)
+      : rows.sort((a, b) => socialRelevance(b) - socialRelevance(a));
+  }, [sort]);
 
   return (
     <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">
@@ -41,8 +58,28 @@ export function SocialFeed({ places }: { places: Place[] }) {
           </span>
         </div>
 
+        {/* Sort toggle — Recent (default) vs Relevance */}
+        <div className="bg-muted/60 mb-3 flex gap-1 rounded-xl p-1">
+          {SORT_MODES.map((mode) => (
+            <button
+              key={mode.key}
+              type="button"
+              onClick={() => setSort(mode.key)}
+              aria-pressed={sort === mode.key}
+              className={cn(
+                "flex-1 rounded-lg py-1.5 text-xs font-semibold transition",
+                sort === mode.key
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground",
+              )}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col gap-2">
-          {SOCIAL_PEOPLE.map((p) => {
+          {people.map((p) => {
             const place =
               places.length > 0 ? places[p.placeSlot % places.length] : null;
             const meta = SOCIAL_ACTION_META[p.action];
