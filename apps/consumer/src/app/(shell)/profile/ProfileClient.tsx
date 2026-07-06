@@ -204,18 +204,10 @@ function ProfileSummaryCard({
   loading: boolean;
 }) {
   const { key, origin, followers } = useConsumerClass();
-  const isPremium = key === "premium";
 
   if (loading) {
     return (
-      <div
-        className={cn(
-          "border-border overflow-hidden rounded-3xl border p-4",
-          isPremium
-            ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
-            : "from-primary/[0.07] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br",
-        )}
-      >
+      <div className="border-border bg-muted/50 overflow-hidden rounded-3xl border p-4">
         <div className="flex flex-col items-center gap-2 pb-3">
           <div className="bg-muted h-[72px] w-[72px] shrink-0 animate-pulse rounded-full" />
           <div className="bg-muted h-4 w-40 animate-pulse rounded" />
@@ -264,17 +256,10 @@ function ProfileSummaryCard({
     : "Not connected";
 
   return (
-    <section
-      className={cn(
-        "border-border overflow-hidden rounded-3xl border p-4",
-        // Soft neutral-leaning tint so it reads as a distinct panel from the
-        // white option boxes below without shouting; the facts are thin-bordered
-        // on the same tint (no fill) so they read as identity facts, not rows.
-        isPremium
-          ? "from-primary/[0.08] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br"
-          : "from-primary/[0.05] via-secondary/[0.04] to-accent/[0.05] bg-gradient-to-br",
-      )}
-    >
+    // Neutral gray panel (no color) — distinct from the white option boxes
+    // below; the facts are thin-bordered on the same gray so they read as
+    // identity facts, not rows.
+    <section className="border-border bg-muted/50 overflow-hidden rounded-3xl border p-4">
       {/* Centered hero — avatar on top, name centered below it. */}
       <div className="flex flex-col items-center gap-2 pb-3 text-center">
         {/* Plain avatar — no ring/border. */}
@@ -408,7 +393,7 @@ function FactTile({
             {value}
           </p>
           {verified && (
-            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+            <BadgeCheck className="text-foreground/70 h-3.5 w-3.5 shrink-0" />
           )}
         </div>
       </div>
@@ -420,13 +405,15 @@ function FactTile({
 
 type BoxTint = "pink" | "sky" | "emerald" | "violet" | "muted" | "premium";
 
+// The Me page is intentionally monochrome (white / gray / black) — every
+// option-box icon uses the same neutral gray fill, no brand colors.
 const BOX_TINT: Record<BoxTint, string> = {
-  pink: "bg-pink-gradient text-white",
-  sky: "bg-sky-500/10 text-sky-600",
-  emerald: "bg-emerald-500/10 text-emerald-600",
-  violet: "bg-violet-500/10 text-violet-600",
+  pink: "bg-muted text-foreground/70",
+  sky: "bg-muted text-foreground/70",
+  emerald: "bg-muted text-foreground/70",
+  violet: "bg-muted text-foreground/70",
   muted: "bg-muted text-foreground/70",
-  premium: "bg-tier-premium text-white",
+  premium: "bg-muted text-foreground/70",
 };
 
 function BoxShell({
@@ -518,7 +505,7 @@ function ClassBox({ onClick }: { onClick: () => void }) {
       summary={`Mesita ${label}${via}`}
       trailing={
         !isPremium ? (
-          <span className="bg-tier-premium/10 text-premium mr-1 inline-flex shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold">
+          <span className="bg-muted text-foreground/70 mr-1 inline-flex shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold">
             Upgrade
           </span>
         ) : undefined
@@ -554,7 +541,7 @@ function InstagramBox({
       summary={summary}
       trailing={
         connected ? (
-          <BadgeCheck className="mr-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+          <BadgeCheck className="text-foreground/70 mr-0.5 h-5 w-5 shrink-0" />
         ) : undefined
       }
       onClick={onClick}
