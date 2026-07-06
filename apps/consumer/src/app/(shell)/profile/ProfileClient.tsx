@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
@@ -247,6 +248,7 @@ function ProfileSummaryCard({
   const country = COUNTRIES.find((c) => c.name === profile?.country);
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
   const handle = profile?.instagram_handle ?? null;
+  const avatarUrl = profile?.avatar_url ?? null;
   // The profile is "verified" once an Instagram account is claimed — that's
   // the real verification mechanic (a subscription doesn't verify identity).
   const verified = Boolean(handle) || origin === "instagram";
@@ -262,10 +264,20 @@ function ProfileSummaryCard({
           )}
         >
           <div className="bg-card rounded-full p-[2.5px]">
-            <div className="bg-muted flex h-[68px] w-[68px] items-center justify-center rounded-full">
-              <span className="font-display text-foreground/70 text-xl font-bold tracking-tight">
-                {initials}
-              </span>
+            <div className="bg-muted relative flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full">
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt={name}
+                  fill
+                  sizes="68px"
+                  className="object-cover"
+                />
+              ) : (
+                <span className="font-display text-foreground/70 text-xl font-bold tracking-tight">
+                  {initials}
+                </span>
+              )}
             </div>
           </div>
         </div>

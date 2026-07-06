@@ -26,6 +26,11 @@ export type ConsumerProfile = {
   phone: string | null;
   // Claimed Instagram username (MESITA-74) — normalized, no leading @.
   instagram_handle: string | null;
+  // Consumer avatar. Optional + forward-compatible: the Me page renders it the
+  // moment consumer-web-get-profile starts returning it, and falls back to
+  // initials until then. The upload/storage/EF half is a separate,
+  // human-gated change. (Salvaged from the closed design-review PR #362.)
+  avatar_url?: string | null;
   // Account-level visibility flags (MESITA-76) — Settings → Social toggles.
   profile_public: boolean;
   profile_show_saves: boolean;

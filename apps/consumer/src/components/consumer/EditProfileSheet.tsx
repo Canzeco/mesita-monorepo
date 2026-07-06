@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
@@ -100,10 +101,20 @@ export function EditProfileSheet({
             className="group relative"
             aria-label="Change profile photo"
           >
-            <span className="bg-pink-gradient flex h-20 w-20 items-center justify-center rounded-full text-white shadow-sm">
-              <span className="font-display text-2xl font-bold tracking-tight">
-                {initials}
-              </span>
+            <span className="bg-pink-gradient relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full text-white shadow-sm">
+              {profile.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt="Profile photo"
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                />
+              ) : (
+                <span className="font-display text-2xl font-bold tracking-tight">
+                  {initials}
+                </span>
+              )}
             </span>
             <span className="border-background bg-foreground text-background absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition group-active:scale-95">
               <Camera className="h-3.5 w-3.5" />
