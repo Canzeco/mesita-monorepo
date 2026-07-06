@@ -203,7 +203,7 @@ function ProfileSummaryCard({
   profile: ConsumerProfile | null;
   loading: boolean;
 }) {
-  const { key, origin } = useConsumerClass();
+  const { key } = useConsumerClass();
   const isPremium = key === "premium";
 
   if (loading) {
@@ -217,7 +217,7 @@ function ProfileSummaryCard({
         )}
       >
         <div className="flex flex-col items-center gap-2 pb-3">
-          <div className="bg-muted h-[68px] w-[68px] shrink-0 animate-pulse rounded-full" />
+          <div className="bg-muted h-[72px] w-[72px] shrink-0 animate-pulse rounded-full" />
           <div className="bg-muted h-4 w-40 animate-pulse rounded" />
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -251,53 +251,40 @@ function ProfileSummaryCard({
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
   const handle = profile?.instagram_handle ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
-  // The profile is "verified" once an Instagram account is claimed — that's
-  // the real verification mechanic (a subscription doesn't verify identity).
-  const verified = Boolean(handle) || origin === "instagram";
 
   return (
     <section
       className={cn(
         "border-border overflow-hidden rounded-3xl border p-4",
-        // Tinted card so it reads as a distinct panel from the white option
-        // boxes below; the facts are thin-bordered on the same tint (no fill)
-        // so they read as identity facts, not tappable rows (richer for Premium).
+        // Soft neutral-leaning tint so it reads as a distinct panel from the
+        // white option boxes below without shouting; the facts are thin-bordered
+        // on the same tint (no fill) so they read as identity facts, not rows.
         isPremium
-          ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
-          : "from-primary/[0.07] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br",
+          ? "from-primary/[0.08] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br"
+          : "from-primary/[0.05] via-secondary/[0.04] to-accent/[0.05] bg-gradient-to-br",
       )}
     >
       {/* Centered hero — avatar on top, name centered below it. */}
       <div className="flex flex-col items-center gap-2 pb-3 text-center">
-        {/* Story-ring avatar: class-tinted gradient ring around initials. */}
-        <div
-          className={cn(
-            "shrink-0 rounded-full p-[2.5px]",
-            isPremium ? "bg-tier-premium" : "bg-pink-gradient",
+        {/* Plain avatar — no ring/border. */}
+        <div className="bg-muted relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full">
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={name}
+              fill
+              sizes="72px"
+              className="object-cover"
+            />
+          ) : (
+            <span className="font-display text-foreground/70 text-2xl font-bold tracking-tight">
+              {initials}
+            </span>
           )}
-        >
-          <div className="bg-card rounded-full p-[2.5px]">
-            <div className="bg-muted relative flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full">
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={name}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-              ) : (
-                <span className="font-display text-foreground/70 text-xl font-bold tracking-tight">
-                  {initials}
-                </span>
-              )}
-            </div>
-          </div>
         </div>
 
-        <h2 className="font-display flex max-w-full items-center justify-center gap-1.5 text-[19px] leading-tight font-bold tracking-tight">
-          <span className="truncate">{name}</span>
-          {verified && <BadgeCheck className="text-premium h-5 w-5 shrink-0" />}
+        <h2 className="font-display max-w-full truncate text-[19px] leading-tight font-bold tracking-tight">
+          {name}
         </h2>
       </div>
 
@@ -307,21 +294,21 @@ function ProfileSummaryCard({
       <div className="grid grid-cols-2 gap-2">
         <FactTile
           Icon={Phone}
-          tint="sky"
+          tint="neutral"
           label="Phone"
           value={profile?.phone || "Not added"}
           muted={!profile?.phone}
         />
         <FactTile
           Icon={Instagram}
-          tint="pink"
+          tint="neutral"
           label="Instagram"
           value={handle ? `@${handle}` : "Not connected"}
           muted={!handle}
         />
         <FactTile
           Icon={Crown}
-          tint={isPremium ? "premium" : "amber"}
+          tint="neutral"
           label="Class"
           value={`Mesita ${classLabel}`}
         />

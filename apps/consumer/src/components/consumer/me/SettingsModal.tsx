@@ -109,7 +109,7 @@ export function SettingsModal({
               Icon={Users}
               tint="violet"
               label="Communities"
-              sub="Join your campus circles"
+              sub="Connect with your community"
               trailing={<SoonPill />}
             />
           </SettingsGroup>
