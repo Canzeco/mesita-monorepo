@@ -34,7 +34,7 @@ const BUSINESS_SIGNIN_URL = "https://business.mesita.ai/";
 //   1. <Nav />             Top menu bar
 //   2. <Hero />            Headline + download CTAs + product shot
 //   3. <ForConsumers />       Solutions for consumers (3 cards)
-//   4. <ForVenues />       Solutions for venues (5 cards)
+//   4. <ForBusinesses />   Solutions for businesses (5 cards)
 //   5. <FAQ />             Six essentials, expandable
 //   6. <Footer />          © Mesita 2026 etc.
 //
@@ -48,7 +48,7 @@ export default function Home() {
       <Nav />
       <Hero />
       <ForConsumers />
-      <ForVenues />
+      <ForBusinesses />
       <FAQ />
       <Footer />
     </main>
@@ -75,8 +75,8 @@ function Nav() {
           <a href="#consumers" className="hover:text-foreground transition">
             Consumers
           </a>
-          <a href="#venues" className="hover:text-foreground transition">
-            Venues
+          <a href="#businesses" className="hover:text-foreground transition">
+            Businesses
           </a>
           <a href="#faq" className="hover:text-foreground transition">
             FAQ
@@ -93,7 +93,7 @@ function Nav() {
           </Button>
           <Button asChild size="sm" className="rounded-full">
             <Link href={BUSINESS_SIGNUP_URL}>
-              List your venue
+              List your business
               <ArrowRight />
             </Link>
           </Button>
@@ -126,7 +126,7 @@ function Hero() {
           product; everyone benefits.
         </p>
 
-        {/* Two-path CTA: symmetric buttons for consumers and venues. Same
+        {/* Two-path CTA: symmetric buttons for consumers and businesses. Same
             shape, size, hover; the only difference is the color treatment
             so the eye can still tell them apart at a glance. Both routes
             already live on production subdomains. */}
@@ -141,14 +141,14 @@ function Hero() {
           <PathButton
             href={BUSINESS_SIGNUP_URL}
             Icon={Store}
-            eyebrow="I run a venue"
-            label="List your venue"
+            eyebrow="I run a business"
+            label="List your business"
             variant="dark"
           />
         </div>
 
         <p className="text-muted-foreground text-xs">
-          Free for consumers · Set up your venue in 10 minutes · Rewards on
+          Free for consumers · Set up your business in 10 minutes · Rewards on
           every visit
         </p>
 
@@ -217,7 +217,7 @@ function ForConsumers() {
     },
     {
       title: "AI-booked reservations",
-      body: "One tap and Mesita's AI agent contacts the venue for you — voice, IG DM, WhatsApp, web form, or email — and locks in the table. Works at every venue in the city, even ones that never signed with us.",
+      body: "One tap and Mesita's AI agent contacts the place for you — voice, IG DM, WhatsApp, web form, or email — and locks in the table. Works at every place in the city, even ones that never signed with us.",
       Icon: CalendarCheck,
     },
     {
@@ -285,9 +285,9 @@ function ForConsumers() {
   );
 }
 
-// ─── 4. Solutions for Venues ─────────────────────────────────────────────
+// ─── 4. Solutions for Businesses ─────────────────────────────────────────
 
-function ForVenues() {
+function ForBusinesses() {
   const items: {
     title: string;
     body: string;
@@ -295,7 +295,7 @@ function ForVenues() {
   }[] = [
     {
       title: "Get discovered & win customers",
-      body: "Priority placement across swipe, map, catalog, and AI planner — above the ~100× larger pool of auto-listed venues. A one-time Welcome coupon converts first-time visitors into regulars.",
+      body: "Priority placement across swipe, map, catalog, and AI planner — above the ~100× larger pool of auto-listed places. A one-time Welcome coupon converts first-time visitors into regulars.",
       Icon: TrendingUp,
     },
     {
@@ -320,15 +320,15 @@ function ForVenues() {
     },
   ];
   return (
-    <section id="venues" className="border-border bg-muted/30 border-b">
+    <section id="businesses" className="border-border bg-muted/30 border-b">
       <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
         <header className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
-              For venues
+              For businesses
             </p>
             <h2 className="font-display mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
-              Fill the venue with the consumers who move the needle.
+              Fill the place with the consumers who move the needle.
             </h2>
           </div>
           <p className="text-muted-foreground max-w-sm text-sm">
@@ -369,7 +369,7 @@ function ForVenues() {
             className="bg-foreground text-background hover:bg-foreground rounded-full hover:opacity-90"
           >
             <Link href={BUSINESS_SIGNUP_URL}>
-              List your venue
+              List your business
               <ArrowRight />
             </Link>
           </Button>
@@ -385,23 +385,23 @@ function FAQ() {
   const items: { q: string; a: string }[] = [
     {
       q: "How does the Mesita discount work?",
-      a: "Every Verified venue runs an instant discount that's revealed at the bill and applied to the total directly — no invoice, no IVA, no waiting. The consumer scans their QR, your staff enters the bill, and Mesita applies the agreed % on the spot. The consumer just pays less today, and you only reward the visits that actually happen.",
+      a: "Every Verified place runs an instant discount that's revealed at the bill and applied to the total directly — no invoice, no IVA, no waiting. The consumer scans their QR, your staff enters the bill, and Mesita applies the agreed % on the spot. The consumer just pays less today, and you only reward the visits that actually happen.",
     },
     {
-      q: "What's the difference between a Verified Partner and a Web-Listed venue?",
-      a: "Web-Listed venues are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.ai and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Team dashboard.",
+      q: "What's the difference between a Verified Partner and a Web-Listed place?",
+      a: "Web-Listed places are scraped automatically from Google Business and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no coupons. Verified Partners signed up at business.mesita.ai and configured their coupon mechanic; they get priority placement and the Membership / Rewards / Analytics / Team dashboard.",
     },
     {
       q: "What's the difference between Free and Premium for consumers?",
       a: "Every consumer starts Free — full discovery, AI reservations, and the base discount at every partner. Premium is a single subscription — $100 MXN / month — that unlocks bigger discounts everywhere, plus priority tables, private openings, and other members-only perks. There's also a manual appeal path to Premium for models, chefs, press, founders, and other local elites.",
     },
     {
-      q: "What plans do venues get?",
-      a: "Three, all discounts-only — the same instant discount applied right at the bill. Free lists your venue with AI reservations at no cost. Pro and Ultra are paid subscriptions that run the identical coupon workflow; they differ in price and visibility — Pro gets medium reach, Ultra maximum reach across swipe, map, catalog, and the AI planner. Every signed-up partner gets the Membership / Rewards / Analytics / Team dashboard. You configure your discount mechanic at business.mesita.ai in about 10 minutes.",
+      q: "What plans do businesses get?",
+      a: "Three, all discounts-only — the same instant discount applied right at the bill. Free lists your business with AI reservations at no cost. Pro and Ultra are paid subscriptions that run the identical coupon workflow; they differ in price and visibility — Pro gets medium reach, Ultra maximum reach across swipe, map, catalog, and the AI planner. Every signed-up partner gets the Membership / Rewards / Analytics / Team dashboard. You configure your discount mechanic at business.mesita.ai in about 10 minutes.",
     },
     {
       q: "What's the Instagram story step about?",
-      a: "Consumers post an IG story tagging the venue to claim their reward. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. The discount is applied at the bill before verification clears — that's the only mechanical risk.",
+      a: "Consumers post an IG story tagging the place to claim their reward. Mesita's bot auto-verifies the @mention or location tag; ambiguous cases fall through to a waiter who approves or rejects manually. The discount is applied at the bill before verification clears — that's the only mechanical risk.",
     },
     {
       q: "Do I need hardware or POS integration?",
@@ -415,7 +415,7 @@ function FAQ() {
           Frequently asked
         </h2>
         <p className="text-muted-foreground mt-3 text-sm">
-          Common questions from venue owners deciding whether to partner.
+          Common questions from business owners deciding whether to partner.
         </p>
         <div className="divide-border border-border bg-background mt-8 divide-y rounded-2xl border">
           {items.map((it) => (
@@ -463,8 +463,8 @@ function Footer() {
           <a href="#consumers" className="hover:text-foreground transition">
             For consumers
           </a>
-          <a href="#venues" className="hover:text-foreground transition">
-            For venues
+          <a href="#businesses" className="hover:text-foreground transition">
+            For businesses
           </a>
           <a href="#faq" className="hover:text-foreground transition">
             FAQ
