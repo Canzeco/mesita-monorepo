@@ -396,7 +396,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "consumers_tier_key_fkey"
+            foreignKeyName: "consumers_class_key_fkey"
             columns: ["class_key"]
             isOneToOne: false
             referencedRelation: "classes"
