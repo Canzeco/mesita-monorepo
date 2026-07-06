@@ -220,9 +220,12 @@ function ProfileSummaryCard({
           <div className="bg-muted h-[68px] w-[68px] shrink-0 animate-pulse rounded-full" />
           <div className="bg-muted h-4 w-40 animate-pulse rounded" />
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+        <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2.5 p-1.5">
+            <div
+              key={i}
+              className="border-border/70 flex items-center gap-2.5 rounded-2xl border p-2.5"
+            >
               <div className="bg-muted h-9 w-9 shrink-0 animate-pulse rounded-xl" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="bg-muted h-2 w-10 animate-pulse rounded" />
@@ -257,8 +260,8 @@ function ProfileSummaryCard({
       className={cn(
         "border-border overflow-hidden rounded-3xl border p-4",
         // Tinted card so it reads as a distinct panel from the white option
-        // boxes below; the facts sit frameless on the tint (not mini-buttons)
-        // so they don't compete with the real option rows (richer for Premium).
+        // boxes below; the facts are thin-bordered on the same tint (no fill)
+        // so they read as identity facts, not tappable rows (richer for Premium).
         isPremium
           ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
           : "from-primary/[0.07] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br",
@@ -298,10 +301,10 @@ function ProfileSummaryCard({
         </h2>
       </div>
 
-      {/* Four facts — phone, Instagram, class, country — frameless on the
-          tinted card (tinted icon + label/value only, no card chrome) so they
-          read as identity facts, not tappable rows. */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+      {/* Four facts — phone, Instagram, class, country — thin-bordered on the
+          same tinted background (no fill) so they're delineated without reading
+          as tappable rows. */}
+      <div className="grid grid-cols-2 gap-2">
         <FactTile
           Icon={Phone}
           tint="sky"
@@ -369,7 +372,7 @@ function FactTile({
   muted?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2.5 p-1.5">
+    <div className="border-border/70 flex items-center gap-2.5 rounded-2xl border p-2.5">
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px]",
