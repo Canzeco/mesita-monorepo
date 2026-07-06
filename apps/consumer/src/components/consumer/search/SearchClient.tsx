@@ -87,6 +87,9 @@ export function SearchClient({
 
   const [query, setQuery] = useState("");
   const [aiOpen, setAiOpen] = useState(false);
+  // Opened by tapping the search field — the results/suggest panel appears on
+  // one tap, before any typing (symmetric with Ask AI opening on one tap).
+  const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeChips, setActiveChips] = useState<string[]>([]);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
@@ -101,7 +104,7 @@ export function SearchClient({
   const trimmed = query.trim();
   // Idle = the map moment: no text query, concierge closed. The chip row
   // and catalog rail only exist here; panels own the other states.
-  const idle = trimmed.length === 0 && !aiOpen;
+  const idle = trimmed.length === 0 && !aiOpen && !searchOpen;
 
   // Distances ride on the consumer's live location (chip hides until the
   // grant); chips then facet the SAME array the map pins and rail render.
@@ -244,6 +247,7 @@ export function SearchClient({
   );
 
   const openAi = () => {
+    setSearchOpen(false);
     setAiOpen(true);
     updateQuery("");
   };
@@ -260,7 +264,15 @@ export function SearchClient({
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || visible.length === 0) return;
-    const idx = Math.round(el.scrollLeft / RAIL_STRIDE);
+    // At the far-right end the last card is fully visible but scrollLeft never
+    // reaches (n-1)·stride, so Math.round caps one short (shows n-1/n). Snap to
+    // the last index once the container is scrolled to its end.
+    const overflowing = el.scrollWidth > el.clientWidth;
+    const atEnd =
+      overflowing && el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    const idx = atEnd
+      ? visible.length - 1
+      : Math.round(el.scrollLeft / RAIL_STRIDE);
     setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
   };
 
@@ -307,13 +319,20 @@ export function SearchClient({
             <input
               value={query}
               onChange={(e) => updateQuery(e.target.value)}
+              onFocus={() => {
+                setAiOpen(false);
+                setSearchOpen(true);
+              }}
               placeholder="Search places…"
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
             />
-            {query && (
+            {(query || searchOpen) && (
               <button
                 type="button"
-                onClick={() => updateQuery("")}
+                onClick={() => {
+                  updateQuery("");
+                  setSearchOpen(false);
+                }}
                 aria-label="Clear search"
                 className="text-muted-foreground hover:text-foreground shrink-0 transition"
               >
@@ -437,24 +456,40 @@ export function SearchClient({
       {/* Live text-search results — On Mesita / From Google. The panel is
           content-height with map showing below; tapping that map area (or the
           side strips) clears the query and dismisses — X isn't the only way. */}
-      {trimmed.length > 0 && (
+      {(searchOpen || trimmed.length > 0) && (
         <>
           <button
             type="button"
             aria-label="Dismiss search results"
-            onClick={() => updateQuery("")}
+            onClick={() => {
+              updateQuery("");
+              setSearchOpen(false);
+            }}
             className="absolute inset-x-0 top-[60px] bottom-0 z-30 cursor-default"
           />
-          <SearchResultsPanel
-            query={query}
-            searching={searching}
-            searchError={searchError}
-            predictions={predictions}
-            addStates={addStates}
-            resolvePlace={resolvePlace}
-            onInfo={handleInfo}
-            onAdd={handleAdd}
-          />
+          {trimmed.length > 0 ? (
+            <SearchResultsPanel
+              query={query}
+              searching={searching}
+              searchError={searchError}
+              predictions={predictions}
+              addStates={addStates}
+              resolvePlace={resolvePlace}
+              onInfo={handleInfo}
+              onAdd={handleAdd}
+            />
+          ) : (
+            <div className="absolute inset-x-3 top-[60px] z-40">
+              <div className="border-border bg-card/95 shadow-elev rounded-2xl border p-4 backdrop-blur-xl">
+                <p className="text-foreground text-sm font-semibold">
+                  Search places
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Type a place, cuisine, or neighborhood to find it on Mesita.
+                </p>
+              </div>
+            </div>
+          )}
         </>
       )}
 

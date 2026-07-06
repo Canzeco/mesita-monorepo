@@ -84,11 +84,11 @@ export function SocialFeed({ places }: { places: Place[] }) {
           <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Activity
           </p>
-          <div className="flex items-center gap-2.5">
-            <span className="text-primary flex items-center gap-1.5 text-[10px] font-semibold">
-              <span className="relative flex h-2 w-2">
+          <div className="flex items-center gap-2">
+            <span className="text-primary bg-primary/10 flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold">
+              <span className="relative flex h-1.5 w-1.5">
                 <span className="bg-primary absolute inset-0 animate-ping rounded-full opacity-75" />
-                <span className="bg-primary relative h-2 w-2 rounded-full" />
+                <span className="bg-primary relative h-1.5 w-1.5 rounded-full" />
               </span>
               Live
             </span>
@@ -97,11 +97,12 @@ export function SocialFeed({ places }: { places: Place[] }) {
               onClick={refresh}
               disabled={refreshing}
               aria-label="Refresh activity"
-              className="text-muted-foreground hover:text-foreground transition active:scale-90 disabled:opacity-60"
+              className="border-border bg-card text-muted-foreground hover:text-foreground flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold shadow-sm transition active:scale-95 disabled:opacity-60"
             >
               <RefreshCw
-                className={cn("h-3.5 w-3.5", refreshing && "animate-spin")}
+                className={cn("h-3 w-3", refreshing && "animate-spin")}
               />
+              Refresh
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Flame, Heart, Users, type LucideIcon } from "lucide-react";
 import { SwipeDeck } from "@/app/(shell)/discover/swipe/SwipeDeck";
 import type { Place } from "@/lib/api/places";
@@ -43,9 +44,25 @@ export function HomeHub({
   // same parseHomeMode), so hydration stays consistent; initialMode only
   // covers the null-params edge so the fallback never disagrees either.
   const searchParams = useSearchParams();
-  const mode: HomeMode = searchParams
+  const pathname = usePathname();
+  const urlMode: HomeMode = searchParams
     ? parseHomeMode(searchParams.get(HOME_MODE_PARAM) ?? undefined)
     : initialMode;
+  // A place/coupon/… detail modal overlays /home by navigating the URL AWAY
+  // from /home (intercepting route), which drops the ?mode= param. Without
+  // this, useSearchParams would derive `swipe` and the background feed would
+  // snap from Social back to Swipe *behind* the opening modal. Cache the last
+  // real home mode and keep rendering it while an overlay route is active.
+  const onHome = pathname === CONSUMER_ROUTES.home;
+  // Adopt the URL mode only while genuinely on /home (React's sanctioned
+  // "adjust state during render" pattern); keep the last home mode while an
+  // overlay route is active so the feed doesn't flash back to Swipe.
+  const [mode, setMode] = useState<HomeMode>(initialMode);
+  const [syncedUrlMode, setSyncedUrlMode] = useState<HomeMode>(initialMode);
+  if (onHome && urlMode !== syncedUrlMode) {
+    setSyncedUrlMode(urlMode);
+    setMode(urlMode);
+  }
 
   const selectMode = (next: HomeMode) => {
     if (next === mode) return;
