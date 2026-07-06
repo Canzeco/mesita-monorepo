@@ -61,23 +61,102 @@ export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 // (The old MOCK_INSTAGRAM_KEY path is gone — the Verify Instagram sheet now
 // calls consumer-web-claim-instagram for a real server-side grant, MESITA-74.)
 
+// Demo/design override. The Me → Class preview toggle writes one of these
+// values so every class state is previewable regardless of the real
+// server-seeded class — free, Premium via subscription, Premium via Instagram.
+// Purely a client-side dev affordance; absent = use the real class. Remove the
+// toggle + this key once the three states can be produced with real data.
+export const MOCK_CLASS_KEY = "mesita:mock-class";
+export type MockClass = "free" | "subscription" | "instagram";
+const MOCK_CLASS_VALUES: MockClass[] = ["free", "subscription", "instagram"];
+
+// Follower count shown when the Instagram override is active but no real
+// follower reach is seeded — matches VerifySocialSheet's demo value.
+const DEMO_INSTAGRAM_FOLLOWERS = 4200;
+
+// Same-tab + cross-tab notifier for the client-only mock flags. A local
+// listener set fires same-tab writes (so the toggle updates the whole shell
+// live, no reload); the `storage` event keeps other tabs in sync.
+const storeListeners = new Set<() => void>();
+
+function subscribeToStore(onChange: () => void): () => void {
+  storeListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    storeListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function notifyStore(): void {
+  storeListeners.forEach((l) => l());
+}
+
 // SSR-safe localStorage flag read. useSyncExternalStore returns the server
 // snapshot (always false) for the hydration render so server and client markup
 // match, then swaps in the real localStorage value — no cascading effect render
-// and no hydration mismatch. The `storage` subscription keeps other tabs in
-// sync; the mock flows full-navigate after writing, so the new load reads fresh
-// regardless.
-function subscribeToStorage(onChange: () => void): () => void {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-}
-
+// and no hydration mismatch.
 function useLocalStorageFlag(key: string): boolean {
   return useSyncExternalStore(
-    subscribeToStorage,
+    subscribeToStore,
     () => window.localStorage.getItem(key) === "1",
     () => false,
   );
+}
+
+function readMockClass(): MockClass | null {
+  try {
+    const v = window.localStorage.getItem(MOCK_CLASS_KEY);
+    return MOCK_CLASS_VALUES.includes(v as MockClass) ? (v as MockClass) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Read the current demo override (null when off). SSR snapshot is null so the
+// hydration render matches the server-seeded class.
+export function useMockClass(): MockClass | null {
+  return useSyncExternalStore(subscribeToStore, readMockClass, () => null);
+}
+
+// Set (or clear, with null) the demo override and notify every subscriber in
+// this tab so the shell re-renders immediately.
+export function setMockClass(value: MockClass | null): void {
+  try {
+    if (value == null) window.localStorage.removeItem(MOCK_CLASS_KEY);
+    else window.localStorage.setItem(MOCK_CLASS_KEY, value);
+  } catch {
+    // best-effort persistence
+  }
+  notifyStore();
+}
+
+function mockClassState(
+  mock: MockClass,
+  base: ConsumerClassState,
+): ConsumerClassState {
+  switch (mock) {
+    case "free":
+      return { ...base, key: "free", origin: "default", renewsAt: null };
+    case "instagram":
+      return {
+        ...base,
+        key: "premium",
+        origin: "instagram",
+        renewsAt: null,
+        followers: base.followers > 0 ? base.followers : DEMO_INSTAGRAM_FOLLOWERS,
+      };
+    case "subscription": {
+      const renews = new Date();
+      renews.setMonth(renews.getMonth() + 1);
+      return {
+        ...base,
+        key: "premium",
+        origin: "subscription",
+        renewsAt: renews.toISOString(),
+      };
+    }
+  }
 }
 
 export function ClassProvider({
@@ -93,8 +172,12 @@ export function ClassProvider({
   // first (hydration) render sees the server-seeded class; the real
   // localStorage values fold in immediately after.
   const mockPremium = useLocalStorageFlag(MOCK_PREMIUM_KEY);
+  const mockClass = useMockClass();
 
   const value = useMemo<ConsumerClassState>(() => {
+    // Demo/design override (Me → Class preview toggle) wins over everything so
+    // all three class states are previewable regardless of the real class.
+    if (mockClass) return mockClassState(mockClass, base);
     // A real server-seeded Premium always wins — never downgrade or relabel it.
     if (base.key === "premium") return base;
     if (mockPremium) {
@@ -108,7 +191,7 @@ export function ClassProvider({
       };
     }
     return base;
-  }, [base, mockPremium]);
+  }, [base, mockPremium, mockClass]);
 
   return (
     <ClassContext.Provider value={value}>{children}</ClassContext.Provider>
