@@ -2,7 +2,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { StatusBar } from "@/components/consumer/StatusBar";
-import { TopBar } from "@/components/consumer/TopBar";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
@@ -68,7 +67,8 @@ export default async function ConsumerShellLayout({
   }
 
   // Two-box layout strategy (per user spec):
-  //   - Top: StatusBar + TopBar (combined chrome band, shrink-0).
+  //   - Top: StatusBar only (the old logo/invite/class TopBar band was
+  //     removed — its invite + class entry points now live on the Me page).
   //   - Bottom: BottomNav (shrink-0).
   //   - Middle: the body — flex-1, overflows internally via the page's
   //     own scroll container; never affects the chrome bands.
@@ -85,7 +85,6 @@ export default async function ConsumerShellLayout({
       <StatusBar />
       <ClassProvider consumerClass={consumerClass}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
-          <TopBar />
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>
           </div>

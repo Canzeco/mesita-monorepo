@@ -10,8 +10,8 @@ import {
 import type { ConsumerClass } from "@/lib/api/profile";
 
 // Real, server-sourced class for the signed-in consumer, shared with
-// every client surface under the (shell) layout: the TopBar class chip, the
-// Profile Class tab, the place promo chips, and the place-detail reward box.
+// every client surface under the (shell) layout: the Profile Class tab, the
+// place promo chips, and the place-detail reward box.
 //
 // Seeded once per request by the layout's consumer-web-get-profile read. This
 // replaces the old hardcoded CURRENT_USER mock that pinned everyone to

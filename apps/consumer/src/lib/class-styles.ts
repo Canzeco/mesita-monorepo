@@ -4,9 +4,9 @@
 // components can't drift.
 //
 // `classBadgeClass` in @/lib/consumer-data is the global class chip
-// (bg + text together, used by ClassChip + ProfileClient on consumer
-// surfaces). The split helpers below are what the per-element treatment
-// on the place page needs.
+// (bg + text together, used by ProfileClient on consumer surfaces). The
+// split helpers below are what the per-element treatment on the place page
+// needs.
 //
 // NOTE: the `bg-tier-*` / `text-premium` Tailwind tokens below are CSS
 // design tokens defined in globals.css and are intentionally left under

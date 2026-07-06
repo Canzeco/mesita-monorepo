@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Thin server entry for /profile. The shell layout already runs the
-// auth + onboarding gate and exposes the display name to TopBar, so
-// this page no longer pre-fetches consumer identity — the inline
-// avatar / name / subtitle block was removed (TopBar already shows
-// the name in the center column + the class chip on the right) and
-// nothing else on the surface needs the identity payload yet.
+// Thin server entry for /profile — forwards to /me/class. The Me surface
+// (ProfileClient) owns the identity hero, class, and invite affordance, so
+// this page pre-fetches nothing itself.
 
 export const dynamic = "force-dynamic";
 

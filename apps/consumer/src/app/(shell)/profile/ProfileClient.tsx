@@ -20,6 +20,7 @@ import {
   HelpCircle,
   Instagram,
   Mail,
+  Share2,
   Smile,
   Trash2,
 } from "lucide-react";
@@ -270,17 +271,24 @@ function ProfileHero({
         </div>
       </div>
 
-      {/* Edit profile only — inviting friends lives on the top-bar share icon
-          (SimpleHeader rightAction="share" → /share), so a second entry point
-          here would be redundant. */}
-      <div className="mt-4">
+      {/* Edit profile + Invite friends. The invite entry point moved here from
+          the removed top-bar share icon — the Me page now owns both the class
+          (Class tab below) and the invite affordance. */}
+      <div className="mt-4 flex gap-2">
         <button
           type="button"
           onClick={onEditProfile}
-          className="border-border bg-card hover:bg-muted w-full rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+          className="border-border bg-card hover:bg-muted flex-1 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
         >
           Edit profile
         </button>
+        <Link
+          href={CONSUMER_ROUTES.invite}
+          className="bg-pink-gradient flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold text-white shadow-sm transition active:scale-[0.99]"
+        >
+          <Share2 className="h-4 w-4" />
+          Invite friends
+        </Link>
       </div>
     </header>
   );

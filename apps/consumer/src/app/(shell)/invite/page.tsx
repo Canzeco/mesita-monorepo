@@ -20,8 +20,8 @@ const MESITA_CONTACT_EMAIL = "support@mesita.ai";
 
 // The Invite page is just five gift cards — one per audience — each a
 // credit-card-proportioned gradient tile (ISO/IEC 7810 ID-1, 85.6×53.98) with
-// its own Share button on top. No codes, no rewards, no tabs. The header
-// (SimpleHeader title="Invite") is owned by the shell layout via TopBar.
+// its own Share button on top. No codes, no rewards, no tabs. The page carries
+// no chrome header — it's reached from the Me page's "Invite friends" button.
 //
 // Copy is second-order (Pato, 2026-07-06): partner cards address the referrer
 // ("Know a restaurant or bar?") — Share forwards the link to someone you know,

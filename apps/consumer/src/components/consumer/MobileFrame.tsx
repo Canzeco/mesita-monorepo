@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  *   - Card: the actual app surface. STRICT height on mobile
  *     (\`h-full\` of the outer = h-dvh), capped \`max-h\` on desktop.
  *     The shell layout inside lays out as flex-col:
- *       [StatusBar][TopBar][body flex-1][BottomNav]
+ *       [StatusBar][body flex-1][BottomNav]
  *     With a strict card height, BottomNav as a shrink-0 flex child
  *     sits at the bottom of the viewport, and the body's own
  *     \`overflow-y-auto\` scrolls inside the available space — neither

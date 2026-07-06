@@ -13,9 +13,6 @@ import { cn } from "@/lib/utils";
 // empty states (Upcoming carries the coming-soon framing). Once the booking
 // flow ships, these bodies fill with real reservation rows — the parked
 // ReservationCard / Calendar / WhatsApp building blocks stay in the tree.
-//
-// The shell's TopBar titles this "Reservations" (see TopBar + the
-// reservation-surface prefix), so the header and the tab bar tell one story.
 
 export const dynamic = "force-dynamic";
 
