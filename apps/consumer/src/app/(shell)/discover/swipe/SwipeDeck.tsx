@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   X,
-  Bookmark,
   Heart,
   Compass,
   RotateCcw,
@@ -607,7 +606,7 @@ function Deck({ places }: { places: Place[] }) {
                 : "border-border bg-card text-secondary hover:bg-muted border",
             )}
           >
-            <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+            <Heart className={cn("h-4 w-4", saved && "fill-current")} />
             {saved ? "Saved" : "Save"}
           </button>
           <button

@@ -13,16 +13,13 @@ import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
   Bell,
-  Bookmark,
   Check,
   ChevronRight,
   Crown,
   Download,
-  Globe,
   HelpCircle,
   Instagram,
   Mail,
-  MapPin,
   Smile,
   Trash2,
   UserPen,
@@ -43,17 +40,15 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiFetchConsumerProfile,
-  apiUpdateProfileVisibility,
   type ConsumerClass,
   type ConsumerProfile,
-  type ProfileVisibilityPatch,
 } from "@/lib/api/profile";
 
-// Two-tab Profile under an Instagram-style identity hero: story-ring avatar,
-// real stats (saved places / reservations / IG followers), Edit profile +
-// Invite friends. Consumers have a CLASS (Free / Premium) — the old "Plan"
-// tab kept its content but was renamed, and /me/plan now redirects to
-// /me/class.
+// Two-tab Profile under an identity hero: story-ring avatar and the two real
+// counters Mesita actually tracks (saved places + reservations), plus Edit
+// profile. No follower/friend stats — Mesita has no social graph. Consumers
+// have a CLASS (Free / Premium) — the old "Plan" tab kept its content but was
+// renamed, and /me/plan now redirects to /me/class.
 export type ProfileTab = "class" | "settings";
 
 const TABS: { id: ProfileTab; label: string; href: string }[] = [
@@ -129,7 +124,6 @@ export function ProfileClient({ initialTab }: { initialTab: ProfileTab }) {
           loading={loading}
           reservationsUsed={usage?.reservations_used ?? 0}
           onEditProfile={() => setEditOpen(true)}
-          onConnectSocial={(p) => setVerifyPlatform(p)}
         />
 
         {/* Tab bar pins under the top chrome while the hero scrolls away. */}
@@ -205,18 +199,15 @@ function ProfileHero({
   loading,
   reservationsUsed,
   onEditProfile,
-  onConnectSocial,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
   reservationsUsed: number;
   onEditProfile: () => void;
-  onConnectSocial: (platform: SocialPlatform) => void;
 }) {
-  const { key, origin, followers } = useConsumerClass();
+  const { key } = useConsumerClass();
   const { savedIds } = useSavedPlaces();
   const isPremium = key === "premium";
-  const igConnected = origin === "instagram";
 
   if (loading) {
     return (
@@ -224,7 +215,7 @@ function ProfileHero({
         <div className="flex items-center gap-5">
           <div className="bg-muted h-[86px] w-[86px] shrink-0 animate-pulse rounded-full" />
           <div className="flex flex-1 items-center justify-around">
-            {[0, 1, 2].map((i) => (
+            {[0, 1].map((i) => (
               <div
                 key={i}
                 className="bg-muted h-10 w-14 animate-pulse rounded-lg"
@@ -280,13 +271,6 @@ function ProfileHero({
             value={compact(reservationsUsed)}
             label="Reservations"
             href={CONSUMER_ROUTES.saved.reservations}
-          />
-          <Stat
-            value={igConnected ? compact(followers) : "—"}
-            label="Followers"
-            onClick={
-              igConnected ? undefined : () => onConnectSocial("instagram")
-            }
           />
         </div>
       </div>
@@ -742,16 +726,10 @@ function CurrentClassCard() {
 const MESITA_SUPPORT_EMAIL = "support@mesita.ai";
 const MESITA_PRIVACY_EMAIL = "privacy@mesita.ai";
 
-// Device-level flags. Notification prefs persist here until the push
-// integration lands. The profile-visibility flags are account-level
-// (consumers.profile_* via consumer-web-update-profile, MESITA-76); their
-// localStorage keys survive as the render cache / offline fallback that
-// useProfileVisibilityFlag keeps in sync with the server.
+// Device-level notification flags. These persist in localStorage until the
+// push integration lands.
 const NOTIF_PUSH_KEY = "mesita:notif:push";
 const NOTIF_EMAIL_KEY = "mesita:notif:email";
-const PROFILE_PUBLIC_KEY = "mesita:profile:public";
-const PROFILE_SHOW_SAVES_KEY = "mesita:profile:show-saves";
-const PROFILE_SHOW_VISITS_KEY = "mesita:profile:show-visits";
 
 // Grouped, row-based settings — identity edits happen in the EditProfileSheet
 // (same one the hero button opens), socials connect inline, privacy + support
@@ -773,21 +751,6 @@ function SettingsTab({
   const igConnected = origin === "instagram";
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [publicProfile, togglePublicProfile] = useProfileVisibilityFlag(
-    profile,
-    "profile_public",
-    PROFILE_PUBLIC_KEY,
-  );
-  const [showSaves, toggleShowSaves] = useProfileVisibilityFlag(
-    profile,
-    "profile_show_saves",
-    PROFILE_SHOW_SAVES_KEY,
-  );
-  const [showVisits, toggleShowVisits] = useProfileVisibilityFlag(
-    profile,
-    "profile_show_visits",
-    PROFILE_SHOW_VISITS_KEY,
-  );
 
   const detailsSub = loading
     ? "Loading…"
@@ -841,35 +804,6 @@ function SettingsTab({
             sub="1,000+ followers unlocks Premium — free"
             onClick={() => onConnectSocial("instagram")}
           />
-        )}
-        <RowDivider />
-        <ToggleRow
-          Icon={Globe}
-          tint="sky"
-          label="Public profile"
-          sub={
-            publicProfile
-              ? "Friends can see your social activity"
-              : "Only you can see your activity"
-          }
-          on={publicProfile}
-          onToggle={togglePublicProfile}
-        />
-        {publicProfile && (
-          <div className="border-border/60 bg-muted/25 border-t">
-            <NestedToggleRow
-              Icon={Bookmark}
-              label="Show saved places"
-              on={showSaves}
-              onToggle={toggleShowSaves}
-            />
-            <NestedToggleRow
-              Icon={MapPin}
-              label="Show visits & reviews"
-              on={showVisits}
-              onToggle={toggleShowVisits}
-            />
-          </div>
         )}
       </SettingsGroup>
 
@@ -1157,45 +1091,6 @@ function useStoredFlag(key: string, defaultOn: boolean): [boolean, () => void] {
   return [on, toggle];
 }
 
-// Account-level visibility flag (MESITA-76). Renders off the same
-// hydration-safe localStorage store as useStoredFlag, but the server value
-// from consumer-web-get-profile wins once the profile loads, and toggles
-// persist through consumer-web-update-profile — optimistic flip first,
-// reverted with a toast if the write fails. localStorage doubles as the
-// offline fallback.
-type ProfileVisibilityField = keyof ProfileVisibilityPatch;
-
-function useProfileVisibilityFlag(
-  profile: ConsumerProfile | null,
-  field: ProfileVisibilityField,
-  storageKey: string,
-): [boolean, () => void] {
-  const supabase = useBrowserSupabase();
-  const on = useSyncExternalStore(
-    subscribeToFlags,
-    () => readFlag(storageKey, true),
-    () => true,
-  );
-
-  useEffect(() => {
-    const server = profile?.[field];
-    if (typeof server === "boolean" && server !== readFlag(storageKey, true)) {
-      writeFlag(storageKey, server);
-    }
-  }, [profile, field, storageKey]);
-
-  const toggle = useCallback(() => {
-    const next = !readFlag(storageKey, true);
-    writeFlag(storageKey, next);
-    apiUpdateProfileVisibility(supabase, { [field]: next }).catch(() => {
-      writeFlag(storageKey, !next);
-      toast("Couldn't save that setting — check your connection.");
-    });
-  }, [supabase, field, storageKey]);
-
-  return [on, toggle];
-}
-
 function Switch({ on, small }: { on: boolean; small?: boolean }) {
   return (
     <span
@@ -1274,33 +1169,3 @@ function StoredToggleRow({
   );
 }
 
-// Indented child option under the Public-profile toggle — visually nested
-// (inset background, smaller icon + switch) so the hierarchy reads at a
-// glance.
-function NestedToggleRow({
-  Icon,
-  label,
-  on,
-  onToggle,
-}: {
-  Icon: LucideIcon;
-  label: string;
-  on: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      role="switch"
-      aria-checked={on}
-      className="hover:bg-muted/60 flex w-full items-center gap-3 py-2.5 pr-4 pl-[30px] text-left transition"
-    >
-      <span className="bg-card text-foreground/60 border-border flex h-7 w-7 shrink-0 items-center justify-center rounded-full border">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span className="min-w-0 flex-1 text-[13px] font-medium">{label}</span>
-      <Switch on={on} small />
-    </button>
-  );
-}
