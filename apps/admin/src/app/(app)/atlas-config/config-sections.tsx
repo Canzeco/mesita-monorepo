@@ -27,30 +27,30 @@ import {
 } from "./atlas-ui";
 
 // ─── Image funnel (Collection → Analysis → Selection) ───────────────────────
-// Three stacked stages with a hard monotonic lock: the count of images at each
-// stage can only shrink downstream. By SUM:
-//   collection (Google + IG keep)  ≥  analysis (analyzeGoogle + analyzeIG)  ≥  selection (save total)
+// Three stacked stages with a hard PER-SOURCE lock: every downstream count is
+// bounded by its OWN source upstream, not by a shared sum. You can't keep more
+// than you collected, analyze more of a source than you kept of it, or save
+// more than you analyzed:
+//   IG keep ≤ IG depth · Google/IG analyze ≤ that source's keep · save ≤ analyzed
 // The lock is enforced live by clamping downstream values whenever an upstream
-// one drops, and by capping each analyze/select input's max against the stage
-// above it — so an invalid config can never be entered, let alone saved.
+// one drops, and by capping each input's max against its own source — so an
+// invalid config (e.g. analyze 15 IG when only 10 were kept) can never be
+// entered, let alone saved.
 
 type Funnel = { gg: number; depth: number; keep: number; ag: number; ai: number; save: number };
 
 const clampN = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));
 
-// Enforce keep ≤ depth and collection ≥ analysis ≥ selection (by sum), reducing
-// downstream stages to fit. Deterministic: analysis trims IG before Google.
+// Enforce the per-source chain, reducing downstream values to fit:
+//   IG keep ≤ IG depth · Google analyze ≤ Google keep · IG analyze ≤ IG keep ·
+//   save ≤ (Google analyze + IG analyze), capped at 10.
 function normalizeFunnel(s: Funnel): Funnel {
-  const depth = clampN(s.depth, 1, 30);
-  const keep = clampN(s.keep, 0, Math.min(10, depth));
-  const gg = clampN(s.gg, 0, 10);
-  const cSum = gg + keep;
-  let ag = clampN(s.ag, 0, 10);
-  let ai = clampN(s.ai, 0, 20);
-  if (ag > cSum) ag = cSum;
-  if (ag + ai > cSum) ai = Math.max(0, cSum - ag);
-  const aSum = ag + ai;
-  const save = clampN(s.save, 0, Math.min(20, aSum));
+  const gg = clampN(s.gg, 1, 10); // Google collect & keep
+  const depth = clampN(s.depth, 1, 30); // Instagram download depth
+  const keep = clampN(s.keep, 1, depth); // Instagram keep ≤ depth
+  const ag = clampN(s.ag, 1, gg); // Google analyze ≤ Google keep
+  const ai = clampN(s.ai, 1, keep); // Instagram analyze ≤ Instagram keep
+  const save = clampN(s.save, 1, Math.min(10, ag + ai)); // Selection ≤ analyzed, ≤ 10
   return { gg, depth, keep, ag, ai, save };
 }
 
@@ -192,9 +192,9 @@ export function ImageFunnelSection({
         status={<StageTotal label="collected" n={cSum} />}
       >
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={f.gg} min={0} max={10} onChange={(v) => patch({ gg: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram depth (download)" value={f.depth} min={1} max={30} onChange={(v) => patch({ depth: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram keep (≤ depth)" value={f.keep} min={0} max={Math.min(10, f.depth)} onChange={(v) => patch({ keep: v })} disabled={savePending} />
+          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google collect & keep" value={f.gg} min={1} max={10} onChange={(v) => patch({ gg: v })} disabled={savePending} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect (download)" value={f.depth} min={1} max={30} onChange={(v) => patch({ depth: v })} disabled={savePending} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram keep (≤ collect)" value={f.keep} min={1} max={f.depth} onChange={(v) => patch({ keep: v })} disabled={savePending} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
           Collection total = Google images + Instagram keep = <span className="text-foreground font-semibold tabular-nums">{cSum}</span>. Depth only sets how deep to look before the likes-sort; it doesn&apos;t add to the pool.
@@ -205,7 +205,7 @@ export function ImageFunnelSection({
       <SectionCard
         icon={<Eye className="text-muted-foreground h-4 w-4" />}
         title="Images · Analysis"
-        subtitle="Of the collected pool, how many images the vision model describes and ranks. Can never exceed the Collection total."
+        subtitle="Of what each source kept, how many images the vision model describes and ranks. Never more than that source kept."
         status={<StageTotal label="analyzed" n={aSum} />}
       >
         <div className="mt-5">
@@ -220,11 +220,11 @@ export function ImageFunnelSection({
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images" value={f.ag} min={0} max={Math.min(10, cSum - f.ai)} onChange={(v) => patch({ ag: v })} disabled={savePending || !vision} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images" value={f.ai} min={0} max={Math.min(20, cSum - f.ag)} onChange={(v) => patch({ ai: v })} disabled={savePending || !vision} />
+          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images (≤ Google keep)" value={f.ag} min={1} max={f.gg} onChange={(v) => patch({ ag: v })} disabled={savePending || !vision} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images (≤ Instagram keep)" value={f.ai} min={1} max={f.keep} onChange={(v) => patch({ ai: v })} disabled={savePending || !vision} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          Analysis total <span className="text-foreground font-semibold tabular-nums">{aSum}</span> is capped at the Collection total (<span className="tabular-nums">{cSum}</span>) — you can&apos;t analyze more than you collected.
+          Each source is capped at what it kept — Google ≤ <span className="text-foreground font-semibold tabular-nums">{f.gg}</span>, Instagram ≤ <span className="text-foreground font-semibold tabular-nums">{f.keep}</span>. You can&apos;t describe an image you didn&apos;t keep.
         </p>
 
         <Collapsible summary="Edit photo analysis prompts">
@@ -247,14 +247,14 @@ export function ImageFunnelSection({
             icon={<CheckCheck className="text-muted-foreground h-4 w-4" />}
             label="Photos to keep on profile (all sources combined)"
             value={f.save}
-            min={0}
-            max={Math.min(20, aSum)}
+            min={1}
+            max={Math.min(10, aSum)}
             onChange={(v) => patch({ save: v })}
             disabled={savePending}
           />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          Selection <span className="text-foreground font-semibold tabular-nums">{f.save}</span> is capped at the Analysis total (<span className="tabular-nums">{aSum}</span>).
+          Selection <span className="text-foreground font-semibold tabular-nums">{f.save}</span> is capped at the Analysis total (<span className="tabular-nums">{aSum}</span>), up to 10.
         </p>
       </SectionCard>
 
