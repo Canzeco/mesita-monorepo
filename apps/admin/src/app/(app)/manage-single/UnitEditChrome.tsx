@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ImageOff, Search } from "lucide-react";
-import type { AdminPlace } from "./actions";
+import { useState, useTransition } from "react";
+import { CheckCircle2, ImageOff, Loader2, Search, Sparkles } from "lucide-react";
+import { enrichPlace, type AdminPlace } from "./actions";
 import { UNIT_SECTIONS, unitSectionHref } from "./nav";
 
 export function currentUnitSection(pathname: string) {
@@ -70,8 +71,65 @@ export function UnitEditChrome({
             );
           })}
         </nav>
+
+        <span className="bg-border hidden h-4 w-px shrink-0 sm:block" aria-hidden />
+
+        <ReEnrichButton projectId={projectId} />
       </div>
     </div>
+  );
+}
+
+// Manual re-enrich trigger. Re-queues the place through the Enricher pipeline
+// (research → analysis → contents); it runs async, so the button just confirms
+// the job was queued — progress shows in the Place tab's enrichment status.
+function ReEnrichButton({ projectId }: { projectId: string }) {
+  const [pending, startTransition] = useTransition();
+  const [state, setState] = useState<"idle" | "done" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const run = () => {
+    setState("idle");
+    setError(null);
+    startTransition(async () => {
+      const r = await enrichPlace(projectId);
+      if (r.ok) {
+        setState("done");
+      } else {
+        setState("error");
+        setError(r.error);
+      }
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={run}
+      disabled={pending}
+      title={
+        state === "error"
+          ? (error ?? "Failed to queue enrichment")
+          : "Re-run the Enricher pipeline for this place"
+      }
+      className={
+        "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition disabled:opacity-60 " +
+        (state === "error"
+          ? "text-destructive hover:bg-destructive/10"
+          : "text-secondary hover:bg-secondary/10")
+      }
+    >
+      {pending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : state === "done" ? (
+        <CheckCircle2 className="h-4 w-4" />
+      ) : (
+        <Sparkles className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">
+        {pending ? "Queuing…" : state === "done" ? "Queued" : "Re-enrich"}
+      </span>
+    </button>
   );
 }
 

@@ -157,6 +157,18 @@ export async function getPlaceEnrichment(
   return { ok: true, data: { media: r.data.media ?? {}, status: r.data.status ?? null } };
 }
 
+// Manually re-run the Enricher pipeline for one place. Re-seeds place_research
+// back to stage='research'; the cron poller re-does research → analysis →
+// contents. Runs ASYNC — poll getPlaceEnrichment to watch progress.
+export async function enrichPlace(projectId: string): Promise<Result<true>> {
+  const r = await efInvoke<{ enrichmentTriggered: boolean }>(
+    "admin-web-enrich-place",
+    { projectId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: true };
+}
+
 // ── Team ─────────────────────────────────────────────────────────────────
 
 export type TeamSnapshot = {
