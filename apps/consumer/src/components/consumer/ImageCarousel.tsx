@@ -13,6 +13,12 @@ export type CarouselMediaItem = MediaItem;
 
 const TRANSFORM_PAGE_MS = 500;
 
+// Eager-load a small window around the active slide so paging reveals the
+// next photo instantly instead of waiting on a lazy fetch. Forward-biased
+// because users page forward far more than back.
+const PRELOAD_BEHIND = 1;
+const PRELOAD_AHEAD = 2;
+
 export function ImageCarousel({
   photos,
   media,
@@ -221,11 +227,15 @@ export function ImageCarousel({
                 sizes={sizes}
                 priority={priority && i === 0}
                 // Force eager in transform mode so paging shows the next
-                // photo instantly instead of waiting on a lazy fetch.
+                // photo instantly instead of waiting on a lazy fetch. In
+                // native-scroll mode, still eager-load a window around the
+                // active slide so the neighbours are warm before you reach
+                // them.
                 loading={
                   priority && i === 0
                     ? undefined
-                    : noNativeScroll
+                    : noNativeScroll ||
+                        (i >= idx - PRELOAD_BEHIND && i <= idx + PRELOAD_AHEAD)
                       ? "eager"
                       : "lazy"
                 }

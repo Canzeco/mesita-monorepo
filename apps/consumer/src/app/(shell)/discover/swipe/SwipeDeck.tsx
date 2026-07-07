@@ -34,6 +34,8 @@ const EXIT_ANIMATION_MS = 300;
 const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
 const TUTORIAL_AUTO_DISMISS_MS = 5500;
 const SWIPE_STATE_STORAGE_KEY = "mesita_swipe_state_v1";
+// How many upcoming cards' cover photos to pre-warm ahead of the active card.
+const PRELOAD_CARDS_AHEAD = 3;
 
 export function SwipeDeck({
   places,
@@ -443,6 +445,22 @@ function Deck({ places }: { places: Place[] }) {
     router.prefetch(placeHref(v.id));
     if (next) router.prefetch(placeHref(next.id));
   }, [router, v, next]);
+
+  // Warm the browser cache for upcoming cards' cover photos so a swipe
+  // reveals the next card instantly instead of fetching on mount. The back
+  // card (idx+1) already renders its cover, so this mainly covers idx+2..+3.
+  // Deck photos are raw <img> on the R2 URL (no Next optimizer), so a bare
+  // Image() request warms the exact URL the card will render.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    for (let i = 1; i <= PRELOAD_CARDS_AHEAD; i += 1) {
+      const src = located[idx + i]?.photos?.[0];
+      if (src) {
+        const img = new window.Image();
+        img.src = src;
+      }
+    }
+  }, [located, idx]);
 
   if (exhausted || !v) {
     return <ExhaustedDeck onRestart={restart} restarting={restarting} />;

@@ -352,30 +352,9 @@ function ProfileSummaryCard({
         </div>
       </div>
 
-      {/* Data block: class + Instagram, the member's real state — all of it,
+      {/* Data block: Instagram + class, the member's real state — all of it,
           right here so the buttons below stay data-agnostic. */}
       <div className="border-border/60 mt-4 flex flex-col gap-2.5 border-t pt-3.5">
-        <div className="flex items-center gap-2.5">
-          <span
-            className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm",
-              isPremium
-                ? "bg-tier-premium text-white"
-                : "bg-amber-400/20 text-amber-700",
-            )}
-          >
-            <Crown className="h-[15px] w-[15px]" />
-          </span>
-          <span className="text-[13px] font-semibold tracking-tight">
-            Mesita {classLabel}
-          </span>
-          {classVia && (
-            <span className="text-muted-foreground text-[12px]">
-              via {classVia}
-            </span>
-          )}
-        </div>
-
         <div className="flex items-center gap-2.5">
           <span className="bg-pink-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm">
             <Instagram className="h-[15px] w-[15px]" />
@@ -395,6 +374,27 @@ function ProfileSummaryCard({
           ) : (
             <span className="text-muted-foreground/80 text-[13px]">
               Not connected
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <span
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm",
+              isPremium
+                ? "bg-tier-premium text-white"
+                : "bg-amber-400/20 text-amber-700",
+            )}
+          >
+            <Crown className="h-[15px] w-[15px]" />
+          </span>
+          <span className="text-[13px] font-semibold tracking-tight">
+            Mesita {classLabel}
+          </span>
+          {classVia && (
+            <span className="text-muted-foreground text-[12px]">
+              via {classVia}
             </span>
           )}
         </div>
