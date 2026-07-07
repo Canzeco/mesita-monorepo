@@ -239,8 +239,8 @@ export function SearchClient({
     railScrollRef.current?.scrollTo({ left: 0 });
   };
 
-  // Card width (180) + flex gap (8) → the horizontal stride between cards.
-  const RAIL_STRIDE = 188;
+  // Card width (264) + flex gap (8) → the horizontal stride between cards.
+  const RAIL_STRIDE = 272;
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || visible.length === 0) return;
@@ -415,13 +415,13 @@ export function SearchClient({
               onAdd={handleAdd}
             />
           ) : (
-            <div className="flex flex-col items-center px-8 pt-12 text-center">
-              <span className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-2xl">
-                <Search className="h-6 w-6" />
+            <div className="flex flex-1 flex-col items-center justify-center px-8 pb-24 text-center">
+              <span className="text-6xl" role="img" aria-label="Search">
+                🔍
               </span>
-              <p className="mt-4 text-sm font-semibold">Search places</p>
-              <p className="text-muted-foreground mt-1 max-w-[220px] text-xs">
-                Type a place, cuisine, or neighborhood to find it on Mesita.
+              <p className="mt-5 text-lg font-semibold">Where to today?</p>
+              <p className="text-muted-foreground mt-1.5 max-w-[260px] text-sm">
+                Find the perfect place by name or category.
               </p>
             </div>
           )}
@@ -485,17 +485,17 @@ function RailCard({
       type="button"
       onClick={selected ? onOpen : onSelect}
       className={cn(
-        "border-border bg-card/95 shadow-elev w-[180px] shrink-0 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
+        "border-border bg-card/95 shadow-elev flex w-[264px] shrink-0 items-center gap-3 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
         selected && "border-primary ring-primary/30 ring-2",
       )}
     >
-      <div className="bg-muted relative h-20 w-full overflow-hidden rounded-xl">
+      <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
         {photo ? (
           <Image
             src={photo}
             alt={place.name}
             fill
-            sizes="180px"
+            sizes="64px"
             className="object-cover"
           />
         ) : (
@@ -504,7 +504,7 @@ function RailCard({
           </span>
         )}
       </div>
-      <div className="px-1 pt-1.5 pb-0.5">
+      <div className="min-w-0 flex-1">
         <span className="flex items-center gap-1">
           <span className="truncate text-sm font-semibold">{place.name}</span>
           {place.listing_type === "partner" && (
@@ -515,12 +515,12 @@ function RailCard({
           )}
         </span>
         {subtitle && (
-          <p className="text-muted-foreground truncate text-[10px]">
+          <p className="text-muted-foreground truncate text-[11px]">
             {subtitle}
           </p>
         )}
         {hasMeta && (
-          <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[10px]">
+          <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[11px]">
             {place.google_rating != null && (
               <span className="flex items-center gap-0.5">
                 <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
