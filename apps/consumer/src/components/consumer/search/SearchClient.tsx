@@ -295,30 +295,44 @@ export function SearchClient({
       {/* Floating top overlay — full-width search bar + idle chip row.
           (Ask AI moved to the Home tab's Memo concierge.) */}
       <div className="absolute inset-x-3 top-3 z-30">
-        <div className="border-border bg-card/95 shadow-elev flex items-stretch overflow-hidden rounded-2xl border backdrop-blur-xl">
-          <label className="flex h-11 min-w-0 flex-1 items-center gap-2 px-3">
-            <Search className="text-muted-foreground h-4 w-4 shrink-0" />
-            <input
-              value={query}
-              onChange={(e) => updateQuery(e.target.value)}
-              onFocus={() => setSearchOpen(true)}
-              placeholder="Search places…"
-              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-            {(query || searchOpen) && (
-              <button
-                type="button"
-                onClick={() => {
-                  updateQuery("");
-                  setSearchOpen(false);
-                }}
-                aria-label="Clear search"
-                className="text-muted-foreground hover:text-foreground shrink-0 transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
+        <div className="border-border bg-card shadow-elev flex h-12 items-center gap-1 rounded-full border pr-1.5 pl-4 backdrop-blur-xl">
+          <Search className="text-muted-foreground h-4 w-4 shrink-0" />
+          <input
+            value={query}
+            onChange={(e) => updateQuery(e.target.value)}
+            onFocus={() => setSearchOpen(true)}
+            placeholder="Search places…"
+            className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
+          />
+          {(query || searchOpen) && (
+            <button
+              type="button"
+              onClick={() => {
+                updateQuery("");
+                setSearchOpen(false);
+              }}
+              aria-label="Clear search"
+              className="text-muted-foreground hover:text-foreground shrink-0 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {/* Filter now lives inside the bar (reference layout): a hairline
+              divider then the tune icon, replacing the standalone chip below. */}
+          <span className="bg-border h-6 w-px shrink-0" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            aria-label="Filters"
+            className="text-foreground hover:text-primary relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {activeChips.length > 0 && (
+              <span className="bg-primary text-primary-foreground absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold">
+                {activeChips.length}
+              </span>
             )}
-          </label>
+          </button>
         </div>
 
         {fetchError && idle && (
@@ -330,19 +344,6 @@ export function SearchClient({
         {idle && (
           <div className="scrollbar-hide mt-2 overflow-x-auto">
             <div className="flex w-max items-center gap-2 pb-1">
-              <button
-                type="button"
-                onClick={() => setFiltersOpen(true)}
-                aria-label="Filters"
-                className="border-border bg-card/95 shadow-elev relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur transition active:scale-95"
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-                {activeChips.length > 0 && (
-                  <span className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold">
-                    {activeChips.length}
-                  </span>
-                )}
-              </button>
               {QUICK_CHIPS.map((chip) => (
                 <button
                   key={chip.id}
