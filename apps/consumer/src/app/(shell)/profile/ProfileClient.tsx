@@ -114,23 +114,23 @@ export function ProfileClient({
         <div className="flex flex-col gap-3">
           <ProfileSummaryCard profile={profile} loading={loading} />
 
-          {/* Conversion cluster first — membership + the free upgrade path.
+          {/* Conversion cluster first — the free upgrade path + membership.
               These are plain action buttons: no user data (that lives in the
               card above), just what tapping them does. */}
-          <BoxRow
-            Icon={Crown}
-            tint="amber"
-            title="Class"
-            summary="Manage your membership"
-            onClick={() => setClassOpen(true)}
-          />
-
           <BoxRow
             Icon={Instagram}
             tint="pink"
             title="Instagram"
             summary="Connect & manage your account"
             onClick={() => setVerifyOpen(true)}
+          />
+
+          <BoxRow
+            Icon={Crown}
+            tint="amber"
+            title="Class"
+            summary="Manage your membership"
+            onClick={() => setClassOpen(true)}
           />
 
           {/* Account management. */}
@@ -216,6 +216,25 @@ export function ProfileClient({
 
 // ─── Profile summary (static, not clickable) ──────────────────────────────
 
+// Whole years since `birthday` (YYYY-MM-DD). Returns null for a missing or
+// unparseable value so the meta line simply omits it.
+function ageFromBirthday(birthday: string | null | undefined): number | null {
+  if (!birthday) return null;
+  const dob = new Date(birthday);
+  if (Number.isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1;
+  return age >= 0 && age < 130 ? age : null;
+}
+
+// Title-case the stored sex enum (male/female/other) for display; null-safe.
+function formatSex(sex: string | null | undefined): string | null {
+  if (!sex) return null;
+  return sex.charAt(0).toUpperCase() + sex.slice(1);
+}
+
 function ProfileSummaryCard({
   profile,
   loading,
@@ -255,6 +274,13 @@ function ProfileSummaryCard({
     name.charAt(0).toUpperCase();
   const avatarUrl = profile?.avatar_url ?? null;
   const phone = profile?.phone ?? null;
+
+  // Age + sex on one line under the phone — country is intentionally omitted.
+  const age = ageFromBirthday(profile?.birthday);
+  const sexLabel = formatSex(profile?.sex);
+  const meta = [age != null ? `${age}` : null, sexLabel]
+    .filter(Boolean)
+    .join(" · ");
 
   // Every piece of the member's actual data lives here in the card — name,
   // phone, class, Instagram. The boxes below are pure action buttons and carry
@@ -318,6 +344,11 @@ function ProfileSummaryCard({
           >
             {phone || "No phone added"}
           </p>
+          {meta && (
+            <p className="text-muted-foreground/70 mt-0.5 truncate text-[13px]">
+              {meta}
+            </p>
+          )}
         </div>
       </div>
 
