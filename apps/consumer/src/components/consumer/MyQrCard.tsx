@@ -17,7 +17,6 @@ import {
   useConsumerClass,
   type ConsumerClassState,
 } from "@/lib/class-context";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // The Rewards → QR tab. Not a receipt: a class *passport*. A single
 // premium dark-gradient card carries the QR, the Mesita code, and an
@@ -195,10 +194,12 @@ export function MyQrCard({ code, name }: { code: string; name?: string }) {
         </div>
       </section>
 
-      {/* Premium nudge — Free only */}
+      {/* Premium nudge — Free only. Sends straight to the Premium upgrade
+          door (matching the Class modal's Subscribe action), not the bare Me
+          page where the user would have to dig for the upgrade path. */}
       {isFree ? (
         <Link
-          href={CONSUMER_ROUTES.me}
+          href="/subscribe/premium"
           className="border-border surface-card flex items-center gap-3 rounded-2xl px-3.5 py-2.5 transition active:scale-[0.99]"
         >
           <span className="bg-tier-premium grid size-9 shrink-0 place-items-center rounded-xl text-white">

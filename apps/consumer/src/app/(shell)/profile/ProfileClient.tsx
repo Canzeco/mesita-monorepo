@@ -9,7 +9,6 @@ import {
   Crown,
   Instagram,
   MessageCircle,
-  Phone,
   Settings as SettingsIcon,
   Share2,
   UserRound,
@@ -22,7 +21,7 @@ import { ShareModal } from "@/components/consumer/me/ShareModal";
 import { ClassModal } from "@/components/consumer/me/ClassModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
-import { COUNTRIES, CLASSES } from "@/lib/consumer-data";
+import { CLASSES } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -33,8 +32,9 @@ import {
 } from "@/lib/api/profile";
 
 // The Me surface — a static identity summary followed by a stack of modular
-// boxes, each opening its own bottom-sheet modal: Share, Class, Instagram,
-// Personal details, Settings, and Contact. This is a single flat page at /me
+// boxes, each opening its own bottom-sheet modal, ordered conversion →
+// account → support: Class, Instagram, Personal details, Settings, Share,
+// and Contact. This is a single flat page at /me
 // (the old two-tab /me/class · /me/settings layout is retired); `openSettings`
 // opens the Settings box on arrival for the legacy /me/settings deep link.
 export function ProfileClient({
@@ -114,18 +114,12 @@ export function ProfileClient({
         <div className="flex flex-col gap-3">
           <ProfileSummaryCard profile={profile} loading={loading} />
 
-          <BoxRow
-            Icon={Share2}
-            tint="pink"
-            title="Share"
-            summary="Invite friends to Mesita"
-            onClick={() => setShareOpen(true)}
-          />
-
+          {/* Conversion cluster first — membership + the free upgrade path. */}
           <ClassBox onClick={() => setClassOpen(true)} />
 
           <InstagramBox profile={profile} onClick={() => setVerifyOpen(true)} />
 
+          {/* Account management. */}
           <BoxRow
             Icon={UserRound}
             tint="sky"
@@ -141,6 +135,15 @@ export function ProfileClient({
             title="Settings"
             summary="Notifications, permissions, language"
             onClick={() => setSettingsOpen(true)}
+          />
+
+          {/* Secondary / support — least-frequent, outward-facing. */}
+          <BoxRow
+            Icon={Share2}
+            tint="pink"
+            title="Share"
+            summary="Invite friends to Mesita"
+            onClick={() => setShareOpen(true)}
           />
 
           <BoxRow
@@ -206,29 +209,18 @@ function ProfileSummaryCard({
   profile: ConsumerProfile | null;
   loading: boolean;
 }) {
-  const { key, origin, followers } = useConsumerClass();
+  const { key } = useConsumerClass();
   const isPremium = key === "premium";
 
   if (loading) {
     return (
       <div className="border-border bg-muted/50 overflow-hidden rounded-3xl border p-4">
-        <div className="flex flex-col items-center gap-2 pb-3">
+        <div className="flex items-center gap-4">
           <div className="bg-muted h-[72px] w-[72px] shrink-0 animate-pulse rounded-full" />
-          <div className="bg-muted h-4 w-40 animate-pulse rounded" />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="border-border/70 flex items-center gap-2.5 rounded-2xl border p-2.5"
-            >
-              <div className="bg-muted h-9 w-9 shrink-0 animate-pulse rounded-xl" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <div className="bg-muted h-2 w-10 animate-pulse rounded" />
-                <div className="bg-muted h-3 w-16 animate-pulse rounded" />
-              </div>
-            </div>
-          ))}
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+            <div className="bg-muted h-3 w-28 animate-pulse rounded" />
+          </div>
         </div>
       </div>
     );
@@ -243,28 +235,14 @@ function ProfileSummaryCard({
   const initials =
     `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() ||
     name.charAt(0).toUpperCase();
-  const country = COUNTRIES.find((c) => c.name === profile?.country);
-  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
-  const handle = profile?.instagram_handle ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
-  // Instagram is "connected" via a claimed handle OR an Instagram-origin
-  // membership; when connected, show the username + follower count. (The
-  // verified check lives only on the Instagram box below — that's what's
-  // actually verified — not on this summary tile.)
-  const igConnected = origin === "instagram" || Boolean(handle);
-  const igValue = igConnected
-    ? [
-        handle && `@${handle}`,
-        followers > 0 && `${formatFollowerCount(followers)} followers`,
-      ]
-        .filter(Boolean)
-        .join(" · ") || "Connected"
-    : "Not connected";
+  const phone = profile?.phone ?? null;
 
   return (
     // Branded tinted panel — a soft class-tinted gradient so the identity card
     // reads as premium and distinct from the white option boxes below (richer
-    // for Premium). The facts sit frameless on the tint as identity facts.
+    // for Premium). Pared to just identity: avatar, name, phone — everything
+    // else (class, Instagram, country) lives in the boxes below, so no repeats.
     <section
       className={cn(
         "border-border overflow-hidden rounded-3xl border p-4",
@@ -273,8 +251,7 @@ function ProfileSummaryCard({
           : "from-primary/[0.08] via-secondary/[0.06] to-accent/[0.08] bg-gradient-to-br",
       )}
     >
-      {/* Centered hero — avatar on top, name centered below it. */}
-      <div className="flex flex-col items-center gap-2 pb-3 text-center">
+      <div className="flex items-center gap-4">
         {/* Story-ring avatar: class-tinted gradient ring around initials. */}
         <div
           className={cn(
@@ -301,121 +278,24 @@ function ProfileSummaryCard({
           </div>
         </div>
 
-        <h2 className="font-display max-w-full truncate text-[19px] leading-tight font-bold tracking-tight">
-          {name}
-        </h2>
-      </div>
-
-      {/* Four facts — phone, Instagram, class, country — each with its own
-          tinted icon so the card reads colorful, not gray. Thin-bordered on
-          the tint so they stay identity facts, not tappable rows. */}
-      <div className="grid grid-cols-2 gap-2">
-        <FactTile
-          Icon={Phone}
-          tint="sky"
-          label="Phone"
-          value={profile?.phone || "Not added"}
-          muted={!profile?.phone}
-        />
-        <FactTile
-          Icon={Instagram}
-          tint="pink"
-          label="Instagram"
-          value={igValue}
-          muted={!igConnected}
-        />
-        <FactTile
-          Icon={Crown}
-          tint={isPremium ? "premium" : "amber"}
-          label="Class"
-          value={`Mesita ${classLabel}`}
-        />
-        <FactTile
-          emoji={country?.flag ?? "🌐"}
-          tint="teal"
-          label="Country"
-          value={country?.name ?? "Not set"}
-          muted={!country}
-        />
+        {/* Name over phone, stacked to the right of the avatar. */}
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display truncate text-[20px] leading-tight font-bold tracking-tight">
+            {name}
+          </h2>
+          <p
+            className={cn(
+              "mt-1 truncate text-[14px]",
+              phone
+                ? "text-muted-foreground font-medium"
+                : "text-muted-foreground/70",
+            )}
+          >
+            {phone || "No phone added"}
+          </p>
+        </div>
       </div>
     </section>
-  );
-}
-
-type FactTint =
-  | "sky"
-  | "pink"
-  | "premium"
-  | "amber"
-  | "emerald"
-  | "violet"
-  | "teal"
-  | "neutral";
-
-// Firm opacities (≥18%) so each hue reads as a distinct color on the tinted
-// card instead of washing out to gray.
-const FACT_TINT: Record<FactTint, string> = {
-  sky: "bg-sky-500/20 text-sky-600",
-  pink: "bg-pink-gradient text-white",
-  premium: "bg-tier-premium text-white",
-  amber: "bg-amber-400/25 text-amber-700",
-  emerald: "bg-emerald-500/20 text-emerald-600",
-  violet: "bg-violet-500/20 text-violet-600",
-  teal: "bg-teal-500/20 text-teal-600",
-  neutral: "bg-muted text-foreground/70",
-};
-
-// Compact follower count for the tight Instagram fact tile (e.g. 4.2K, 1.1M).
-function formatFollowerCount(n: number): string {
-  if (n >= 1_000_000)
-    return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return `${n}`;
-}
-
-function FactTile({
-  Icon,
-  emoji,
-  tint,
-  label,
-  value,
-  muted,
-}: {
-  Icon?: LucideIcon;
-  emoji?: string;
-  tint: FactTint;
-  label: string;
-  value: string;
-  muted?: boolean;
-}) {
-  return (
-    <div className="border-border/70 flex items-center gap-2.5 rounded-2xl border p-2.5">
-      <span
-        className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px]",
-          FACT_TINT[tint],
-        )}
-      >
-        {Icon ? (
-          <Icon className="h-[18px] w-[18px]" />
-        ) : (
-          <span aria-hidden>{emoji}</span>
-        )}
-      </span>
-      <div className="min-w-0">
-        <p className="text-muted-foreground text-[9.5px] leading-none font-semibold tracking-[0.1em] uppercase">
-          {label}
-        </p>
-        <p
-          className={cn(
-            "mt-1 truncate text-[13px] font-bold",
-            muted && "text-muted-foreground font-medium",
-          )}
-        >
-          {value}
-        </p>
-      </div>
-    </div>
   );
 }
 
