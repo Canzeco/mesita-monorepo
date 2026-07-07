@@ -114,10 +114,24 @@ export function ProfileClient({
         <div className="flex flex-col gap-3">
           <ProfileSummaryCard profile={profile} loading={loading} />
 
-          {/* Conversion cluster first — membership + the free upgrade path. */}
-          <ClassBox onClick={() => setClassOpen(true)} />
+          {/* Conversion cluster first — membership + the free upgrade path.
+              These are plain action buttons: no user data (that lives in the
+              card above), just what tapping them does. */}
+          <BoxRow
+            Icon={Crown}
+            tint="amber"
+            title="Class"
+            summary="Manage your membership"
+            onClick={() => setClassOpen(true)}
+          />
 
-          <InstagramBox profile={profile} onClick={() => setVerifyOpen(true)} />
+          <BoxRow
+            Icon={Instagram}
+            tint="pink"
+            title="Instagram"
+            summary="Connect & manage your account"
+            onClick={() => setVerifyOpen(true)}
+          />
 
           {/* Account management. */}
           <BoxRow
@@ -209,7 +223,7 @@ function ProfileSummaryCard({
   profile: ConsumerProfile | null;
   loading: boolean;
 }) {
-  const { key } = useConsumerClass();
+  const { key, origin, followers } = useConsumerClass();
   const isPremium = key === "premium";
 
   if (loading) {
@@ -221,6 +235,10 @@ function ProfileSummaryCard({
             <div className="bg-muted h-4 w-40 animate-pulse rounded" />
             <div className="bg-muted h-3 w-28 animate-pulse rounded" />
           </div>
+        </div>
+        <div className="border-border/60 mt-4 space-y-2.5 border-t pt-3.5">
+          <div className="bg-muted h-4 w-36 animate-pulse rounded" />
+          <div className="bg-muted h-4 w-44 animate-pulse rounded" />
         </div>
       </div>
     );
@@ -238,11 +256,18 @@ function ProfileSummaryCard({
   const avatarUrl = profile?.avatar_url ?? null;
   const phone = profile?.phone ?? null;
 
+  // Every piece of the member's actual data lives here in the card — name,
+  // phone, class, Instagram. The boxes below are pure action buttons and carry
+  // no user data (so "why class?" is answered once, here).
+  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
+  const classVia = isPremium && origin !== "default" ? origin : null;
+  const handle = profile?.instagram_handle ?? null;
+  const igConnected = origin === "instagram" || Boolean(handle);
+
   return (
     // Branded tinted panel — a soft class-tinted gradient so the identity card
     // reads as premium and distinct from the white option boxes below (richer
-    // for Premium). Pared to just identity: avatar, name, phone — everything
-    // else (class, Instagram, country) lives in the boxes below, so no repeats.
+    // for Premium).
     <section
       className={cn(
         "border-border overflow-hidden rounded-3xl border p-4",
@@ -293,6 +318,54 @@ function ProfileSummaryCard({
           >
             {phone || "No phone added"}
           </p>
+        </div>
+      </div>
+
+      {/* Data block: class + Instagram, the member's real state — all of it,
+          right here so the buttons below stay data-agnostic. */}
+      <div className="border-border/60 mt-4 flex flex-col gap-2.5 border-t pt-3.5">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm",
+              isPremium
+                ? "bg-tier-premium text-white"
+                : "bg-amber-400/20 text-amber-700",
+            )}
+          >
+            <Crown className="h-[15px] w-[15px]" />
+          </span>
+          <span className="text-[13px] font-semibold tracking-tight">
+            Mesita {classLabel}
+          </span>
+          {classVia && (
+            <span className="text-muted-foreground text-[12px]">
+              via {classVia}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <span className="bg-pink-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm">
+            <Instagram className="h-[15px] w-[15px]" />
+          </span>
+          {igConnected ? (
+            <>
+              <span className="truncate text-[13px] font-semibold tracking-tight">
+                {handle ? `@${handle}` : "Connected"}
+              </span>
+              {followers > 0 && (
+                <span className="text-muted-foreground shrink-0 text-[12px]">
+                  {followers.toLocaleString("en-US")} followers
+                </span>
+              )}
+              <BadgeCheck className="text-foreground/60 ml-auto h-[18px] w-[18px] shrink-0" />
+            </>
+          ) : (
+            <span className="text-muted-foreground/80 text-[13px]">
+              Not connected
+            </span>
+          )}
         </div>
       </div>
     </section>
@@ -394,63 +467,6 @@ function BoxRow({
       summary={summary}
       onClick={onClick}
       disabled={disabled}
-    />
-  );
-}
-
-function ClassBox({ onClick }: { onClick: () => void }) {
-  const { key, origin } = useConsumerClass();
-  const isPremium = key === "premium";
-  const label = CLASSES.find((c) => c.id === key)?.label ?? "Free";
-  const via = isPremium && origin !== "default" ? ` · via ${origin}` : "";
-  return (
-    <BoxShell
-      iconTint={isPremium ? "premium" : "amber"}
-      icon={<Crown className="h-[22px] w-[22px]" />}
-      title="Class"
-      summary={`Mesita ${label}${via}`}
-      trailing={
-        !isPremium ? (
-          <span className="bg-muted text-foreground/70 mr-1 inline-flex shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold">
-            Upgrade
-          </span>
-        ) : undefined
-      }
-      onClick={onClick}
-    />
-  );
-}
-
-function InstagramBox({
-  profile,
-  onClick,
-}: {
-  profile: ConsumerProfile | null;
-  onClick: () => void;
-}) {
-  const { origin, followers } = useConsumerClass();
-  const handle = profile?.instagram_handle ?? null;
-  const connected = origin === "instagram" || Boolean(handle);
-  const summary = connected
-    ? [
-        handle && `@${handle}`,
-        followers > 0 && `${followers.toLocaleString("en-US")} followers`,
-      ]
-        .filter(Boolean)
-        .join(" · ") || "Connected"
-    : "Add Instagram to unlock Premium";
-  return (
-    <BoxShell
-      iconTint="pink"
-      icon={<Instagram className="h-[22px] w-[22px]" />}
-      title="Instagram"
-      summary={summary}
-      trailing={
-        connected ? (
-          <BadgeCheck className="text-foreground/70 mr-0.5 h-5 w-5 shrink-0" />
-        ) : undefined
-      }
-      onClick={onClick}
     />
   );
 }
