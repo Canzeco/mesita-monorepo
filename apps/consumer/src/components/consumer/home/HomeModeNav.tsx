@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame, Heart, Sparkles, Users, type LucideIcon } from "lucide-react";
+import { Flame, Heart, Users, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -23,12 +23,6 @@ const TABS: {
   soon?: boolean;
 }[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
-  {
-    href: CONSUMER_ROUTES.homeTabs.ai,
-    label: "Ask AI",
-    Icon: Sparkles,
-    soon: true,
-  },
   {
     href: CONSUMER_ROUTES.homeTabs.social,
     label: "Social",

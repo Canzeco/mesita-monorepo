@@ -419,20 +419,11 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Live text-search results — On Mesita / From Google. The panel is
-          content-height with map showing below; tapping that map area (or the
-          side strips) clears the query and dismisses — X isn't the only way. */}
+      {/* Active search takes over the map: a full-screen sheet under the
+          floating search bar. Empty → a hint; typing → live results. Dismiss
+          via the bar's X — there's no map peeking through to tap now. */}
       {(searchOpen || trimmed.length > 0) && (
-        <>
-          <button
-            type="button"
-            aria-label="Dismiss search results"
-            onClick={() => {
-              updateQuery("");
-              setSearchOpen(false);
-            }}
-            className="absolute inset-x-0 top-[60px] bottom-0 z-30 cursor-default"
-          />
+        <div className="bg-background absolute inset-x-0 top-[60px] bottom-0 z-30 flex flex-col">
           {trimmed.length > 0 ? (
             <SearchResultsPanel
               query={query}
@@ -445,18 +436,17 @@ export function SearchClient({
               onAdd={handleAdd}
             />
           ) : (
-            <div className="absolute inset-x-3 top-[60px] z-40">
-              <div className="border-border bg-card/95 shadow-elev rounded-2xl border p-4 backdrop-blur-xl">
-                <p className="text-foreground text-sm font-semibold">
-                  Search places
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Type a place, cuisine, or neighborhood to find it on Mesita.
-                </p>
-              </div>
+            <div className="flex flex-col items-center px-8 pt-12 text-center">
+              <span className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-2xl">
+                <Search className="h-6 w-6" />
+              </span>
+              <p className="mt-4 text-sm font-semibold">Search places</p>
+              <p className="text-muted-foreground mt-1 max-w-[220px] text-xs">
+                Type a place, cuisine, or neighborhood to find it on Mesita.
+              </p>
             </div>
           )}
-        </>
+        </div>
       )}
 
       <FiltersSheet
