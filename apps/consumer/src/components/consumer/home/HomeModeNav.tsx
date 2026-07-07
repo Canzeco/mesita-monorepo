@@ -7,15 +7,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame, Heart, Users, type LucideIcon } from "lucide-react";
+import { Flame, Heart, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // `soon` tabs are BLOCKED, not removed: kept visible (so the surface reads as
 // intentional and un-parking is a one-flag flip) but disabled and non-navigable
-// while we finish Swipe / Favorites / Search first. Their routes also redirect
-// to swipe (see home/ai/page.tsx, home/social/page.tsx) so direct URLs can't
-// reach the parked content. Flip `soon: false` + restore those pages to unblock.
+// while we finish the others first. Their routes also redirect to swipe (see
+// home/social/page.tsx) so direct URLs can't reach the parked content. Flip
+// `soon: false` + restore that page to unblock. ("Memo" = the Ask AI concierge.)
 const TABS: {
   href: string;
   label: string;
@@ -23,6 +23,7 @@ const TABS: {
   soon?: boolean;
 }[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
+  { href: CONSUMER_ROUTES.homeTabs.ai, label: "Memo", Icon: Sparkles },
   {
     href: CONSUMER_ROUTES.homeTabs.social,
     label: "Social",

@@ -44,7 +44,6 @@ import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./PredictionRow";
 import {
   CHIP_GROUPS,
-  QUICK_CHIPS,
   applyChipFilters,
   type ChipTone,
   type FilterChip,
@@ -341,27 +340,6 @@ export function SearchClient({
           </p>
         )}
 
-        {idle && (
-          <div className="scrollbar-hide mt-2 overflow-x-auto">
-            <div className="flex w-max items-center gap-2 pb-1">
-              {QUICK_CHIPS.map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  onClick={() => toggleChip(chip.id)}
-                  className={cn(
-                    "flex h-8 shrink-0 items-center justify-center rounded-full border px-3.5 text-xs font-semibold whitespace-nowrap shadow-sm backdrop-blur transition active:scale-95",
-                    activeChips.includes(chip.id)
-                      ? activeToneClasses(chip.tone)
-                      : "border-border bg-card/95 text-foreground",
-                  )}
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Bottom overlay — horizontal catalog rail (idle only). */}
