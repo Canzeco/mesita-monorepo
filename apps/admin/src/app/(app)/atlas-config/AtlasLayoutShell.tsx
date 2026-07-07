@@ -10,11 +10,11 @@ import { ATLAS_SUBROUTES } from "./nav";
 // to be split across two sidebar items — now unified here.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/atlas-config/fields":
-    "Profile — the controlled vocabulary and field limits the Enricher and operators write place profiles with.",
+    "Atlas Config — the controlled vocabulary and field limits the Enricher and operators write place profiles with.",
   "/atlas-config/configuration":
-    "Parameters — pipeline behaviour: the image funnel (collection → analysis → selection), link discovery, and synthesis models.",
+    "Enricher Config — pipeline behaviour: the image funnel (collection → analysis → selection), link discovery, and synthesis models.",
   "/atlas-config/calculator":
-    "Calculator — preview cost and runtime for one enrichment run at the current settings.",
+    "Enricher Params — preview cost and runtime for one enrichment run at the current settings.",
 };
 
 export function AtlasLayoutShell({ children }: { children: React.ReactNode }) {

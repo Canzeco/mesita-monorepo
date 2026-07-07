@@ -12,9 +12,9 @@ export const ATLAS_PARENT = {
 } as const;
 
 export const ATLAS_SUBROUTES = [
-  { href: "/atlas-config/fields", label: "Profile", Icon: ListChecks },
-  { href: "/atlas-config/configuration", label: "Parameters", Icon: Settings2 },
-  { href: "/atlas-config/calculator", label: "Calculator", Icon: Calculator },
+  { href: "/atlas-config/fields", label: "Atlas Config", Icon: ListChecks },
+  { href: "/atlas-config/configuration", label: "Enricher Config", Icon: Settings2 },
+  { href: "/atlas-config/calculator", label: "Enricher Params", Icon: Calculator },
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;
