@@ -2,20 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ADEA_SUBROUTES } from "./nav";
+import { ATLAS_SUBROUTES } from "./nav";
 
-export function AdeaTabNav() {
+export function AtlasTabNav() {
   const pathname = usePathname();
 
   return (
     <div
       role="tablist"
-      aria-label="Enricher Config"
+      aria-label="Atlas & Enricher Config"
       className="border-border -mx-4 mt-5 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:mt-6 sm:px-0"
     >
-      {ADEA_SUBROUTES.map(({ href, label, Icon }) => {
-        const active =
-          pathname === href || pathname.startsWith(`${href}/`);
+      {ATLAS_SUBROUTES.map(({ href, label, Icon }) => {
+        const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={href}

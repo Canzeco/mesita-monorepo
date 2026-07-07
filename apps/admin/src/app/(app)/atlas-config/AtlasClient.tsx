@@ -5,9 +5,8 @@ import type { SynthesisQuality } from "./actions";
 import { PipelineStrip, StepsOverviewSection } from "./enricher-catalog";
 import {
   DiscoverySection,
-  GatherSection,
+  ImageFunnelSection,
   ModelsSection,
-  VisionParamsSection,
 } from "./config-sections";
 import { CostSection } from "./CostSection";
 
@@ -55,10 +54,16 @@ export function AtlasConfigurationClient(props: {
       <PipelineStrip />
 
       <StepsOverviewSection />
-      <GatherSection
+      <ImageFunnelSection
         initialGatherGoogleImages={props.initialGatherGoogleImages}
         initialGatherInstagramDepth={props.initialGatherInstagramDepth}
         initialGatherInstagramPosts={props.initialGatherInstagramPosts}
+        initialImageVisionEnabled={props.initialImageVisionEnabled}
+        initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+        initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+        initialSaveTotalImages={props.initialSaveTotalImages}
+        initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
+        initialImageSortingPrompt={props.initialImageSortingPrompt}
         onSaved={setUpdatedAt}
       />
       <DiscoverySection
@@ -67,15 +72,6 @@ export function AtlasConfigurationClient(props: {
         initialFacebookN={props.initialDiscoverFacebookN}
         initialOpentableN={props.initialDiscoverOpentableN}
         initialUbereatsN={props.initialDiscoverUbereatsN}
-        onSaved={setUpdatedAt}
-      />
-      <VisionParamsSection
-        initialImageVisionEnabled={props.initialImageVisionEnabled}
-        initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-        initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-        initialSaveTotalImages={props.initialSaveTotalImages}
-        initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
-        initialImageSortingPrompt={props.initialImageSortingPrompt}
         onSaved={setUpdatedAt}
       />
       <ModelsSection

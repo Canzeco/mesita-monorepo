@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { ADEA_PARENT } from "@/app/(app)/adea-config/nav";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import {
   parseUnitId,
@@ -37,11 +36,6 @@ const SIDEBAR_NAV = [
     href: ATLAS_PARENT.href,
     label: ATLAS_PARENT.label,
     Icon: ATLAS_PARENT.Icon,
-  },
-  {
-    href: ADEA_PARENT.href,
-    label: ADEA_PARENT.label,
-    Icon: ADEA_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
