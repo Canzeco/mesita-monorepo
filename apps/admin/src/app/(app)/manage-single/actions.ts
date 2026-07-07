@@ -126,6 +126,10 @@ export type PlaceMediaMeta = {
   caption: string | null;
   likes_count: number | null;
   source_url: string | null;
+  // Raw per-source signals captured at gather time (pre-analysis): Instagram
+  // carries comments_count / timestamp / is_video / shortcode; website carries
+  // alt / page / width / height. Shape varies by source, hence unknown values.
+  source_metadata: Record<string, unknown> | null;
 };
 
 export type PlaceEnrichmentStatus = {

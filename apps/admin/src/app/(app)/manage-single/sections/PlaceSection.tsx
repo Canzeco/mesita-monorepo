@@ -329,6 +329,8 @@ export function PlaceSection({
         <MediaMetaDialog
           url={metaFor}
           meta={media[metaFor] ?? null}
+          position={form.photos.indexOf(metaFor) + 1}
+          total={form.photos.length}
           onClose={() => setMetaFor(null)}
         />
       )}
@@ -532,15 +534,67 @@ function AnalysisText({ text }: { text: string }) {
   );
 }
 
-// Admin-only inspector: shows one image's Enricher metadata (source + vision
-// analysis, plus caption/likes for Instagram) in a small modal.
+const STATUS_CHIP: Record<string, string> = {
+  saved: "bg-green-500/10 text-green-600",
+  pending: "bg-amber-500/10 text-amber-600",
+  failed: "bg-red-500/10 text-red-600",
+};
+
+// Turn the raw per-source `source_metadata` blob into labelled rows for display.
+// Shapes: Instagram → { comments_count, timestamp, is_video, shortcode };
+// website → { alt, page, width, height }. Everything is defensive — the blob is
+// gathered upstream and may be partial.
+function sourceMetaRows(
+  source: string | null,
+  meta: Record<string, unknown> | null,
+): { label: string; value: string }[] {
+  if (!meta) return [];
+  const rows: { label: string; value: string }[] = [];
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+
+  if (source === "instagram") {
+    const comments = num(meta.comments_count);
+    if (comments != null) rows.push({ label: "Comments", value: comments.toLocaleString() });
+    if (meta.is_video === true) rows.push({ label: "Media type", value: "Video" });
+    else if (meta.is_video === false) rows.push({ label: "Media type", value: "Photo" });
+    const ts = meta.timestamp;
+    let posted: string | null = null;
+    if (typeof ts === "number" && Number.isFinite(ts)) {
+      posted = formatAbsoluteUtc(new Date(ts * 1000).toISOString());
+    } else if (typeof ts === "string" && ts.trim()) {
+      const d = new Date(ts);
+      posted = Number.isNaN(d.getTime()) ? ts : formatAbsoluteUtc(d.toISOString());
+    }
+    if (posted) rows.push({ label: "Posted", value: posted });
+    const shortcode = str(meta.shortcode);
+    if (shortcode) rows.push({ label: "Shortcode", value: shortcode });
+  } else if (source === "website") {
+    const w = num(meta.width);
+    const h = num(meta.height);
+    if (w != null && h != null) rows.push({ label: "Dimensions", value: `${w}×${h}` });
+    const page = str(meta.page);
+    if (page) rows.push({ label: "Found on page", value: page });
+    const alt = str(meta.alt);
+    if (alt) rows.push({ label: "Alt text", value: alt });
+  }
+  return rows;
+}
+
+// Admin-only inspector: shows one image's Enricher metadata — source, gallery
+// order, save status, the pre-analysis source signals (likes/comments/dims/…),
+// and the vision analysis text — in a small modal.
 function MediaMetaDialog({
   url,
   meta,
+  position,
+  total,
   onClose,
 }: {
   url: string;
   meta: PlaceMediaMeta | null;
+  position: number;
+  total: number;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -555,6 +609,9 @@ function MediaMetaDialog({
   const sourceLabel = source ? (SOURCE_LABEL[source] ?? source) : "Unknown source";
   const chip = (source && SOURCE_CHIP[source]) || "bg-muted text-muted-foreground";
   const analysis = meta?.analysis_text?.trim() || null;
+  const status = meta?.status ?? null;
+  const statusChip = (status && STATUS_CHIP[status]) || "bg-muted text-muted-foreground";
+  const metaRows = sourceMetaRows(source, meta?.source_metadata ?? null);
 
   return (
     <div
@@ -588,6 +645,30 @@ function MediaMetaDialog({
             className="border-border aspect-[16/9] w-full rounded-lg border object-cover"
           />
 
+          {/* Gallery order is meaningful even before analysis — the array
+              position IS the sorted rank; #1 is the hero. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground text-xs font-medium">Order</span>
+            {position > 0 ? (
+              <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums">
+                #{position} of {total}
+                {position === 1 ? " · Hero" : ""}
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-xs italic">not in gallery</span>
+            )}
+            {status && (
+              <span
+                className={
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+                  statusChip
+                }
+              >
+                {status}
+              </span>
+            )}
+          </div>
+
           {!meta ? (
             <p className="text-muted-foreground text-sm italic">
               No information for this image yet — it hasn’t been analyzed by the
@@ -617,6 +698,17 @@ function MediaMetaDialog({
                   <p className="text-muted-foreground mb-1 text-xs font-medium">Caption</p>
                   <p className="text-foreground/90 text-sm italic">“{meta.caption}”</p>
                 </div>
+              )}
+
+              {metaRows.length > 0 && (
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                  {metaRows.map((row) => (
+                    <div key={row.label} className="col-span-2 grid grid-cols-subgrid">
+                      <dt className="text-muted-foreground text-xs font-medium">{row.label}</dt>
+                      <dd className="text-foreground/90 min-w-0 break-words">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
               )}
 
               <div>
