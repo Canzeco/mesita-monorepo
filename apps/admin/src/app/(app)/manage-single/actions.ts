@@ -157,13 +157,23 @@ export async function getPlaceEnrichment(
   return { ok: true, data: { media: r.data.media ?? {}, status: r.data.status ?? null } };
 }
 
+// Which slice of the Enricher pipeline a manual re-enrich re-runs:
+//   full     → research + analysis + contents (fresh gather; refreshes phone)
+//   analysis → analysis + contents, reusing stored gathered (no re-gather)
+//   contents → contents only, reusing stored gathered + analysis (cheapest)
+// The lighter modes need a prior full run; the EF rejects (422) otherwise.
+export type ReenrichMode = "full" | "analysis" | "contents";
+
 // Manually re-run the Enricher pipeline for one place. Re-seeds place_research
-// back to stage='research'; the cron poller re-does research → analysis →
-// contents. Runs ASYNC — poll getPlaceEnrichment to watch progress.
-export async function enrichPlace(projectId: string): Promise<Result<true>> {
+// to the stage implied by `mode`; the cron poller takes it from there. Runs
+// ASYNC — poll getPlaceEnrichment to watch progress.
+export async function enrichPlace(
+  projectId: string,
+  mode: ReenrichMode = "full",
+): Promise<Result<true>> {
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    { projectId },
+    { projectId, mode },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
