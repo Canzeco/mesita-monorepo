@@ -156,7 +156,16 @@ export function PredictionRow({
         )}
       </span>
 
-      {onMesita ? (
+      {added ? (
+        // Still enriching — its profile page isn't built yet, so it must NOT
+        // be openable. A non-interactive spinner pill replaces Info/Add until
+        // the Enricher finishes and the row re-resolves to a normal on-Mesita
+        // place on the next suggest refresh.
+        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700">
+          <Spinner size="sm" className="border-emerald-300 border-t-emerald-600" />
+          Enriching
+        </span>
+      ) : onMesita ? (
         <button
           type="button"
           onClick={() => onInfo(prediction)}
@@ -164,10 +173,6 @@ export function PredictionRow({
         >
           <Store className="h-3 w-3" /> Info
         </button>
-      ) : added ? (
-        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700">
-          <Check className="h-3 w-3" /> Enriching
-        </span>
       ) : (
         <button
           type="button"
