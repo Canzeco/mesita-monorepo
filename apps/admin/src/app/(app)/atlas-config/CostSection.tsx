@@ -153,104 +153,104 @@ export function CostSection({
   });
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <p className="text-muted-foreground mb-6 max-w-2xl text-sm leading-relaxed">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed">
         Estimate cost and runtime to enrich one new place with the current
         Enricher config. Every step S1→S9 runs on every enrichment and image
         analysis is always on — Selection and Storage don&apos;t change cost, so
         they&apos;re not inputs here. Figures are approximate, not billing.
       </p>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
-        <aside className="flex flex-col gap-4">
-          <CalcPanel title="Models" icon={<Brain className="h-3.5 w-3.5" />}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Profile text</span>
-                <QualityPicker value={quality} onChange={setQuality} />
-              </div>
-              <div className="border-border flex flex-col gap-2 border-t pt-4">
-                <span className="text-sm font-medium">Image vision</span>
-                <QualityPicker value={imageModel} onChange={setImageModel} />
-              </div>
-            </div>
-          </CalcPanel>
-
-          <CalcPanel title="Images" icon={<Images className="h-3.5 w-3.5" />}>
-            <div className="flex flex-col gap-1">
-              <SubLabel>Collection</SubLabel>
-              <CalcStepper label="Google collect" value={gCollect} min={1} max={10} onChange={changeGCollect} />
-              <CalcStepper label="Instagram collect" value={igCollect} min={1} max={30} onChange={changeIgCollect} />
-              <div className="border-border mt-2 border-t pt-2">
-                <SubLabel>Analysis</SubLabel>
-              </div>
-              <CalcStepper label="Analyze Google" value={gAnalyze} min={0} max={gCollect} onChange={setGAnalyze} />
-              <CalcStepper label="Analyze Instagram" value={igAnalyze} min={0} max={igCollect} onChange={setIgAnalyze} />
-            </div>
-          </CalcPanel>
-
-          <CalcPanel title="Links" icon={<Link2 className="h-3.5 w-3.5" />}>
-            <div className="flex flex-col gap-0.5">
-              {LINK_CHANNELS.map((c) => (
-                <CalcStepper
-                  key={c}
-                  label={LINK_LABELS[c]}
-                  value={links[c]}
-                  min={0}
-                  max={10}
-                  onChange={(v) => setLink(c, v)}
-                />
-              ))}
-            </div>
-          </CalcPanel>
-
-          <CalcPanel title="Batch" icon={<Layers className="h-3.5 w-3.5" />}>
-            <CalcStepper label="Places" value={places} min={1} max={5000} onChange={setPlaces} />
-          </CalcPanel>
-        </aside>
-
-        <div className="flex flex-col gap-5">
-          <div className="border-border bg-card rounded-2xl border p-5 sm:p-6">
-            <div className="grid grid-cols-2 gap-6 sm:gap-8">
-              <div>
-                <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
-                  Cost
-                </p>
-                <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
-                  {money(perPlace)}
-                </p>
-                <p className="text-muted-foreground mt-1 text-sm">per place</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
-                  Time
-                </p>
-                <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
-                  ~{fmtTime(perPlaceSecs)}
-                </p>
-                <p className="text-muted-foreground mt-1 text-sm">per place</p>
-              </div>
-            </div>
-
-            {places > 1 && (
-              <div className="border-border bg-background mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
-                <span className="text-muted-foreground text-sm">
-                  Batch total · {places} places
-                </span>
-                <div className="flex items-center gap-4 text-sm font-semibold tabular-nums">
-                  <span>${total.toFixed(2)}</span>
-                  <span className="text-muted-foreground font-normal">·</span>
-                  <span>~{fmtTime(totalSecs)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Breakdown — Fields (what it fetches / SKU) · Notes (derivation) · Pricing (rate) */}
+      {/* Headline result — cost + time, always visible above the inputs */}
+      <div className="border-border bg-card rounded-2xl border p-5 sm:p-6">
+        <div className="grid grid-cols-2 gap-6 sm:gap-8">
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Breakdown</h3>
-            <div className="border-border overflow-x-auto rounded-xl border">
-              <table className="w-full min-w-[720px] text-sm">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+              Cost
+            </p>
+            <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
+              {money(perPlace)}
+            </p>
+            <p className="text-muted-foreground mt-1 text-sm">per place</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+              Time
+            </p>
+            <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
+              ~{fmtTime(perPlaceSecs)}
+            </p>
+            <p className="text-muted-foreground mt-1 text-sm">per place</p>
+          </div>
+        </div>
+
+        {places > 1 && (
+          <div className="border-border bg-background mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
+            <span className="text-muted-foreground text-sm">
+              Batch total · {places} places
+            </span>
+            <div className="flex items-center gap-4 text-sm font-semibold tabular-nums">
+              <span>${total.toFixed(2)}</span>
+              <span className="text-muted-foreground font-normal">·</span>
+              <span>~{fmtTime(totalSecs)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Inputs — a balanced 2-col grid, never a cramped sidebar */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <CalcPanel title="Models" icon={<Brain className="h-3.5 w-3.5" />}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Profile text</span>
+              <QualityPicker value={quality} onChange={setQuality} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Image vision</span>
+              <QualityPicker value={imageModel} onChange={setImageModel} />
+            </div>
+          </div>
+        </CalcPanel>
+
+        <CalcPanel title="Batch" icon={<Layers className="h-3.5 w-3.5" />}>
+          <CalcStepper label="Places" value={places} min={1} max={5000} onChange={setPlaces} />
+        </CalcPanel>
+
+        <CalcPanel title="Images" icon={<Images className="h-3.5 w-3.5" />}>
+          <div className="flex flex-col gap-1">
+            <SubLabel>Collection</SubLabel>
+            <CalcStepper label="Google collect" value={gCollect} min={1} max={10} onChange={changeGCollect} />
+            <CalcStepper label="Instagram collect" value={igCollect} min={1} max={30} onChange={changeIgCollect} />
+            <div className="border-border mt-2 border-t pt-2">
+              <SubLabel>Analysis</SubLabel>
+            </div>
+            <CalcStepper label="Analyze Google" value={gAnalyze} min={0} max={gCollect} onChange={setGAnalyze} />
+            <CalcStepper label="Analyze Instagram" value={igAnalyze} min={0} max={igCollect} onChange={setIgAnalyze} />
+          </div>
+        </CalcPanel>
+
+        <CalcPanel title="Links" icon={<Link2 className="h-3.5 w-3.5" />}>
+          <div className="flex flex-col gap-0.5">
+            {LINK_CHANNELS.map((c) => (
+              <CalcStepper
+                key={c}
+                label={LINK_LABELS[c]}
+                value={links[c]}
+                min={0}
+                max={10}
+                onChange={(v) => setLink(c, v)}
+              />
+            ))}
+          </div>
+        </CalcPanel>
+      </div>
+
+      {/* Breakdown — full width so the 6-column table has room (Fields · Notes · Pricing) */}
+      <div>
+        <h3 className="mb-3 text-sm font-semibold">Breakdown</h3>
+        <div className="border-border overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[680px] text-sm">
                 <thead>
                   <tr className="border-border text-muted-foreground border-b text-xs tracking-wide uppercase">
                     <th className="px-4 py-2.5 text-left font-medium">Source / step</th>
@@ -332,8 +332,6 @@ export function CostSection({
             round — not the sum of every row. Batch time assumes places run
             sequentially.
           </p>
-        </div>
-      </div>
     </div>
   );
 }
