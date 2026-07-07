@@ -1,32 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Brain,
-  Clock,
-  DollarSign,
-  Eye,
-  Globe,
-  Instagram,
-  Layers,
-} from "lucide-react";
+import { Brain, Images, Layers, Link2 } from "lucide-react";
 import type { SynthesisQuality } from "./actions";
-import {
-  Collapsible,
-  NumberField,
-  QualityPicker,
-  SectionCard,
-  Switch,
-} from "./atlas-ui";
+import { QualityPicker } from "./atlas-ui";
 import {
   computeEnrichmentCost,
   fmtTime,
+  LINK_CHANNELS,
   money,
-  STAGE_META,
-  type CostLine,
+  type LinkChannel,
+  type LinkCounts,
 } from "./cost-model";
 
-// ─── Cost estimate ───────────────────────────────────────────────────────
+// ─── Enricher Calculator — cost & runtime estimator ─────────────────────────
+// A what-if estimator that mirrors the three Enricher Params boxes (Models ·
+// Images · Links) and prices one enrichment against each provider's published
+// rate card. Image analysis is always on; Selection and Storage don't change
+// cost, so they're not inputs here. The breakdown keeps the Fields · Notes ·
+// Pricing columns so the table doubles as living cost documentation.
+
+const LINK_LABELS: Record<LinkChannel, string> = {
+  website: "Website",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  opentable: "OpenTable",
+  ubereats: "Uber Eats",
+};
 
 function CalcPanel({
   title,
@@ -54,26 +54,22 @@ function CalcStepper({
   min,
   max,
   onChange,
-  disabled,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
   onChange: (v: number) => void;
-  disabled?: boolean;
 }) {
   const dec = () => onChange(Math.max(min, value - 1));
   const inc = () => onChange(Math.min(max, value + 1));
   return (
-    <div
-      className={`flex items-center justify-between gap-3 py-1.5 ${disabled ? "opacity-40" : ""}`}
-    >
+    <div className="flex items-center justify-between gap-3 py-1.5">
       <span className="text-sm">{label}</span>
       <div className="flex items-center gap-1">
         <button
           type="button"
-          disabled={disabled || value <= min}
+          disabled={value <= min}
           onClick={dec}
           aria-label={`Decrease ${label}`}
           className="border-border bg-background hover:border-foreground/40 flex h-8 w-8 items-center justify-center rounded-lg border text-sm transition disabled:opacity-40"
@@ -83,7 +79,7 @@ function CalcStepper({
         <span className="w-9 text-center text-sm font-semibold tabular-nums">{value}</span>
         <button
           type="button"
-          disabled={disabled || value >= max}
+          disabled={value >= max}
           onClick={inc}
           aria-label={`Increase ${label}`}
           className="border-border bg-background hover:border-foreground/40 flex h-8 w-8 items-center justify-center rounded-lg border text-sm transition disabled:opacity-40"
@@ -95,88 +91,74 @@ function CalcStepper({
   );
 }
 
-function Card({
-  icon,
-  title,
-  desc,
-  control,
-  className,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  control: React.ReactNode;
-  className?: string;
-}) {
+function SubLabel({ children }: { children: React.ReactNode }) {
   return (
-    <section className={`border-border bg-card rounded-2xl border p-4 sm:p-6 ${className ?? ""}`}>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            {icon}
-            <h2 className="font-display text-base font-semibold tracking-tight">
-              {title}
-            </h2>
-          </div>
-          <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed">
-            {desc}
-          </p>
-        </div>
-        {control}
-      </div>
-    </section>
+    <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+      {children}
+    </p>
   );
 }
 
-function CalculatorView({
-  quality,
-  setQuality,
-  imageModel,
-  setImageModel,
-  vision,
-  setVision,
-  g,
-  setG,
-  ig,
-  setIg,
-  places,
-  setPlaces,
-  active,
-  lines,
-  perPlace,
-  total,
-  perPlaceSecs,
-  totalSecs,
+export function CostSection({
+  initialSynthesisQuality,
+  initialVisionQuality,
+  initialGatherGoogleImages,
+  initialGatherInstagramDepth,
+  initialAnalyzeGoogleImages,
+  initialAnalyzeInstagramImages,
+  initialLinks,
 }: {
-  quality: SynthesisQuality;
-  setQuality: (q: SynthesisQuality) => void;
-  imageModel: SynthesisQuality;
-  setImageModel: (q: SynthesisQuality) => void;
-  vision: boolean;
-  setVision: (v: boolean) => void;
-  g: number;
-  setG: (v: number) => void;
-  ig: number;
-  setIg: (v: number) => void;
-  places: number;
-  setPlaces: (v: number) => void;
-  active: CostLine[];
-  lines: CostLine[];
-  perPlace: number;
-  total: number;
-  perPlaceSecs: number;
-  totalSecs: number;
+  initialSynthesisQuality: SynthesisQuality;
+  initialVisionQuality: SynthesisQuality;
+  initialGatherGoogleImages: number;
+  initialGatherInstagramDepth: number;
+  initialAnalyzeGoogleImages: number;
+  initialAnalyzeInstagramImages: number;
+  initialLinks: LinkCounts;
 }) {
-  const stages = (["pre", "gather", "post"] as const).filter((stage) =>
-    lines.some((l) => l.stage === stage && l.active),
+  const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
+  const [imageModel, setImageModel] = useState<SynthesisQuality>(initialVisionQuality);
+  const [gCollect, setGCollect] = useState(initialGatherGoogleImages);
+  const [igCollect, setIgCollect] = useState(initialGatherInstagramDepth);
+  const [gAnalyze, setGAnalyze] = useState(
+    Math.min(initialAnalyzeGoogleImages, initialGatherGoogleImages),
   );
+  const [igAnalyze, setIgAnalyze] = useState(
+    Math.min(initialAnalyzeInstagramImages, initialGatherInstagramDepth),
+  );
+  const [links, setLinks] = useState<LinkCounts>(initialLinks);
+  const [places, setPlaces] = useState(1);
+
+  // Collection caps Analysis — clamp the analyze count when a collect knob drops.
+  const changeGCollect = (v: number) => {
+    setGCollect(v);
+    setGAnalyze((a) => Math.min(a, v));
+  };
+  const changeIgCollect = (v: number) => {
+    setIgCollect(v);
+    setIgAnalyze((a) => Math.min(a, v));
+  };
+  const setLink = (c: LinkChannel, v: number) =>
+    setLinks((cur) => ({ ...cur, [c]: v }));
+
+  const { lines, perPlace, total, perPlaceSecs, totalSecs } = computeEnrichmentCost({
+    quality,
+    imageModel,
+    gCollect,
+    igCollect,
+    gAnalyze,
+    igAnalyze,
+    links,
+    places,
+  });
 
   return (
     <div className="mx-auto max-w-5xl">
       <p className="text-muted-foreground mb-6 max-w-2xl text-sm leading-relaxed">
-        Estimate cost and runtime for enriching a new place. Every pipeline step
-        S1→S9 always runs — adjust the model and image knobs to compare
-        configurations. Figures are approximate, not billing.
+        Estimate cost and runtime to enrich one new place with the current
+        Enricher config. Every step S1→S9 runs on every enrichment and image
+        analysis is always on — Selection and Storage don&apos;t change cost, so
+        they&apos;re not inputs here. Figures are approximate, not billing.
       </p>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-start">
@@ -188,36 +170,41 @@ function CalculatorView({
                 <QualityPicker value={quality} onChange={setQuality} />
               </div>
               <div className="border-border flex items-center justify-between gap-3 border-t pt-3">
-                <span className="text-sm">Photo analysis</span>
-                <Switch
-                  on={vision}
-                  pending={false}
-                  onClick={() => setVision(!vision)}
-                  label="Toggle photo analysis"
-                />
+                <span className="text-sm">Image vision</span>
+                <QualityPicker value={imageModel} onChange={setImageModel} />
               </div>
-              {vision && (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm">Image model</span>
-                    <QualityPicker value={imageModel} onChange={setImageModel} />
-                  </div>
-                  <div className="border-border space-y-0.5 border-t pt-2">
-                    <CalcStepper label="Google photos" value={g} min={0} max={10} onChange={setG} />
-                    <CalcStepper
-                      label="Instagram photos"
-                      value={ig}
-                      min={0}
-                      max={20}
-                      onChange={setIg}
-                    />
-                  </div>
-                </>
-              )}
             </div>
           </CalcPanel>
 
-          <CalcPanel title="Batch" icon={<Globe className="h-3.5 w-3.5" />}>
+          <CalcPanel title="Images" icon={<Images className="h-3.5 w-3.5" />}>
+            <div className="flex flex-col gap-1">
+              <SubLabel>Collection</SubLabel>
+              <CalcStepper label="Google collect" value={gCollect} min={1} max={10} onChange={changeGCollect} />
+              <CalcStepper label="Instagram collect" value={igCollect} min={1} max={30} onChange={changeIgCollect} />
+              <div className="border-border mt-2 border-t pt-2">
+                <SubLabel>Analysis</SubLabel>
+              </div>
+              <CalcStepper label="Analyze Google" value={gAnalyze} min={0} max={gCollect} onChange={setGAnalyze} />
+              <CalcStepper label="Analyze Instagram" value={igAnalyze} min={0} max={igCollect} onChange={setIgAnalyze} />
+            </div>
+          </CalcPanel>
+
+          <CalcPanel title="Links" icon={<Link2 className="h-3.5 w-3.5" />}>
+            <div className="flex flex-col gap-0.5">
+              {LINK_CHANNELS.map((c) => (
+                <CalcStepper
+                  key={c}
+                  label={LINK_LABELS[c]}
+                  value={links[c]}
+                  min={0}
+                  max={10}
+                  onChange={(v) => setLink(c, v)}
+                />
+              ))}
+            </div>
+          </CalcPanel>
+
+          <CalcPanel title="Batch" icon={<Layers className="h-3.5 w-3.5" />}>
             <CalcStepper label="Places" value={places} min={1} max={5000} onChange={setPlaces} />
           </CalcPanel>
         </aside>
@@ -259,244 +246,93 @@ function CalculatorView({
             )}
           </div>
 
+          {/* Breakdown — Fields (what it fetches / SKU) · Notes (derivation) · Pricing (rate) */}
           <div>
             <h3 className="mb-3 text-sm font-semibold">Breakdown</h3>
-            <div className="flex flex-col gap-3">
-              {stages.map((stage) => {
-                const stageLines = active.filter((l) => l.stage === stage);
-                const meta = STAGE_META[stage];
-                const stageCost = stageLines.reduce((s, l) => s + l.cost, 0);
-                const stageSecs =
-                  stage === "gather"
-                    ? stageLines.reduce((mx, l) => Math.max(mx, l.secs), 0)
-                    : stageLines.reduce((s, l) => s + l.secs, 0);
-
-                return (
-                  <section
-                    key={stage}
-                    className="border-border bg-card overflow-hidden rounded-2xl border"
-                  >
-                    <div className="border-border bg-background/60 flex items-start justify-between gap-4 border-b px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium">{meta.label}</p>
-                        <p className="text-muted-foreground mt-0.5 text-xs">{meta.hint}</p>
-                      </div>
-                      <div className="shrink-0 text-right text-sm tabular-nums">
-                        <span className="font-medium">{money(stageCost)}</span>
-                        <span className="text-muted-foreground mx-1.5">·</span>
-                        <span className="text-muted-foreground">~{fmtTime(stageSecs)}</span>
-                      </div>
-                    </div>
-                    <ul className="divide-border/60 divide-y">
-                      {stageLines.map((l) => (
-                        <li
-                          key={l.label}
-                          className="flex items-center justify-between gap-4 px-4 py-2.5"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm">{l.label}</p>
-                            <p className="text-muted-foreground truncate text-xs">{l.detail}</p>
-                          </div>
-                          <div className="shrink-0 text-right text-sm tabular-nums">
-                            <span className="text-muted-foreground">{fmtTime(l.secs)}</span>
-                            <span className="mx-2 text-muted-foreground/50">·</span>
-                            <span>{money(l.cost)}</span>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                );
-              })}
+            <div className="border-border overflow-x-auto rounded-xl border">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-border text-muted-foreground border-b text-xs tracking-wide uppercase">
+                    <th className="px-4 py-2.5 text-left font-medium">Source / step</th>
+                    <th className="hidden px-4 py-2.5 text-left font-medium sm:table-cell">Fields</th>
+                    <th className="hidden px-4 py-2.5 text-left font-medium md:table-cell">Notes</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Pricing</th>
+                    <th className="px-4 py-2.5 text-right font-medium">~Time</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((l) => (
+                    <tr
+                      key={l.label}
+                      className={`border-border/60 border-b last:border-0 ${l.active ? "" : "opacity-40"}`}
+                    >
+                      <td className="px-4 py-2.5 align-top font-medium">
+                        {l.label}
+                        {/* Fields + Notes fold under the label on narrow viewports */}
+                        <span className="text-muted-foreground mt-0.5 block text-xs font-normal sm:hidden">
+                          {l.detail} · {l.note}
+                        </span>
+                      </td>
+                      <td className="text-muted-foreground hidden px-4 py-2.5 align-top sm:table-cell">
+                        {l.detail}
+                      </td>
+                      <td className="text-muted-foreground hidden max-w-[280px] px-4 py-2.5 align-top text-xs md:table-cell">
+                        {l.note}
+                      </td>
+                      <td className="text-muted-foreground px-4 py-2.5 text-right align-top text-xs tabular-nums whitespace-nowrap">
+                        {l.pricing}
+                      </td>
+                      <td className="text-muted-foreground px-4 py-2.5 text-right align-top tabular-nums">
+                        {l.active ? fmtTime(l.secs) : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-right align-top tabular-nums">
+                        {l.active ? money(l.cost) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-background border-border border-t-2">
+                    <td className="px-4 py-3 font-semibold" colSpan={4}>
+                      Per place
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                      ~{fmtTime(perPlaceSecs)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                      {money(perPlace)}
+                    </td>
+                  </tr>
+                  {places > 1 && (
+                    <tr className="bg-background border-border/60 border-t">
+                      <td className="text-muted-foreground px-4 py-2.5" colSpan={4}>
+                        × {places} places
+                      </td>
+                      <td className="text-muted-foreground px-4 py-2.5 text-right font-semibold tabular-nums">
+                        ~{fmtTime(totalSecs)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
+                        ${total.toFixed(2)}
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
+              </table>
             </div>
           </div>
 
           <p className="text-muted-foreground/80 text-xs leading-relaxed">
-            Based on the enricher rate card. Gather steps overlap, so total time is setup +
-            slowest gather + analysis — not the sum of every row. Batch time assumes places run
-            sequentially. Level 5 heavy scrapes are not yet included.
+            Per-step costs from each provider&apos;s published rate card (Google
+            Places, Apify, Firecrawl, Perplexity, OpenAI — verified 2026-07-07).
+            Collection scales the Google-photo and Instagram-post volumes, Links
+            sets how many channels are searched, and Analysis drives the vision
+            calls. Gather steps overlap, so total time is setup + slowest gather +
+            analysis — not the sum of every row. Batch time assumes places run
+            sequentially.
           </p>
         </div>
       </div>
     </div>
-  );
-}
-
-export function CostSection({
-  standalone = false,
-  initialSynthesisQuality,
-  initialVisionQuality,
-  initialImageVisionEnabled,
-  initialAnalyzeGoogleImages,
-  initialAnalyzeInstagramImages,
-}: {
-  standalone?: boolean;
-  initialSynthesisQuality: SynthesisQuality;
-  initialVisionQuality: SynthesisQuality;
-  initialImageVisionEnabled: boolean;
-  initialAnalyzeGoogleImages: number;
-  initialAnalyzeInstagramImages: number;
-}) {
-  const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
-  const [imageModel, setImageModel] = useState<SynthesisQuality>(initialVisionQuality);
-  const [vision, setVision] = useState(initialImageVisionEnabled);
-  const [g, setG] = useState(initialAnalyzeGoogleImages);
-  const [ig, setIg] = useState(initialAnalyzeInstagramImages);
-  const [places, setPlaces] = useState(1);
-
-  const { lines, active, perPlace, total, perPlaceSecs, totalSecs } =
-    computeEnrichmentCost({ quality, imageModel, vision, g, ig, places });
-
-  if (standalone) {
-    return (
-      <CalculatorView
-        quality={quality}
-        setQuality={setQuality}
-        imageModel={imageModel}
-        setImageModel={setImageModel}
-        vision={vision}
-        setVision={setVision}
-        g={g}
-        setG={setG}
-        ig={ig}
-        setIg={setIg}
-        places={places}
-        setPlaces={setPlaces}
-        active={active}
-        lines={lines}
-        perPlace={perPlace}
-        total={total}
-        perPlaceSecs={perPlaceSecs}
-        totalSecs={totalSecs}
-      />
-    );
-  }
-
-  return (
-    <SectionCard
-      icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
-      title="Cost Calculator"
-      subtitle="Rough estimate of cost and runtime to enrich one new place with your current settings."
-    >
-      {/* Headline: cost + time for the current settings, always visible. */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
-          <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <DollarSign className="h-4 w-4" /> Per place
-          </span>
-          <span className="text-lg font-semibold tabular-nums">{money(perPlace)}</span>
-        </div>
-        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
-          <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <Clock className="h-4 w-4" /> Per place
-          </span>
-          <span className="text-lg font-semibold tabular-nums">~{fmtTime(perPlaceSecs)}</span>
-        </div>
-      </div>
-
-      <Collapsible
-        summary={standalone ? "Inputs & breakdown" : "Adjust inputs & view breakdown"}
-        defaultOpen={standalone}
-      >
-      {/* Params */}
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Brain className="text-muted-foreground h-4 w-4" />
-            Text model
-          </span>
-          <QualityPicker value={quality} onChange={setQuality} />
-        </div>
-
-        <Card
-          className="lg:col-span-2"
-          icon={<Eye className="text-muted-foreground h-4 w-4" />}
-          title="Image analysis enabled"
-          desc="When off, photos save without AI ranking and vision costs drop to zero."
-          control={<Switch on={vision} pending={false} onClick={() => setVision(!vision)} label="Toggle vision" />}
-        />
-
-        {vision && (
-          <>
-            <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between lg:col-span-2">
-              <span className="flex items-center gap-2 text-sm font-medium">
-                <Eye className="text-muted-foreground h-4 w-4" />
-                Image model
-              </span>
-              <QualityPicker value={imageModel} onChange={setImageModel} />
-            </div>
-            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Google" value={g} min={0} max={10} onChange={setG} disabled={false} />
-            <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={false} />
-          </>
-        )}
-
-        <NumberField icon={<Layers className="text-muted-foreground h-4 w-4" />} label="Number of places" value={places} min={1} max={5000} onChange={setPlaces} disabled={false} />
-      </div>
-
-      {/* Breakdown */}
-      <div className="border-border -mx-4 mt-6 overflow-x-auto rounded-xl border sm:mx-0">
-        <table className="w-full min-w-[540px] text-sm">
-          <thead>
-            <tr className="border-border text-muted-foreground border-b text-xs uppercase tracking-wide">
-              <th className="px-4 py-2.5 text-left font-medium">Source / step</th>
-              <th className="hidden px-4 py-2.5 text-left font-medium sm:table-cell">Detail</th>
-              <th className="px-4 py-2.5 text-right font-medium">~Time</th>
-              <th className="px-4 py-2.5 text-right font-medium">Cost</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((l) => (
-              <tr
-                key={l.label}
-                className={`border-border/60 border-b last:border-0 ${l.active ? "" : "opacity-40"}`}
-              >
-                <td className="px-4 py-2.5 font-medium">{l.label}</td>
-                <td className="text-muted-foreground hidden px-4 py-2.5 sm:table-cell">{l.detail}</td>
-                <td className="text-muted-foreground px-4 py-2.5 text-right tabular-nums">
-                  {l.active ? fmtTime(l.secs) : "—"}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
-                  {l.active ? money(l.cost) : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="bg-background border-border border-t-2">
-              <td className="px-4 py-3 font-semibold" colSpan={2}>
-                Per place
-              </td>
-              <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                ~{fmtTime(perPlaceSecs)}
-              </td>
-              <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                {money(perPlace)}
-              </td>
-            </tr>
-            {places > 1 && (
-              <tr className="bg-background border-border/60 border-t">
-                <td className="text-muted-foreground px-4 py-2.5" colSpan={2}>
-                  × {places} places
-                </td>
-                <td className="text-muted-foreground px-4 py-2.5 text-right font-semibold tabular-nums">
-                  ~{fmtTime(totalSecs)}
-                </td>
-                <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
-                  ${total.toFixed(2)}
-                </td>
-              </tr>
-            )}
-          </tfoot>
-        </table>
-      </div>
-
-      <p className="text-muted-foreground/80 mt-3 text-[11px] leading-relaxed">
-        Approximate per-step costs based on the enricher&apos;s rate card. Every
-        step S1→S9 runs on every enrichment; gather steps run in parallel, so
-        total time is pre-work + slowest gather step + post-work — not the sum
-        of every row. Batch time assumes places run one after another.
-      </p>
-      </Collapsible>
-    </SectionCard>
   );
 }

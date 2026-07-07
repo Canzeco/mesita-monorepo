@@ -5,6 +5,7 @@ import {
   Brain,
   CalendarClock,
   CheckCheck,
+  Database,
   Eye,
   Facebook,
   Globe,
@@ -27,31 +28,32 @@ import {
 } from "./atlas-ui";
 
 // ─── Image funnel (Collection → Analysis → Selection) ───────────────────────
-// Three stacked stages with a hard PER-SOURCE lock: every downstream count is
-// bounded by its OWN source upstream, not by a shared sum. You can't keep more
-// than you collected, analyze more of a source than you kept of it, or save
-// more than you analyzed:
-//   IG keep ≤ IG depth · Google/IG analyze ≤ that source's keep · save ≤ analyzed
-// The lock is enforced live by clamping downstream values whenever an upstream
-// one drops, and by capping each input's max against its own source — so an
-// invalid config (e.g. analyze 15 IG when only 10 were kept) can never be
-// entered, let alone saved.
+// Two stacked stages with a hard PER-SOURCE lock: every downstream count is
+// bounded by its OWN source upstream, not by a shared sum. You can't analyze
+// more of a source than you collected, or save more than you analyzed:
+//   Google/IG analyze ≤ that source's collect · save ≤ analyzed
+// Collection is just the candidate pool per source (Google in Google order,
+// Instagram pre-sorted by likes). Analysis is the real selector: it takes the
+// first N of each pool, so "analyze N" implicitly IS "keep N" — there's no
+// separate keep knob. The lock is enforced live by clamping downstream values
+// whenever an upstream one drops, and by capping each input's max against its
+// own source — so an invalid config (e.g. analyze 15 IG when only 10 were
+// collected) can never be entered, let alone saved.
 
-type Funnel = { gg: number; depth: number; keep: number; ag: number; ai: number; save: number };
+type Funnel = { gg: number; depth: number; ag: number; ai: number; save: number };
 
 const clampN = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));
 
 // Enforce the per-source chain, reducing downstream values to fit:
-//   IG keep ≤ IG depth · Google analyze ≤ Google keep · IG analyze ≤ IG keep ·
+//   Google analyze ≤ Google collect · IG analyze ≤ IG collect ·
 //   save ≤ (Google analyze + IG analyze), capped at 10.
 function normalizeFunnel(s: Funnel): Funnel {
-  const gg = clampN(s.gg, 1, 10); // Google collect & keep
-  const depth = clampN(s.depth, 1, 30); // Instagram download depth
-  const keep = clampN(s.keep, 1, depth); // Instagram keep ≤ depth
-  const ag = clampN(s.ag, 1, gg); // Google analyze ≤ Google keep
-  const ai = clampN(s.ai, 1, keep); // Instagram analyze ≤ Instagram keep
+  const gg = clampN(s.gg, 1, 10); // Google collect
+  const depth = clampN(s.depth, 1, 30); // Instagram collect (downloaded, sorted by likes)
+  const ag = clampN(s.ag, 1, gg); // Google analyze ≤ Google collect
+  const ai = clampN(s.ai, 1, depth); // Instagram analyze ≤ Instagram collect
   const save = clampN(s.save, 1, Math.min(10, ag + ai)); // Selection ≤ analyzed, ≤ 10
-  return { gg, depth, keep, ag, ai, save };
+  return { gg, depth, ag, ai, save };
 }
 
 function StageTotal({ label, n }: { label: string; n: number }) {
@@ -63,25 +65,52 @@ function StageTotal({ label, n }: { label: string; n: number }) {
   );
 }
 
+function SubHeading({
+  icon,
+  title,
+  hint,
+  status,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint?: string;
+  status?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <span className="flex items-center gap-2 text-sm font-semibold">
+        {icon}
+        {title}
+        {hint && <span className="text-muted-foreground text-[11px] font-normal">{hint}</span>}
+      </span>
+      {status}
+    </div>
+  );
+}
+
+// One "Images" box: the whole photo funnel (Collection → Analysis → Selection)
+// as three subsections in a single card, plus the S9 Storage-mirror binary.
+// Image analysis is ALWAYS on — there is no vision toggle — so every analyze
+// count is live. The per-source lock still holds (analyze ≤ collect, keep ≤
+// analyzed total); the numeric knobs batch under one Save, and the Storage
+// binary saves on the spot like a feature switch.
 export function ImageFunnelSection({
   initialGatherGoogleImages,
   initialGatherInstagramDepth,
-  initialGatherInstagramPosts,
-  initialImageVisionEnabled,
   initialAnalyzeGoogleImages,
   initialAnalyzeInstagramImages,
   initialSaveTotalImages,
+  initialSaveImagesToStorage,
   initialImageAnalysisPrompt,
   initialImageSortingPrompt,
   onSaved,
 }: {
   initialGatherGoogleImages: number;
   initialGatherInstagramDepth: number;
-  initialGatherInstagramPosts: number;
-  initialImageVisionEnabled: boolean;
   initialAnalyzeGoogleImages: number;
   initialAnalyzeInstagramImages: number;
   initialSaveTotalImages: number;
+  initialSaveImagesToStorage: boolean;
   initialImageAnalysisPrompt: string;
   initialImageSortingPrompt: string;
   onSaved: (updatedAt: string | null) => void;
@@ -89,7 +118,6 @@ export function ImageFunnelSection({
   const init = normalizeFunnel({
     gg: initialGatherGoogleImages,
     depth: initialGatherInstagramDepth,
-    keep: initialGatherInstagramPosts,
     ag: initialAnalyzeGoogleImages,
     ai: initialAnalyzeInstagramImages,
     save: initialSaveTotalImages,
@@ -97,14 +125,14 @@ export function ImageFunnelSection({
   const [f, setF] = useState<Funnel>(init);
   const [analysisPrompt, setAnalysisPrompt] = useState(initialImageAnalysisPrompt);
   const [sortingPrompt, setSortingPrompt] = useState(initialImageSortingPrompt);
-  const [vision, setVision] = useState(initialImageVisionEnabled);
+  const [storage, setStorage] = useState(initialSaveImagesToStorage);
   const [saved, setSaved] = useState({
     ...init,
     analysisPrompt: initialImageAnalysisPrompt,
     sortingPrompt: initialImageSortingPrompt,
   });
   const [savePending, startSave] = useTransition();
-  const [visionPending, startVision] = useTransition();
+  const [storagePending, startStorage] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
@@ -114,27 +142,27 @@ export function ImageFunnelSection({
     setF((cur) => normalizeFunnel({ ...cur, ...p }));
   };
 
-  const cSum = f.gg + f.keep;
+  const cSum = f.gg + f.depth;
   const aSum = f.ag + f.ai;
 
   const dirty =
     f.gg !== saved.gg ||
     f.depth !== saved.depth ||
-    f.keep !== saved.keep ||
     f.ag !== saved.ag ||
     f.ai !== saved.ai ||
     f.save !== saved.save ||
     analysisPrompt !== saved.analysisPrompt ||
     sortingPrompt !== saved.sortingPrompt;
 
-  const flipVision = () => {
+  // Storage mirroring is a feature switch — persist it on the spot.
+  const flipStorage = () => {
     setError(null);
-    const next = !vision;
-    setVision(next);
-    startVision(async () => {
-      const r = await updateAtlasConfig({ imageVisionEnabled: next });
+    const next = !storage;
+    setStorage(next);
+    startStorage(async () => {
+      const r = await updateAtlasConfig({ saveImagesToStorage: next });
       if (!r.ok) {
-        setVision(!next);
+        setStorage(!next);
         setError(r.error);
         return;
       }
@@ -150,7 +178,10 @@ export function ImageFunnelSection({
       const r = await updateAtlasConfig({
         gatherGoogleImages: f.gg,
         gatherInstagramDepth: f.depth,
-        gatherInstagramPosts: f.keep,
+        // No separate "keep" knob: the full likes-sorted window IS the pool, and
+        // Analysis takes the first N. Keep posts == depth so nothing is dropped
+        // before ranking.
+        gatherInstagramPosts: f.depth,
         analyzeGoogleImages: f.ag,
         analyzeInstagramImages: f.ai,
         saveTotalImages: f.save,
@@ -164,7 +195,6 @@ export function ImageFunnelSection({
       const nf = normalizeFunnel({
         gg: r.data.atlasGatherGoogleImages,
         depth: r.data.atlasGatherInstagramDepth,
-        keep: r.data.atlasGatherInstagramPosts,
         ag: r.data.atlasAnalyzeGoogleImages,
         ai: r.data.atlasAnalyzeInstagramImages,
         save: r.data.atlasSaveTotalImages,
@@ -183,66 +213,61 @@ export function ImageFunnelSection({
   };
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
-      {/* ── Stage 1 — Collection ── */}
-      <SectionCard
-        icon={<Images className="text-muted-foreground h-4 w-4" />}
-        title="Images · Collection"
-        subtitle="How many images the Enricher pulls into the candidate pool per source. Instagram downloads a deeper window, ranks it by likes, and keeps the top few."
-        status={<StageTotal label="collected" n={cSum} />}
-      >
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google collect & keep" value={f.gg} min={1} max={10} onChange={(v) => patch({ gg: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect (download)" value={f.depth} min={1} max={30} onChange={(v) => patch({ depth: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram keep (≤ collect)" value={f.keep} min={1} max={f.depth} onChange={(v) => patch({ keep: v })} disabled={savePending} />
+    <SectionCard
+      icon={<Images className="text-muted-foreground h-4 w-4" />}
+      title="Images"
+      subtitle="How the Enricher builds a place's gallery: collect a candidate pool per source, analyze the top of each (which also picks what's kept), then choose how many reach the profile."
+    >
+      {/* ── Collection ── */}
+      <div className="mt-5">
+        <SubHeading
+          icon={<Images className="text-muted-foreground h-4 w-4" />}
+          title="Collection"
+          hint="candidate pool per source"
+          status={<StageTotal label="collected" n={cSum} />}
+        />
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google collect" value={f.gg} min={1} max={10} onChange={(v) => patch({ gg: v })} disabled={savePending} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={30} onChange={(v) => patch({ depth: v })} disabled={savePending} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          Collection total = Google images + Instagram keep = <span className="text-foreground font-semibold tabular-nums">{cSum}</span>. Depth only sets how deep to look before the likes-sort; it doesn&apos;t add to the pool.
+          Google keeps its own result order; Instagram is pre-sorted by number of likes. There&apos;s no separate keep step — Analysis picks the top of each pool.
         </p>
-      </SectionCard>
+      </div>
 
-      {/* ── Stage 2 — Analysis ── */}
-      <SectionCard
-        icon={<Eye className="text-muted-foreground h-4 w-4" />}
-        title="Images · Analysis"
-        subtitle="Of what each source kept, how many images the vision model describes and ranks. Never more than that source kept."
-        status={<StageTotal label="analyzed" n={aSum} />}
-      >
-        <div className="mt-5">
-          <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
-            <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-              <Eye className="text-muted-foreground h-4 w-4" />
-              Enable image analysis
-              <span className="text-muted-foreground text-[11px]">(largest cost driver)</span>
-            </span>
-            <Switch on={vision} pending={visionPending} onClick={flipVision} label="Toggle image vision" />
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images (≤ Google keep)" value={f.ag} min={1} max={f.gg} onChange={(v) => patch({ ag: v })} disabled={savePending || !vision} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images (≤ Instagram keep)" value={f.ai} min={1} max={f.keep} onChange={(v) => patch({ ai: v })} disabled={savePending || !vision} />
+      {/* ── Analysis ── */}
+      <div className="border-border mt-6 border-t pt-6">
+        <SubHeading
+          icon={<Eye className="text-muted-foreground h-4 w-4" />}
+          title="Analysis"
+          hint="always on · largest cost driver"
+          status={<StageTotal label="analyzed" n={aSum} />}
+        />
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images (≤ Google collect)" value={f.ag} min={1} max={f.gg} onChange={(v) => patch({ ag: v })} disabled={savePending} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images (≤ Instagram collect)" value={f.ai} min={1} max={f.depth} onChange={(v) => patch({ ai: v })} disabled={savePending} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          Each source is capped at what it kept — Google ≤ <span className="text-foreground font-semibold tabular-nums">{f.gg}</span>, Instagram ≤ <span className="text-foreground font-semibold tabular-nums">{f.keep}</span>. You can&apos;t describe an image you didn&apos;t keep.
+          The vision model describes & ranks the first N of each pool (Instagram&apos;s top N by likes), so the number you analyze is the number you keep — Google ≤ <span className="text-foreground font-semibold tabular-nums">{f.gg}</span>, Instagram ≤ <span className="text-foreground font-semibold tabular-nums">{f.depth}</span>.
         </p>
 
         <Collapsible summary="Edit photo analysis prompts">
           <div className="space-y-4">
-            <TextAreaField label="Image analysis prompt" value={analysisPrompt} onChange={(v) => { setOk(false); setAnalysisPrompt(v); }} disabled={savePending || !vision} />
-            <TextAreaField label="Image sorting prompt" value={sortingPrompt} onChange={(v) => { setOk(false); setSortingPrompt(v); }} disabled={savePending || !vision} />
+            <TextAreaField label="Image analysis prompt" value={analysisPrompt} onChange={(v) => { setOk(false); setAnalysisPrompt(v); }} disabled={savePending} />
+            <TextAreaField label="Image sorting prompt" value={sortingPrompt} onChange={(v) => { setOk(false); setSortingPrompt(v); }} disabled={savePending} />
           </div>
         </Collapsible>
-      </SectionCard>
+      </div>
 
-      {/* ── Stage 3 — Selection ── */}
-      <SectionCard
-        icon={<CheckCheck className="text-muted-foreground h-4 w-4" />}
-        title="Images · Selection"
-        subtitle="After analysis + ranking, how many top images are saved to the place profile (all sources combined). Can never exceed the Analysis total."
-        status={<StageTotal label="kept" n={f.save} />}
-      >
-        <div className="mt-5">
+      {/* ── Selection ── */}
+      <div className="border-border mt-6 border-t pt-6">
+        <SubHeading
+          icon={<CheckCheck className="text-muted-foreground h-4 w-4" />}
+          title="Selection"
+          hint="final gallery on the profile"
+          status={<StageTotal label="kept" n={f.save} />}
+        />
+        <div className="mt-3">
           <NumberField
             icon={<CheckCheck className="text-muted-foreground h-4 w-4" />}
             label="Photos to keep on profile (all sources combined)"
@@ -254,26 +279,36 @@ export function ImageFunnelSection({
           />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          Selection <span className="text-foreground font-semibold tabular-nums">{f.save}</span> is capped at the Analysis total (<span className="tabular-nums">{aSum}</span>), up to 10.
+          After ranking, the top <span className="text-foreground font-semibold tabular-nums">{f.save}</span> across all sources are saved to the profile — capped at the analysis total (<span className="tabular-nums">{aSum}</span>), up to 10.
         </p>
-      </SectionCard>
+      </div>
 
-      {/* ── Shared funnel footer: the invariant, at a glance, + one save ── */}
-      <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <p className="text-sm font-medium tabular-nums">
-          <span className="text-muted-foreground">Funnel</span>{" "}
-          Collection <span className="font-semibold">{cSum}</span>
-          <span className="text-muted-foreground"> ≥ </span>
-          Analysis <span className="font-semibold">{aSum}</span>
-          <span className="text-muted-foreground"> ≥ </span>
-          Selection <span className="font-semibold">{f.save}</span>
-        </p>
-        <div className="flex items-center">
-          <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
+      {/* ── Storage binary ── */}
+      <div className="border-border mt-6 border-t pt-6">
+        <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
+          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <Database className="text-muted-foreground h-4 w-4" />
+            Save selected images to Supabase Storage
+            <span className="text-muted-foreground text-[11px]">off = render from source URLs</span>
+          </span>
+          <Switch on={storage} pending={storagePending} onClick={flipStorage} label="Toggle image storage" />
         </div>
       </div>
+
+      {/* ── Funnel invariant + one save for the numeric knobs ── */}
+      <div className="border-border mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-medium tabular-nums">
+          <span className="text-muted-foreground">Funnel</span>{" "}
+          Collect <span className="font-semibold">{cSum}</span>
+          <span className="text-muted-foreground"> ≥ </span>
+          Analyze <span className="font-semibold">{aSum}</span>
+          <span className="text-muted-foreground"> ≥ </span>
+          Keep <span className="font-semibold">{f.save}</span>
+        </p>
+        <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
+      </div>
       {error && <ErrorNote message={error} />}
-    </div>
+    </SectionCard>
   );
 }
 
@@ -356,8 +391,8 @@ export function DiscoverySection({
   return (
     <SectionCard
       icon={<Link2 className="text-muted-foreground h-4 w-4" />}
-      title="Link Discovery"
-      subtitle="How many Firecrawl Search candidates to pull per source when finding a place's official links. Agent Y reviews these and picks the best one per field (or none). 0 turns a source off."
+      title="Links"
+      subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these and picks the best one per field (or none). 0 turns a source off."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={website} min={0} max={10} onChange={setWebsite} disabled={pending} />

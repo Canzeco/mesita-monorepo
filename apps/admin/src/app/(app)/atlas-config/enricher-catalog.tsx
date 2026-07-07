@@ -3,11 +3,13 @@
 import {
   Brain,
   Database,
+  Download,
   FileText,
-  Globe,
   Link2,
+  Search,
   SlidersHorizontal,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { Collapsible, SectionCard } from "./atlas-ui";
 
@@ -128,35 +130,95 @@ const STEP_GROUPS: { step: Step; blurb: string }[] = [
   { step: "S9", blurb: "Persist images — mirror the selected gallery to Storage" },
 ];
 
-// ─── Pipeline steps (read-only) ────────────────────────────────────────────
+// ─── Pipeline (read-only) — three phase boxes ──────────────────────────────
+// The S0→S9 catalog above, regrouped into the three phases every run moves
+// through in order:
+//   ① Research  (S0–S3) — pin down the place & discover its sources
+//   ② Harvest   (S4)    — pull each confirmed source's raw data
+//   ③ Synthesis (S5–S9) — analyze, write & persist the finished profile
+// Still no depth dial: every step runs on every enrichment. Tuning happens via
+// the image / vision / model knobs below, never by toggling steps.
 
+const PHASES: {
+  name: string;
+  Icon: LucideIcon;
+  steps: Step[];
+  range: string;
+  blurb: string;
+}[] = [
+  {
+    name: "Research",
+    Icon: Search,
+    steps: ["S0", "S1", "S2", "S3"],
+    range: "S0–S3",
+    blurb:
+      "Pin down the place and find its sources — seed the run config & identity links, lock the Google profile spine (hard gate: no profile, no run), read a web SERP summary, then discover channel links & contacts.",
+  },
+  {
+    name: "Harvest",
+    Icon: Download,
+    steps: ["S4"],
+    range: "S4",
+    blurb:
+      "Pull the raw material from every confirmed source in parallel — Google photos & reviews, Instagram profile & photos, Facebook profile.",
+  },
+  {
+    name: "Synthesis",
+    Icon: Sparkles,
+    steps: ["S5", "S6", "S7", "S8", "S9"],
+    range: "S5–S9",
+    blurb:
+      "Turn the harvest into the finished profile — describe & rank the analyzed images, write the About, category & tags from the closed vocab, then persist the place to the DB and mirror its gallery to Storage.",
+  },
+];
+
+// Three stacked boxes, one per phase. Each shows its step blurbs inline and
+// tucks the full node × method breakdown behind a per-box disclosure.
 export function StepsOverviewSection() {
   return (
+    <>
+      {PHASES.map((phase, i) => (
+        <PhaseCard key={phase.name} phase={phase} index={i} />
+      ))}
+    </>
+  );
+}
+
+function PhaseCard({
+  phase,
+  index,
+}: {
+  phase: (typeof PHASES)[number];
+  index: number;
+}) {
+  const { name, Icon, steps, range, blurb } = phase;
+  const groups = STEP_GROUPS.filter((g) => steps.includes(g.step));
+  const nodes = ADEA_NODES.filter((n) => steps.includes(n.step));
+  return (
     <SectionCard
-      icon={<Globe className="text-muted-foreground h-4 w-4" />}
-      title="Pipeline steps"
-      subtitle="Every run executes all steps S0→S6 in order. There are no tiers or depth levels — tune the run with the image, vision and model settings below."
+      icon={<Icon className="text-muted-foreground h-4 w-4" />}
+      title={`${index + 1} · ${name}`}
+      subtitle={blurb}
+      status={
+        <span className="border-border bg-background inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tabular-nums">
+          <span className="text-muted-foreground font-medium">steps</span>
+          {range}
+        </span>
+      }
     >
-      <Collapsible summary="What runs on every enrichment" defaultOpen={false}>
-        <div className="flex flex-col gap-5">
-          {STEP_GROUPS.map(({ step, blurb }) => {
-            const nodes = ADEA_NODES.filter((n) => n.step === step);
-            if (nodes.length === 0) return null;
-            return (
-              <div key={step}>
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <StepBadge step={step} />
-                  <span className="text-sm font-medium">{blurb}</span>
-                  <span className="text-muted-foreground text-[11px]">· always runs</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {nodes.map((n) => (
-                    <NodeRow key={n.name} node={n} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      <div className="mt-5 flex flex-col gap-2.5">
+        {groups.map((g) => (
+          <div key={g.step} className="flex items-start gap-2">
+            <StepBadge step={g.step} />
+            <span className="text-sm leading-relaxed">{g.blurb}</span>
+          </div>
+        ))}
+      </div>
+      <Collapsible summary="Nodes & methods">
+        <div className="flex flex-col gap-2">
+          {nodes.map((n) => (
+            <NodeRow key={n.name} node={n} />
+          ))}
         </div>
       </Collapsible>
     </SectionCard>
@@ -220,15 +282,16 @@ function MethodChip({ method }: { method: Method }) {
   );
 }
 
-const PIPELINE: { stage: Pipeline; blurb: string }[] = [
-  { stage: "Link", blurb: "find source URLs" },
-  { stage: "Contents", blurb: "download data from each source" },
-  { stage: "Analysis", blurb: "analyze photos & text, write profile" },
+const PIPELINE: { stage: string; blurb: string }[] = [
+  { stage: "Research", blurb: "pin down the place & find its source links" },
+  { stage: "Harvest", blurb: "download the data from each confirmed source" },
+  { stage: "Synthesis", blurb: "analyze photos & text, write & persist the profile" },
 ];
 
-// Compact visual of the ADEA pipeline — every node is one of these three
-// stages (see the Sources card). Link resolves URLs, Contents fetches from
-// them, and Analysis (Text + Image perception → Cognition) writes the profile.
+// Compact visual of the enrichment pipeline — the same three phases the boxes
+// below expand: Research pins down the place and resolves its sources, Harvest
+// pulls each source's raw data, and Synthesis analyzes it all and writes the
+// finished profile.
 export function PipelineStrip() {
   return (
     <div className="border-border bg-card rounded-2xl border p-4 sm:p-5">

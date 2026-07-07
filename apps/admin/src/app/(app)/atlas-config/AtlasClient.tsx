@@ -2,27 +2,25 @@
 
 import { useState } from "react";
 import type { SynthesisQuality } from "./actions";
-import { PipelineStrip, StepsOverviewSection } from "./enricher-catalog";
 import {
   DiscoverySection,
   ImageFunnelSection,
   ModelsSection,
 } from "./config-sections";
 import { CostSection } from "./CostSection";
+import type { LinkCounts } from "./cost-model";
 
 // Atlas / Enricher admin console. This file wires the two page entry points —
 // the full configuration view and the standalone cost calculator — to their
 // section modules:
-//   • enricher-catalog  — read-only pipeline map (steps, nodes, method chips)
-//   • config-sections   — the editable Gather / Photo Analysis / Models cards
-//   • CostSection       — the cost + runtime estimate (inline card & calculator)
+//   • config-sections   — the three editable boxes: Models, Links, Images
+//   • CostSection       — the standalone cost + runtime calculator (Enricher Calculator)
 //   • atlas-ui          — the shared card / control / disclosure primitives
 
 export function AtlasConfigurationClient(props: {
   initialGatherGoogleImages: number;
   initialGatherInstagramDepth: number;
-  initialGatherInstagramPosts: number;
-  initialImageVisionEnabled: boolean;
+  initialSaveImagesToStorage: boolean;
   initialSaveTotalImages: number;
   initialAnalyzeGoogleImages: number;
   initialAnalyzeInstagramImages: number;
@@ -51,19 +49,9 @@ export function AtlasConfigurationClient(props: {
         </p>
       )}
 
-      <PipelineStrip />
-
-      <StepsOverviewSection />
-      <ImageFunnelSection
-        initialGatherGoogleImages={props.initialGatherGoogleImages}
-        initialGatherInstagramDepth={props.initialGatherInstagramDepth}
-        initialGatherInstagramPosts={props.initialGatherInstagramPosts}
-        initialImageVisionEnabled={props.initialImageVisionEnabled}
-        initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-        initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-        initialSaveTotalImages={props.initialSaveTotalImages}
-        initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
-        initialImageSortingPrompt={props.initialImageSortingPrompt}
+      <ModelsSection
+        initialSynthesisQuality={props.initialSynthesisQuality}
+        initialVisionQuality={props.initialVisionQuality}
         onSaved={setUpdatedAt}
       />
       <DiscoverySection
@@ -74,9 +62,15 @@ export function AtlasConfigurationClient(props: {
         initialUbereatsN={props.initialDiscoverUbereatsN}
         onSaved={setUpdatedAt}
       />
-      <ModelsSection
-        initialSynthesisQuality={props.initialSynthesisQuality}
-        initialVisionQuality={props.initialVisionQuality}
+      <ImageFunnelSection
+        initialGatherGoogleImages={props.initialGatherGoogleImages}
+        initialGatherInstagramDepth={props.initialGatherInstagramDepth}
+        initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+        initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+        initialSaveTotalImages={props.initialSaveTotalImages}
+        initialSaveImagesToStorage={props.initialSaveImagesToStorage}
+        initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
+        initialImageSortingPrompt={props.initialImageSortingPrompt}
         onSaved={setUpdatedAt}
       />
     </div>
@@ -86,18 +80,21 @@ export function AtlasConfigurationClient(props: {
 export function AtlasCalculatorClient(props: {
   initialSynthesisQuality: SynthesisQuality;
   initialVisionQuality: SynthesisQuality;
-  initialImageVisionEnabled: boolean;
+  initialGatherGoogleImages: number;
+  initialGatherInstagramDepth: number;
   initialAnalyzeGoogleImages: number;
   initialAnalyzeInstagramImages: number;
+  initialLinks: LinkCounts;
 }) {
   return (
     <CostSection
-      standalone
       initialSynthesisQuality={props.initialSynthesisQuality}
       initialVisionQuality={props.initialVisionQuality}
-      initialImageVisionEnabled={props.initialImageVisionEnabled}
+      initialGatherGoogleImages={props.initialGatherGoogleImages}
+      initialGatherInstagramDepth={props.initialGatherInstagramDepth}
       initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
       initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+      initialLinks={props.initialLinks}
     />
   );
 }

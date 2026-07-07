@@ -19,6 +19,7 @@ type SettingsResponse = {
   atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
   atlasSaveTotalImages: number;
+  atlasSaveImagesToStorage: boolean;
   atlasSynthesisQuality: SynthesisQuality;
   atlasVisionQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
@@ -52,6 +53,7 @@ type AtlasConfigResponse = {
   atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
   atlasSaveTotalImages: number;
+  atlasSaveImagesToStorage: boolean;
   atlasSynthesisQuality: SynthesisQuality;
   atlasVisionQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
@@ -76,6 +78,7 @@ export async function updateAtlasConfig(patch: {
   analyzeGoogleImages?: number;
   analyzeInstagramImages?: number;
   saveTotalImages?: number;
+  saveImagesToStorage?: boolean;
   imageAnalysisPrompt?: string;
   imageSortingPrompt?: string;
   synthesisQuality?: SynthesisQuality;

@@ -12,9 +12,17 @@ export default async function AtlasCalculatorPage() {
     <AtlasCalculatorClient
       initialSynthesisQuality={result.data.atlasSynthesisQuality}
       initialVisionQuality={result.data.atlasVisionQuality ?? "economy"}
-      initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
+      initialGatherGoogleImages={result.data.atlasGatherGoogleImages}
+      initialGatherInstagramDepth={result.data.atlasGatherInstagramDepth}
       initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
       initialAnalyzeInstagramImages={result.data.atlasAnalyzeInstagramImages}
+      initialLinks={{
+        website: result.data.atlasDiscoverWebsiteN,
+        instagram: result.data.atlasDiscoverInstagramN,
+        facebook: result.data.atlasDiscoverFacebookN,
+        opentable: result.data.atlasDiscoverOpentableN,
+        ubereats: result.data.atlasDiscoverUbereatsN,
+      }}
     />
   );
 }

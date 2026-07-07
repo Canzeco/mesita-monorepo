@@ -119,7 +119,7 @@ export function CreateTab() {
           href="/atlas-config/configuration"
           className="text-foreground font-medium underline underline-offset-2"
         >
-          Atlas &amp; Enricher Config
+          Enricher Params
         </a>
         .
       </p>

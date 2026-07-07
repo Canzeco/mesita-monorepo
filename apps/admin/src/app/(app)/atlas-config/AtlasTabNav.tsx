@@ -10,7 +10,7 @@ export function AtlasTabNav() {
   return (
     <div
       role="tablist"
-      aria-label="Atlas & Enricher Config"
+      aria-label="Atlas Config"
       className="border-border -mx-4 mt-5 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:mt-6 sm:px-0"
     >
       {ATLAS_SUBROUTES.map(({ href, label, Icon }) => {

@@ -12,8 +12,7 @@ export default async function AtlasParametersPage() {
     <AtlasConfigurationClient
       initialGatherGoogleImages={result.data.atlasGatherGoogleImages}
       initialGatherInstagramDepth={result.data.atlasGatherInstagramDepth}
-      initialGatherInstagramPosts={result.data.atlasGatherInstagramPosts}
-      initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
+      initialSaveImagesToStorage={result.data.atlasSaveImagesToStorage}
       initialSaveTotalImages={result.data.atlasSaveTotalImages}
       initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
       initialAnalyzeInstagramImages={result.data.atlasAnalyzeInstagramImages}
