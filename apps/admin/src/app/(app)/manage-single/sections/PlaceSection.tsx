@@ -43,7 +43,6 @@ const CHANNELS: { key: keyof AdminPlace; label: string }[] = [
   { key: "google_maps_url", label: "Google Maps" },
   { key: "opentable_url", label: "OpenTable" },
   { key: "uber_eats_url", label: "Uber Eats" },
-  { key: "tripadvisor_url", label: "TripAdvisor" },
   { key: "menu_pdf_url", label: "Menu URL" },
 ];
 
