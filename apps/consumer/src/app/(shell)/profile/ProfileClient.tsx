@@ -275,10 +275,10 @@ function ProfileSummaryCard({
   const avatarUrl = profile?.avatar_url ?? null;
   const phone = profile?.phone ?? null;
 
-  // Age + sex on one line under the phone — country is intentionally omitted.
+  // Sex + age on one line under the phone — country is intentionally omitted.
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
-  const meta = [age != null ? `${age}` : null, sexLabel]
+  const meta = [sexLabel, age != null ? `${age}` : null]
     .filter(Boolean)
     .join(" · ");
 
