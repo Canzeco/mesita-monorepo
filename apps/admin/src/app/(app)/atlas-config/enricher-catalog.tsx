@@ -31,7 +31,6 @@ export type Method =
   | "Google Timezone"
   | "Apify"
   | "Mesita Input"
-  | "Firecrawl Crawl"
   | "OpenAI LLM"
   | "OpenAI Vision"
   | "Firecrawl Scrape"
@@ -81,7 +80,6 @@ const ADEA_NODES: AdeaNode[] = [
   // S4 · source harvest — parallel scrapers
   { name: "Google Business Page Photos", pipeline: "Contents", step: "S4", methods: ["Google Places"] },
   { name: "Google Business Page Reviews", pipeline: "Contents", step: "S4", methods: ["Apify"] },
-  { name: "Website Page Contents", pipeline: "Contents", step: "S4", methods: ["Firecrawl Crawl"] },
   { name: "Instagram Page Profile", pipeline: "Contents", step: "S4", methods: ["Apify"] },
   { name: "Instagram Page Photos", pipeline: "Contents", step: "S4", methods: ["Apify"] },
   { name: "Facebook Page Profile", pipeline: "Contents", step: "S4", methods: ["Apify"] },
@@ -106,7 +104,6 @@ const METHOD_CLS: Record<Method, string> = {
   "Google Places": "border-red-500/25 bg-red-500/10 text-red-600",
   "Google Timezone": "border-red-500/25 bg-red-500/10 text-red-600",
   "Apify": "border-emerald-500/25 bg-emerald-500/10 text-emerald-700",
-  "Firecrawl Crawl": "border-amber-500/25 bg-amber-500/10 text-amber-700",
   "Firecrawl Scrape": "border-amber-500/25 bg-amber-500/10 text-amber-700",
   "Firecrawl Search and Perplexity Agent Y":
     "border-orange-500/25 bg-orange-500/10 text-orange-700",
@@ -124,7 +121,7 @@ const STEP_GROUPS: { step: Step; blurb: string }[] = [
   { step: "S1", blurb: "Google profile + timezone — the identity spine (hard gate)" },
   { step: "S2", blurb: "SERP editorial summary — web-grounded soft context" },
   { step: "S3", blurb: "Channel links & contacts — website, socials, delivery, phone, email" },
-  { step: "S4", blurb: "Source harvest — Google photos/reviews, website, Instagram, Facebook" },
+  { step: "S4", blurb: "Source harvest — Google photos/reviews, Instagram, Facebook" },
   { step: "S5", blurb: "Image descriptions — one vision call per analyzed photo" },
   { step: "S6", blurb: "Image ranking — sort & select the final gallery" },
   { step: "S7", blurb: "Synthesis — About, category & tags from the closed vocab" },

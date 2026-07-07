@@ -4,11 +4,9 @@ import { useState, useTransition } from "react";
 import {
   Brain,
   Eye,
-  Globe,
   Image as ImageIcon,
   Instagram,
   Lock,
-  SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 import { updateAtlasConfig, type SynthesisQuality } from "./actions";
@@ -28,26 +26,18 @@ import {
 // widths, so the card fills the space instead of a half-empty grid.
 
 export function GatherSection({
-  initialWebsiteCrawlMaxPages,
   initialGatherGoogleImages,
-  initialGatherWebsiteImages,
   initialGatherInstagramPosts,
   onSaved,
 }: {
-  initialWebsiteCrawlMaxPages: number;
   initialGatherGoogleImages: number;
-  initialGatherWebsiteImages: number;
   initialGatherInstagramPosts: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [pages, setPages] = useState(initialWebsiteCrawlMaxPages);
   const [g, setG] = useState(initialGatherGoogleImages);
-  const [w, setW] = useState(initialGatherWebsiteImages);
   const [posts, setPosts] = useState(initialGatherInstagramPosts);
   const [saved, setSaved] = useState({
-    pages: initialWebsiteCrawlMaxPages,
     g: initialGatherGoogleImages,
-    w: initialGatherWebsiteImages,
     posts: initialGatherInstagramPosts,
   });
   const [pending, start] = useTransition();
@@ -55,9 +45,7 @@ export function GatherSection({
   const [ok, setOk] = useState(false);
 
   const dirty =
-    pages !== saved.pages ||
     g !== saved.g ||
-    w !== saved.w ||
     posts !== saved.posts;
 
   const save = () => {
@@ -66,9 +54,7 @@ export function GatherSection({
     setOk(false);
     start(async () => {
       const r = await updateAtlasConfig({
-        websiteCrawlMaxPages: pages,
         gatherGoogleImages: g,
-        gatherWebsiteImages: w,
         gatherInstagramPosts: posts,
       });
       if (!r.ok) {
@@ -76,14 +62,10 @@ export function GatherSection({
         return;
       }
       setSaved({
-        pages: r.data.atlasWebsiteCrawlMaxPages,
         g: r.data.atlasGatherGoogleImages,
-        w: r.data.atlasGatherWebsiteImages,
         posts: r.data.atlasGatherInstagramPosts,
       });
-      setPages(r.data.atlasWebsiteCrawlMaxPages);
       setG(r.data.atlasGatherGoogleImages);
-      setW(r.data.atlasGatherWebsiteImages);
       setPosts(r.data.atlasGatherInstagramPosts);
       onSaved(r.data.updatedAt);
       setOk(true);
@@ -94,12 +76,10 @@ export function GatherSection({
     <SectionCard
       icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
       title="Collection"
-      subtitle="How much raw material ADEA collects before analysis. These limits set website crawl depth and how many images or posts to fetch — not how many end up on the profile."
+      subtitle="How much raw material ADEA collects before analysis. These limits set how many images or posts to fetch per source — not how many end up on the profile."
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <NumberField icon={<SlidersHorizontal className="text-muted-foreground h-4 w-4" />} label="Website subpages" value={pages} min={1} max={20} onChange={setPages} disabled={pending} />
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website images" value={w} min={0} max={10} onChange={setW} disabled={pending} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts" value={posts} min={0} max={30} onChange={setPosts} disabled={pending} />
       </div>
 
@@ -125,13 +105,6 @@ export function GatherSection({
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Globe className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              <span className="font-medium">Website</span> — AI ranks crawled
-              images; place shots rise, logos and banners sink.
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
             <Instagram className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
               <span className="font-medium">Instagram</span> — highest-liked
@@ -152,7 +125,6 @@ export function GatherSection({
 export function VisionParamsSection({
   initialImageVisionEnabled,
   initialAnalyzeGoogleImages,
-  initialAnalyzeWebsiteImages,
   initialAnalyzeInstagramImages,
   initialSaveTotalImages,
   initialImageAnalysisPrompt,
@@ -161,7 +133,6 @@ export function VisionParamsSection({
 }: {
   initialImageVisionEnabled: boolean;
   initialAnalyzeGoogleImages: number;
-  initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
   initialSaveTotalImages: number;
   initialImageAnalysisPrompt: string;
@@ -170,14 +141,12 @@ export function VisionParamsSection({
 }) {
   const [vision, setVision] = useState(initialImageVisionEnabled);
   const [g, setG] = useState(initialAnalyzeGoogleImages);
-  const [w, setW] = useState(initialAnalyzeWebsiteImages);
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
   const [saveTotal, setSaveTotal] = useState(initialSaveTotalImages);
   const [analysisPrompt, setAnalysisPrompt] = useState(initialImageAnalysisPrompt);
   const [sortingPrompt, setSortingPrompt] = useState(initialImageSortingPrompt);
   const [saved, setSaved] = useState({
     g: initialAnalyzeGoogleImages,
-    w: initialAnalyzeWebsiteImages,
     ig: initialAnalyzeInstagramImages,
     saveTotal: initialSaveTotalImages,
     analysisPrompt: initialImageAnalysisPrompt,
@@ -190,7 +159,6 @@ export function VisionParamsSection({
 
   const dirty =
     g !== saved.g ||
-    w !== saved.w ||
     ig !== saved.ig ||
     saveTotal !== saved.saveTotal ||
     analysisPrompt !== saved.analysisPrompt ||
@@ -218,7 +186,6 @@ export function VisionParamsSection({
     startSave(async () => {
       const r = await updateAtlasConfig({
         analyzeGoogleImages: g,
-        analyzeWebsiteImages: w,
         analyzeInstagramImages: ig,
         saveTotalImages: saveTotal,
         imageAnalysisPrompt: analysisPrompt,
@@ -230,14 +197,12 @@ export function VisionParamsSection({
       }
       setSaved({
         g: r.data.atlasAnalyzeGoogleImages,
-        w: r.data.atlasAnalyzeWebsiteImages,
         ig: r.data.atlasAnalyzeInstagramImages,
         saveTotal: r.data.atlasSaveTotalImages,
         analysisPrompt: r.data.atlasImageAnalysisPrompt,
         sortingPrompt: r.data.atlasImageSortingPrompt,
       });
       setG(r.data.atlasAnalyzeGoogleImages);
-      setW(r.data.atlasAnalyzeWebsiteImages);
       setIg(r.data.atlasAnalyzeInstagramImages);
       setSaveTotal(r.data.atlasSaveTotalImages);
       setAnalysisPrompt(r.data.atlasImageAnalysisPrompt);
@@ -264,9 +229,8 @@ export function VisionParamsSection({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images" value={g} min={0} max={10} onChange={setG} disabled={savePending || !vision} />
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze Website images" value={w} min={0} max={10} onChange={setW} disabled={savePending || !vision} />
         <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images" value={ig} min={0} max={20} onChange={setIg} disabled={savePending || !vision} />
       </div>
 

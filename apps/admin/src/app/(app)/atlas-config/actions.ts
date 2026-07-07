@@ -11,12 +11,9 @@ type SettingsResponse = {
   autoVerifyAiEmail: boolean;
   autoVerifyVideo: boolean;
   atlasGatherGoogleImages: number;
-  atlasGatherWebsiteImages: number;
   atlasGatherInstagramPosts: number;
-  atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
-  atlasAnalyzeWebsiteImages: number;
   atlasImageAnalysisPrompt: string;
   atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
@@ -41,12 +38,9 @@ export async function getAtlasSettings(): Promise<GetSettingsResult> {
 
 type AtlasConfigResponse = {
   atlasGatherGoogleImages: number;
-  atlasGatherWebsiteImages: number;
   atlasGatherInstagramPosts: number;
-  atlasWebsiteCrawlMaxPages: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
-  atlasAnalyzeWebsiteImages: number;
   atlasImageAnalysisPrompt: string;
   atlasImageSortingPrompt: string;
   atlasAnalyzeInstagramImages: number;
@@ -63,13 +57,10 @@ type UpdateAtlasConfigResult =
 
 // Partial update — pass only the fields you want to change.
 export async function updateAtlasConfig(patch: {
-  websiteCrawlMaxPages?: number;
   gatherGoogleImages?: number;
-  gatherWebsiteImages?: number;
   gatherInstagramPosts?: number;
   imageVisionEnabled?: boolean;
   analyzeGoogleImages?: number;
-  analyzeWebsiteImages?: number;
   analyzeInstagramImages?: number;
   saveTotalImages?: number;
   imageAnalysisPrompt?: string;

@@ -137,8 +137,6 @@ function CalculatorView({
   setVision,
   g,
   setG,
-  w,
-  setW,
   ig,
   setIg,
   places,
@@ -158,8 +156,6 @@ function CalculatorView({
   setVision: (v: boolean) => void;
   g: number;
   setG: (v: number) => void;
-  w: number;
-  setW: (v: number) => void;
   ig: number;
   setIg: (v: number) => void;
   places: number;
@@ -208,13 +204,6 @@ function CalculatorView({
                   </div>
                   <div className="border-border space-y-0.5 border-t pt-2">
                     <CalcStepper label="Google photos" value={g} min={0} max={10} onChange={setG} />
-                    <CalcStepper
-                      label="Website photos"
-                      value={w}
-                      min={0}
-                      max={10}
-                      onChange={setW}
-                    />
                     <CalcStepper
                       label="Instagram photos"
                       value={ig}
@@ -339,7 +328,6 @@ export function CostSection({
   initialVisionQuality,
   initialImageVisionEnabled,
   initialAnalyzeGoogleImages,
-  initialAnalyzeWebsiteImages,
   initialAnalyzeInstagramImages,
 }: {
   standalone?: boolean;
@@ -347,19 +335,17 @@ export function CostSection({
   initialVisionQuality: SynthesisQuality;
   initialImageVisionEnabled: boolean;
   initialAnalyzeGoogleImages: number;
-  initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
 }) {
   const [quality, setQuality] = useState<SynthesisQuality>(initialSynthesisQuality);
   const [imageModel, setImageModel] = useState<SynthesisQuality>(initialVisionQuality);
   const [vision, setVision] = useState(initialImageVisionEnabled);
   const [g, setG] = useState(initialAnalyzeGoogleImages);
-  const [w, setW] = useState(initialAnalyzeWebsiteImages);
   const [ig, setIg] = useState(initialAnalyzeInstagramImages);
   const [places, setPlaces] = useState(1);
 
   const { lines, active, perPlace, total, perPlaceSecs, totalSecs } =
-    computeEnrichmentCost({ quality, imageModel, vision, g, w, ig, places });
+    computeEnrichmentCost({ quality, imageModel, vision, g, ig, places });
 
   if (standalone) {
     return (
@@ -372,8 +358,6 @@ export function CostSection({
         setVision={setVision}
         g={g}
         setG={setG}
-        w={w}
-        setW={setW}
         ig={ig}
         setIg={setIg}
         places={places}
@@ -442,7 +426,6 @@ export function CostSection({
               <QualityPicker value={imageModel} onChange={setImageModel} />
             </div>
             <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Google" value={g} min={0} max={10} onChange={setG} disabled={false} />
-            <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Analyze — Website" value={w} min={0} max={10} onChange={setW} disabled={false} />
             <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze — Instagram" value={ig} min={0} max={20} onChange={setIg} disabled={false} />
           </>
         )}

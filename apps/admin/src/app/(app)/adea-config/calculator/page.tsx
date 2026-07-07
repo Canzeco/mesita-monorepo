@@ -14,7 +14,6 @@ export default async function AdeaCalculatorPage() {
       initialVisionQuality={result.data.atlasVisionQuality ?? "economy"}
       initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
       initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
-      initialAnalyzeWebsiteImages={result.data.atlasAnalyzeWebsiteImages}
       initialAnalyzeInstagramImages={result.data.atlasAnalyzeInstagramImages}
     />
   );

@@ -19,14 +19,11 @@ import { CostSection } from "./CostSection";
 //   • atlas-ui          — the shared card / control / disclosure primitives
 
 export function AtlasConfigurationClient(props: {
-  initialWebsiteCrawlMaxPages: number;
   initialGatherGoogleImages: number;
-  initialGatherWebsiteImages: number;
   initialGatherInstagramPosts: number;
   initialImageVisionEnabled: boolean;
   initialSaveTotalImages: number;
   initialAnalyzeGoogleImages: number;
-  initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
   initialImageAnalysisPrompt: string;
   initialImageSortingPrompt: string;
@@ -52,16 +49,13 @@ export function AtlasConfigurationClient(props: {
 
       <StepsOverviewSection />
       <GatherSection
-        initialWebsiteCrawlMaxPages={props.initialWebsiteCrawlMaxPages}
         initialGatherGoogleImages={props.initialGatherGoogleImages}
-        initialGatherWebsiteImages={props.initialGatherWebsiteImages}
         initialGatherInstagramPosts={props.initialGatherInstagramPosts}
         onSaved={setUpdatedAt}
       />
       <VisionParamsSection
         initialImageVisionEnabled={props.initialImageVisionEnabled}
         initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-        initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
         initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
         initialSaveTotalImages={props.initialSaveTotalImages}
         initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
@@ -82,7 +76,6 @@ export function AtlasCalculatorClient(props: {
   initialVisionQuality: SynthesisQuality;
   initialImageVisionEnabled: boolean;
   initialAnalyzeGoogleImages: number;
-  initialAnalyzeWebsiteImages: number;
   initialAnalyzeInstagramImages: number;
 }) {
   return (
@@ -92,7 +85,6 @@ export function AtlasCalculatorClient(props: {
       initialVisionQuality={props.initialVisionQuality}
       initialImageVisionEnabled={props.initialImageVisionEnabled}
       initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-      initialAnalyzeWebsiteImages={props.initialAnalyzeWebsiteImages}
       initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
     />
   );

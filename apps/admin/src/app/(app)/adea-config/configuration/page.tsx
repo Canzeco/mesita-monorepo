@@ -10,14 +10,11 @@ export default async function AdeaConfigurationPage() {
 
   return (
     <AtlasConfigurationClient
-      initialWebsiteCrawlMaxPages={result.data.atlasWebsiteCrawlMaxPages}
       initialGatherGoogleImages={result.data.atlasGatherGoogleImages}
-      initialGatherWebsiteImages={result.data.atlasGatherWebsiteImages}
       initialGatherInstagramPosts={result.data.atlasGatherInstagramPosts}
       initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
       initialSaveTotalImages={result.data.atlasSaveTotalImages}
       initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
-      initialAnalyzeWebsiteImages={result.data.atlasAnalyzeWebsiteImages}
       initialAnalyzeInstagramImages={result.data.atlasAnalyzeInstagramImages}
       initialImageAnalysisPrompt={result.data.atlasImageAnalysisPrompt}
       initialImageSortingPrompt={result.data.atlasImageSortingPrompt}

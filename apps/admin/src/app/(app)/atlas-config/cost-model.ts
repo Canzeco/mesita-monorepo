@@ -13,7 +13,7 @@ const COST_RATES = {
   perplexity: 0.01, // discovery fallback (sonar)
   apifyInstagram: 0.02, // IG profile scraper
   apifyFacebook: 0.02, // FB pages scraper
-  firecrawlScrape: 0.01, // website content scrape
+  firecrawlScrape: 0.01, // S3 channel-discovery footer scrape
   visionEconomy: 0.002, // gpt-4o-mini vision, one image (detail:low)
   visionStandard: 0.01, // gpt-4o vision, one image
   sort: 0.003, // gpt-4o-mini text sort
@@ -31,7 +31,6 @@ const TIME_RATES = {
   discoveryFallback: 4, // Perplexity
   apifyInstagram: 25, // Apify IG run
   apifyFacebook: 15, // Apify FB run
-  firecrawlScrape: 18, // website crawl
   visionEconomy: 1.0, // gpt-4o-mini vision / image
   visionStandard: 1.8, // gpt-4o vision / image
   sort: 3, // text sort
@@ -77,7 +76,6 @@ export type CostParams = {
   imageModel: SynthesisQuality;
   vision: boolean;
   g: number;
-  w: number;
   ig: number;
   places: number;
 };
@@ -99,7 +97,6 @@ export function computeEnrichmentCost({
   imageModel,
   vision,
   g,
-  w,
   ig,
   places,
 }: CostParams): CostEstimate {
@@ -107,7 +104,7 @@ export function computeEnrichmentCost({
     quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
   const synthSecs =
     quality === "economy" ? TIME_RATES.synthEconomy : TIME_RATES.synthStandard;
-  const visionImgs = vision ? g + w + ig : 0;
+  const visionImgs = vision ? g + ig : 0;
   const visionActive = vision && visionImgs > 0;
   const visionCostPer =
     imageModel === "economy" ? COST_RATES.visionEconomy : COST_RATES.visionStandard;
@@ -124,7 +121,6 @@ export function computeEnrichmentCost({
     { label: "S4 · Google reviews + photos", detail: "Apify Maps run", cost: COST_RATES.apifyGoogleMaps, secs: TIME_RATES.apifyGoogleMaps, stage: "gather", active: true },
     { label: "S4 · Instagram", detail: "Apify run", cost: COST_RATES.apifyInstagram, secs: TIME_RATES.apifyInstagram, stage: "gather", active: true },
     { label: "S4 · Facebook", detail: "Apify run", cost: COST_RATES.apifyFacebook, secs: TIME_RATES.apifyFacebook, stage: "gather", active: true },
-    { label: "S4 · Website content", detail: "Firecrawl crawl", cost: COST_RATES.firecrawlScrape, secs: TIME_RATES.firecrawlScrape, stage: "gather", active: true },
     { label: "S5 · image descriptions", detail: `${visionImgs} img × ${money(visionCostPer)}`, cost: visionImgs * visionCostPer, secs: visionImgs * visionSecsPer, stage: "post", active: visionActive },
     { label: "S6 · image ranking", detail: "1 text sort call", cost: COST_RATES.sort, secs: TIME_RATES.sort, stage: "post", active: visionActive },
     { label: `S7 · About synthesis — ${quality}`, detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o", cost: synthCost, secs: synthSecs, stage: "post", active: true },
