@@ -44,7 +44,12 @@ export default async function RewardsPage() {
       <PayClient
         userId={user.id}
         code={profile.code ?? ""}
-        name={profile.first_name ?? profile.full_name ?? ""}
+        name={
+          [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+          profile.full_name ||
+          ""
+        }
+        instagramHandle={profile.instagram_handle}
       />
     </div>
   );

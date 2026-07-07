@@ -1,194 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Ticket } from "lucide-react";
-import {
-  isTicketFlowComplete,
-  resolveTicketFlowSteps,
-  STEP_NOW_TITLE,
-  ticketProgressFromBundle,
-} from "@/lib/ticket-flow-steps";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { TicketVisitShell } from "@/components/consumer/TicketVisitShell";
-import {
-  buildTicketTransactionSummary,
-  formatTicketRewardLabel,
-  formatTicketVisitDate,
-  payloadFromNotification,
-  type PayNotificationRow,
-  type TicketBillPayload,
-} from "@/lib/api/pay";
+import { RewardsTicketCard } from "@/components/consumer/RewardsTicketCard";
 import { ticketPath } from "@/lib/consumer-route-contract";
 import {
-  fetchPayTicketList,
-  type PayTicketMeta,
-} from "@/lib/api/notifications";
-import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
+  bundleToCardView,
+  type PayTicketsState,
+} from "@/lib/hooks/useConsumerPayTickets";
 import { TicketCardSkeleton } from "@/app/(shell)/rewards/PayTabLoading";
 
-type TicketBundle = {
-  ticketId: string;
-  payload: TicketBillPayload;
-  bill?: PayNotificationRow;
-  review?: PayNotificationRow;
-};
-
-type TicketMeta = PayTicketMeta;
-
-function TicketPreviewCard({
-  bundle,
-  ticketMeta,
-  onOpen,
-}: {
-  bundle: TicketBundle;
-  ticketMeta?: TicketMeta;
-  onOpen: () => void;
-}) {
-  const p = bundle.payload;
-  const enriched: TicketBillPayload = {
-    ...p,
-    discount_percent: p.discount_percent ?? ticketMeta?.discount_percent,
-  };
-  const capMxn =
-    p.reward_cap_mxn ?? p.monthly_promo_cap ?? ticketMeta?.capMxn ?? null;
-  const ticketKind = ticketMeta?.kind ?? p.ticket_kind ?? "dp";
-  const progress = ticketProgressFromBundle({
-    kind: ticketKind,
-    status: ticketMeta?.status,
-    story_status: ticketMeta?.story_status,
-    story_submitted_at: ticketMeta?.story_submitted_at,
-    total_cents: ticketMeta?.total_cents ?? p.total_cents,
-    review: bundle.review,
-  });
-  const flowSteps = resolveTicketFlowSteps(progress);
-  const isComplete = isTicketFlowComplete(progress);
-  const transactionSummary = isComplete
-    ? buildTicketTransactionSummary(enriched, ticketKind)
-    : null;
-  const activeStep = flowSteps.find((s) => s.state === "active");
-  const statusLine =
-    isComplete || !activeStep
-      ? null
-      : `${STEP_NOW_TITLE[activeStep.id]} — in progress`;
-  const visitDateIso =
-    ticketMeta?.created_at ??
-    bundle.bill?.created_at ??
-    bundle.review?.created_at ??
-    null;
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="w-full text-left transition active:scale-[0.995]"
-    >
-      <TicketVisitShell
-        placeName={p.place_name ?? "Partner place"}
-        placePhotoUrl={p.place_photo_url}
-        rewardLabel={formatTicketRewardLabel(enriched, { capMxn })}
-        visitDateLabel={formatTicketVisitDate(visitDateIso)}
-        steps={flowSteps}
-        stepperInteractive={false}
-        transactionSummary={transactionSummary}
-        statusLine={statusLine}
-      />
-    </button>
-  );
-}
-
-/** Tickets from Pay notifications — open + completed history. */
-export function PayTickets({ userId }: { userId: string }) {
+// Presentational tickets list — the fetch/poll lives in useConsumerPayTickets
+// (lifted so the passport card and this list share one source). Renders the
+// open + completed history, most recent first.
+export function PayTickets({
+  bundles,
+  ticketMetaById,
+  status,
+  retry,
+}: PayTicketsState) {
   const router = useRouter();
-  const supabase = useBrowserSupabase();
-  const [rows, setRows] = useState<PayNotificationRow[]>([]);
-  const [ticketMetaById, setTicketMetaById] = useState<Map<string, TicketMeta>>(
-    new Map(),
-  );
-  // "loading" until the FIRST fetch settles — the real empty-state copy must
-  // never flash while the request is still in flight. After a successful
-  // load, a failed poll tick keeps the last known list ("ready") instead of
-  // wiping it; the error panel is only for "we have nothing real to show".
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading",
-  );
-
-  const loadTickets = useCallback(async () => {
-    try {
-      const { notifications, ticketMetaById } =
-        await fetchPayTicketList(supabase);
-      setRows(notifications);
-      setTicketMetaById(ticketMetaById);
-      setStatus("ready");
-    } catch {
-      setStatus((prev) => (prev === "ready" ? prev : "error"));
-    }
-  }, [supabase]);
-
-  // Initial load: run the fetch inline in the effect body (cancellation
-  // guarded) so setState isn't called synchronously on mount.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { notifications, ticketMetaById } =
-          await fetchPayTicketList(supabase);
-        if (!cancelled) {
-          setRows(notifications);
-          setTicketMetaById(ticketMetaById);
-          setStatus("ready");
-        }
-      } catch {
-        if (!cancelled) {
-          setStatus((prev) => (prev === "ready" ? prev : "error"));
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
-
-  usePayNotificationPoll(loadTickets, Boolean(userId));
-
-  const retry = useCallback(() => {
-    setStatus("loading");
-    void loadTickets();
-  }, [loadTickets]);
-
-  const bundles = useMemo(() => {
-    const map = new Map<string, TicketBundle>();
-    for (const n of rows) {
-      let b = map.get(n.ticket_id);
-      if (!b) {
-        b = {
-          ticketId: n.ticket_id,
-          payload: payloadFromNotification(n.payload),
-        };
-        map.set(n.ticket_id, b);
-      }
-      if (n.kind === "bill") {
-        b.bill = n;
-        b.payload = { ...b.payload, ...payloadFromNotification(n.payload) };
-      }
-      if (n.kind === "review") {
-        b.review = n;
-        b.payload = { ...b.payload, ...payloadFromNotification(n.payload) };
-      }
-    }
-    // Pure time sort, most recent first — no active/history split. Same
-    // timestamp the card shows as its visit date (ticket created_at, falling
-    // back to the bill/review notification time).
-    const timeOf = (b: TicketBundle): number => {
-      const iso =
-        ticketMetaById.get(b.ticketId)?.created_at ??
-        b.bill?.created_at ??
-        b.review?.created_at ??
-        null;
-      return iso ? new Date(iso).getTime() : 0;
-    };
-    return [...map.values()].sort((a, b) => timeOf(b) - timeOf(a));
-  }, [rows, ticketMetaById]);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3">
@@ -228,19 +59,16 @@ export function PayTickets({ userId }: { userId: string }) {
           </p>
           <p className="text-muted-foreground max-w-[300px] text-[13px] leading-relaxed">
             When staff opens your ticket at the table, it appears here with the
-            place photo, your total reward, and steps to finish. Completed
-            tickets stay here as history.
+            place, your visit time, and the steps to finish. Completed tickets
+            stay here as history.
           </p>
         </div>
       ) : (
         bundles.map((b) => (
-          <TicketPreviewCard
+          <RewardsTicketCard
             key={b.ticketId}
-            bundle={b}
-            ticketMeta={ticketMetaById.get(b.ticketId)}
-            onOpen={() =>
-              router.push(ticketPath(b.ticketId), { scroll: false })
-            }
+            view={bundleToCardView(b, ticketMetaById.get(b.ticketId))}
+            onOpen={() => router.push(ticketPath(b.ticketId), { scroll: false })}
           />
         ))
       )}
