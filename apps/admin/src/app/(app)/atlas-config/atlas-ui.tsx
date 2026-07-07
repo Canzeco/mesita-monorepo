@@ -228,13 +228,13 @@ export function QualityPicker({
   onChange: (v: SynthesisQuality) => void;
 }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex w-full gap-1">
       {(["economy", "standard", "high"] as SynthesisQuality[]).map((q) => (
         <button
           key={q}
           type="button"
           onClick={() => onChange(q)}
-          className={`h-8 rounded-lg border px-2.5 text-xs font-semibold capitalize transition ${
+          className={`h-8 flex-1 rounded-lg border px-2 text-xs font-semibold capitalize transition ${
             value === q
               ? "border-foreground bg-foreground text-background"
               : "border-border bg-card hover:border-foreground/40"

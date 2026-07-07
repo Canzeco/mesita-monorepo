@@ -161,16 +161,16 @@ export function CostSection({
         they&apos;re not inputs here. Figures are approximate, not billing.
       </p>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
         <aside className="flex flex-col gap-4">
           <CalcPanel title="Models" icon={<Brain className="h-3.5 w-3.5" />}>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm">Profile text</span>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Profile text</span>
                 <QualityPicker value={quality} onChange={setQuality} />
               </div>
-              <div className="border-border flex items-center justify-between gap-3 border-t pt-3">
-                <span className="text-sm">Image vision</span>
+              <div className="border-border flex flex-col gap-2 border-t pt-4">
+                <span className="text-sm font-medium">Image vision</span>
                 <QualityPicker value={imageModel} onChange={setImageModel} />
               </div>
             </div>
