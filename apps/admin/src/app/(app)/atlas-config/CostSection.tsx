@@ -327,8 +327,9 @@ export function CostSection({
             Places, Apify, Firecrawl, Perplexity, OpenAI — verified 2026-07-07).
             Collection scales the Google-photo and Instagram-post volumes, Links
             sets how many channels are searched, and Analysis drives the vision
-            calls. Gather steps overlap, so total time is setup + slowest gather +
-            analysis — not the sum of every row. Batch time assumes places run
+            calls. The Apify scrapes run concurrently and image analysis is fully
+            parallel, so total time is setup + slowest gather + ~one analysis
+            round — not the sum of every row. Batch time assumes places run
             sequentially.
           </p>
         </div>

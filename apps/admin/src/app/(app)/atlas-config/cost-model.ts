@@ -73,6 +73,12 @@ const TIME_RATES = {
   synthStandard: 12, // gpt-4o synthesis
 } as const;
 
+// Vision describes every analyzed image CONCURRENTLY (the enricher fires the
+// whole analyze pool at once — see _shared/enrich-image-funnel.ts). The analyze
+// caps bound the count at ≤40 (Google ≤10 + Instagram ≤30), so in practice the
+// whole batch is one round: analysis time ≈ one image's describe, not N of them.
+const VISION_CONCURRENCY = 40;
+
 export const money = (n: number) => `$${n.toFixed(3)}`;
 
 // Compact duration: 45s · 1m 20s · 2h 5m.
@@ -270,9 +276,11 @@ export function computeEnrichmentCost({
       detail: imageModel === "economy" ? "gpt-4o-mini vision" : "gpt-4o vision",
       pricing:
         imageModel === "economy" ? "~$0.001 / image" : "~$0.008 / image",
-      note: `Analyze ${gAnalyze} Google + ${igAnalyze} Instagram = ${visionImgs} image${visionImgs === 1 ? "" : "s"} × ${money(visionCostPer)} (detail:low)`,
+      note: `Analyze ${gAnalyze} Google + ${igAnalyze} Instagram = ${visionImgs} image${visionImgs === 1 ? "" : "s"} × ${money(visionCostPer)}, described in parallel (${Math.ceil(visionImgs / VISION_CONCURRENCY) || 0} round${Math.ceil(visionImgs / VISION_CONCURRENCY) === 1 ? "" : "s"})`,
       cost: visionImgs * visionCostPer,
-      secs: visionImgs * visionSecsPer,
+      // Parallel: the whole analyze pool is described at once, so time is the
+      // number of rounds (≈1) × per-image, not N × per-image.
+      secs: Math.ceil(visionImgs / VISION_CONCURRENCY) * visionSecsPer,
       stage: "post",
       active: visionActive,
     },
