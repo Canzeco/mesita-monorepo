@@ -219,7 +219,7 @@ export function ImageFunnelSection({
       subtitle="How the Enricher builds a place's gallery: collect a candidate pool per source, analyze the top of each (which also picks what's kept), then choose how many reach the profile."
     >
       {/* ── Collection ── */}
-      <div className="mt-5">
+      <div className="border-border mt-6 border-t pt-6">
         <SubHeading
           icon={<Images className="text-muted-foreground h-4 w-4" />}
           title="Collection"
