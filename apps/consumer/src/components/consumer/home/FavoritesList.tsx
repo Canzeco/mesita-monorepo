@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Navigation } from "lucide-react";
 import type { Place } from "@/lib/api/places";
+import { PromoChip } from "@/components/consumer/PromoChip";
+import { getOpeningStatusLabel } from "@/lib/place-status";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
   readSavedPlacePreviews,
@@ -117,6 +119,8 @@ function FavoriteRow({
       ? `${place.distance_km} km`
       : null;
   const subtitle = [place.zone, distanceLabel].filter(Boolean).join(" · ");
+  const openingLabel = getOpeningStatusLabel(place);
+  const isOpen = place.open_now === true;
 
   return (
     <div className="border-border bg-card flex w-full items-center gap-3 rounded-2xl border p-3 transition hover:shadow-md">
@@ -154,6 +158,24 @@ function FavoriteRow({
               <span className="truncate">{subtitle}</span>
             </p>
           )}
+          {/* Opening status + reward summary. Each child self-hides when the
+              row lacks data (no hours table, or a place with no reward), so an
+              info-less row just shows its name + location. */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 empty:mt-0">
+            {openingLabel && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium">
+                <span
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    isOpen ? "bg-emerald-500" : "bg-muted-foreground/40"
+                  }`}
+                />
+                <span className={isOpen ? "text-emerald-600" : "text-muted-foreground"}>
+                  {openingLabel}
+                </span>
+              </span>
+            )}
+            <PromoChip place={place} size="sm" />
+          </div>
         </div>
       </Link>
 
