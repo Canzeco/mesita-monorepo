@@ -316,7 +316,6 @@ export function PlaceSection({
           onAdd={addPhotoUrl}
           onMove={movePhoto}
           onRemove={removePhoto}
-          media={media}
           onInfo={setMetaFor}
         />
       </SectionCard>
@@ -345,7 +344,6 @@ function PhotosEditor({
   onAdd,
   onMove,
   onRemove,
-  media,
   onInfo,
 }: {
   photos: string[];
@@ -355,7 +353,6 @@ function PhotosEditor({
   onAdd: () => void;
   onMove: (from: number, dir: -1 | 1) => void;
   onRemove: (idx: number) => void;
-  media: Record<string, PlaceMediaMeta>;
   onInfo: (url: string) => void;
 }) {
   return (
@@ -402,17 +399,15 @@ function PhotosEditor({
                   </button>
                 </div>
                 <div className="flex gap-1">
-                  {media[src] && (
-                    <button
-                      type="button"
-                      onClick={() => onInfo(src)}
-                      className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
-                      aria-label="Photo metadata"
-                      title="Image metadata"
-                    >
-                      <Info className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => onInfo(src)}
+                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
+                    aria-label="Photo metadata"
+                    title="Image metadata"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
                   <button
                     type="button"
                     disabled={pending}
@@ -593,40 +588,49 @@ function MediaMetaDialog({
             className="border-border aspect-[16/9] w-full rounded-lg border object-cover"
           />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground text-xs font-medium">Source</span>
-            <span
-              className={
-                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                chip
-              }
-            >
-              {sourceLabel}
-            </span>
-            {typeof meta?.likes_count === "number" && (
-              <span className="text-muted-foreground text-xs tabular-nums">
-                ♥ {meta.likes_count.toLocaleString()}
-              </span>
-            )}
-          </div>
+          {!meta ? (
+            <p className="text-muted-foreground text-sm italic">
+              No information for this image yet — it hasn’t been analyzed by the
+              Enricher.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground text-xs font-medium">Source</span>
+                <span
+                  className={
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+                    chip
+                  }
+                >
+                  {sourceLabel}
+                </span>
+                {typeof meta?.likes_count === "number" && (
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    ♥ {meta.likes_count.toLocaleString()}
+                  </span>
+                )}
+              </div>
 
-          {meta?.caption && (
-            <div>
-              <p className="text-muted-foreground mb-1 text-xs font-medium">Caption</p>
-              <p className="text-foreground/90 text-sm italic">“{meta.caption}”</p>
-            </div>
+              {meta?.caption && (
+                <div>
+                  <p className="text-muted-foreground mb-1 text-xs font-medium">Caption</p>
+                  <p className="text-foreground/90 text-sm italic">“{meta.caption}”</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-muted-foreground mb-1 text-xs font-medium">Analysis</p>
+                {analysis ? (
+                  <AnalysisText text={analysis} />
+                ) : (
+                  <p className="text-muted-foreground text-sm italic">
+                    Not analyzed — this image was saved but not vision-described.
+                  </p>
+                )}
+              </div>
+            </>
           )}
-
-          <div>
-            <p className="text-muted-foreground mb-1 text-xs font-medium">Analysis</p>
-            {analysis ? (
-              <AnalysisText text={analysis} />
-            ) : (
-              <p className="text-muted-foreground text-sm italic">
-                Not analyzed — this image was saved but not vision-described.
-              </p>
-            )}
-          </div>
 
           {meta?.source_url && (
             <a
