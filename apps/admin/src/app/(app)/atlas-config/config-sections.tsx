@@ -15,6 +15,7 @@ import {
   Link2,
   ShoppingBag,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { updateAtlasConfig, type PerplexityPreset, type SynthesisQuality } from "./actions";
 import {
@@ -49,7 +50,7 @@ const clampN = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, 
 //   save ≤ (Google analyze + IG analyze), capped at 10.
 function normalizeFunnel(s: Funnel): Funnel {
   const gg = clampN(s.gg, 1, 10); // Google collect
-  const depth = clampN(s.depth, 1, 30); // Instagram collect (downloaded, sorted by likes)
+  const depth = clampN(s.depth, 1, 50); // Instagram collect (downloaded, sorted by likes)
   const ag = clampN(s.ag, 1, gg); // Google analyze ≤ Google collect
   const ai = clampN(s.ai, 1, depth); // Instagram analyze ≤ Instagram collect
   const save = clampN(s.save, 1, Math.min(10, ag + ai)); // Selection ≤ analyzed, ≤ 10
@@ -228,7 +229,7 @@ export function ImageFunnelSection({
         />
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google collect" value={f.gg} min={1} max={10} onChange={(v) => patch({ gg: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={30} onChange={(v) => patch({ depth: v })} disabled={savePending} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={50} onChange={(v) => patch({ depth: v })} disabled={savePending} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
           Google returns its photos already ranked by relevance — best first, so we take them in order. Instagram returns the <em>most recent</em> posts, so the Enricher re-ranks that window by number of likes. No separate keep step — Analysis reads the top of each pool.
@@ -402,6 +403,63 @@ export function DiscoverySection({
         <NumberField icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />} label="Uber Eats" value={ubereats} min={0} max={10} onChange={setUbereats} disabled={pending} />
       </div>
 
+      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
+      {error && <ErrorNote message={error} />}
+    </SectionCard>
+  );
+}
+
+// ─── Reviews (how many Google reviews the Apify scrape pulls) ───────────────
+
+export function ReviewsSection({
+  initialGatherReviews,
+  onSaved,
+}: {
+  initialGatherReviews: number;
+  onSaved: (updatedAt: string | null) => void;
+}) {
+  const [reviews, setReviews] = useState(initialGatherReviews);
+  const [saved, setSaved] = useState(initialGatherReviews);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const dirty = reviews !== saved;
+
+  const save = () => {
+    if (!dirty) return;
+    setError(null);
+    setOk(false);
+    start(async () => {
+      const r = await updateAtlasConfig({ gatherReviews: reviews });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setSaved(r.data.atlasGatherReviews);
+      setReviews(r.data.atlasGatherReviews);
+      onSaved(r.data.updatedAt);
+      setOk(true);
+    });
+  };
+
+  return (
+    <SectionCard
+      icon={<Star className="text-muted-foreground h-4 w-4" />}
+      title="Reviews"
+      subtitle="How many Google reviews the Enricher pulls from Apify (0–100). Reviews ground the profile's About, category, and tags — more reviews mean richer synthesis but a slower, pricier scrape (~$0.50 per 100)."
+    >
+      <div className="mt-5 sm:max-w-xs">
+        <NumberField
+          icon={<Star className="text-muted-foreground h-4 w-4" />}
+          label="Google reviews to pull"
+          value={reviews}
+          min={0}
+          max={100}
+          onChange={setReviews}
+          disabled={pending}
+        />
+      </div>
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
       {error && <ErrorNote message={error} />}
     </SectionCard>

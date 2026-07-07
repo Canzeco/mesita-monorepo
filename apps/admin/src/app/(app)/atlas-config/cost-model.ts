@@ -74,9 +74,10 @@ const TIME_RATES = {
 } as const;
 
 // Vision describes every analyzed image CONCURRENTLY (the enricher fires the
-// whole analyze pool at once — see _shared/enrich-image-funnel.ts). The analyze
-// caps bound the count at ≤40 (Google ≤10 + Instagram ≤30), so in practice the
-// whole batch is one round: analysis time ≈ one image's describe, not N of them.
+// whole analyze pool at once — see _shared/enrich-image-funnel.ts). Up to 40
+// run in flight; the analyze caps top out at 60 (Google ≤10 + Instagram ≤50),
+// so a typical config is one round and the absolute max is two — analysis time
+// ≈ one describe (or two), not N of them.
 const VISION_CONCURRENCY = 40;
 
 export const money = (n: number) => `$${n.toFixed(3)}`;
@@ -124,7 +125,7 @@ export type CostParams = {
   // Images box — Collection (candidate pool per source) + Analysis (how many
   // of each pool the vision model reads; also what gets kept).
   gCollect: number; // Google collect (1–10) → Place Photo fetches
-  igCollect: number; // Instagram collect (1–30) → Apify posts pulled
+  igCollect: number; // Instagram collect (1–50) → Apify posts pulled
   gAnalyze: number; // Analyze Google (0–10, ≤ collect) → vision calls
   igAnalyze: number; // Analyze Instagram (0–30, ≤ collect) → vision calls
   // Links box — per-channel Firecrawl Search candidate counts (0 disables).

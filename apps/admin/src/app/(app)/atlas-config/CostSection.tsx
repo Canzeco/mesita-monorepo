@@ -221,7 +221,7 @@ export function CostSection({
           <div className="flex flex-col gap-1">
             <SubLabel>Collection</SubLabel>
             <CalcStepper label="Google collect" value={gCollect} min={1} max={10} onChange={changeGCollect} />
-            <CalcStepper label="Instagram collect" value={igCollect} min={1} max={30} onChange={changeIgCollect} />
+            <CalcStepper label="Instagram collect" value={igCollect} min={1} max={50} onChange={changeIgCollect} />
             <div className="border-border mt-2 border-t pt-2">
               <SubLabel>Analysis</SubLabel>
             </div>

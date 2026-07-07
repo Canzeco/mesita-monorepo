@@ -22,6 +22,7 @@ type SettingsResponse = {
   atlasGatherGoogleImages: number;
   atlasGatherInstagramDepth: number;
   atlasGatherInstagramPosts: number;
+  atlasGatherReviews: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
   atlasImageAnalysisPrompt: string;
@@ -57,6 +58,7 @@ type AtlasConfigResponse = {
   atlasGatherGoogleImages: number;
   atlasGatherInstagramDepth: number;
   atlasGatherInstagramPosts: number;
+  atlasGatherReviews: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
   atlasImageAnalysisPrompt: string;
@@ -85,6 +87,7 @@ export async function updateAtlasConfig(patch: {
   gatherGoogleImages?: number;
   gatherInstagramDepth?: number;
   gatherInstagramPosts?: number;
+  gatherReviews?: number;
   imageVisionEnabled?: boolean;
   analyzeGoogleImages?: number;
   analyzeInstagramImages?: number;

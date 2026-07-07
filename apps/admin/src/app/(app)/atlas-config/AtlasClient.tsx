@@ -6,6 +6,7 @@ import {
   DiscoverySection,
   ImageFunnelSection,
   ModelsSection,
+  ReviewsSection,
 } from "./config-sections";
 import { CostSection } from "./CostSection";
 import type { LinkCounts } from "./cost-model";
@@ -20,6 +21,7 @@ import type { LinkCounts } from "./cost-model";
 export function AtlasConfigurationClient(props: {
   initialGatherGoogleImages: number;
   initialGatherInstagramDepth: number;
+  initialGatherReviews: number;
   initialSaveImagesToStorage: boolean;
   initialSaveTotalImages: number;
   initialAnalyzeGoogleImages: number;
@@ -62,6 +64,10 @@ export function AtlasConfigurationClient(props: {
         initialFacebookN={props.initialDiscoverFacebookN}
         initialOpentableN={props.initialDiscoverOpentableN}
         initialUbereatsN={props.initialDiscoverUbereatsN}
+        onSaved={setUpdatedAt}
+      />
+      <ReviewsSection
+        initialGatherReviews={props.initialGatherReviews}
         onSaved={setUpdatedAt}
       />
       <ImageFunnelSection
