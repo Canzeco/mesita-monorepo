@@ -3,10 +3,15 @@
 import { useState, useTransition } from "react";
 import {
   Brain,
+  CalendarClock,
   Eye,
+  Facebook,
+  Globe,
   Image as ImageIcon,
   Instagram,
+  Link2,
   Lock,
+  ShoppingBag,
   Sparkles,
 } from "lucide-react";
 import { updateAtlasConfig, type SynthesisQuality } from "./actions";
@@ -27,17 +32,21 @@ import {
 
 export function GatherSection({
   initialGatherGoogleImages,
+  initialGatherInstagramDepth,
   initialGatherInstagramPosts,
   onSaved,
 }: {
   initialGatherGoogleImages: number;
+  initialGatherInstagramDepth: number;
   initialGatherInstagramPosts: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [g, setG] = useState(initialGatherGoogleImages);
+  const [depth, setDepth] = useState(initialGatherInstagramDepth);
   const [posts, setPosts] = useState(initialGatherInstagramPosts);
   const [saved, setSaved] = useState({
     g: initialGatherGoogleImages,
+    depth: initialGatherInstagramDepth,
     posts: initialGatherInstagramPosts,
   });
   const [pending, start] = useTransition();
@@ -46,7 +55,15 @@ export function GatherSection({
 
   const dirty =
     g !== saved.g ||
+    depth !== saved.depth ||
     posts !== saved.posts;
+
+  // Keep ≤ depth: lowering the download depth can never leave keep above it.
+  const keepMax = Math.min(10, depth);
+  const setDepthClamped = (n: number) => {
+    setDepth(n);
+    if (posts > n) setPosts(n);
+  };
 
   const save = () => {
     if (!dirty) return;
@@ -55,6 +72,7 @@ export function GatherSection({
     start(async () => {
       const r = await updateAtlasConfig({
         gatherGoogleImages: g,
+        gatherInstagramDepth: depth,
         gatherInstagramPosts: posts,
       });
       if (!r.ok) {
@@ -63,9 +81,11 @@ export function GatherSection({
       }
       setSaved({
         g: r.data.atlasGatherGoogleImages,
+        depth: r.data.atlasGatherInstagramDepth,
         posts: r.data.atlasGatherInstagramPosts,
       });
       setG(r.data.atlasGatherGoogleImages);
+      setDepth(r.data.atlasGatherInstagramDepth);
       setPosts(r.data.atlasGatherInstagramPosts);
       onSaved(r.data.updatedAt);
       setOk(true);
@@ -78,9 +98,10 @@ export function GatherSection({
       title="Collection"
       subtitle="How much raw material ADEA collects before analysis. These limits set how many images or posts to fetch per source — not how many end up on the profile."
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
         <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google images" value={g} min={0} max={10} onChange={setG} disabled={pending} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram posts" value={posts} min={0} max={30} onChange={setPosts} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram depth (download)" value={depth} min={1} max={30} onChange={setDepthClamped} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram keep (≤ depth)" value={posts} min={0} max={keepMax} onChange={setPosts} disabled={pending} />
       </div>
 
       {/* Fixed per-source pre-sort — read-only. Each pool arrives already ranked
@@ -107,11 +128,108 @@ export function GatherSection({
           <li className="flex items-start gap-2">
             <Instagram className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              <span className="font-medium">Instagram</span> — highest-liked
-              posts first (video covers included).
+              <span className="font-medium">Instagram</span> — download the latest{" "}
+              <span className="font-medium">depth</span> posts, rank by likes, keep the
+              top <span className="font-medium">keep</span> (video covers included).
             </span>
           </li>
         </ul>
+      </div>
+
+      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
+      {error && <ErrorNote message={error} />}
+    </SectionCard>
+  );
+}
+
+// ─── Discovery (per-source Firecrawl Search candidate counts) ───────────────
+// How many Firecrawl Search results to pull per source when hunting for a
+// place's official links. Agent Y then reviews these candidates and picks one
+// (or none) per field. 0 disables a source's search entirely.
+
+export function DiscoverySection({
+  initialWebsiteN,
+  initialInstagramN,
+  initialFacebookN,
+  initialOpentableN,
+  initialUbereatsN,
+  onSaved,
+}: {
+  initialWebsiteN: number;
+  initialInstagramN: number;
+  initialFacebookN: number;
+  initialOpentableN: number;
+  initialUbereatsN: number;
+  onSaved: (updatedAt: string | null) => void;
+}) {
+  const [website, setWebsite] = useState(initialWebsiteN);
+  const [instagram, setInstagram] = useState(initialInstagramN);
+  const [facebook, setFacebook] = useState(initialFacebookN);
+  const [opentable, setOpentable] = useState(initialOpentableN);
+  const [ubereats, setUbereats] = useState(initialUbereatsN);
+  const [saved, setSaved] = useState({
+    website: initialWebsiteN,
+    instagram: initialInstagramN,
+    facebook: initialFacebookN,
+    opentable: initialOpentableN,
+    ubereats: initialUbereatsN,
+  });
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const dirty =
+    website !== saved.website ||
+    instagram !== saved.instagram ||
+    facebook !== saved.facebook ||
+    opentable !== saved.opentable ||
+    ubereats !== saved.ubereats;
+
+  const save = () => {
+    if (!dirty) return;
+    setError(null);
+    setOk(false);
+    start(async () => {
+      const r = await updateAtlasConfig({
+        discoverWebsiteN: website,
+        discoverInstagramN: instagram,
+        discoverFacebookN: facebook,
+        discoverOpentableN: opentable,
+        discoverUbereatsN: ubereats,
+      });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setSaved({
+        website: r.data.atlasDiscoverWebsiteN,
+        instagram: r.data.atlasDiscoverInstagramN,
+        facebook: r.data.atlasDiscoverFacebookN,
+        opentable: r.data.atlasDiscoverOpentableN,
+        ubereats: r.data.atlasDiscoverUbereatsN,
+      });
+      setWebsite(r.data.atlasDiscoverWebsiteN);
+      setInstagram(r.data.atlasDiscoverInstagramN);
+      setFacebook(r.data.atlasDiscoverFacebookN);
+      setOpentable(r.data.atlasDiscoverOpentableN);
+      setUbereats(r.data.atlasDiscoverUbereatsN);
+      onSaved(r.data.updatedAt);
+      setOk(true);
+    });
+  };
+
+  return (
+    <SectionCard
+      icon={<Link2 className="text-muted-foreground h-4 w-4" />}
+      title="Link Discovery"
+      subtitle="How many Firecrawl Search candidates to pull per source when finding a place's official links. Agent Y reviews these and picks the best one per field (or none). 0 turns a source off."
+    >
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={website} min={0} max={10} onChange={setWebsite} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram" value={instagram} min={0} max={10} onChange={setInstagram} disabled={pending} />
+        <NumberField icon={<Facebook className="text-muted-foreground h-4 w-4" />} label="Facebook" value={facebook} min={0} max={10} onChange={setFacebook} disabled={pending} />
+        <NumberField icon={<CalendarClock className="text-muted-foreground h-4 w-4" />} label="OpenTable" value={opentable} min={0} max={10} onChange={setOpentable} disabled={pending} />
+        <NumberField icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />} label="Uber Eats" value={ubereats} min={0} max={10} onChange={setUbereats} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />

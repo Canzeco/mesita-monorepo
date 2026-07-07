@@ -11,6 +11,7 @@ export default async function AdeaConfigurationPage() {
   return (
     <AtlasConfigurationClient
       initialGatherGoogleImages={result.data.atlasGatherGoogleImages}
+      initialGatherInstagramDepth={result.data.atlasGatherInstagramDepth}
       initialGatherInstagramPosts={result.data.atlasGatherInstagramPosts}
       initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
       initialSaveTotalImages={result.data.atlasSaveTotalImages}
@@ -20,6 +21,11 @@ export default async function AdeaConfigurationPage() {
       initialImageSortingPrompt={result.data.atlasImageSortingPrompt}
       initialSynthesisQuality={result.data.atlasSynthesisQuality}
       initialVisionQuality={result.data.atlasVisionQuality ?? "economy"}
+      initialDiscoverWebsiteN={result.data.atlasDiscoverWebsiteN}
+      initialDiscoverInstagramN={result.data.atlasDiscoverInstagramN}
+      initialDiscoverFacebookN={result.data.atlasDiscoverFacebookN}
+      initialDiscoverOpentableN={result.data.atlasDiscoverOpentableN}
+      initialDiscoverUbereatsN={result.data.atlasDiscoverUbereatsN}
       initialUpdatedAt={result.data.updatedAt}
     />
   );

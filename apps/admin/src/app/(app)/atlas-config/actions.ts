@@ -11,6 +11,7 @@ type SettingsResponse = {
   autoVerifyAiEmail: boolean;
   autoVerifyVideo: boolean;
   atlasGatherGoogleImages: number;
+  atlasGatherInstagramDepth: number;
   atlasGatherInstagramPosts: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
@@ -21,6 +22,11 @@ type SettingsResponse = {
   atlasSynthesisQuality: SynthesisQuality;
   atlasVisionQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
+  atlasDiscoverWebsiteN: number;
+  atlasDiscoverInstagramN: number;
+  atlasDiscoverFacebookN: number;
+  atlasDiscoverOpentableN: number;
+  atlasDiscoverUbereatsN: number;
   updatedAt: string | null;
 };
 
@@ -38,6 +44,7 @@ export async function getAtlasSettings(): Promise<GetSettingsResult> {
 
 type AtlasConfigResponse = {
   atlasGatherGoogleImages: number;
+  atlasGatherInstagramDepth: number;
   atlasGatherInstagramPosts: number;
   atlasImageVisionEnabled: boolean;
   atlasAnalyzeGoogleImages: number;
@@ -48,6 +55,11 @@ type AtlasConfigResponse = {
   atlasSynthesisQuality: SynthesisQuality;
   atlasVisionQuality: SynthesisQuality;
   atlasPerRunCostCapUsd: number;
+  atlasDiscoverWebsiteN: number;
+  atlasDiscoverInstagramN: number;
+  atlasDiscoverFacebookN: number;
+  atlasDiscoverOpentableN: number;
+  atlasDiscoverUbereatsN: number;
   updatedAt: string | null;
 };
 
@@ -58,6 +70,7 @@ type UpdateAtlasConfigResult =
 // Partial update — pass only the fields you want to change.
 export async function updateAtlasConfig(patch: {
   gatherGoogleImages?: number;
+  gatherInstagramDepth?: number;
   gatherInstagramPosts?: number;
   imageVisionEnabled?: boolean;
   analyzeGoogleImages?: number;
@@ -68,6 +81,11 @@ export async function updateAtlasConfig(patch: {
   synthesisQuality?: SynthesisQuality;
   visionQuality?: SynthesisQuality;
   perRunCostCapUsd?: number;
+  discoverWebsiteN?: number;
+  discoverInstagramN?: number;
+  discoverFacebookN?: number;
+  discoverOpentableN?: number;
+  discoverUbereatsN?: number;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
     "admin-web-update-atlas-config",

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SynthesisQuality } from "./actions";
 import { PipelineStrip, StepsOverviewSection } from "./enricher-catalog";
 import {
+  DiscoverySection,
   GatherSection,
   ModelsSection,
   VisionParamsSection,
@@ -20,6 +21,7 @@ import { CostSection } from "./CostSection";
 
 export function AtlasConfigurationClient(props: {
   initialGatherGoogleImages: number;
+  initialGatherInstagramDepth: number;
   initialGatherInstagramPosts: number;
   initialImageVisionEnabled: boolean;
   initialSaveTotalImages: number;
@@ -29,6 +31,11 @@ export function AtlasConfigurationClient(props: {
   initialImageSortingPrompt: string;
   initialSynthesisQuality: SynthesisQuality;
   initialVisionQuality: SynthesisQuality;
+  initialDiscoverWebsiteN: number;
+  initialDiscoverInstagramN: number;
+  initialDiscoverFacebookN: number;
+  initialDiscoverOpentableN: number;
+  initialDiscoverUbereatsN: number;
   initialUpdatedAt: string | null;
 }) {
   const [updatedAt, setUpdatedAt] = useState(props.initialUpdatedAt);
@@ -50,7 +57,16 @@ export function AtlasConfigurationClient(props: {
       <StepsOverviewSection />
       <GatherSection
         initialGatherGoogleImages={props.initialGatherGoogleImages}
+        initialGatherInstagramDepth={props.initialGatherInstagramDepth}
         initialGatherInstagramPosts={props.initialGatherInstagramPosts}
+        onSaved={setUpdatedAt}
+      />
+      <DiscoverySection
+        initialWebsiteN={props.initialDiscoverWebsiteN}
+        initialInstagramN={props.initialDiscoverInstagramN}
+        initialFacebookN={props.initialDiscoverFacebookN}
+        initialOpentableN={props.initialDiscoverOpentableN}
+        initialUbereatsN={props.initialDiscoverUbereatsN}
         onSaved={setUpdatedAt}
       />
       <VisionParamsSection
