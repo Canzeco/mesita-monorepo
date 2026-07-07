@@ -350,7 +350,7 @@ export function SearchClient({
                   type="button"
                   onClick={() => toggleChip(chip.id)}
                   className={cn(
-                    "flex h-11 shrink-0 items-center justify-center rounded-full border px-4 text-xs font-semibold whitespace-nowrap shadow-sm backdrop-blur transition active:scale-95",
+                    "flex h-8 shrink-0 items-center justify-center rounded-full border px-3.5 text-xs font-semibold whitespace-nowrap shadow-sm backdrop-blur transition active:scale-95",
                     activeChips.includes(chip.id)
                       ? activeToneClasses(chip.tone)
                       : "border-border bg-card/95 text-foreground",
