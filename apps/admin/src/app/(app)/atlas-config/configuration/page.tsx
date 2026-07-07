@@ -20,6 +20,7 @@ export default async function AtlasParametersPage() {
       initialImageSortingPrompt={result.data.atlasImageSortingPrompt}
       initialSynthesisQuality={result.data.atlasSynthesisQuality}
       initialVisionQuality={result.data.atlasVisionQuality ?? "economy"}
+      initialPerplexityPreset={result.data.atlasPerplexityPreset ?? "pro-search"}
       initialDiscoverWebsiteN={result.data.atlasDiscoverWebsiteN}
       initialDiscoverInstagramN={result.data.atlasDiscoverInstagramN}
       initialDiscoverFacebookN={result.data.atlasDiscoverFacebookN}

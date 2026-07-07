@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SynthesisQuality } from "./actions";
+import type { PerplexityPreset, SynthesisQuality } from "./actions";
 import {
   DiscoverySection,
   ImageFunnelSection,
@@ -28,6 +28,7 @@ export function AtlasConfigurationClient(props: {
   initialImageSortingPrompt: string;
   initialSynthesisQuality: SynthesisQuality;
   initialVisionQuality: SynthesisQuality;
+  initialPerplexityPreset: PerplexityPreset;
   initialDiscoverWebsiteN: number;
   initialDiscoverInstagramN: number;
   initialDiscoverFacebookN: number;
@@ -52,6 +53,7 @@ export function AtlasConfigurationClient(props: {
       <ModelsSection
         initialSynthesisQuality={props.initialSynthesisQuality}
         initialVisionQuality={props.initialVisionQuality}
+        initialPerplexityPreset={props.initialPerplexityPreset}
         onSaved={setUpdatedAt}
       />
       <DiscoverySection

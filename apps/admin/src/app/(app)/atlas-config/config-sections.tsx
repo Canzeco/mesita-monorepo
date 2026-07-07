@@ -16,7 +16,7 @@ import {
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
-import { updateAtlasConfig, type SynthesisQuality } from "./actions";
+import { updateAtlasConfig, type PerplexityPreset, type SynthesisQuality } from "./actions";
 import {
   Collapsible,
   ErrorNote,
@@ -414,28 +414,41 @@ const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[
   { value: "high", label: "High", hint: "gpt-4o" },
 ];
 
+// Perplexity Agent presets — the "search model" for S2 (SERP) + S3 (links).
+// Cost/depth climbs down the list; pro-search is the default.
+const PERPLEXITY_OPTIONS: { value: PerplexityPreset; label: string; hint: string }[] = [
+  { value: "fast-search", label: "Fast", hint: "1 step · cheapest" },
+  { value: "pro-search", label: "Pro", hint: "5 steps · default" },
+  { value: "deep-research", label: "Deep", hint: "10 steps · pricey" },
+  { value: "advanced-deep-research", label: "Advanced", hint: "15 steps · priciest" },
+];
+
 // ─── Models (text synthesis model + image vision model) ─────────────────────
 
 export function ModelsSection({
   initialSynthesisQuality,
   initialVisionQuality,
+  initialPerplexityPreset,
   onSaved,
 }: {
   initialSynthesisQuality: SynthesisQuality;
   initialVisionQuality: SynthesisQuality;
+  initialPerplexityPreset: PerplexityPreset;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [text, setText] = useState<SynthesisQuality>(initialSynthesisQuality);
   const [image, setImage] = useState<SynthesisQuality>(initialVisionQuality);
+  const [search, setSearch] = useState<PerplexityPreset>(initialPerplexityPreset);
   const [saved, setSaved] = useState({
     text: initialSynthesisQuality,
     image: initialVisionQuality,
+    search: initialPerplexityPreset,
   });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty = text !== saved.text || image !== saved.image;
+  const dirty = text !== saved.text || image !== saved.image || search !== saved.search;
 
   const save = () => {
     if (!dirty) return;
@@ -445,6 +458,7 @@ export function ModelsSection({
       const r = await updateAtlasConfig({
         synthesisQuality: text,
         visionQuality: image,
+        perplexityPreset: search,
       });
       if (!r.ok) {
         setError(r.error);
@@ -453,9 +467,11 @@ export function ModelsSection({
       setSaved({
         text: r.data.atlasSynthesisQuality,
         image: r.data.atlasVisionQuality,
+        search: r.data.atlasPerplexityPreset,
       });
       setText(r.data.atlasSynthesisQuality);
       setImage(r.data.atlasVisionQuality);
+      setSearch(r.data.atlasPerplexityPreset);
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -465,15 +481,16 @@ export function ModelsSection({
     <SectionCard
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
       title="Models"
-      subtitle="Which AI models write the profile (text) and analyze photos (vision)."
+      subtitle="Which AI models write the profile (text), analyze photos (vision), and search the web (Perplexity, for the SERP summary + link discovery)."
     >
-      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <ModelSelect
           icon={<Brain className="text-muted-foreground h-4 w-4" />}
           label="Text model"
           hint="writes the profile"
           value={text}
           onChange={setText}
+          options={QUALITY_OPTIONS}
           disabled={pending}
         />
         <ModelSelect
@@ -482,6 +499,16 @@ export function ModelsSection({
           hint="analyzes photos"
           value={image}
           onChange={setImage}
+          options={QUALITY_OPTIONS}
+          disabled={pending}
+        />
+        <ModelSelect
+          icon={<Globe className="text-muted-foreground h-4 w-4" />}
+          label="Search model"
+          hint="Perplexity preset"
+          value={search}
+          onChange={setSearch}
+          options={PERPLEXITY_OPTIONS}
           disabled={pending}
         />
       </div>
@@ -492,19 +519,21 @@ export function ModelsSection({
   );
 }
 
-function ModelSelect({
+function ModelSelect<T extends string>({
   icon,
   label,
   hint,
   value,
   onChange,
+  options,
   disabled,
 }: {
   icon: React.ReactNode;
   label: string;
   hint: string;
-  value: SynthesisQuality;
-  onChange: (v: SynthesisQuality) => void;
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string; hint: string }[];
   disabled: boolean;
 }) {
   return (
@@ -517,10 +546,10 @@ function ModelSelect({
       <select
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value as SynthesisQuality)}
+        onChange={(e) => onChange(e.target.value as T)}
         className="border-border bg-card focus:border-foreground h-9 rounded-lg border px-2 text-sm outline-none disabled:opacity-50"
       >
-        {QUALITY_OPTIONS.map((o) => (
+        {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label} · {o.hint}
           </option>

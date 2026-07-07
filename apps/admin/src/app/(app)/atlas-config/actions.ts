@@ -6,6 +6,15 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 export type SynthesisQuality = "economy" | "standard" | "high";
 
+// Perplexity Agent preset — the "search model" for the Enricher's S2 (SERP
+// summary) + S3 (channel link discovery). Mirrors the Perplexity Agent API
+// preset names (docs.perplexity.ai/docs/agent-api/presets).
+export type PerplexityPreset =
+  | "fast-search"
+  | "pro-search"
+  | "deep-research"
+  | "advanced-deep-research";
+
 type SettingsResponse = {
   autoVerifyAiCall: boolean;
   autoVerifyAiEmail: boolean;
@@ -22,6 +31,7 @@ type SettingsResponse = {
   atlasSaveImagesToStorage: boolean;
   atlasSynthesisQuality: SynthesisQuality;
   atlasVisionQuality: SynthesisQuality;
+  atlasPerplexityPreset: PerplexityPreset;
   atlasPerRunCostCapUsd: number;
   atlasDiscoverWebsiteN: number;
   atlasDiscoverInstagramN: number;
@@ -56,6 +66,7 @@ type AtlasConfigResponse = {
   atlasSaveImagesToStorage: boolean;
   atlasSynthesisQuality: SynthesisQuality;
   atlasVisionQuality: SynthesisQuality;
+  atlasPerplexityPreset: PerplexityPreset;
   atlasPerRunCostCapUsd: number;
   atlasDiscoverWebsiteN: number;
   atlasDiscoverInstagramN: number;
@@ -83,6 +94,7 @@ export async function updateAtlasConfig(patch: {
   imageSortingPrompt?: string;
   synthesisQuality?: SynthesisQuality;
   visionQuality?: SynthesisQuality;
+  perplexityPreset?: PerplexityPreset;
   perRunCostCapUsd?: number;
   discoverWebsiteN?: number;
   discoverInstagramN?: number;
