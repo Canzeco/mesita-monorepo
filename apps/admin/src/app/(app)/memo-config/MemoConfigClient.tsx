@@ -1,18 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  Bot,
-  Globe,
-  Hash,
-  MapPin,
-  MessageSquare,
-  Ruler,
-  Thermometer,
-} from "lucide-react";
+import { Bot, Globe, MessageSquare } from "lucide-react";
 import {
   ErrorNote,
-  NumberField,
   SaveRow,
   SectionCard,
   Switch,
@@ -25,10 +16,10 @@ import {
   type MemoConfig,
 } from "./actions";
 
-// Memo's config surface. Values default to what Memo runs with today (see
-// consumer-web-ask-memo). Editing is live-local; Save calls the future
-// admin-web-update-memo-config EF — until that ships with the OpenAI rebuild,
-// Save reports the service isn't deployed yet and nothing is lost.
+// Memo's config surface — kept deliberately small: the persona prose and the
+// models. Values default to what Memo runs with today (see consumer-web-ask-
+// memo). Save calls the future admin-web-update-memo-config EF; until that ships
+// with the OpenAI rebuild it reports cleanly and nothing is lost.
 const DEFAULTS: MemoConfig = {
   greeting:
     "Hola ✨ I'm Memo, your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.",
@@ -36,14 +27,8 @@ const DEFAULTS: MemoConfig = {
     "You are Memo, Mesita's warm, sharp local concierge for dining, nightlife, cafés, and experiences — deep taste for Monterrey, able to help anywhere. Reply in the user's language, plain text, 2–4 sentences, opinionated and specific. Be time-aware: prefer spots open and appropriate for the local hour. When the user is place-seeking, name the real places on the shortlist; for general questions just answer conversationally.",
   provider: "openai",
   openaiModel: "gpt-4o-mini",
-  temperature: 0.3,
-  maxTokens: 700,
   webGrounding: false,
   perplexityModel: "sonar-pro",
-  maxCards: 3,
-  radiusM: 8000,
-  preferMesita: true,
-  demoteClosed: true,
 };
 
 function Select<T extends string>({
@@ -62,7 +47,7 @@ function Select<T extends string>({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as T)}
-      className="border-border bg-card focus:border-foreground h-8 w-full rounded-lg border px-2 text-xs font-semibold outline-none disabled:opacity-50"
+      className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-sm font-medium outline-none disabled:opacity-50"
     >
       {options.map((o) => (
         <option key={o} value={o}>
@@ -119,17 +104,11 @@ export function MemoConfigClient() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="border-border bg-muted/40 text-muted-foreground rounded-xl border p-3 text-xs leading-relaxed">
-        Preview of Memo&apos;s config surface. Fields default to what Memo runs
-        with today. Persistence + live effect activate when the OpenAI rebuild of{" "}
-        <code className="text-foreground">consumer-web-ask-memo</code> lands.
-      </div>
-
       {/* Persona */}
       <SectionCard
         icon={<MessageSquare className="text-secondary h-4 w-4" />}
-        title="Persona &amp; voice"
-        subtitle="How Memo greets and how it talks. These two fields are the biggest levers on how the concierge feels."
+        title="Persona"
+        subtitle="How Memo greets and how it talks — the biggest levers on how the concierge feels."
       >
         <div className="mt-4 grid gap-3">
           <TextAreaField
@@ -147,14 +126,14 @@ export function MemoConfigClient() {
         </div>
       </SectionCard>
 
-      {/* Model */}
+      {/* Models */}
       <SectionCard
         icon={<Bot className="text-secondary h-4 w-4" />}
-        title="Model"
-        subtitle="OpenAI is Memo's brain (intent + orchestration + prose). Google Places + the Mesita catalog do the place grounding. Perplexity is an optional web-grounding leg for live editorial color + citations."
+        title="Models"
+        subtitle="OpenAI is Memo's brain. Perplexity is an optional web-grounding leg for live color + citations — off by default."
       >
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label={<>Brain — OpenAI model</>}>
+          <Field label={<>OpenAI model (brain)</>}>
             <Select
               value={cfg.openaiModel}
               options={OPENAI_MODELS}
@@ -162,25 +141,6 @@ export function MemoConfigClient() {
               onChange={(v) => set("openaiModel", v)}
             />
           </Field>
-          <NumberField
-            icon={<Thermometer className="text-muted-foreground h-4 w-4" />}
-            label="Temperature"
-            value={cfg.temperature}
-            min={0}
-            max={1}
-            decimals
-            disabled={pending}
-            onChange={(v) => set("temperature", v)}
-          />
-          <NumberField
-            icon={<Hash className="text-muted-foreground h-4 w-4" />}
-            label="Max reply tokens"
-            value={cfg.maxTokens}
-            min={200}
-            max={1500}
-            disabled={pending}
-            onChange={(v) => set("maxTokens", v)}
-          />
           <Field label={<>Web grounding (Perplexity)</>}>
             <Switch
               on={cfg.webGrounding}
@@ -202,50 +162,6 @@ export function MemoConfigClient() {
               options={PERPLEXITY_MODELS}
               disabled={pending || !cfg.webGrounding}
               onChange={(v) => set("perplexityModel", v)}
-            />
-          </Field>
-        </div>
-      </SectionCard>
-
-      {/* Retrieval */}
-      <SectionCard
-        icon={<MapPin className="text-secondary h-4 w-4" />}
-        title="Retrieval"
-        subtitle="How Memo pulls and ranks candidate places for a place-seeking turn."
-      >
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <NumberField
-            icon={<Hash className="text-muted-foreground h-4 w-4" />}
-            label="Max place links per reply"
-            value={cfg.maxCards}
-            min={1}
-            max={6}
-            disabled={pending}
-            onChange={(v) => set("maxCards", v)}
-          />
-          <NumberField
-            icon={<Ruler className="text-muted-foreground h-4 w-4" />}
-            label="Search radius (metres)"
-            value={cfg.radiusM}
-            min={1000}
-            max={20000}
-            disabled={pending}
-            onChange={(v) => set("radiusM", v)}
-          />
-          <Field label={<>Prefer Mesita partners</>}>
-            <Switch
-              on={cfg.preferMesita}
-              pending={pending}
-              label="Prefer Mesita partners"
-              onClick={() => set("preferMesita", !cfg.preferMesita)}
-            />
-          </Field>
-          <Field label={<>Demote closed spots</>}>
-            <Switch
-              on={cfg.demoteClosed}
-              pending={pending}
-              label="Demote closed spots"
-              onClick={() => set("demoteClosed", !cfg.demoteClosed)}
             />
           </Field>
         </div>

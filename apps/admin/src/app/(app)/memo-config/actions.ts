@@ -19,17 +19,11 @@ export type MemoConfig = {
   // OpenAI is Memo's brain (intent + orchestration + prose).
   provider: "openai";
   openaiModel: string;
-  temperature: number;
-  maxTokens: number;
   // Perplexity is the OPTIONAL web-grounding leg (live editorial color +
   // citations). Off by default — Google Places + the catalog do place
   // grounding. When on, Memo calls this Perplexity model for web color.
   webGrounding: boolean;
   perplexityModel: string;
-  maxCards: number;
-  radiusM: number;
-  preferMesita: boolean;
-  demoteClosed: boolean;
   updatedAt?: string;
 };
 
