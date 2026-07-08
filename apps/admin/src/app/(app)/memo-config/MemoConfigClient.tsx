@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bot, Hash, MapPin, MessageSquare, Ruler, Thermometer } from "lucide-react";
+import {
+  Bot,
+  Globe,
+  Hash,
+  MapPin,
+  MessageSquare,
+  Ruler,
+  Thermometer,
+} from "lucide-react";
 import {
   ErrorNote,
   NumberField,
@@ -10,7 +18,12 @@ import {
   Switch,
   TextAreaField,
 } from "../atlas-config/atlas-ui";
-import { updateMemoConfig, type MemoConfig } from "./actions";
+import {
+  OPENAI_MODELS,
+  PERPLEXITY_MODELS,
+  updateMemoConfig,
+  type MemoConfig,
+} from "./actions";
 
 // Memo's config surface. Values default to what Memo runs with today (see
 // consumer-web-ask-memo). Editing is live-local; Save calls the future
@@ -22,41 +35,41 @@ const DEFAULTS: MemoConfig = {
   instructions:
     "You are Memo, Mesita's warm, sharp local concierge for dining, nightlife, cafés, and experiences — deep taste for Monterrey, able to help anywhere. Reply in the user's language, plain text, 2–4 sentences, opinionated and specific. Be time-aware: prefer spots open and appropriate for the local hour. When the user is place-seeking, name the real places on the shortlist; for general questions just answer conversationally.",
   provider: "openai",
-  modelTier: "mini",
+  openaiModel: "gpt-4o-mini",
   temperature: 0.3,
   maxTokens: 700,
+  webGrounding: false,
+  perplexityModel: "sonar-pro",
   maxCards: 3,
   radiusM: 8000,
   preferMesita: true,
   demoteClosed: true,
 };
 
-function Segmented<T extends string>({
+function Select<T extends string>({
   value,
   options,
+  disabled,
   onChange,
 }: {
   value: T;
-  options: { value: T; label: string }[];
+  options: readonly T[];
+  disabled?: boolean;
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex w-full gap-1">
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value as T)}
+      className="border-border bg-card focus:border-foreground h-8 w-full rounded-lg border px-2 text-xs font-semibold outline-none disabled:opacity-50"
+    >
       {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className={`h-8 flex-1 rounded-lg border px-2 text-xs font-semibold transition ${
-            value === o.value
-              ? "border-foreground bg-foreground text-background"
-              : "border-border bg-card hover:border-foreground/40"
-          }`}
-        >
-          {o.label}
-        </button>
+        <option key={o} value={o}>
+          {o}
+        </option>
       ))}
-    </div>
+    </select>
   );
 }
 
@@ -138,22 +151,15 @@ export function MemoConfigClient() {
       <SectionCard
         icon={<Bot className="text-secondary h-4 w-4" />}
         title="Model"
-        subtitle="OpenAI is Memo's brain. Google Places + the Mesita catalog do the place grounding, so no web-search vendor is needed."
+        subtitle="OpenAI is Memo's brain (intent + orchestration + prose). Google Places + the Mesita catalog do the place grounding. Perplexity is an optional web-grounding leg for live editorial color + citations."
       >
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label={<>Provider</>}>
-            <div className="border-border bg-card text-muted-foreground flex h-8 items-center rounded-lg border px-3 text-xs font-semibold">
-              OpenAI
-            </div>
-          </Field>
-          <Field label={<>Model tier</>}>
-            <Segmented
-              value={cfg.modelTier}
-              onChange={(v) => set("modelTier", v)}
-              options={[
-                { value: "mini", label: "Fast (mini)" },
-                { value: "standard", label: "Smart (standard)" },
-              ]}
+          <Field label={<>Brain — OpenAI model</>}>
+            <Select
+              value={cfg.openaiModel}
+              options={OPENAI_MODELS}
+              disabled={pending}
+              onChange={(v) => set("openaiModel", v)}
             />
           </Field>
           <NumberField
@@ -175,6 +181,29 @@ export function MemoConfigClient() {
             disabled={pending}
             onChange={(v) => set("maxTokens", v)}
           />
+          <Field label={<>Web grounding (Perplexity)</>}>
+            <Switch
+              on={cfg.webGrounding}
+              pending={pending}
+              label="Web grounding (Perplexity)"
+              onClick={() => set("webGrounding", !cfg.webGrounding)}
+            />
+          </Field>
+          <Field
+            label={
+              <>
+                <Globe className="text-muted-foreground h-4 w-4" />
+                Perplexity model
+              </>
+            }
+          >
+            <Select
+              value={cfg.perplexityModel}
+              options={PERPLEXITY_MODELS}
+              disabled={pending || !cfg.webGrounding}
+              onChange={(v) => set("perplexityModel", v)}
+            />
+          </Field>
         </div>
       </SectionCard>
 
