@@ -456,11 +456,12 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Focused but empty → blank the map entirely with a solid panel so the
-          prompt reads clean. Sits at z-20 below the z-30 floating search bar
-          (which the user types into) but covers everything else. */}
+      {/* Focused but empty → a solid prompt panel over the TOP ~70% only, so the
+          live map stays visible in the strip below (the search moment still
+          reads as "browse the map"). Sits at z-20 below the z-30 floating
+          search bar (which the user types into). */}
       {searchOpen && trimmed.length === 0 && (
-        <div className="bg-background absolute inset-0 z-20 flex flex-col items-center justify-center px-8 pb-16 text-center">
+        <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col items-center justify-center rounded-b-3xl border-b px-8 text-center shadow-sm">
           <span className="text-5xl" role="img" aria-label="Search">
             🔍
           </span>
