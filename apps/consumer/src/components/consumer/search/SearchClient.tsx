@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   BadgeCheck,
+  ChevronUp,
   MapPin,
   Search,
   SlidersHorizontal,
@@ -93,6 +94,9 @@ export function SearchClient({
   // 1-based position of the card nearest the rail's scroll start — powers
   // the "3 / 12 places" pager so the horizontal rail reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
+  // The bottom rail can be dismissed (X on the counter) to clear the map;
+  // it reopens via the floating reopen pill or by tapping any pin.
+  const [railCollapsed, setRailCollapsed] = useState(false);
 
   const trimmed = query.trim();
   // Idle = the map moment: no text query, search panel closed. The chip row
@@ -268,9 +272,11 @@ export function SearchClient({
     setActiveChips([]);
   };
 
-  // Pin tap → highlight + scroll the rail to the matching card. The map
-  // pans itself via SearchMap's selectedId.
+  // Pin tap → highlight + scroll the rail to the matching card. Tapping a
+  // pin also reopens the rail if it was dismissed. The map pans itself via
+  // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
+    setRailCollapsed(false);
     setSelectedId(place.id);
     railRefs.current.get(place.id)?.scrollIntoView({
       behavior: "smooth",
@@ -346,39 +352,72 @@ export function SearchClient({
       {idle && (
         <div className="absolute inset-x-0 bottom-3 z-20">
           {visible.length > 0 ? (
-            <>
-              {visible.length > 1 && (
+            railCollapsed ? (
+              // Dismissed → a single floating pill reopens the rail. Tapping
+              // any pin reopens it too (handleSelectPlace).
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setRailCollapsed(false)}
+                  className="border-border bg-card/95 text-foreground shadow-elev flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold tabular-nums backdrop-blur transition active:scale-95"
+                >
+                  <ChevronUp className="text-primary h-4 w-4" />
+                  Show {visible.length}{" "}
+                  {visible.length === 1 ? "place" : "places"}
+                </button>
+              </div>
+            ) : (
+              <>
                 <div className="mb-2 flex justify-center">
-                  <span className="border-border bg-card/95 text-muted-foreground flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold tabular-nums shadow-sm backdrop-blur">
+                  <span className="border-border bg-card/95 text-muted-foreground flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 text-[11px] font-semibold tabular-nums shadow-sm backdrop-blur">
                     <MapPin className="text-primary h-3 w-3" />
-                    {Math.min(railIndex + 1, visible.length)} / {visible.length}
+                    {visible.length > 1 ? (
+                      <>
+                        {Math.min(railIndex + 1, visible.length)} /{" "}
+                        {visible.length}
+                      </>
+                    ) : (
+                      visible.length
+                    )}
                     <span className="text-muted-foreground/70 font-normal">
-                      places
+                      {visible.length === 1 ? "place" : "places"}
                     </span>
+                    <span
+                      className="bg-border ml-0.5 h-3.5 w-px"
+                      aria-hidden="true"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setRailCollapsed(true)}
+                      aria-label="Hide places"
+                      className="text-muted-foreground hover:text-foreground flex h-5 w-5 items-center justify-center rounded-full transition active:scale-90"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </span>
                 </div>
-              )}
-              <div
-                ref={railScrollRef}
-                onScroll={handleRailScroll}
-                className="scrollbar-hide flex gap-2 overflow-x-auto px-3 pb-1"
-              >
-                {visible.map((place) => (
-                  <RailCard
-                    key={place.id}
-                    place={place}
-                    selected={place.id === selectedId}
-                    onSelect={() => handleSelectPlace(place)}
-                    onOpen={() =>
-                      router.push(placeHref(place.slug || place.id))
-                    }
-                    cardRef={(el) => {
-                      railRefs.current.set(place.id, el);
-                    }}
-                  />
-                ))}
-              </div>
-            </>
+                <div
+                  ref={railScrollRef}
+                  onScroll={handleRailScroll}
+                  className="scrollbar-hide flex gap-2 overflow-x-auto px-3 pb-1"
+                >
+                  {visible.map((place) => (
+                    <RailCard
+                      key={place.id}
+                      place={place}
+                      selected={place.id === selectedId}
+                      onSelect={() => handleSelectPlace(place)}
+                      onOpen={() =>
+                        router.push(placeHref(place.slug || place.id))
+                      }
+                      cardRef={(el) => {
+                        railRefs.current.set(place.id, el);
+                      }}
+                    />
+                  ))}
+                </div>
+              </>
+            )
           ) : (
             catalog.length > 0 && (
               <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur">
