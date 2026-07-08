@@ -1,10 +1,10 @@
 import type { LucideIcon } from "lucide-react";
-import { Calculator, ListChecks, Settings2, Sparkles } from "lucide-react";
+import { Settings2, Sparkles } from "lucide-react";
 
-// One sidebar entry — "Atlas Config" — with three tabs. Merges what used to be
-// two separate items (the profile spec + the Enricher pipeline params). The
-// Enricher builds place profiles; the profile spec defines their shape, so they
-// now live on one page.
+// One sidebar entry — "Atlas Config" — the profile spec: the controlled
+// vocabulary and field limits the Enricher and operators write place profiles
+// with. The Enricher's pipeline behaviour lives on the separate Enricher Config
+// page. Single subpage today, kept as a tab so the config pages share chrome.
 export const ATLAS_PARENT = {
   href: "/atlas-config",
   label: "Atlas Config",
@@ -12,9 +12,7 @@ export const ATLAS_PARENT = {
 } as const;
 
 export const ATLAS_SUBROUTES = [
-  { href: "/atlas-config/fields", label: "Atlas Params", Icon: ListChecks },
-  { href: "/atlas-config/configuration", label: "Enricher Params", Icon: Settings2 },
-  { href: "/atlas-config/calculator", label: "Enricher Calculator", Icon: Calculator },
+  { href: "/atlas-config/config", label: "Config", Icon: Settings2 },
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;

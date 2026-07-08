@@ -9,6 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
+import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import {
   parseUnitId,
@@ -37,6 +38,11 @@ const SIDEBAR_NAV = [
     href: ATLAS_PARENT.href,
     label: ATLAS_PARENT.label,
     Icon: ATLAS_PARENT.Icon,
+  },
+  {
+    href: ENRICHER_PARENT.href,
+    label: ENRICHER_PARENT.label,
+    Icon: ENRICHER_PARENT.Icon,
   },
   {
     href: MEMO_PARENT.href,

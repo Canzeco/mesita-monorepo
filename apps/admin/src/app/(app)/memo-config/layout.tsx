@@ -1,7 +1,10 @@
 import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { ConfigTabNav } from "@/components/ConfigTabNav";
+import { MEMO_SUBROUTES } from "./nav";
 
-// Memo Config — a single page (no sub-tabs). Mirrors the Atlas Config shell:
-// PageContainer + PageHeader, then the config sections.
+// Memo Config — Mesita's consumer AI concierge (consumer-web-ask-memo). Mirrors
+// the Atlas / Enricher Config shells: PageContainer + PageHeader + a tab strip,
+// then the config sections.
 export default function MemoConfigLayout({
   children,
 }: {
@@ -13,6 +16,7 @@ export default function MemoConfigLayout({
         title="Memo Config"
         description="Memo — Mesita's consumer AI concierge (consumer-web-ask-memo). Tune its persona, model, and how it retrieves places."
       />
+      <ConfigTabNav ariaLabel="Memo Config" subroutes={MEMO_SUBROUTES} />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>
   );

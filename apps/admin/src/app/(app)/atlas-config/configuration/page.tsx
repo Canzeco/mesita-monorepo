@@ -1,33 +1,7 @@
-import { getAtlasSettings } from "../actions";
-import { AtlasSettingsError } from "../AtlasSettingsError";
-import { AtlasConfigurationClient } from "../AtlasClient";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function AtlasParametersPage() {
-  const result = await getAtlasSettings();
-  if (!result.ok) return <AtlasSettingsError error={result.error} />;
-
-  return (
-    <AtlasConfigurationClient
-      initialGatherGoogleImages={result.data.atlasGatherGoogleImages}
-      initialGatherInstagramDepth={result.data.atlasGatherInstagramDepth}
-      initialGatherReviews={result.data.atlasGatherReviews}
-      initialSaveImagesToStorage={result.data.atlasSaveImagesToStorage}
-      initialSaveTotalImages={result.data.atlasSaveTotalImages}
-      initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
-      initialAnalyzeInstagramImages={result.data.atlasAnalyzeInstagramImages}
-      initialImageAnalysisPrompt={result.data.atlasImageAnalysisPrompt}
-      initialImageSortingPrompt={result.data.atlasImageSortingPrompt}
-      initialSynthesisQuality={result.data.atlasSynthesisQuality}
-      initialVisionQuality={result.data.atlasVisionQuality ?? "economy"}
-      initialPerplexityPreset={result.data.atlasPerplexityPreset ?? "pro-search"}
-      initialDiscoverWebsiteN={result.data.atlasDiscoverWebsiteN}
-      initialDiscoverInstagramN={result.data.atlasDiscoverInstagramN}
-      initialDiscoverFacebookN={result.data.atlasDiscoverFacebookN}
-      initialDiscoverOpentableN={result.data.atlasDiscoverOpentableN}
-      initialDiscoverUbereatsN={result.data.atlasDiscoverUbereatsN}
-      initialUpdatedAt={result.data.updatedAt}
-    />
-  );
+// Enricher Params split out of Atlas Config into the standalone Enricher Config
+// page. Kept as a redirect so old links/bookmarks keep working.
+export default function LegacyAtlasConfigurationRedirect() {
+  redirect("/enricher-config/config");
 }

@@ -1,12 +1,8 @@
-import { getAtlasFields } from "../actions";
-import { AtlasSettingsError } from "../AtlasSettingsError";
-import { AtlasFieldsClient } from "../AtlasFieldsClient";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function AtlasFieldsPage() {
-  const result = await getAtlasFields();
-  if (!result.ok) return <AtlasSettingsError error={result.error} />;
-
-  return <AtlasFieldsClient data={result.data} />;
+// Atlas Params moved to the /atlas-config/config tab when Atlas Config and
+// Enricher Config were split into separate pages. Kept as a redirect so old
+// links/bookmarks keep working.
+export default function LegacyAtlasFieldsRedirect() {
+  redirect("/atlas-config/config");
 }

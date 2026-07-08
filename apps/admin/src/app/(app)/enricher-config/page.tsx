@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function AdeaConfigIndex() {
+export default function EnricherConfigIndex() {
   redirect("/enricher-config/config");
 }

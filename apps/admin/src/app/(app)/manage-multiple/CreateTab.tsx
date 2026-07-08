@@ -116,10 +116,10 @@ export function CreateTab() {
         deep ADEA research runs in the background.
         Caps, levels, and photo analysis are configured in{" "}
         <a
-          href="/atlas-config/configuration"
+          href="/enricher-config/config"
           className="text-foreground font-medium underline underline-offset-2"
         >
-          Enricher Params
+          Enricher Config
         </a>
         .
       </p>

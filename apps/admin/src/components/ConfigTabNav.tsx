@@ -2,18 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ATLAS_SUBROUTES } from "./nav";
+import type { LucideIcon } from "lucide-react";
 
-export function AtlasTabNav() {
+export type ConfigSubRoute = {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+};
+
+// Shared tab strip for the config pages (Atlas / Enricher / Memo). One row of
+// underline tabs, one per subroute. Matches the tablist styling used across the
+// admin console.
+export function ConfigTabNav({
+  ariaLabel,
+  subroutes,
+}: {
+  ariaLabel: string;
+  subroutes: ReadonlyArray<ConfigSubRoute>;
+}) {
   const pathname = usePathname();
 
   return (
     <div
       role="tablist"
-      aria-label="Atlas Config"
+      aria-label={ariaLabel}
       className="border-border -mx-4 mt-5 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:mt-6 sm:px-0"
     >
-      {ATLAS_SUBROUTES.map(({ href, label, Icon }) => {
+      {subroutes.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link

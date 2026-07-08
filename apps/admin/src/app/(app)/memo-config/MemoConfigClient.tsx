@@ -8,7 +8,7 @@ import {
   SectionCard,
   Switch,
   TextAreaField,
-} from "../atlas-config/atlas-ui";
+} from "../enricher-config/atlas-ui";
 import {
   OPENAI_MODELS,
   PERPLEXITY_MODELS,
