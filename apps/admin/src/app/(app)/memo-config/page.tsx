@@ -1,5 +1,7 @@
-import { redirect } from "next/navigation";
+import { MemoConfigClient } from "./MemoConfigClient";
 
-export default function MemoConfigIndex() {
-  redirect("/memo-config/config");
+export const dynamic = "force-dynamic";
+
+export default function MemoConfigPage() {
+  return <MemoConfigClient />;
 }
