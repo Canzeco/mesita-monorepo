@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   Compass,
   CalendarCheck,
-  Gift,
   Sparkles,
   TrendingUp,
   Instagram,
@@ -17,6 +16,10 @@ import {
   BadgeCheck,
   ScanLine,
   CreditCard,
+  MapPin,
+  Users,
+  MessageCircle,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,35 +35,42 @@ const BUSINESS_SIGNIN_URL = "https://business.mesita.ai/";
 
 // Landing page — single-source-of-truth marketing surface.
 //
-// Composition is intentionally flat: each section is its own function so
-// the file reads top-to-bottom and the section order matches the page
-// order. Rebuilt to tell the full dual-sided story from the Notion Main
-// page, in current nomenclature (Places · Listed/Verified · plans
-// Free/Pro/Ultra · reward tickets · instant discount at the bill).
+// Spanglish edition (approved copy): key titles + subtitles in English,
+// body copy in Spanish, product keywords kept in English (Discovery
+// Intelligence, AI concierge, Verified, Premium, Welcome/Returning
+// discount, QR, ROAS, agent). The current hero image is preserved.
 //
-//   1. <Nav />              Top menu bar
-//   2. <Hero />             Headline + two-path CTA + product shot
-//   3. <MoatStrip />        "Every place already inside" band + dual framing
-//   4. <ForDiners />        Four consumer UVPs
-//   5. <HowRewards />       The reward mechanic in 3 steps + Premium doors
-//   6. <ForPlaces />        Five place UVPs + Listed vs Verified
-//   7. <FAQ />              Six essentials, expandable
-//   8. <FinalCTA />         Slim dual-path repeat
-//   9. <Footer />           © Mesita 2026 etc.
+// Composition stays intentionally flat: one function per section, top to
+// bottom in page order.
 //
-// Pricing stays off the public site by design — the three-plan grid lives
-// inside the business auth surface. The page sells the value prop, not the
-// price sheet.
+//   1.  <Nav />                   Top menu bar
+//   2.  <Hero />                  Headline + two-path CTA + product shot
+//   3.  <ProofStrip />            "Every place in the city is already here"
+//   4.  <HowItWorks />            Tonight, in three taps
+//   5.  <DiscoveryIntelligence /> Every way to explore, one brain
+//   6.  <AIReservations />        Never call a restaurant again
+//   7.  <Rewards />               Pay less just for showing up
+//   8.  <Premium />               Three doors into the top rates
+//   9.  <ForBusinesses />         Flip side, dark surface
+//   10. <FAQ />                   Six essentials, expandable
+//   11. <FinalCTA />              Tonight's plan, solved
+//   12. <Footer />               © Mesita 2026
+//
+// Pricing detail stays off the public site by design — the three-plan grid
+// lives inside the business auth surface. The page sells the value prop.
 
 export default function Home() {
   return (
     <main className="bg-background min-h-screen">
       <Nav />
       <Hero />
-      <MoatStrip />
-      <ForDiners />
-      <HowRewards />
-      <ForPlaces />
+      <ProofStrip />
+      <HowItWorks />
+      <DiscoveryIntelligence />
+      <AIReservations />
+      <Rewards />
+      <Premium />
+      <ForBusinesses />
       <FAQ />
       <FinalCTA />
       <Footer />
@@ -85,17 +95,17 @@ function Nav() {
           <span className="text-primary">.</span>
         </Link>
         <nav className="text-muted-foreground hidden items-center gap-7 text-sm md:flex">
-          <a href="#diners" className="hover:text-foreground transition">
-            Diners
-          </a>
           <a href="#how" className="hover:text-foreground transition">
             How it works
           </a>
-          <a href="#places" className="hover:text-foreground transition">
-            Places
+          <a href="#rewards" className="hover:text-foreground transition">
+            Rewards
           </a>
-          <a href="#faq" className="hover:text-foreground transition">
-            FAQ
+          <a href="#premium" className="hover:text-foreground transition">
+            Premium
+          </a>
+          <a href="#business" className="hover:text-foreground transition">
+            For businesses
           </a>
         </nav>
         <div className="flex items-center gap-2">
@@ -105,11 +115,11 @@ function Nav() {
             variant="outline"
             className="hidden rounded-full sm:inline-flex"
           >
-            <Link href={CONSUMER_URL}>Open Mesita</Link>
+            <Link href={BUSINESS_SIGNUP_URL}>Tengo un lugar</Link>
           </Button>
           <Button asChild size="sm" className="rounded-full">
-            <Link href={BUSINESS_SIGNUP_URL}>
-              List your place
+            <Link href={CONSUMER_URL}>
+              Get the app
               <ArrowRight />
             </Link>
           </Button>
@@ -129,50 +139,50 @@ function Hero() {
           variant="outline"
           className="bg-background/70 text-muted-foreground rounded-full px-3 py-1 text-xs font-medium backdrop-blur"
         >
-          Smart hospitality · Made in Monterrey
+          Smart hospitality · Hecho en Monterrey
         </Badge>
 
         <h1 className="font-display max-w-3xl text-4xl leading-[1.05] font-semibold tracking-tight md:text-6xl">
           Where should we go tonight?
           <br />
-          <span className="text-primary">Answered — and rewarded.</span>
+          <span className="text-primary">Mesita lo sabe.</span>
         </h1>
 
         <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed md:text-xl">
-          Every bar, café, restaurant, and club in your city — discovered by AI,
-          booked by AI, and cheaper every time you go. One app for both sides of
-          the table.
+          Todos los restaurantes, cafés, bares y antros de tu ciudad —
+          matcheados a tu vibe, reservados por <strong>AI</strong> y más baratos
+          solo por usar la app. Una sola app para los dos lados de la mesa.
         </p>
 
-        {/* Two-path CTA: symmetric buttons for diners and places. Same
-            shape, size, hover; only the color treatment differs so the eye
-            can tell them apart. Both routes live on production subdomains. */}
+        {/* Two-path CTA: symmetric buttons for diners and places. Same shape,
+            size, hover; only the color treatment differs so the eye can tell
+            them apart. Both routes live on production subdomains. */}
         <div className="mt-2 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
           <PathButton
             href={CONSUMER_URL}
             Icon={UserCircle}
-            eyebrow="I'm going out"
-            label="Open Mesita"
+            eyebrow="Salgo esta noche"
+            label="Get the app"
             variant="primary"
           />
           <PathButton
             href={BUSINESS_SIGNUP_URL}
             Icon={Store}
-            eyebrow="I run a place"
-            label="List your place"
+            eyebrow="Tengo un negocio"
+            label="Tengo un lugar"
             variant="dark"
           />
         </div>
 
         <p className="text-muted-foreground text-xs">
-          Free for diners · Set up your place in 10 minutes · A discount on
-          every visit
+          Gratis para diners · Set up en 10 minutos · Un descuento en cada
+          visita
         </p>
 
         <figure className="border-border shadow-elev mt-8 w-full overflow-hidden rounded-3xl border md:mt-12">
           <Image
             src="/landing-hero.jpg"
-            alt="Tacos and a Mesita-branded drink on a rooftop with Monterrey's skyline behind"
+            alt="Tacos y una bebida de Mesita en un rooftop con el skyline de Monterrey detrás"
             width={1540}
             height={1021}
             priority
@@ -219,27 +229,28 @@ function PathButton({
   );
 }
 
-// ─── 3. Moat strip ───────────────────────────────────────────────────────
+// ─── 3. Proof strip ──────────────────────────────────────────────────────
 // The differentiator, stated up front: the catalog is already complete, so
 // diners never hit an empty app and places don't "join" — they upgrade a
-// profile that already exists. Also carries the two-sided framing.
+// profile that already exists.
 
-function MoatStrip() {
+function ProofStrip() {
   const points: { stat: string; label: string }[] = [
-    { stat: "Every place", label: "in your city, already inside" },
-    { stat: "0 sign-ups", label: "needed — AI books at all of them" },
-    { stat: "~100×", label: "bigger catalog than sign-up apps" },
+    { stat: "Every place", label: "de la ciudad, ya adentro" },
+    { stat: "AI bookings", label: "en todos los lugares" },
+    { stat: "Hasta 70%", label: "de descuento en lugares Verified" },
   ];
   return (
     <section className="border-border bg-background border-b">
       <div className="mx-auto w-full max-w-6xl px-5 py-12 md:py-14">
         <p className="text-muted-foreground mx-auto max-w-2xl text-center text-sm md:text-base">
-          Mesita starts full. Every restaurant, café, bar, and club is
-          auto-sourced and enriched by AI — photos, menus, hours, vibe — so a
-          place&apos;s choice isn&apos;t{" "}
-          <span className="text-foreground font-medium">join Mesita</span> but{" "}
+          Mesita arranca llena. Cada restaurante, café, bar y antro está
+          auto-sourced y enriquecido por <strong>AI</strong> — fotos, menús,
+          horarios, vibe — así que un lugar no{" "}
+          <span className="text-foreground font-medium">se une a Mesita</span>,
+          sino que{" "}
           <span className="text-foreground font-medium">
-            upgrade the profile it already has
+            mejora el perfil que ya tiene
           </span>
           .
         </p>
@@ -263,112 +274,41 @@ function MoatStrip() {
   );
 }
 
-// ─── 4. For Diners ───────────────────────────────────────────────────────
+// ─── 4. How it works ─────────────────────────────────────────────────────
 
-function ForDiners() {
-  const items: { title: string; body: string; Icon: typeof Compass }[] = [
-    {
-      title: "The complete catalog",
-      body: "Every restaurant, café, bar, and club in the city — each with the best-researched profile in the market: photos, menus, hours, ratings, and vibe, built automatically. Nothing missing, nothing to wait for.",
-      Icon: Compass,
-    },
-    {
-      title: "Discovery intelligence",
-      body: "One brain ranks every place by vibe, zone, budget, and who's out right now. Swipe tonight's matches, browse the live map, search everything, or just ask the AI concierge — “rooftop date tonight under $$$.”",
-      Icon: Sparkles,
-    },
-    {
-      title: "A discount on every visit",
-      body: "Just by using Mesita you pay less: a Welcome discount your first time, a Returning discount every time after — applied straight to the bill. You pay the place directly; Mesita never touches your money.",
-      Icon: Gift,
-    },
-    {
-      title: "AI-booked reservations",
-      body: "Set party size and time; Mesita's AI agent books the table over whatever channel the place runs — voice, Instagram DM, WhatsApp, web form, or email. It works at every place in the city, not just partners.",
-      Icon: CalendarCheck,
-    },
-  ];
-  return (
-    <section id="diners" className="border-border border-b">
-      <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
-        <SectionHeader
-          eyebrow="For diners"
-          title="Answer “where should we go?” — and save doing it."
-          aside="Mesita is free forever. Premium unlocks bigger discounts everywhere — earned free with Instagram, or $100 MXN / month."
-        />
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {items.map((it) => (
-            <FeatureCard
-              key={it.title}
-              {...it}
-              iconClass="bg-primary/10 text-primary"
-            />
-          ))}
-        </div>
-        <SectionFooter
-          note="Free forever. No download required on the web."
-          cta={{ href: CONSUMER_URL, label: "Open Mesita" }}
-          variant="primary"
-        />
-      </div>
-    </section>
-  );
-}
-
-// ─── 5. How rewards work ─────────────────────────────────────────────────
-// The reward mechanic, demystified: three steps at the table, plus the three
-// doors into Premium. Concrete beats abstract — this is what removes doubt.
-
-function HowRewards() {
+function HowItWorks() {
   const steps: {
     n: string;
     title: string;
     body: string;
-    Icon: typeof QrCode;
+    Icon: typeof Compass;
   }[] = [
     {
       n: "1",
-      title: "Scan your QR",
-      body: "Staff scans the QR on your Mesita card. No app for them to install — it runs over WhatsApp or the web.",
-      Icon: QrCode,
+      title: "Discover",
+      body: "Swipea los mejores matches de hoy, explora el mapa en vivo o pregúntale a la AI: “rooftop para date hoy, no tan caro”.",
+      Icon: Compass,
     },
     {
       n: "2",
-      title: "They enter the bill",
-      body: "Mesita applies your agreed discount — 10–70% — on the spot and shows the new total to you and the staff.",
-      Icon: Receipt,
+      title: "Book",
+      body: "Elige hora y personas. Nuestro agent llama, manda DM o correo al lugar y te confirma la mesa en minutos.",
+      Icon: CalendarCheck,
     },
     {
       n: "3",
-      title: "You pay less, directly",
-      body: "Pay the place by any method, cash or card. Mesita never holds the money — no settlement, no waiting.",
+      title: "Pay less",
+      body: "En la mesa, el staff escanea tu QR y el descuento se aplica directo a la cuenta. Le pagas al lugar como siempre.",
       Icon: CreditCard,
     },
   ];
-  const doors: { title: string; body: string; Icon: typeof Instagram }[] = [
-    {
-      title: "Instagram",
-      body: "Verify a 1K+ follower account — free. Post a story tagging the place to release the reward.",
-      Icon: Instagram,
-    },
-    {
-      title: "Subscription",
-      body: "$100 MXN / month via Stripe. Bigger discounts everywhere, and never a story to post.",
-      Icon: BadgeCheck,
-    },
-    {
-      title: "Invitation",
-      body: "Granted to local figures — chefs, models, press, founders — the guests places want in the room.",
-      Icon: Sparkles,
-    },
-  ];
   return (
-    <section id="how" className="border-border bg-muted/30 border-b">
+    <section id="how" className="border-border border-b">
       <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
         <SectionHeader
-          eyebrow="How rewards work"
-          title="A real discount, applied at the bill."
-          aside="No cashback, no wallet, no invoice. The place funds its own discount and you just pay less today."
+          eyebrow="How it works"
+          title="Tonight, in three taps."
+          aside="Descubre, reserva y paga menos — sin puntos que juntar y sin letras chiquitas."
         />
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
           {steps.map((s) => {
@@ -396,167 +336,411 @@ function HowRewards() {
             );
           })}
         </div>
-
-        <div className="mt-10">
-          <p className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
-            Three doors to Premium
-          </p>
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-            {doors.map((d) => {
-              const Icon = d.Icon;
-              return (
-                <article
-                  key={d.title}
-                  className="border-border bg-background flex items-start gap-3 rounded-2xl border p-5"
-                >
-                  <span className="bg-secondary/10 text-secondary flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-sm font-semibold">{d.title}</h4>
-                    <p className="text-muted-foreground text-[13px] leading-relaxed">
-                      {d.body}
-                    </p>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </section>
   );
 }
 
-// ─── 6. For Places ───────────────────────────────────────────────────────
+// ─── 5. Discovery Intelligence ───────────────────────────────────────────
 
-function ForPlaces() {
-  const items: { title: string; body: string; Icon: typeof TrendingUp }[] = [
+function DiscoveryIntelligence() {
+  const items: { title: string; body: string; Icon: typeof Compass }[] = [
     {
-      title: "New customers",
-      body: "Verifying lifts you above the ~100× larger Listed pool on every discovery surface — you show up first at the exact moment someone's deciding where to go. The Welcome discount converts that into first visits.",
-      Icon: TrendingUp,
-    },
-    {
-      title: "The customers who fill the room",
-      body: "Set one rate for everyone and a bigger one for Premium — the magnetic (high Instagram reach) and the committed (paying members). Court the guests who move the needle; pay base rates to walk-ins.",
+      title: "Swipe",
+      body: "El deck de la noche: los matches de hoy, uno por uno, ordenados por lo que te late.",
       Icon: Sparkles,
     },
     {
-      title: "Guaranteed Instagram reach",
-      body: "Instagram-door guests post a story tagging you to unlock their reward, and Mesita verifies it — automatically for public accounts, screenshot + one staff tap for private. Real, measured reach before you give anything up.",
-      Icon: Instagram,
+      title: "Live map",
+      body: "Todo el catálogo en un mapa en vivo — busca por zona, categoría o lo que se te antoje.",
+      Icon: MapPin,
     },
     {
-      title: "Easier reservations",
-      body: "AI-relayed bookings come in through channels you already run — phone, WhatsApp, Instagram, email — or connect OpenTable for live availability. Nothing to install, and you see party size and class before the visit.",
-      Icon: CalendarCheck,
+      title: "Social",
+      body: "Sigue dónde andan tus amigos y los Premium ahora mismo, en tiempo real.",
+      Icon: Users,
     },
     {
-      title: "Marketing intelligence",
-      body: "One dashboard: views, the full funnel — views → swipes → rewards → visits → stories — influenced spend, average ticket, repeat rate, and ROAS, with an AI copilot that drafts your next promo.",
-      Icon: BarChart3,
+      title: "AI concierge",
+      body: "Pregúntale con tus palabras y te rankea cada lugar por vibe, zona, presupuesto y lo que está pasando en vivo.",
+      Icon: MessageCircle,
     },
   ];
   return (
-    <section id="places" className="border-border bg-muted/30 border-b">
+    <section id="discovery" className="border-border bg-muted/30 border-b">
       <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
         <SectionHeader
-          eyebrow="For places"
-          title="Fill the room with the guests who move the needle."
-          aside="A customer-acquisition channel with no hardware and no setup. Compete for high-value guests, not for everyone equally."
+          eyebrow="Discovery Intelligence"
+          title="Every way to explore, one brain."
+          aside="Swipea, busca en el mapa, sigue a tu gente o pregúntale al AI concierge — una misma inteligencia detrás de todo."
         />
-
-        <ListedVsVerified />
-
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {items.map((it) => (
             <FeatureCard
               key={it.title}
               {...it}
-              iconClass="bg-foreground text-background"
+              iconClass="bg-primary/10 text-primary"
             />
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── 6. AI Reservations ──────────────────────────────────────────────────
+
+function AIReservations() {
+  return (
+    <section id="reservations" className="border-border border-b">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-5 py-20 md:grid-cols-2 md:py-24">
+        <div className="flex flex-col gap-5">
+          <p className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
+            AI Reservations
+          </p>
+          <h2 className="font-display max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
+            Never call a restaurant again.
+          </h2>
+          <p className="text-muted-foreground max-w-xl text-base leading-relaxed">
+            Pon hora y personas — el <strong>agent</strong> de Mesita reserva
+            por teléfono, WhatsApp, Instagram o correo, por donde el lugar
+            conteste. Funciona en <strong>todos</strong> los lugares de la
+            ciudad, no solo los partners. Confirmación al instante, ticket en la
+            app.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {["Voice", "WhatsApp", "Instagram DM", "Email", "Web form"].map(
+              (ch) => (
+                <span
+                  key={ch}
+                  className="border-border bg-background text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium"
+                >
+                  <CheckCircle2 className="text-secondary h-3.5 w-3.5" />
+                  {ch}
+                </span>
+              ),
+            )}
+          </div>
+        </div>
+        <div className="border-border bg-hero shadow-elev flex flex-col gap-4 rounded-3xl border p-8">
+          <span className="bg-pink-gradient flex h-12 w-12 items-center justify-center rounded-2xl text-white">
+            <CalendarCheck className="h-6 w-6" />
+          </span>
+          <p className="font-display text-lg font-semibold tracking-tight">
+            “Mesa para 4, viernes 9pm.”
+          </p>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            El agent contacta al lugar, negocia el horario y te avisa cuando
+            está confirmada. Tú no marcas, no esperas en línea, no mandas DMs.
+          </p>
+          <span className="text-whatsapp inline-flex items-center gap-2 text-sm font-medium">
+            <BadgeCheck className="h-4 w-4" />
+            Confirmado en minutos
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── 7. Rewards ──────────────────────────────────────────────────────────
+
+function Rewards() {
+  const steps: {
+    n: string;
+    title: string;
+    body: string;
+    Icon: typeof QrCode;
+  }[] = [
+    {
+      n: "1",
+      title: "Scan your QR",
+      body: "El staff escanea el QR de tu tarjeta Mesita. Nada que instalar para ellos — corre sobre WhatsApp o web.",
+      Icon: QrCode,
+    },
+    {
+      n: "2",
+      title: "They enter the bill",
+      body: "Mesita aplica tu descuento — 10–70% — al momento y muestra el nuevo total a ti y al staff.",
+      Icon: Receipt,
+    },
+    {
+      n: "3",
+      title: "You pay less, directly",
+      body: "Le pagas al lugar por cualquier método, efectivo o tarjeta. Mesita nunca toca tu dinero — sin settlement, sin esperas.",
+      Icon: CreditCard,
+    },
+  ];
+  return (
+    <section id="rewards" className="border-border bg-muted/30 border-b">
+      <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
+        <SectionHeader
+          eyebrow="Rewards"
+          title="Pay less just for showing up."
+          aside="Los lugares Verified te dan un Welcome discount en tu primera visita y un Returning discount en cada visita después — directo a la cuenta."
+        />
+        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {steps.map((s) => {
+            const Icon = s.Icon;
+            return (
+              <article
+                key={s.n}
+                className="border-border bg-background relative flex flex-col gap-3 rounded-2xl border p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="bg-pink-gradient flex h-10 w-10 items-center justify-center rounded-2xl text-white">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="font-display text-muted-foreground/40 text-4xl font-semibold">
+                    {s.n}
+                  </span>
+                </div>
+                <h3 className="font-display text-lg font-semibold tracking-tight">
+                  {s.title}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {s.body}
+                </p>
+              </article>
+            );
+          })}
+        </div>
+        <p className="text-muted-foreground mt-8 inline-flex items-center gap-2 text-[13px]">
+          <CheckCircle2 className="text-secondary h-4 w-4" />
+          Sin cashback, sin wallet, sin invoice. El descuento es el gasto de
+          marketing del propio lugar, aplicado en su propia cuenta.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ─── 8. Premium ──────────────────────────────────────────────────────────
+
+function Premium() {
+  const doors: { title: string; body: string; Icon: typeof Instagram }[] = [
+    {
+      title: "Instagram",
+      body: "Gratis. Verifica una cuenta con 1K+ followers y sube una story taggeando el lugar para liberar cada reward.",
+      Icon: Instagram,
+    },
+    {
+      title: "Subscription",
+      body: "$100 MXN / mes vía Stripe. Los mejores rates en todos lados, sin story, nunca.",
+      Icon: BadgeCheck,
+    },
+    {
+      title: "Invitation",
+      body: "Para la gente que hace la noche: chefs, models, creators, prensa y founders — los guests que los lugares quieren en la sala.",
+      Icon: Sparkles,
+    },
+  ];
+  return (
+    <section id="premium" className="border-border border-b">
+      <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
+        <SectionHeader
+          eyebrow="Premium"
+          title="Premium unlocks the top rates. Three doors in."
+          aside="Todos empiezan Free — discovery completo, AI reservations y un descuento en cada lugar Verified. Premium sube los rates en todos lados."
+        />
+        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {doors.map((d) => {
+            const Icon = d.Icon;
+            return (
+              <article
+                key={d.title}
+                className="border-border bg-background flex flex-col gap-3 rounded-2xl border p-6"
+              >
+                <span className="bg-secondary/10 text-secondary flex h-10 w-10 items-center justify-center rounded-2xl">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  {d.title}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {d.body}
+                </p>
+              </article>
+            );
+          })}
+        </div>
         <SectionFooter
-          note="Setup in 10 minutes. No hardware, no POS, no app for staff."
-          cta={{ href: BUSINESS_SIGNUP_URL, label: "List your place" }}
-          variant="dark"
+          note="Free para siempre. Premium se gana gratis con Instagram, o $100 MXN / mes."
+          cta={{ href: CONSUMER_URL, label: "Get the app" }}
+          variant="primary"
         />
       </div>
     </section>
   );
 }
 
-// Compact two-up explainer: what a place gets before vs. after it claims.
-function ListedVsVerified() {
+// ─── 9. For businesses (flip side, dark) ─────────────────────────────────
+
+function ForBusinesses() {
+  const items: { title: string; body: string; Icon: typeof TrendingUp }[] = [
+    {
+      title: "Be found first",
+      body: "Placement prioritario justo en el momento en que la gente decide a dónde ir. El Welcome discount convierte esa visibilidad en primeras visitas.",
+      Icon: TrendingUp,
+    },
+    {
+      title: "Fill the room with the right crowd",
+      body: "Configura rates distintos para Free y Premium, y atrae a los guests que traen reach o consumo — no a todos por igual.",
+      Icon: Target,
+    },
+    {
+      title: "Guaranteed Instagram reach",
+      body: "Los rewards con story se verifican antes de liberar el descuento — auto para cuentas públicas, screenshot + un tap del staff para privadas. Primero la exposure, siempre.",
+      Icon: Instagram,
+    },
+    {
+      title: "Reservations with nothing to install",
+      body: "Nuestro agent reserva por los canales que ya usas — teléfono, WhatsApp, Instagram, correo. Ves party size y class antes de la visita.",
+      Icon: CalendarCheck,
+    },
+    {
+      title: "Proof, not promises",
+      body: "Un solo dashboard: funnel completo (views → swipes → rewards → visits → stories), gasto influenciado, repeat rate y ROAS, con un AI copilot que te arma la próxima promo.",
+      Icon: BarChart3,
+    },
+  ];
+  return (
+    <section
+      id="business"
+      className="bg-foreground text-background border-border border-b"
+    >
+      <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
+        <header className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-background/60 text-xs font-medium tracking-[0.18em] uppercase">
+              For businesses
+            </p>
+            <h2 className="font-display mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
+              Own a place? Your customers are already here.
+            </h2>
+          </div>
+          <p className="text-background/70 max-w-sm text-sm">
+            Tu perfil ya está en Mesita. Reclámalo y convierte visibilidad en
+            visitas — sin hardware, sin setup.
+          </p>
+        </header>
+
+        <ListedVsVerifiedDark />
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {items.map((it) => {
+            const Icon = it.Icon;
+            return (
+              <article
+                key={it.title}
+                className="border-background/15 bg-background/5 flex flex-col gap-3 rounded-2xl border p-6"
+              >
+                <span className="bg-pink-gradient flex h-10 w-10 items-center justify-center rounded-2xl text-white">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="font-display text-lg font-semibold tracking-tight">
+                  {it.title}
+                </h3>
+                <p className="text-background/70 text-sm leading-relaxed">
+                  {it.body}
+                </p>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-background/70 inline-flex items-center gap-2 text-[13px]">
+            <CheckCircle2 className="h-4 w-4" />
+            Free (listado) · Pro $100 MXN/mes · Ultra $5,000 MXN/mes — la misma
+            mecánica, más visibilidad.
+          </p>
+          <Button
+            asChild
+            size="lg"
+            className="bg-background text-foreground hover:bg-background rounded-full hover:opacity-90"
+          >
+            <Link href={BUSINESS_SIGNUP_URL}>
+              Claim your place
+              <ArrowRight />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Compact two-up explainer, dark variant: what a place gets before vs. after
+// it claims its profile.
+function ListedVsVerifiedDark() {
   return (
     <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
-      <div className="border-border bg-background/60 rounded-2xl border border-dashed p-6">
+      <div className="border-background/20 bg-background/5 rounded-2xl border border-dashed p-6">
         <div className="flex items-center gap-2">
-          <ScanLine className="text-muted-foreground h-4 w-4" />
+          <ScanLine className="text-background/60 h-4 w-4" />
           <h3 className="font-display text-base font-semibold tracking-tight">
             Listed
           </h3>
           <Badge
             variant="outline"
-            className="text-muted-foreground ml-auto rounded-full text-[10px]"
+            className="border-background/30 text-background/60 ml-auto rounded-full text-[10px]"
           >
             Auto-sourced
           </Badge>
         </div>
-        <p className="text-muted-foreground mt-3 text-[13px] leading-relaxed">
-          Built for you from public data — discoverable and AI-bookable, at no
-          cost and no sign-up. No rewards, no dashboard.
+        <p className="text-background/70 mt-3 text-[13px] leading-relaxed">
+          Armado para ti desde datos públicos — discoverable y AI-bookable, sin
+          costo y sin sign-up. Sin rewards, sin dashboard.
         </p>
       </div>
-      <div className="border-primary/30 bg-background shadow-elev rounded-2xl border p-6">
+      <div className="border-primary/50 bg-background/10 rounded-2xl border p-6">
         <div className="flex items-center gap-2">
           <BadgeCheck className="text-primary h-4 w-4" />
           <h3 className="font-display text-base font-semibold tracking-tight">
             Verified
           </h3>
           <Badge className="bg-pink-gradient ml-auto rounded-full border-0 text-[10px] text-white">
-            You claim it
+            Tú lo reclamas
           </Badge>
         </div>
-        <p className="text-muted-foreground mt-3 text-[13px] leading-relaxed">
-          Claim your profile to run rewards, set per-class discounts and story
-          bonuses, get priority placement everywhere, and open the full
-          dashboard.
+        <p className="text-background/70 mt-3 text-[13px] leading-relaxed">
+          Reclama tu perfil para correr rewards, configurar descuentos por class
+          y story bonuses, ganar priority placement y abrir el dashboard
+          completo.
         </p>
       </div>
     </div>
   );
 }
 
-// ─── 7. FAQ ──────────────────────────────────────────────────────────────
+// ─── 10. FAQ ─────────────────────────────────────────────────────────────
 
 function FAQ() {
   const items: { q: string; a: string }[] = [
     {
-      q: "How does the Mesita discount work?",
-      a: "Every Verified place runs an instant discount applied right at the bill — no invoice, no VAT handling, no waiting. The diner scans their QR, staff enters the bill, and Mesita applies the agreed % on the spot. The diner pays the place directly, so you only reward the visits that actually happen. Mesita never touches the money.",
+      q: "¿Mesita es gratis?",
+      a: "Sí. Descubre, reserva y consigue descuentos sin pagar nada. Premium sube los rates en todos lados y se gana gratis con Instagram, o cuesta $100 MXN / mes.",
     },
     {
-      q: "What's the difference between a Listed and a Verified place?",
-      a: "Listed places are auto-sourced from public data and appear in discovery with AI reservations enabled — no sign-up, no dashboard, no rewards. Verified places have claimed their profile at business.mesita.ai and configured their rewards; they get priority placement and the full Place / Promos / Analytics / Team dashboard.",
+      q: "¿Cómo uso un descuento?",
+      a: "Muestras tu QR, el staff lo escanea y el descuento se aplica directo a tu cuenta — 10–70% en lugares Verified. Le pagas al lugar por cualquier método, efectivo o tarjeta. Mesita nunca toca tu dinero.",
     },
     {
-      q: "What's the difference between Free and Premium for diners?",
-      a: "Every diner starts Free — full discovery, AI reservations, and a discount at every Verified place. Premium unlocks bigger discounts everywhere, through three doors: verify a 1K+ Instagram account (free — post a story tagging the place), subscribe for $100 MXN / month (no story ever), or receive an invitation reserved for local figures like chefs, models, press, and founders.",
+      q: "¿Tengo que subir una story?",
+      a: "Solo si tu Premium viene por la puerta de Instagram: subes una story taggeando el lugar para liberar el reward. Mesita la auto-verifica para cuentas públicas; las privadas mandan screenshot que un staff confirma. Suscriptores e invitados nunca suben nada.",
     },
     {
-      q: "What's the Instagram story step about?",
-      a: "Instagram-door Premium guests post a story tagging the place to release their reward. Mesita auto-verifies the @mention for public accounts; private accounts submit a screenshot that one staff member confirms. Subscription- and invitation-door guests are exempt — no story ever.",
+      q: "¿Puedo reservar en cualquier lugar?",
+      a: "Sí — el AI agent reserva en todos los lugares de la ciudad, no solo los Verified. Pon hora y personas y contacta al lugar por teléfono, WhatsApp, Instagram o correo, por donde conteste.",
     },
     {
-      q: "Do places need hardware or a POS integration?",
-      a: "No. Setup is about 10 minutes at business.mesita.ai. Staff scan the diner's QR from their own phone — over WhatsApp or the web — enter the bill, and Mesita does the rest. No POS, no app to install, no new device at the host stand.",
+      q: "Tengo un lugar — ¿cuánto cuesta?",
+      a: "Seguramente ya estás listado gratis. Los planes de paga (Pro $100 MXN/mes · Ultra $5,000 MXN/mes) compran visibilidad; tú defines y fondeas tus propios descuentos, y Mesita nunca toca el pago. Setup en 10 minutos, sin hardware ni POS.",
     },
     {
-      q: "Does Mesita hold or move any money?",
-      a: "Never. Mesita is a subscription product, not a marketplace — no cashback, no wallet, no settlement. The discount is the place's own marketing spend, applied at its own bill, and the diner pays the place directly by any method. That's what keeps it simple and out of money-transmission territory.",
+      q: "¿Mesita mueve o guarda dinero?",
+      a: "Nunca. Mesita es un producto de suscripción, no un marketplace — sin cashback, sin wallet, sin settlement. El descuento es el gasto de marketing del propio lugar, aplicado en su propia cuenta, y el diner le paga al lugar directo.",
     },
   ];
   return (
@@ -566,7 +750,7 @@ function FAQ() {
           Frequently asked
         </h2>
         <p className="text-muted-foreground mt-3 text-sm">
-          The essentials for diners and place owners alike.
+          Lo esencial, para diners y dueños de lugares por igual.
         </p>
         <div className="divide-border border-border bg-background mt-8 divide-y rounded-2xl border">
           {items.map((it) => (
@@ -594,32 +778,32 @@ function FAQ() {
   );
 }
 
-// ─── 8. Final CTA ────────────────────────────────────────────────────────
+// ─── 11. Final CTA ───────────────────────────────────────────────────────
 
 function FinalCTA() {
   return (
     <section className="bg-hero border-border border-b">
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-5 py-20 text-center md:py-24">
         <h2 className="font-display max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
-          Two sides of the table. One app.
+          Tonight&apos;s plan, solved.
         </h2>
         <p className="text-muted-foreground max-w-xl text-base">
-          Diners discover and save. Places fill the room with the guests who
-          matter. Pick your side.
+          Los diners descubren y ahorran. Los lugares llenan la sala con los
+          guests que importan. Escoge tu lado.
         </p>
         <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
           <PathButton
             href={CONSUMER_URL}
             Icon={UserCircle}
-            eyebrow="I'm going out"
-            label="Open Mesita"
+            eyebrow="Salgo esta noche"
+            label="Get the app"
             variant="primary"
           />
           <PathButton
             href={BUSINESS_SIGNUP_URL}
             Icon={Store}
-            eyebrow="I run a place"
-            label="List your place"
+            eyebrow="Tengo un negocio"
+            label="Tengo un lugar"
             variant="dark"
           />
         </div>
@@ -628,7 +812,7 @@ function FinalCTA() {
   );
 }
 
-// ─── 9. Footer ───────────────────────────────────────────────────────────
+// ─── 12. Footer ──────────────────────────────────────────────────────────
 
 function Footer() {
   const year = new Date().getFullYear();
@@ -642,17 +826,17 @@ function Footer() {
           mesita<span className="text-primary">.</span>
         </div>
         <p className="text-muted-foreground text-[12px]">
-          © Mesita · {year} · Smart hospitality since 2026 · Made in Monterrey
+          © Mesita · {year} · Smart hospitality since 2026 · Hecho en Monterrey
         </p>
         <nav className="text-muted-foreground flex flex-wrap items-center gap-4 text-[12px]">
-          <a href="#diners" className="hover:text-foreground transition">
-            For diners
+          <a href="#how" className="hover:text-foreground transition">
+            How it works
           </a>
-          <a href="#places" className="hover:text-foreground transition">
-            For places
+          <a href="#rewards" className="hover:text-foreground transition">
+            Rewards
           </a>
-          <a href="#faq" className="hover:text-foreground transition">
-            FAQ
+          <a href="#business" className="hover:text-foreground transition">
+            For businesses
           </a>
           <Link
             href={BUSINESS_SIGNIN_URL}
