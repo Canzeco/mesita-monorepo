@@ -69,6 +69,38 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
   COUNTRIES.map((c) => [c.code, c]),
 );
 
+// Distinct dial codes, longest first, so prefix matching picks "351" before
+// "51" and "52" before "5".
+const DIALS_LONGEST_FIRST = [...new Set(COUNTRIES.map((c) => c.dial))].sort(
+  (a, b) => b.length - a.length,
+);
+
+// Split a stored phone (E.164-ish, with or without a leading + / spaces) into
+// an ISO country code + local subscriber digits, so the phone editor can seed
+// its dial-code picker and local field. Shared dial codes resolve to the first
+// COUNTRIES entry for that dial (MX for 52, US for 1) — good enough for
+// pre-filling a picker the user can correct.
+export function splitStoredPhone(stored: string | null | undefined): {
+  countryCode: string;
+  local: string;
+} {
+  const digits = (stored ?? "").replace(/\D/g, "");
+  if (!digits) return { countryCode: "MX", local: "" };
+  const dial = DIALS_LONGEST_FIRST.find((d) => digits.startsWith(d));
+  if (!dial) return { countryCode: "MX", local: digits };
+  const country = COUNTRIES.find((c) => c.dial === dial) ?? COUNTRY_BY_CODE.MX;
+  return { countryCode: country.code, local: digits.slice(dial.length) };
+}
+
+// Recombine a picked country + local number into strict E.164 (+<dial><digits>,
+// no spaces) for storage. Empty local → empty string (nothing to save).
+export function combinePhoneE164(countryCode: string, local: string): string {
+  const country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
+  const digits = local.replace(/\D/g, "");
+  if (!digits) return "";
+  return `+${country.dial}${digits}`;
+}
+
 export const CLASSES: {
   id: Class;
   label: string;

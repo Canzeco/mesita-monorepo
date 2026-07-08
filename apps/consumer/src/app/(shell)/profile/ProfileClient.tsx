@@ -47,7 +47,6 @@ export function ProfileClient({
   // One consumer-web-get-profile read per visit; the (shell) layout already
   // guarantees the row is complete (onboarding gate).
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Modal state. Only one is meaningfully open at a time; each is a LocalSheet
@@ -66,13 +65,9 @@ export function ProfileClient({
     let cancelled = false;
     (async () => {
       try {
-        const [{ consumer }, authRes] = await Promise.all([
-          apiFetchConsumerProfile(supabase),
-          supabase.auth.getUser(),
-        ]);
+        const { consumer } = await apiFetchConsumerProfile(supabase);
         if (cancelled) return;
         setProfile(consumer);
-        setEmail(authRes.data.user?.email ?? null);
       } catch (e) {
         if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
       } finally {
@@ -194,7 +189,6 @@ export function ProfileClient({
       {profile && (
         <EditProfileSheet
           profile={profile}
-          email={email}
           open={editOpen}
           onClose={() => setEditOpen(false)}
           onSaved={(updated) => setProfile(updated)}

@@ -9,6 +9,8 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
+import { PhoneInputWithCountry } from "@/components/auth/PhoneInputWithCountry";
+import { splitStoredPhone, combinePhoneE164 } from "@/lib/consumer-data";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -16,8 +18,8 @@ import {
 
 // Bottom-sheet identity editor — opened from the profile hero's "Edit
 // profile" button and the Settings → Account row. Writes through
-// consumer-web-update-profile; email is the auth identity and stays
-// read-only here.
+// consumer-web-update-profile. Consumers auth with their phone (not email),
+// so email isn't shown or edited here.
 //
 // Built on LocalSheet: parent keeps it mounted and flips `open`, so the
 // sheet animates both ways, the backdrop covers the whole MobileFrame card,
@@ -26,13 +28,11 @@ import {
 
 export function EditProfileSheet({
   profile,
-  email,
   open,
   onClose,
   onSaved,
 }: {
   profile: ConsumerProfile;
-  email: string | null;
   open: boolean;
   onClose: () => void;
   onSaved: (updated: ConsumerProfile) => void;
@@ -40,15 +40,24 @@ export function EditProfileSheet({
   const supabase = useBrowserSupabase();
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
   const [lastName, setLastName] = useState(profile.last_name ?? "");
-  const [phone, setPhone] = useState(profile.phone ?? "");
+  // Phone is edited as country + local subscriber number; the stored value is
+  // split back into those parts to seed the picker, and recombined to E.164 on
+  // save.
+  const initialPhone = splitStoredPhone(profile.phone);
+  const [countryCode, setCountryCode] = useState(initialPhone.countryCode);
+  const [localPhone, setLocalPhone] = useState(initialPhone.local);
   // birthday is stored as YYYY-MM-DD; the BirthdayPicker round-trips it.
   const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
 
+  const phoneE164 = combinePhoneE164(countryCode, localPhone);
+  // Compare on digits only so a stored value without a leading + still matches.
+  const phoneDirty =
+    phoneE164.replace(/\D/g, "") !== (profile.phone ?? "").replace(/\D/g, "");
   const dirty =
     firstName.trim() !== (profile.first_name ?? "") ||
     lastName.trim() !== (profile.last_name ?? "") ||
-    phone.trim() !== (profile.phone ?? "") ||
+    phoneDirty ||
     birthday !== (profile.birthday ?? "");
 
   const initials =
@@ -71,7 +80,7 @@ export function EditProfileSheet({
         last_name: lastName.trim(),
         sex: (profile.sex as "male" | "female" | "other") ?? "other",
         birthday: birthday || "",
-        phone: phone.trim() || undefined,
+        phone: phoneE164 || undefined,
       });
       toast("Profile updated.");
       onSaved(updated);
@@ -138,27 +147,24 @@ export function EditProfileSheet({
               placeholder="Last name"
             />
           </div>
-          <SheetField
-            label="Phone"
-            value={phone}
-            onChange={setPhone}
-            placeholder="+52 …"
-            inputMode="tel"
-          />
+          <label className="block">
+            <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+              Phone
+            </span>
+            <PhoneInputWithCountry
+              value={localPhone}
+              onChange={setLocalPhone}
+              countryCode={countryCode}
+              onCountryChange={setCountryCode}
+              placeholder="55 1234 5678"
+            />
+          </label>
           <label className="block">
             <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
               Birthday
             </span>
             <BirthdayPicker value={birthday} onChange={setBirthday} />
           </label>
-          <div>
-            <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
-              Email
-            </span>
-            <p className="border-border bg-muted/40 text-muted-foreground rounded-lg border px-3 py-2 text-sm">
-              {email ?? "—"}
-            </p>
-          </div>
         </div>
 
         <div className="mt-4 flex gap-2">
