@@ -24,10 +24,10 @@ export default async function ConsumerOnboardPage() {
   if (!user) redirect("/?next=/onboard");
 
   // Completeness predicate is the same one the (shell) layout uses to
-  // gate every authed surface — name + country + birthday + sex. If we
-  // only checked full_name here, a partially-onboarded user would loop:
+  // gate every authed surface — name + birthday + sex. If we only checked
+  // full_name here, a partially-onboarded user would loop:
   //   onboard → discover/swipe (full_name truthy) → shell sees missing
-  //   country/birthday/sex → bounces back to onboard. Strict here too.
+  //   birthday/sex → bounces back to onboard. Strict here too.
   // redirect() throws NEXT_REDIRECT, so it MUST live outside the try/catch —
   // otherwise the catch swallows the redirect and logs it as an error (and
   // the already-onboarded user gets stuck on the form).
@@ -35,10 +35,7 @@ export default async function ConsumerOnboardPage() {
   try {
     const { consumer: profile } = await apiFetchConsumerProfile(supabase);
     onboarded =
-      !!profile.full_name &&
-      !!profile.country &&
-      !!profile.birthday &&
-      !!profile.sex;
+      !!profile.full_name && !!profile.birthday && !!profile.sex;
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.

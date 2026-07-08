@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 // Mandatory onboarding gate for every page inside /(shell).
 //
-// No exceptions: a consumer with a half-filled profile (no name / country /
+// No exceptions: a consumer with a half-filled profile (no name /
 // birthday / sex) gets bounced to /onboard. Onboard is the only
 // surface that knows how to collect the missing fields, so every other
 // route assumes the row is complete and renders accordingly. This kills
@@ -56,10 +56,7 @@ export default async function ConsumerShellLayout({
     const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
     const onboarded =
-      !!profile.full_name &&
-      !!profile.country &&
-      !!profile.birthday &&
-      !!profile.sex;
+      !!profile.full_name && !!profile.birthday && !!profile.sex;
     if (!onboarded) redirect("/onboard");
     consumerClass = c;
   } catch {

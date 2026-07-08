@@ -17,8 +17,9 @@ export const AI_SUGGESTIONS = [
   "Famous Luis Miguel spot in Acapulco",
 ];
 
-// Country list — used both by the Country residence dropdown and the
-// phone-input dial-code picker. Ordered roughly by hospitality relevance:
+// Country list — used by the phone-input dial-code picker (the residence
+// dropdown was retired; country is inferred from the phone's dial code).
+// Ordered roughly by hospitality relevance:
 // Mexico first (the home market), Latam + Iberian world next, then a
 // short tail of common origin countries. `dial` is the E.164 country
 // calling code (no leading "+"); the picker re-adds the plus visually.

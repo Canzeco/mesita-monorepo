@@ -8,6 +8,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
+import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -40,7 +41,7 @@ export function EditProfileSheet({
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
   const [lastName, setLastName] = useState(profile.last_name ?? "");
   const [phone, setPhone] = useState(profile.phone ?? "");
-  // birthday is stored as YYYY-MM-DD; a native date input round-trips it.
+  // birthday is stored as YYYY-MM-DD; the BirthdayPicker round-trips it.
   const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -62,14 +63,14 @@ export function EditProfileSheet({
     }
     setSaving(true);
     try {
-      // Preserve the fields not edited here (sex/country) so the
-      // required-field EF contract stays satisfied.
+      // Preserve sex (not edited here) so the required-field EF contract
+      // stays satisfied. Country is no longer collected anywhere — it's
+      // inferred from the phone's dial code, so we don't touch it.
       const updated = await apiUpdateConsumerProfile(supabase, {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         sex: (profile.sex as "male" | "female" | "other") ?? "other",
         birthday: birthday || "",
-        country: profile.country ?? "",
         phone: phone.trim() || undefined,
       });
       toast("Profile updated.");
@@ -148,12 +149,7 @@ export function EditProfileSheet({
             <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
               Birthday
             </span>
-            <input
-              type="date"
-              value={birthday}
-              onChange={(e) => setBirthday(e.target.value)}
-              className="border-border bg-background focus:border-primary w-full rounded-lg border px-3 py-2 text-sm outline-none"
-            />
+            <BirthdayPicker value={birthday} onChange={setBirthday} />
           </label>
           <div>
             <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
