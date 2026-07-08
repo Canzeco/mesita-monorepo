@@ -9,6 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
+import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import {
   parseUnitId,
   TOOL_ROUTES,
@@ -36,6 +37,11 @@ const SIDEBAR_NAV = [
     href: ATLAS_PARENT.href,
     label: ATLAS_PARENT.label,
     Icon: ATLAS_PARENT.Icon,
+  },
+  {
+    href: MEMO_PARENT.href,
+    label: MEMO_PARENT.label,
+    Icon: MEMO_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
