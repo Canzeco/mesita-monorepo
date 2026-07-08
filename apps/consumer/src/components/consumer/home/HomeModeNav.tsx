@@ -23,7 +23,7 @@ const TABS: {
   soon?: boolean;
 }[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
-  { href: CONSUMER_ROUTES.homeTabs.ai, label: "AI", Icon: Sparkles },
+  { href: CONSUMER_ROUTES.homeTabs.ai, label: "AI", Icon: Sparkles, soon: true },
   {
     href: CONSUMER_ROUTES.homeTabs.social,
     label: "Social",
