@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+import { DeploymentWatcher } from "@/components/consumer/DeploymentWatcher";
 
 const inter = Inter({
   variable: "--font-body",
@@ -51,6 +52,9 @@ export default function RootLayout({
     >
       <body className="bg-background text-foreground flex h-full flex-col">
         {children}
+        {/* Self-refresh an open session when a newer production build ships,
+            so merged changes actually appear without a manual hard reload. */}
+        <DeploymentWatcher />
         {/* The consumer shell mounts its own <Toaster /> (see
             src/components/consumer/Toaster.tsx + src/lib/toast.ts) so the
             toaster surfaces inside the mobile-frame stacking context,
