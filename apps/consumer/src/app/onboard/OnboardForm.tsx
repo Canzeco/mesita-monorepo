@@ -65,32 +65,34 @@ export function OnboardForm() {
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col gap-3">
-      <Field label="First name">
-        <input
-          name="first_name"
-          className={INPUT_CLASS}
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          maxLength={60}
-          placeholder="First name"
-          autoComplete="given-name"
-          required
-        />
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="First name">
+          <input
+            name="first_name"
+            className={INPUT_CLASS}
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            maxLength={60}
+            placeholder="First name"
+            autoComplete="given-name"
+            required
+          />
+        </Field>
 
-      <Field label="Sex">
-        <select
-          className={INPUT_CLASS}
-          value={sex}
-          onChange={(e) => setSex(e.target.value)}
-          required
-        >
-          <option value="">Select</option>
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-          <option value="other">Other</option>
-        </select>
-      </Field>
+        <Field label="Sex">
+          <select
+            className={INPUT_CLASS}
+            value={sex}
+            onChange={(e) => setSex(e.target.value)}
+            required
+          >
+            <option value="">Select</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="other">Other</option>
+          </select>
+        </Field>
+      </div>
 
       <Field label="Birthday">
         <BirthdayPicker value={birthday} onChange={setBirthday} />
