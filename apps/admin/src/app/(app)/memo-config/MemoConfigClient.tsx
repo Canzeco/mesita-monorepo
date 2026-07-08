@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Bot, Globe, MessageSquare } from "lucide-react";
 import {
   ErrorNote,
@@ -10,6 +10,7 @@ import {
   TextAreaField,
 } from "../enricher-config/atlas-ui";
 import {
+  getMemoConfig,
   OPENAI_MODELS,
   PERPLEXITY_MODELS,
   updateMemoConfig,
@@ -17,9 +18,10 @@ import {
 } from "./actions";
 
 // Memo's config surface — kept deliberately small: the persona prose and the
-// models. Values default to what Memo runs with today (see consumer-web-ask-
-// memo). Save calls the future admin-web-update-memo-config EF; until that ships
-// with the OpenAI rebuild it reports cleanly and nothing is lost.
+// models. These DEFAULTS are the pre-load placeholder; on mount the page loads
+// the persisted values from admin-web-get-memo-config (app_settings.memo_*).
+// memo_instructions is read live by consumer-web-ask-memo; the model knobs are
+// persisted for the forthcoming Memo model rebuild.
 const DEFAULTS: MemoConfig = {
   greeting:
     "Hola ✨ I'm Memo, your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.",
@@ -79,7 +81,28 @@ export function MemoConfigClient() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Load the persisted config (app_settings.memo_*) on mount so the page shows
+  // the live values, not just the local DEFAULTS. On failure we keep DEFAULTS
+  // and let a Save surface the real error — the page stays usable either way.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const r = await getMemoConfig();
+      if (!active) return;
+      if (r.ok) {
+        setCfg(r.data);
+        setSaved(r.data);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const busy = pending || loading;
   const dirty = JSON.stringify(cfg) !== JSON.stringify(saved);
   const set = <K extends keyof MemoConfig>(key: K, value: MemoConfig[K]) => {
     setCfg((c) => ({ ...c, [key]: value }));
@@ -95,9 +118,7 @@ export function MemoConfigClient() {
         setCfg(r.data);
         setOk(true);
       } else {
-        setError(
-          `${r.error} — the Memo config service ships with the OpenAI rebuild; values here are a preview of the tunable surface.`,
-        );
+        setError(r.error);
       }
     });
   };
@@ -114,13 +135,13 @@ export function MemoConfigClient() {
           <TextAreaField
             label="Greeting"
             value={cfg.greeting}
-            disabled={pending}
+            disabled={busy}
             onChange={(v) => set("greeting", v)}
           />
           <TextAreaField
             label="Instructions (system prompt)"
             value={cfg.instructions}
-            disabled={pending}
+            disabled={busy}
             onChange={(v) => set("instructions", v)}
           />
         </div>
@@ -137,7 +158,7 @@ export function MemoConfigClient() {
             <Select
               value={cfg.openaiModel}
               options={OPENAI_MODELS}
-              disabled={pending}
+              disabled={busy}
               onChange={(v) => set("openaiModel", v)}
             />
           </Field>
@@ -160,7 +181,7 @@ export function MemoConfigClient() {
             <Select
               value={cfg.perplexityModel}
               options={PERPLEXITY_MODELS}
-              disabled={pending || !cfg.webGrounding}
+              disabled={busy || !cfg.webGrounding}
               onChange={(v) => set("perplexityModel", v)}
             />
           </Field>

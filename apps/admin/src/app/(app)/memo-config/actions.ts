@@ -4,10 +4,11 @@
 // Functions via the Result-style efInvoke (never throws) — same contract as the
 // Atlas config actions.
 //
-// NOTE: the backing service (admin-web-get-memo-config / -update-memo-config +
-// the memo_config table) ships with the Memo OpenAI rebuild. Until then these
-// calls resolve to a clean { ok: false } and the page falls back to local
-// defaults + surfaces a "not deployed yet" note. No client ever touches the DB.
+// Backed by admin-web-get-memo-config / admin-web-update-memo-config, which read
+// and write the memo_* columns on the public.app_settings singleton. Memo's
+// system prompt (instructions) is consumed live by consumer-web-ask-memo; the
+// model knobs are persisted for the forthcoming Memo model rebuild. No client
+// ever touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";
 
