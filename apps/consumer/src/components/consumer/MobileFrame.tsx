@@ -40,9 +40,13 @@ export function MobileFrame({
       <div
         id={APP_CARD_ID}
         className={cn(
-          "bg-background relative flex h-full w-full max-w-md flex-col overflow-hidden",
-          // Card chrome + height cap only kick in at md+.
-          "md:border-border md:shadow-elev md:h-auto md:max-h-[min(900px,calc(100dvh-3rem))] md:rounded-3xl md:border",
+          // A full border on every side frames the surface. On mobile most
+          // pages have no top header, so without this the app background runs
+          // flush to the viewport edge and scrolling reads as one boundless
+          // sheet — the border gives the screen a contained edge all around.
+          "bg-background border-border relative flex h-full w-full max-w-md flex-col overflow-hidden border",
+          // Rounded corners, elevation, and the height cap only kick in at md+.
+          "md:shadow-elev md:h-auto md:max-h-[min(900px,calc(100dvh-3rem))] md:rounded-3xl",
         )}
       >
         <div className={cn("flex flex-1 flex-col overflow-hidden", className)}>
