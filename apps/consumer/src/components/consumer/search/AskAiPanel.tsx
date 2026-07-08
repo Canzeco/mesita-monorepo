@@ -5,10 +5,11 @@
 //
 // Every turn calls Memo (consumer-web-ask-memo), Mesita's AI concierge agent:
 // Perplexity (sonar-pro, web-grounded) writes the natural-language reply while
-// Google Places + the Mesita catalog supply the place cards. Both the prose
-// AND the cards are real; the cards reuse the same Info / Add mechanics as text
-// search (Add fires the real consumer-web-create-place flow). Prior turns are
-// sent as history so Memo can follow up.
+// Google Places + the Mesita catalog resolve the places it names. Ask AI shows
+// no place cards — the suggestions are woven into the prose as underlined,
+// tappable links (MemoAnswerText): on-Mesita names open the detail modal,
+// not-yet-listed ones fire the real consumer-web-create-place Add flow. Prior
+// turns are sent as history so Memo can follow up.
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, RotateCcw, Sparkles, X } from "lucide-react";
@@ -17,11 +18,19 @@ import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import type { MemoAnswer, MemoTurn } from "@/lib/api/memo";
 import { cn } from "@/lib/utils";
-import { PredictionRow, type AddState } from "./PredictionRow";
+import type { AddState } from "./PredictionRow";
+import { MemoAnswerText } from "./MemoAnswerText";
 
-type AiMessage =
-  | { id: string; role: "user" | "ai"; kind: "text"; text: string }
-  | { id: string; role: "ai"; kind: "place"; prediction: PlacePrediction };
+// Ask AI has no place cards — Memo's suggestions live inline in the prose as
+// underlined links (see MemoAnswerText). Each AI turn carries the predictions
+// its answer refers to so the names can be linkified.
+type AiMessage = {
+  id: string;
+  role: "user" | "ai";
+  kind: "text";
+  text: string;
+  predictions?: PlacePrediction[];
+};
 
 const GREETING =
   "Hola ✨ I'm Memo, your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.";
@@ -148,13 +157,8 @@ export function AskAiPanel({
           role: "ai",
           kind: "text",
           text: reply?.answer?.trim() ? reply.answer : AI_ERROR,
+          predictions: shown,
         },
-        ...shown.map<AiMessage>((prediction) => ({
-          id: msgId(),
-          role: "ai",
-          kind: "place",
-          prediction,
-        })),
       ]);
       setRelated((reply?.related ?? []).slice(0, MAX_RELATED));
       setThinking(false);
@@ -206,43 +210,42 @@ export function AskAiPanel({
         className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
       >
         {messages.map((m) => {
-          if (m.kind === "text") {
-            const isUser = m.role === "user";
-            return (
-              <div
-                key={m.id}
-                className={cn("flex", isUser ? "justify-end" : "justify-start")}
-              >
-                <div
-                  className={cn(
-                    "max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
-                    isUser
-                      ? "bg-pink-gradient text-white"
-                      : "border-border bg-card border",
-                  )}
-                >
-                  {m.text}
-                </div>
-              </div>
-            );
-          }
+          const isUser = m.role === "user";
+          const hasPlaces = !isUser && (m.predictions?.length ?? 0) > 0;
           return (
-            <PredictionRow
+            <div
               key={m.id}
-              prediction={m.prediction}
-              matchedPlace={resolvePlace(m.prediction)}
-              addState={addStates[m.prediction.placeId]}
-              onInfo={onInfo}
-              onAdd={onAdd}
-              compact
-            />
+              className={cn("flex", isUser ? "justify-end" : "justify-start")}
+            >
+              <div
+                className={cn(
+                  "max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
+                  isUser
+                    ? "bg-pink-gradient text-white"
+                    : "border-border bg-card border",
+                )}
+              >
+                {hasPlaces ? (
+                  <MemoAnswerText
+                    text={m.text}
+                    predictions={m.predictions ?? []}
+                    resolvePlace={resolvePlace}
+                    addStates={addStates}
+                    onInfo={onInfo}
+                    onAdd={onAdd}
+                  />
+                ) : (
+                  m.text
+                )}
+              </div>
+            </div>
           );
         })}
         {thinking && (
           <div className="flex justify-start">
             <div className="border-border bg-card text-muted-foreground flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm">
               <Spinner size="sm" label="Thinking" />
-              Scouting spots…
+              Thinking…
             </div>
           </div>
         )}

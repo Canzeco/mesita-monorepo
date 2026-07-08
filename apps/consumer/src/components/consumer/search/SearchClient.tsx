@@ -398,33 +398,37 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Active search takes over the map: a full-screen sheet under the
-          floating search bar. Empty → a hint; typing → live results. Dismiss
-          via the bar's X — there's no map peeking through to tap now. */}
-      {(searchOpen || trimmed.length > 0) && (
-        <div className="bg-background absolute inset-x-0 top-[60px] bottom-0 z-30 flex flex-col">
-          {trimmed.length > 0 ? (
-            <SearchResultsPanel
-              query={query}
-              searching={searching}
-              searchError={searchError}
-              predictions={predictions}
-              addStates={addStates}
-              resolvePlace={resolvePlace}
-              onInfo={handleInfo}
-              onAdd={handleAdd}
-            />
-          ) : (
-            <div className="flex flex-1 flex-col items-center justify-center px-8 pb-24 text-center">
-              <span className="text-6xl" role="img" aria-label="Search">
-                🔍
-              </span>
-              <p className="mt-5 text-lg font-semibold">Where to today?</p>
-              <p className="text-muted-foreground mt-1.5 max-w-[260px] text-sm">
-                Find the perfect place by name or category.
-              </p>
-            </div>
-          )}
+      {/* Typing takes over the map: a full-screen live-results sheet whose solid
+          panel covers everything (incl. behind the floating search bar). Sits at
+          z-20 below the z-30 bar; pt-[60px] drops results below it. Dismiss via
+          the bar's X. */}
+      {trimmed.length > 0 && (
+        <div className="bg-background absolute inset-0 z-20 flex flex-col pt-[60px]">
+          <SearchResultsPanel
+            query={query}
+            searching={searching}
+            searchError={searchError}
+            predictions={predictions}
+            addStates={addStates}
+            resolvePlace={resolvePlace}
+            onInfo={handleInfo}
+            onAdd={handleAdd}
+          />
+        </div>
+      )}
+
+      {/* Focused but empty → blank the map entirely with a solid panel so the
+          prompt reads clean. Sits at z-20 below the z-30 floating search bar
+          (which the user types into) but covers everything else. */}
+      {searchOpen && trimmed.length === 0 && (
+        <div className="bg-background absolute inset-0 z-20 flex flex-col items-center justify-center px-8 pb-16 text-center">
+          <span className="text-5xl" role="img" aria-label="Search">
+            🔍
+          </span>
+          <p className="mt-4 text-lg font-semibold">Where to today?</p>
+          <p className="text-muted-foreground mt-1.5 max-w-[260px] text-sm">
+            Find the perfect place by name or category.
+          </p>
         </div>
       )}
 
@@ -485,17 +489,17 @@ function RailCard({
       type="button"
       onClick={selected ? onOpen : onSelect}
       className={cn(
-        "border-border bg-card/95 shadow-elev flex w-[264px] shrink-0 items-center gap-3 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
+        "border-border bg-card/95 shadow-elev flex w-[288px] shrink-0 items-center gap-3 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
         selected && "border-primary ring-primary/30 ring-2",
       )}
     >
-      <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
+      <div className="bg-muted border-border relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border">
         {photo ? (
           <Image
             src={photo}
             alt={place.name}
             fill
-            sizes="64px"
+            sizes="80px"
             className="object-cover"
           />
         ) : (
