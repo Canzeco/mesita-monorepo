@@ -242,7 +242,7 @@ function ProfileSummaryCard({
   profile: ConsumerProfile | null;
   loading: boolean;
 }) {
-  const { key, origin, followers } = useConsumerClass();
+  const { key, origin, followers, handle: classHandle } = useConsumerClass();
   const isPremium = key === "premium";
 
   if (loading) {
@@ -287,7 +287,9 @@ function ProfileSummaryCard({
   // no user data (so "why class?" is answered once, here).
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
   const classVia = isPremium && origin !== "default" ? origin : null;
-  const handle = profile?.instagram_handle ?? null;
+  // Real handle lives on the profile; fall back to the class-context handle
+  // (carries the demo handle for the Instagram preview state).
+  const handle = profile?.instagram_handle ?? classHandle;
   const igConnected = origin === "instagram" || Boolean(handle);
 
   return (

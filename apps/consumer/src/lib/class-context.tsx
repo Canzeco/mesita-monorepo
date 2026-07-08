@@ -26,6 +26,10 @@ export type ConsumerClassState = {
    *  origin === "subscription"; null for every other origin. */
   renewsAt: string | null;
   followers: number;
+  /** IG @handle for the connected account. Real handle is persisted on
+   *  consumers.instagram_handle (read off the profile); this carries the
+   *  demo handle for the Instagram preview state where no profile exists. */
+  handle: string | null;
 };
 
 // Safe default for any tree rendered without a provider: a plain Free
@@ -37,6 +41,7 @@ const FREE_CLASS: ConsumerClassState = {
   origin: "default",
   renewsAt: null,
   followers: 0,
+  handle: null,
 };
 
 function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
@@ -46,6 +51,7 @@ function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
     origin: c.origin ?? "default",
     renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
     followers: c.followers ?? 0,
+    handle: null,
   };
 }
 
@@ -73,6 +79,10 @@ const MOCK_CLASS_VALUES: MockClass[] = ["free", "subscription", "instagram"];
 // Follower count shown when the Instagram override is active but no real
 // follower reach is seeded — matches VerifySocialSheet's demo value.
 const DEMO_INSTAGRAM_FOLLOWERS = 4200;
+
+// Demo @handle shown alongside the demo follower count in the Instagram
+// preview state (no real profile is connected there).
+const DEMO_INSTAGRAM_HANDLE = "patricio";
 
 // Same-tab + cross-tab notifier for the client-only mock flags. A local
 // listener set fires same-tab writes (so the toggle updates the whole shell
@@ -145,6 +155,7 @@ function mockClassState(
         origin: "instagram",
         renewsAt: null,
         followers: base.followers > 0 ? base.followers : DEMO_INSTAGRAM_FOLLOWERS,
+        handle: base.handle ?? DEMO_INSTAGRAM_HANDLE,
       };
     case "subscription": {
       const renews = new Date();
