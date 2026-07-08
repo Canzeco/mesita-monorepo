@@ -18,23 +18,23 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),
   title: {
-    default: "Mesita — smart hospitality rewards",
+    default: "Mesita — descubre, reserva y paga menos",
     template: "%s · Mesita",
   },
   description:
-    "Discover, reserve, and earn real rewards at restaurants, cafés, and bars. Made in Monterrey.",
+    "Descubre, reserva y consigue descuentos reales en restaurantes, cafés, bares y antros. Hecho en Monterrey.",
   openGraph: {
-    title: "Mesita — smart hospitality rewards",
+    title: "Mesita — descubre, reserva y paga menos",
     description:
-      "Discover, reserve, and earn real rewards at restaurants, cafés, and bars.",
+      "Descubre, reserva y consigue descuentos reales en restaurantes, cafés y bares.",
     siteName: "Mesita",
-    locale: "en_US",
+    locale: "es_MX",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Mesita",
-    description: "Discover. Reserve. Pay less every time.",
+    description: "Descubre. Reserva. Paga menos cada vez.",
   },
 };
 
@@ -45,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">{children}</body>
