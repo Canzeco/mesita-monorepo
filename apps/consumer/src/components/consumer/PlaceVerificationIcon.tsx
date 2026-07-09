@@ -1,7 +1,13 @@
-import { BadgeCheck, ShieldAlert } from "lucide-react";
+import { Check, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Blue IG-style check when Verified Partner; yellow alert when not. */
+/**
+ * Place-header verification badge.
+ *
+ * decision: Pato — white circle washes out on the pink chrome; use a solid
+ * colored disc (IG-blue for partner, amber for not verified) with a white
+ * glyph so contrast stays clear (MESITA-269).
+ */
 export function PlaceVerificationIcon({
   listingType,
   className,
@@ -12,18 +18,27 @@ export function PlaceVerificationIcon({
   const verified = listingType === "partner";
   if (verified) {
     return (
-      <BadgeCheck
-        className={cn("h-[18px] w-[18px] shrink-0 fill-sky-500 text-white", className)}
+      <span
+        className={cn(
+          "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm ring-1 ring-black/10",
+          className,
+        )}
         aria-label="Verified Partner"
-        strokeWidth={2}
-      />
+      >
+        <Check className="h-3 w-3" strokeWidth={3} />
+      </span>
     );
   }
   return (
-    <ShieldAlert
-      className={cn("h-[18px] w-[18px] shrink-0 text-amber-500", className)}
+    <span
+      className={cn(
+        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm ring-1 ring-black/10",
+        className,
+      )}
       aria-label="Not verified"
-    />
+    >
+      <ShieldAlert className="h-3 w-3" strokeWidth={2.5} />
+    </span>
   );
 }
 
