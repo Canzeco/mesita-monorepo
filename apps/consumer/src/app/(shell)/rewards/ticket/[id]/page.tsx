@@ -1,12 +1,21 @@
 import { redirect } from "next/navigation";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { TicketDetailsRouteClientDynamic } from "@/components/consumer/TicketDetailsRouteClientDynamic";
+import { rewardsTicketPath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
-// The Rewards surface is parked behind a "Soon" gate, so ticket detail deep
-// links bounce back to the gated /rewards panel. The real detail view
-// (TicketDetailsRouteClientDynamic + the @modal intercept) stays in the tree
-// for the un-park.
-export default function PayTicketPage() {
-  redirect(CONSUMER_ROUTES.rewards.root);
+export default async function PayTicketPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/?next=${encodeURIComponent(rewardsTicketPath(id))}`);
+
+  return <TicketDetailsRouteClientDynamic userId={user.id} ticketId={id} />;
 }

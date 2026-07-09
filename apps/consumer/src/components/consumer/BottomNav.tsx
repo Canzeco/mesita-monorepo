@@ -25,8 +25,11 @@ type Item = {
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   match: string;
-  // Surface is parked behind a coming-soon gate; the tab stays tappable (it
-  // lands on the gated panel) but carries a "Soon" pill on the icon.
+  // Surface is parked behind a coming-soon gate. Mirrors the Home AI/Social
+  // block: the tab stays visible (so the surface reads as intentional and
+  // un-parking is a one-flag flip) but renders DISABLED and non-navigable —
+  // no <Link>, greyed out, with a muted "Soon" pill. The real page content
+  // stays untouched in the tree; flip `soon` off to unblock.
   soon?: boolean;
 };
 
@@ -102,6 +105,31 @@ export function BottomNav({ userId }: { userId?: string }) {
             match === CONSUMER_ROUTE_PREFIX.me
               ? `${label} · ${classLabel}`
               : label;
+          // Parked surfaces (Rewards/Reservations) are BLOCKED exactly like the
+          // Home AI/Social tabs: the tab stays visible but renders disabled and
+          // non-navigable (no <Link>) so it can't be reached, greyed out with a
+          // muted "Soon" pill. The real page content stays intact in the tree.
+          if (soon) {
+            return (
+              <span
+                key={href}
+                aria-disabled="true"
+                title="Coming soon"
+                className="text-muted-foreground/40 relative flex min-w-0 flex-1 cursor-not-allowed flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium"
+              >
+                <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
+                  <Icon className="h-5 w-5" strokeWidth={1.75} />
+                  <span className="border-border/70 bg-card text-muted-foreground/70 absolute -top-1.5 -right-3 rounded-full border px-1 py-px text-[7px] leading-3 font-semibold tracking-wide uppercase">
+                    Soon
+                  </span>
+                </span>
+                <span className="w-full truncate text-center">
+                  {displayLabel}
+                </span>
+              </span>
+            );
+          }
+
           return (
             <Link
               key={href}
@@ -124,11 +152,6 @@ export function BottomNav({ userId }: { userId?: string }) {
                 )}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
-                {soon && (
-                  <span className="bg-primary text-primary-foreground absolute -top-1.5 -right-3 rounded-full px-1.5 py-px text-[8px] leading-3 font-semibold tracking-wide uppercase">
-                    Soon
-                  </span>
-                )}
               </span>
               <span className="w-full truncate text-center">
                 {displayLabel}
