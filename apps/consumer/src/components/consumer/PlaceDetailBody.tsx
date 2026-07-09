@@ -614,7 +614,12 @@ function LocationBox({ place }: { place: PlaceDetail }) {
 
 function HoursBox({ place }: { place: PlaceDetail }) {
   return (
-    <Box title="Time" icon={Clock} iconColor="text-violet-400">
+    <Box
+      title="Time"
+      icon={Clock}
+      iconColor="text-violet-400"
+      right={place.timezone}
+    >
       <div className="bg-background rounded-lg px-4 py-2.5 text-sm">
         <span className="font-semibold text-emerald-700">
           {place.open_now ? "Open now" : "Closed"}
@@ -642,9 +647,7 @@ function HoursTableCard({ place }: { place: PlaceDetail }) {
     <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
       <div>
         <h4 className="font-display text-base font-semibold">Hours</h4>
-        <p className="text-muted-foreground text-[11px]">
-          {place.timezone} · {place.city}
-        </p>
+        <p className="text-muted-foreground text-[11px]">{place.city}</p>
       </div>
       <dl className="flex flex-col gap-1.5">
         {place.hours_table.map((row) => (
@@ -1214,7 +1217,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
   }
   if (chips.length === 0) return null;
   return (
-    <Box title="Contact" icon={Link2} iconColor="text-cyan-400">
+    <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
       <div className="flex flex-wrap gap-2">
         {chips.map(({ key, label, Icon, url }) => (
           <a

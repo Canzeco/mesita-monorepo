@@ -107,7 +107,7 @@ export default function SubscribePage() {
               </span>
               <span>
                 <span className="font-semibold">Invitation</span> — for locals,
-                creators, and talent picked by Mesita.
+                influencers, and talent picked by Mesita.
               </span>
             </li>
             <li className="flex items-start gap-2.5">

@@ -75,13 +75,13 @@ const CARDS: GiftCard[] = [
   },
   {
     id: "influencers",
-    audience: "A creator, or know one?",
-    line: "20% of Mesita's equity is reserved for creators.",
+    audience: "An influencer, or know one?",
+    line: "20% of Mesita's equity is reserved for influencers.",
     gradient: "bg-gradient-to-br from-fuchsia-500 to-purple-600",
     Icon: Megaphone,
     share: {
-      title: "Mesita for creators",
-      text: "Mesita reserves 20% of its equity for creators — you should partner with them.",
+      title: "Mesita for influencers",
+      text: "Mesita reserves 20% of its equity for influencers — you should partner with them.",
       url: "https://www.mesita.ai",
     },
     contact: { subject: "Mesita for influencers" },
