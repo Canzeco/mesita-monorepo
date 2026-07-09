@@ -43,16 +43,15 @@ import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { FiltersComingSoon } from "@/components/consumer/FiltersComingSoon";
 import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import type { AddState } from "./PredictionRow";
-import {
-  CHIP_GROUPS,
-  applyChipFilters,
-  type ChipTone,
-  type FilterChip,
-} from "./search-filters";
+// CHIP_GROUPS / ChipTone / FilterChip dropped with the parked filter chips;
+// applyChipFilters stays (no-op with the now always-empty activeChips) so the
+// map/rail pipeline is untouched and un-parking is a localized restore.
+import { applyChipFilters } from "./search-filters";
 import {
   formatKm,
   matchPredictionToPlace,
@@ -282,13 +281,8 @@ export function SearchClient({
     setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
   };
 
-  const toggleChip = (id: string) => {
-    resetRail();
-    setActiveChips((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
-
+  // toggleChip removed with the parked filter chips (FiltersSheet is soon).
+  // clearChips stays: the "No places match" rail escape hatch still calls it.
   const clearChips = () => {
     resetRail();
     setActiveChips([]);
@@ -506,9 +500,6 @@ export function SearchClient({
 
       <FiltersSheet
         open={filtersOpen}
-        activeIds={activeChips}
-        onToggle={toggleChip}
-        onClear={clearChips}
         onClose={() => setFiltersOpen(false)}
       />
 
@@ -522,19 +513,6 @@ export function SearchClient({
       />
     </div>
   );
-}
-
-// Differentiated chip colors per tone (project style bar): brand gradient
-// for vibe, emerald for availability, amber for price.
-function activeToneClasses(tone: ChipTone): string {
-  switch (tone) {
-    case "availability":
-      return "border-emerald-300 bg-emerald-50 text-emerald-700";
-    case "price":
-      return "border-amber-300 bg-amber-50 text-amber-700";
-    default:
-      return "bg-pink-gradient border-transparent text-white";
-  }
 }
 
 // One floating catalog card on the bottom rail.
@@ -645,129 +623,22 @@ function RailCard({
   );
 }
 
-// Bottom-sheet with the full CHIP_GROUPS facets. Kept mounted (toggled via
-// `open`, same mechanic as the shared FilterSheet) so the slide transition
-// runs and selections survive a close. Chips toggle live; Apply confirms.
+// PARKED (soon): the trigger still opens this sheet, but it shows a single
+// coming-soon state instead of the Vibe / Availability / Price chips while we
+// finish the real filtering backend. The full chip body + SheetChip live in
+// this file's git history — to un-park, restore them (and re-wire
+// activeIds/onToggle/onClear) and drop FiltersComingSoon. Props kept minimal so
+// SearchClient's call site stays stable.
 function FiltersSheet({
   open,
-  activeIds,
-  onToggle,
-  onClear,
   onClose,
 }: {
   open: boolean;
-  activeIds: string[];
-  onToggle: (id: string) => void;
-  onClear: () => void;
   onClose: () => void;
 }) {
-  const count = activeIds.length;
   return (
-    <LocalSheet
-      open={open}
-      onClose={onClose}
-      ariaLabel="Search filters"
-      keepMounted
-    >
-      <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-xl">
-            <SlidersHorizontal className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="font-display text-base leading-tight font-semibold">
-              Filters
-            </p>
-            <p className="text-muted-foreground text-[11px]">
-              Pick any combination
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {count > 0 && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="text-muted-foreground hover:text-foreground rounded-full px-3 py-1.5 text-xs font-medium transition"
-            >
-              Clear all
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-8 w-8 items-center justify-center rounded-full transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="scrollbar-hide flex-1 space-y-5 overflow-y-auto px-4 pb-2">
-        {CHIP_GROUPS.map((group) => (
-          <div key={group.key}>
-            <p className="eyebrow mb-2">{group.label}</p>
-            <div className="flex flex-wrap gap-2">
-              {group.chips.map((chip) => (
-                <SheetChip
-                  key={chip.id}
-                  chip={chip}
-                  active={activeIds.includes(chip.id)}
-                  onToggle={onToggle}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="border-border/60 shrink-0 border-t p-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition active:scale-[0.99]"
-        >
-          Apply{count > 0 ? ` (${count})` : ""}
-        </button>
-      </div>
+    <LocalSheet open={open} onClose={onClose} ariaLabel="Search filters">
+      <FiltersComingSoon onClose={onClose} />
     </LocalSheet>
-  );
-}
-
-// Chips without a predicate are honest placeholders — the signals don't
-// ride on Place yet (see search-filters.ts TODOs) — so they render
-// disabled with a "Soon" tag instead of pretending to filter.
-function SheetChip({
-  chip,
-  active,
-  onToggle,
-}: {
-  chip: FilterChip;
-  active: boolean;
-  onToggle: (id: string) => void;
-}) {
-  const soon = !chip.match;
-  return (
-    <button
-      type="button"
-      disabled={soon}
-      onClick={() => onToggle(chip.id)}
-      className={cn(
-        "shrink-0 rounded-full border px-3.5 py-2 text-[13px] font-medium whitespace-nowrap transition",
-        soon
-          ? "border-border/60 text-muted-foreground/50 cursor-not-allowed"
-          : active
-            ? activeToneClasses(chip.tone)
-            : "border-border bg-card text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {chip.label}
-      {soon && (
-        <span className="border-border/70 text-muted-foreground/70 ml-1.5 inline-block rounded-full border px-1.5 py-0.5 align-middle text-[9px] font-medium tracking-[0.14em] uppercase">
-          Soon
-        </span>
-      )}
-    </button>
   );
 }

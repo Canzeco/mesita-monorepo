@@ -21,6 +21,7 @@ import { ShareModal } from "@/components/consumer/me/ShareModal";
 import { ClassModal } from "@/components/consumer/me/ClassModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
+import { MockControls } from "@/components/consumer/me/MockControls";
 import { CLASSES } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { cn, errMsg } from "@/lib/utils";
@@ -109,15 +110,22 @@ export function ProfileClient({
         <div className="flex flex-col gap-3">
           <ProfileSummaryCard profile={profile} loading={loading} />
 
-          {/* Conversion cluster first — the free upgrade path + membership.
-              These are plain action buttons: no user data (that lives in the
-              card above), just what tapping them does. */}
+          {/* Demo emulation controls — surfaced here while the real Instagram
+              + Class cards below are parked (soon), so every class/IG state
+              stays previewable. Remove with the MOCK_ paths. */}
+          <MockControls />
+
+          {/* Conversion cluster — the free upgrade path + membership. Parked
+              (soon & blocked) for now: kept visible so the surface reads as
+              intentional, but non-interactive. Un-park = drop `soon` and
+              restore the onClick. */}
           <BoxRow
             Icon={Instagram}
             tint="pink"
             title="Instagram"
             summary="Connect Instagram to upgrade your class"
             onClick={() => setVerifyOpen(true)}
+            soon
           />
 
           <BoxRow
@@ -126,6 +134,7 @@ export function ProfileClient({
             title="Class"
             summary="Upgrade your class for better rewards"
             onClick={() => setClassOpen(true)}
+            soon
           />
 
           {/* Account management. */}
@@ -440,6 +449,7 @@ function BoxShell({
   trailing,
   onClick,
   disabled,
+  soon = false,
 }: {
   iconTint: BoxTint;
   icon: ReactNode;
@@ -448,15 +458,22 @@ function BoxShell({
   trailing?: ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  soon?: boolean;
 }) {
+  // Parked (soon) rows are BLOCKED, not removed: kept visible so the surface
+  // reads as intentional, but non-interactive with a Soon pill. Un-park =
+  // drop `soon` and the row is live again.
+  const inert = disabled || soon;
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled}
+      onClick={soon ? undefined : onClick}
+      disabled={inert}
+      aria-disabled={inert}
+      title={soon ? "Coming soon" : undefined}
       className={cn(
         "border-border bg-card flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition active:scale-[0.99]",
-        disabled ? "opacity-60" : "hover:bg-muted/50",
+        inert ? "opacity-60" : "hover:bg-muted/50",
       )}
     >
       <span
@@ -468,15 +485,22 @@ function BoxShell({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-bold tracking-tight">
-          {title}
+        <span className="flex items-center gap-1.5">
+          <span className="text-[15px] font-bold tracking-tight">{title}</span>
+          {soon && (
+            <span className="border-border text-muted-foreground rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+              Soon
+            </span>
+          )}
         </span>
         <span className="text-muted-foreground block truncate text-[12px]">
           {summary}
         </span>
       </span>
       {trailing}
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+      {!soon && (
+        <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+      )}
     </button>
   );
 }
@@ -488,6 +512,7 @@ function BoxRow({
   summary,
   onClick,
   disabled,
+  soon,
 }: {
   Icon: LucideIcon;
   tint: BoxTint;
@@ -495,6 +520,7 @@ function BoxRow({
   summary: string;
   onClick: () => void;
   disabled?: boolean;
+  soon?: boolean;
 }) {
   return (
     <BoxShell
@@ -504,6 +530,7 @@ function BoxRow({
       summary={summary}
       onClick={onClick}
       disabled={disabled}
+      soon={soon}
     />
   );
 }

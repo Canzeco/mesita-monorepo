@@ -14,6 +14,10 @@ import { subscribeToToasts, toast, type Toast } from "@/lib/toast";
 // over the whole browser window on desktop, outside the phone card. z-[140]
 // keeps them above the @modal host (z-[120]): a "Saved {place}" toast fired
 // from inside the place modal must be visible over that modal.
+//
+// Anchored to the TOP of the card: swipe/save actions fire toasts, and at
+// the bottom they collided with the swipe controls + bottom nav. Top-center
+// keeps them clear of the gesture surface.
 
 export function Toaster() {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -22,7 +26,7 @@ export function Toaster() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-24 z-[140] flex flex-col items-center gap-2 px-4">
+    <div className="pointer-events-none absolute inset-x-0 top-4 z-[140] flex flex-col items-center gap-2 px-4">
       {toasts.map((t) => (
         <ToastCard key={t.id} t={t} />
       ))}
@@ -45,7 +49,7 @@ function ToastCard({ t }: { t: Toast }) {
     <div
       role="status"
       className={cn(
-        "animate-in slide-in-from-bottom-2 fade-in bg-card/95 shadow-elev pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 text-sm backdrop-blur duration-200",
+        "animate-in slide-in-from-top-2 fade-in bg-card/95 shadow-elev pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 text-sm backdrop-blur duration-200",
         t.tone === "error" ? "border-red-500/40" : "border-border",
       )}
     >
