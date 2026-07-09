@@ -244,8 +244,9 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   return (
     <section className="flex flex-col pt-1">
       {/* decision: Pato — same-size 4×2 cells, no visible borders; photo
-          fully rounded; soft gap instead of grid lines */}
-      <div className="grid grid-cols-4 gap-x-1.5 gap-y-2">
+          fully rounded; soft gap instead of grid lines. Absolute fill keeps
+          every cell a true square so long labels can't stretch a box. */}
+      <div className="grid grid-cols-4 gap-x-1.5 gap-y-2 [grid-template-columns:repeat(4,minmax(0,1fr))]">
         <ProfileGridPhoto place={place} />
         <ProfileGridStat
           value={googleRating}
@@ -288,7 +289,11 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** Equal-size cell shell — keeps all 8 boxes the same footprint. */
+/**
+ * Equal-size cell shell — width from the 4-col track, height locked to
+ * aspect-square. Content is absolutely positioned so long text can't grow
+ * the box past the square.
+ */
 function ProfileGridCell({
   children,
   className,
@@ -297,13 +302,15 @@ function ProfileGridCell({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex aspect-square min-h-0 min-w-0 flex-col items-center justify-center",
-        className,
-      )}
-    >
-      {children}
+    <div className="relative aspect-square w-full min-w-0">
+      <div
+        className={cn(
+          "absolute inset-0 flex flex-col items-center justify-center overflow-hidden",
+          className,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -312,7 +319,7 @@ function ProfileGridCell({
 function ProfileGridPhoto({ place }: { place: PlaceDetail }) {
   return (
     <ProfileGridCell>
-      <div className="bg-muted relative h-full w-full overflow-hidden rounded-2xl">
+      <div className="bg-muted h-full w-full overflow-hidden rounded-2xl">
         {place.photos.length > 0 ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -344,9 +351,9 @@ function ProfileGridStat({
 }) {
   return (
     <ProfileGridCell className="gap-1 px-0.5">
-      <span className="text-foreground flex items-center gap-1 text-[16px] leading-none font-bold tabular-nums">
+      <span className="text-foreground flex max-w-full items-center justify-center gap-1 text-[15px] leading-none font-bold tabular-nums">
         {icon}
-        {value}
+        <span className="truncate">{value}</span>
       </span>
       <span className="text-muted-foreground max-w-full truncate text-[10px] leading-tight font-medium">
         {label}
@@ -407,7 +414,9 @@ function ProfileGridMeta({
           strokeWidth={2.25}
         />
       )}
-      <span className="line-clamp-3 min-w-0 break-words">{children}</span>
+      <span className="line-clamp-3 w-full min-w-0 break-words">
+        {children}
+      </span>
     </ProfileGridCell>
   );
 }
