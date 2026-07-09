@@ -1,9 +1,8 @@
 /**
- * Price chip label for swipe + place profile summary.
+ * Place price labels — two surfaces, two formats.
  *
- * decision: Pato — show the real price range (e.g. MX$200–300), not $$$.
- * Prefer an explicit numeric `price_range`; fall back to a level-based
- * MXN/USD band; only then to $-symbols when nothing numeric is available.
+ * decision: Pato — swipe shows $$$$ (price_level symbols); place profile
+ * shows the numeric amount range (e.g. MX$500–800 per person).
  */
 
 const LEVEL_RANGES: Record<1 | 2 | 3 | 4, [number, number]> = {
@@ -35,7 +34,23 @@ function fallbackFromLevel(
   return `${currencyPrefix(currency)}${min}–${max}`;
 }
 
-/** Chip text for place price — always a range when we can derive one. */
+function clampPriceLevel(
+  priceLevel: number | null | undefined,
+): 1 | 2 | 3 | 4 | null {
+  if (priceLevel == null || priceLevel < 1) return null;
+  return Math.min(4, Math.max(1, Math.round(priceLevel))) as 1 | 2 | 3 | 4;
+}
+
+/** Swipe / deck: $-symbols from price_level (e.g. $$$$). */
+export function formatPlacePriceLevelSymbols(
+  priceLevel: number | null | undefined,
+): string | null {
+  const level = clampPriceLevel(priceLevel);
+  if (level == null) return null;
+  return "$".repeat(level);
+}
+
+/** Place profile: numeric range when available (e.g. MX$500–800 per person). */
 export function formatPlacePriceChip(input: {
   priceRange?: string | null;
   priceLevel?: number | null;
@@ -47,8 +62,5 @@ export function formatPlacePriceChip(input: {
   const fromLevel = fallbackFromLevel(input.priceLevel, input.currency);
   if (fromLevel) return withPerPerson(fromLevel);
 
-  if (input.priceLevel != null && input.priceLevel >= 1) {
-    return "$".repeat(Math.min(4, Math.max(1, Math.round(input.priceLevel))));
-  }
-  return null;
+  return formatPlacePriceLevelSymbols(input.priceLevel);
 }

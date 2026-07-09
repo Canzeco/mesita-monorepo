@@ -11,7 +11,7 @@ import type { Place } from "@/lib/api/places";
 import { neighborhoodFromAddress } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStatusLabel } from "@/lib/place-status";
-import { formatPlacePriceChip } from "@/lib/place-price";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { PlaceVerificationIcon } from "@/components/consumer/PlaceVerificationIcon";
 import { PromoChip } from "./PromoChip";
 
@@ -23,11 +23,8 @@ export function SwipeCardInfo({
   place: Place;
   compact?: boolean;
 }) {
-  const priceLabel = formatPlacePriceChip({
-    priceRange: place.price_range,
-    priceLevel: place.price_level,
-    currency: place.currency,
-  });
+  // decision: Pato — swipe uses $$$$ symbols; numeric amounts only on profile
+  const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
   const ratingLabel =
     place.google_rating != null ? place.google_rating.toFixed(1) : null;
   const ratingCountLabel =
