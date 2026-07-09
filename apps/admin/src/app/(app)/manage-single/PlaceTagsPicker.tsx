@@ -214,7 +214,7 @@ function TagsModal({
       onClick={onClose}
     >
       <div
-        className="border-border bg-card flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border shadow-xl"
+        className="border-border bg-card flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border shadow-xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -266,7 +266,7 @@ function TagsModal({
                 <p className="text-muted-foreground bg-muted/30 sticky top-0 px-4 py-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
                   {group.facet.emoji} {group.facet.label_en}
                 </p>
-                <div className="py-1">
+                <div className="grid grid-cols-1 gap-0.5 px-2 py-1 sm:grid-cols-2 lg:grid-cols-3">
                   {group.rows.map((tag) => {
                     const isOn = selected.has(tag.slug);
                     return (
@@ -275,8 +275,9 @@ function TagsModal({
                         type="button"
                         disabled={!isOn && atLimit}
                         onClick={() => onToggle(tag.slug)}
+                        title={tag.slug}
                         className={
-                          "hover:bg-muted/60 flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition " +
+                          "hover:bg-muted/60 flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition " +
                           (isOn ? "bg-muted/40" : "") +
                           (!isOn && atLimit ? " cursor-not-allowed opacity-40" : "")
                         }
@@ -292,9 +293,6 @@ function TagsModal({
                           {isOn ? <Check className="h-3 w-3" /> : null}
                         </span>
                         <span className="min-w-0 flex-1 truncate">{tag.label_en}</span>
-                        <span className="text-muted-foreground shrink-0 font-mono text-[10px]">
-                          {tag.slug}
-                        </span>
                       </button>
                     );
                   })}

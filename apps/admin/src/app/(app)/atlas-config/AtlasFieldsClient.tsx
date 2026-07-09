@@ -66,14 +66,14 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
               <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                 {section}
               </h3>
-              <ul className="mt-2 flex flex-col gap-1.5">
+              <ul className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                 {rows.map((c) => (
                   <li
                     key={c.slug}
-                    className="border-border bg-background flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-sm"
+                    className="border-border bg-background flex min-w-0 items-baseline gap-x-2 rounded-lg border px-3 py-2 text-sm"
                   >
-                    <span>{c.label}</span>
-                    <code className="text-muted-foreground text-xs">{c.slug}</code>
+                    <span className="min-w-0 truncate">{c.label}</span>
+                    <code className="text-muted-foreground shrink-0 text-xs">{c.slug}</code>
                   </li>
                 ))}
               </ul>
@@ -103,15 +103,17 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
                 <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                   {facet.emoji} {facet.label_en}
                 </h3>
-                <ul className="mt-2 flex flex-col gap-1.5">
+                <ul className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                   {rows.map((t) => (
                     <li
                       key={t.slug}
-                      className="border-border bg-background flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-sm"
+                      className="border-border bg-background flex min-w-0 flex-col gap-0.5 rounded-lg border px-3 py-2 text-sm"
                     >
-                      <span>{t.label_en}</span>
-                      <span className="text-muted-foreground text-xs">{t.label_es}</span>
-                      <code className="text-muted-foreground text-xs">{t.slug}</code>
+                      <span className="truncate font-medium">{t.label_en}</span>
+                      <span className="text-muted-foreground flex min-w-0 items-baseline gap-x-2 text-xs">
+                        <span className="min-w-0 truncate">{t.label_es}</span>
+                        <code className="shrink-0">{t.slug}</code>
+                      </span>
                     </li>
                   ))}
                 </ul>
