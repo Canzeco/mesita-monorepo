@@ -384,9 +384,6 @@ export function PlaceSection({
           <MetaField label="ID">
             <code className="text-foreground break-all font-mono text-xs">{place.id}</code>
           </MetaField>
-          <MetaField label="Slug">
-            <span className="text-sm">{place.slug ?? "—"}</span>
-          </MetaField>
           <MetaField label="Status">
             <span className="text-sm capitalize">{place.status ?? "—"}</span>
           </MetaField>

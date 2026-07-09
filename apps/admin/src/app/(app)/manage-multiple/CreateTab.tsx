@@ -18,7 +18,6 @@ type RowStatus =
       status: "ok";
       projectId: string;
       name: string;
-      slug: string | null;
       photoCount: number;
       enrichmentTriggered: boolean;
     }
@@ -80,7 +79,6 @@ export function CreateTab() {
                   status: "ok",
                   projectId: r.projectId,
                   name: r.name,
-                  slug: r.slug,
                   photoCount: r.photoCount,
                   enrichmentTriggered: r.enrichmentTriggered,
                 }
@@ -217,7 +215,6 @@ export function CreateTab() {
                     )}
                     {r.status === "ok" && (
                       <p className="text-muted-foreground text-[11px]">
-                        {r.slug ? `${r.slug} · ` : ""}
                         {r.photoCount} photo{r.photoCount === 1 ? "" : "s"} ·{" "}
                         {r.enrichmentTriggered ? (
                           "enriching…"

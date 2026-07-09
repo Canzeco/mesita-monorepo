@@ -27,7 +27,7 @@ export function UnitSelectCatalog() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, slug, or unit id…"
+            placeholder="Search by name or unit id…"
             autoFocus
             aria-label="Search units"
             className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
@@ -69,7 +69,6 @@ export function UnitSelectCatalog() {
                 <p className="text-muted-foreground truncate text-xs">
                   {u.category_label ?? u.category ?? "—"}
                   {u.status ? ` · ${u.status}` : ""}
-                  {u.slug ? ` · ${u.slug}` : ""}
                   {u.address ? ` · ${u.address}` : ""}
                 </p>
               </div>

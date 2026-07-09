@@ -108,8 +108,6 @@ export function BusinessLinkForm() {
             {result.place.name}
           </p>
           <p className="text-foreground/70 mt-1 text-sm">
-            <span className="font-mono">{result.place.slug}</span>
-            {" · "}
             <span className="font-medium">{result.place.status}</span>
             {" · added "}
             {formatShortDate(result.place.created_at)}
