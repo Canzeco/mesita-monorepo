@@ -91,11 +91,9 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
       {tab === "place" && (
         <>
           <MediaBox place={place} />
-          {/* decision: Pato — Location first, then Time side by side */}
-          <div className="grid grid-cols-2 gap-2">
-            <LocationBox place={place} />
-            <HoursBox place={place} />
-          </div>
+          {/* decision: Pato — Location first, then Time stacked (not side by side) */}
+          <LocationBox place={place} />
+          <HoursBox place={place} />
           <LinksBox place={place} />
           <AboutBox text={place.long_description} name={place.name} />
           <TagsBox place={place} />
@@ -964,10 +962,9 @@ function LocationBox({ place }: { place: PlaceDetail }) {
       icon={MapPin}
       iconColor="text-pink-500"
       right={formatDistanceKm(place.distance_km)}
-      className="h-full min-w-0 gap-2 p-3"
     >
       <div
-        className="relative aspect-square overflow-hidden rounded-xl"
+        className="relative aspect-[2/1] overflow-hidden rounded-xl"
         style={{
           backgroundColor: "#1d1442",
           backgroundImage: `
@@ -978,27 +975,27 @@ function LocationBox({ place }: { place: PlaceDetail }) {
           backgroundSize: "24px 24px, 24px 24px, 100% 100%",
         }}
       >
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2">
-          <div className="bg-pink-gradient shadow-glow flex h-8 w-8 items-center justify-center rounded-full">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2">
+          <div className="bg-pink-gradient shadow-glow flex h-9 w-9 items-center justify-center rounded-full">
             <MapPin
-              className="h-3.5 w-3.5 fill-white text-white"
+              className="h-4 w-4 fill-white text-white"
               strokeWidth={1.5}
             />
           </div>
-          <span className="max-w-full truncate rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-medium text-white">
+          <span className="max-w-full truncate rounded-full bg-black/80 px-2.5 py-0.5 text-[11px] font-medium text-white">
             {place.name}
           </span>
         </div>
       </div>
-      <p className="text-muted-foreground line-clamp-2 text-[11px] leading-snug">
+      <p className="text-muted-foreground text-xs leading-snug">
         {place.address}
       </p>
-      <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-2 gap-2">
         <a
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition"
+          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition"
         >
           <MapPin className="h-3.5 w-3.5 shrink-0 text-pink-500" />
           Maps
@@ -1007,7 +1004,7 @@ function LocationBox({ place }: { place: PlaceDetail }) {
           href={uberUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition"
+          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {/* decision: Pato — Uber badge = black bg + white letters */}
@@ -1056,13 +1053,13 @@ function HoursDayRow({
   return (
     <li
       className={cn(
-        "flex min-w-0 flex-col gap-0.5 px-1.5 py-1 text-[10px] leading-tight",
-        isToday && "rounded-md bg-violet-50/80",
+        "flex min-w-0 items-center justify-between gap-3 px-3 py-2 text-xs leading-tight",
+        isToday && "rounded-lg bg-violet-50/80",
       )}
     >
       <span
         className={cn(
-          "font-semibold",
+          "shrink-0 font-semibold",
           isToday ? "text-violet-800" : "text-foreground",
         )}
       >
@@ -1070,7 +1067,7 @@ function HoursDayRow({
       </span>
       <span
         className={cn(
-          "min-w-0 truncate tabular-nums",
+          "min-w-0 truncate text-right tabular-nums",
           closed
             ? "text-muted-foreground"
             : isToday
@@ -1085,7 +1082,7 @@ function HoursDayRow({
 }
 
 function HoursBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — day/schedule list beside Location; keep timezone
+  // decision: Pato — Time below Location (full-width stack); keep timezone
   const today = todayWeekdayLabel(place.timezone);
   const statusDetail = place.open_now
     ? place.closes_at
@@ -1103,14 +1100,13 @@ function HoursBox({ place }: { place: PlaceDetail }) {
       iconColor="text-violet-400"
       right={
         tz ? (
-          <span className="max-w-[4.5rem] truncate" title={tz}>
+          <span className="max-w-[12rem] truncate" title={tz}>
             {tz}
           </span>
         ) : undefined
       }
-      className="h-full min-w-0 gap-2 p-3"
     >
-      <p className="text-[11px] leading-snug">
+      <p className="text-xs leading-snug">
         <span
           className={cn(
             "font-semibold",
@@ -1127,18 +1123,11 @@ function HoursBox({ place }: { place: PlaceDetail }) {
         )}
       </p>
       {place.hours_table.length > 0 && (
-        <div className="border-border grid grid-cols-2 gap-1.5 overflow-hidden rounded-lg border p-1.5">
-          <ul className="flex flex-col gap-0.5">
-            {place.hours_table.slice(0, 4).map((row) => (
-              <HoursDayRow key={row.day} row={row} today={today} />
-            ))}
-          </ul>
-          <ul className="flex flex-col gap-0.5">
-            {place.hours_table.slice(4).map((row) => (
-              <HoursDayRow key={row.day} row={row} today={today} />
-            ))}
-          </ul>
-        </div>
+        <ul className="border-border overflow-hidden rounded-xl border">
+          {place.hours_table.map((row) => (
+            <HoursDayRow key={row.day} row={row} today={today} />
+          ))}
+        </ul>
       )}
     </Box>
   );
