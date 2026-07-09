@@ -25,7 +25,7 @@ import {
   type PlaceMediaMeta,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
-import { ErrorNote, SaveBar, SectionCard, SelectField, TextArea, TextField } from "../ui";
+import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 const DAYS = [
@@ -50,18 +50,16 @@ const CHANNELS: { key: keyof AdminPlace; label: string }[] = [
   { key: "uber_eats_url", label: "Uber Eats" },
 ];
 
-const PRICE_OPTIONS = [
-  { value: "", label: "—" },
-  { value: "1", label: "Budget · $" },
-  { value: "2", label: "Casual · $$" },
-  { value: "3", label: "Upscale · $$$" },
-  { value: "4", label: "Fine dining · $$$$" },
-];
+function priceLabel(level: number | null | undefined): string {
+  if (level == null || level < 1) return "—";
+  const n = Math.max(1, Math.min(4, level));
+  const names = ["", "Budget", "Casual", "Upscale", "Fine dining"] as const;
+  return `${names[n]} · ${"$".repeat(n)}`;
+}
 
 type DayHours = { closed: boolean; open: string; close: string };
 type Form = {
   name: string;
-  price_level: string;
   category: string;
   description: string;
   phone: string;
@@ -110,7 +108,6 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
     name: (v.name ?? "").slice(0, limits.placeNameMax),
-    price_level: v.price_level != null ? String(v.price_level) : "",
     category: v.category ?? "",
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
@@ -139,7 +136,6 @@ function formToPatch(
   const patch: Record<string, unknown> = {
     id,
     name: f.name.trim().slice(0, limits.placeNameMax),
-    price_level: f.price_level ? Number(f.price_level) : null,
     description: nz(f.description.slice(0, limits.descriptionMax)),
     phone: nz(f.phone),
     email: nz(f.email),
@@ -344,13 +340,10 @@ export function PlaceSection({
             maxLength={limits.placeNameMax}
             disabled={pending}
           />
-          <SelectField
-            label="Price"
-            value={form.price_level}
-            options={PRICE_OPTIONS}
-            onChange={(x) => set("price_level", x)}
-            disabled={pending}
-          />
+          {/* Price is Google Places–inferred in Enrich-Research — never editable. */}
+          <MetaField label="Price">
+            <span className="text-sm">{priceLabel(place.price_level)}</span>
+          </MetaField>
           {/* Category is enrichment-derived (ADEA inferPlaceCategory). Show the
               friendly label (e.g. "🪩 Nightclub"), never the snakecase slug;
               read-only here — the slug isn't hand-edited. */}
