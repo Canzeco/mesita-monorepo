@@ -1504,6 +1504,23 @@ function LastUpdatedBox({ place }: { place: PlaceDetail }) {
   );
 }
 
+type LinkChipDef = {
+  key: string;
+  label: string;
+  Icon: typeof Globe;
+  logo?: string;
+  logoWide?: boolean;
+  logoOnly?: boolean;
+};
+
+function linkChipLogo(def: LinkChipDef) {
+  return {
+    logo: def.logo,
+    logoWide: def.logoWide,
+    logoOnly: def.logoOnly,
+  };
+}
+
 function LinksBox({ place }: { place: PlaceDetail }) {
   // Flatten every link source into a single chip set — no subgroups.
   // Phone leads since calling is the most direct contact action; the
@@ -1532,9 +1549,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
         key: def.key,
         label: def.label,
         Icon: def.Icon,
-        logo: "logo" in def ? def.logo : undefined,
-        logoWide: "logoWide" in def ? def.logoWide : undefined,
-        logoOnly: "logoOnly" in def ? def.logoOnly : undefined,
+        ...linkChipLogo(def),
         url,
       });
   }
@@ -1545,9 +1560,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
         key: def.key,
         label: def.label,
         Icon: def.Icon,
-        logo: "logo" in def ? def.logo : undefined,
-        logoWide: "logoWide" in def ? def.logoWide : undefined,
-        logoOnly: "logoOnly" in def ? def.logoOnly : undefined,
+        ...linkChipLogo(def),
         url,
       });
   }
@@ -1558,9 +1571,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
         key: def.key,
         label: def.label,
         Icon: def.Icon,
-        logo: "logo" in def ? def.logo : undefined,
-        logoWide: "logoWide" in def ? def.logoWide : undefined,
-        logoOnly: "logoOnly" in def ? def.logoOnly : undefined,
+        ...linkChipLogo(def),
         url,
       });
   }
