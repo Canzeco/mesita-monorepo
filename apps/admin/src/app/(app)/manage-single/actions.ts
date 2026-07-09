@@ -110,6 +110,7 @@ export type AdminPlace = {
   mesita_review_count: number | null;
   mesita_visitors: unknown;
   instagram_followers_count: number | null;
+  facebook_followers: number | null;
   updated_at: string | null;
   [k: string]: unknown;
 };
