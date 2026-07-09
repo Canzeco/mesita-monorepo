@@ -38,7 +38,6 @@ import {
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
-import { PromoChip } from "@/components/consumer/PromoChip";
 import {
   FacebookLogo,
   GoogleLogo,
@@ -53,6 +52,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   resolveActivePromoRate,
   placeOffersMesitaRewards,
+  resolvePromoRateFromPlaceRow,
 } from "@/lib/promo-rates";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import type { Place } from "@/lib/api/places";
@@ -63,11 +63,11 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. The two callers (full page at /place/[id] and the
 // intercepted modal at @modal/(.)place/[id]) each render their own top
-// bar (back + place name + ⋯) on top of this. Structure:
+// bar (back + place name + verification + ⋯) on top of this. Structure:
 //
-//   1. Profile summary — square photo left, chips matching Discover swipe
-//      (category · price range · rating · IG · distance · zone · open ·
-//      verified · promo), then Save place + Make reservation.
+//   1. Profile summary — circular photo + 3 IG-style stats (Google ·
+//      Instagram · Reward), meta chips below (category · price · zone ·
+//      distance · open), then Save + Make reservation.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -224,13 +224,15 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── 1. Profile summary (photo + swipe-matched chips) ────────────────────
+// ── 1. Profile summary (Instagram: photo + 3 stats + meta) ──────────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // decision: chip set mirrors SwipeCardInfo minus verified — verification
-  // lives as the icon beside the place name + Verification box below Ownership.
+  // decision: Pato wireframe — more Instagramish: square photo left, three
+  // stats right (Google reviews · Instagram · Reward), meta chips below
+  // (category, price, zone, distance, open). Verification stays in the header.
   // decision: Pato — price chip shows the real range (MX$200–300), not $$$.
   const googleRating = place.google.rating.toFixed(1);
+  const googleCount = formatCount(place.google.count, false);
   const igFollowers = formatCount(place.instagram.followers, false);
   const priceLabel =
     formatPlacePriceChip({
@@ -241,11 +243,13 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   const statusValue = place.open_now
     ? `Open · until ${place.closes_at}`
     : `Closed · opens ${place.opens_at}`;
+  const promoPlace = placeDetailAsPromoPlace(place);
+
   return (
-    <section className="flex flex-col gap-4 pt-3">
-      <div className="flex items-start gap-3">
-        {/* Photo — square with rounded borders. */}
-        <div className="border-border h-24 w-24 shrink-0 overflow-hidden rounded-2xl border">
+    <section className="flex flex-col gap-3 pt-3">
+      {/* IG header row: avatar + posts / followers / following pattern */}
+      <div className="flex items-center gap-4">
+        <div className="border-border h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border">
           {place.photos.length > 0 ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -261,48 +265,98 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
             </div>
           )}
         </div>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          <OverviewChip>{place.category}</OverviewChip>
-          <OverviewChip>{priceLabel}</OverviewChip>
-          <OverviewChip
-            icon={Star}
-            iconClass="fill-amber-500 text-amber-500"
-            iconStrokeWidth={0}
-          >
-            {googleRating}
-            <span className="text-muted-foreground">
-              ({formatCount(place.google.count, false)})
-            </span>
-          </OverviewChip>
-          <OverviewChip icon={Instagram} iconClass="text-pink-500">
-            {igFollowers}
-            <Users className="text-muted-foreground h-3 w-3 shrink-0" />
-          </OverviewChip>
-          <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
-            {place.distance_km} km
-          </OverviewChip>
-          <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
-            {place.zone}
-          </OverviewChip>
-          <OverviewChip
-            icon={Clock}
-            iconClass={
-              place.open_now ? "text-emerald-600" : "text-muted-foreground"
+        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
+          <ProfileStat
+            value={googleRating}
+            label={`${googleCount} Google`}
+            icon={
+              <Star
+                className="h-3 w-3 fill-amber-500 text-amber-500"
+                strokeWidth={0}
+              />
             }
-          >
-            {statusValue}
-          </OverviewChip>
-          <PromoChip
-            place={placeDetailAsPromoPlace(place)}
-            size="md"
-            showWhenEmpty
-            tone="light"
           />
+          <ProfileStat
+            value={igFollowers}
+            label="Instagram"
+            icon={<Instagram className="h-3 w-3 text-pink-500" />}
+          />
+          <ProfileRewardStat place={promoPlace} />
         </div>
+      </div>
+
+      {/* Meta under the bio line — category · price · zone · distance · open */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <OverviewChip>{place.category}</OverviewChip>
+        <OverviewChip>{priceLabel}</OverviewChip>
+        <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
+          {place.zone}
+        </OverviewChip>
+        <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
+          {place.distance_km} km
+        </OverviewChip>
+        <OverviewChip
+          icon={Clock}
+          iconClass={
+            place.open_now ? "text-emerald-600" : "text-muted-foreground"
+          }
+        >
+          {statusValue}
+        </OverviewChip>
       </div>
 
       <ProfileActions placeId={place.id} placeName={place.name} />
     </section>
+  );
+}
+
+/** Instagram-style stat cell: big number, small label underneath. */
+function ProfileStat({
+  value,
+  label,
+  icon,
+}: {
+  value: string;
+  label: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center">
+      <span className="text-foreground flex items-center gap-0.5 text-[17px] leading-tight font-bold tabular-nums">
+        {icon}
+        {value}
+      </span>
+      <span className="text-muted-foreground mt-0.5 max-w-full truncate text-[10px] leading-tight font-medium">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** Third IG-style column — reward % or “No reward”. */
+function ProfileRewardStat({ place }: { place: Place }) {
+  const { key: classKey } = useConsumerClass();
+  const isFirstVisit = place.is_first_visit !== false;
+  const promoPercent = resolvePromoRateFromPlaceRow(
+    place as unknown as Record<string, unknown>,
+    isFirstVisit,
+    classKey === "premium",
+  );
+  if (promoPercent == null) {
+    return (
+      <ProfileStat
+        value="—"
+        label="No reward"
+        icon={<Gift className="text-muted-foreground h-3 w-3" />}
+      />
+    );
+  }
+  return (
+    <ProfileStat
+      value={`${promoPercent}%`}
+      label={isFirstVisit ? "Welcome" : "Returning"}
+      icon={<Gift className="h-3 w-3 text-pink-500" />}
+    />
   );
 }
 
