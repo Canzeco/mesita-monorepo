@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Copy, KeyRound, Loader2, Trash2 } from "lucide-react";
+import { Bot, Copy, Crown, KeyRound, Loader2, Trash2 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   IconCircle,
@@ -11,6 +11,7 @@ import {
 import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { useConsumerClass } from "@/lib/class-context";
 import {
   apiCreateMcpToken,
   apiListMcpTokens,
@@ -24,6 +25,7 @@ import {
 // Mesita profile (find places, book, check rewards).
 //
 // decision: Pato — real Consumer MCP, not a copy-paste tip (MESITA-265).
+// decision: Pato — Premium-only (not Free) (MESITA-266).
 
 function cursorSnippet(mcpUrl: string, token: string): string {
   return JSON.stringify(
@@ -50,6 +52,8 @@ export function AiConnectModal({
   onClose: () => void;
 }) {
   const supabase = useBrowserSupabase();
+  const { key: classKey } = useConsumerClass();
+  const isPremium = classKey === "premium";
   const [tokens, setTokens] = useState<McpTokenMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [minting, setMinting] = useState(false);
@@ -77,6 +81,10 @@ export function AiConnectModal({
   }, [open, refresh]);
 
   async function mint() {
+    if (!isPremium) {
+      toast("AI connect is for Mesita Premium — upgrade to create a token");
+      return;
+    }
     setMinting(true);
     setFresh(null);
     try {
@@ -119,8 +127,12 @@ export function AiConnectModal({
             <Bot className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className="font-display flex items-center gap-2 text-xl font-semibold tracking-tight">
               AI
+              <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+                <Crown className="h-2.5 w-2.5 text-amber-600" />
+                Premium
+              </span>
             </h2>
             <p className="text-muted-foreground text-[12px]">
               Connect your Mesita profile to an AI
@@ -131,15 +143,29 @@ export function AiConnectModal({
         <p className="text-muted-foreground mt-4 text-[13px] leading-relaxed">
           Generate a personal access token, then add Mesita as an MCP server in
           Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
-          book tables, and check rewards — as you.
+          book tables, and check rewards — as you.{" "}
+          <span className="text-foreground font-semibold">
+            Available for Premium members only
+          </span>
+          — not on Free.
         </p>
+
+        {!isPremium && (
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
+            <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+            <p className="text-[12px] leading-relaxed text-amber-950">
+              You’re on Free. Upgrade to Mesita Premium to create an MCP token
+              and let an AI control your profile.
+            </p>
+          </div>
+        )}
 
         <div className="mt-5">
           <SettingsGroup>
             <button
               type="button"
               onClick={mint}
-              disabled={minting}
+              disabled={minting || !isPremium}
               className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
             >
               <IconCircle tint="violet">
@@ -151,10 +177,16 @@ export function AiConnectModal({
               </IconCircle>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">
-                  {minting ? "Creating token…" : "Create MCP token"}
+                  {minting
+                    ? "Creating token…"
+                    : isPremium
+                      ? "Create MCP token"
+                      : "Premium required"}
                 </span>
                 <span className="text-muted-foreground block truncate text-[11px]">
-                  Shown once — copy it into your AI client
+                  {isPremium
+                    ? "Shown once — copy it into your AI client"
+                    : "Upgrade to Premium to mint a token"}
                 </span>
               </span>
             </button>

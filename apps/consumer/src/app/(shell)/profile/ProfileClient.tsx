@@ -172,7 +172,7 @@ export function ProfileClient({
             Icon={Bot}
             tint="violet"
             title="AI"
-            summary="Connect your Mesita profile to an AI"
+            summary="Connect your Mesita profile to an AI · Premium"
             onClick={() => setAiOpen(true)}
           />
 
