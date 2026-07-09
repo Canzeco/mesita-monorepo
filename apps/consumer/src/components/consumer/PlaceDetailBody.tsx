@@ -40,6 +40,7 @@ import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
 import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
+import { PromoChip } from "@/components/consumer/PromoChip";
 import {
   FacebookLogo,
   GoogleLogo,
@@ -55,6 +56,7 @@ import {
   resolveActivePromoRate,
   placeOffersMesitaRewards,
 } from "@/lib/promo-rates";
+import type { Place } from "@/lib/api/places";
 
 import { cn, firstInitial } from "@/lib/utils";
 import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
@@ -64,9 +66,9 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // intercepted modal at @modal/(.)place/[id]) each render their own top
 // bar (back + place name + ⋯) on top of this. Structure:
 //
-//   1. Profile summary — square photo left, swipe-card multi-field chips
-//      right (same OverviewChip wrap as the old place summary / Discover
-//      swipe card), then Save place + Make reservation buttons.
+//   1. Profile summary — square photo left, chips matching Discover swipe
+//      (category · $ · rating · IG · distance · zone · open · verified ·
+//      promo), then Save place + Make reservation.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -222,22 +224,17 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── 1. Profile summary (photo + swipe-card multi-field chips) ───────────
+// ── 1. Profile summary (photo + swipe-matched chips) ────────────────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // Wireframe: photo left · multi-field chips right (same fields as the
-  // Discover swipe card / pre-IG OverviewChip wrap), then Save / Reserve.
-  // decision: light OverviewChip on white (not the dark swipe MetaChip
-  // overlay) so the chips stay legible on the place page.
-  // decision: last-updated lives in LastUpdatedBox below Ownership — not
-  // in the summary chip wall (and not on the swipe card).
+  // decision: chip set mirrors SwipeCardInfo exactly — category, $, rating,
+  // IG, distance, zone, open status, verified, promo/No Reward. No MX$
+  // per-person range, no full-category, no last-updated (that lives in
+  // LastUpdatedBox). Light OverviewChip styling for the white page.
   const isPartner = place.listing_type === "partner";
   const googleRating = place.google.rating.toFixed(1);
   const igFollowers = formatCount(place.instagram.followers, false);
-  const fullCategory = place.details.category_full.trim();
-  const showFullCategory =
-    fullCategory.length > 0 &&
-    fullCategory.toLowerCase() !== place.category.toLowerCase();
+  const priceLevelLabel = "$".repeat(place.price_level);
   const statusValue = place.open_now
     ? `Open · until ${place.closes_at}`
     : `Closed · opens ${place.opens_at}`;
@@ -261,16 +258,12 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
             </div>
           )}
         </div>
-        {/* Multi-field chips — same set as swipe card / old SummaryHeader. */}
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           <OverviewChip capitalize>{place.category}</OverviewChip>
-          {showFullCategory && (
-            <OverviewChip capitalize>{fullCategory}</OverviewChip>
-          )}
-          <OverviewChip>{formatPerPersonPrice(place.price_range)}</OverviewChip>
+          <OverviewChip>{priceLevelLabel}</OverviewChip>
           <OverviewChip
             icon={Star}
-            iconClass="text-amber-500 fill-amber-500"
+            iconClass="fill-amber-500 text-amber-500"
             iconStrokeWidth={0}
           >
             {googleRating}
@@ -280,7 +273,13 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
           </OverviewChip>
           <OverviewChip icon={Instagram} iconClass="text-pink-500">
             {igFollowers}
-            <span className="text-muted-foreground">followers</span>
+            <Users className="text-muted-foreground h-3 w-3 shrink-0" />
+          </OverviewChip>
+          <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
+            {place.distance_km} km
+          </OverviewChip>
+          <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
+            {place.zone}
           </OverviewChip>
           <OverviewChip
             icon={Clock}
@@ -290,24 +289,40 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
           >
             {statusValue}
           </OverviewChip>
-          <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
-            {place.distance_km} km
-          </OverviewChip>
-          <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
-            {place.zone}
-          </OverviewChip>
           <OverviewChip
             icon={isPartner ? BadgeCheck : ShieldAlert}
             iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-500"}
           >
             {isPartner ? "Verified Partner" : "Not Verified"}
           </OverviewChip>
+          <PromoChip
+            place={placeDetailAsPromoPlace(place)}
+            size="md"
+            showWhenEmpty
+            tone="light"
+          />
         </div>
       </div>
 
       <ProfileActions placeId={place.id} placeName={place.name} />
     </section>
   );
+}
+
+/** Shim PlaceDetail → Place shape PromoChip / resolvePromoRateFromPlaceRow expect. */
+function placeDetailAsPromoPlace(place: PlaceDetail): Place {
+  return {
+    id: place.id,
+    name: place.name,
+    listing_type: place.listing_type,
+    is_first_visit: place.promo_matrix.is_first_visit,
+    welcome_free_rate: place.promo_matrix.welcome.free,
+    welcome_premium_rate: place.promo_matrix.welcome.premium,
+    free_rate: place.promo_matrix.default.free,
+    premium_rate: place.promo_matrix.default.premium,
+    reward_cap_mxn: place.reward_cap_mxn,
+    currency: place.currency,
+  } as unknown as Place;
 }
 
 function OverviewChip({
@@ -1523,10 +1538,4 @@ function formatCount(n: number, exact: boolean): string {
   if (exact && n >= 1000) return n.toLocaleString("en-US");
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
-}
-
-function formatPerPersonPrice(priceRange: string): string {
-  if (!priceRange) return "Price unavailable";
-  if (/per person/i.test(priceRange)) return priceRange;
-  return `${priceRange} per person`;
 }
