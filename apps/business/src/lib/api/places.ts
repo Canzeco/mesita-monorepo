@@ -213,7 +213,8 @@ export type UpdatePlaceInput = {
   name?: string;
   category?: string | null;
   vibe?: string | null;
-  price_level?: number | null;
+  // price_level is enrich-only (Google Places) — not accepted by
+  // business-web-update-project.
   // Three-letter ISO 4217 code, e.g. "MXN". Sent uppercase; the EF
   // validates the shape and rejects anything else.
   currency?: string | null;
