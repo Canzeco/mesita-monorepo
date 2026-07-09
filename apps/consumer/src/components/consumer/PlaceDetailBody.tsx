@@ -1545,9 +1545,8 @@ const RESERVATION_DEFS = [
   { key: "resy_url", label: "Resy", Icon: CalendarCheck },
   {
     key: "uber_eats_url",
-    // decision: Pato — logo + "Uber Eats" text like every other channel chip
-    // (not the wide wordmark alone). Mark must be Uber Eats green + "eats",
-    // never the Menulog M that briefly shipped in ubereats-mark.svg.
+    // decision: Pato — real Uber Eats Simple Icons mark (green stacked
+    // wordmark), not the fake green app-square with "eats" lettering.
     label: "Uber Eats",
     Icon: Bike,
     logo: "/channels/ubereats-mark.svg",
