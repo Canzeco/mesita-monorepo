@@ -56,6 +56,7 @@ import {
   resolveActivePromoRate,
   placeOffersMesitaRewards,
 } from "@/lib/promo-rates";
+import { formatPlacePriceChip } from "@/lib/place-price";
 import type { Place } from "@/lib/api/places";
 
 import { cn, firstInitial } from "@/lib/utils";
@@ -67,8 +68,8 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // bar (back + place name + ⋯) on top of this. Structure:
 //
 //   1. Profile summary — square photo left, chips matching Discover swipe
-//      (category · $ · rating · IG · distance · zone · open · verified ·
-//      promo), then Save place + Make reservation.
+//      (category · price range · rating · IG · distance · zone · open ·
+//      verified · promo), then Save place + Make reservation.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -227,14 +228,18 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 // ── 1. Profile summary (photo + swipe-matched chips) ────────────────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // decision: chip set mirrors SwipeCardInfo exactly — category, $, rating,
-  // IG, distance, zone, open status, verified, promo/No Reward. No MX$
-  // per-person range, no full-category, no last-updated (that lives in
-  // LastUpdatedBox). Light OverviewChip styling for the white page.
+  // decision: chip set mirrors SwipeCardInfo — category, price range,
+  // rating, IG, distance, zone, open status, verified, promo/No Reward.
+  // decision: Pato — price chip shows the real range (MX$200–300), not $$$.
   const isPartner = place.listing_type === "partner";
   const googleRating = place.google.rating.toFixed(1);
   const igFollowers = formatCount(place.instagram.followers, false);
-  const priceLevelLabel = "$".repeat(place.price_level);
+  const priceLabel =
+    formatPlacePriceChip({
+      priceRange: place.price_range,
+      priceLevel: place.price_level,
+      currency: place.currency,
+    }) ?? "Price unavailable";
   const statusValue = place.open_now
     ? `Open · until ${place.closes_at}`
     : `Closed · opens ${place.opens_at}`;
@@ -260,7 +265,7 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           <OverviewChip>{place.category}</OverviewChip>
-          <OverviewChip>{priceLevelLabel}</OverviewChip>
+          <OverviewChip>{priceLabel}</OverviewChip>
           <OverviewChip
             icon={Star}
             iconClass="fill-amber-500 text-amber-500"

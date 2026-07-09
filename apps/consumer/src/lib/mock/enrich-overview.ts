@@ -28,6 +28,7 @@ import {
   computeOpenState,
   neighborhoodFromAddress,
 } from "@/lib/adapters/place-to-detail";
+import { formatPlacePriceChip } from "@/lib/place-price";
 import { relativeLabel } from "@/lib/utils";
 
 // Derives the overview-parity fields from the raw places columns that ride
@@ -40,6 +41,7 @@ export function enrichPlaceOverview(v: Place): Place {
   const count = num(row.google_review_count);
   const igFollowers = num(row.instagram_followers_count);
   const priceLevel = num(row.price_level);
+  const currency = str(row.currency) ?? "MXN";
   // Neighborhood (zone) priority: the real zone column → the colonia
   // parsed out of the formatted address → the city. Most places have no
   // zone column yet but DO carry the colonia inside `address`
@@ -62,14 +64,20 @@ export function enrichPlaceOverview(v: Place): Place {
     Object.keys(row.hours as object).length > 0;
   const open = hasHours ? computeOpenState(row.hours, str(row.timezone)) : null;
 
+  const derivedPriceRange = formatPlacePriceChip({
+    priceRange: v.price_range ?? str(row.price_range),
+    priceLevel: v.price_level ?? priceLevel,
+    currency,
+  });
+
   return {
     ...v,
     google_rating: v.google_rating ?? rating ?? null,
     google_count: v.google_count ?? count ?? null,
     instagram_followers_count:
       v.instagram_followers_count ?? igFollowers ?? null,
-    price_range:
-      v.price_range ?? (priceLevel != null ? "$".repeat(priceLevel) : null),
+    // Prefer a real numeric range over $$$ symbols for the price chip.
+    price_range: derivedPriceRange ?? v.price_range ?? null,
     open_now: v.open_now ?? open?.open_now ?? null,
     opens_at: v.opens_at ?? (open?.opens_at || null),
     // Prefer the computed close time; fall back to the raw closes_at column.

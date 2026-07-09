@@ -13,6 +13,7 @@ import type { Place } from "@/lib/api/places";
 import { neighborhoodFromAddress } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStatusLabel } from "@/lib/place-status";
+import { formatPlacePriceChip } from "@/lib/place-price";
 import { PromoChip } from "./PromoChip";
 
 /** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
@@ -23,8 +24,11 @@ export function SwipeCardInfo({
   place: Place;
   compact?: boolean;
 }) {
-  const priceLevelLabel =
-    place.price_level != null ? "$".repeat(place.price_level) : null;
+  const priceLabel = formatPlacePriceChip({
+    priceRange: place.price_range,
+    priceLevel: place.price_level,
+    currency: place.currency,
+  });
   const ratingLabel =
     place.google_rating != null ? place.google_rating.toFixed(1) : null;
   const ratingCountLabel =
@@ -67,9 +71,9 @@ export function SwipeCardInfo({
             <span className="font-semibold">{categoryLabel}</span>
           </MetaChip>
         )}
-        {priceLevelLabel && (
+        {priceLabel && (
           <MetaChip compact={compact}>
-            <span className="font-semibold">{priceLevelLabel}</span>
+            <span className="font-semibold">{priceLabel}</span>
           </MetaChip>
         )}
         {ratingLabel && (
