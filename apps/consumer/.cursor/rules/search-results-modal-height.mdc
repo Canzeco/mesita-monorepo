@@ -1,0 +1,13 @@
+---
+description: Search results modal must size to result count
+globs: src/components/consumer/search/**
+alwaysApply: false
+---
+
+# Search results modal height
+
+The Search results overlay (`SearchClient` → `SearchResultsPanel`) must **grow and shrink with the number of results**.
+
+- Height fits content (eyebrow/copy + suggestion rows) — no fixed tall empty panel.
+- Do **not** use a fixed fraction like `h-[70%]` that leaves blank white space under few results.
+- Cap with `max-h-*` so long lists scroll inside the panel; short lists leave the map visible below.

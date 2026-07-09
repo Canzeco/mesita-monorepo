@@ -474,13 +474,13 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Typing swaps in live results over the TOP ~70% — same footprint as the
-          empty "Where to today?" panel so the search field never jumps and the
-          live map stays visible in the strip below. Sits at z-20 below the z-30
-          floating bar; pt-[60px] drops results below it. Dismiss via the bar's X
-          or a tap on the visible map strip. */}
+      {/* Typing swaps in live results under the floating bar. Height fits the
+          result count (grows/shrinks with rows); max-h-[70%] caps long lists so
+          they scroll and the map stays visible below. Sits at z-20 below the
+          z-30 floating bar; pt-[60px] drops results below it. Dismiss via the
+          bar's X or a tap on the visible map strip. */}
       {trimmed.length > 0 && (
-        <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col rounded-b-3xl border-b pt-[60px] shadow-sm">
+        <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex max-h-[70%] flex-col rounded-b-3xl border-b pt-[60px] shadow-sm">
           <SearchResultsPanel
             query={query}
             searching={searching}

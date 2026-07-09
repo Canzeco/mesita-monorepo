@@ -36,8 +36,8 @@ export function SearchResultsPanel({
   const settled = !searching && query.trim().length >= 2;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+    <div className="flex min-h-0 flex-col overflow-hidden">
+      <div className="min-h-0 space-y-3 overflow-y-auto p-3">
         {query.trim().length < 2 && (
           <p className="text-muted-foreground px-1 py-6 text-center text-xs">
             Keep typing — at least two letters to search.
