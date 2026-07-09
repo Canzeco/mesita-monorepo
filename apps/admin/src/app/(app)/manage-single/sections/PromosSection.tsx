@@ -1,21 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Crown, Loader2, Percent } from "lucide-react";
+import {
+  SUBSCRIPTIONS,
+  dbStateForSubscription,
+  subscriptionForPlan,
+  visibilityForPlan,
+  type PlanVisibility,
+  type SubscriptionId,
+} from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
 import { ErrorNote, SectionCard } from "../ui";
 
-type Sub = "free" | "pro_discount" | "ultra_discount";
-type RateCol = "welcome_free_rate" | "welcome_premium_rate" | "free_rate" | "premium_rate";
+type RateCol =
+  | "welcome_free_rate"
+  | "welcome_premium_rate"
+  | "free_rate"
+  | "premium_rate";
 
 const RATE_CHOICES = [10, 20, 50, 70] as const;
 const CAP_CHOICES = [200, 500, 1000, 2000] as const;
-
-const SUBS: { id: Sub; label: string; hint: string }[] = [
-  { id: "free", label: "Free", hint: "Listed, no discounts" },
-  { id: "pro_discount", label: "Pro", hint: "Medium visibility" },
-  { id: "ultra_discount", label: "Ultra", hint: "Max visibility" },
-];
 
 const RATE_ROWS: { col: RateCol; label: string; hint: string }[] = [
   { col: "welcome_free_rate", label: "Welcome · Free", hint: "First visit, Free users" },
@@ -23,18 +28,6 @@ const RATE_ROWS: { col: RateCol; label: string; hint: string }[] = [
   { col: "free_rate", label: "Returning · Free", hint: "Repeat visit, Free users" },
   { col: "premium_rate", label: "Returning · Premium", hint: "Repeat visit, Premium users" },
 ];
-
-function subForPlan(plan: string | null): Sub {
-  if (plan === "informal_ultra" || plan === "formal_ultra") return "ultra_discount";
-  if (plan === "informal_pro" || plan === "formal_pro") return "pro_discount";
-  return "free";
-}
-
-function dbStateForSub(sub: Sub): { plan: string; fiscal_type?: string } {
-  if (sub === "pro_discount") return { plan: "informal_pro", fiscal_type: "informal" };
-  if (sub === "ultra_discount") return { plan: "informal_ultra", fiscal_type: "informal" };
-  return { plan: "free" };
-}
 
 export function PromosSection({
   place,
@@ -46,7 +39,7 @@ export function PromosSection({
   const [v, setV] = useState(place);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const sub = subForPlan(v.plan);
+  const sub = subscriptionForPlan(v.plan);
   const isFree = sub === "free";
 
   // Optimistic write: patch local + bubble, persist, revert on error.
@@ -70,110 +63,255 @@ export function PromosSection({
   };
 
   return (
-    <SectionCard
-      icon={<Percent className="text-muted-foreground h-4 w-4" />}
-      title="Promos"
-      subtitle="Subscription plan, discount rates per user tier & visit, and the ticket cap. Discount-only — the place never holds money."
-      action={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
-    >
-      {/* Plan */}
-      <p className="text-muted-foreground mt-5 text-[11px] font-semibold tracking-[0.12em] uppercase">
-        Plan
-      </p>
-      <div className="mt-2 grid gap-3 sm:grid-cols-3">
-        {SUBS.map((s) => {
-          const active = sub === s.id;
-          return (
-            <button
+    <div className="flex flex-col gap-5">
+      {/* Visibility is the product signal — plan only exists to move this needle. */}
+      <VisibilityRail plan={v.plan} />
+
+      <SectionCard
+        icon={<Percent className="text-muted-foreground h-4 w-4" />}
+        title="Promos"
+        subtitle="Subscription plan, discount rates per user tier & visit, and the ticket cap. Discount-only — the place never holds money."
+        action={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
+      >
+        <p className="text-muted-foreground mt-5 text-[11px] font-semibold tracking-[0.12em] uppercase">
+          Subscription
+        </p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+          {SUBSCRIPTIONS.map((s) => (
+            <SubscriptionCard
               key={s.id}
-              type="button"
-              disabled={pending}
-              onClick={() => persist(dbStateForSub(s.id))}
-              className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition disabled:opacity-60 ${
-                active
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-background hover:border-foreground/40"
-              }`}
+              id={s.id}
+              label={s.label}
+              price={s.price}
+              cadence={s.cadence}
+              tagline={s.tagline}
+              visibility={s.visibility}
+              setup={s.setup}
+              featured={!!s.featured}
+              isCurrent={sub === s.id}
+              pending={pending}
+              onPick={() => persist(dbStateForSubscription(s.id))}
+            />
+          ))}
+        </div>
+
+        <p className="text-muted-foreground mt-7 text-[11px] font-semibold tracking-[0.12em] uppercase">
+          Discount rates {isFree && <span className="normal-case">· enable a paid plan to set</span>}
+        </p>
+        <div className="mt-2 flex flex-col gap-2">
+          {RATE_ROWS.map((row) => (
+            <div
+              key={row.col}
+              className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
             >
-              <span className="flex items-center gap-1.5 text-sm font-semibold">
-                <Crown className="h-3.5 w-3.5" /> {s.label}
-              </span>
-              <span className={active ? "text-background/70 text-xs" : "text-muted-foreground text-xs"}>
-                {s.hint}
-              </span>
-            </button>
+              <div>
+                <p className="text-sm font-medium">{row.label}</p>
+                <p className="text-muted-foreground text-xs">{row.hint}</p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <Pill
+                  active={v[row.col] == null}
+                  disabled={isFree || pending}
+                  onClick={() => persist({ [row.col]: null })}
+                  tone="off"
+                >
+                  Off
+                </Pill>
+                {RATE_CHOICES.map((rate) => (
+                  <Pill
+                    key={rate}
+                    active={v[row.col] === rate}
+                    disabled={isFree || pending}
+                    onClick={() => persist({ [row.col]: rate })}
+                  >
+                    {rate}%
+                  </Pill>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-muted-foreground mt-7 text-[11px] font-semibold tracking-[0.12em] uppercase">
+          Ticket cap {v.currency ? `(${v.currency})` : ""}
+        </p>
+        <div className="border-border bg-background mt-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+          <p className="text-muted-foreground text-xs">Max discount applied to a single ticket.</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Pill
+              active={v.monthly_promo_cap == null}
+              disabled={pending}
+              onClick={() => persist({ monthly_promo_cap: null })}
+              tone="off"
+            >
+              No cap
+            </Pill>
+            {CAP_CHOICES.map((cap) => (
+              <Pill
+                key={cap}
+                active={v.monthly_promo_cap === cap}
+                disabled={pending}
+                onClick={() => persist({ monthly_promo_cap: cap })}
+              >
+                {cap}
+              </Pill>
+            ))}
+          </div>
+        </div>
+
+        {error && <ErrorNote message={error} />}
+      </SectionCard>
+    </div>
+  );
+}
+
+// Visibility rail from mesita-web-business-legacy. Three levels (Low → Max),
+// one per plan. Mesita shows higher-plan places to more guests on every
+// discovery surface — this is the answer the operator needs at a glance.
+function VisibilityRail({ plan }: { plan: string | null }) {
+  const current = visibilityForPlan(plan);
+  const levels: { label: string; real: PlanVisibility }[] = [
+    { label: "Low", real: "Low" },
+    { label: "Medium", real: "Medium" },
+    { label: "Max", real: "Max" },
+  ];
+  const currentIdx = levels.findIndex((l) => l.real === current);
+
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4 shadow-[0_10px_30px_-22px_rgba(236,72,153,0.6)]">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-display text-sm font-semibold tracking-tight">Visibility</h3>
+        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+          Step {currentIdx + 1} of {levels.length}
+        </span>
+      </div>
+      <p className="font-display text-foreground mt-1 text-2xl font-semibold leading-none tracking-tight">
+        {current}
+      </p>
+
+      <div className="mt-5 flex items-center">
+        {levels.map((l, i) => {
+          const reached = i < currentIdx;
+          const isCurrent = i === currentIdx;
+          return (
+            <Fragment key={l.label}>
+              {i > 0 && (
+                <div
+                  className={
+                    "h-1.5 flex-1 rounded-full " +
+                    (i <= currentIdx ? "bg-pink-gradient" : "bg-muted/80")
+                  }
+                />
+              )}
+              <div
+                className={
+                  "shrink-0 rounded-full transition " +
+                  (isCurrent
+                    ? "bg-pink-gradient shadow-glow ring-pink-500/30 h-4 w-4 ring-4"
+                    : reached
+                      ? "bg-pink-gradient h-3 w-3"
+                      : "bg-muted/80 h-3 w-3")
+                }
+              />
+            </Fragment>
           );
         })}
       </div>
 
-      {/* Rates */}
-      <p className="text-muted-foreground mt-7 text-[11px] font-semibold tracking-[0.12em] uppercase">
-        Discount rates {isFree && <span className="normal-case">· enable a paid plan to set</span>}
-      </p>
-      <div className="mt-2 flex flex-col gap-2">
-        {RATE_ROWS.map((row) => (
-          <div
-            key={row.col}
-            className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+      <div className="mt-2 flex justify-between text-[9px] font-semibold tracking-wider uppercase">
+        {levels.map((l, i) => (
+          <span
+            key={l.label}
+            className={i === currentIdx ? "text-foreground" : "text-muted-foreground/70"}
           >
-            <div>
-              <p className="text-sm font-medium">{row.label}</p>
-              <p className="text-muted-foreground text-xs">{row.hint}</p>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <Pill
-                active={v[row.col] == null}
-                disabled={isFree || pending}
-                onClick={() => persist({ [row.col]: null })}
-                tone="off"
-              >
-                Off
-              </Pill>
-              {RATE_CHOICES.map((rate) => (
-                <Pill
-                  key={rate}
-                  active={v[row.col] === rate}
-                  disabled={isFree || pending}
-                  onClick={() => persist({ [row.col]: rate })}
-                >
-                  {rate}%
-                </Pill>
-              ))}
-            </div>
-          </div>
+            {l.label}
+          </span>
         ))}
       </div>
+    </section>
+  );
+}
 
-      {/* Cap */}
-      <p className="text-muted-foreground mt-7 text-[11px] font-semibold tracking-[0.12em] uppercase">
-        Ticket cap {v.currency ? `(${v.currency})` : ""}
-      </p>
-      <div className="border-border bg-background mt-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
-        <p className="text-muted-foreground text-xs">Max discount applied to a single ticket.</p>
-        <div className="flex flex-wrap gap-1.5">
-          <Pill
-            active={v.monthly_promo_cap == null}
-            disabled={pending}
-            onClick={() => persist({ monthly_promo_cap: null })}
-            tone="off"
-          >
-            No cap
-          </Pill>
-          {CAP_CHOICES.map((cap) => (
-            <Pill
-              key={cap}
-              active={v.monthly_promo_cap === cap}
-              disabled={pending}
-              onClick={() => persist({ monthly_promo_cap: cap })}
-            >
-              {cap}
-            </Pill>
-          ))}
-        </div>
+function SubscriptionCard({
+  id,
+  label,
+  price,
+  cadence,
+  tagline,
+  visibility,
+  setup,
+  featured,
+  isCurrent,
+  pending,
+  onPick,
+}: {
+  id: SubscriptionId;
+  label: string;
+  price: string;
+  cadence: string;
+  tagline: string;
+  visibility: PlanVisibility;
+  setup?: string;
+  featured: boolean;
+  isCurrent: boolean;
+  pending: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      disabled={isCurrent || pending}
+      className={
+        "border-border bg-card relative flex flex-col gap-2 rounded-2xl border p-4 text-left transition disabled:cursor-default " +
+        (isCurrent
+          ? "border-foreground shadow-elev ring-1 ring-foreground/10"
+          : "hover:border-foreground/30 hover:-translate-y-0.5") +
+        (featured && !isCurrent ? " bg-pink-gradient/[0.04]" : "")
+      }
+    >
+      {isCurrent && (
+        <span className="bg-foreground text-background absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
+          Current
+        </span>
+      )}
+      {!isCurrent && featured && (
+        <span className="bg-pink-gradient absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider text-white uppercase">
+          Recommended
+        </span>
+      )}
+      <div className="flex items-center gap-2 pr-16">
+        {id !== "free" && (
+          <span className="bg-muted text-foreground inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+            {id === "ultra_discount" ? (
+              <Crown className="h-3.5 w-3.5" />
+            ) : (
+              <Percent className="h-3.5 w-3.5" />
+            )}
+          </span>
+        )}
+        <span className="font-display min-w-0 truncate text-base font-semibold tracking-tight">
+          {label}
+        </span>
       </div>
-
-      {error && <ErrorNote message={error} />}
-    </SectionCard>
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-display text-foreground text-lg leading-none font-bold tabular-nums">
+          {price}
+        </span>
+        <span className="text-muted-foreground text-[11px]">{cadence}</span>
+      </div>
+      <p className="text-muted-foreground text-[12px] leading-snug">{tagline}</p>
+      <div className="mt-auto flex flex-col gap-0.5">
+        <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+          {visibility} visibility
+        </p>
+        {setup && (
+          <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+            {setup} setup
+          </p>
+        )}
+      </div>
+    </button>
   );
 }
 
