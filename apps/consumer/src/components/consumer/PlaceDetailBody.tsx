@@ -65,9 +65,9 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // intercepted modal at @modal/(.)place/[id]) each render their own top
 // bar (back + place name + ⋯) on top of this. Structure:
 //
-//   1. Profile summary — square avatar left, IG-style stat row right,
-//      bio lines, then Save place + Make reservation buttons (the old
-//      bottom action bar moved up here).
+//   1. Profile summary — square photo left, swipe-card multi-field chips
+//      right (same OverviewChip wrap as the old place summary / Discover
+//      swipe card), then Save place + Make reservation buttons.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -243,31 +243,28 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── 1. Profile summary (Instagram-style header) ─────────────────────────
+// ── 1. Profile summary (photo + swipe-card multi-field chips) ───────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // Instagram profile anatomy, Mesita data:
-  //   • avatar — first photo in a rounded square (gradient initial
-  //     fallback), where IG puts the profile picture
-  //   • stat row — Google rating · Google reviews · IG followers, the
-  //     three-column bold-number-over-muted-label strip
-  //   • bio — name + verified badge, category/price line, open status,
-  //     zone/distance, freshness
-  //   • buttons — Save place + Make reservation where IG puts
-  //     Following / Message (the old bottom action bar moved up here)
+  // Wireframe: photo left · multi-field chips right (same fields as the
+  // Discover swipe card / pre-IG OverviewChip wrap), then Save / Reserve.
+  // decision: light OverviewChip on white (not the dark swipe MetaChip
+  // overlay) so the chips stay legible on the place page.
   const isPartner = place.listing_type === "partner";
-  const statusValue = place.open_now
-    ? `Open · until ${place.closes_at}`
-    : `Closed · opens ${place.opens_at}`;
+  const googleRating = place.google.rating.toFixed(1);
+  const igFollowers = formatCount(place.instagram.followers, false);
   const fullCategory = place.details.category_full.trim();
   const showFullCategory =
     fullCategory.length > 0 &&
     fullCategory.toLowerCase() !== place.category.toLowerCase();
+  const statusValue = place.open_now
+    ? `Open · until ${place.closes_at}`
+    : `Closed · opens ${place.opens_at}`;
   return (
     <section className="flex flex-col gap-4 pt-3">
-      <div className="flex items-center gap-4">
-        {/* Avatar — square with rounded borders, like an IG business pfp. */}
-        <div className="border-border h-20 w-20 shrink-0 overflow-hidden rounded-2xl border">
+      <div className="flex items-start gap-3">
+        {/* Photo — square with rounded borders. */}
+        <div className="border-border h-24 w-24 shrink-0 overflow-hidden rounded-2xl border">
           {place.photos.length > 0 ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -283,78 +280,60 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
             </div>
           )}
         </div>
-        {/* IG-style stat strip. */}
-        <div className="grid flex-1 grid-cols-3 gap-1">
-          <ProfileStat
-            value={place.google.rating.toFixed(1)}
-            label="rating"
-            icon={Star}
-            iconClass="fill-amber-400 text-amber-400"
-          />
-          <ProfileStat
-            value={formatCount(place.google.count, false)}
-            label="reviews"
-          />
-          <ProfileStat
-            value={formatCount(place.instagram.followers, false)}
-            label="followers"
-          />
-        </div>
-      </div>
-
-      {/* Bio. */}
-      <div className="flex flex-col gap-1">
-        <p className="flex items-center gap-1.5 text-sm font-semibold">
-          {place.name}
-          {isPartner ? (
-            <BadgeCheck
-              className="h-4 w-4 shrink-0 fill-sky-500 text-white"
-              aria-label="Verified Partner"
-            />
-          ) : (
-            <ShieldAlert
-              className="h-4 w-4 shrink-0 text-amber-500"
-              aria-label="Not verified"
-            />
-          )}
-        </p>
-        <p className="text-muted-foreground text-[13px] leading-snug">
-          <span className="capitalize">{place.category}</span>
+        {/* Multi-field chips — same set as swipe card / old SummaryHeader. */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <OverviewChip capitalize>{place.category}</OverviewChip>
           {showFullCategory && (
-            <span className="capitalize"> · {fullCategory}</span>
+            <OverviewChip capitalize>{fullCategory}</OverviewChip>
           )}
-          <span> · {formatPerPersonPrice(place.price_range)}</span>
-        </p>
-        <p className="text-[13px] leading-snug">
-          <span
-            className={cn(
-              "font-semibold",
-              place.open_now ? "text-emerald-700" : "text-muted-foreground",
-            )}
+          <OverviewChip>{formatPerPersonPrice(place.price_range)}</OverviewChip>
+          <OverviewChip
+            icon={Star}
+            iconClass="text-amber-500 fill-amber-500"
+            iconStrokeWidth={0}
+          >
+            {googleRating}
+            <span className="text-muted-foreground">
+              ({formatCount(place.google.count, false)})
+            </span>
+          </OverviewChip>
+          <OverviewChip icon={Instagram} iconClass="text-pink-500">
+            {igFollowers}
+            <span className="text-muted-foreground">followers</span>
+          </OverviewChip>
+          <OverviewChip
+            icon={Clock}
+            iconClass={
+              place.open_now ? "text-emerald-600" : "text-muted-foreground"
+            }
           >
             {statusValue}
-          </span>
-        </p>
-        <p className="text-muted-foreground flex items-center gap-1 text-[13px] leading-snug">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
-          {place.zone}
-          <span>·</span>
-          <Navigation className="h-3 w-3 shrink-0" />
-          {place.distance_km} km
-        </p>
-        <p className="text-muted-foreground flex items-center gap-1 text-[11px]">
-          {place.is_enriching ? (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
-              Enriching…
-            </>
-          ) : (
-            <>
-              <Pencil className="h-3 w-3" />
-              Updated {place.last_updated_label}
-            </>
-          )}
-        </p>
+          </OverviewChip>
+          <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
+            {place.distance_km} km
+          </OverviewChip>
+          <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
+            {place.zone}
+          </OverviewChip>
+          <OverviewChip
+            icon={isPartner ? BadgeCheck : ShieldAlert}
+            iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-500"}
+          >
+            {isPartner ? "Verified Partner" : "Not Verified"}
+          </OverviewChip>
+          <OverviewChip
+            icon={place.is_enriching ? Loader2 : Pencil}
+            iconClass={
+              place.is_enriching
+                ? "animate-spin text-violet-500"
+                : "text-muted-foreground"
+            }
+          >
+            {place.is_enriching
+              ? "Enriching…"
+              : `Updated ${place.last_updated_label}`}
+          </OverviewChip>
+        </div>
       </div>
 
       <ProfileActions placeId={place.id} placeName={place.name} />
@@ -362,27 +341,34 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   );
 }
 
-function ProfileStat({
-  value,
-  label,
+function OverviewChip({
   icon: Icon,
+  children,
+  capitalize = false,
   iconClass,
+  iconStrokeWidth = 2.25,
 }: {
-  value: string;
-  label: string;
   icon?: LucideIcon;
+  children: React.ReactNode;
+  capitalize?: boolean;
   iconClass?: string;
+  iconStrokeWidth?: number;
 }) {
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="font-display flex items-center gap-1 text-base leading-none font-semibold tabular-nums">
-        {Icon && (
-          <Icon className={cn("h-3.5 w-3.5", iconClass)} strokeWidth={0} />
-        )}
-        {value}
-      </span>
-      <span className="text-muted-foreground text-[11px]">{label}</span>
-    </div>
+    <span
+      className={cn(
+        "border-border bg-card text-foreground inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-1 text-[12px] leading-tight font-semibold whitespace-nowrap tabular-nums [font-variant-numeric:tabular-nums_lining-nums]",
+        capitalize && "capitalize",
+      )}
+    >
+      {Icon && (
+        <Icon
+          className={cn("h-3.5 w-3.5 shrink-0", iconClass ?? "text-muted-foreground")}
+          strokeWidth={iconStrokeWidth}
+        />
+      )}
+      {children}
+    </span>
   );
 }
 
