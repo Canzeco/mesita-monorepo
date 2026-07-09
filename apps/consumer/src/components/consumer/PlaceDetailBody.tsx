@@ -499,17 +499,20 @@ function ProfileActions({
   }
 
   // decision: Pato — three equal buttons on one line (not stacked).
+  // decision: Save vs Saved must read instantly — unsaved = loud pink CTA;
+  // Saved = outline + filled heart (calm on-state), not another pink fill.
   return (
     <div className={cn("grid grid-cols-3 gap-2", className)}>
       <button
         type="button"
         onClick={onSavePlace}
         aria-pressed={saved}
+        aria-label={saved ? "Remove from saved" : "Save place"}
         className={cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold text-white shadow-sm transition active:scale-[0.99]",
+          "inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold transition active:scale-[0.99]",
           saved
-            ? "bg-pink-600 hover:bg-pink-700"
-            : "bg-pink-gradient shadow-glow hover:brightness-110",
+            ? "border-primary/35 bg-primary/8 text-primary hover:bg-primary/12 border shadow-none"
+            : "bg-pink-gradient shadow-glow text-white hover:brightness-110",
         )}
       >
         <Heart
@@ -522,18 +525,18 @@ function ProfileActions({
         type="button"
         disabled
         aria-disabled="true"
-        className="inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl bg-[#0095F6]/55 py-2.5 text-[13px] font-semibold text-white"
+        className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
       >
         <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
         Reserve
-        <span className="rounded-md bg-white/20 px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+        <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
           Soon
         </span>
       </button>
       <button
         type="button"
         onClick={onSharePlace}
-        className="bg-muted text-foreground hover:bg-muted/80 inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+        className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
       >
         <Share2 className="h-4 w-4" strokeWidth={2.25} />
         Share
