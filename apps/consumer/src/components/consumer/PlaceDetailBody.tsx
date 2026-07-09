@@ -28,8 +28,6 @@ import {
   Phone,
   BadgeCheck,
   CircleHelp,
-  Pencil,
-  Loader2,
   Info,
   Crown,
   Navigation,
@@ -45,6 +43,7 @@ import {
   InstagramLogo,
   MesitaMark,
 } from "@/components/consumer/BrandLogos";
+import { Spinner } from "@/components/shared";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { classProperLabel } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
@@ -1434,7 +1433,8 @@ const RESERVATION_DEFS = [
   {
     key: "uber_eats_url",
     // decision: Pato — logo + "Uber Eats" text like every other channel chip
-    // (not the wide wordmark alone).
+    // (not the wide wordmark alone). Mark must be Uber Eats green + "eats",
+    // never the Menulog M that briefly shipped in ubereats-mark.svg.
     label: "Uber Eats",
     Icon: Bike,
     logo: "/channels/ubereats-mark.svg",
@@ -1620,23 +1620,29 @@ function VerificationBox({ place }: { place: PlaceDetail }) {
 }
 
 function LastUpdatedBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — always show Updated …; when enrichment is in flight,
-  // also show Enriching status in the same box (don't replace the freshness).
+  // decision: Pato — kill the empty card chrome. Freshness is footer meta,
+  // not a content box. Enriching = compact live pill; Updated = secondary.
   return (
-    <Box className="gap-2 py-3">
+    <div
+      className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5 px-1 py-1"
+      aria-live="polite"
+    >
       {place.is_enriching && (
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" />
-          <p className="text-foreground text-sm font-semibold">Enriching…</p>
-        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+          <Spinner
+            size="sm"
+            label="Enriching"
+            className="h-3 w-3 border-emerald-300 border-t-emerald-600"
+          />
+          Enriching
+        </span>
       )}
-      <div className="flex items-center gap-2">
-        <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />
-        <p className="text-muted-foreground text-sm font-medium">
+      {place.last_updated_label && (
+        <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
           Updated {place.last_updated_label}
         </p>
-      </div>
-    </Box>
+      )}
+    </div>
   );
 }
 
