@@ -259,7 +259,7 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
           )}
         </div>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          <OverviewChip capitalize>{place.category}</OverviewChip>
+          <OverviewChip>{place.category}</OverviewChip>
           <OverviewChip>{priceLevelLabel}</OverviewChip>
           <OverviewChip
             icon={Star}
