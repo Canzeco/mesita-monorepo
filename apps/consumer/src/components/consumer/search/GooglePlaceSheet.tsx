@@ -170,8 +170,8 @@ export function GooglePlaceSheet({
             </p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               Google knows it, but its Mesita profile hasn&apos;t been built.
-              Add it and we&apos;ll create the full page — photos, ratings, and
-              details — for everyone.
+              Add it and our AI will generate the full page — photos, ratings,
+              and details — in about 5 minutes.
             </p>
           </div>
 
@@ -182,8 +182,8 @@ export function GooglePlaceSheet({
                 className="border-emerald-300 border-t-emerald-600"
               />
               <p className="text-xs leading-relaxed font-medium text-emerald-700">
-                Being added — we&apos;re building this place&apos;s profile;
-                it&apos;ll appear on Mesita in a few minutes.
+                Being added — our AI is generating this place&apos;s profile;
+                it&apos;ll be live on Mesita in about 5 minutes.
               </p>
             </div>
           ) : (

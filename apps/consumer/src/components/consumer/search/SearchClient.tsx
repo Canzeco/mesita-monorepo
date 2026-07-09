@@ -242,7 +242,7 @@ export function SearchClient({
           });
           setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
           toast.success(
-            `${prediction.mainText} is on Mesita — its profile will be ready in a few minutes.`,
+            `${prediction.mainText} is on Mesita — our AI generates its profile in about 5 minutes.`,
           );
         } catch (err) {
           // Roll back so the button is tappable again.
