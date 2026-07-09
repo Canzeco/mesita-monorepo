@@ -595,7 +595,34 @@ function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
 }
 
 function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
-  if (place.mesita_visitors.length === 0) return null;
+  // Always render below Google reviews — when there are no Mesita
+  // visitors yet, show an explicit empty state instead of hiding the box
+  // (Safi and other new places were dropping the section entirely).
+  const visitors = place.mesita_visitors;
+  if (visitors.length === 0) {
+    return (
+      <Box
+        title="Mesita reviews"
+        icon={MessageCircle}
+        iconColor="text-pink-400"
+        right={`${place.mesita_reviews.total} total`}
+      >
+        <div className="flex flex-col items-center gap-3 py-3 text-center">
+          <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
+            <MessageCircle className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="flex flex-col gap-1">
+            <p className="text-foreground text-sm font-semibold">
+              No Mesita reviews yet
+            </p>
+            <p className="text-muted-foreground text-xs leading-snug">
+              Be the first guest to leave a review after visiting.
+            </p>
+          </div>
+        </div>
+      </Box>
+    );
+  }
   return (
     <Box
       title="Mesita reviews"
@@ -604,7 +631,7 @@ function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
       right={`${place.mesita_reviews.total} total`}
     >
       <BoxHScroll>
-        {place.mesita_visitors.map((data, i) => (
+        {visitors.map((data, i) => (
           <ReviewCard key={`mesita-${i}`} kind="mesita" data={data} />
         ))}
       </BoxHScroll>
