@@ -591,7 +591,7 @@ function PhotosEditor({
               <img
                 src={src}
                 alt={`Photo ${idx + 1}`}
-                className="aspect-[4/3] w-full object-cover"
+                className="aspect-square w-full object-cover"
               />
               {idx === 0 && (
                 <span className="bg-foreground/80 text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
