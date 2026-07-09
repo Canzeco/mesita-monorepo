@@ -34,6 +34,7 @@ import {
   Crown,
   Navigation,
   QrCode,
+  Share2,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { AboutBox } from "@/components/consumer/AboutBox";
@@ -420,11 +421,9 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-// Save + Reserve, where Instagram puts Following / Message. Save toggles
-// the localStorage saved-places store (toast confirms; "View" jumps to
-// /saved). Reservations are still parked while the booking flow ships, so
-// Make reservation renders disabled with a "Soon" tag — un-park by
-// restoring an onReserve handler when reservations go live.
+// Save · Reserve · Share. Save toggles the localStorage saved-places store.
+// Reserve stays parked (Soon) until booking ships. Share uses the native
+// share sheet, with clipboard fallback.
 function ProfileActions({
   placeId,
   placeName,
@@ -455,14 +454,46 @@ function ProfileActions({
     }
   }
 
+  async function onSharePlace() {
+    const url =
+      typeof window !== "undefined" ? window.location.href : "";
+    const payload = {
+      title: `${placeName} on Mesita`,
+      text: `Check out ${placeName} on Mesita`,
+      url,
+    };
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function"
+    ) {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch {
+        // Cancelled or refused — fall through to clipboard.
+      }
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(url || `${payload.text}`);
+        toast.success("Link copied to clipboard");
+        return;
+      } catch {
+        toast.error("Couldn't copy link");
+        return;
+      }
+    }
+    toast.error("Sharing isn't available in this browser");
+  }
+
   return (
-    <div className={cn("flex gap-2", className)}>
+    <div className={cn("grid grid-cols-3 gap-2", className)}>
       <button
         type="button"
         onClick={onSavePlace}
         aria-pressed={saved}
         className={cn(
-          "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold transition active:scale-[0.99]",
+          "inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold transition active:scale-[0.99]",
           saved
             ? "bg-pink-gradient shadow-glow border-transparent text-white hover:brightness-110"
             : "border-border bg-card text-foreground hover:bg-muted",
@@ -472,19 +503,27 @@ function ProfileActions({
           className={cn("h-4 w-4", saved && "fill-current")}
           strokeWidth={2}
         />
-        {saved ? "Saved" : "Save place"}
+        {saved ? "Saved" : "Save"}
       </button>
       <button
         type="button"
         disabled
         aria-disabled="true"
-        className="border-border bg-muted text-muted-foreground inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold"
+        className="border-border bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-lg border py-2 text-[13px] font-semibold"
       >
-        <CalendarCheck className="h-4 w-4" strokeWidth={2} />
-        Make reservation
-        <span className="bg-foreground/10 text-muted-foreground rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+        <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2} />
+        Reserve
+        <span className="bg-foreground/10 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
           Soon
         </span>
+      </button>
+      <button
+        type="button"
+        onClick={onSharePlace}
+        className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold transition active:scale-[0.99]"
+      >
+        <Share2 className="h-4 w-4" strokeWidth={2} />
+        Share
       </button>
     </div>
   );

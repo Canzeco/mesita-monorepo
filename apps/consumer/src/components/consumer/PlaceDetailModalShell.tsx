@@ -1,16 +1,16 @@
 "use client";
 
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
-import { PlaceMoreButton } from "@/components/consumer/PlaceDetailPageHeader";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
 // itself (enter/exit animation, backdrop, ESC, router.back on dismiss) is
 // SlideOverShell, mounted by the segment's layout.tsx — this component only
 // fills it with the place header and scrollable body.
 //
-// decision: Pato — header is name only; verification lives in the body
-// tag row. Save + Make reservation live inside PlaceDetailBody.
-//   1. SlideOverHeader (shrink-0) — dismiss + place name + ⋯
+// decision: Pato — header is name only (no ⋯); Save · Reserve · Share live
+// in PlaceDetailBody. SlideOverHeader keeps a right spacer when actions
+// are omitted so the title stays centered.
+//   1. SlideOverHeader (shrink-0) — dismiss + place name
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody
 
 export function PlaceDetailModalShell({
@@ -30,7 +30,6 @@ export function PlaceDetailModalShell({
             {placeName}
           </span>
         }
-        actions={<PlaceMoreButton />}
       />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child

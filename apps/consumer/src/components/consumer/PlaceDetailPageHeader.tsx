@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, MoreHorizontal } from "lucide-react";
-import { toast } from "@/lib/toast";
+import { ArrowLeft } from "lucide-react";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Header for the hard-nav /place/[id] page (refresh / direct URL / new
@@ -11,8 +10,8 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // route home because there's always a previous shell route; the hard-nav
 // page can't trust browser history.
 //
-// decision: Pato — header is name only; verification lives in the body
-// tag row with category / price / zone / distance / hours.
+// decision: Pato — header is name only (no ⋯); Share lives in the body
+// action row with Save / Reserve.
 
 export function PlaceDetailPageHeader({
   placeName,
@@ -35,22 +34,8 @@ export function PlaceDetailPageHeader({
       <div className="font-display min-w-0 flex-1 truncate text-center text-base font-semibold">
         {placeName}
       </div>
-      <PlaceMoreButton />
+      {/* Spacer mirrors back button so the title stays centered. */}
+      <span className="h-9 w-9 shrink-0" aria-hidden />
     </header>
-  );
-}
-
-// Shared ⋯ button for both place-detail top bars. No menu behind it yet —
-// the toast keeps the tap from reading as broken until options ship.
-export function PlaceMoreButton() {
-  return (
-    <button
-      type="button"
-      onClick={() => toast("More options coming soon")}
-      aria-label="More options"
-      className="bg-card text-foreground border-border hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition"
-    >
-      <MoreHorizontal className="h-4 w-4" />
-    </button>
   );
 }
