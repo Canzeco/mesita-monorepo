@@ -1599,10 +1599,9 @@ function VerificationBox({ place }: { place: PlaceDetail }) {
 }
 
 function LastUpdatedBox({ place }: { place: PlaceDetail }) {
-  // Foot of the Place tab — freshness used to live in the summary chip
-  // wall; Pato wants it here instead (and off the swipe card).
+  // decision: Pato — one line only (title + value was redundant).
   return (
-    <Box title="Last update" icon={Pencil} iconColor="text-muted-foreground">
+    <Box className="gap-0 py-3">
       <div className="flex items-center gap-2">
         {place.is_enriching ? (
           <>
@@ -1612,7 +1611,7 @@ function LastUpdatedBox({ place }: { place: PlaceDetail }) {
         ) : (
           <>
             <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />
-            <p className="text-foreground text-sm font-semibold">
+            <p className="text-muted-foreground text-sm font-medium">
               Updated {place.last_updated_label}
             </p>
           </>
