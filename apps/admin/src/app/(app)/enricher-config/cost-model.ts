@@ -306,10 +306,10 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S7 · category + tags",
-      detail: "2 × gpt-4o-mini",
+      label: "S7 · category → tags",
+      detail: "2 × gpt-4o-mini (sequential)",
       pricing: "~$0.001 / call",
-      note: "2 short classification calls over the closed vocab",
+      note: "Category then tags, both grounded on the synthesized About",
       cost: COST_RATES.sort * 2,
       secs: TIME_RATES.sort * 2,
       stage: "post",

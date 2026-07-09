@@ -88,7 +88,7 @@ const ADEA_NODES: AdeaNode[] = [
   { name: "Images Descriptions", pipeline: "Analysis", step: "S5", methods: ["OpenAI Vision"] },
   // S6 · image ranking + final selection
   { name: "Images Ranking and Sorting", pipeline: "Analysis", step: "S6", methods: ["OpenAI LLM"] },
-  // S7 · synthesis — About, category, tags (closed vocab from S0 config)
+  // S7 · sequential: About first, then category + tags grounded on that About
   { name: "Place About", pipeline: "Analysis", step: "S7", methods: ["OpenAI LLM"] },
   { name: "Place Category", pipeline: "Analysis", step: "S7", methods: ["OpenAI LLM"] },
   { name: "Place Tags", pipeline: "Analysis", step: "S7", methods: ["OpenAI LLM"] },
@@ -125,7 +125,7 @@ const STEP_GROUPS: { step: Step; blurb: string }[] = [
   { step: "S4", blurb: "Source harvest — Google photos/reviews, Instagram, Facebook" },
   { step: "S5", blurb: "Image descriptions — one vision call per analyzed photo" },
   { step: "S6", blurb: "Image ranking — sort & select the final gallery" },
-  { step: "S7", blurb: "Synthesis — About, category & tags from the closed vocab" },
+  { step: "S7", blurb: "Synthesis — About first, then category & tags grounded on that About" },
   { step: "S8", blurb: "Persist profile — write place data (flips status to ready)" },
   { step: "S9", blurb: "Persist images — mirror the selected gallery to Storage" },
 ];
@@ -168,7 +168,7 @@ const PHASES: {
     steps: ["S5", "S6", "S7", "S8", "S9"],
     range: "S5–S9",
     blurb:
-      "Turn the harvest into the finished profile — describe & rank the analyzed images, write the About, category & tags from the closed vocab, then persist the place to the DB and mirror its gallery to Storage.",
+      "Turn the harvest into the finished profile — describe & rank the analyzed images, write the About, then infer category & tags from that About (closed vocab), then persist the place to the DB and mirror its gallery to Storage.",
   },
 ];
 
