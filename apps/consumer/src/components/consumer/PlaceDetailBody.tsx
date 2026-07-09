@@ -844,8 +844,9 @@ function LocationBox({ place }: { place: PlaceDetail }) {
           className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* decision: Pato — Uber badge = black bg + white letters */}
           <img
-            src="/channels/uber.svg"
+            src="/channels/uber-badge.svg"
             alt=""
             aria-hidden
             className="h-4 w-auto"
