@@ -129,7 +129,7 @@ export function EditProfileSheet({
           </label>
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-8 flex gap-2">
           <button
             type="button"
             onClick={onClose}
