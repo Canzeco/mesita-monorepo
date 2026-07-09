@@ -341,7 +341,11 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </ProfileMetaChip>
       </div>
 
-      <ProfileActions placeId={place.id} placeName={place.name} />
+      <ProfileActions
+        className="mt-5"
+        placeId={place.id}
+        placeName={place.name}
+      />
     </section>
   );
 }
@@ -421,9 +425,9 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-// Save · Reserve · Share. Save toggles the localStorage saved-places store.
-// Reserve stays parked (Soon) until booking ships. Share uses the native
-// share sheet, with clipboard fallback.
+// Save · Reserve · Share — stacked full-width, IG-style filled buttons.
+// Save toggles localStorage saved-places. Reserve parked (Soon). Share
+// uses native share with clipboard fallback.
 function ProfileActions({
   placeId,
   placeName,
@@ -455,8 +459,7 @@ function ProfileActions({
   }
 
   async function onSharePlace() {
-    const url =
-      typeof window !== "undefined" ? window.location.href : "";
+    const url = typeof window !== "undefined" ? window.location.href : "";
     const payload = {
       title: `${placeName} on Mesita`,
       text: `Check out ${placeName} on Mesita`,
@@ -486,22 +489,25 @@ function ProfileActions({
     toast.error("Sharing isn't available in this browser");
   }
 
+  // decision: Pato — vertical stack + solid fills (not outline chips) so
+  // they read as real CTAs: Save = Mesita pink, Reserve = IG blue, Share =
+  // soft secondary fill.
   return (
-    <div className={cn("grid grid-cols-3 gap-2", className)}>
+    <div className={cn("flex flex-col gap-2.5", className)}>
       <button
         type="button"
         onClick={onSavePlace}
         aria-pressed={saved}
         className={cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold transition active:scale-[0.99]",
+          "inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold text-white shadow-sm transition active:scale-[0.99]",
           saved
-            ? "bg-pink-gradient shadow-glow border-transparent text-white hover:brightness-110"
-            : "border-border bg-card text-foreground hover:bg-muted",
+            ? "bg-pink-600 hover:bg-pink-700"
+            : "bg-pink-gradient shadow-glow hover:brightness-110",
         )}
       >
         <Heart
           className={cn("h-4 w-4", saved && "fill-current")}
-          strokeWidth={2}
+          strokeWidth={2.25}
         />
         {saved ? "Saved" : "Save"}
       </button>
@@ -509,20 +515,20 @@ function ProfileActions({
         type="button"
         disabled
         aria-disabled="true"
-        className="border-border bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-lg border py-2 text-[13px] font-semibold"
+        className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#0095F6]/55 py-3 text-[14px] font-semibold text-white"
       >
-        <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2} />
+        <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
         Reserve
-        <span className="bg-foreground/10 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+        <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
           Soon
         </span>
       </button>
       <button
         type="button"
         onClick={onSharePlace}
-        className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold transition active:scale-[0.99]"
+        className="bg-muted text-foreground hover:bg-muted/80 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition active:scale-[0.99]"
       >
-        <Share2 className="h-4 w-4" strokeWidth={2} />
+        <Share2 className="h-4 w-4" strokeWidth={2.25} />
         Share
       </button>
     </div>
