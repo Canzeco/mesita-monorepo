@@ -1026,27 +1026,76 @@ function RewardCell({
 
 // ── 10. Tags ────────────────────────────────────────────────────────────
 
+// `logo` points at a real brand mark in /public/channels (simple-icons SVG,
+// brand colour baked in) so the Channels chips read as the actual apps.
+// Channels without an available brand SVG (Website generic, OpenTable, Resy,
+// DiDi Food) keep their neutral lucide `Icon` fallback.
 const CHANNEL_DEFS = [
   { key: "website_url", label: "Website", Icon: Globe },
-  { key: "whatsapp_url", label: "WhatsApp", Icon: MessageCircle },
-  { key: "instagram_url", label: "Instagram", Icon: Instagram },
-  { key: "tiktok_url", label: "TikTok", Icon: Music2 },
-  { key: "facebook_url", label: "Facebook", Icon: Facebook },
-  { key: "x_url", label: "X", Icon: Twitter },
-  { key: "threads_url", label: "Threads", Icon: AtSign },
-  { key: "reddit_url", label: "Reddit", Icon: MessageCircle },
+  {
+    key: "whatsapp_url",
+    label: "WhatsApp",
+    Icon: MessageCircle,
+    logo: "/channels/whatsapp.svg",
+  },
+  {
+    key: "instagram_url",
+    label: "Instagram",
+    Icon: Instagram,
+    logo: "/channels/instagram.svg",
+  },
+  {
+    key: "tiktok_url",
+    label: "TikTok",
+    Icon: Music2,
+    logo: "/channels/tiktok.svg",
+  },
+  {
+    key: "facebook_url",
+    label: "Facebook",
+    Icon: Facebook,
+    logo: "/channels/facebook.svg",
+  },
+  { key: "x_url", label: "X", Icon: Twitter, logo: "/channels/x.svg" },
+  {
+    key: "threads_url",
+    label: "Threads",
+    Icon: AtSign,
+    logo: "/channels/threads.svg",
+  },
+  {
+    key: "reddit_url",
+    label: "Reddit",
+    Icon: MessageCircle,
+    logo: "/channels/reddit.svg",
+  },
 ] as const;
 
 const RESERVATION_DEFS = [
   { key: "opentable_url", label: "OpenTable", Icon: CalendarCheck },
   { key: "resy_url", label: "Resy", Icon: CalendarCheck },
-  { key: "uber_eats_url", label: "Uber Eats", Icon: Bike },
+  {
+    key: "uber_eats_url",
+    label: "Uber Eats",
+    Icon: Bike,
+    logo: "/channels/ubereats.svg",
+  },
   { key: "didi_food_url", label: "DiDi Food", Icon: Bike },
 ] as const;
 
 const REVIEW_DEFS = [
-  { key: "tripadvisor_url", label: "TripAdvisor", Icon: Star },
-  { key: "google_maps_url", label: "Google Maps", Icon: MapPin },
+  {
+    key: "tripadvisor_url",
+    label: "TripAdvisor",
+    Icon: Star,
+    logo: "/channels/tripadvisor.svg",
+  },
+  {
+    key: "google_maps_url",
+    label: "Google Maps",
+    Icon: MapPin,
+    logo: "/channels/googlemaps.svg",
+  },
 ] as const;
 
 // Per-facet chip tint. Each of the 17 taxonomy facets gets its own light
@@ -1200,6 +1249,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
     key: string;
     label: string;
     Icon: typeof Globe;
+    logo?: string;
     url: string;
   }[] = [];
   if (place.phone) {
@@ -1213,23 +1263,41 @@ function LinksBox({ place }: { place: PlaceDetail }) {
   for (const def of CHANNEL_DEFS) {
     const url = place.channels[def.key];
     if (url)
-      chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+      chips.push({
+        key: def.key,
+        label: def.label,
+        Icon: def.Icon,
+        logo: "logo" in def ? def.logo : undefined,
+        url,
+      });
   }
   for (const def of RESERVATION_DEFS) {
     const url = place.reservations[def.key];
     if (url)
-      chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+      chips.push({
+        key: def.key,
+        label: def.label,
+        Icon: def.Icon,
+        logo: "logo" in def ? def.logo : undefined,
+        url,
+      });
   }
   for (const def of REVIEW_DEFS) {
     const url = place.reviews_maps[def.key];
     if (url)
-      chips.push({ key: def.key, label: def.label, Icon: def.Icon, url });
+      chips.push({
+        key: def.key,
+        label: def.label,
+        Icon: def.Icon,
+        logo: "logo" in def ? def.logo : undefined,
+        url,
+      });
   }
   if (chips.length === 0) return null;
   return (
     <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
       <div className="flex flex-wrap gap-2">
-        {chips.map(({ key, label, Icon, url }) => (
+        {chips.map(({ key, label, Icon, logo, url }) => (
           <a
             key={key}
             href={url}
@@ -1237,7 +1305,15 @@ function LinksBox({ place }: { place: PlaceDetail }) {
             rel="noopener noreferrer"
             className="bg-background text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition"
           >
-            <Icon className="h-3.5 w-3.5" />
+            {logo ? (
+              // Real brand mark (SVG in /public/channels, brand colour baked
+              // in). The chip label carries the accessible name, so the glyph
+              // is decorative. next/image adds nothing for a 14px static SVG.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt="" aria-hidden className="h-3.5 w-3.5" />
+            ) : (
+              <Icon className="h-3.5 w-3.5" />
+            )}
             {label}
           </a>
         ))}
