@@ -9,9 +9,10 @@ import {
   ExternalLink,
   Globe,
   ImageOff,
+  ImagePlus,
   Info,
+  Loader2,
   MapPin,
-  Plus,
   X,
 } from "lucide-react";
 import {
@@ -27,6 +28,13 @@ import {
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
+import { createBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  ALLOWED_IMAGE_ACCEPT,
+  PLACE_IMAGES_BUCKET,
+  placeImageObjectPath,
+  validateUploadFile,
+} from "@/lib/place-upload-utils";
 
 const DAYS = [
   "monday",
@@ -174,24 +182,46 @@ export function PlaceSection({
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
-  const [photoDraft, setPhotoDraft] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const setPhotos = (photos: string[]) => set("photos", photos.slice(0, limits.photosMax));
 
-  const addPhotoUrl = () => {
-    const url = photoDraft.trim();
-    if (!url) return;
+  const uploadPhoto = async (file: File) => {
+    if (uploading || pending) return;
     if (form.photos.length >= limits.photosMax) {
       setError(`At most ${limits.photosMax} photos.`);
       return;
     }
-    if (form.photos.includes(url)) {
-      setPhotoDraft("");
+    const fileError = validateUploadFile(file);
+    if (fileError) {
+      setError(fileError);
       return;
     }
-    setPhotos([...form.photos, url]);
-    setPhotoDraft("");
+    setUploading(true);
     setError(null);
+    try {
+      const supabase = createBrowserSupabase();
+      const path = placeImageObjectPath(place.id, file);
+      const { error: uploadError } = await supabase.storage
+        .from(PLACE_IMAGES_BUCKET)
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type,
+          cacheControl: "31536000",
+        });
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+      const { data } = supabase.storage.from(PLACE_IMAGES_BUCKET).getPublicUrl(path);
+      if (!data?.publicUrl) {
+        throw new Error("Upload succeeded but no public URL was returned.");
+      }
+      setPhotos([...form.photos, data.publicUrl]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't upload that photo.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const movePhoto = (from: number, dir: -1 | 1) => {
@@ -505,15 +535,15 @@ export function PlaceSection({
       <SectionCard
         icon={<ImageOff className="text-muted-foreground h-4 w-4" />}
         title="Photos"
-        subtitle="Place gallery — first photo is the hero. Reorder or remove; add by URL if needed."
+        subtitle="Place gallery — first photo is the hero. Reorder or remove; upload one new photo at a time."
       >
         <PhotosEditor
+          placeId={place.id}
           photos={form.photos}
           photosMax={limits.photosMax}
           pending={pending}
-          photoDraft={photoDraft}
-          onPhotoDraftChange={setPhotoDraft}
-          onAdd={addPhotoUrl}
+          uploading={uploading}
+          onUpload={uploadPhoto}
           onMove={movePhoto}
           onRemove={removePhoto}
           onInfo={setMetaFor}
@@ -556,26 +586,30 @@ function MetaField({
 }
 
 function PhotosEditor({
+  placeId,
   photos,
   photosMax,
   pending,
-  photoDraft,
-  onPhotoDraftChange,
-  onAdd,
+  uploading,
+  onUpload,
   onMove,
   onRemove,
   onInfo,
 }: {
+  placeId: string;
   photos: string[];
   photosMax: number;
   pending: boolean;
-  photoDraft: string;
-  onPhotoDraftChange: (value: string) => void;
-  onAdd: () => void;
+  uploading: boolean;
+  onUpload: (file: File) => void | Promise<void>;
   onMove: (from: number, dir: -1 | 1) => void;
   onRemove: (idx: number) => void;
   onInfo: (url: string) => void;
 }) {
+  const inputId = `place-photo-upload-${placeId}`;
+  const atCap = photos.length >= photosMax;
+  const busy = pending || uploading;
+
   return (
     <div className="mt-5">
       {photos.length === 0 ? (
@@ -602,7 +636,7 @@ function PhotosEditor({
                 <div className="flex gap-1">
                   <button
                     type="button"
-                    disabled={pending || idx === 0}
+                    disabled={busy || idx === 0}
                     onClick={() => onMove(idx, -1)}
                     className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition disabled:opacity-40"
                     aria-label="Move earlier"
@@ -611,7 +645,7 @@ function PhotosEditor({
                   </button>
                   <button
                     type="button"
-                    disabled={pending || idx === photos.length - 1}
+                    disabled={busy || idx === photos.length - 1}
                     onClick={() => onMove(idx, 1)}
                     className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition disabled:opacity-40"
                     aria-label="Move later"
@@ -631,7 +665,7 @@ function PhotosEditor({
                   </button>
                   <button
                     type="button"
-                    disabled={pending}
+                    disabled={busy}
                     onClick={() => onRemove(idx)}
                     className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
                     aria-label="Remove photo"
@@ -645,37 +679,41 @@ function PhotosEditor({
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-        <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="text-sm font-medium">Add photo</span>
-          <input
-            type="url"
-            value={photoDraft}
-            onChange={(e) => onPhotoDraftChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onAdd();
-              }
-            }}
-            placeholder="Paste image URL…"
-            disabled={pending || photos.length >= photosMax}
-            className="border-border bg-background focus:border-foreground h-9 rounded-lg border px-3 text-sm outline-none disabled:opacity-50"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={pending || !photoDraft.trim() || photos.length >= photosMax}
-          className="border-border hover:border-foreground/40 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition disabled:opacity-50"
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          id={inputId}
+          type="file"
+          accept={ALLOWED_IMAGE_ACCEPT}
+          disabled={busy || atCap}
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void onUpload(file);
+          }}
+        />
+        <label
+          htmlFor={inputId}
+          className={`border-border hover:border-foreground/40 inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition ${
+            busy || atCap ? "pointer-events-none opacity-50" : ""
+          }`}
         >
-          <Plus className="h-4 w-4" />
-          Add
-        </button>
+          {uploading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Uploading…
+            </>
+          ) : (
+            <>
+              <ImagePlus className="h-4 w-4" />
+              Upload photo
+            </>
+          )}
+        </label>
+        <p className="text-muted-foreground text-xs tabular-nums">
+          {photos.length}/{photosMax} photos · JPG, PNG, WEBP, AVIF · max 8 MB
+        </p>
       </div>
-      <p className="text-muted-foreground mt-2 text-xs tabular-nums">
-        {photos.length}/{photosMax} photos
-      </p>
     </div>
   );
 }
