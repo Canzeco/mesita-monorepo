@@ -390,7 +390,7 @@ function ProfileRewardStat({ place }: { place: Place }) {
       <ProfileStat
         value="—"
         label="No reward"
-        icon={<Gift className="text-muted-foreground h-3 w-3" />}
+        icon={<Gift className="h-3 w-3 text-sky-500" />}
       />
     );
   }
@@ -398,7 +398,7 @@ function ProfileRewardStat({ place }: { place: Place }) {
     <ProfileStat
       value={`${promoPercent}%`}
       label={isFirstVisit ? "Welcome" : "Returning"}
-      icon={<Gift className="h-3 w-3 text-pink-500" />}
+      icon={<Gift className="h-3 w-3 text-sky-500" />}
     />
   );
 }
