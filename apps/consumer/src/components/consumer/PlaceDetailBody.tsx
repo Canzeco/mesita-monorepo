@@ -547,19 +547,19 @@ function ProfileActions({
 // ── 2. Media (Place tab) ────────────────────────────────────────────────
 
 function MediaBox({ place }: { place: PlaceDetail }) {
-  // decision: full-bleed carousel — no Photos Box chrome / inner rounded
-  // inset (that stacked as double borders and shrunk the photo). Bleeds
-  // past the body's px-4 so the gallery is edge-to-edge under the tabs.
+  // decision: Pato — gallery in the same bordered card as Location/Time
+  // (not full-bleed). bare Box = border + rounded-2xl, no title chrome;
+  // carousel fills the card edge-to-edge inside the clip.
   if (place.photos.length === 0) return null;
   return (
-    <div className="-mx-4 overflow-hidden">
+    <Box bare>
       <ImageCarousel
         photos={place.photos}
         alt={place.name}
         aspect="aspect-square"
         rounded="rounded-none"
       />
-    </div>
+    </Box>
   );
 }
 
