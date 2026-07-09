@@ -316,36 +316,40 @@ export function PlaceSection({
           <div className="sm:col-span-2 lg:col-span-3">
             <EnrichmentStatusField status={enrichStatus} />
           </div>
-          <MetaField label="Verification">
-            <span
-              className={
-                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                (place.listing_type === "partner"
-                  ? "bg-green-500/10 text-green-600"
-                  : "bg-muted text-muted-foreground")
-              }
-            >
-              {listingLabel(place.listing_type)}
-            </span>
-          </MetaField>
-          <MetaField label="Ownership">
-            <span
-              className={
-                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                (ownership === "owned"
-                  ? "bg-green-500/10 text-green-600"
-                  : ownership === "loading"
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-amber-500/10 text-amber-700")
-              }
-            >
-              {ownership === "loading"
-                ? "Checking…"
-                : ownership === "owned"
-                  ? "Owned"
-                  : "Unowned"}
-            </span>
-          </MetaField>
+          {/* Verification + Ownership are a pair (listing vs claim) — keep them
+              on one row, separate from Plan billing. */}
+          <div className="grid gap-4 sm:grid-cols-2 sm:col-span-2 lg:col-span-3">
+            <MetaField label="Verification">
+              <span
+                className={
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+                  (place.listing_type === "partner"
+                    ? "bg-green-500/10 text-green-600"
+                    : "bg-muted text-muted-foreground")
+                }
+              >
+                {listingLabel(place.listing_type)}
+              </span>
+            </MetaField>
+            <MetaField label="Ownership">
+              <span
+                className={
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+                  (ownership === "owned"
+                    ? "bg-green-500/10 text-green-600"
+                    : ownership === "loading"
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-amber-500/10 text-amber-700")
+                }
+              >
+                {ownership === "loading"
+                  ? "Checking…"
+                  : ownership === "owned"
+                    ? "Owned"
+                    : "Unowned"}
+              </span>
+            </MetaField>
+          </div>
           <MetaField label="Plan">
             <span className="text-sm font-medium">{planLabel(place.plan)}</span>
             {place.fiscal_type ? (
