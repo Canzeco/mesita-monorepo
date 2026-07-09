@@ -1,0 +1,6 @@
+<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <title>Uber Eats</title>
+  <!-- Compact green app mark — paired with "Uber Eats" chip label. -->
+  <rect width="24" height="24" rx="6" fill="#06C167"/>
+  <path fill="#FFFFFF" d="M7.2 6.8h2.05l2.75 6.55L14.75 6.8H16.8v10.4h-1.85v-6.2l-2.55 6.2h-1.8L8.05 11v6.2H6.2V6.8h1z"/>
+</svg>

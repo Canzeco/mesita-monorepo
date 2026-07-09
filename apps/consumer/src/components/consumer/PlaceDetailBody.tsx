@@ -1398,11 +1398,11 @@ const RESERVATION_DEFS = [
   { key: "resy_url", label: "Resy", Icon: CalendarCheck },
   {
     key: "uber_eats_url",
+    // decision: Pato — logo + "Uber Eats" text like every other channel chip
+    // (not the wide wordmark alone).
     label: "Uber Eats",
     Icon: Bike,
-    logo: "/channels/ubereats.svg",
-    logoWide: true,
-    logoOnly: true,
+    logo: "/channels/ubereats-mark.svg",
   },
   { key: "didi_food_url", label: "DiDi Food", Icon: Bike },
 ] as const;
