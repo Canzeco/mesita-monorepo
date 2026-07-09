@@ -32,7 +32,6 @@ import {
   Loader2,
   Info,
   Crown,
-  Navigation,
   QrCode,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
@@ -65,9 +64,9 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // intercepted modal at @modal/(.)place/[id]) each render their own top
 // bar (back + place name + verification + ⋯) on top of this. Structure:
 //
-//   1. Profile summary — circular photo + 3 IG-style stats (Google ·
-//      Instagram · Reward), meta chips below (category · price · zone ·
-//      distance · open), then Save + Make reservation.
+//   1. Profile summary — header (name + verification) lives in the page
+//      chrome; body is an 8-cell grid (photo · Google · Instagram · reward ·
+//      category · price · location/distance · hours), then Save + Reserve.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -224,13 +223,9 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── 1. Profile summary (Instagram: photo + 3 stats + meta) ──────────────
+// ── 1. Profile summary (8-box grid + actions) ─────────────────────────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // decision: Pato wireframe — more Instagramish: square photo left, three
-  // stats right (Google reviews · Instagram · Reward), meta chips below
-  // (category, price, zone, distance, open). Verification stays in the header.
-  // decision: Pato — price chip shows the real range (MX$200–300), not $$$.
   const googleRating = place.google.rating.toFixed(1);
   const googleCount = formatCount(place.google.count, false);
   const igFollowers = formatCount(place.instagram.followers, false);
@@ -239,34 +234,21 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
       priceRange: place.price_range,
       priceLevel: place.price_level,
       currency: place.currency,
-    }) ?? "Price unavailable";
+    }) ?? "—";
   const statusValue = place.open_now
     ? `Open · until ${place.closes_at}`
     : `Closed · opens ${place.opens_at}`;
+  const locationDistance = `${place.zone} · ${place.distance_km} km`;
   const promoPlace = placeDetailAsPromoPlace(place);
 
   return (
-    <section className="flex flex-col gap-3 pt-3">
-      {/* IG header row: avatar + posts / followers / following pattern */}
-      <div className="flex items-center gap-4">
-        <div className="border-border h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border">
-          {place.photos.length > 0 ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={place.photos[0]}
-              alt={place.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
-              <span className="font-display text-3xl font-bold text-white/80">
-                {firstInitial(place.name)}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-          <ProfileStat
+    <section className="flex flex-col gap-3 pt-1">
+      {/* decision: Pato — single 4×2 grid: row1 photo · Google · IG · reward;
+          row2 category · price · location/distance · hours */}
+      <div className="border-border divide-border overflow-hidden rounded-lg border">
+        <div className="divide-border grid grid-cols-4 divide-x divide-y">
+          <ProfileGridPhoto place={place} />
+          <ProfileGridStat
             value={googleRating}
             label={`${googleCount} Google`}
             icon={
@@ -276,48 +258,31 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
               />
             }
           />
-          <ProfileStat
+          <ProfileGridStat
             value={igFollowers}
             label="Instagram"
             icon={<Instagram className="h-3 w-3 text-pink-500" />}
           />
-          <ProfileRewardStat place={promoPlace} />
-        </div>
-      </div>
-
-      {/* decision: Pato — bordered meta grid (full width, matches action
-          buttons); category · price · distance · location; hours on own row.
-          Bold labels, semantic colors preserved. */}
-      <div className="border-border divide-border overflow-hidden rounded-lg border">
-        <div className="divide-border grid grid-cols-2 divide-x divide-y sm:grid-cols-4">
-          <MetaGridCell textClass="text-foreground">
+          <ProfileGridReward place={promoPlace} />
+          <ProfileGridMeta textClass="text-foreground">
             {place.category}
-          </MetaGridCell>
-          <MetaGridCell>{priceLabel}</MetaGridCell>
-          <MetaGridCell icon={Navigation}>
-            {place.distance_km} km
-          </MetaGridCell>
-          <MetaGridCell icon={MapPin}>{place.zone}</MetaGridCell>
-        </div>
-        <div
-          className={cn(
-            "border-border flex items-center justify-center gap-1.5 border-t px-2.5 py-2.5 text-[11px] leading-snug font-semibold",
-            place.open_now ? "text-emerald-700" : "text-muted-foreground",
-          )}
-        >
-          <Clock
-            className={cn(
-              "h-3.5 w-3.5 shrink-0",
-              place.open_now ? "text-emerald-600" : "opacity-70",
-            )}
-            strokeWidth={2.25}
-          />
-          <span className="truncate">{statusValue}</span>
+          </ProfileGridMeta>
+          <ProfileGridMeta>{priceLabel}</ProfileGridMeta>
+          <ProfileGridMeta icon={MapPin}>{locationDistance}</ProfileGridMeta>
+          <ProfileGridMeta
+            icon={Clock}
+            iconClass={place.open_now ? "text-emerald-600" : undefined}
+            textClass={
+              place.open_now ? "text-emerald-700" : "text-muted-foreground"
+            }
+          >
+            {statusValue}
+          </ProfileGridMeta>
         </div>
       </div>
 
       <ProfileActions
-        className="mt-5"
+        className="mt-2"
         placeId={place.id}
         placeName={place.name}
       />
@@ -325,8 +290,30 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** Instagram-style stat cell: big number, small label underneath. */
-function ProfileStat({
+/** Row 1, col 1 — square profile photo. */
+function ProfileGridPhoto({ place }: { place: PlaceDetail }) {
+  return (
+    <div className="bg-muted relative aspect-square min-h-[76px] overflow-hidden">
+      {place.photos.length > 0 ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={place.photos[0]}
+          alt={place.name}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
+          <span className="font-display text-xl font-bold text-white/80">
+            {firstInitial(place.name)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Row 1 — stat cell (Google · Instagram). */
+function ProfileGridStat({
   value,
   label,
   icon,
@@ -336,20 +323,20 @@ function ProfileStat({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center">
-      <span className="text-foreground flex items-center gap-0.5 text-[17px] leading-tight font-bold tabular-nums">
+    <div className="flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-2 text-center">
+      <span className="text-foreground flex items-center gap-0.5 text-[15px] leading-none font-bold tabular-nums">
         {icon}
         {value}
       </span>
-      <span className="text-muted-foreground mt-0.5 max-w-full truncate text-[10px] leading-tight font-medium">
+      <span className="text-muted-foreground max-w-full truncate px-0.5 text-[9px] leading-tight font-semibold">
         {label}
       </span>
     </div>
   );
 }
 
-/** Third IG-style column — reward % or “No reward”. */
-function ProfileRewardStat({ place }: { place: Place }) {
+/** Row 1, col 4 — reward % or “No reward”. */
+function ProfileGridReward({ place }: { place: Place }) {
   const { key: classKey } = useConsumerClass();
   const isFirstVisit = place.is_first_visit !== false;
   const promoPercent = resolvePromoRateFromPlaceRow(
@@ -359,7 +346,7 @@ function ProfileRewardStat({ place }: { place: Place }) {
   );
   if (promoPercent == null) {
     return (
-      <ProfileStat
+      <ProfileGridStat
         value="—"
         label="No reward"
         icon={<Gift className="text-muted-foreground h-3 w-3" />}
@@ -367,11 +354,41 @@ function ProfileRewardStat({ place }: { place: Place }) {
     );
   }
   return (
-    <ProfileStat
+    <ProfileGridStat
       value={`${promoPercent}%`}
       label={isFirstVisit ? "Welcome" : "Returning"}
       icon={<Gift className="h-3 w-3 text-pink-500" />}
     />
+  );
+}
+
+/** Row 2 — meta cell (category · price · location · hours). */
+function ProfileGridMeta({
+  icon: Icon,
+  children,
+  iconClass,
+  textClass,
+}: {
+  icon?: LucideIcon;
+  children: React.ReactNode;
+  iconClass?: string;
+  textClass?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-1 px-1.5 py-2 text-center text-[10px] leading-snug font-semibold",
+        textClass ?? "text-muted-foreground",
+      )}
+    >
+      {Icon && (
+        <Icon
+          className={cn("h-3.5 w-3.5 shrink-0", iconClass ?? "opacity-70")}
+          strokeWidth={2.25}
+        />
+      )}
+      <span className="line-clamp-3 min-w-0 break-words">{children}</span>
+    </div>
   );
 }
 
@@ -389,36 +406,6 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
     reward_cap_mxn: place.reward_cap_mxn,
     currency: place.currency,
   } as unknown as Place;
-}
-
-/** One cell in the profile meta grid — bold, centered, bordered by parent. */
-function MetaGridCell({
-  icon: Icon,
-  children,
-  iconClass,
-  textClass,
-}: {
-  icon?: LucideIcon;
-  children: React.ReactNode;
-  iconClass?: string;
-  textClass?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-h-[44px] min-w-0 items-center justify-center gap-1.5 px-2 py-2.5 text-center text-[11px] leading-snug font-semibold",
-        textClass ?? "text-muted-foreground",
-      )}
-    >
-      {Icon && (
-        <Icon
-          className={cn("h-3.5 w-3.5 shrink-0", iconClass ?? "opacity-70")}
-          strokeWidth={2.25}
-        />
-      )}
-      <span className="min-w-0 truncate">{children}</span>
-    </div>
-  );
 }
 
 // Save + Reserve, where Instagram puts Following / Message. Save toggles
