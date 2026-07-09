@@ -317,7 +317,7 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
       </div>
 
       <ProfileActions
-        className="mt-3"
+        className="mt-5"
         placeId={place.id}
         placeName={place.name}
       />
