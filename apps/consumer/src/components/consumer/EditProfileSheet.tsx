@@ -9,8 +9,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
-import { PhoneInputWithCountry } from "@/components/auth/PhoneInputWithCountry";
-import { splitStoredPhone, combinePhoneE164 } from "@/lib/consumer-data";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -24,7 +22,8 @@ import {
 // Built on LocalSheet: parent keeps it mounted and flips `open`, so the
 // sheet animates both ways, the backdrop covers the whole MobileFrame card,
 // and ESC closes it. Field state survives a close (draft-friendly) and the
-// dirty check tracks the latest saved profile.
+// dirty check tracks the latest saved profile. Phone is auth identity (set at
+// sign-in) and is not editable here — only first name and birthday.
 
 export function EditProfileSheet({
   profile,
@@ -39,35 +38,20 @@ export function EditProfileSheet({
 }) {
   const supabase = useBrowserSupabase();
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
-  const [lastName, setLastName] = useState(profile.last_name ?? "");
-  // Phone is edited as country + local subscriber number; the stored value is
-  // split back into those parts to seed the picker, and recombined to E.164 on
-  // save.
-  const initialPhone = splitStoredPhone(profile.phone);
-  const [countryCode, setCountryCode] = useState(initialPhone.countryCode);
-  const [localPhone, setLocalPhone] = useState(initialPhone.local);
   // birthday is stored as YYYY-MM-DD; the BirthdayPicker round-trips it.
   const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
 
-  const phoneE164 = combinePhoneE164(countryCode, localPhone);
-  // Compare on digits only so a stored value without a leading + still matches.
-  const phoneDirty =
-    phoneE164.replace(/\D/g, "") !== (profile.phone ?? "").replace(/\D/g, "");
   const dirty =
     firstName.trim() !== (profile.first_name ?? "") ||
-    lastName.trim() !== (profile.last_name ?? "") ||
-    phoneDirty ||
     birthday !== (profile.birthday ?? "");
 
-  const initials =
-    `${firstName.trim().charAt(0)}${lastName.trim().charAt(0)}`.toUpperCase() ||
-    "M";
+  const initials = firstName.trim().charAt(0).toUpperCase() || "M";
 
   async function save() {
     if (!dirty || saving) return;
-    if (!firstName.trim() || !lastName.trim()) {
-      toast("First and last name are required.");
+    if (!firstName.trim()) {
+      toast("First name is required.");
       return;
     }
     setSaving(true);
@@ -77,10 +61,8 @@ export function EditProfileSheet({
       // inferred from the phone's dial code, so we don't touch it.
       const updated = await apiUpdateConsumerProfile(supabase, {
         first_name: firstName.trim(),
-        last_name: lastName.trim(),
         sex: (profile.sex as "male" | "female" | "other") ?? "other",
         birthday: birthday || "",
-        phone: phoneE164 || undefined,
       });
       toast("Profile updated.");
       onSaved(updated);
@@ -133,32 +115,12 @@ export function EditProfileSheet({
         </div>
 
         <div className="mt-5 flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <SheetField
-              label="First name"
-              value={firstName}
-              onChange={setFirstName}
-              placeholder="First name"
-            />
-            <SheetField
-              label="Last name"
-              value={lastName}
-              onChange={setLastName}
-              placeholder="Last name"
-            />
-          </div>
-          <label className="block">
-            <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
-              Phone
-            </span>
-            <PhoneInputWithCountry
-              value={localPhone}
-              onChange={setLocalPhone}
-              countryCode={countryCode}
-              onCountryChange={setCountryCode}
-              placeholder="55 1234 5678"
-            />
-          </label>
+          <SheetField
+            label="First name"
+            value={firstName}
+            onChange={setFirstName}
+            placeholder="First name"
+          />
           <label className="block">
             <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
               Birthday

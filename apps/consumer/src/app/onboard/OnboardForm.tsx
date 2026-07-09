@@ -15,9 +15,7 @@ import {
 } from "@/lib/ui-classes";
 
 // Onboarding collects the minimum beyond the phone (already on the
-// auth.user from the OTP sign-in step): first name, sex, birthday. Last
-// name and country are no longer asked — they can be filled in later from
-// the Me page's Edit profile sheet.
+// auth.user from the OTP sign-in step): first name, sex, birthday.
 
 export function OnboardForm() {
   const router = useRouter();

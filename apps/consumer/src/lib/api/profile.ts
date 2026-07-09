@@ -65,11 +65,12 @@ type ConsumerOnboardingInput = {
   first_name: string;
   sex: "male" | "female" | "other";
   birthday: string; // YYYY-MM-DD
-  // Optional — onboarding no longer collects last name, but the Edit
-  // profile sheet still can. The EF only patches keys that are present.
+  // Optional — legacy field; neither onboarding nor Edit profile collects it.
+  // The EF only patches keys that are present.
   last_name?: string;
   // Optional — phone is the auth identity and lives on auth.user.phone.
-  // consumer-update-profile mirrors it into consumers.phone on first call.
+  // Set at sign-in; consumer-update-profile mirrors it into consumers.phone
+  // on first call. Not editable from the profile sheet.
   phone?: string;
 };
 
