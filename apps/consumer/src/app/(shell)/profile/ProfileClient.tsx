@@ -167,12 +167,12 @@ export function ProfileClient({
             onClick={() => setShareOpen(true)}
           />
 
-          {/* decision: Pato — AI how-to between Share and Contact */}
+          {/* decision: Pato — Consumer MCP connect (MESITA-265), not a tip */}
           <BoxRow
             Icon={Bot}
             tint="violet"
             title="AI"
-            summary="How to connect your Mesita profile to an AI"
+            summary="Connect your Mesita profile to an AI"
             onClick={() => setAiOpen(true)}
           />
 
