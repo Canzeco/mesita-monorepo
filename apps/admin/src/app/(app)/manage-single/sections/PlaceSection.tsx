@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
   Clock,
   ExternalLink,
   Globe,
@@ -15,12 +16,13 @@ import {
 } from "lucide-react";
 import {
   getPlaceEnrichment,
+  listTeam,
   updatePlace,
   type AdminPlace,
   type PlaceEnrichmentStatus,
   type PlaceMediaMeta,
 } from "../actions";
-import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
+import { ErrorNote, SaveBar, SectionCard, SelectField, TextArea, TextField } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 const DAYS = [
@@ -45,14 +47,24 @@ const CHANNELS: { key: keyof AdminPlace; label: string }[] = [
   { key: "uber_eats_url", label: "Uber Eats" },
 ];
 
+const PRICE_OPTIONS = [
+  { value: "", label: "—" },
+  { value: "1", label: "Budget · $" },
+  { value: "2", label: "Casual · $$" },
+  { value: "3", label: "Upscale · $$$" },
+  { value: "4", label: "Fine dining · $$$$" },
+];
+
 type DayHours = { closed: boolean; open: string; close: string };
 type Form = {
   name: string;
+  price_level: string;
   category: string;
   description: string;
   phone: string;
   email: string;
   tags: string;
+  address: string;
   photos: string[];
   channels: Record<string, string>;
   hours: Record<Day, DayHours>;
@@ -63,6 +75,20 @@ const str = (v: unknown) => (typeof v === "string" ? v : "");
 const PLACE_NAME_MAX = 80;
 const TAGS_PER_PLACE_MAX = 20;
 const PHOTOS_MAX = 10;
+
+function planLabel(plan: string | null): string {
+  if (!plan) return "—";
+  if (plan === "free") return "Free";
+  if (plan === "informal_pro" || plan === "formal_pro" || plan === "pro") return "Pro";
+  if (plan === "informal_ultra" || plan === "formal_ultra" || plan === "ultra") return "Ultra";
+  return plan.replace(/_/g, " ");
+}
+
+function listingLabel(listingType: string | null): string {
+  if (listingType === "partner") return "Verified partner";
+  if (listingType === "web") return "Listed";
+  return listingType?.trim() || "—";
+}
 
 function placeToForm(v: AdminPlace): Form {
   const hours = {} as Record<Day, DayHours>;
@@ -77,11 +103,13 @@ function placeToForm(v: AdminPlace): Form {
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
     name: (v.name ?? "").slice(0, PLACE_NAME_MAX),
+    price_level: v.price_level != null ? String(v.price_level) : "",
     category: v.category ?? "",
     description: v.description ?? "",
     phone: v.phone ?? "",
     email: v.email ?? "",
     tags: (v.tags ?? []).join(", "),
+    address: v.address ?? "",
     photos: (v.photos ?? []).slice(0, PHOTOS_MAX),
     channels,
     hours,
@@ -100,10 +128,11 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
   const patch: Record<string, unknown> = {
     id,
     name: f.name.trim().slice(0, PLACE_NAME_MAX),
-    category: nz(f.category),
+    price_level: f.price_level ? Number(f.price_level) : null,
     description: nz(f.description),
     phone: nz(f.phone),
     email: nz(f.email),
+    address: nz(f.address),
     tags: f.tags
       .split(",")
       .map((t) => t.trim())
@@ -177,12 +206,23 @@ export function PlaceSection({
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(null);
   const [metaFor, setMetaFor] = useState<string | null>(null);
+  const [ownership, setOwnership] = useState<"loading" | "owned" | "unowned">("loading");
+
   useEffect(() => {
     let alive = true;
     getPlaceEnrichment(place.id).then((r) => {
       if (!alive) return;
       setMedia(r.ok ? r.data.media : {});
       setEnrichStatus(r.ok ? r.data.status : null);
+    });
+    listTeam(place.id).then((r) => {
+      if (!alive) return;
+      if (!r.ok) {
+        setOwnership("unowned");
+        return;
+      }
+      const hasOwner = r.data.businesses.some((m) => m.role === "owner");
+      setOwnership(hasOwner ? "owned" : "unowned");
     });
     return () => {
       alive = false;
@@ -213,9 +253,68 @@ export function PlaceSection({
   return (
     <div className="flex flex-col gap-6">
       <SectionCard
+        icon={<BadgeCheck className="text-muted-foreground h-4 w-4" />}
+        title="Meta"
+        subtitle="Identity, enrichment, verification, and plan. Read-only here — edit plan on Promos."
+      >
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <MetaField label="ID">
+            <code className="text-foreground break-all font-mono text-xs">{place.id}</code>
+          </MetaField>
+          <MetaField label="Slug">
+            <span className="text-sm">{place.slug ?? "—"}</span>
+          </MetaField>
+          <MetaField label="Status">
+            <span className="text-sm capitalize">{place.status ?? "—"}</span>
+          </MetaField>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <EnrichmentStatusField status={enrichStatus} />
+          </div>
+          <MetaField label="Verification">
+            <span
+              className={
+                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+                (place.listing_type === "partner"
+                  ? "bg-green-500/10 text-green-600"
+                  : "bg-muted text-muted-foreground")
+              }
+            >
+              {listingLabel(place.listing_type)}
+            </span>
+          </MetaField>
+          <MetaField label="Ownership">
+            <span
+              className={
+                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+                (ownership === "owned"
+                  ? "bg-green-500/10 text-green-600"
+                  : ownership === "loading"
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-amber-500/10 text-amber-700")
+              }
+            >
+              {ownership === "loading"
+                ? "Checking…"
+                : ownership === "owned"
+                  ? "Owned"
+                  : "Unowned"}
+            </span>
+          </MetaField>
+          <MetaField label="Plan">
+            <span className="text-sm font-medium">{planLabel(place.plan)}</span>
+            {place.fiscal_type ? (
+              <span className="text-muted-foreground ml-1.5 text-xs capitalize">
+                · {place.fiscal_type}
+              </span>
+            ) : null}
+          </MetaField>
+        </div>
+      </SectionCard>
+
+      <SectionCard
         icon={<MapPin className="text-muted-foreground h-4 w-4" />}
-        title="Place"
-        subtitle={`Profile for ${place.name}. Name, category, description and contact.`}
+        title="Basics"
+        subtitle="Name, price tier, category, about, and tags."
       >
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <TextField
@@ -225,16 +324,32 @@ export function PlaceSection({
             maxLength={PLACE_NAME_MAX}
             disabled={pending}
           />
+          <SelectField
+            label="Price"
+            value={form.price_level}
+            options={PRICE_OPTIONS}
+            onChange={(x) => set("price_level", x)}
+            disabled={pending}
+          />
           {/* Category is enrichment-derived (ADEA inferPlaceCategory). Show the
               friendly label (e.g. "🪩 Nightclub"), never the snakecase slug;
               read-only here — the slug isn't hand-edited. */}
-          <TextField label="Category" value={place.category_label ?? form.category} placeholder="e.g. 🪩 Nightclub" disabled />
+          <TextField
+            label="Category"
+            value={place.category_label ?? form.category}
+            placeholder="e.g. 🪩 Nightclub"
+            disabled
+          />
         </div>
         <div className="mt-4">
-          <EnrichmentStatusField status={enrichStatus} />
-        </div>
-        <div className="mt-4">
-          <TextArea label="Description / About" value={form.description} onChange={(x) => set("description", x)} rows={5} maxLength={2000} disabled={pending} />
+          <TextArea
+            label="About"
+            value={form.description}
+            onChange={(x) => set("description", x)}
+            rows={5}
+            maxLength={2000}
+            disabled={pending}
+          />
         </div>
         <div className="mt-4">
           <TextField
@@ -248,6 +363,103 @@ export function PlaceSection({
             {form.tags.split(",").map((t) => t.trim()).filter(Boolean).length}/
             {TAGS_PER_PLACE_MAX} tags
           </p>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        icon={<MapPin className="text-muted-foreground h-4 w-4" />}
+        title="Location"
+        subtitle="Address and coordinates. Lat/lng are Enricher/Google-sourced (read-only)."
+      >
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <TextField
+              label="Address"
+              value={form.address}
+              onChange={(x) => set("address", x)}
+              placeholder="Street, colonia, city"
+              disabled={pending}
+            />
+          </div>
+          <MetaField label="Zone">
+            <span className="text-sm">{place.zone ?? "—"}</span>
+          </MetaField>
+          <MetaField label="City">
+            <span className="text-sm">{place.city ?? "—"}</span>
+          </MetaField>
+          <MetaField label="Lat">
+            <span className="font-mono text-sm tabular-nums">
+              {place.lat == null ? "—" : place.lat}
+            </span>
+          </MetaField>
+          <MetaField label="Lng">
+            <span className="font-mono text-sm tabular-nums">
+              {place.lng == null ? "—" : place.lng}
+            </span>
+          </MetaField>
+        </div>
+        {place.lat != null && place.lng != null ? (
+          <div className="border-border mt-4 overflow-hidden rounded-xl border">
+            <iframe
+              src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
+              title={`Map of ${place.name}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block h-[160px] w-full border-0"
+            />
+          </div>
+        ) : null}
+      </SectionCard>
+
+      <SectionCard
+        icon={<Clock className="text-muted-foreground h-4 w-4" />}
+        title="Time"
+        subtitle={
+          place.timezone
+            ? `One range per day · timezone ${place.timezone}`
+            : "One range per day. Toggle Closed for days the place isn't open."
+        }
+      >
+        <div className="mt-5 flex flex-col gap-2">
+          {DAYS.map((d) => {
+            const h = form.hours[d];
+            return (
+              <div
+                key={d}
+                className="border-border bg-background flex flex-wrap items-center gap-3 rounded-xl border p-3"
+              >
+                <span className="w-24 text-sm font-medium capitalize">{d}</span>
+                <label className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={h.closed}
+                    disabled={pending}
+                    onChange={(e) => setDay(d, { closed: e.target.checked })}
+                  />
+                  Closed
+                </label>
+                {!h.closed && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={h.open}
+                      disabled={pending}
+                      onChange={(e) => setDay(d, { open: e.target.value })}
+                      className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none"
+                    />
+                    <span className="text-muted-foreground text-xs">to</span>
+                    <input
+                      type="time"
+                      value={h.close}
+                      disabled={pending}
+                      onChange={(e) => setDay(d, { close: e.target.value })}
+                      className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </SectionCard>
 
@@ -267,37 +479,19 @@ export function PlaceSection({
               disabled={pending}
             />
           ))}
-          {/* Phone + Email are contact channels (non-URL) — grouped here too. */}
-          <TextField label="Phone" value={form.phone} onChange={(x) => set("phone", x)} disabled={pending} />
-          <TextField label="Email" type="email" value={form.email} onChange={(x) => set("email", x)} disabled={pending} />
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        icon={<Clock className="text-muted-foreground h-4 w-4" />}
-        title="Hours"
-        subtitle="One range per day. Toggle Closed for days the place isn't open."
-      >
-        <div className="mt-5 flex flex-col gap-2">
-          {DAYS.map((d) => {
-            const h = form.hours[d];
-            return (
-              <div key={d} className="border-border bg-background flex flex-wrap items-center gap-3 rounded-xl border p-3">
-                <span className="w-24 text-sm font-medium capitalize">{d}</span>
-                <label className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                  <input type="checkbox" checked={h.closed} disabled={pending} onChange={(e) => setDay(d, { closed: e.target.checked })} />
-                  Closed
-                </label>
-                {!h.closed && (
-                  <div className="flex items-center gap-2">
-                    <input type="time" value={h.open} disabled={pending} onChange={(e) => setDay(d, { open: e.target.value })} className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none" />
-                    <span className="text-muted-foreground text-xs">to</span>
-                    <input type="time" value={h.close} disabled={pending} onChange={(e) => setDay(d, { close: e.target.value })} className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          <TextField
+            label="Phone"
+            value={form.phone}
+            onChange={(x) => set("phone", x)}
+            disabled={pending}
+          />
+          <TextField
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={(x) => set("email", x)}
+            disabled={pending}
+          />
         </div>
       </SectionCard>
 
@@ -332,6 +526,23 @@ export function PlaceSection({
           onClose={() => setMetaFor(null)}
         />
       )}
+    </div>
+  );
+}
+
+function MetaField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium">{label}</span>
+      <div className="border-border bg-background flex min-h-9 items-center rounded-lg border px-3 py-2">
+        {children}
+      </div>
     </div>
   );
 }
@@ -549,7 +760,7 @@ function sourceMetaRows(
   if (!meta) return [];
   const rows: { label: string; value: string }[] = [];
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
-  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const strVal = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
   if (source === "instagram") {
     const comments = num(meta.comments_count);
@@ -565,15 +776,15 @@ function sourceMetaRows(
       posted = Number.isNaN(d.getTime()) ? ts : formatAbsoluteUtc(d.toISOString());
     }
     if (posted) rows.push({ label: "Posted", value: posted });
-    const shortcode = str(meta.shortcode);
+    const shortcode = strVal(meta.shortcode);
     if (shortcode) rows.push({ label: "Shortcode", value: shortcode });
   } else if (source === "website") {
     const w = num(meta.width);
     const h = num(meta.height);
     if (w != null && h != null) rows.push({ label: "Dimensions", value: `${w}×${h}` });
-    const page = str(meta.page);
+    const page = strVal(meta.page);
     if (page) rows.push({ label: "Found on page", value: page });
-    const alt = str(meta.alt);
+    const alt = strVal(meta.alt);
     if (alt) rows.push({ label: "Alt text", value: alt });
   }
   return rows;
@@ -643,8 +854,6 @@ function MediaMetaDialog({
             className="border-border aspect-[16/9] w-full rounded-lg border object-cover"
           />
 
-          {/* Gallery order is meaningful even before analysis — the array
-              position IS the sorted rank; #1 is the hero. */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground text-xs font-medium">Order</span>
             {position > 0 ? (

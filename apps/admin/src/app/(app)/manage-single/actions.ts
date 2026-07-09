@@ -64,7 +64,16 @@ export type AdminPlace = {
   category_label: string | null;
   status: string | null;
   currency: string | null;
+  // Catalog tier: "web" (listed) vs "partner" (verified partner). Separate from
+  // ownership (project_members.role = owner) — see place-ownership.ts.
+  listing_type: string | null;
+  price_level: number | null;
   address: string | null;
+  lat: number | null;
+  lng: number | null;
+  zone: string | null;
+  city: string | null;
+  timezone: string | null;
   description: string | null;
   phone: string | null;
   email: string | null;
