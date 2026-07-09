@@ -22,6 +22,7 @@ import {
   type PlaceEnrichmentStatus,
   type PlaceMediaMeta,
 } from "../actions";
+import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { ErrorNote, SaveBar, SectionCard, SelectField, TextArea, TextField } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 
@@ -63,7 +64,7 @@ type Form = {
   description: string;
   phone: string;
   email: string;
-  tags: string;
+  tags: string[];
   address: string;
   photos: string[];
   channels: Record<string, string>;
@@ -108,7 +109,7 @@ function placeToForm(v: AdminPlace): Form {
     description: v.description ?? "",
     phone: v.phone ?? "",
     email: v.email ?? "",
-    tags: (v.tags ?? []).join(", "),
+    tags: (v.tags ?? []).slice(0, TAGS_PER_PLACE_MAX),
     address: v.address ?? "",
     photos: (v.photos ?? []).slice(0, PHOTOS_MAX),
     channels,
@@ -133,11 +134,7 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
     phone: nz(f.phone),
     email: nz(f.email),
     address: nz(f.address),
-    tags: f.tags
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean)
-      .slice(0, TAGS_PER_PLACE_MAX),
+    tags: f.tags.slice(0, TAGS_PER_PLACE_MAX),
     photos: f.photos.slice(0, PHOTOS_MAX),
     hours,
   };
@@ -352,17 +349,11 @@ export function PlaceSection({
           />
         </div>
         <div className="mt-4">
-          <TextField
-            label="Tags (comma-separated)"
+          <PlaceTagsPicker
             value={form.tags}
-            onChange={(x) => set("tags", x)}
-            placeholder="brunch, terrace, pet-friendly"
+            onChange={(tags) => set("tags", tags.slice(0, TAGS_PER_PLACE_MAX))}
             disabled={pending}
           />
-          <p className="text-muted-foreground mt-1 text-xs tabular-nums">
-            {form.tags.split(",").map((t) => t.trim()).filter(Boolean).length}/
-            {TAGS_PER_PLACE_MAX} tags
-          </p>
         </div>
       </SectionCard>
 

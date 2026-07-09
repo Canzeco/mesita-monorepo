@@ -135,6 +135,50 @@ export async function updatePlace(
   return { ok: true, data: r.data.place };
 }
 
+// ── Atlas tag catalog (for Place tags picker) ────────────────────────────
+// Same backend source Atlas Config reads (`admin-web-get-atlas-fields` →
+// public.place_tags). Edit Single Unit calls this EF via its own server
+// action — it does NOT import from /atlas-config or talk to that page.
+
+export type PlaceTagOption = {
+  slug: string;
+  label_es: string;
+  label_en: string;
+  facet: string;
+  section: string;
+  sort_order: number;
+};
+
+export type PlaceTagFacet = {
+  slug: string;
+  emoji: string;
+  label_es: string;
+  label_en: string;
+};
+
+export type PlaceTagCatalog = {
+  tags: PlaceTagOption[];
+  facets: PlaceTagFacet[];
+  tagsPerPlaceMax: number;
+};
+
+export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
+  const r = await efInvoke<{
+    tags: PlaceTagOption[];
+    facets: PlaceTagFacet[];
+    fieldLimits?: Record<string, { max: number; note: string }>;
+  }>("admin-web-get-atlas-fields", {});
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: {
+      tags: r.data.tags ?? [],
+      facets: r.data.facets ?? [],
+      tagsPerPlaceMax: r.data.fieldLimits?.tagsPerPlace?.max ?? 20,
+    },
+  };
+}
+
 // ── Per-place Enricher inspector (admin-only) ────────────────────────────
 // Internal enricher output for the Place editor: per-photo metadata for the
 // ⓘ inspector (keyed by public_url, matches AdminPlace.photos[]) + the place's
