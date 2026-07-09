@@ -12,8 +12,11 @@ import {
   ImagePlus,
   Info,
   Loader2,
+  Mail,
   MapPin,
+  Phone,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import {
   getPlaceEnrichment,
@@ -47,16 +50,56 @@ const DAYS = [
 ] as const;
 type Day = (typeof DAYS)[number];
 
-const CHANNELS: { key: keyof AdminPlace; label: string }[] = [
-  { key: "website_url", label: "Website" },
-  { key: "instagram_url", label: "Instagram" },
-  { key: "facebook_url", label: "Facebook" },
-  { key: "tiktok_url", label: "TikTok" },
-  { key: "whatsapp_url", label: "WhatsApp" },
-  { key: "google_maps_url", label: "Google Maps" },
-  { key: "opentable_url", label: "OpenTable" },
-  { key: "uber_eats_url", label: "Uber Eats" },
+// Brand marks live in /public/channels (Simple Icons SVGs, same set as
+// consumer). Generic contact fields keep lucide fallbacks.
+const CHANNELS: {
+  key: keyof AdminPlace;
+  label: string;
+  logo?: string;
+  Icon?: LucideIcon;
+}[] = [
+  { key: "website_url", label: "Website", Icon: Globe },
+  { key: "instagram_url", label: "Instagram", logo: "/channels/instagram.svg" },
+  { key: "facebook_url", label: "Facebook", logo: "/channels/facebook.svg" },
+  { key: "tiktok_url", label: "TikTok", logo: "/channels/tiktok.svg" },
+  { key: "whatsapp_url", label: "WhatsApp", logo: "/channels/whatsapp.svg" },
+  {
+    key: "google_maps_url",
+    label: "Google Maps",
+    logo: "/channels/googlemaps.svg",
+  },
+  { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
+  {
+    key: "uber_eats_url",
+    label: "Uber Eats",
+    logo: "/channels/ubereats-mark.svg",
+  },
 ];
+
+function ChannelLabelIcon({
+  logo,
+  Icon,
+}: {
+  logo?: string;
+  Icon?: LucideIcon;
+}) {
+  if (logo) {
+    // Static 14px brand SVG — next/image adds nothing here.
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={logo}
+        alt=""
+        aria-hidden
+        className="h-3.5 w-3.5 shrink-0"
+      />
+    );
+  }
+  if (Icon) {
+    return <Icon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />;
+  }
+  return null;
+}
 
 function priceLabel(level: number | null | undefined): string {
   if (level == null || level < 1) return "—";
@@ -609,6 +652,7 @@ export function PlaceSection({
             <TextField
               key={c.key as string}
               label={c.label}
+              icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
               value={form.channels[c.key as string] ?? ""}
               onChange={(x) => setChannel(c.key as string, x)}
               placeholder="https://…"
@@ -617,12 +661,14 @@ export function PlaceSection({
           ))}
           <TextField
             label="Phone"
+            icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
             value={form.phone}
             onChange={(x) => set("phone", x)}
             disabled={anyPending}
           />
           <TextField
             label="Email"
+            icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
             type="email"
             value={form.email}
             onChange={(x) => set("email", x)}

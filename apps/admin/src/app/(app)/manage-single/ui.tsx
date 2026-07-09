@@ -41,6 +41,7 @@ export function SectionCard({
 
 export function TextField({
   label,
+  icon,
   value,
   onChange,
   placeholder,
@@ -49,6 +50,8 @@ export function TextField({
   maxLength,
 }: {
   label: string;
+  /** Optional leading mark next to the label (brand SVG or lucide). */
+  icon?: React.ReactNode;
   value: string;
   onChange?: (v: string) => void;
   placeholder?: string;
@@ -58,7 +61,10 @@ export function TextField({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="flex items-center gap-1.5 text-sm font-medium">
+        {icon}
+        {label}
+      </span>
       <input
         type={type}
         value={value}
