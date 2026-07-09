@@ -5,6 +5,7 @@ import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
+  Bot,
   ChevronRight,
   Crown,
   Instagram,
@@ -21,6 +22,7 @@ import { ShareModal } from "@/components/consumer/me/ShareModal";
 import { ClassModal } from "@/components/consumer/me/ClassModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
+import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { MockControls } from "@/components/consumer/me/MockControls";
 import { CLASSES } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
@@ -35,7 +37,7 @@ import {
 // The Me surface — a static identity summary followed by a stack of modular
 // boxes, each opening its own bottom-sheet modal, ordered conversion →
 // account → support: Class, Instagram, Personal details, Settings, Share,
-// and Contact. This is a single flat page at /me
+// AI, and Contact. This is a single flat page at /me
 // (the old two-tab /me/class · /me/settings layout is retired); `openSettings`
 // opens the Settings box on arrival for the legacy /me/settings deep link.
 export function ProfileClient({
@@ -55,6 +57,7 @@ export function ProfileClient({
   // opens the Settings box — seeded from the prop so there is no
   // setState-in-effect.
   const [shareOpen, setShareOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [classOpen, setClassOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -164,6 +167,15 @@ export function ProfileClient({
             onClick={() => setShareOpen(true)}
           />
 
+          {/* decision: Pato — AI how-to between Share and Contact */}
+          <BoxRow
+            Icon={Bot}
+            tint="violet"
+            title="AI"
+            summary="How to connect your Mesita profile to an AI"
+            onClick={() => setAiOpen(true)}
+          />
+
           <BoxRow
             Icon={MessageCircle}
             tint="emerald"
@@ -185,6 +197,7 @@ export function ProfileClient({
       {/* All modals kept mounted; LocalSheet plays the exit animation before
           going inert. */}
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
+      <AiConnectModal open={aiOpen} onClose={() => setAiOpen(false)} />
       <ClassModal
         open={classOpen}
         onClose={() => setClassOpen(false)}
