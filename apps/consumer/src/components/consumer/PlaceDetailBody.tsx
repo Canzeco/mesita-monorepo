@@ -35,7 +35,6 @@ import {
   Crown,
   Navigation,
   QrCode,
-  Camera,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
@@ -427,19 +426,19 @@ function ProfileActions({
 // ── 2. Media (Place tab) ────────────────────────────────────────────────
 
 function MediaBox({ place }: { place: PlaceDetail }) {
-  // Photo catalog — the swipeable carousel inside a Box now that the
-  // avatar (not a full-bleed hero) leads the page.
+  // decision: full-bleed carousel — no Photos Box chrome / inner rounded
+  // inset (that stacked as double borders and shrunk the photo). Bleeds
+  // past the body's px-4 so the gallery is edge-to-edge under the tabs.
   if (place.photos.length === 0) return null;
   return (
-    <Box title="Photos" icon={Camera} iconColor="text-pink-400">
-      <div className="overflow-hidden rounded-xl">
-        <ImageCarousel
-          photos={place.photos}
-          alt={place.name}
-          aspect="aspect-square"
-        />
-      </div>
-    </Box>
+    <div className="-mx-4 overflow-hidden">
+      <ImageCarousel
+        photos={place.photos}
+        alt={place.name}
+        aspect="aspect-square"
+        rounded="rounded-none"
+      />
+    </div>
   );
 }
 
