@@ -11,6 +11,7 @@ import {
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
+import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
   parseUnitId,
   TOOL_ROUTES,
@@ -48,6 +49,11 @@ const SIDEBAR_NAV = [
     href: MEMO_PARENT.href,
     label: MEMO_PARENT.label,
     Icon: MEMO_PARENT.Icon,
+  },
+  {
+    href: SOURCING_PARENT.href,
+    label: SOURCING_PARENT.label,
+    Icon: SOURCING_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,

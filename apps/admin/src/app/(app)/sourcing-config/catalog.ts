@@ -1,0 +1,317 @@
+// Sourcing Config catalog — the human-facing taxonomy behind the policy table.
+//
+// Mesita onboards places sourced from Google Places (New). This catalog groups
+// the ~150 Google primary types (Table A) into a handful of Mesita-relevant
+// FAMILIES, and names the sourcing CHANNELS the policy is keyed by. The family
+// keys and channel keys are the contract shared with the Edge Functions
+// (admin-web-{get,update}-sourcing-config) — keep them in lock-step.
+//
+// The googleTypes arrays are the machine expansion of each family: the Google
+// `primaryType` values a place must match to count as that family. They're the
+// enforcement contract for the sourcing gate (admin discovery honours the floors
+// today; the remaining add-paths read this as they're wired). Anything NOT in an
+// enabled family is ineligible — that's how schools, hospitals, gas stations,
+// hotels, shops and transit are kept out without an explicit blocklist.
+
+export type FamilyKey =
+  | "restaurants"
+  | "bars_nightlife"
+  | "cafes_bakeries"
+  | "wellness_spa"
+  | "experiences"
+  | "culture_arts";
+
+export type ChannelKey =
+  | "admin_add"
+  | "admin_search"
+  | "business_add"
+  | "consumer_add"
+  | "memo_search";
+
+export type ChannelPolicy = {
+  enabled: boolean;
+  families: FamilyKey[];
+  minRating: number;
+  minReviews: number;
+};
+
+export type SourcingConfig = Record<ChannelKey, ChannelPolicy>;
+
+export type Family = {
+  key: FamilyKey;
+  label: string;
+  emoji: string;
+  blurb: string;
+  // Representative Google Places (New) Table A primary types. Not exhaustive of
+  // every cuisine variant, but the canonical set the gate matches on.
+  googleTypes: string[];
+};
+
+export const FAMILIES: Family[] = [
+  {
+    key: "restaurants",
+    label: "Restaurants",
+    emoji: "🍽️",
+    blurb: "Sit-down dining across every cuisine — the core of Mesita.",
+    googleTypes: [
+      "restaurant",
+      "fine_dining_restaurant",
+      "steak_house",
+      "seafood_restaurant",
+      "sushi_restaurant",
+      "japanese_restaurant",
+      "mexican_restaurant",
+      "italian_restaurant",
+      "pizza_restaurant",
+      "mediterranean_restaurant",
+      "american_restaurant",
+      "asian_restaurant",
+      "chinese_restaurant",
+      "thai_restaurant",
+      "indian_restaurant",
+      "french_restaurant",
+      "spanish_restaurant",
+      "korean_restaurant",
+      "vietnamese_restaurant",
+      "middle_eastern_restaurant",
+      "vegan_restaurant",
+      "vegetarian_restaurant",
+      "barbecue_restaurant",
+      "hamburger_restaurant",
+      "taco_restaurant",
+      "ramen_restaurant",
+      "tapas_restaurant",
+      "brunch_restaurant",
+      "breakfast_restaurant",
+      "bistro",
+      "diner",
+      "gastropub",
+      "buffet_restaurant",
+      "food_court",
+    ],
+  },
+  {
+    key: "bars_nightlife",
+    label: "Bars & Nightlife",
+    emoji: "🍸",
+    blurb: "Bars, cocktail lounges, breweries, clubs and live-music venues.",
+    googleTypes: [
+      "bar",
+      "cocktail_bar",
+      "wine_bar",
+      "sports_bar",
+      "lounge_bar",
+      "pub",
+      "irish_pub",
+      "gastropub",
+      "beer_garden",
+      "brewery",
+      "brewpub",
+      "hookah_bar",
+      "night_club",
+      "dance_hall",
+      "live_music_venue",
+      "karaoke",
+      "comedy_club",
+      "casino",
+    ],
+  },
+  {
+    key: "cafes_bakeries",
+    label: "Cafés, Bakeries & Dessert",
+    emoji: "☕",
+    blurb: "Coffee, tea, bakeries, ice cream and dessert spots.",
+    googleTypes: [
+      "cafe",
+      "coffee_shop",
+      "coffee_roastery",
+      "coffee_stand",
+      "cat_cafe",
+      "dog_cafe",
+      "tea_house",
+      "bakery",
+      "cake_shop",
+      "pastry_shop",
+      "bagel_shop",
+      "donut_shop",
+      "dessert_shop",
+      "dessert_restaurant",
+      "ice_cream_shop",
+      "acai_shop",
+      "juice_shop",
+      "chocolate_shop",
+      "confectionery",
+    ],
+  },
+  {
+    key: "wellness_spa",
+    label: "Wellness & Spa",
+    emoji: "🧖",
+    blurb: "Spas, saunas, wellness centers and yoga studios (experiences, not clinics).",
+    googleTypes: [
+      "spa",
+      "massage_spa",
+      "massage",
+      "sauna",
+      "wellness_center",
+      "yoga_studio",
+      "skin_care_clinic",
+    ],
+  },
+  {
+    key: "experiences",
+    label: "Experiences & Activities",
+    emoji: "🎟️",
+    blurb: "Things to do — amusement, arcades, bowling, karting, aquariums, wineries.",
+    googleTypes: [
+      "tourist_attraction",
+      "amusement_park",
+      "amusement_center",
+      "water_park",
+      "aquarium",
+      "zoo",
+      "bowling_alley",
+      "video_arcade",
+      "go_karting_venue",
+      "paintball_center",
+      "miniature_golf_course",
+      "ice_skating_rink",
+      "escape_room",
+      "winery",
+      "vineyard",
+      "botanical_garden",
+      "planetarium",
+      "observation_deck",
+      "marina",
+      "event_venue",
+      "banquet_hall",
+      "wedding_venue",
+    ],
+  },
+  {
+    key: "culture_arts",
+    label: "Culture & Arts",
+    emoji: "🎭",
+    blurb: "Museums, galleries, theaters, concert & opera halls, cultural landmarks.",
+    googleTypes: [
+      "museum",
+      "art_museum",
+      "history_museum",
+      "art_gallery",
+      "cultural_center",
+      "cultural_landmark",
+      "historical_place",
+      "monument",
+      "performing_arts_theater",
+      "concert_hall",
+      "opera_house",
+      "philharmonic_hall",
+      "movie_theater",
+    ],
+  },
+];
+
+export const FAMILY_LABEL: Record<FamilyKey, string> = Object.fromEntries(
+  FAMILIES.map((f) => [f.key, f.label]),
+) as Record<FamilyKey, string>;
+
+export const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
+
+export type Channel = {
+  key: ChannelKey;
+  label: string;
+  description: string;
+  // Where the policy is enforced today, kept honest per the memo-config precedent.
+  live: boolean;
+};
+
+export const CHANNELS: Channel[] = [
+  {
+    key: "admin_add",
+    label: "Admin · Add",
+    description:
+      "A super-admin adds a place from the console (Manage Single / Multiple). Most permissive — trusted operators.",
+    live: false,
+  },
+  {
+    key: "admin_search",
+    label: "Admin · Search",
+    description:
+      "What surfaces in the admin discovery searchbar (admin-web-discover-places). The rating / review floors here are live today.",
+    live: true,
+  },
+  {
+    key: "business_add",
+    label: "Business · Add",
+    description:
+      "A business owner claims or adds their own venue. No review floor by default — you own your venue even when it's brand-new.",
+    live: false,
+  },
+  {
+    key: "consumer_add",
+    label: "Consumer · Add",
+    description:
+      "A consumer suggests or adds a place. Quality-gated to keep junk and personal listings out.",
+    live: false,
+  },
+  {
+    key: "memo_search",
+    label: "Memo · Search",
+    description:
+      "What Memo, the consumer concierge, may surface or recommend. Gated to well-reviewed spots.",
+    live: false,
+  },
+];
+
+// The launch policy — must match the migration default
+// (20260708120000_sourcing_config.sql). Used as the pre-load placeholder and as
+// the fallback if the config read fails.
+export const DEFAULT_CONFIG: SourcingConfig = {
+  admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
+  admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
+  business_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
+  consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 3.5, minReviews: 100 },
+  memo_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 },
+};
+
+// Google Table A categories Mesita never sources from — shown as read-only
+// reference so an operator understands why a school or hospital can't be added.
+export const EXCLUDED_CATEGORIES: { label: string; examples: string }[] = [
+  { label: "Education", examples: "school · university · library · preschool" },
+  { label: "Health (clinical)", examples: "hospital · doctor · dentist · pharmacy" },
+  { label: "Lodging", examples: "hotel · motel · hostel · resort_hotel" },
+  { label: "Shopping / retail", examples: "supermarket · clothing_store · shopping_mall" },
+  { label: "Automotive", examples: "gas_station · car_repair · parking" },
+  { label: "Transport", examples: "airport · train_station · bus_stop" },
+  { label: "Government & finance", examples: "city_hall · police · bank · atm" },
+  { label: "Housing & services", examples: "apartment_complex · lawyer · real_estate_agency" },
+];
+
+// Coerce an arbitrary loaded object into a full, well-typed SourcingConfig,
+// filling any missing channel from DEFAULT_CONFIG and dropping unknown families.
+// The page always works on a complete object even if the row is partial.
+export function coerceConfig(raw: unknown): SourcingConfig {
+  const out = {} as SourcingConfig;
+  const src = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  for (const ch of CHANNELS) {
+    const d = DEFAULT_CONFIG[ch.key];
+    const p = src[ch.key];
+    if (!p || typeof p !== "object") {
+      out[ch.key] = { ...d, families: [...d.families] };
+      continue;
+    }
+    const o = p as Record<string, unknown>;
+    const families = Array.isArray(o.families)
+      ? (o.families.filter(
+          (f): f is FamilyKey => typeof f === "string" && ALL_FAMILY_KEYS.includes(f as FamilyKey),
+        ) as FamilyKey[])
+      : [...d.families];
+    out[ch.key] = {
+      enabled: typeof o.enabled === "boolean" ? o.enabled : d.enabled,
+      families,
+      minRating: typeof o.minRating === "number" ? o.minRating : d.minRating,
+      minReviews: typeof o.minReviews === "number" ? o.minReviews : d.minReviews,
+    };
+  }
+  return out;
+}
