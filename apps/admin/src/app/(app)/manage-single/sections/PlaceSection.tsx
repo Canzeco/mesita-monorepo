@@ -372,7 +372,9 @@ export function PlaceSection({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    // Two-column Place layout (legacy EditVenueForm pattern). Single column
+    // until xl; then boxes flow left→right. Per-box Save stays inside each card.
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
       <SectionCard
         icon={<BadgeCheck className="text-muted-foreground h-4 w-4" />}
         title="Meta"
