@@ -325,6 +325,9 @@ export function SearchClient({
         selectedId={selectedId}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={(place) => router.push(placeHref(place.slug || place.id))}
+        // Tapping the map canvas is a second way into search (besides the
+        // bar) — the panel opens over the top while the map stays visible.
+        onMapClick={() => setSearchOpen(true)}
       />
 
       {/* Floating top overlay — full-width search bar + idle chip row.

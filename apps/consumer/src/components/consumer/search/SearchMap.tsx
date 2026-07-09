@@ -93,6 +93,7 @@ export function SearchMap({
   selectedId,
   onSelectPlace,
   onOpenPlace,
+  onMapClick,
 }: {
   apiKey: string;
   places: Place[];
@@ -100,6 +101,10 @@ export function SearchMap({
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
+  // Fires on a tap of the bare map canvas (not a pin) — the page uses it as
+  // a big secondary hit target to open the search panel. Marker taps have
+  // their own onClick and don't trigger this.
+  onMapClick?: () => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
   // beat — hold a muted skeleton veil over it until tiles actually land
@@ -129,6 +134,7 @@ export function SearchMap({
           selectedId={selectedId}
           onSelectPlace={onSelectPlace}
           onOpenPlace={onOpenPlace}
+          onMapClick={onMapClick}
           onReady={handleMapReady}
         />
         {!mapReady && <MapLoadingVeil />}
@@ -168,6 +174,7 @@ function SearchMapCanvas({
   selectedId,
   onSelectPlace,
   onOpenPlace,
+  onMapClick,
   onReady,
 }: {
   places: Place[];
@@ -175,6 +182,7 @@ function SearchMapCanvas({
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
+  onMapClick?: () => void;
   onReady: () => void;
 }) {
   const located = places.filter(
@@ -196,6 +204,10 @@ function SearchMapCanvas({
       colorScheme="LIGHT"
       styles={MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]}
       onTilesLoaded={onReady}
+      // Tapping the bare canvas opens search — a big secondary hit target.
+      // Fires only on a discrete map click; pan/drag gestures and marker
+      // taps (their own onClick) don't reach here.
+      onClick={onMapClick ? () => onMapClick() : undefined}
     >
       {userLocation && (
         <Marker
