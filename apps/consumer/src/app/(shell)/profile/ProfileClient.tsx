@@ -243,15 +243,25 @@ function ProfileSummaryCard({
     return (
       <div className="border-border bg-muted/50 overflow-hidden rounded-3xl border p-4">
         <div className="flex items-center gap-4">
-          <div className="bg-muted h-[72px] w-[72px] shrink-0 animate-pulse rounded-full" />
+          {/* Avatar: 76px to match the real story-ring avatar (66px + 2×2.5px rings). */}
+          <div className="bg-muted h-[76px] w-[76px] shrink-0 animate-pulse rounded-full" />
           <div className="min-w-0 flex-1 space-y-2">
-            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
-            <div className="bg-muted h-3 w-28 animate-pulse rounded" />
+            <div className="bg-muted h-5 w-40 animate-pulse rounded" />
+            <div className="bg-muted h-3.5 w-28 animate-pulse rounded" />
+            <div className="bg-muted h-3.5 w-20 animate-pulse rounded" />
           </div>
         </div>
-        <div className="border-border/60 mt-4 space-y-2.5 border-t pt-3.5">
-          <div className="bg-muted h-4 w-36 animate-pulse rounded" />
-          <div className="bg-muted h-4 w-44 animate-pulse rounded" />
+        {/* Two identical icon-rows mirror the real Instagram + class rows so the
+            placeholders share one size instead of two mismatched bars. */}
+        <div className="border-border/60 mt-4 flex flex-col gap-2.5 border-t pt-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-muted h-7 w-7 shrink-0 animate-pulse rounded-lg" />
+            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="bg-muted h-7 w-7 shrink-0 animate-pulse rounded-lg" />
+            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+          </div>
         </div>
       </div>
     );
