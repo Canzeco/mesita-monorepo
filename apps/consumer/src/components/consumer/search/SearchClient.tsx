@@ -35,6 +35,7 @@ import {
   type PlacePrediction,
 } from "@/lib/api/place-search";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
+import { getOpeningStatusLabel } from "@/lib/place-status";
 import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
@@ -518,6 +519,8 @@ function RailCard({
     category: place.category,
   });
   const subtitle = [category, place.zone].filter(Boolean).join(" · ");
+  const openingLabel = getOpeningStatusLabel(place);
+  const isOpen = place.open_now === true;
   const hasMeta =
     place.google_rating != null ||
     (place.price_level != null && place.price_level > 0) ||
@@ -578,6 +581,24 @@ function RailCard({
               <span>{formatKm(place.distance_km)}</span>
             )}
           </p>
+        )}
+        {openingLabel && (
+          <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium">
+            <span
+              className={cn(
+                "h-1.5 w-1.5 shrink-0 rounded-full",
+                isOpen ? "bg-emerald-500" : "bg-muted-foreground/40",
+              )}
+            />
+            <span
+              className={cn(
+                "truncate",
+                isOpen ? "text-emerald-600" : "text-muted-foreground",
+              )}
+            >
+              {openingLabel}
+            </span>
+          </span>
         )}
       </div>
     </button>
