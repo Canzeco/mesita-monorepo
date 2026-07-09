@@ -1758,29 +1758,31 @@ function VerificationBox({ place }: { place: PlaceDetail }) {
 }
 
 function LastUpdatedBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — kill the empty card chrome. Freshness is footer meta,
-  // not a content box. Enriching = compact live pill; Updated = secondary.
+  // decision: Pato — same card chrome as Tags / Verification (not bare footer meta).
+  if (!place.is_enriching && !place.last_updated_label) return null;
   return (
-    <div
-      className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5 px-1 py-1"
-      aria-live="polite"
-    >
-      {place.is_enriching && (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-          <Spinner
-            size="sm"
-            label="Enriching"
-            className="h-3 w-3 border-emerald-300 border-t-emerald-600"
-          />
-          Enriching
-        </span>
-      )}
-      {place.last_updated_label && (
-        <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
-          Updated {place.last_updated_label}
-        </p>
-      )}
-    </div>
+    <Box title="Last update" icon={Clock} iconColor="text-slate-400">
+      <div
+        className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5"
+        aria-live="polite"
+      >
+        {place.is_enriching && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+            <Spinner
+              size="sm"
+              label="Enriching"
+              className="h-3 w-3 border-emerald-300 border-t-emerald-600"
+            />
+            Enriching
+          </span>
+        )}
+        {place.last_updated_label && (
+          <p className="text-muted-foreground text-sm font-medium tracking-wide">
+            Updated {place.last_updated_label}
+          </p>
+        )}
+      </div>
+    </Box>
   );
 }
 
