@@ -285,15 +285,15 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
       </div>
 
-      {/* Meta under the bio line — category · price · zone · distance · open */}
+      {/* decision: Pato — category · price · distance · location · open */}
       <div className="flex flex-wrap items-center gap-1.5">
         <OverviewChip>{place.category}</OverviewChip>
         <OverviewChip>{priceLabel}</OverviewChip>
-        <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
-          {place.zone}
-        </OverviewChip>
         <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
           {place.distance_km} km
+        </OverviewChip>
+        <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
+          {place.zone}
         </OverviewChip>
         <OverviewChip
           icon={Clock}
