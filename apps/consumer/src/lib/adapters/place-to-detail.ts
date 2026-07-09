@@ -278,6 +278,11 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     // "Updated 3 days ago" reads identically on the card and the detail.
     last_updated_label:
       relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently",
+    // Enrichment still in flight — projects.content_status is 'queued' (just
+    // added, waiting for the cron pipeline) or 'generating' (Enricher running).
+    // 'ready'/'failed' both read as done, so the chip falls back to "Updated …".
+    is_enriching:
+      row.content_status === "queued" || row.content_status === "generating",
 
     photos: arr<string>(row.photos),
 

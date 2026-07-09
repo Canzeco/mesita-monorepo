@@ -29,6 +29,7 @@ import {
   BadgeCheck,
   ShieldAlert,
   Pencil,
+  Loader2,
   Info,
   Crown,
   Navigation,
@@ -247,8 +248,17 @@ function SummaryHeader({ place }: { place: PlaceDetail }) {
         >
           {isPartner ? "Verified Partner" : "Not Verified"}
         </OverviewChip>
-        <OverviewChip icon={Pencil} iconClass="text-white/70">
-          Updated {place.last_updated_label}
+        <OverviewChip
+          icon={place.is_enriching ? Loader2 : Pencil}
+          iconClass={
+            place.is_enriching
+              ? "animate-spin text-violet-500"
+              : "text-muted-foreground"
+          }
+        >
+          {place.is_enriching
+            ? "Enriching…"
+            : `Updated ${place.last_updated_label}`}
         </OverviewChip>
       </div>
     </Box>

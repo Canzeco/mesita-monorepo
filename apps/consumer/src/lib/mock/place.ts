@@ -38,6 +38,10 @@ export type PlaceDetail = {
   zone: string;
   listing_type: "partner" | "web";
   last_updated_label: string;
+  // True while the Enricher is still building this place's profile
+  // (projects.content_status is 'queued' or 'generating'). Drives the
+  // summary chip: "Enriching…" while true, "Updated <when>" once ready.
+  is_enriching: boolean;
 
   // 2. Media
   photos: string[];
@@ -233,6 +237,7 @@ export const mockPlace: PlaceDetail = {
   zone: "Loma Larga Oriente",
   listing_type: "partner",
   last_updated_label: "2 days ago",
+  is_enriching: false,
 
   photos: [
     "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=900&q=80&auto=format&fit=crop",
