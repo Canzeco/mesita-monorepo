@@ -1007,7 +1007,7 @@ function MediaMetaDialog({
           <img
             src={url}
             alt="Photo"
-            className="border-border aspect-[16/9] w-full rounded-lg border object-cover"
+            className="border-border aspect-square w-full rounded-lg border object-cover"
           />
 
           <div className="flex flex-wrap items-center gap-2">
