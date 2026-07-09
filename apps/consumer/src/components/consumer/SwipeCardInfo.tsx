@@ -1,10 +1,8 @@
 import {
-  BadgeCheck,
   Clock,
   Instagram,
   MapPin,
   Navigation,
-  ShieldAlert,
   Star,
   Users,
 } from "lucide-react";
@@ -14,6 +12,7 @@ import { neighborhoodFromAddress } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStatusLabel } from "@/lib/place-status";
 import { formatPlacePriceChip } from "@/lib/place-price";
+import { PlaceVerificationIcon } from "@/components/consumer/PlaceVerificationIcon";
 import { PromoChip } from "./PromoChip";
 
 /** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
@@ -44,19 +43,27 @@ export function SwipeCardInfo({
   const igFollowersLabel = formatFollowers(place.instagram_followers_count);
   const statusLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
-  const isPartner = place.listing_type === "partner";
+  const listingType = place.listing_type === "partner" ? "partner" : "web";
 
   return (
     <div
       className={cn("flex flex-col", compact ? "gap-1.5" : "gap-2.5 p-4 pt-3")}
     >
+      {/* decision: Pato — verification icon beside name (same as place header),
+          not a Verified/Not Verified meta chip */}
       <h2
         className={cn(
-          "leading-[1.15] font-semibold tracking-[-0.01em] text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]",
-          compact ? "line-clamp-1 text-[1.3rem]" : "text-[1.95rem]",
+          "inline-flex min-w-0 max-w-full items-center gap-1.5 leading-[1.15] font-semibold tracking-[-0.01em] text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]",
+          compact ? "text-[1.3rem]" : "text-[1.95rem]",
         )}
       >
-        {place.name}
+        <span className={cn("min-w-0", compact && "truncate")}>
+          {place.name}
+        </span>
+        <PlaceVerificationIcon
+          listingType={listingType}
+          className="shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-white/25"
+        />
       </h2>
 
       <div
@@ -120,22 +127,6 @@ export function SwipeCardInfo({
             <span className="font-semibold">{statusLabel}</span>
           </MetaChip>
         )}
-        <MetaChip compact={compact}>
-          {isPartner ? (
-            <>
-              <BadgeCheck
-                className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white"
-                strokeWidth={2}
-              />
-              <span className="font-semibold">Verified Partner</span>
-            </>
-          ) : (
-            <>
-              <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-300" />
-              <span className="font-semibold">Not Verified</span>
-            </>
-          )}
-        </MetaChip>
         <PromoChip place={place} size="md" showWhenEmpty />
       </div>
     </div>
