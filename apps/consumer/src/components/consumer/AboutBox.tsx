@@ -9,8 +9,26 @@ import { cn } from "@/lib/utils";
 // characters, ≈ 10 mobile lines) do we clamp to line-clamp-10 with a
 // "Show more" toggle. The whole card is the toggle target so taps
 // anywhere on it open it up.
+//
+// Enricher Abouts are multi-paragraph (blank-line separated). Normalize
+// to \n\n and render with whitespace-pre-wrap so paragraphs show and
+// line-clamp still works on one block.
 
 const LONG_TEXT_THRESHOLD = 600;
+
+function formatAboutDisplay(text: string): string {
+  const normalized = text.replace(/\r\n/g, "\n").trim();
+  const blankSplit = normalized
+    .split(/\n\s*\n+/)
+    .map((p) => p.replace(/\n+/g, " ").replace(/[ \t]+/g, " ").trim())
+    .filter(Boolean);
+  if (blankSplit.length > 1) return blankSplit.join("\n\n");
+  const soft = normalized
+    .split(/\n+/)
+    .map((p) => p.replace(/[ \t]+/g, " ").trim())
+    .filter(Boolean);
+  return soft.length > 1 ? soft.join("\n\n") : normalized;
+}
 
 export function AboutBox({ text, name }: { text: string; name: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -18,6 +36,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
   // Include the place name so this header reads as "about the place", not
   // "about the reward" sitting directly above it.
   const heading = `About ${name}`;
+  const body = formatAboutDisplay(text);
 
   if (!isLong) {
     return (
@@ -25,8 +44,8 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
         <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
           {heading}
         </h3>
-        <p className="text-muted-foreground text-base leading-relaxed">
-          {text}
+        <p className="text-muted-foreground whitespace-pre-wrap text-base leading-relaxed">
+          {body}
         </p>
       </section>
     );
@@ -44,11 +63,11 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
       </h3>
       <p
         className={cn(
-          "text-muted-foreground text-base leading-relaxed",
+          "text-muted-foreground whitespace-pre-wrap text-base leading-relaxed",
           !expanded && "line-clamp-10",
         )}
       >
-        {text}
+        {body}
       </p>
       <span className="text-foreground inline-flex items-center gap-1 text-[11px] font-semibold">
         {expanded ? "Show less" : "Show more"}
