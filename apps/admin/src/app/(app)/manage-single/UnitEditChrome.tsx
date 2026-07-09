@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CheckCircle2, ChevronDown, ImageOff, Loader2, Search, Sparkles } from "lucide-react";
+import {
+  ArrowLeftRight,
+  CheckCircle2,
+  ChevronDown,
+  ImageOff,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { enrichPlace, type AdminPlace, type ReenrichMode } from "./actions";
 import { UNIT_SECTIONS, unitSectionHref } from "./nav";
 
@@ -24,36 +31,65 @@ export function UnitEditChrome({
   place: AdminPlace;
 }) {
   const pathname = usePathname();
+  const heroPhoto = place.photos?.[0] ?? null;
+  const statusLabel = place.status?.trim()
+    ? place.status.charAt(0).toUpperCase() + place.status.slice(1)
+    : null;
 
   return (
-    // Dark sticky chrome for contrast against the light page body. Uses
-    // semantic foreground/background (not raw zinc/white) so the light theme
-    // token contract still holds.
-    <div className="bg-foreground text-background sticky top-0 z-30">
-      <div className="flex items-center gap-3 px-4 py-2 sm:gap-4 sm:px-6 lg:px-8">
-        <Link
-          href="/manage-single/select"
-          className="text-background/70 hover:bg-background/10 hover:text-background inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition"
-        >
-          <Search className="h-4 w-4" />
-          <span className="hidden sm:inline">Switch unit</span>
-        </Link>
+    // Dark sticky chrome — two rows so identity and tabs each get real
+    // vertical space instead of fighting in one cramped strip.
+    <div className="bg-foreground text-background sticky top-0 z-30 shadow-md">
+      {/* Row 1 — identity + actions */}
+      <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
+        <UnitThumb photo={heroPhoto} name={place.name} size="lg" tone="onDark" />
 
-        <span className="bg-background/20 h-4 w-px shrink-0" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p
+            className="truncate text-base font-semibold tracking-tight sm:text-lg"
+            title={place.name}
+          >
+            {place.name}
+          </p>
+          <div className="text-background/55 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+            {statusLabel ? (
+              <span className="text-background/80 font-medium capitalize">
+                {statusLabel}
+              </span>
+            ) : null}
+            {place.category_label || place.category ? (
+              <>
+                {statusLabel ? (
+                  <span className="bg-background/25 h-1 w-1 rounded-full" aria-hidden />
+                ) : null}
+                <span className="truncate">
+                  {place.category_label ?? place.category}
+                </span>
+              </>
+            ) : null}
+          </div>
+        </div>
 
-        <p
-          className="max-w-[8rem] shrink-0 truncate text-sm font-semibold sm:max-w-[12rem] lg:max-w-none"
-          title={place.name}
-        >
-          {place.name}
-        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/manage-single/select"
+            className="text-background/80 hover:bg-background/10 hover:text-background inline-flex h-10 items-center gap-2 rounded-xl border border-background/15 px-3 text-sm font-medium transition sm:px-3.5"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            <span className="hidden sm:inline">Switch unit</span>
+          </Link>
+          <ReEnrichButton projectId={projectId} />
+        </div>
+      </div>
 
+      {/* Row 2 — full-width section tabs */}
+      <div className="border-background/10 border-t px-2 sm:px-4 lg:px-6">
         <nav
           role="tablist"
           aria-label="Unit sections"
-          className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-stretch gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {UNIT_SECTIONS.map(({ id, label }) => {
+          {UNIT_SECTIONS.map(({ id, label, Icon }) => {
             const href = unitSectionHref(projectId, id);
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
@@ -63,21 +99,24 @@ export function UnitEditChrome({
                 role="tab"
                 aria-selected={active}
                 className={
-                  "inline-flex shrink-0 items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition sm:px-3 " +
+                  "relative inline-flex min-h-12 shrink-0 items-center gap-2 px-3.5 text-sm font-semibold transition sm:min-h-[3.25rem] sm:px-4 " +
                   (active
-                    ? "bg-secondary text-secondary-foreground"
-                    : "text-background/70 hover:bg-background/10 hover:text-background")
+                    ? "text-background"
+                    : "text-background/55 hover:bg-background/5 hover:text-background/90")
                 }
               >
-                {label}
+                <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                <span>{label}</span>
+                {active ? (
+                  <span
+                    className="bg-secondary absolute inset-x-2 bottom-0 h-0.5 rounded-full sm:inset-x-3"
+                    aria-hidden
+                  />
+                ) : null}
               </Link>
             );
           })}
         </nav>
-
-        <span className="bg-background/20 hidden h-4 w-px shrink-0 sm:block" aria-hidden />
-
-        <ReEnrichButton projectId={projectId} />
       </div>
     </div>
   );
@@ -93,17 +132,20 @@ const REENRICH_MODES: {
   {
     mode: "full",
     label: "Full re-enrich",
-    detail: "Research + analysis + contents. Refreshes Google spine, channels, reviews, images, copy — and re-fetches the phone (overrides).",
+    detail:
+      "Research + analysis + contents. Refreshes Google spine, channels, reviews, images, copy — and re-fetches the phone (overrides).",
   },
   {
     mode: "analysis",
     label: "Analysis + contents",
-    detail: "Re-ranks & rebuilds images, then re-persists — reusing the last gathered data (no re-gather). Phone/email untouched.",
+    detail:
+      "Re-ranks & rebuilds images, then re-persists — reusing the last gathered data (no re-gather). Phone/email untouched.",
   },
   {
     mode: "contents",
     label: "Contents only",
-    detail: "Re-synthesises About / category / tags and re-persists — reusing the last gathered + analysis. Cheapest. Phone/email untouched.",
+    detail:
+      "Re-synthesises About / category / tags and re-persists — reusing the last gathered + analysis. Cheapest. Phone/email untouched.",
   },
 ];
 
@@ -168,10 +210,10 @@ function ReEnrichButton({ projectId }: { projectId: string }) {
             : "Re-run the Enricher pipeline for this place"
         }
         className={
-          "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition disabled:opacity-60 " +
+          "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition disabled:opacity-60 sm:px-3.5 " +
           (state === "error"
-            ? "text-red-300 hover:bg-red-500/20"
-            : "text-secondary hover:bg-background/10")
+            ? "bg-red-500/20 text-red-200 hover:bg-red-500/30"
+            : "bg-secondary text-secondary-foreground hover:opacity-90")
         }
       >
         {pending ? (
@@ -184,13 +226,13 @@ function ReEnrichButton({ projectId }: { projectId: string }) {
         <span className="hidden sm:inline">
           {pending ? "Queuing…" : state === "done" ? `Queued · ${ranLabel}` : "Re-enrich"}
         </span>
-        <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden />
+        <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="border-border bg-card absolute right-0 z-40 mt-1 w-72 overflow-hidden rounded-lg border shadow-lg"
+          className="border-border bg-card absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border shadow-lg"
         >
           {REENRICH_MODES.map(({ mode, label, detail }) => (
             <button
@@ -198,7 +240,7 @@ function ReEnrichButton({ projectId }: { projectId: string }) {
               type="button"
               role="menuitem"
               onClick={() => run(mode)}
-              className="hover:bg-muted/60 block w-full px-3 py-2.5 text-left transition"
+              className="hover:bg-muted/60 block w-full px-4 py-3 text-left transition"
             >
               <span className="text-foreground block text-sm font-medium">{label}</span>
               <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
@@ -216,20 +258,28 @@ export function UnitThumb({
   photo,
   name,
   size = "sm",
+  tone = "onLight",
 }: {
   photo: string | null;
   name: string;
   size?: "sm" | "lg";
+  /** onDark = Edit Single Unit chrome; onLight = select catalog cards. */
+  tone?: "onLight" | "onDark";
 }) {
-  const dim = size === "lg" ? "h-11 w-11 rounded-lg" : "h-8 w-8 rounded-md";
+  const dim = size === "lg" ? "h-11 w-11 rounded-xl" : "h-8 w-8 rounded-md";
   const icon = size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5";
+  const border =
+    tone === "onDark" ? "border-background/20" : "border-border";
+  const empty =
+    tone === "onDark"
+      ? "bg-background/10 text-background/50"
+      : "bg-muted/40 text-muted-foreground";
 
   if (!photo) {
     return (
       <div
         className={
-          "border-border bg-muted/40 text-muted-foreground flex shrink-0 items-center justify-center border " +
-          dim
+          "flex shrink-0 items-center justify-center border " + border + " " + empty + " " + dim
         }
       >
         <ImageOff className={icon} />
@@ -241,7 +291,7 @@ export function UnitThumb({
     <img
       src={photo}
       alt={name}
-      className={"border-border shrink-0 border object-cover " + dim}
+      className={"shrink-0 border object-cover " + border + " " + dim}
     />
   );
 }
