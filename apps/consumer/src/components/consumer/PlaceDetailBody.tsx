@@ -97,8 +97,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
           <LinksBox place={place} />
           <AboutBox text={place.long_description} name={place.name} />
           <TagsBox place={place} />
-          <OwnershipClaimBox place={place} />
-          <VerificationStatusBox place={place} />
+          <VerificationBox place={place} />
           <LastUpdatedBox place={place} />
         </>
       )}
@@ -1558,32 +1557,9 @@ function TagsBox({ place }: { place: PlaceDetail }) {
   );
 }
 
-function OwnershipClaimBox({ place }: { place: PlaceDetail }) {
-  // Only unverified web listings can be claimed. Verified partners already
-  // have an owner on record, so the claim CTA would be redundant.
-  if (place.listing_type === "partner") return null;
-  return (
-    <Box title="Ownership" icon={CircleHelp} iconColor="text-slate-400">
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        This listing isn’t claimed by a business owner yet.
-      </p>
-      <a
-        href="https://business.mesita.ai/add"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 rounded-full bg-slate-500/10 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-500/25 transition hover:bg-slate-500/15"
-      >
-        Are you the owner of this place? Claim ownership
-        <ChevronRight className="h-3.5 w-3.5" />
-      </a>
-    </Box>
-  );
-}
-
-function VerificationStatusBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — explain verification under Ownership (not as a summary
-  // chip). Sky check = Verified Partner; muted CircleHelp = not verified
-  // (never ShieldAlert — reads as a security vulnerability).
+function VerificationBox({ place }: { place: PlaceDetail }) {
+  // decision: Pato — one Verification box (status + claim CTA). Never
+  // ShieldAlert for unverified — reads as a security vulnerability.
   const isPartner = place.listing_type === "partner";
   return (
     <Box
@@ -1600,11 +1576,23 @@ function VerificationStatusBox({ place }: { place: PlaceDetail }) {
           rewards and take reservations through the app.
         </p>
       ) : (
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          <span className="text-foreground font-semibold">Not verified.</span>{" "}
-          This is a web listing Mesita found online. Details may be incomplete,
-          and the place can’t offer Mesita rewards until an owner claims it.
-        </p>
+        <>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            <span className="text-foreground font-semibold">Not verified.</span>{" "}
+            This is a web listing Mesita found online. Details may be
+            incomplete, and the place can’t offer Mesita rewards until an owner
+            claims it.
+          </p>
+          <a
+            href="https://business.mesita.ai/add"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-slate-500/10 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-500/25 transition hover:bg-slate-500/15"
+          >
+            Are you the owner of this place? Claim ownership
+            <ChevronRight className="h-3.5 w-3.5" />
+          </a>
+        </>
       )}
     </Box>
   );
