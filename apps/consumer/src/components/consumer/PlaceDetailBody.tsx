@@ -100,7 +100,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
         <LinksBox place={place} />
       </SectionAnchor>
       <SectionAnchor id="details">
-        <DetailsBox place={place} />
+        <TagsBox place={place} />
       </SectionAnchor>
       <OwnershipClaimBox place={place} />
     </div>
@@ -217,33 +217,33 @@ function SummaryHeader({ place }: { place: PlaceDetail }) {
         <OverviewChip>{formatPerPersonPrice(place.price_range)}</OverviewChip>
         <OverviewChip
           icon={Star}
-          iconClass="text-amber-400 fill-amber-400"
+          iconClass="text-amber-500 fill-amber-500"
           iconStrokeWidth={0}
         >
           {googleRating}
-          <span className="text-white/70">
+          <span className="text-muted-foreground">
             ({formatCount(place.google.count, false)})
           </span>
         </OverviewChip>
-        <OverviewChip icon={Instagram} iconClass="text-pink-200/80">
+        <OverviewChip icon={Instagram} iconClass="text-pink-500">
           {igFollowers}
-          <span className="text-white/70">followers</span>
+          <span className="text-muted-foreground">followers</span>
         </OverviewChip>
         <OverviewChip
           icon={Clock}
-          iconClass={place.open_now ? "text-emerald-400" : "text-white/70"}
+          iconClass={place.open_now ? "text-emerald-600" : "text-muted-foreground"}
         >
           {statusValue}
         </OverviewChip>
-        <OverviewChip icon={Navigation} iconClass="text-white/70">
+        <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
           {place.distance_km} km
         </OverviewChip>
-        <OverviewChip icon={MapPin} iconClass="text-white/70">
+        <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
           {place.zone}
         </OverviewChip>
         <OverviewChip
           icon={isPartner ? BadgeCheck : ShieldAlert}
-          iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-300"}
+          iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-500"}
         >
           {isPartner ? "Verified Partner" : "Not Verified"}
         </OverviewChip>
@@ -271,13 +271,13 @@ function OverviewChip({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/35 bg-black/45 px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
+        "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-foreground tabular-nums [font-variant-numeric:tabular-nums_lining-nums]",
         capitalize && "capitalize",
       )}
     >
       {Icon && (
         <Icon
-          className={cn("h-4 w-4 shrink-0", iconClass ?? "text-white/80")}
+          className={cn("h-4 w-4 shrink-0", iconClass ?? "text-muted-foreground")}
           strokeWidth={iconStrokeWidth}
         />
       )}
@@ -1011,7 +1011,7 @@ function RewardCell({
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
-// ── 10. Details ─────────────────────────────────────────────────────────
+// ── 10. Tags ────────────────────────────────────────────────────────────
 
 const CHANNEL_DEFS = [
   { key: "website_url", label: "Website", Icon: Globe },
@@ -1143,39 +1143,16 @@ function TagChips({ tags }: { tags: PlaceDetail["tags"] }) {
   );
 }
 
-function DetailsBox({ place }: { place: PlaceDetail }) {
-  // Just the essentials a guest decides on — dining style, dress code,
-  // reservations, payment, parking, and what it's good for. The long lists
-  // (amenities, accessibility, dietary, languages) and platform meta were
-  // noise on this surface; category and zone already show at the top.
-  const d = place.details;
-  const rows: Array<[string, string]> = [
-    ["Dining style", d.dining_style],
-    ["Dress code", d.dress_code],
-    ["Reservations", d.reservations],
-    ["Payment", d.payment_methods.join(" · ")],
-    ["Parking", d.parking],
-    ["Good for", d.good_for.join(" · ")],
-  ];
+function TagsBox({ place }: { place: PlaceDetail }) {
+  // Tags only — the curated taxonomy chip cluster (one tint per facet).
+  // The old key/value rows (dining style, dress code, reservations,
+  // payment, parking, good for) were noise here; those facts are being
+  // absorbed into the tag vocabulary itself (Atlas taxonomy v2). The
+  // whole box disappears when the place has no tags.
+  if (place.tags.length === 0) return null;
   return (
-    <Box title="Details" icon={Tags} iconColor="text-pink-400">
-      {/* Curated taxonomy chips lead the box — a premium, differentiated
-          chip cluster (one tint per facet) above the key/value essentials.
-          Renders nothing when the place has no tags. */}
+    <Box title="Tags" icon={Tags} iconColor="text-pink-400">
       <TagChips tags={place.tags} />
-      <dl className="flex flex-col gap-3">
-        {rows.map(([label, value]) => (
-          <div
-            key={label}
-            className="flex items-baseline justify-between gap-4"
-          >
-            <dt className="text-muted-foreground text-sm">{label}</dt>
-            <dd className="text-foreground text-right text-sm font-medium">
-              {value}
-            </dd>
-          </div>
-        ))}
-      </dl>
     </Box>
   );
 }
