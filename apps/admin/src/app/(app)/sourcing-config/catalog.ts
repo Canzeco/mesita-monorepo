@@ -213,10 +213,6 @@ export const FAMILIES: Family[] = [
   },
 ];
 
-export const FAMILY_LABEL: Record<FamilyKey, string> = Object.fromEntries(
-  FAMILIES.map((f) => [f.key, f.label]),
-) as Record<FamilyKey, string>;
-
 export const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
 
 export type ChannelVerb = "search" | "add";
@@ -317,19 +313,6 @@ export const DEFAULT_CONFIG: SourcingConfig = {
   consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 3.5, minReviews: 100 },
   memo_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 },
 };
-
-// Google Table A categories Mesita never sources from — shown as read-only
-// reference so an operator understands why a school or hospital can't be added.
-export const EXCLUDED_CATEGORIES: { label: string; examples: string }[] = [
-  { label: "Education", examples: "school · university · library · preschool" },
-  { label: "Health (clinical)", examples: "hospital · doctor · dentist · pharmacy" },
-  { label: "Lodging", examples: "hotel · motel · hostel · resort_hotel" },
-  { label: "Shopping / retail", examples: "supermarket · clothing_store · shopping_mall" },
-  { label: "Automotive", examples: "gas_station · car_repair · parking" },
-  { label: "Transport", examples: "airport · train_station · bus_stop" },
-  { label: "Government & finance", examples: "city_hall · police · bank · atm" },
-  { label: "Housing & services", examples: "apartment_complex · lawyer · real_estate_agency" },
-];
 
 // Coerce an arbitrary loaded object into a full, well-typed SourcingConfig,
 // filling any missing channel from DEFAULT_CONFIG and dropping unknown families.

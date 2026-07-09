@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Ban, Layers, Star, Users } from "lucide-react";
+import { Layers, Star, Users } from "lucide-react";
 import {
-  Collapsible,
   ErrorNote,
   SaveRow,
   SectionCard,
@@ -15,7 +14,6 @@ import {
 } from "./actions";
 import {
   CHANNELS,
-  EXCLUDED_CATEGORIES,
   FAMILIES,
   type ChannelKey,
   type FamilyKey,
@@ -96,218 +94,160 @@ export function SourcingConfigClient({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <SectionCard
-        icon={<Layers className="text-secondary h-4 w-4" />}
-        title="Channels"
-        subtitle="Two kinds of row per actor. visibility (search) = what may appear in that surface's searchbar, including Google places not yet in Mesita, shown as 'add' candidates — reject it here and it never shows at all. onboard (add) = what may actually be created as a Mesita place. Pick the eligible families and the Google quality floor (0 = no floor); turning a channel off blocks it entirely."
-        status={
-          updatedAt ? (
-            <span className="text-muted-foreground text-xs">
-              Updated {new Date(updatedAt).toLocaleDateString()}
-            </span>
-          ) : null
-        }
-      >
-        <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[720px] border-separate border-spacing-0 px-4 sm:px-0">
-            <thead>
-              <tr className="text-muted-foreground text-left text-xs">
-                <th className="pb-2 pl-1 font-medium">Channel</th>
-                <th className="pb-2 font-medium">Eligible families</th>
-                <th className="pb-2 text-right font-medium">
-                  <span className="inline-flex items-center gap-1">
-                    <Star className="h-3 w-3" /> Min ★
-                  </span>
-                </th>
-                <th className="pb-2 text-right font-medium">
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-3 w-3" /> Min reviews
-                  </span>
-                </th>
-                <th className="pb-2 pr-1 text-right font-medium">On</th>
-              </tr>
-            </thead>
-            <tbody>
-              {CHANNELS.map((ch, idx) => {
-                const p = cfg[ch.key];
-                const off = !p.enabled;
-                // Thicker rule where a new actor group starts (Admin → Business
-                // → Consumer → Memo) so the search/add pairs read as blocks.
-                const newGroup = idx === 0 || CHANNELS[idx - 1].actor !== ch.actor;
-                return (
-                  <tr
-                    key={ch.key}
-                    className={
-                      "align-top [&>td]:py-4 [&>td]:border-t " +
-                      (newGroup
-                        ? "[&>td]:border-border [&>td]:border-t-2"
-                        : "[&>td]:border-border/50")
-                    }
-                  >
-                    <td className="max-w-[15rem] pr-4 pl-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-sm font-semibold">{ch.label}</span>
-                        <span
-                          className={
-                            "rounded-full px-1.5 py-0.5 text-[10px] font-medium " +
-                            (ch.verb === "search"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-violet-100 text-violet-700")
-                          }
-                        >
-                          {ch.verb === "search" ? "visibility" : "onboard"}
+    <SectionCard
+      icon={<Layers className="text-secondary h-4 w-4" />}
+      title="Channels"
+      subtitle="Search = what may appear in that surface's searchbar (including Google places not yet in Mesita). Add = what may be onboarded as a Mesita place. Floors are Google rating / review counts; 0 = no floor."
+      status={
+        updatedAt ? (
+          <span className="text-muted-foreground text-xs">
+            Updated {new Date(updatedAt).toLocaleDateString()}
+          </span>
+        ) : null
+      }
+    >
+      <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
+        <table className="w-full min-w-[680px] border-separate border-spacing-0 px-4 sm:px-0">
+          <thead>
+            <tr className="text-muted-foreground text-left text-xs">
+              <th className="pb-2 pl-1 font-medium" colSpan={2}>
+                Channel
+              </th>
+              <th className="pb-2 font-medium">Eligible families</th>
+              <th className="pb-2 text-right font-medium">
+                <span className="inline-flex items-center gap-1">
+                  <Star className="h-3 w-3" /> Min ★
+                </span>
+              </th>
+              <th className="pb-2 text-right font-medium">
+                <span className="inline-flex items-center gap-1">
+                  <Users className="h-3 w-3" /> Min reviews
+                </span>
+              </th>
+              <th className="pb-2 pr-1 text-right font-medium">On</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CHANNELS.map((ch, idx) => {
+              const p = cfg[ch.key];
+              const off = !p.enabled;
+              // Actor cell spans its search/add pair; thicker rule between actors.
+              const newGroup = idx === 0 || CHANNELS[idx - 1].actor !== ch.actor;
+              const rowsInGroup = CHANNELS.filter(
+                (c) => c.actor === ch.actor,
+              ).length;
+              return (
+                <tr
+                  key={ch.key}
+                  className={
+                    "align-top [&>td]:py-3 [&>td]:border-t " +
+                    (newGroup
+                      ? "[&>td]:border-border [&>td]:border-t-2"
+                      : "[&>td]:border-border/50")
+                  }
+                >
+                  {newGroup && (
+                    <td rowSpan={rowsInGroup} className="w-24 pr-2 pl-1">
+                      <span className="text-sm font-semibold">{ch.actor}</span>
+                    </td>
+                  )}
+                  <td className="w-24 pr-4" title={ch.description}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-sm">
+                        {ch.verb === "search" ? "Search" : "Add"}
+                      </span>
+                      {ch.live && (
+                        <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                          live
                         </span>
-                        {ch.live ? (
-                          <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
-                            live
-                          </span>
-                        ) : (
-                          <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                            staged
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                        {ch.description}
-                      </p>
-                    </td>
-
-                    <td className={"pr-4 " + (off ? "opacity-40" : "")}>
-                      <div className="flex flex-wrap gap-1.5">
-                        {FAMILIES.map((fam) => {
-                          const on = p.families.includes(fam.key);
-                          return (
-                            <button
-                              key={fam.key}
-                              type="button"
-                              disabled={off || pending}
-                              onClick={() => toggleFamily(ch.key, fam.key)}
-                              title={fam.blurb}
-                              aria-pressed={on}
-                              className={
-                                "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium transition disabled:cursor-not-allowed " +
-                                (on
-                                  ? "border-secondary/30 bg-secondary/10 text-secondary"
-                                  : "border-border text-muted-foreground hover:bg-muted")
-                              }
-                            >
-                              <span aria-hidden>{fam.emoji}</span>
-                              {fam.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {p.families.length === 0 && !off && (
-                        <p className="mt-1.5 text-xs text-amber-600">
-                          No families — nothing is eligible for this channel.
-                        </p>
                       )}
-                    </td>
+                    </span>
+                  </td>
 
-                    <td className={"pr-4 " + (off ? "opacity-40" : "")}>
-                      <FloorInput
-                        value={p.minRating}
-                        min={0}
-                        max={5}
-                        step={0.1}
-                        decimals
-                        disabled={off || pending}
-                        onChange={(v) => patch(ch.key, "minRating", v)}
+                  <td className={"pr-4 " + (off ? "opacity-40" : "")}>
+                    <div className="flex flex-wrap gap-1.5">
+                      {FAMILIES.map((fam) => {
+                        const on = p.families.includes(fam.key);
+                        return (
+                          <button
+                            key={fam.key}
+                            type="button"
+                            disabled={off || pending}
+                            onClick={() => toggleFamily(ch.key, fam.key)}
+                            title={fam.blurb}
+                            aria-pressed={on}
+                            className={
+                              "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium transition disabled:cursor-not-allowed " +
+                              (on
+                                ? "border-secondary/30 bg-secondary/10 text-secondary"
+                                : "border-border text-muted-foreground hover:bg-muted")
+                            }
+                          >
+                            <span aria-hidden>{fam.emoji}</span>
+                            {fam.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {p.families.length === 0 && !off && (
+                      <p className="mt-1.5 text-xs text-amber-600">
+                        No families — nothing is eligible for this channel.
+                      </p>
+                    )}
+                  </td>
+
+                  <td className={"pr-4 " + (off ? "opacity-40" : "")}>
+                    <FloorInput
+                      value={p.minRating}
+                      min={0}
+                      max={5}
+                      step={0.1}
+                      decimals
+                      disabled={off || pending}
+                      onChange={(v) => patch(ch.key, "minRating", v)}
+                    />
+                  </td>
+
+                  <td className={"pr-4 " + (off ? "opacity-40" : "")}>
+                    <FloorInput
+                      value={p.minReviews}
+                      min={0}
+                      max={100000}
+                      step={10}
+                      disabled={off || pending}
+                      onChange={(v) => patch(ch.key, "minReviews", v)}
+                    />
+                  </td>
+
+                  <td className="pr-1 text-right">
+                    <div className="inline-flex justify-end">
+                      <Switch
+                        on={p.enabled}
+                        pending={pending}
+                        label={`Enable ${ch.label}`}
+                        onClick={() => patch(ch.key, "enabled", !p.enabled)}
                       />
-                    </td>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-                    <td className={"pr-4 " + (off ? "opacity-40" : "")}>
-                      <FloorInput
-                        value={p.minReviews}
-                        min={0}
-                        max={100000}
-                        step={10}
-                        disabled={off || pending}
-                        onChange={(v) => patch(ch.key, "minReviews", v)}
-                      />
-                    </td>
+      <p className="text-muted-foreground mt-3 text-xs">
+        Enforced live today:{" "}
+        {CHANNELS.filter((c) => c.live)
+          .map((c) => c.label)
+          .join(", ")}
+        . The remaining channels apply as their search / add paths are wired.
+        Hover a channel or family chip for details.
+      </p>
 
-                    <td className="pr-1 text-right">
-                      <div className="inline-flex justify-end">
-                        <Switch
-                          on={p.enabled}
-                          pending={pending}
-                          label={`Enable ${ch.label}`}
-                          onClick={() => patch(ch.key, "enabled", !p.enabled)}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
-        {error && <ErrorNote message={error} />}
-      </SectionCard>
-
-      {/* Families reference — the Google primary types behind each chip. */}
-      <SectionCard
-        icon={<Layers className="text-muted-foreground h-4 w-4" />}
-        title="Families"
-        subtitle="Each family maps to a set of Google Places (New) primary types. A place is that family when its Google primary type is in the set."
-      >
-        <Collapsible summary={`Show family → Google type mapping (${FAMILIES.length} families)`}>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {FAMILIES.map((fam) => (
-              <li
-                key={fam.key}
-                className="border-border bg-background rounded-xl border p-3"
-              >
-                <p className="text-sm font-semibold">
-                  <span aria-hidden className="mr-1.5">
-                    {fam.emoji}
-                  </span>
-                  {fam.label}
-                  <span className="text-muted-foreground ml-1.5 text-xs font-normal tabular-nums">
-                    · {fam.googleTypes.length} types
-                  </span>
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                  {fam.blurb}
-                </p>
-                <p className="text-muted-foreground/80 mt-2 font-mono text-[11px] leading-relaxed break-words">
-                  {fam.googleTypes.slice(0, 10).join(" · ")}
-                  {fam.googleTypes.length > 10
-                    ? ` … +${fam.googleTypes.length - 10}`
-                    : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </Collapsible>
-      </SectionCard>
-
-      {/* Never-eligible reference. */}
-      <SectionCard
-        icon={<Ban className="text-muted-foreground h-4 w-4" />}
-        title="Never eligible"
-        subtitle="Google categories Mesita never sources from — they can't be enabled for any channel. A place only enters through an enabled family above."
-      >
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {EXCLUDED_CATEGORIES.map((c) => (
-            <li
-              key={c.label}
-              className="border-border bg-background rounded-xl border px-3 py-2"
-              title={c.examples}
-            >
-              <span className="text-sm font-medium">{c.label}</span>
-              <span className="text-muted-foreground ml-2 font-mono text-[11px]">
-                {c.examples}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </SectionCard>
-    </div>
+      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
+      {error && <ErrorNote message={error} />}
+    </SectionCard>
   );
 }
 
