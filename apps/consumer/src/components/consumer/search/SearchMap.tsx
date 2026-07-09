@@ -101,9 +101,9 @@ export function SearchMap({
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
-  // Fires on a tap of the bare map canvas (not a pin) — the page uses it as
-  // a big secondary hit target to open the search panel. Marker taps have
-  // their own onClick and don't trigger this.
+  // Fires on a tap of the bare map canvas (not a pin) — toggles the search
+  // panel: opens when idle, closes when the results/prompt overlay is up.
+  // Marker taps have their own onClick and don't trigger this.
   onMapClick?: () => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
@@ -204,9 +204,8 @@ function SearchMapCanvas({
       colorScheme="LIGHT"
       styles={MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]}
       onTilesLoaded={onReady}
-      // Tapping the bare canvas opens search — a big secondary hit target.
-      // Fires only on a discrete map click; pan/drag gestures and marker
-      // taps (their own onClick) don't reach here.
+      // Bare canvas tap toggles search — open when idle, close when the
+      // overlay is up. Pan/drag and marker taps don't reach here.
       onClick={onMapClick ? () => onMapClick() : undefined}
     >
       {userLocation && (

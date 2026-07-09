@@ -309,6 +309,21 @@ export function SearchClient({
     });
   }, [idle, railCollapsed, selectedId]);
 
+  const dismissSearch = () => {
+    updateQuery("");
+    setSearchOpen(false);
+  };
+
+  const handleMapClick = () => {
+    // Bare map tap toggles search: open when idle, close when the panel
+    // (empty prompt or live results) is covering the top of the canvas.
+    if (searchOpen || trimmed.length > 0) {
+      dismissSearch();
+      return;
+    }
+    setSearchOpen(true);
+  };
+
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
       {/* Base layer — pins reflect the same chip filtering as the rail. */}
@@ -319,9 +334,7 @@ export function SearchClient({
         selectedId={selectedId}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={(place) => router.push(placeHref(place.slug || place.id))}
-        // Tapping the map canvas is a second way into search (besides the
-        // bar) — the panel opens over the top while the map stays visible.
-        onMapClick={() => setSearchOpen(true)}
+        onMapClick={handleMapClick}
       />
 
       {/* Floating top overlay — full-width search bar + idle chip row.
@@ -339,10 +352,7 @@ export function SearchClient({
           {(query || searchOpen) && (
             <button
               type="button"
-              onClick={() => {
-                updateQuery("");
-                setSearchOpen(false);
-              }}
+              onClick={dismissSearch}
               aria-label="Clear search"
               className="text-muted-foreground hover:text-foreground shrink-0 transition"
             >
@@ -467,7 +477,8 @@ export function SearchClient({
       {/* Typing swaps in live results over the TOP ~70% — same footprint as the
           empty "Where to today?" panel so the search field never jumps and the
           live map stays visible in the strip below. Sits at z-20 below the z-30
-          floating bar; pt-[60px] drops results below it. Dismiss via the bar's X. */}
+          floating bar; pt-[60px] drops results below it. Dismiss via the bar's X
+          or a tap on the visible map strip. */}
       {trimmed.length > 0 && (
         <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col rounded-b-3xl border-b pt-[60px] shadow-sm">
           <SearchResultsPanel
