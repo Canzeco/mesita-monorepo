@@ -1,20 +1,15 @@
-import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
+import { QrCode } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
-import { errMsg } from "@/lib/utils";
 import { CONSUMER_ROUTE_PREFIX } from "@/lib/consumer-route-contract";
-import { PayTabLoading } from "./PayTabLoading";
-
-const PayClient = nextDynamic(
-  () => import("./PayClient").then((mod) => mod.PayClient),
-  { loading: () => <PayTabLoading /> },
-);
+import { ComingSoonSurface } from "@/components/consumer/ComingSoonSurface";
 
 export const dynamic = "force-dynamic";
 
-// Rewards is one page: banner + Mesita passport (QR/code) + tickets.
-// Legacy /pay/* paths redirect here.
+// Rewards is parked behind a "Soon" gate for now — the real surface (banner +
+// Mesita passport + tickets) isn't live yet, so this renders a single premium
+// coming-soon panel. PayClient / PayTabLoading and the ticket detail routes
+// stay in the tree, unused, for an easy un-park once rewards ships.
 export default async function RewardsPage() {
   const supabase = await createServerSupabase();
   const {
@@ -24,32 +19,12 @@ export default async function RewardsPage() {
     redirect(`/?next=${encodeURIComponent(CONSUMER_ROUTE_PREFIX.rewards)}`);
   }
 
-  let profile;
-  try {
-    ({ consumer: profile } = await apiFetchConsumerProfile(supabase));
-  } catch (err) {
-    return (
-      <div className="flex h-full min-h-0 flex-1 flex-col">
-        <div className="px-4 py-6">
-          <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-sm">
-            {errMsg(err, "Couldn't load your profile.")}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <PayClient
-        userId={user.id}
-        code={profile.code ?? ""}
-        name={
-          [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
-          profile.full_name ||
-          ""
-        }
-        instagramHandle={profile.instagram_handle}
+      <ComingSoonSurface
+        icon={<QrCode className="h-7 w-7" strokeWidth={2} />}
+        title="Rewards"
+        body="Your Mesita passport — QR check-ins, tickets, and rewards at your favorite places — is almost ready. We'll let you know the moment it goes live."
       />
     </div>
   );

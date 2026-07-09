@@ -25,6 +25,9 @@ type Item = {
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   match: string;
+  // Surface is parked behind a coming-soon gate; the tab stays tappable (it
+  // lands on the gated panel) but carries a "Soon" pill on the icon.
+  soon?: boolean;
 };
 
 const ITEMS: Item[] = [
@@ -48,6 +51,7 @@ const ITEMS: Item[] = [
     Icon: QrCode,
     label: "Rewards",
     match: CONSUMER_ROUTE_PREFIX.rewards,
+    soon: true,
   },
   {
     href: CONSUMER_ROUTES.saved.reservations,
@@ -55,6 +59,7 @@ const ITEMS: Item[] = [
     label: "Reservations",
     // Singular prefix also catches /saved/reservation/[id] detail views.
     match: CONSUMER_RESERVATION_SURFACE_PREFIX,
+    soon: true,
   },
   {
     href: CONSUMER_ROUTES.me,
@@ -81,7 +86,7 @@ export function BottomNav({ userId }: { userId?: string }) {
   return (
     <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-0.5 pt-2 backdrop-blur">
       <div className="flex items-end justify-around">
-        {ITEMS.map(({ href, Icon, label, match }) => {
+        {ITEMS.map(({ href, Icon, label, match, soon }) => {
           const active =
             pathname.startsWith(match) ||
             // Legacy deep links still hit /profile; keep the Profile tab lit
@@ -119,6 +124,11 @@ export function BottomNav({ userId }: { userId?: string }) {
                 )}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
+                {soon && (
+                  <span className="bg-primary text-primary-foreground absolute -top-1.5 -right-3 rounded-full px-1.5 py-px text-[8px] leading-3 font-semibold tracking-wide uppercase">
+                    Soon
+                  </span>
+                )}
               </span>
               <span className="w-full truncate text-center">
                 {displayLabel}
