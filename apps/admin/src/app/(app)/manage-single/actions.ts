@@ -89,6 +89,18 @@ export type AdminPlace = {
   free_rate: number | null;
   premium_rate: number | null;
   monthly_promo_cap: number | null;
+  // Reviews tab (read-only; carried on the overview place payload).
+  google_stars_overall: number | null;
+  google_review_count: number | null;
+  google_reviews: unknown;
+  mesita_stars_overall: number | null;
+  mesita_stars_food: number | null;
+  mesita_stars_service: number | null;
+  mesita_stars_ambience: number | null;
+  mesita_stars_value: number | null;
+  mesita_review_count: number | null;
+  mesita_visitors: unknown;
+  instagram_followers_count: number | null;
   updated_at: string | null;
   [k: string]: unknown;
 };

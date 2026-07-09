@@ -3,13 +3,17 @@ import {
   MapPinPlus,
   QrCode,
   SquarePen,
+  Star,
   Store,
   Tag,
+  UtensilsCrossed,
   UsersRound,
 } from "lucide-react";
 
 export const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store },
+  { id: "reviews", label: "Reviews", Icon: Star },
+  { id: "products", label: "Products", Icon: UtensilsCrossed },
   { id: "promos", label: "Promos", Icon: Tag },
   { id: "scan", label: "Scan", Icon: QrCode },
   { id: "performance", label: "Performance", Icon: ChartLine },
