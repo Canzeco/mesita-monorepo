@@ -320,7 +320,9 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </ProfileMetaChip>
         <ProfileMetaChip>
           <Navigation className="text-muted-foreground h-3 w-3 shrink-0" />
-          <span className="font-semibold">{place.distance_km} km</span>
+          <span className="font-semibold">
+            {formatDistanceKm(place.distance_km)}
+          </span>
         </ProfileMetaChip>
         <ProfileMetaChip>
           <Clock
@@ -406,6 +408,12 @@ function ProfileMetaChip({ children }: { children: React.ReactNode }) {
       {children}
     </span>
   );
+}
+
+/** distance_km === 0 is the "couldn't calculate" placeholder — show "- km". */
+function formatDistanceKm(km: number | null | undefined): string {
+  if (km == null || km <= 0) return "- km";
+  return `${km} km`;
 }
 
 /** Shim PlaceDetail → Place shape PromoChip / resolvePromoRateFromPlaceRow expect. */
@@ -850,7 +858,7 @@ function LocationBox({ place }: { place: PlaceDetail }) {
       title="Location"
       icon={MapPin}
       iconColor="text-pink-500"
-      right={`${place.distance_km} km`}
+      right={formatDistanceKm(place.distance_km)}
     >
       <div
         className="relative aspect-[5/2] overflow-hidden rounded-xl"

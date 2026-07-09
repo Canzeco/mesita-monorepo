@@ -28,8 +28,11 @@ export function SwipeCardInfo({
     place.google_rating != null ? place.google_rating.toFixed(1) : null;
   const ratingCountLabel =
     place.google_count != null ? formatCount(place.google_count) : null;
+  // distance_km === 0 is the "couldn't calculate" placeholder — show "- km".
   const distanceLabel =
-    place.distance_km != null ? `${place.distance_km} km` : null;
+    place.distance_km == null || place.distance_km <= 0
+      ? "- km"
+      : `${place.distance_km} km`;
   const zoneLabel = resolveZoneLabel(place);
   const zoneDisplay = zoneLabel ?? "Neighborhood";
   const categoryLabel = resolvePlaceCategoryName({
