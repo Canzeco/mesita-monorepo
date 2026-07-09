@@ -156,11 +156,39 @@ export type PlaceTagFacet = {
   label_en: string;
 };
 
+export type PlaceFieldLimits = {
+  placeNameMax: number;
+  descriptionMax: number;
+  tagsPerPlaceMax: number;
+  photosMax: number;
+};
+
 export type PlaceTagCatalog = {
   tags: PlaceTagOption[];
   facets: PlaceTagFacet[];
   tagsPerPlaceMax: number;
+  fieldLimits: PlaceFieldLimits;
 };
+
+const DEFAULT_PLACE_FIELD_LIMITS: PlaceFieldLimits = {
+  placeNameMax: 80,
+  descriptionMax: 2000,
+  tagsPerPlaceMax: 20,
+  photosMax: 10,
+};
+
+function readPlaceFieldLimits(
+  fieldLimits?: Record<string, { max: number; note: string }>,
+): PlaceFieldLimits {
+  return {
+    placeNameMax: fieldLimits?.placeName?.max ?? DEFAULT_PLACE_FIELD_LIMITS.placeNameMax,
+    descriptionMax:
+      fieldLimits?.description?.max ?? DEFAULT_PLACE_FIELD_LIMITS.descriptionMax,
+    tagsPerPlaceMax:
+      fieldLimits?.tagsPerPlace?.max ?? DEFAULT_PLACE_FIELD_LIMITS.tagsPerPlaceMax,
+    photosMax: fieldLimits?.photos?.max ?? DEFAULT_PLACE_FIELD_LIMITS.photosMax,
+  };
+}
 
 export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
   const r = await efInvoke<{
@@ -169,12 +197,14 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
     fieldLimits?: Record<string, { max: number; note: string }>;
   }>("admin-web-get-atlas-fields", {});
   if (!r.ok) return { ok: false, error: r.error };
+  const fieldLimits = readPlaceFieldLimits(r.data.fieldLimits);
   return {
     ok: true,
     data: {
       tags: r.data.tags ?? [],
       facets: r.data.facets ?? [],
-      tagsPerPlaceMax: r.data.fieldLimits?.tagsPerPlace?.max ?? 20,
+      tagsPerPlaceMax: fieldLimits.tagsPerPlaceMax,
+      fieldLimits,
     },
   };
 }

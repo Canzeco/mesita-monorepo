@@ -34,18 +34,29 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           Enforced in the business Place editor and business-update-project.
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          {Object.entries(data.fieldLimits).map(([key, limit]) => (
-            <div
-              key={key}
-              className="border-border bg-background rounded-xl border px-4 py-3"
-            >
-              <dt className="text-sm font-medium">{humanizeKey(key)}</dt>
-              <dd className="mt-1 font-mono text-lg font-semibold tabular-nums">
-                {formatLimit(key, limit.max)}
-              </dd>
-              <dd className="text-muted-foreground mt-1 text-xs">{limit.note}</dd>
-            </div>
-          ))}
+          {Object.entries(data.fieldLimits).map(([key, limit]) => {
+            // Tag catalog size is live DB state (place_tags row count), not the
+            // static ENRICH_FIELD_LIMITS.tagCatalogSize constant — keep the card
+            // loyal to what admin-web-get-atlas-fields actually returned.
+            const max =
+              key === "tagCatalogSize" ? data.counts.tags : limit.max;
+            const note =
+              key === "tagCatalogSize"
+                ? `Live count in place_tags (${data.counts.tags})`
+                : limit.note;
+            return (
+              <div
+                key={key}
+                className="border-border bg-background rounded-xl border px-4 py-3"
+              >
+                <dt className="text-sm font-medium">{humanizeKey(key)}</dt>
+                <dd className="mt-1 font-mono text-lg font-semibold tabular-nums">
+                  {formatLimit(key, max)}
+                </dd>
+                <dd className="text-muted-foreground mt-1 text-xs">{note}</dd>
+              </div>
+            );
+          })}
         </dl>
       </section>
 

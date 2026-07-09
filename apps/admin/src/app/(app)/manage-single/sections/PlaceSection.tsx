@@ -16,10 +16,12 @@ import {
 } from "lucide-react";
 import {
   getPlaceEnrichment,
+  listPlaceTagCatalog,
   listTeam,
   updatePlace,
   type AdminPlace,
   type PlaceEnrichmentStatus,
+  type PlaceFieldLimits,
   type PlaceMediaMeta,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
@@ -73,9 +75,13 @@ type Form = {
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
-const PLACE_NAME_MAX = 80;
-const TAGS_PER_PLACE_MAX = 20;
-const PHOTOS_MAX = 10;
+// Fallback only until admin-web-get-atlas-fields returns; never the source of truth.
+const FALLBACK_LIMITS: PlaceFieldLimits = {
+  placeNameMax: 80,
+  descriptionMax: 2000,
+  tagsPerPlaceMax: 20,
+  photosMax: 10,
+};
 
 function planLabel(plan: string | null): string {
   if (!plan) return "—";
@@ -91,7 +97,7 @@ function listingLabel(listingType: string | null): string {
   return listingType?.trim() || "—";
 }
 
-function placeToForm(v: AdminPlace): Form {
+function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS): Form {
   const hours = {} as Record<Day, DayHours>;
   for (const d of DAYS) {
     const ranges = v.hours?.[d];
@@ -103,15 +109,15 @@ function placeToForm(v: AdminPlace): Form {
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
-    name: (v.name ?? "").slice(0, PLACE_NAME_MAX),
+    name: (v.name ?? "").slice(0, limits.placeNameMax),
     price_level: v.price_level != null ? String(v.price_level) : "",
     category: v.category ?? "",
-    description: v.description ?? "",
+    description: (v.description ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
     email: v.email ?? "",
-    tags: (v.tags ?? []).slice(0, TAGS_PER_PLACE_MAX),
+    tags: (v.tags ?? []).slice(0, limits.tagsPerPlaceMax),
     address: v.address ?? "",
-    photos: (v.photos ?? []).slice(0, PHOTOS_MAX),
+    photos: (v.photos ?? []).slice(0, limits.photosMax),
     channels,
     hours,
   };
@@ -119,7 +125,11 @@ function placeToForm(v: AdminPlace): Form {
 
 // Build the business-update-project patch. Empty strings become null so a cleared
 // field actually clears; closed days are omitted from the hours object.
-function formToPatch(f: Form, id: string): Record<string, unknown> {
+function formToPatch(
+  f: Form,
+  id: string,
+  limits: PlaceFieldLimits,
+): Record<string, unknown> {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   const hours: Record<string, { open: string; close: string }[]> = {};
   for (const d of DAYS) {
@@ -128,14 +138,14 @@ function formToPatch(f: Form, id: string): Record<string, unknown> {
   }
   const patch: Record<string, unknown> = {
     id,
-    name: f.name.trim().slice(0, PLACE_NAME_MAX),
+    name: f.name.trim().slice(0, limits.placeNameMax),
     price_level: f.price_level ? Number(f.price_level) : null,
-    description: nz(f.description),
+    description: nz(f.description.slice(0, limits.descriptionMax)),
     phone: nz(f.phone),
     email: nz(f.email),
     address: nz(f.address),
-    tags: f.tags.slice(0, TAGS_PER_PLACE_MAX),
-    photos: f.photos.slice(0, PHOTOS_MAX),
+    tags: f.tags.slice(0, limits.tagsPerPlaceMax),
+    photos: f.photos.slice(0, limits.photosMax),
     hours,
   };
   for (const c of CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
@@ -149,6 +159,7 @@ export function PlaceSection({
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
 }) {
+  const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
   const [saved, setSaved] = useState<Form>(form);
   const [pending, start] = useTransition();
@@ -169,13 +180,13 @@ export function PlaceSection({
 
   const [photoDraft, setPhotoDraft] = useState("");
 
-  const setPhotos = (photos: string[]) => set("photos", photos.slice(0, PHOTOS_MAX));
+  const setPhotos = (photos: string[]) => set("photos", photos.slice(0, limits.photosMax));
 
   const addPhotoUrl = () => {
     const url = photoDraft.trim();
     if (!url) return;
-    if (form.photos.length >= PHOTOS_MAX) {
-      setError(`At most ${PHOTOS_MAX} photos.`);
+    if (form.photos.length >= limits.photosMax) {
+      setError(`At most ${limits.photosMax} photos.`);
       return;
     }
     if (form.photos.includes(url)) {
@@ -207,6 +218,18 @@ export function PlaceSection({
 
   useEffect(() => {
     let alive = true;
+    // Field limits come from the same EF Atlas Config uses — never hardcode.
+    listPlaceTagCatalog().then((r) => {
+      if (!alive || !r.ok) return;
+      setLimits(r.data.fieldLimits);
+      setForm((f) => ({
+        ...f,
+        name: f.name.slice(0, r.data.fieldLimits.placeNameMax),
+        description: f.description.slice(0, r.data.fieldLimits.descriptionMax),
+        tags: f.tags.slice(0, r.data.fieldLimits.tagsPerPlaceMax),
+        photos: f.photos.slice(0, r.data.fieldLimits.photosMax),
+      }));
+    });
     getPlaceEnrichment(place.id).then((r) => {
       if (!alive) return;
       setMedia(r.ok ? r.data.media : {});
@@ -234,12 +257,12 @@ export function PlaceSection({
     setError(null);
     setOk(false);
     start(async () => {
-      const r = await updatePlace(formToPatch(form, place.id) as { id: string });
+      const r = await updatePlace(formToPatch(form, place.id, limits) as { id: string });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      const fresh = placeToForm(r.data);
+      const fresh = placeToForm(r.data, limits);
       setForm(fresh);
       setSaved(fresh);
       onSaved(r.data);
@@ -317,8 +340,8 @@ export function PlaceSection({
           <TextField
             label="Name"
             value={form.name}
-            onChange={(x) => set("name", x.slice(0, PLACE_NAME_MAX))}
-            maxLength={PLACE_NAME_MAX}
+            onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
+            maxLength={limits.placeNameMax}
             disabled={pending}
           />
           <SelectField
@@ -342,16 +365,16 @@ export function PlaceSection({
           <TextArea
             label="About"
             value={form.description}
-            onChange={(x) => set("description", x)}
+            onChange={(x) => set("description", x.slice(0, limits.descriptionMax))}
             rows={5}
-            maxLength={2000}
+            maxLength={limits.descriptionMax}
             disabled={pending}
           />
         </div>
         <div className="mt-4">
           <PlaceTagsPicker
             value={form.tags}
-            onChange={(tags) => set("tags", tags.slice(0, TAGS_PER_PLACE_MAX))}
+            onChange={(tags) => set("tags", tags.slice(0, limits.tagsPerPlaceMax))}
             disabled={pending}
           />
         </div>
@@ -493,6 +516,7 @@ export function PlaceSection({
       >
         <PhotosEditor
           photos={form.photos}
+          photosMax={limits.photosMax}
           pending={pending}
           photoDraft={photoDraft}
           onPhotoDraftChange={setPhotoDraft}
@@ -540,6 +564,7 @@ function MetaField({
 
 function PhotosEditor({
   photos,
+  photosMax,
   pending,
   photoDraft,
   onPhotoDraftChange,
@@ -549,6 +574,7 @@ function PhotosEditor({
   onInfo,
 }: {
   photos: string[];
+  photosMax: number;
   pending: boolean;
   photoDraft: string;
   onPhotoDraftChange: (value: string) => void;
@@ -640,14 +666,14 @@ function PhotosEditor({
               }
             }}
             placeholder="Paste image URL…"
-            disabled={pending || photos.length >= PHOTOS_MAX}
+            disabled={pending || photos.length >= photosMax}
             className="border-border bg-background focus:border-foreground h-9 rounded-lg border px-3 text-sm outline-none disabled:opacity-50"
           />
         </label>
         <button
           type="button"
           onClick={onAdd}
-          disabled={pending || !photoDraft.trim() || photos.length >= PHOTOS_MAX}
+          disabled={pending || !photoDraft.trim() || photos.length >= photosMax}
           className="border-border hover:border-foreground/40 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
@@ -655,7 +681,7 @@ function PhotosEditor({
         </button>
       </div>
       <p className="text-muted-foreground mt-2 text-xs tabular-nums">
-        {photos.length}/{PHOTOS_MAX} photos
+        {photos.length}/{photosMax} photos
       </p>
     </div>
   );
