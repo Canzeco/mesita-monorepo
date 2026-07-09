@@ -17,6 +17,7 @@ import {
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { firstInitial } from "@/lib/utils";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 
 // Favorites mode — everything the consumer has saved. Reads the same live
 // saved-places store the SwipeDeck save action writes, so a right-swipe in
@@ -26,13 +27,18 @@ import { firstInitial } from "@/lib/utils";
 
 export function FavoritesList({ deckPlaces }: { deckPlaces: Place[] }) {
   const { savedIds, setSaved } = useSavedPlaces();
+  // Removing a save is a two-step: the heart opens a confirm dialog first, so
+  // a single stray tap can't wipe a save. `pendingRemove` holds the place the
+  // dialog is asking about (null = closed).
+  const [pendingRemove, setPendingRemove] = useState<Place | null>(null);
 
-  // Unsave from the list itself, with an Undo — an accidental tap shouldn't
-  // lose a save. Undo restores both the saved id and the preview snapshot so
-  // the row comes back even if the place isn't in tonight's deck.
-  const handleRemove = (place: Place) => {
+  // The actual unsave, run only after the user confirms. Keeps the Undo toast
+  // as a second safety net (restores both the saved id and the preview
+  // snapshot so the row comes back even if the place isn't in tonight's deck).
+  const confirmRemove = (place: Place) => {
     setSaved(place.id, false);
     removeSavedPlacePreview(place.id);
+    setPendingRemove(null);
     toast.action("Removed from saved", {
       label: "Undo",
       onClick: () => {
@@ -93,14 +99,74 @@ export function FavoritesList({ deckPlaces }: { deckPlaces: Place[] }) {
                 <FavoriteRow
                   key={place.id}
                   place={place}
-                  onRemove={() => handleRemove(place)}
+                  onRemove={() => setPendingRemove(place)}
                 />
               ))}
             </div>
           </>
         )}
       </div>
+
+      <RemoveConfirmDialog
+        place={pendingRemove}
+        onCancel={() => setPendingRemove(null)}
+        onConfirm={confirmRemove}
+      />
     </div>
+  );
+}
+
+// Confirm before unsaving — one tap opens this, a second (Yes) actually
+// removes. `place` null-gates the open state so the exit transition still runs.
+function RemoveConfirmDialog({
+  place,
+  onCancel,
+  onConfirm,
+}: {
+  place: Place | null;
+  onCancel: () => void;
+  onConfirm: (place: Place) => void;
+}) {
+  // Hold the last place through the close so the panel doesn't blank mid-exit.
+  const [shown, setShown] = useState<Place | null>(place);
+  if (place && place !== shown) setShown(place);
+
+  return (
+    <LocalDialog
+      open={place != null}
+      onClose={onCancel}
+      ariaLabel="Remove from saved"
+    >
+      <div className="flex flex-col p-5">
+        <div className="bg-rose-500/10 flex h-12 w-12 items-center justify-center rounded-2xl">
+          <Heart className="h-6 w-6 fill-rose-500 text-rose-500" />
+        </div>
+        <h3 className="font-display mt-3 text-lg font-semibold tracking-tight">
+          Remove from saved?
+        </h3>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+          {shown?.name
+            ? `“${shown.name}” will be removed from your saved places.`
+            : "This place will be removed from your saved places."}
+        </p>
+        <div className="mt-5 flex gap-2.5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="border-border bg-card hover:bg-muted flex-1 rounded-xl border py-3 text-sm font-semibold transition active:scale-[0.98]"
+          >
+            No
+          </button>
+          <button
+            type="button"
+            onClick={() => shown && onConfirm(shown)}
+            className="flex-1 rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white transition hover:bg-rose-600 active:scale-[0.98]"
+          >
+            Yes, remove
+          </button>
+        </div>
+      </div>
+    </LocalDialog>
   );
 }
 

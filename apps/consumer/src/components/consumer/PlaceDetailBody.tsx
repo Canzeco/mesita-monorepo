@@ -118,6 +118,7 @@ function Box({
   children,
   className,
   bare = false,
+  dark = false,
 }: {
   title?: string;
   icon?: LucideIcon;
@@ -126,11 +127,15 @@ function Box({
   children: React.ReactNode;
   className?: string;
   bare?: boolean;
+  // Inverted surface: near-black bg + light text (semantic tokens so it
+  // still tracks the theme). Used by the Channels box.
+  dark?: boolean;
 }) {
   return (
     <section
       className={cn(
-        "border-border bg-card flex flex-col rounded-2xl border",
+        "flex flex-col rounded-2xl border",
+        dark ? "border-transparent bg-foreground text-background" : "border-border bg-card",
         bare ? "overflow-hidden" : "gap-3 p-4",
         className,
       )}
@@ -144,10 +149,15 @@ function Box({
                 strokeWidth={1.75}
               />
             )}
-            {title && <BoxLabel>{title}</BoxLabel>}
+            {title && <BoxLabel dark={dark}>{title}</BoxLabel>}
           </div>
           {right && (
-            <span className="text-muted-foreground text-xs font-medium">
+            <span
+              className={cn(
+                "text-xs font-medium",
+                dark ? "text-background/60" : "text-muted-foreground",
+              )}
+            >
               {right}
             </span>
           )}
@@ -158,9 +168,20 @@ function Box({
   );
 }
 
-function BoxLabel({ children }: { children: React.ReactNode }) {
+function BoxLabel({
+  children,
+  dark = false,
+}: {
+  children: React.ReactNode;
+  dark?: boolean;
+}) {
   return (
-    <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+    <h3
+      className={cn(
+        "text-[10px] font-bold tracking-[0.18em] uppercase",
+        dark ? "text-background/70" : "text-muted-foreground",
+      )}
+    >
       {children}
     </h3>
   );
@@ -1072,7 +1093,12 @@ const CHANNEL_DEFS = [
 ] as const;
 
 const RESERVATION_DEFS = [
-  { key: "opentable_url", label: "OpenTable", Icon: CalendarCheck },
+  {
+    key: "opentable_url",
+    label: "OpenTable",
+    Icon: CalendarCheck,
+    logo: "/channels/opentable.svg",
+  },
   { key: "resy_url", label: "Resy", Icon: CalendarCheck },
   {
     key: "uber_eats_url",
@@ -1295,7 +1321,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
   }
   if (chips.length === 0) return null;
   return (
-    <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
+    <Box title="Channels" icon={Link2} iconColor="text-cyan-400" dark>
       <div className="flex flex-wrap gap-2">
         {chips.map(({ key, label, Icon, logo, url }) => (
           <a
@@ -1303,7 +1329,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-background text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
           >
             {logo ? (
               // Real brand mark (SVG in /public/channels, brand colour baked
