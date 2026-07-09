@@ -92,8 +92,11 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
       {tab === "place" && (
         <>
           <MediaBox place={place} />
-          <HoursBox place={place} />
-          <LocationBox place={place} />
+          {/* decision: Pato — Time + Location side by side */}
+          <div className="grid grid-cols-2 gap-2">
+            <HoursBox place={place} />
+            <LocationBox place={place} />
+          </div>
           <LinksBox place={place} />
           <AboutBox text={place.long_description} name={place.name} />
           <TagsBox place={place} />
@@ -197,7 +200,7 @@ function Box({
             {title && <BoxLabel>{title}</BoxLabel>}
           </div>
           {right && (
-            <span className="text-muted-foreground text-xs font-medium">
+            <span className="text-muted-foreground min-w-0 shrink text-right text-xs font-medium">
               {right}
             </span>
           )}
@@ -856,9 +859,10 @@ function LocationBox({ place }: { place: PlaceDetail }) {
       icon={MapPin}
       iconColor="text-pink-500"
       right={formatDistanceKm(place.distance_km)}
+      className="h-full min-w-0 gap-2 p-3"
     >
       <div
-        className="relative aspect-[5/2] overflow-hidden rounded-xl"
+        className="relative aspect-square overflow-hidden rounded-xl"
         style={{
           backgroundColor: "#1d1442",
           backgroundImage: `
@@ -866,37 +870,39 @@ function LocationBox({ place }: { place: PlaceDetail }) {
             linear-gradient(90deg, rgba(168, 85, 247, 0.08) 1px, transparent 1px),
             radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.18) 0%, transparent 65%)
           `,
-          backgroundSize: "32px 32px, 32px 32px, 100% 100%",
+          backgroundSize: "24px 24px, 24px 24px, 100% 100%",
         }}
       >
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-          <div className="bg-pink-gradient shadow-glow flex h-10 w-10 items-center justify-center rounded-full">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2">
+          <div className="bg-pink-gradient shadow-glow flex h-8 w-8 items-center justify-center rounded-full">
             <MapPin
-              className="h-4 w-4 fill-white text-white"
+              className="h-3.5 w-3.5 fill-white text-white"
               strokeWidth={1.5}
             />
           </div>
-          <span className="rounded-full bg-black/80 px-2.5 py-0.5 text-[11px] font-medium text-white">
+          <span className="max-w-full truncate rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-medium text-white">
             {place.name}
           </span>
         </div>
       </div>
-      <p className="text-muted-foreground text-xs">{place.address}</p>
-      <div className="grid grid-cols-2 gap-2">
+      <p className="text-muted-foreground line-clamp-2 text-[11px] leading-snug">
+        {place.address}
+      </p>
+      <div className="flex flex-col gap-1.5">
         <a
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
+          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition"
         >
-          <MapPin className="h-4 w-4 text-pink-500" />
-          Google Maps
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-pink-500" />
+          Maps
         </a>
         <a
           href={uberUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
+          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {/* decision: Pato — Uber badge = black bg + white letters */}
@@ -904,9 +910,9 @@ function LocationBox({ place }: { place: PlaceDetail }) {
             src="/channels/uber-badge.svg"
             alt=""
             aria-hidden
-            className="h-4 w-auto"
+            className="h-3.5 w-auto"
           />
-          Ask Uber
+          Uber
         </a>
       </div>
     </Box>
@@ -929,8 +935,12 @@ function todayWeekdayLabel(tz: string | undefined): string {
   }
 }
 
+function shortWeekday(day: string): string {
+  return day.slice(0, 3);
+}
+
 function HoursBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — simple 2-col day / schedule list; keep timezone in header
+  // decision: Pato — day/schedule list beside Location; keep timezone
   const today = todayWeekdayLabel(place.timezone);
   const statusDetail = place.open_now
     ? place.closes_at
@@ -939,22 +949,30 @@ function HoursBox({ place }: { place: PlaceDetail }) {
     : place.opens_at
       ? `opens ${place.opens_at}`
       : null;
+  const tz = place.timezone || undefined;
 
   return (
     <Box
       title="Time"
       icon={Clock}
       iconColor="text-violet-400"
-      right={place.timezone || undefined}
+      right={
+        tz ? (
+          <span className="max-w-[4.5rem] truncate" title={tz}>
+            {tz}
+          </span>
+        ) : undefined
+      }
+      className="h-full min-w-0 gap-2 p-3"
     >
-      <p className="text-xs leading-snug">
+      <p className="text-[11px] leading-snug">
         <span
           className={cn(
             "font-semibold",
             place.open_now ? "text-emerald-700" : "text-muted-foreground",
           )}
         >
-          {place.open_now ? "Open now" : "Closed"}
+          {place.open_now ? "Open" : "Closed"}
         </span>
         {statusDetail && (
           <>
@@ -972,26 +990,21 @@ function HoursBox({ place }: { place: PlaceDetail }) {
               <li
                 key={row.day}
                 className={cn(
-                  "grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-3 px-3 py-2 text-[13px]",
+                  "grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-1.5 px-2 py-1.5 text-[11px]",
                   isToday && "bg-violet-50/80",
                 )}
               >
                 <span
                   className={cn(
-                    "min-w-0 truncate font-semibold",
+                    "font-semibold",
                     isToday ? "text-violet-800" : "text-foreground",
                   )}
                 >
-                  {row.day}
-                  {isToday && (
-                    <span className="text-violet-600/80 ml-1.5 text-[10px] font-bold tracking-wide uppercase">
-                      Today
-                    </span>
-                  )}
+                  {shortWeekday(row.day)}
                 </span>
                 <span
                   className={cn(
-                    "min-w-0 text-right tabular-nums",
+                    "min-w-0 truncate text-right tabular-nums",
                     closed
                       ? "text-muted-foreground"
                       : isToday
