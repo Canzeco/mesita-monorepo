@@ -1563,6 +1563,32 @@ const REVIEW_DEFS = [
   },
 ] as const;
 
+// Soft clay brand tints for Channels chips — just a bit of each brand's
+// color so the row reads as real apps, not a flat grey wall. Unknown keys
+// fall back to the neutral surface.
+const CHANNEL_CLAY: Record<string, string> = {
+  phone: "border-emerald-200/70 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/70",
+  website_url: "border-sky-200/70 bg-sky-50 text-sky-900 hover:bg-sky-100/70",
+  whatsapp_url:
+    "border-emerald-200/70 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/70",
+  instagram_url: "border-pink-200/70 bg-pink-50 text-pink-900 hover:bg-pink-100/70",
+  tiktok_url: "border-zinc-300/70 bg-zinc-100 text-zinc-900 hover:bg-zinc-200/70",
+  facebook_url: "border-blue-200/70 bg-blue-50 text-blue-900 hover:bg-blue-100/70",
+  x_url: "border-zinc-300/70 bg-zinc-100 text-zinc-900 hover:bg-zinc-200/70",
+  threads_url: "border-zinc-300/70 bg-zinc-100 text-zinc-900 hover:bg-zinc-200/70",
+  reddit_url: "border-orange-200/70 bg-orange-50 text-orange-900 hover:bg-orange-100/70",
+  opentable_url: "border-red-200/70 bg-red-50 text-red-900 hover:bg-red-100/70",
+  resy_url: "border-rose-200/70 bg-rose-50 text-rose-900 hover:bg-rose-100/70",
+  uber_eats_url:
+    "border-green-200/70 bg-green-50 text-green-900 hover:bg-green-100/70",
+  didi_food_url:
+    "border-orange-200/70 bg-orange-50 text-orange-900 hover:bg-orange-100/70",
+  tripadvisor_url:
+    "border-lime-200/70 bg-lime-50 text-lime-900 hover:bg-lime-100/70",
+  google_maps_url:
+    "border-amber-200/70 bg-amber-50 text-amber-950 hover:bg-amber-100/70",
+};
+
 // Per-facet chip tint. Each of the 17 taxonomy facets gets its own light
 // tone (bg / text / border) plus a leading dot so the cluster reads as a
 // differentiated, premium chip set rather than one flat grey wall. Mirrors
@@ -1825,6 +1851,7 @@ function LinksBox({ place }: { place: PlaceDetail }) {
   }
   if (chips.length === 0) return null;
   // decision: light like Location / About — drop the inverted Channels surface.
+  // Soft clay brand tints (CHANNEL_CLAY) so each chip reads as its app.
   return (
     <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
       <div className="flex flex-wrap gap-2">
@@ -1835,7 +1862,11 @@ function LinksBox({ place }: { place: PlaceDetail }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={logoOnly ? label : undefined}
-            className="border-border bg-background text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
+              CHANNEL_CLAY[key] ??
+                "border-border bg-background text-foreground hover:bg-muted",
+            )}
           >
             {logo ? (
               // Real brand mark (SVG in /public/channels, brand colour baked
