@@ -1,14 +1,17 @@
 "use client";
 
 // Live text-search results over the map: consumer-suggest-places rows
-// grouped "On Mesita" / "From Google". Google-only rows can be generated
-// into Mesita on the spot via the Add flow (PredictionRow).
+// grouped "On Mesita" / "From Google", rendered as plain one-line text rows
+// (no thumbnails, no inline buttons). Tapping an On-Mesita row selects the
+// place on the map (red pin + rail card — the detail modal is one more tap
+// away there); tapping a From-Google row opens the not-on-Mesita preview
+// sheet, where the real Add flow lives. The Ask AI chat keeps the richer
+// PredictionRow cards — this panel intentionally diverges.
 
-import { SearchX } from "lucide-react";
+import { BadgeCheck, SearchX } from "lucide-react";
 import { Spinner } from "@/components/shared";
-import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
-import { PredictionRow, type AddState } from "./PredictionRow";
+import type { AddState } from "./PredictionRow";
 
 export function SearchResultsPanel({
   query,
@@ -16,18 +19,16 @@ export function SearchResultsPanel({
   searchError,
   predictions,
   addStates,
-  resolvePlace,
-  onInfo,
-  onAdd,
+  onPickMesita,
+  onPickGoogle,
 }: {
   query: string;
   searching: boolean;
   searchError: string | null;
   predictions: PlacePrediction[];
   addStates: Record<string, AddState>;
-  resolvePlace: (prediction: PlacePrediction) => Place | null;
-  onInfo: (prediction: PlacePrediction) => void;
-  onAdd: (prediction: PlacePrediction) => void;
+  onPickMesita: (prediction: PlacePrediction) => void;
+  onPickGoogle: (prediction: PlacePrediction) => void;
 }) {
   const onMesita = predictions.filter((p) => p.status !== "not_in_mesita");
   const fromGoogle = predictions.filter((p) => p.status === "not_in_mesita");
@@ -68,43 +69,98 @@ export function SearchResultsPanel({
         )}
 
         {onMesita.length > 0 && (
-          <>
+          <div>
             <p className="eyebrow px-1">On Mesita</p>
-            {onMesita.map((p) => (
-              <PredictionRow
-                key={p.placeId}
-                prediction={p}
-                matchedPlace={resolvePlace(p)}
-                addState={addStates[p.placeId]}
-                onInfo={onInfo}
-                onAdd={onAdd}
-              />
-            ))}
-          </>
+            <div className="divide-border/60 divide-y">
+              {onMesita.map((p) => (
+                <SuggestionLine
+                  key={p.placeId}
+                  prediction={p}
+                  addState={addStates[p.placeId]}
+                  onPick={onPickMesita}
+                />
+              ))}
+            </div>
+          </div>
         )}
 
         {fromGoogle.length > 0 && (
-          <>
-            <p className="eyebrow px-1 pt-1">From Google</p>
+          <div>
+            <p className="eyebrow px-1">From Google</p>
             {onMesita.length === 0 && settled && (
-              <p className="text-muted-foreground px-1 text-[11px]">
-                Not on Mesita yet? Tap Add and we&apos;ll build its profile for
-                everyone.
+              <p className="text-muted-foreground px-1 pt-1 text-[11px]">
+                Not on Mesita yet? Tap a place and we&apos;ll build its profile
+                for everyone.
               </p>
             )}
-            {fromGoogle.map((p) => (
-              <PredictionRow
-                key={p.placeId}
-                prediction={p}
-                matchedPlace={null}
-                addState={addStates[p.placeId]}
-                onInfo={onInfo}
-                onAdd={onAdd}
-              />
-            ))}
-          </>
+            <div className="divide-border/60 divide-y">
+              {fromGoogle.map((p) => (
+                <SuggestionLine
+                  key={p.placeId}
+                  prediction={p}
+                  addState={addStates[p.placeId]}
+                  onPick={onPickGoogle}
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
+  );
+}
+
+// One plain text suggestion line — name bold, locality muted, all on a
+// single truncating line. The whole row is the tap target; the only chrome
+// allowed is the Verified badge and the "Enriching" pill for rows the
+// consumer just added (their profile is still being built, but tapping
+// still opens the preview sheet, which explains the state).
+function SuggestionLine({
+  prediction,
+  addState,
+  onPick,
+}: {
+  prediction: PlacePrediction;
+  addState: AddState | undefined;
+  onPick: (prediction: PlacePrediction) => void;
+}) {
+  const verified =
+    prediction.status === "verified_partner_self" ||
+    prediction.status === "verified_partner_other";
+  const added = addState === "added";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(prediction)}
+      className="hover:bg-muted/50 flex w-full items-center gap-2 rounded-lg px-1 py-2.5 text-left transition"
+    >
+      <span className="min-w-0 flex-1 truncate text-sm">
+        <span className="text-foreground font-medium">
+          {prediction.mainText}
+        </span>
+        {prediction.secondaryText && (
+          <span className="text-muted-foreground">
+            {" "}
+            · {prediction.secondaryText}
+          </span>
+        )}
+      </span>
+      {verified && (
+        <BadgeCheck
+          className="text-primary h-3.5 w-3.5 shrink-0"
+          aria-label="Verified Partner"
+        />
+      )}
+      {added && (
+        <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+          <Spinner
+            size="sm"
+            className="border-emerald-300 border-t-emerald-600"
+          />
+          Enriching
+        </span>
+      )}
+    </button>
   );
 }

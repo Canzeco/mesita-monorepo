@@ -11,9 +11,11 @@
 //     the place page.
 //   • Typing ≥2 chars runs consumer-suggest-places (debounced, one Google
 //     session token per autocomplete session) and swaps in SearchResultsPanel:
-//     "On Mesita" rows navigate via placeHref, "From Google" rows expose
-//     the real Add flow (consumer-web-create-place creates the place
-//     immediately; the async Enricher builds the profile in minutes).
+//     plain one-line text rows. "On Mesita" rows select the place on the map
+//     (red pin + rail card; the detail modal is one more tap away there),
+//     "From Google" rows open GooglePlaceSheet — a not-on-Mesita preview
+//     carrying the real Add flow (consumer-web-create-place creates the
+//     place immediately; the async Enricher builds the profile in minutes).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -43,6 +45,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
+import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import type { AddState } from "./PredictionRow";
 import {
   CHIP_GROUPS,
@@ -92,6 +95,10 @@ export function SearchClient({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // From-Google preview sheet. `preview` survives the close (only `open`
+  // flips) so the exit transition doesn't blank the panel mid-slide.
+  const [preview, setPreview] = useState<PlacePrediction | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   // 1-based position of the card nearest the rail's scroll start — powers
   // the "3 / 12 places" pager so the horizontal rail reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
@@ -110,10 +117,17 @@ export function SearchClient({
     () => withDistances(places, userLocation),
     [places, userLocation],
   );
-  const visible = useMemo(
-    () => applyChipFilters(catalog, activeChips),
-    [catalog, activeChips],
-  );
+  const visible = useMemo(() => {
+    const filtered = applyChipFilters(catalog, activeChips);
+    // The selection must stay pinned even when the active chips would
+    // filter it out (a search pick lands here regardless of chips) —
+    // otherwise the red dot the user just asked for silently disappears.
+    if (selectedId && !filtered.some((p) => p.id === selectedId)) {
+      const held = catalog.find((p) => p.id === selectedId);
+      if (held) return [held, ...filtered];
+    }
+    return filtered;
+  }, [catalog, activeChips, selectedId]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -171,38 +185,45 @@ export function SearchClient({
     };
   }, [supabase, trimmed]);
 
-  // Predictions carry Google placeIds — the exact-name join only lights up
-  // photos/meta decoration; navigation prefers the EF-provided Mesita ids.
-  const resolvePlace = useCallback(
-    (prediction: PlacePrediction) =>
-      matchPredictionToPlace(prediction, catalog),
-    [catalog],
-  );
+  // On-Mesita row tap → show the place on the map (red selected pin + rail
+  // card) instead of opening the detail modal; the modal is one more tap
+  // away on the pin or the card. The EF-provided Mesita id is the primary
+  // join; the exact-name match covers older suggest payloads.
+  const handlePickMesita = (prediction: PlacePrediction) => {
+    const match =
+      (prediction.mesitaId
+        ? catalog.find((p) => p.id === prediction.mesitaId)
+        : null) ?? matchPredictionToPlace(prediction, catalog);
+    if (match) {
+      // Clearing the query is the selection that ends the Places session
+      // (updateQuery mints the next token) and hands back the idle map.
+      updateQuery("");
+      setSearchOpen(false);
+      setRailCollapsed(false);
+      setSelectedId(match.id);
+      return;
+    }
+    // On Mesita per the EF but outside the mappable catalog snapshot — no
+    // coordinates to pin, so fall back to opening the detail modal directly.
+    resetSearchSession();
+    const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+    if (direct) {
+      router.push(placeHref(direct));
+      return;
+    }
+    toast(
+      "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
+    );
+  };
 
-  const handleInfo = useCallback(
-    (prediction: PlacePrediction) => {
-      // Tapping a prediction is the selection that ends a Places session.
-      resetSearchSession();
-      // When the EF hands back the Mesita identity, navigate directly —
-      // no name join, no snapshot dependency.
-      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
-      if (direct) {
-        router.push(placeHref(direct));
-        return;
-      }
-      const match = matchPredictionToPlace(prediction, catalog);
-      if (match) {
-        router.push(placeHref(match.slug || match.id));
-        return;
-      }
-      // On Mesita per the EF but outside the 200-newest catalog snapshot —
-      // be honest about the limitation instead of blaming the place.
-      toast(
-        "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
-      );
-    },
-    [catalog, resetSearchSession, router],
-  );
+  // From-Google row tap → the not-on-Mesita preview sheet (the Add flow
+  // lives there now). Tapping a row is the selection that ends the current
+  // Places autocomplete session.
+  const handlePickGoogle = (prediction: PlacePrediction) => {
+    resetSearchSession();
+    setPreview(prediction);
+    setPreviewOpen(true);
+  };
 
   // The REAL Add flow: the place is created immediately; only enrichment is
   // scheduled (the cron-driven Enricher pipeline finishes asynchronously),
@@ -279,12 +300,20 @@ export function SearchClient({
   const handleSelectPlace = (place: Place) => {
     setRailCollapsed(false);
     setSelectedId(place.id);
-    railRefs.current.get(place.id)?.scrollIntoView({
+  };
+
+  // Center the rail card for the selected place once the rail is on screen.
+  // An effect (not the tap handlers) because a search pick mounts the rail
+  // on the SAME commit that sets the selection — the card ref only exists
+  // after that render; it also re-centers when a dismissed rail reopens.
+  useEffect(() => {
+    if (!idle || railCollapsed || !selectedId) return;
+    railRefs.current.get(selectedId)?.scrollIntoView({
       behavior: "smooth",
       inline: "center",
       block: "nearest",
     });
-  };
+  }, [idle, railCollapsed, selectedId]);
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -450,9 +479,8 @@ export function SearchClient({
             searchError={searchError}
             predictions={predictions}
             addStates={addStates}
-            resolvePlace={resolvePlace}
-            onInfo={handleInfo}
-            onAdd={handleAdd}
+            onPickMesita={handlePickMesita}
+            onPickGoogle={handlePickGoogle}
           />
         </div>
       )}
@@ -479,6 +507,14 @@ export function SearchClient({
         onToggle={toggleChip}
         onClear={clearChips}
         onClose={() => setFiltersOpen(false)}
+      />
+
+      <GooglePlaceSheet
+        open={previewOpen}
+        prediction={preview}
+        addState={preview ? addStates[preview.placeId] : undefined}
+        onAdd={handleAdd}
+        onClose={() => setPreviewOpen(false)}
       />
     </div>
   );
