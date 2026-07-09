@@ -27,13 +27,9 @@ import {
   Link2,
   Car,
   Phone,
-  BadgeCheck,
   ShieldAlert,
-  Pencil,
-  Loader2,
   Info,
   Crown,
-  Navigation,
   QrCode,
   Camera,
 } from "lucide-react";
@@ -65,9 +61,8 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // intercepted modal at @modal/(.)place/[id]) each render their own top
 // bar (back + place name + ⋯) on top of this. Structure:
 //
-//   1. Profile summary — square photo left, swipe-card multi-field chips
-//      right (same OverviewChip wrap as the old place summary / Discover
-//      swipe card), then Save place + Make reservation buttons.
+//   1. Profile summary — square photo left, 4 primary chips + muted meta
+//      line, then Save place + Make reservation buttons.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -222,28 +217,32 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── 1. Profile summary (photo + swipe-card multi-field chips) ───────────
+// ── 1. Profile summary (photo + primary chips + muted meta) ─────────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // Wireframe: photo left · multi-field chips right (same fields as the
-  // Discover swipe card / pre-IG OverviewChip wrap), then Save / Reserve.
-  // decision: light OverviewChip on white (not the dark swipe MetaChip
-  // overlay) so the chips stay legible on the place page.
+  // decision: far cleaner than the full swipe-card chip wall — only the
+  // four commerce/trust chips stay bordered; open/zone/distance/verified/
+  // updated collapse into one muted meta line under them.
   const isPartner = place.listing_type === "partner";
   const googleRating = place.google.rating.toFixed(1);
   const igFollowers = formatCount(place.instagram.followers, false);
-  const fullCategory = place.details.category_full.trim();
-  const showFullCategory =
-    fullCategory.length > 0 &&
-    fullCategory.toLowerCase() !== place.category.toLowerCase();
   const statusValue = place.open_now
     ? `Open · until ${place.closes_at}`
     : `Closed · opens ${place.opens_at}`;
+  const freshness = place.is_enriching
+    ? "Enriching…"
+    : `Updated ${place.last_updated_label}`;
+  const metaParts = [
+    statusValue,
+    place.zone,
+    `${place.distance_km} km`,
+    isPartner ? "Verified" : "Not verified",
+    freshness,
+  ];
   return (
     <section className="flex flex-col gap-4 pt-3">
-      <div className="flex items-start gap-3">
-        {/* Photo — square with rounded borders. */}
-        <div className="border-border h-24 w-24 shrink-0 overflow-hidden rounded-2xl border">
+      <div className="flex items-start gap-4">
+        <div className="border-border h-28 w-28 shrink-0 overflow-hidden rounded-2xl border">
           {place.photos.length > 0 ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -259,59 +258,47 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
             </div>
           )}
         </div>
-        {/* Multi-field chips — same set as swipe card / old SummaryHeader. */}
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          <OverviewChip capitalize>{place.category}</OverviewChip>
-          {showFullCategory && (
-            <OverviewChip capitalize>{fullCategory}</OverviewChip>
-          )}
-          <OverviewChip>{formatPerPersonPrice(place.price_range)}</OverviewChip>
-          <OverviewChip
-            icon={Star}
-            iconClass="text-amber-500 fill-amber-500"
-            iconStrokeWidth={0}
-          >
-            {googleRating}
-            <span className="text-muted-foreground">
-              ({formatCount(place.google.count, false)})
-            </span>
-          </OverviewChip>
-          <OverviewChip icon={Instagram} iconClass="text-pink-500">
-            {igFollowers}
-            <span className="text-muted-foreground">followers</span>
-          </OverviewChip>
-          <OverviewChip
-            icon={Clock}
-            iconClass={
-              place.open_now ? "text-emerald-600" : "text-muted-foreground"
-            }
-          >
-            {statusValue}
-          </OverviewChip>
-          <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
-            {place.distance_km} km
-          </OverviewChip>
-          <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
-            {place.zone}
-          </OverviewChip>
-          <OverviewChip
-            icon={isPartner ? BadgeCheck : ShieldAlert}
-            iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-500"}
-          >
-            {isPartner ? "Verified Partner" : "Not Verified"}
-          </OverviewChip>
-          <OverviewChip
-            icon={place.is_enriching ? Loader2 : Pencil}
-            iconClass={
-              place.is_enriching
-                ? "animate-spin text-violet-500"
-                : "text-muted-foreground"
-            }
-          >
-            {place.is_enriching
-              ? "Enriching…"
-              : `Updated ${place.last_updated_label}`}
-          </OverviewChip>
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5 pt-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <OverviewChip capitalize>{place.category}</OverviewChip>
+            <OverviewChip>
+              {formatPerPersonPrice(place.price_range)}
+            </OverviewChip>
+            <OverviewChip
+              icon={Star}
+              iconClass="fill-amber-500 text-amber-500"
+              iconStrokeWidth={0}
+            >
+              {googleRating}
+              <span className="text-muted-foreground">
+                ({formatCount(place.google.count, false)})
+              </span>
+            </OverviewChip>
+            <OverviewChip icon={Instagram} iconClass="text-pink-500">
+              {igFollowers}
+              <span className="text-muted-foreground">followers</span>
+            </OverviewChip>
+          </div>
+          <p className="text-muted-foreground text-[12px] leading-snug">
+            {metaParts.map((part, i) => (
+              <span key={part}>
+                {i > 0 && <span className="text-border px-1">·</span>}
+                <span
+                  className={cn(
+                    i === 0 &&
+                      (place.open_now
+                        ? "font-medium text-emerald-700"
+                        : "font-medium"),
+                    place.is_enriching &&
+                      i === metaParts.length - 1 &&
+                      "text-violet-600",
+                  )}
+                >
+                  {part}
+                </span>
+              </span>
+            ))}
+          </p>
         </div>
       </div>
 
@@ -336,13 +323,16 @@ function OverviewChip({
   return (
     <span
       className={cn(
-        "border-border bg-card text-foreground inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-1 text-[12px] leading-tight font-semibold whitespace-nowrap tabular-nums [font-variant-numeric:tabular-nums_lining-nums]",
+        "border-border bg-card text-foreground inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] leading-none font-semibold whitespace-nowrap tabular-nums [font-variant-numeric:tabular-nums_lining-nums]",
         capitalize && "capitalize",
       )}
     >
       {Icon && (
         <Icon
-          className={cn("h-3.5 w-3.5 shrink-0", iconClass ?? "text-muted-foreground")}
+          className={cn(
+            "h-3.5 w-3.5 shrink-0",
+            iconClass ?? "text-muted-foreground",
+          )}
           strokeWidth={iconStrokeWidth}
         />
       )}
