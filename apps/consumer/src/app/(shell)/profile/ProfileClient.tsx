@@ -116,7 +116,7 @@ export function ProfileClient({
             Icon={Instagram}
             tint="pink"
             title="Instagram"
-            summary="Connect & manage your account"
+            summary="Connect Instagram to upgrade your class"
             onClick={() => setVerifyOpen(true)}
           />
 
@@ -124,7 +124,7 @@ export function ProfileClient({
             Icon={Crown}
             tint="amber"
             title="Class"
-            summary="Manage your membership"
+            summary="Upgrade your class for better rewards"
             onClick={() => setClassOpen(true)}
           />
 
