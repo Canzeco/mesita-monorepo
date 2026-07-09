@@ -1,8 +1,7 @@
 import {
   ChartLine,
-  MapPinPlus,
+  MapPin,
   QrCode,
-  SquarePen,
   Star,
   Store,
   Tag,
@@ -24,14 +23,9 @@ export type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];
 
 export const TOOL_ROUTES = [
   {
-    href: "/manage-single/create",
-    label: "Create Single Unit",
-    Icon: MapPinPlus,
-  },
-  {
     href: "/manage-single/select",
-    label: "Edit Single Unit",
-    Icon: SquarePen,
+    label: "Manage Single Unit",
+    Icon: MapPin,
   },
 ] as const;
 
@@ -51,6 +45,11 @@ export function parseUnitId(pathname: string): string | null {
   return id;
 }
 
-export function isEditSingleUnitRoute(pathname: string): boolean {
+export function isManageSingleHubRoute(pathname: string): boolean {
   return pathname === "/manage-single/select" || parseUnitId(pathname) !== null;
+}
+
+/** @deprecated use isManageSingleHubRoute */
+export function isEditSingleUnitRoute(pathname: string): boolean {
+  return isManageSingleHubRoute(pathname);
 }

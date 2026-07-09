@@ -23,7 +23,13 @@ function isNavActive(
   projectId: string | null,
 ): boolean {
   if (href === "/manage-single/select") {
-    return pathname === href || projectId !== null;
+    // One nav item covers the whole single-unit surface (select + create redirects + editors).
+    return (
+      pathname === href ||
+      pathname === "/manage-single" ||
+      pathname.startsWith("/manage-single/") ||
+      projectId !== null
+    );
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

@@ -263,7 +263,7 @@ export function UnitThumb({
   photo: string | null;
   name: string;
   size?: "sm" | "lg";
-  /** onDark = Edit Single Unit chrome; onLight = select catalog cards. */
+  /** onDark = Manage Single Unit chrome; onLight = select catalog cards. */
   tone?: "onLight" | "onDark";
 }) {
   const dim = size === "lg" ? "h-11 w-11 rounded-xl" : "h-8 w-8 rounded-md";

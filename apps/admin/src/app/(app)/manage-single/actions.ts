@@ -149,7 +149,7 @@ export async function updatePlace(
 
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
 // Same backend source Atlas Config reads (`admin-web-get-atlas-fields` →
-// public.place_tags). Edit Single Unit calls this EF via its own server
+// public.place_tags). Manage Single Unit calls this EF via its own server
 // action — it does NOT import from /atlas-config or talk to that page.
 
 export type PlaceTagOption = {

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ManageSingleAddRedirectPage() {
-  redirect("/manage-single/create");
+  redirect("/manage-single/select");
 }

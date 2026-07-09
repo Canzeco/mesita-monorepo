@@ -76,7 +76,7 @@ export function UnitEditShell({
           onClick={() => router.push("/manage-single/select")}
           className="border-border hover:border-foreground/40 mt-4 inline-flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition"
         >
-          <Search className="h-4 w-4" /> Back to Edit Single Unit
+          <Search className="h-4 w-4" /> Back to Manage Single Unit
         </button>
       </div>
     );

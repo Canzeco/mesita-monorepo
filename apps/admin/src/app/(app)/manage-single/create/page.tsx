@@ -1,5 +1,5 @@
-import { CreateUnitTab } from "../CreateUnitTab";
+import { redirect } from "next/navigation";
 
-export default function ManageSingleCreatePage() {
-  return <CreateUnitTab />;
+export default function ManageSingleCreateRedirectPage() {
+  redirect("/manage-single/select");
 }

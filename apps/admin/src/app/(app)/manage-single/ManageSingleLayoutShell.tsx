@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { PageHeader } from "@/components/PageContainer";
-import { isEditSingleUnitRoute } from "./nav";
+import { isManageSingleHubRoute } from "./nav";
 
 export function ManageSingleLayoutShell({
   children,
@@ -11,7 +11,8 @@ export function ManageSingleLayoutShell({
 }) {
   const pathname = usePathname();
 
-  if (isEditSingleUnitRoute(pathname)) {
+  // Hub (select) and per-unit editors own their chrome; skip the generic header.
+  if (isManageSingleHubRoute(pathname)) {
     return <>{children}</>;
   }
 
@@ -20,7 +21,7 @@ export function ManageSingleLayoutShell({
       <PageHeader
         eyebrow="Units · Single"
         title="Manage Single Unit"
-        description="Create a new single unit from Google or search and open an existing one, then run Place, Promos, Scan, Performance, and Team — super-admin access bypasses place membership."
+        description="Search Mesita units or create from Google, then run Place, Promos, Scan, Performance, and Team — super-admin access bypasses place membership."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </>
