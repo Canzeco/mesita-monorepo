@@ -285,26 +285,35 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
       </div>
 
-      {/* decision: Pato — soft labels (not white button chips); order
-          category · price · distance · location · open */}
-      <div className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-snug">
-        <OverviewMeta>{place.category}</OverviewMeta>
-        <MetaDot />
-        <OverviewMeta>{priceLabel}</OverviewMeta>
-        <MetaDot />
-        <OverviewMeta icon={Navigation}>
-          {place.distance_km} km
-        </OverviewMeta>
-        <MetaDot />
-        <OverviewMeta icon={MapPin}>{place.zone}</OverviewMeta>
-        <MetaDot />
-        <OverviewMeta
-          icon={Clock}
-          iconClass={place.open_now ? "text-emerald-600" : undefined}
-          textClass={place.open_now ? "text-emerald-700" : undefined}
+      {/* decision: Pato — bordered meta grid (full width, matches action
+          buttons); category · price · distance · location; hours on own row.
+          Bold labels, semantic colors preserved. */}
+      <div className="border-border divide-border overflow-hidden rounded-lg border">
+        <div className="divide-border grid grid-cols-2 divide-x divide-y sm:grid-cols-4">
+          <MetaGridCell textClass="text-foreground">
+            {place.category}
+          </MetaGridCell>
+          <MetaGridCell>{priceLabel}</MetaGridCell>
+          <MetaGridCell icon={Navigation}>
+            {place.distance_km} km
+          </MetaGridCell>
+          <MetaGridCell icon={MapPin}>{place.zone}</MetaGridCell>
+        </div>
+        <div
+          className={cn(
+            "border-border flex items-center justify-center gap-1.5 border-t px-2.5 py-2.5 text-[11px] leading-snug font-semibold",
+            place.open_now ? "text-emerald-700" : "text-muted-foreground",
+          )}
         >
-          {statusValue}
-        </OverviewMeta>
+          <Clock
+            className={cn(
+              "h-3.5 w-3.5 shrink-0",
+              place.open_now ? "text-emerald-600" : "opacity-70",
+            )}
+            strokeWidth={2.25}
+          />
+          <span className="truncate">{statusValue}</span>
+        </div>
       </div>
 
       <ProfileActions placeId={place.id} placeName={place.name} />
@@ -378,8 +387,8 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-/** Soft meta label — no border/fill so it doesn't read as a button. */
-function OverviewMeta({
+/** One cell in the profile meta grid — bold, centered, bordered by parent. */
+function MetaGridCell({
   icon: Icon,
   children,
   iconClass,
@@ -391,28 +400,20 @@ function OverviewMeta({
   textClass?: string;
 }) {
   return (
-    <span
+    <div
       className={cn(
-        "inline-flex max-w-full items-center gap-1 font-medium whitespace-nowrap tabular-nums",
-        textClass,
+        "flex min-h-[44px] min-w-0 items-center justify-center gap-1.5 px-2 py-2.5 text-center text-[11px] leading-snug font-semibold",
+        textClass ?? "text-muted-foreground",
       )}
     >
       {Icon && (
         <Icon
-          className={cn("h-3 w-3 shrink-0 opacity-70", iconClass)}
+          className={cn("h-3.5 w-3.5 shrink-0", iconClass ?? "opacity-70")}
           strokeWidth={2.25}
         />
       )}
-      {children}
-    </span>
-  );
-}
-
-function MetaDot() {
-  return (
-    <span className="text-muted-foreground/40 select-none" aria-hidden>
-      ·
-    </span>
+      <span className="min-w-0 truncate">{children}</span>
+    </div>
   );
 }
 
