@@ -53,6 +53,13 @@ export async function searchPlaces(query: string): Promise<Result<UnitHit[]>> {
   return searchUnits(query);
 }
 
+// One menu / catalog entry under products.menu (and legacy menus).
+export type AdminMenuItem = {
+  name?: string | null;
+  url?: string | null;
+  items?: unknown[] | null;
+};
+
 // The full place row, loaded for a super-admin via business-get-overview
 // (which returns the single requested place when the caller is super-admin).
 // Typed loosely — the editor only touches the known fields below.
@@ -91,6 +98,10 @@ export type AdminPlace = {
   tripadvisor_url: string | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;
+  // Generic products payload. Menus live under products.menu.
+  products?: { menu?: AdminMenuItem[] | null } | null;
+  // Legacy parallel array; prefer products.menu when present.
+  menus?: AdminMenuItem[] | null;
   plan: string | null;
   fiscal_type: string | null;
   welcome_free_rate: number | null;
