@@ -513,6 +513,7 @@ export function SearchClient({
         open={previewOpen}
         prediction={preview}
         addState={preview ? addStates[preview.placeId] : undefined}
+        apiKey={apiKey}
         onAdd={handleAdd}
         onClose={() => setPreviewOpen(false)}
       />
