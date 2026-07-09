@@ -29,10 +29,13 @@ export function PlaceDetailModalShell({
     <>
       <SlideOverHeader
         title={
-          <PlaceNameWithVerification
-            name={placeName}
-            listingType={listingType}
-          />
+          // decision: Pato — place name a bit larger than default slide-over text-sm
+          <span className="font-display text-base font-semibold">
+            <PlaceNameWithVerification
+              name={placeName}
+              listingType={listingType}
+            />
+          </span>
         }
         actions={<PlaceMoreButton />}
       />

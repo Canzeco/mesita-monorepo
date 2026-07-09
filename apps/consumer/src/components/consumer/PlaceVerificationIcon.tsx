@@ -13,7 +13,7 @@ export function PlaceVerificationIcon({
   if (verified) {
     return (
       <BadgeCheck
-        className={cn("h-4 w-4 shrink-0 fill-sky-500 text-white", className)}
+        className={cn("h-[18px] w-[18px] shrink-0 fill-sky-500 text-white", className)}
         aria-label="Verified Partner"
         strokeWidth={2}
       />
@@ -21,7 +21,7 @@ export function PlaceVerificationIcon({
   }
   return (
     <ShieldAlert
-      className={cn("h-4 w-4 shrink-0 text-amber-500", className)}
+      className={cn("h-[18px] w-[18px] shrink-0 text-amber-500", className)}
       aria-label="Not verified"
     />
   );

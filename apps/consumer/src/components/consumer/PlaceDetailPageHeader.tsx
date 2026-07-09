@@ -34,7 +34,8 @@ export function PlaceDetailPageHeader({
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
-      <div className="font-display flex min-w-0 flex-1 items-center justify-center text-sm font-semibold">
+      {/* decision: Pato — place name a bit larger than default slide-over text-sm */}
+      <div className="font-display flex min-w-0 flex-1 items-center justify-center text-base font-semibold">
         <PlaceNameWithVerification name={placeName} listingType={listingType} />
       </div>
       <PlaceMoreButton />
