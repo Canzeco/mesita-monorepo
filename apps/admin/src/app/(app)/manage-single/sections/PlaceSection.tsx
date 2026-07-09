@@ -26,7 +26,7 @@ import {
   type PlaceMediaMeta,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
-import { ErrorNote, SaveBar, SectionCard, TextArea, TextField } from "../ui";
+import { SaveBar, SectionCard, TextArea, TextField } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -128,32 +128,74 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
   };
 }
 
-// Build the business-update-project patch. Empty strings become null so a cleared
-// field actually clears; closed days are omitted from the hours object.
-function formToPatch(
+// Build a partial business-update-project patch for one Place box.
+// Empty strings become null so a cleared field actually clears.
+type PlaceBox = "basics" | "location" | "time" | "channels" | "photos";
+
+function boxToPatch(
+  box: PlaceBox,
   f: Form,
   id: string,
   limits: PlaceFieldLimits,
 ): Record<string, unknown> {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
-  const hours: Record<string, { open: string; close: string }[]> = {};
-  for (const d of DAYS) {
-    const h = f.hours[d];
-    if (!h.closed && h.open && h.close) hours[d] = [{ open: h.open, close: h.close }];
+  if (box === "basics") {
+    return {
+      id,
+      name: f.name.trim().slice(0, limits.placeNameMax),
+      description: nz(f.description.slice(0, limits.descriptionMax)),
+      tags: f.tags.slice(0, limits.tagsPerPlaceMax),
+    };
   }
-  const patch: Record<string, unknown> = {
-    id,
-    name: f.name.trim().slice(0, limits.placeNameMax),
-    description: nz(f.description.slice(0, limits.descriptionMax)),
-    phone: nz(f.phone),
-    email: nz(f.email),
-    address: nz(f.address),
-    tags: f.tags.slice(0, limits.tagsPerPlaceMax),
-    photos: f.photos.slice(0, limits.photosMax),
-    hours,
-  };
-  for (const c of CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
-  return patch;
+  if (box === "location") {
+    return { id, address: nz(f.address) };
+  }
+  if (box === "time") {
+    const hours: Record<string, { open: string; close: string }[]> = {};
+    for (const d of DAYS) {
+      const h = f.hours[d];
+      if (!h.closed && h.open && h.close) hours[d] = [{ open: h.open, close: h.close }];
+    }
+    return { id, hours };
+  }
+  if (box === "channels") {
+    const patch: Record<string, unknown> = {
+      id,
+      phone: nz(f.phone),
+      email: nz(f.email),
+    };
+    for (const c of CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
+    return patch;
+  }
+  return { id, photos: f.photos.slice(0, limits.photosMax) };
+}
+
+function sliceEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** Copy one box's fields from `from` onto `base` — keeps other boxes intact. */
+function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
+  if (box === "basics") {
+    return {
+      ...base,
+      name: from.name,
+      description: from.description,
+      tags: from.tags,
+      category: from.category,
+    };
+  }
+  if (box === "location") return { ...base, address: from.address };
+  if (box === "time") return { ...base, hours: from.hours };
+  if (box === "channels") {
+    return {
+      ...base,
+      channels: from.channels,
+      phone: from.phone,
+      email: from.email,
+    };
+  }
+  return { ...base, photos: from.photos };
 }
 
 export function PlaceSection({
@@ -166,14 +208,41 @@ export function PlaceSection({
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
   const [saved, setSaved] = useState<Form>(form);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const [pendingBox, setPendingBox] = useState<PlaceBox | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<PlaceBox, string>>>({});
+  const [oks, setOks] = useState<Partial<Record<PlaceBox, boolean>>>({});
+  const [, start] = useTransition();
 
-  const dirty = useMemo(
-    () => JSON.stringify(form) !== JSON.stringify(saved),
-    [form, saved],
+  const dirtyBasics = useMemo(
+    () =>
+      !sliceEqual(
+        { name: form.name, description: form.description, tags: form.tags },
+        { name: saved.name, description: saved.description, tags: saved.tags },
+      ),
+    [form.name, form.description, form.tags, saved.name, saved.description, saved.tags],
   );
+  const dirtyLocation = useMemo(
+    () => !sliceEqual(form.address, saved.address),
+    [form.address, saved.address],
+  );
+  const dirtyTime = useMemo(
+    () => !sliceEqual(form.hours, saved.hours),
+    [form.hours, saved.hours],
+  );
+  const dirtyChannels = useMemo(
+    () =>
+      !sliceEqual(
+        { channels: form.channels, phone: form.phone, email: form.email },
+        { channels: saved.channels, phone: saved.phone, email: saved.email },
+      ),
+    [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
+  );
+  const dirtyPhotos = useMemo(
+    () => !sliceEqual(form.photos, saved.photos),
+    [form.photos, saved.photos],
+  );
+
+  const anyPending = pendingBox !== null;
 
   const set = <K extends keyof Form>(k: K, val: Form[K]) =>
     setForm((f) => ({ ...f, [k]: val }));
@@ -187,18 +256,18 @@ export function PlaceSection({
   const setPhotos = (photos: string[]) => set("photos", photos.slice(0, limits.photosMax));
 
   const uploadPhoto = async (file: File) => {
-    if (uploading || pending) return;
+    if (uploading || anyPending) return;
     if (form.photos.length >= limits.photosMax) {
-      setError(`At most ${limits.photosMax} photos.`);
+      setErrors((e) => ({ ...e, photos: `At most ${limits.photosMax} photos.` }));
       return;
     }
     const fileError = validateUploadFile(file);
     if (fileError) {
-      setError(fileError);
+      setErrors((e) => ({ ...e, photos: fileError }));
       return;
     }
     setUploading(true);
-    setError(null);
+    setErrors((e) => ({ ...e, photos: undefined }));
     try {
       const supabase = createBrowserSupabase();
       const path = placeImageObjectPath(place.id, file);
@@ -218,7 +287,10 @@ export function PlaceSection({
       }
       setPhotos([...form.photos, data.publicUrl]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't upload that photo.");
+      setErrors((e) => ({
+        ...e,
+        photos: err instanceof Error ? err.message : "Couldn't upload that photo.",
+      }));
     } finally {
       setUploading(false);
     }
@@ -275,24 +347,27 @@ export function PlaceSection({
     };
   }, [place.id]);
 
-  const save = () => {
-    if (!dirty || !form.name.trim()) {
-      if (!form.name.trim()) setError("Name is required.");
+  const saveBox = (box: PlaceBox) => {
+    if (box === "basics" && !form.name.trim()) {
+      setErrors((e) => ({ ...e, basics: "Name is required." }));
       return;
     }
-    setError(null);
-    setOk(false);
+    setErrors((e) => ({ ...e, [box]: undefined }));
+    setOks((o) => ({ ...o, [box]: false }));
+    setPendingBox(box);
     start(async () => {
-      const r = await updatePlace(formToPatch(form, place.id, limits) as { id: string });
+      const r = await updatePlace(boxToPatch(box, form, place.id, limits) as { id: string });
+      setPendingBox(null);
       if (!r.ok) {
-        setError(r.error);
+        setErrors((e) => ({ ...e, [box]: r.error }));
         return;
       }
       const fresh = placeToForm(r.data, limits);
-      setForm(fresh);
-      setSaved(fresh);
+      // Merge only this box's slice so unsaved edits in other boxes survive.
+      setForm((prev) => mergeBoxSlice(prev, fresh, box));
+      setSaved((prev) => mergeBoxSlice(prev, fresh, box));
       onSaved(r.data);
-      setOk(true);
+      setOks((o) => ({ ...o, [box]: true }));
     });
   };
 
@@ -372,7 +447,7 @@ export function PlaceSection({
             value={form.name}
             onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
             maxLength={limits.placeNameMax}
-            disabled={pending}
+            disabled={anyPending}
           />
           {/* Price is Google Places–inferred in Enrich-Research — never editable. */}
           <MetaField label="Price">
@@ -395,16 +470,23 @@ export function PlaceSection({
             onChange={(x) => set("description", x.slice(0, limits.descriptionMax))}
             rows={5}
             maxLength={limits.descriptionMax}
-            disabled={pending}
+            disabled={anyPending}
           />
         </div>
         <div className="mt-4">
           <PlaceTagsPicker
             value={form.tags}
             onChange={(tags) => set("tags", tags.slice(0, limits.tagsPerPlaceMax))}
-            disabled={pending}
+            disabled={anyPending}
           />
         </div>
+        <SaveBar
+          pending={pendingBox === "basics"}
+          dirty={dirtyBasics}
+          ok={!!oks.basics}
+          error={errors.basics}
+          onSave={() => saveBox("basics")}
+        />
       </SectionCard>
 
       <SectionCard
@@ -419,7 +501,7 @@ export function PlaceSection({
               value={form.address}
               onChange={(x) => set("address", x)}
               placeholder="Street, colonia, city"
-              disabled={pending}
+              disabled={anyPending}
             />
           </div>
           <MetaField label="Zone">
@@ -450,6 +532,13 @@ export function PlaceSection({
             />
           </div>
         ) : null}
+        <SaveBar
+          pending={pendingBox === "location"}
+          dirty={dirtyLocation}
+          ok={!!oks.location}
+          error={errors.location}
+          onSave={() => saveBox("location")}
+        />
       </SectionCard>
 
       <SectionCard
@@ -474,7 +563,7 @@ export function PlaceSection({
                   <input
                     type="checkbox"
                     checked={h.closed}
-                    disabled={pending}
+                    disabled={anyPending}
                     onChange={(e) => setDay(d, { closed: e.target.checked })}
                   />
                   Closed
@@ -484,7 +573,7 @@ export function PlaceSection({
                     <input
                       type="time"
                       value={h.open}
-                      disabled={pending}
+                      disabled={anyPending}
                       onChange={(e) => setDay(d, { open: e.target.value })}
                       className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none"
                     />
@@ -492,7 +581,7 @@ export function PlaceSection({
                     <input
                       type="time"
                       value={h.close}
-                      disabled={pending}
+                      disabled={anyPending}
                       onChange={(e) => setDay(d, { close: e.target.value })}
                       className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none"
                     />
@@ -502,6 +591,13 @@ export function PlaceSection({
             );
           })}
         </div>
+        <SaveBar
+          pending={pendingBox === "time"}
+          dirty={dirtyTime}
+          ok={!!oks.time}
+          error={errors.time}
+          onSave={() => saveBox("time")}
+        />
       </SectionCard>
 
       <SectionCard
@@ -517,23 +613,30 @@ export function PlaceSection({
               value={form.channels[c.key as string] ?? ""}
               onChange={(x) => setChannel(c.key as string, x)}
               placeholder="https://…"
-              disabled={pending}
+              disabled={anyPending}
             />
           ))}
           <TextField
             label="Phone"
             value={form.phone}
             onChange={(x) => set("phone", x)}
-            disabled={pending}
+            disabled={anyPending}
           />
           <TextField
             label="Email"
             type="email"
             value={form.email}
             onChange={(x) => set("email", x)}
-            disabled={pending}
+            disabled={anyPending}
           />
         </div>
+        <SaveBar
+          pending={pendingBox === "channels"}
+          dirty={dirtyChannels}
+          ok={!!oks.channels}
+          error={errors.channels}
+          onSave={() => saveBox("channels")}
+        />
       </SectionCard>
 
       <SectionCard
@@ -545,19 +648,21 @@ export function PlaceSection({
           placeId={place.id}
           photos={form.photos}
           photosMax={limits.photosMax}
-          pending={pending}
+          pending={anyPending}
           uploading={uploading}
           onUpload={uploadPhoto}
           onMove={movePhoto}
           onRemove={removePhoto}
           onInfo={setMetaFor}
         />
+        <SaveBar
+          pending={pendingBox === "photos"}
+          dirty={dirtyPhotos}
+          ok={!!oks.photos}
+          error={errors.photos}
+          onSave={() => saveBox("photos")}
+        />
       </SectionCard>
-
-      <div>
-        <SaveBar pending={pending} dirty={dirty} ok={ok} onSave={save} />
-        {error && <ErrorNote message={error} />}
-      </div>
 
       {metaFor !== null && (
         <MediaMetaDialog

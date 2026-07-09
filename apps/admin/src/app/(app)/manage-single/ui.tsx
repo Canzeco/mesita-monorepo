@@ -144,34 +144,42 @@ export function SaveBar({
   ok,
   onSave,
   label = "Save changes",
+  error,
 }: {
   pending: boolean;
   dirty: boolean;
   ok: boolean;
   onSave: () => void;
   label?: string;
+  error?: string | null;
 }) {
   return (
-    <div className="mt-6 flex items-center gap-3">
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={pending || !dirty}
-        className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-      >
-        {pending ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
-          </>
-        ) : (
-          label
+    <div className="mt-5 border-border border-t pt-4">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={pending || !dirty}
+          className="bg-foreground text-background inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+        >
+          {pending ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+            </>
+          ) : (
+            label
+          )}
+        </button>
+        {ok && !dirty && (
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Saved
+          </span>
         )}
-      </button>
-      {ok && !dirty && (
-        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Saved
-        </span>
-      )}
+        {dirty && !pending ? (
+          <span className="text-muted-foreground text-xs">Unsaved changes</span>
+        ) : null}
+      </div>
+      {error ? <ErrorNote message={error} /> : null}
     </div>
   );
 }

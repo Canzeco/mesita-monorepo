@@ -19,7 +19,7 @@ import {
   validateMenuUploadFile,
 } from "@/lib/place-upload-utils";
 import { updatePlace, type AdminMenuItem, type AdminPlace } from "../actions";
-import { ErrorNote, SaveBar, SectionCard, TextField } from "../ui";
+import { SaveBar, SectionCard, TextField } from "../ui";
 
 const MENU_NAME_MAX = 80;
 
@@ -288,9 +288,14 @@ export function ProductsSection({
         </div>
       )}
 
-      {error ? <ErrorNote message={error} /> : null}
       {items.length > 0 || dirty ? (
-        <SaveBar pending={pending} dirty={dirty} ok={ok} onSave={save} />
+        <SaveBar
+          pending={pending}
+          dirty={dirty}
+          ok={ok}
+          error={error}
+          onSave={save}
+        />
       ) : null}
     </SectionCard>
   );
