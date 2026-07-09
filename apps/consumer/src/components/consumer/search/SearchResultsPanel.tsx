@@ -36,79 +36,78 @@ export function SearchResultsPanel({
   const settled = !searching && query.trim().length >= 2;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-        {query.trim().length < 2 && (
-          <p className="text-muted-foreground px-1 py-6 text-center text-xs">
-            Keep typing — at least two letters to search.
-          </p>
-        )}
+    // Outer shell owns max-h + overflow-y-auto; this is just the rows.
+    <div className="space-y-3 p-3">
+      {query.trim().length < 2 && (
+        <p className="text-muted-foreground px-1 py-4 text-center text-xs">
+          Keep typing — at least two letters to search.
+        </p>
+      )}
 
-        {searching && predictions.length === 0 && (
-          <div className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-xs">
-            <Spinner size="sm" label="Searching" />
-            Searching Mesita and Google…
+      {searching && predictions.length === 0 && (
+        <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-xs">
+          <Spinner size="sm" label="Searching" />
+          Searching Mesita and Google…
+        </div>
+      )}
+
+      {searchError && (
+        <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-xs">
+          {searchError}
+        </p>
+      )}
+
+      {settled && !searchError && predictions.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-5 text-center">
+          <span className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-2xl">
+            <SearchX className="h-5 w-5" />
+          </span>
+          <p className="mt-2.5 text-sm font-semibold">No matches found</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Try the place&apos;s full name, or ask the AI concierge.
+          </p>
+        </div>
+      )}
+
+      {onMesita.length > 0 && (
+        <div>
+          <p className="eyebrow px-1">On Mesita</p>
+          <div className="divide-border/60 divide-y">
+            {onMesita.map((p) => (
+              <SuggestionLine
+                key={p.placeId}
+                prediction={p}
+                source="mesita"
+                addState={addStates[p.placeId]}
+                onPick={onPickMesita}
+              />
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {searchError && (
-          <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-xs">
-            {searchError}
-          </p>
-        )}
-
-        {settled && !searchError && predictions.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-2xl">
-              <SearchX className="h-5 w-5" />
-            </span>
-            <p className="mt-3 text-sm font-semibold">No matches found</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Try the place&apos;s full name, or ask the AI concierge.
+      {fromGoogle.length > 0 && (
+        <div>
+          <p className="eyebrow px-1">From Google</p>
+          {onMesita.length === 0 && settled && (
+            <p className="text-muted-foreground px-1 pt-1 text-[11px]">
+              Not on Mesita yet? Tap a place and we&apos;ll build its profile
+              for everyone.
             </p>
+          )}
+          <div className="divide-border/60 divide-y">
+            {fromGoogle.map((p) => (
+              <SuggestionLine
+                key={p.placeId}
+                prediction={p}
+                source="google"
+                addState={addStates[p.placeId]}
+                onPick={onPickGoogle}
+              />
+            ))}
           </div>
-        )}
-
-        {onMesita.length > 0 && (
-          <div>
-            <p className="eyebrow px-1">On Mesita</p>
-            <div className="divide-border/60 divide-y">
-              {onMesita.map((p) => (
-                <SuggestionLine
-                  key={p.placeId}
-                  prediction={p}
-                  source="mesita"
-                  addState={addStates[p.placeId]}
-                  onPick={onPickMesita}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {fromGoogle.length > 0 && (
-          <div>
-            <p className="eyebrow px-1">From Google</p>
-            {onMesita.length === 0 && settled && (
-              <p className="text-muted-foreground px-1 pt-1 text-[11px]">
-                Not on Mesita yet? Tap a place and we&apos;ll build its profile
-                for everyone.
-              </p>
-            )}
-            <div className="divide-border/60 divide-y">
-              {fromGoogle.map((p) => (
-                <SuggestionLine
-                  key={p.placeId}
-                  prediction={p}
-                  source="google"
-                  addState={addStates[p.placeId]}
-                  onPick={onPickGoogle}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
