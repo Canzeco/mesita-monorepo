@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   MapPin,
@@ -21,7 +20,6 @@ import {
   ChevronRight,
   Utensils,
   Users,
-  Heart,
   Clock,
   Tags,
   Link2,
@@ -45,7 +43,6 @@ import {
   InstagramLogo,
   MesitaMark,
 } from "@/components/consumer/BrandLogos";
-import { useSavedPlaces } from "@/lib/saved-places";
 import { classProperLabel } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { toast } from "@/lib/toast";
@@ -432,11 +429,10 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-// Save · Reserve · Share — stacked full-width, IG-style filled buttons.
-// Save toggles localStorage saved-places. Reserve parked (Soon). Share
-// uses native share with clipboard fallback.
+// Reserve · Share — stacked full-width, IG-style filled buttons.
+// Save moved to the place header (top-right). Reserve parked (Soon).
+// Share uses native share with clipboard fallback.
 function ProfileActions({
-  placeId,
   placeName,
   className,
 }: {
@@ -444,27 +440,6 @@ function ProfileActions({
   placeName: string;
   className?: string;
 }) {
-  const router = useRouter();
-  const { isSaved, toggle } = useSavedPlaces();
-  const saved = isSaved(placeId);
-
-  function onSavePlace() {
-    const nowSaved = !saved;
-    toggle(placeId);
-    if (nowSaved) {
-      toast.action(
-        `Saved ${placeName}`,
-        {
-          label: "View",
-          onClick: () => router.push(CONSUMER_ROUTES.favorites),
-        },
-        { tone: "success" },
-      );
-    } else {
-      toast(`Removed ${placeName} from saved`);
-    }
-  }
-
   async function onSharePlace() {
     const url = typeof window !== "undefined" ? window.location.href : "";
     const payload = {
@@ -496,28 +471,10 @@ function ProfileActions({
     toast.error("Sharing isn't available in this browser");
   }
 
-  // decision: Pato — vertical stack + solid fills (not outline chips) so
-  // they read as real CTAs: Save = Mesita pink, Reserve = IG blue, Share =
-  // soft secondary fill.
+  // decision: Pato — Save is header-only; body keeps Reserve + Share as
+  // filled CTAs (IG blue / muted secondary).
   return (
     <div className={cn("flex flex-col gap-2.5", className)}>
-      <button
-        type="button"
-        onClick={onSavePlace}
-        aria-pressed={saved}
-        className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold text-white shadow-sm transition active:scale-[0.99]",
-          saved
-            ? "bg-pink-600 hover:bg-pink-700"
-            : "bg-pink-gradient shadow-glow hover:brightness-110",
-        )}
-      >
-        <Heart
-          className={cn("h-4 w-4", saved && "fill-current")}
-          strokeWidth={2.25}
-        />
-        {saved ? "Saved" : "Save"}
-      </button>
       <button
         type="button"
         disabled

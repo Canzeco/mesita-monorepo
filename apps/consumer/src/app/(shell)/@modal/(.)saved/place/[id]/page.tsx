@@ -24,6 +24,7 @@ export default async function SavedPlaceModalPage({
   }
   return (
     <PlaceDetailModalShell
+      placeId={place.id}
       placeName={place.name}
       listingType={place.listing_type}
     >

@@ -8,8 +8,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // Client wrapper for the hard-nav /place/[id] page. Mirrors the modal
 // shell's header + scroll-area layout. The outer server page
 // (place/[id]/page.tsx) stays server-rendered and just hands the place
-// prop down. (Save + Make reservation live inside PlaceDetailBody's
-// ProfileSummary — there's no bottom action bar anymore.)
+// prop down. Save is in the header; Reserve / Share live in PlaceDetailBody.
 export function PlaceDetailPageBody({
   place,
   backHref = CONSUMER_ROUTES.home,
@@ -20,6 +19,7 @@ export function PlaceDetailPageBody({
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
       <PlaceDetailPageHeader
+        placeId={place.id}
         placeName={place.name}
         listingType={place.listing_type}
         backHref={backHref}
