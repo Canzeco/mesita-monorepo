@@ -905,10 +905,6 @@ function LocationBox({ place }: { place: PlaceDetail }) {
 
 // ── Time (hours) ────────────────────────────────────────────────────────
 
-function dayLetter(day: string): string {
-  return day.slice(0, 1).toUpperCase();
-}
-
 /** Full weekday name in the place timezone — matches hours_table.day. */
 function todayWeekdayLabel(tz: string | undefined): string {
   try {
@@ -923,42 +919,8 @@ function todayWeekdayLabel(tz: string | undefined): string {
   }
 }
 
-function HoursCellRange({ range }: { range: string }) {
-  if (range.toLowerCase() === "closed") {
-    return <span className="text-muted-foreground/80">Closed</span>;
-  }
-  // "23:00–02:00" or multi-shift "12:00–15:00, 18:00–23:00" → stacked open/close
-  const shifts = range.split(",").map((s) => s.trim()).filter(Boolean);
-  return (
-    <span className="flex flex-col items-center gap-0.5">
-      {shifts.map((shift, i) => {
-        const [open, close] = shift.split(/\s*[–—-]\s*/);
-        if (!open || !close) {
-          return (
-            <span key={i} className="tabular-nums">
-              {shift}
-            </span>
-          );
-        }
-        return (
-          <span
-            key={i}
-            className="flex flex-col items-center leading-[1.15] tabular-nums"
-          >
-            <span>{open}</span>
-            <span className="text-muted-foreground/45 text-[8px] leading-none">
-              –
-            </span>
-            <span>{close}</span>
-          </span>
-        );
-      })}
-    </span>
-  );
-}
-
 function HoursBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — sparse day/hours list looked bad; 7-day cell grid instead
+  // decision: Pato — simple 2-col day / schedule list; keep timezone in header
   const today = todayWeekdayLabel(place.timezone);
   const statusDetail = place.open_now
     ? place.closes_at
@@ -974,7 +936,6 @@ function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-violet-400"
       right={place.timezone || undefined}
-      className="gap-2.5 p-3"
     >
       <p className="text-xs leading-snug">
         <span
@@ -993,44 +954,47 @@ function HoursBox({ place }: { place: PlaceDetail }) {
         )}
       </p>
       {place.hours_table.length > 0 && (
-        <div className="grid grid-cols-7 gap-1">
+        <ul className="divide-border border-border divide-y overflow-hidden rounded-lg border">
           {place.hours_table.map((row) => {
             const isToday = row.day === today;
             const closed = row.range.toLowerCase() === "closed";
             return (
-              <div
+              <li
                 key={row.day}
                 className={cn(
-                  "flex min-h-[4.25rem] flex-col items-center rounded-lg px-0.5 py-1.5 text-center",
-                  isToday
-                    ? "bg-violet-50 ring-1 ring-violet-200/90"
-                    : "bg-muted/50",
+                  "grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-3 px-3 py-2 text-[13px]",
+                  isToday && "bg-violet-50/80",
                 )}
               >
                 <span
                   className={cn(
-                    "text-[9px] font-bold tracking-[0.12em] uppercase",
-                    isToday ? "text-violet-700" : "text-muted-foreground",
+                    "min-w-0 truncate font-semibold",
+                    isToday ? "text-violet-800" : "text-foreground",
                   )}
                 >
-                  {dayLetter(row.day)}
+                  {row.day}
+                  {isToday && (
+                    <span className="text-violet-600/80 ml-1.5 text-[10px] font-bold tracking-wide uppercase">
+                      Today
+                    </span>
+                  )}
                 </span>
                 <span
                   className={cn(
-                    "mt-1 text-[9px] font-semibold",
+                    "min-w-0 text-right tabular-nums",
                     closed
-                      ? "text-muted-foreground/75"
+                      ? "text-muted-foreground"
                       : isToday
-                        ? "text-violet-950"
-                        : "text-foreground",
+                        ? "text-violet-950 font-semibold"
+                        : "text-foreground/85",
                   )}
                 >
-                  <HoursCellRange range={row.range} />
+                  {row.range}
                 </span>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </Box>
   );
