@@ -100,7 +100,7 @@ export function SourcingConfigClient({
       <SectionCard
         icon={<Layers className="text-secondary h-4 w-4" />}
         title="Channels"
-        subtitle="Each row is one way a place gets into Mesita. Pick the eligible place families and the Google quality floor (0 = no floor). Turning a channel off blocks every add through it."
+        subtitle="Two kinds of row per actor. visibility (search) = what may appear in that surface's searchbar, including Google places not yet in Mesita, shown as 'add' candidates — reject it here and it never shows at all. onboard (add) = what may actually be created as a Mesita place. Pick the eligible families and the Google quality floor (0 = no floor); turning a channel off blocks it entirely."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -129,17 +129,35 @@ export function SourcingConfigClient({
               </tr>
             </thead>
             <tbody>
-              {CHANNELS.map((ch) => {
+              {CHANNELS.map((ch, idx) => {
                 const p = cfg[ch.key];
                 const off = !p.enabled;
+                // Thicker rule where a new actor group starts (Admin → Business
+                // → Consumer → Memo) so the search/add pairs read as blocks.
+                const newGroup = idx === 0 || CHANNELS[idx - 1].actor !== ch.actor;
                 return (
                   <tr
                     key={ch.key}
-                    className="border-border/60 [&>td]:border-border/60 align-top [&>td]:border-t [&>td]:py-4"
+                    className={
+                      "align-top [&>td]:py-4 [&>td]:border-t " +
+                      (newGroup
+                        ? "[&>td]:border-border [&>td]:border-t-2"
+                        : "[&>td]:border-border/50")
+                    }
                   >
                     <td className="max-w-[15rem] pr-4 pl-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-sm font-semibold">{ch.label}</span>
+                        <span
+                          className={
+                            "rounded-full px-1.5 py-0.5 text-[10px] font-medium " +
+                            (ch.verb === "search"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-violet-100 text-violet-700")
+                          }
+                        >
+                          {ch.verb === "search" ? "visibility" : "onboard"}
+                        </span>
                         {ch.live ? (
                           <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
                             live

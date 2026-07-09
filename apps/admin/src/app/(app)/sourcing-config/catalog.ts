@@ -22,9 +22,11 @@ export type FamilyKey =
   | "culture_arts";
 
 export type ChannelKey =
-  | "admin_add"
   | "admin_search"
+  | "admin_add"
+  | "business_search"
   | "business_add"
+  | "consumer_search"
   | "consumer_add"
   | "memo_search";
 
@@ -217,38 +219,76 @@ export const FAMILY_LABEL: Record<FamilyKey, string> = Object.fromEntries(
 
 export const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
 
+export type ChannelVerb = "search" | "add";
+
 export type Channel = {
   key: ChannelKey;
+  actor: "Admin" | "Business" | "Consumer" | "Memo";
+  verb: ChannelVerb;
   label: string;
   description: string;
   // Where the policy is enforced today, kept honest per the memo-config precedent.
   live: boolean;
 };
 
+// Two kinds of channel:
+//   search — what may be VISIBLE in that surface's searchbar, INCLUDING Google
+//            places not yet in Mesita (surfaced as "add this place" candidates).
+//            This is the visibility filter: a place the search policy rejects
+//            never appears at all, even as a suggestion.
+//   add    — what may actually be ONBOARDED into Mesita (created as a place).
+// A place can be searchable but not addable (e.g. surfaced for context yet below
+// the onboarding bar). Ordered actor-by-actor, search before add.
 export const CHANNELS: Channel[] = [
   {
-    key: "admin_add",
-    label: "Admin · Add",
-    description:
-      "A super-admin adds a place from the console (Manage Single / Multiple). Most permissive — trusted operators.",
-    live: false,
-  },
-  {
     key: "admin_search",
+    actor: "Admin",
+    verb: "search",
     label: "Admin · Search",
     description:
-      "What surfaces in the admin discovery searchbar (admin-web-discover-places). The rating / review floors here are live today.",
+      "What surfaces in the admin discovery searchbar (admin-web-discover-places), including Google places not yet in Mesita. The rating / review floors here are live today.",
     live: true,
   },
   {
+    key: "admin_add",
+    actor: "Admin",
+    verb: "add",
+    label: "Admin · Add",
+    description:
+      "A super-admin onboards a place from the console (Manage Single / Multiple). Most permissive — trusted operators.",
+    live: false,
+  },
+  {
+    key: "business_search",
+    actor: "Business",
+    verb: "search",
+    label: "Business · Search",
+    description:
+      "What a business owner sees when searching for their venue to claim — including places not yet in Mesita. Kept broad so they can find even a brand-new listing.",
+    live: false,
+  },
+  {
     key: "business_add",
+    actor: "Business",
+    verb: "add",
     label: "Business · Add",
     description:
       "A business owner claims or adds their own venue. No review floor by default — you own your venue even when it's brand-new.",
     live: false,
   },
   {
+    key: "consumer_search",
+    actor: "Consumer",
+    verb: "search",
+    label: "Consumer · Search",
+    description:
+      "What a consumer sees in search — including Google places not yet in Mesita, surfaced as suggestions. Gated so junk never shows up, even as an 'add' candidate.",
+    live: false,
+  },
+  {
     key: "consumer_add",
+    actor: "Consumer",
+    verb: "add",
     label: "Consumer · Add",
     description:
       "A consumer suggests or adds a place. Quality-gated to keep junk and personal listings out.",
@@ -256,6 +296,8 @@ export const CHANNELS: Channel[] = [
   },
   {
     key: "memo_search",
+    actor: "Memo",
+    verb: "search",
     label: "Memo · Search",
     description:
       "What Memo, the consumer concierge, may surface or recommend. Gated to well-reviewed spots.",
@@ -267,9 +309,11 @@ export const CHANNELS: Channel[] = [
 // (20260708120000_sourcing_config.sql). Used as the pre-load placeholder and as
 // the fallback if the config read fails.
 export const DEFAULT_CONFIG: SourcingConfig = {
-  admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
+  admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
+  business_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   business_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
+  consumer_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 3.5, minReviews: 50 },
   consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 3.5, minReviews: 100 },
   memo_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 },
 };
