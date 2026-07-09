@@ -19,7 +19,11 @@ export function PlaceDetailPageBody({
 }) {
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <PlaceDetailPageHeader placeName={place.name} backHref={backHref} />
+      <PlaceDetailPageHeader
+        placeName={place.name}
+        listingType={place.listing_type}
+        backHref={backHref}
+      />
       {/*
         `min-h-0` mirrors PlaceDetailModalShell — without it the flex-1
         scroll container grows to fit content, `overflow-y-auto` never

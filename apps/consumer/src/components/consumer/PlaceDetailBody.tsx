@@ -99,6 +99,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
           <AboutBox text={place.long_description} name={place.name} />
           <TagsBox place={place} />
           <OwnershipClaimBox place={place} />
+          <VerificationStatusBox place={place} />
           <LastUpdatedBox place={place} />
         </>
       )}
@@ -228,10 +229,9 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 // ── 1. Profile summary (photo + swipe-matched chips) ────────────────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // decision: chip set mirrors SwipeCardInfo — category, price range,
-  // rating, IG, distance, zone, open status, verified, promo/No Reward.
+  // decision: chip set mirrors SwipeCardInfo minus verified — verification
+  // lives as the icon beside the place name + Verification box below Ownership.
   // decision: Pato — price chip shows the real range (MX$200–300), not $$$.
-  const isPartner = place.listing_type === "partner";
   const googleRating = place.google.rating.toFixed(1);
   const igFollowers = formatCount(place.instagram.followers, false);
   const priceLabel =
@@ -293,12 +293,6 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
             }
           >
             {statusValue}
-          </OverviewChip>
-          <OverviewChip
-            icon={isPartner ? BadgeCheck : ShieldAlert}
-            iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-500"}
-          >
-            {isPartner ? "Verified Partner" : "Not Verified"}
           </OverviewChip>
           <PromoChip
             place={placeDetailAsPromoPlace(place)}
@@ -1410,7 +1404,7 @@ function OwnershipClaimBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Ownership" icon={ShieldAlert} iconColor="text-amber-400">
       <p className="text-muted-foreground text-xs leading-relaxed">
-        This place is currently listed as not verified.
+        This listing isn’t claimed by a business owner yet.
       </p>
       <a
         href="https://business.mesita.ai/add"
@@ -1421,6 +1415,35 @@ function OwnershipClaimBox({ place }: { place: PlaceDetail }) {
         Are you the owner of this place? Claim ownership
         <ChevronRight className="h-3.5 w-3.5" />
       </a>
+    </Box>
+  );
+}
+
+function VerificationStatusBox({ place }: { place: PlaceDetail }) {
+  // decision: Pato — explain verification under Ownership (not as a summary
+  // chip). Blue check in the header = Verified Partner; yellow shield = not.
+  const isPartner = place.listing_type === "partner";
+  return (
+    <Box
+      title="Verification"
+      icon={isPartner ? BadgeCheck : ShieldAlert}
+      iconColor={isPartner ? "text-sky-500" : "text-amber-400"}
+    >
+      {isPartner ? (
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          <span className="text-foreground font-semibold">
+            Verified Partner.
+          </span>{" "}
+          This business signed up on Mesita, confirmed ownership, and can run
+          rewards and take reservations through the app.
+        </p>
+      ) : (
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          <span className="text-foreground font-semibold">Not verified.</span>{" "}
+          This is a web listing Mesita found online. Details may be incomplete,
+          and the place can’t offer Mesita rewards until an owner claims it.
+        </p>
+      )}
     </Box>
   );
 }

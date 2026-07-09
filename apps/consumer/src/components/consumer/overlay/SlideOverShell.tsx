@@ -105,9 +105,13 @@ export function SlideOverHeader({
       >
         <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
       </button>
-      <p className="font-display flex-1 truncate text-center text-sm font-semibold">
-        {title}
-      </p>
+      <div className="font-display flex min-w-0 flex-1 items-center justify-center text-sm font-semibold">
+        {typeof title === "string" ? (
+          <span className="truncate">{title}</span>
+        ) : (
+          title
+        )}
+      </div>
       {actions ?? <span className="h-9 w-9 shrink-0" />}
     </header>
   );

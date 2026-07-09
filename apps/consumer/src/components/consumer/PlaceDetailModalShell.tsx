@@ -2,15 +2,16 @@
 
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
 import { PlaceMoreButton } from "@/components/consumer/PlaceDetailPageHeader";
+import { PlaceNameWithVerification } from "@/components/consumer/PlaceVerificationIcon";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
 // itself (enter/exit animation, backdrop, ESC, router.back on dismiss) is
 // SlideOverShell, mounted by the segment's layout.tsx — this component only
 // fills it with the place header and scrollable body.
 //
-// Instagram-profile chrome: back + place name + ⋯. Save + Make reservation
-// live inside PlaceDetailBody's ProfileSummary now, so there's no bottom
-// action bar row anymore — just header + scroll area:
+// Instagram-profile chrome: back + place name + verification icon + ⋯.
+// Save + Make reservation live inside PlaceDetailBody's ProfileSummary now,
+// so there's no bottom action bar row anymore — just header + scroll area:
 //   1. SlideOverHeader (shrink-0) — dismiss + place name + ⋯
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody renders
 //      every section inside this band
@@ -18,13 +19,23 @@ import { PlaceMoreButton } from "@/components/consumer/PlaceDetailPageHeader";
 export function PlaceDetailModalShell({
   children,
   placeName,
+  listingType,
 }: {
   children: React.ReactNode;
   placeName: string;
+  listingType: "partner" | "web";
 }) {
   return (
     <>
-      <SlideOverHeader title={placeName} actions={<PlaceMoreButton />} />
+      <SlideOverHeader
+        title={
+          <PlaceNameWithVerification
+            name={placeName}
+            listingType={listingType}
+          />
+        }
+        actions={<PlaceMoreButton />}
+      />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child
         keeps its default `min-height: auto` (= content size) and grows to
