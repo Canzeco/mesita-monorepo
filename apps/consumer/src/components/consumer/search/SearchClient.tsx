@@ -437,12 +437,12 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Typing takes over the map: a full-screen live-results sheet whose solid
-          panel covers everything (incl. behind the floating search bar). Sits at
-          z-20 below the z-30 bar; pt-[60px] drops results below it. Dismiss via
-          the bar's X. */}
+      {/* Typing swaps in live results over the TOP ~70% — same footprint as the
+          empty "Where to today?" panel so the search field never jumps and the
+          live map stays visible in the strip below. Sits at z-20 below the z-30
+          floating bar; pt-[60px] drops results below it. Dismiss via the bar's X. */}
       {trimmed.length > 0 && (
-        <div className="bg-background absolute inset-0 z-20 flex flex-col pt-[60px]">
+        <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col rounded-b-3xl border-b pt-[60px] shadow-sm">
           <SearchResultsPanel
             query={query}
             searching={searching}
