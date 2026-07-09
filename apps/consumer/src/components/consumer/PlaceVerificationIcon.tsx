@@ -1,12 +1,12 @@
-import { Check, ShieldAlert } from "lucide-react";
+import { Check, CircleHelp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
  * Place-header verification badge.
  *
- * decision: Pato — white circle washes out on the pink chrome; use a solid
- * colored disc (IG-blue for partner, amber for not verified) with a white
- * glyph so contrast stays clear (MESITA-269).
+ * decision: Pato — partner = solid sky check (IG-style). Not verified must
+ * NOT use ShieldAlert / amber warning (reads as a security vulnerability).
+ * Use a muted slate disc + CircleHelp = soft "unconfirmed listing" (MESITA-277).
  */
 export function PlaceVerificationIcon({
   listingType,
@@ -32,12 +32,12 @@ export function PlaceVerificationIcon({
   return (
     <span
       className={cn(
-        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm ring-1 ring-black/10",
+        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-slate-400 text-white shadow-sm ring-1 ring-black/10",
         className,
       )}
-      aria-label="Not verified"
+      aria-label="Not a verified partner"
     >
-      <ShieldAlert className="h-3 w-3" strokeWidth={2.5} />
+      <CircleHelp className="h-3 w-3" strokeWidth={2.5} />
     </span>
   );
 }

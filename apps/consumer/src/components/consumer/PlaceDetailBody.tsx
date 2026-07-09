@@ -27,7 +27,7 @@ import {
   Link2,
   Phone,
   BadgeCheck,
-  ShieldAlert,
+  CircleHelp,
   Pencil,
   Loader2,
   Info,
@@ -316,7 +316,11 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
       </div>
 
-      <ProfileActions placeId={place.id} placeName={place.name} />
+      <ProfileActions
+        className="mt-3"
+        placeId={place.id}
+        placeName={place.name}
+      />
     </section>
   );
 }
@@ -425,9 +429,11 @@ function MetaGridCell({
 function ProfileActions({
   placeId,
   placeName,
+  className,
 }: {
   placeId: string;
   placeName: string;
+  className?: string;
 }) {
   const router = useRouter();
   const { isSaved, toggle } = useSavedPlaces();
@@ -451,7 +457,7 @@ function ProfileActions({
   }
 
   return (
-    <div className="flex gap-2">
+    <div className={cn("flex gap-2", className)}>
       <button
         type="button"
         onClick={onSavePlace}
@@ -1549,7 +1555,7 @@ function OwnershipClaimBox({ place }: { place: PlaceDetail }) {
   // have an owner on record, so the claim CTA would be redundant.
   if (place.listing_type === "partner") return null;
   return (
-    <Box title="Ownership" icon={ShieldAlert} iconColor="text-amber-400">
+    <Box title="Ownership" icon={CircleHelp} iconColor="text-slate-400">
       <p className="text-muted-foreground text-xs leading-relaxed">
         This listing isn’t claimed by a business owner yet.
       </p>
@@ -1557,7 +1563,7 @@ function OwnershipClaimBox({ place }: { place: PlaceDetail }) {
         href="https://business.mesita.ai/add"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-500/30 transition hover:bg-amber-500/15"
+        className="inline-flex items-center gap-1.5 rounded-full bg-slate-500/10 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-500/25 transition hover:bg-slate-500/15"
       >
         Are you the owner of this place? Claim ownership
         <ChevronRight className="h-3.5 w-3.5" />
@@ -1568,13 +1574,14 @@ function OwnershipClaimBox({ place }: { place: PlaceDetail }) {
 
 function VerificationStatusBox({ place }: { place: PlaceDetail }) {
   // decision: Pato — explain verification under Ownership (not as a summary
-  // chip). Blue check in the header = Verified Partner; yellow shield = not.
+  // chip). Sky check = Verified Partner; muted CircleHelp = not verified
+  // (never ShieldAlert — reads as a security vulnerability).
   const isPartner = place.listing_type === "partner";
   return (
     <Box
       title="Verification"
-      icon={isPartner ? BadgeCheck : ShieldAlert}
-      iconColor={isPartner ? "text-sky-500" : "text-amber-400"}
+      icon={isPartner ? BadgeCheck : CircleHelp}
+      iconColor={isPartner ? "text-sky-500" : "text-slate-400"}
     >
       {isPartner ? (
         <p className="text-muted-foreground text-xs leading-relaxed">
