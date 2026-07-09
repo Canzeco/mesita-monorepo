@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_invites: {
@@ -95,66 +120,105 @@ export type Database = {
         Row: {
           atlas_analyze_google_images: number
           atlas_analyze_instagram_images: number
-          atlas_analyze_website_images: number
+          atlas_discover_facebook_n: number
+          atlas_discover_instagram_n: number
+          atlas_discover_opentable_n: number
+          atlas_discover_ubereats_n: number
+          atlas_discover_website_n: number
           atlas_gather_google_images: number
+          atlas_gather_instagram_depth: number
           atlas_gather_instagram_posts: number
-          atlas_gather_website_images: number
+          atlas_gather_reviews: number
           atlas_image_analysis_prompt: string
           atlas_image_sorting_prompt: string
           atlas_image_vision_enabled: boolean
           atlas_per_run_cost_cap_usd: number
+          atlas_perplexity_preset: string
+          atlas_save_images_to_storage: boolean
           atlas_save_total_images: number
           atlas_synthesis_quality: string
           atlas_vision_quality: string
-          atlas_website_crawl_max_pages: number
           auto_verify_ai_call: boolean
           auto_verify_ai_email: boolean
           auto_verify_video: boolean
           id: number
+          memo_greeting: string
+          memo_instructions: string
+          memo_openai_model: string
+          memo_perplexity_model: string
+          memo_provider: string
+          memo_web_grounding: boolean
+          sourcing_config: Json
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           atlas_analyze_google_images?: number
           atlas_analyze_instagram_images?: number
-          atlas_analyze_website_images?: number
+          atlas_discover_facebook_n?: number
+          atlas_discover_instagram_n?: number
+          atlas_discover_opentable_n?: number
+          atlas_discover_ubereats_n?: number
+          atlas_discover_website_n?: number
           atlas_gather_google_images?: number
+          atlas_gather_instagram_depth?: number
           atlas_gather_instagram_posts?: number
-          atlas_gather_website_images?: number
+          atlas_gather_reviews?: number
           atlas_image_analysis_prompt?: string
           atlas_image_sorting_prompt?: string
           atlas_image_vision_enabled?: boolean
           atlas_per_run_cost_cap_usd?: number
+          atlas_perplexity_preset?: string
+          atlas_save_images_to_storage?: boolean
           atlas_save_total_images?: number
           atlas_synthesis_quality?: string
           atlas_vision_quality?: string
-          atlas_website_crawl_max_pages?: number
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
           id?: number
+          memo_greeting?: string
+          memo_instructions?: string
+          memo_openai_model?: string
+          memo_perplexity_model?: string
+          memo_provider?: string
+          memo_web_grounding?: boolean
+          sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           atlas_analyze_google_images?: number
           atlas_analyze_instagram_images?: number
-          atlas_analyze_website_images?: number
+          atlas_discover_facebook_n?: number
+          atlas_discover_instagram_n?: number
+          atlas_discover_opentable_n?: number
+          atlas_discover_ubereats_n?: number
+          atlas_discover_website_n?: number
           atlas_gather_google_images?: number
+          atlas_gather_instagram_depth?: number
           atlas_gather_instagram_posts?: number
-          atlas_gather_website_images?: number
+          atlas_gather_reviews?: number
           atlas_image_analysis_prompt?: string
           atlas_image_sorting_prompt?: string
           atlas_image_vision_enabled?: boolean
           atlas_per_run_cost_cap_usd?: number
+          atlas_perplexity_preset?: string
+          atlas_save_images_to_storage?: boolean
           atlas_save_total_images?: number
           atlas_synthesis_quality?: string
           atlas_vision_quality?: string
-          atlas_website_crawl_max_pages?: number
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
           id?: number
+          memo_greeting?: string
+          memo_instructions?: string
+          memo_openai_model?: string
+          memo_perplexity_model?: string
+          memo_provider?: string
+          memo_web_grounding?: boolean
+          sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
         }
@@ -238,6 +302,39 @@ export type Database = {
         Update: {
           id?: number
           next_value?: number
+        }
+        Relationships: []
+      }
+      consumer_mcp_tokens: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          id: string
+          label: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          token_prefix: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          token_prefix: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          token_prefix?: string
         }
         Relationships: []
       }
@@ -354,8 +451,12 @@ export type Database = {
           first_name: string | null
           full_name: string | null
           id: string
+          instagram_handle: string | null
           last_name: string | null
           phone: string | null
+          profile_public: boolean
+          profile_show_saves: boolean
+          profile_show_visits: boolean
           sex: string | null
         }
         Insert: {
@@ -372,8 +473,12 @@ export type Database = {
           first_name?: string | null
           full_name?: string | null
           id: string
+          instagram_handle?: string | null
           last_name?: string | null
           phone?: string | null
+          profile_public?: boolean
+          profile_show_saves?: boolean
+          profile_show_visits?: boolean
           sex?: string | null
         }
         Update: {
@@ -390,13 +495,17 @@ export type Database = {
           first_name?: string | null
           full_name?: string | null
           id?: string
+          instagram_handle?: string | null
           last_name?: string | null
           phone?: string | null
+          profile_public?: boolean
+          profile_show_saves?: boolean
+          profile_show_visits?: boolean
           sex?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "consumers_class_key_fkey"
+            foreignKeyName: "consumers_tier_key_fkey"
             columns: ["class_key"]
             isOneToOne: false
             referencedRelation: "classes"
@@ -510,6 +619,30 @@ export type Database = {
         }
         Relationships: []
       }
+      place_creation_attempts: {
+        Row: {
+          caller: string
+          consumer_id: string
+          created_at: string
+          google_place_id: string
+          id: number
+        }
+        Insert: {
+          caller: string
+          consumer_id: string
+          created_at?: string
+          google_place_id: string
+          id?: never
+        }
+        Update: {
+          caller?: string
+          consumer_id?: string
+          created_at?: string
+          google_place_id?: string
+          id?: never
+        }
+        Relationships: []
+      }
       place_enrichment_events: {
         Row: {
           created_at: string
@@ -619,6 +752,63 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_research: {
+        Row: {
+          analysis: Json | null
+          attempts: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          gathered: Json | null
+          google_place_id: string
+          project_id: string
+          stage: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          analysis?: Json | null
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          gathered?: Json | null
+          google_place_id: string
+          project_id: string
+          stage?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          analysis?: Json | null
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          gathered?: Json | null
+          google_place_id?: string
+          project_id?: string
+          stage?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_research_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_research_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects_view"
             referencedColumns: ["id"]
           },
         ]
@@ -1243,48 +1433,6 @@ export type Database = {
           },
         ]
       }
-      scheduled_project_creations: {
-        Row: {
-          attempts: number
-          created_at: string
-          created_by: string | null
-          error: string | null
-          exec_at: string
-          id: string
-          net_request_id: number | null
-          place_id: string
-          result: Json | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          exec_at?: string
-          id?: string
-          net_request_id?: number | null
-          place_id: string
-          result?: Json | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          exec_at?: string
-          id?: string
-          net_request_id?: number | null
-          place_id?: string
-          result?: Json | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       staff_invites: {
         Row: {
           channel: string
@@ -1757,7 +1905,7 @@ export type Database = {
       admin_revoke_admin: { Args: { p_email: string }; Returns: number }
       find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
-      run_scheduled_project_creations: { Args: never; Returns: number }
+      run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
     }
@@ -1931,6 +2079,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       content_gen_status: ["queued", "generating", "ready", "failed"],
