@@ -35,7 +35,7 @@ const ITEM_KINDS: { id: ItemKind; label: string; hint: string }[] = [
   {
     id: "menu",
     label: "Menu",
-    hint: "PDF upload or Google Drive link",
+    hint: "PDF or image upload, or Google Drive link",
   },
 ];
 
@@ -245,7 +245,7 @@ export function ProductsSection({
     <SectionCard
       icon={<UtensilsCrossed className="text-muted-foreground h-4 w-4" />}
       title="Products"
-      subtitle="Add menus and other product items shown to consumers. Menu = PDF upload or Google Drive link."
+      subtitle="Add menus and other product items shown to consumers. Menu = PDF or image (JPG, PNG, WEBP, AVIF) · max 8 MB · or Google Drive link."
     >
       <input
         ref={fileInputRef}
@@ -424,7 +424,7 @@ function MenuItemCard({
           ) : (
             <>
               <Upload className="h-4 w-4" />
-              {hasUploadedFile ? "Replace PDF" : "Upload PDF"}
+              {hasUploadedFile ? "Replace file" : "Upload file"}
             </>
           )}
         </button>
@@ -458,7 +458,7 @@ function MenuItemCard({
           </a>
         ) : null}
         <p className="text-muted-foreground text-xs">
-          PDF or image · max 8 MB · or paste a Drive link
+          PDF or image (JPG, PNG, WEBP, AVIF) · max 8 MB · or paste a Drive link
         </p>
       </div>
     </div>
