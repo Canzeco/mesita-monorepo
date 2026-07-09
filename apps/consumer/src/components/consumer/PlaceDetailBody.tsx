@@ -33,6 +33,7 @@ import {
   Navigation,
   QrCode,
   Share2,
+  SquareArrowOutUpRight,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { AboutBox } from "@/components/consumer/AboutBox";
@@ -1861,36 +1862,54 @@ function LinksBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
       <div className="flex flex-wrap gap-2">
-        {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url }) => (
-          <a
-            key={key}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={logoOnly ? label : undefined}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
-              CHANNEL_CLAY[key] ??
-                "border-border bg-background text-foreground hover:bg-muted",
-            )}
-          >
-            {logo ? (
-              // Real brand mark (SVG in /public/channels, brand colour baked
-              // in). The chip label carries the accessible name, so the glyph
-              // is decorative. next/image adds nothing for a 14px static SVG.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logo}
-                alt=""
-                aria-hidden
-                className={cn(logoWide ? "h-4 w-auto" : "h-3.5 w-3.5")}
-              />
-            ) : (
-              <Icon className="h-3.5 w-3.5" />
-            )}
-            {!logoOnly && label}
-          </a>
-        ))}
+        {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url }) => {
+          // decision: trailing SquareArrowOutUpRight on web destinations so
+          // chips read as "leaves the app" — skip tel: (Phone opens dialer).
+          const leavesApp = !url.startsWith("tel:");
+          return (
+            <a
+              key={key}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={
+                logoOnly
+                  ? leavesApp
+                    ? `${label} (opens externally)`
+                    : label
+                  : undefined
+              }
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                CHANNEL_CLAY[key] ??
+                  "border-border bg-background text-foreground hover:bg-muted",
+              )}
+            >
+              {logo ? (
+                // Real brand mark (SVG in /public/channels, brand colour baked
+                // in). The chip label carries the accessible name, so the glyph
+                // is decorative. next/image adds nothing for a 14px static SVG.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logo}
+                  alt=""
+                  aria-hidden
+                  className={cn(logoWide ? "h-4 w-auto" : "h-3.5 w-3.5")}
+                />
+              ) : (
+                <Icon className="h-3.5 w-3.5" />
+              )}
+              {!logoOnly && label}
+              {leavesApp && (
+                <SquareArrowOutUpRight
+                  className="h-3 w-3 opacity-55"
+                  aria-hidden
+                  strokeWidth={2}
+                />
+              )}
+            </a>
+          );
+        })}
       </div>
     </Box>
   );
