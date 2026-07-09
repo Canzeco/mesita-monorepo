@@ -242,47 +242,45 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   const promoPlace = placeDetailAsPromoPlace(place);
 
   return (
-    <section className="flex flex-col gap-3 pt-1">
-      {/* decision: Pato — single 4×2 grid: row1 photo · Google · IG · reward;
-          row2 category · price · location/distance · hours */}
-      <div className="border-border divide-border overflow-hidden rounded-lg border">
-        <div className="divide-border grid grid-cols-4 divide-x divide-y">
-          <ProfileGridPhoto place={place} />
-          <ProfileGridStat
-            value={googleRating}
-            label={`${googleCount} Google`}
-            icon={
-              <Star
-                className="h-3 w-3 fill-amber-500 text-amber-500"
-                strokeWidth={0}
-              />
-            }
-          />
-          <ProfileGridStat
-            value={igFollowers}
-            label="Instagram"
-            icon={<Instagram className="h-3 w-3 text-pink-500" />}
-          />
-          <ProfileGridReward place={promoPlace} />
-          <ProfileGridMeta textClass="text-foreground">
-            {place.category}
-          </ProfileGridMeta>
-          <ProfileGridMeta>{priceLabel}</ProfileGridMeta>
-          <ProfileGridMeta icon={MapPin}>{locationDistance}</ProfileGridMeta>
-          <ProfileGridMeta
-            icon={Clock}
-            iconClass={place.open_now ? "text-emerald-600" : undefined}
-            textClass={
-              place.open_now ? "text-emerald-700" : "text-muted-foreground"
-            }
-          >
-            {statusValue}
-          </ProfileGridMeta>
-        </div>
+    <section className="flex flex-col pt-1">
+      {/* decision: Pato — same-size 4×2 cells, no visible borders; photo
+          fully rounded; soft gap instead of grid lines */}
+      <div className="grid grid-cols-4 gap-x-1.5 gap-y-2">
+        <ProfileGridPhoto place={place} />
+        <ProfileGridStat
+          value={googleRating}
+          label={`${googleCount} Google`}
+          icon={
+            <Star
+              className="h-3.5 w-3.5 fill-amber-500 text-amber-500"
+              strokeWidth={0}
+            />
+          }
+        />
+        <ProfileGridStat
+          value={igFollowers}
+          label="Instagram"
+          icon={<Instagram className="h-3.5 w-3.5 text-pink-500" />}
+        />
+        <ProfileGridReward place={promoPlace} />
+        <ProfileGridMeta textClass="text-foreground">
+          {place.category}
+        </ProfileGridMeta>
+        <ProfileGridMeta>{priceLabel}</ProfileGridMeta>
+        <ProfileGridMeta icon={MapPin}>{locationDistance}</ProfileGridMeta>
+        <ProfileGridMeta
+          icon={Clock}
+          iconClass={place.open_now ? "text-emerald-600" : undefined}
+          textClass={
+            place.open_now ? "text-emerald-700" : "text-muted-foreground"
+          }
+        >
+          {statusValue}
+        </ProfileGridMeta>
       </div>
 
       <ProfileActions
-        className="mt-2"
+        className="mt-5"
         placeId={place.id}
         placeName={place.name}
       />
@@ -290,25 +288,47 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** Row 1, col 1 — square profile photo. */
+/** Equal-size cell shell — keeps all 8 boxes the same footprint. */
+function ProfileGridCell({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex aspect-square min-h-0 min-w-0 flex-col items-center justify-center",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Row 1, col 1 — square profile photo, all corners rounded. */
 function ProfileGridPhoto({ place }: { place: PlaceDetail }) {
   return (
-    <div className="bg-muted relative aspect-square min-h-[76px] overflow-hidden">
-      {place.photos.length > 0 ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={place.photos[0]}
-          alt={place.name}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
-          <span className="font-display text-xl font-bold text-white/80">
-            {firstInitial(place.name)}
-          </span>
-        </div>
-      )}
-    </div>
+    <ProfileGridCell>
+      <div className="bg-muted relative h-full w-full overflow-hidden rounded-2xl">
+        {place.photos.length > 0 ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={place.photos[0]}
+            alt={place.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
+            <span className="font-display text-xl font-bold text-white/80">
+              {firstInitial(place.name)}
+            </span>
+          </div>
+        )}
+      </div>
+    </ProfileGridCell>
   );
 }
 
@@ -323,15 +343,15 @@ function ProfileGridStat({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-2 text-center">
-      <span className="text-foreground flex items-center gap-0.5 text-[15px] leading-none font-bold tabular-nums">
+    <ProfileGridCell className="gap-1 px-0.5">
+      <span className="text-foreground flex items-center gap-1 text-[16px] leading-none font-bold tabular-nums">
         {icon}
         {value}
       </span>
-      <span className="text-muted-foreground max-w-full truncate px-0.5 text-[9px] leading-tight font-semibold">
+      <span className="text-muted-foreground max-w-full truncate text-[10px] leading-tight font-medium">
         {label}
       </span>
-    </div>
+    </ProfileGridCell>
   );
 }
 
@@ -349,7 +369,7 @@ function ProfileGridReward({ place }: { place: Place }) {
       <ProfileGridStat
         value="—"
         label="No reward"
-        icon={<Gift className="text-muted-foreground h-3 w-3" />}
+        icon={<Gift className="text-muted-foreground h-3.5 w-3.5" />}
       />
     );
   }
@@ -357,7 +377,7 @@ function ProfileGridReward({ place }: { place: Place }) {
     <ProfileGridStat
       value={`${promoPercent}%`}
       label={isFirstVisit ? "Welcome" : "Returning"}
-      icon={<Gift className="h-3 w-3 text-pink-500" />}
+      icon={<Gift className="h-3.5 w-3.5 text-pink-500" />}
     />
   );
 }
@@ -375,20 +395,20 @@ function ProfileGridMeta({
   textClass?: string;
 }) {
   return (
-    <div
+    <ProfileGridCell
       className={cn(
-        "flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-1 px-1.5 py-2 text-center text-[10px] leading-snug font-semibold",
+        "gap-1 px-1 text-center text-[11px] leading-snug font-semibold",
         textClass ?? "text-muted-foreground",
       )}
     >
       {Icon && (
         <Icon
-          className={cn("h-3.5 w-3.5 shrink-0", iconClass ?? "opacity-70")}
+          className={cn("h-3.5 w-3.5 shrink-0", iconClass ?? "opacity-60")}
           strokeWidth={2.25}
         />
       )}
       <span className="line-clamp-3 min-w-0 break-words">{children}</span>
-    </div>
+    </ProfileGridCell>
   );
 }
 
