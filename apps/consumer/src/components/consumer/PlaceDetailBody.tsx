@@ -859,36 +859,61 @@ function LocationBox({ place }: { place: PlaceDetail }) {
 
 // ── Time (hours) ────────────────────────────────────────────────────────
 
-function dayShort(day: string): string {
-  return day.slice(0, 3);
+function dayLetter(day: string): string {
+  return day.slice(0, 1).toUpperCase();
 }
 
-function collapseHoursTable(
-  rows: PlaceDetail["hours_table"],
-): Array<{ label: string; range: string }> {
-  if (rows.length === 0) return [];
-
-  const groups: Array<{ startDay: string; endDay: string; range: string }> = [];
-  for (const row of rows) {
-    const last = groups[groups.length - 1];
-    if (last && last.range === row.range) {
-      last.endDay = row.day;
-    } else {
-      groups.push({ startDay: row.day, endDay: row.day, range: row.range });
-    }
+/** Full weekday name in the place timezone — matches hours_table.day. */
+function todayWeekdayLabel(tz: string | undefined): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: tz || "UTC",
+      weekday: "long",
+    }).format(new Date());
+  } catch {
+    return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+      new Date(),
+    );
   }
+}
 
-  return groups.map(({ startDay, endDay, range }) => ({
-    label:
-      startDay === endDay
-        ? dayShort(startDay)
-        : `${dayShort(startDay)}–${dayShort(endDay)}`,
-    range,
-  }));
+function HoursCellRange({ range }: { range: string }) {
+  if (range.toLowerCase() === "closed") {
+    return <span className="text-muted-foreground/80">Closed</span>;
+  }
+  // "23:00–02:00" or multi-shift "12:00–15:00, 18:00–23:00" → stacked open/close
+  const shifts = range.split(",").map((s) => s.trim()).filter(Boolean);
+  return (
+    <span className="flex flex-col items-center gap-0.5">
+      {shifts.map((shift, i) => {
+        const [open, close] = shift.split(/\s*[–—-]\s*/);
+        if (!open || !close) {
+          return (
+            <span key={i} className="tabular-nums">
+              {shift}
+            </span>
+          );
+        }
+        return (
+          <span
+            key={i}
+            className="flex flex-col items-center leading-[1.15] tabular-nums"
+          >
+            <span>{open}</span>
+            <span className="text-muted-foreground/45 text-[8px] leading-none">
+              –
+            </span>
+            <span>{close}</span>
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 function HoursBox({ place }: { place: PlaceDetail }) {
-  const hours = collapseHoursTable(place.hours_table);
+  // decision: Pato — sparse day/hours list looked bad; 7-day cell grid instead
+  const today = todayWeekdayLabel(place.timezone);
   const statusDetail = place.open_now
     ? place.closes_at
       ? `until ${place.closes_at}`
@@ -903,7 +928,7 @@ function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-violet-400"
       right={place.timezone || undefined}
-      className="gap-2 p-3"
+      className="gap-2.5 p-3"
     >
       <p className="text-xs leading-snug">
         <span
@@ -921,17 +946,45 @@ function HoursBox({ place }: { place: PlaceDetail }) {
           </>
         )}
       </p>
-      {hours.length > 0 && (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px] leading-tight">
-          {hours.map((row) => (
-            <div key={row.label} className="contents">
-              <dt className="text-muted-foreground font-medium">{row.label}</dt>
-              <dd className="text-foreground text-right font-medium">
-                {row.range}
-              </dd>
-            </div>
-          ))}
-        </dl>
+      {place.hours_table.length > 0 && (
+        <div className="grid grid-cols-7 gap-1">
+          {place.hours_table.map((row) => {
+            const isToday = row.day === today;
+            const closed = row.range.toLowerCase() === "closed";
+            return (
+              <div
+                key={row.day}
+                className={cn(
+                  "flex min-h-[4.25rem] flex-col items-center rounded-lg px-0.5 py-1.5 text-center",
+                  isToday
+                    ? "bg-violet-50 ring-1 ring-violet-200/90"
+                    : "bg-muted/50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "text-[9px] font-bold tracking-[0.12em] uppercase",
+                    isToday ? "text-violet-700" : "text-muted-foreground",
+                  )}
+                >
+                  {dayLetter(row.day)}
+                </span>
+                <span
+                  className={cn(
+                    "mt-1 text-[9px] font-semibold",
+                    closed
+                      ? "text-muted-foreground/75"
+                      : isToday
+                        ? "text-violet-950"
+                        : "text-foreground",
+                  )}
+                >
+                  <HoursCellRange range={row.range} />
+                </span>
+              </div>
+            );
+          })}
+        </div>
       )}
     </Box>
   );
