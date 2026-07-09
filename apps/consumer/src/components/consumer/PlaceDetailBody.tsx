@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -701,8 +701,39 @@ function ExternalCard({
 
 // ── 4. Individual reviews (Reviews tab: Google + Mesita, one box each) ──
 
+// decision: Pato — frontend-only Google review sort (no EF). Newest default;
+// Highest / Lowest by star rating with newest as tie-break.
+type GoogleReviewSort = "newest" | "highest" | "lowest";
+
+const GOOGLE_REVIEW_SORTS: { key: GoogleReviewSort; label: string }[] = [
+  { key: "newest", label: "Newest" },
+  { key: "highest", label: "Highest" },
+  { key: "lowest", label: "Lowest" },
+];
+
+function reviewTimeMs(date: string): number {
+  const t = Date.parse(date);
+  return Number.isFinite(t) ? t : 0;
+}
+
 function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
-  if (place.google_reviews.length === 0) return null;
+  const [sort, setSort] = useState<GoogleReviewSort>("newest");
+  const reviews = place.google_reviews;
+  const sorted = useMemo(() => {
+    const copy = [...reviews];
+    copy.sort((a, b) => {
+      if (sort === "highest") {
+        return b.rating - a.rating || reviewTimeMs(b.date) - reviewTimeMs(a.date);
+      }
+      if (sort === "lowest") {
+        return a.rating - b.rating || reviewTimeMs(b.date) - reviewTimeMs(a.date);
+      }
+      return reviewTimeMs(b.date) - reviewTimeMs(a.date);
+    });
+    return copy;
+  }, [reviews, sort]);
+
+  if (reviews.length === 0) return null;
   return (
     <Box
       title="Google reviews"
@@ -710,9 +741,35 @@ function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
       iconColor="text-amber-400"
       right={`${formatCount(place.google.count, true)} total`}
     >
+      <div
+        className="bg-muted/60 flex gap-1 rounded-xl p-1"
+        role="group"
+        aria-label="Sort Google reviews"
+      >
+        {GOOGLE_REVIEW_SORTS.map((mode) => (
+          <button
+            key={mode.key}
+            type="button"
+            onClick={() => setSort(mode.key)}
+            aria-pressed={sort === mode.key}
+            className={cn(
+              "flex-1 rounded-lg py-1.5 text-xs font-semibold transition",
+              sort === mode.key
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground",
+            )}
+          >
+            {mode.label}
+          </button>
+        ))}
+      </div>
       <BoxHScroll>
-        {place.google_reviews.map((data, i) => (
-          <ReviewCard key={`google-${i}`} kind="google" data={data} />
+        {sorted.map((data, i) => (
+          <ReviewCard
+            key={`google-${data.author}-${data.date}-${i}`}
+            kind="google"
+            data={data}
+          />
         ))}
       </BoxHScroll>
     </Box>

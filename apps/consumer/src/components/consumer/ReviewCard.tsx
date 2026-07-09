@@ -110,7 +110,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           </div>
         }
         name={r.author}
-        sub={r.date}
+        sub={formatReviewDate(r.date)}
         sourceLogo={<GoogleLogo />}
       />
       <StarRow rating={r.rating} />
@@ -251,3 +251,35 @@ function Thumbnail({
 // Brand source badges (MesitaMark, GoogleLogo) live in BrandLogos.tsx —
 // shared with the place detail page so the SVG and pink-gradient mark
 // don't drift between surfaces.
+
+/** Enricher stores ISO `published`; mocks use relative strings — show either cleanly. */
+function formatReviewDate(raw: string): string {
+  if (!raw) return "";
+  const t = Date.parse(raw);
+  if (!Number.isFinite(t)) return raw;
+  const diffMs = Date.now() - t;
+  if (diffMs < 0) {
+    return new Date(t).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  const day = 86_400_000;
+  if (diffMs < day) return "Today";
+  if (diffMs < 2 * day) return "Yesterday";
+  if (diffMs < 7 * day) {
+    const n = Math.floor(diffMs / day);
+    return `${n} day${n === 1 ? "" : "s"} ago`;
+  }
+  if (diffMs < 30 * day) {
+    const n = Math.floor(diffMs / (7 * day));
+    return `${n} week${n === 1 ? "" : "s"} ago`;
+  }
+  if (diffMs < 365 * day) {
+    const n = Math.floor(diffMs / (30 * day));
+    return `${n} month${n === 1 ? "" : "s"} ago`;
+  }
+  const n = Math.floor(diffMs / (365 * day));
+  return `${n} year${n === 1 ? "" : "s"} ago`;
+}
