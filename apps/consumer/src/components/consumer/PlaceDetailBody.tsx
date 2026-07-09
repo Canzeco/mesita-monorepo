@@ -96,6 +96,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
           <AboutBox text={place.long_description} name={place.name} />
           <TagsBox place={place} />
           <OwnershipClaimBox place={place} />
+          <LastUpdatedBox place={place} />
         </>
       )}
       {tab === "reviews" && (
@@ -228,8 +229,8 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   // Discover swipe card / pre-IG OverviewChip wrap), then Save / Reserve.
   // decision: light OverviewChip on white (not the dark swipe MetaChip
   // overlay) so the chips stay legible on the place page.
-  // decision: Pato rejected the 4-chip + muted-meta cleanup (#451) —
-  // restore the full multi-field chip wrap.
+  // decision: last-updated lives in LastUpdatedBox below Ownership — not
+  // in the summary chip wall (and not on the swipe card).
   const isPartner = place.listing_type === "partner";
   const googleRating = place.google.rating.toFixed(1);
   const igFollowers = formatCount(place.instagram.followers, false);
@@ -300,18 +301,6 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
             iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-500"}
           >
             {isPartner ? "Verified Partner" : "Not Verified"}
-          </OverviewChip>
-          <OverviewChip
-            icon={place.is_enriching ? Loader2 : Pencil}
-            iconClass={
-              place.is_enriching
-                ? "animate-spin text-violet-500"
-                : "text-muted-foreground"
-            }
-          >
-            {place.is_enriching
-              ? "Enriching…"
-              : `Updated ${place.last_updated_label}`}
           </OverviewChip>
         </div>
       </div>
@@ -1412,6 +1401,30 @@ function OwnershipClaimBox({ place }: { place: PlaceDetail }) {
         Are you the owner of this place? Claim ownership
         <ChevronRight className="h-3.5 w-3.5" />
       </a>
+    </Box>
+  );
+}
+
+function LastUpdatedBox({ place }: { place: PlaceDetail }) {
+  // Foot of the Place tab — freshness used to live in the summary chip
+  // wall; Pato wants it here instead (and off the swipe card).
+  return (
+    <Box title="Last update" icon={Pencil} iconColor="text-muted-foreground">
+      <div className="flex items-center gap-2">
+        {place.is_enriching ? (
+          <>
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" />
+            <p className="text-foreground text-sm font-semibold">Enriching…</p>
+          </>
+        ) : (
+          <>
+            <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />
+            <p className="text-foreground text-sm font-semibold">
+              Updated {place.last_updated_label}
+            </p>
+          </>
+        )}
+      </div>
     </Box>
   );
 }
