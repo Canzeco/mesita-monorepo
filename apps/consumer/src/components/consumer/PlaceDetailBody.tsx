@@ -25,7 +25,6 @@ import {
   Clock,
   Tags,
   Link2,
-  Car,
   Phone,
   BadgeCheck,
   ShieldAlert,
@@ -37,7 +36,6 @@ import {
   QrCode,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
-import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
 import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
 import { PromoChip } from "@/components/consumer/PromoChip";
@@ -785,7 +783,13 @@ function LocationBox({ place }: { place: PlaceDetail }) {
           rel="noopener noreferrer"
           className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
         >
-          <Car className="h-4 w-4" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/channels/uber.svg"
+            alt=""
+            aria-hidden
+            className="h-4 w-auto"
+          />
           Ask Uber
         </a>
       </div>
@@ -793,57 +797,83 @@ function LocationBox({ place }: { place: PlaceDetail }) {
   );
 }
 
-// ── Time (hours & popular times) ────────────────────────────────────────
+// ── Time (hours) ────────────────────────────────────────────────────────
+
+function dayShort(day: string): string {
+  return day.slice(0, 3);
+}
+
+function collapseHoursTable(
+  rows: PlaceDetail["hours_table"],
+): Array<{ label: string; range: string }> {
+  if (rows.length === 0) return [];
+
+  const groups: Array<{ startDay: string; endDay: string; range: string }> = [];
+  for (const row of rows) {
+    const last = groups[groups.length - 1];
+    if (last && last.range === row.range) {
+      last.endDay = row.day;
+    } else {
+      groups.push({ startDay: row.day, endDay: row.day, range: row.range });
+    }
+  }
+
+  return groups.map(({ startDay, endDay, range }) => ({
+    label:
+      startDay === endDay
+        ? dayShort(startDay)
+        : `${dayShort(startDay)}–${dayShort(endDay)}`,
+    range,
+  }));
+}
 
 function HoursBox({ place }: { place: PlaceDetail }) {
+  const hours = collapseHoursTable(place.hours_table);
+  const statusDetail = place.open_now
+    ? place.closes_at
+      ? `until ${place.closes_at}`
+      : null
+    : place.opens_at
+      ? `opens ${place.opens_at}`
+      : null;
+
   return (
     <Box
       title="Time"
       icon={Clock}
       iconColor="text-violet-400"
-      right={place.timezone}
+      right={place.timezone || undefined}
+      className="gap-2 p-3"
     >
-      <div className="bg-background rounded-lg px-4 py-2.5 text-sm">
-        <span className="font-semibold text-emerald-700">
+      <p className="text-xs leading-snug">
+        <span
+          className={cn(
+            "font-semibold",
+            place.open_now ? "text-emerald-700" : "text-muted-foreground",
+          )}
+        >
           {place.open_now ? "Open now" : "Closed"}
         </span>
-        <span className="text-muted-foreground"> · </span>
-        <span className="text-foreground font-medium">
-          {place.opens_at} – {place.closes_at}
-        </span>
-      </div>
-      <BoxHScroll>
-        <HoursTableCard place={place} />
-        {place.popular_times.length > 0 && (
-          <PopularTimesCard
-            popularTimes={place.popular_times}
-            initialDay={place.popular_times_featured}
-          />
+        {statusDetail && (
+          <>
+            <span className="text-muted-foreground"> · </span>
+            <span className="text-foreground/80">{statusDetail}</span>
+          </>
         )}
-      </BoxHScroll>
+      </p>
+      {hours.length > 0 && (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px] leading-tight">
+          {hours.map((row) => (
+            <div key={row.label} className="contents">
+              <dt className="text-muted-foreground font-medium">{row.label}</dt>
+              <dd className="text-foreground text-right font-medium">
+                {row.range}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </Box>
-  );
-}
-
-function HoursTableCard({ place }: { place: PlaceDetail }) {
-  return (
-    <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
-      <div>
-        <h4 className="font-display text-base font-semibold">Hours</h4>
-        <p className="text-muted-foreground text-[11px]">{place.city}</p>
-      </div>
-      <dl className="flex flex-col gap-1.5">
-        {place.hours_table.map((row) => (
-          <div
-            key={row.day}
-            className="flex items-baseline justify-between gap-3 text-sm"
-          >
-            <dt className="text-muted-foreground">{row.day}</dt>
-            <dd className="text-foreground font-medium">{row.range}</dd>
-          </div>
-        ))}
-      </dl>
-    </article>
   );
 }
 
@@ -1257,6 +1287,8 @@ const RESERVATION_DEFS = [
     label: "Uber Eats",
     Icon: Bike,
     logo: "/channels/ubereats.svg",
+    logoWide: true,
+    logoOnly: true,
   },
   { key: "didi_food_url", label: "DiDi Food", Icon: Bike },
 ] as const;
@@ -1481,6 +1513,8 @@ function LinksBox({ place }: { place: PlaceDetail }) {
     label: string;
     Icon: typeof Globe;
     logo?: string;
+    logoWide?: boolean;
+    logoOnly?: boolean;
     url: string;
   }[] = [];
   if (place.phone) {
@@ -1499,6 +1533,8 @@ function LinksBox({ place }: { place: PlaceDetail }) {
         label: def.label,
         Icon: def.Icon,
         logo: "logo" in def ? def.logo : undefined,
+        logoWide: "logoWide" in def ? def.logoWide : undefined,
+        logoOnly: "logoOnly" in def ? def.logoOnly : undefined,
         url,
       });
   }
@@ -1510,6 +1546,8 @@ function LinksBox({ place }: { place: PlaceDetail }) {
         label: def.label,
         Icon: def.Icon,
         logo: "logo" in def ? def.logo : undefined,
+        logoWide: "logoWide" in def ? def.logoWide : undefined,
+        logoOnly: "logoOnly" in def ? def.logoOnly : undefined,
         url,
       });
   }
@@ -1521,6 +1559,8 @@ function LinksBox({ place }: { place: PlaceDetail }) {
         label: def.label,
         Icon: def.Icon,
         logo: "logo" in def ? def.logo : undefined,
+        logoWide: "logoWide" in def ? def.logoWide : undefined,
+        logoOnly: "logoOnly" in def ? def.logoOnly : undefined,
         url,
       });
   }
@@ -1529,12 +1569,13 @@ function LinksBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
       <div className="flex flex-wrap gap-2">
-        {chips.map(({ key, label, Icon, logo, url }) => (
+        {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url }) => (
           <a
             key={key}
             href={url}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={logoOnly ? label : undefined}
             className="border-border bg-background text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition"
           >
             {logo ? (
@@ -1542,11 +1583,16 @@ function LinksBox({ place }: { place: PlaceDetail }) {
               // in). The chip label carries the accessible name, so the glyph
               // is decorative. next/image adds nothing for a 14px static SVG.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logo} alt="" aria-hidden className="h-3.5 w-3.5" />
+              <img
+                src={logo}
+                alt=""
+                aria-hidden
+                className={cn(logoWide ? "h-4 w-auto" : "h-3.5 w-3.5")}
+              />
             ) : (
               <Icon className="h-3.5 w-3.5" />
             )}
-            {label}
+            {!logoOnly && label}
           </a>
         ))}
       </div>
