@@ -41,6 +41,11 @@ const SIDEBAR_NAV = [
     Icon: ATLAS_PARENT.Icon,
   },
   {
+    href: SOURCING_PARENT.href,
+    label: SOURCING_PARENT.label,
+    Icon: SOURCING_PARENT.Icon,
+  },
+  {
     href: ENRICHER_PARENT.href,
     label: ENRICHER_PARENT.label,
     Icon: ENRICHER_PARENT.Icon,
@@ -49,11 +54,6 @@ const SIDEBAR_NAV = [
     href: MEMO_PARENT.href,
     label: MEMO_PARENT.label,
     Icon: MEMO_PARENT.Icon,
-  },
-  {
-    href: SOURCING_PARENT.href,
-    label: SOURCING_PARENT.label,
-    Icon: SOURCING_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
