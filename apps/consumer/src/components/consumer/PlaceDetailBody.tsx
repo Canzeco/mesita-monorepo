@@ -285,24 +285,26 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
       </div>
 
-      {/* decision: Pato — category · price · distance · location · open */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <OverviewChip>{place.category}</OverviewChip>
-        <OverviewChip>{priceLabel}</OverviewChip>
-        <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
+      {/* decision: Pato — soft labels (not white button chips); order
+          category · price · distance · location · open */}
+      <div className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-snug">
+        <OverviewMeta>{place.category}</OverviewMeta>
+        <MetaDot />
+        <OverviewMeta>{priceLabel}</OverviewMeta>
+        <MetaDot />
+        <OverviewMeta icon={Navigation}>
           {place.distance_km} km
-        </OverviewChip>
-        <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
-          {place.zone}
-        </OverviewChip>
-        <OverviewChip
+        </OverviewMeta>
+        <MetaDot />
+        <OverviewMeta icon={MapPin}>{place.zone}</OverviewMeta>
+        <MetaDot />
+        <OverviewMeta
           icon={Clock}
-          iconClass={
-            place.open_now ? "text-emerald-600" : "text-muted-foreground"
-          }
+          iconClass={place.open_now ? "text-emerald-600" : undefined}
+          textClass={place.open_now ? "text-emerald-700" : undefined}
         >
           {statusValue}
-        </OverviewChip>
+        </OverviewMeta>
       </div>
 
       <ProfileActions placeId={place.id} placeName={place.name} />
@@ -376,36 +378,40 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-function OverviewChip({
+/** Soft meta label — no border/fill so it doesn't read as a button. */
+function OverviewMeta({
   icon: Icon,
   children,
-  capitalize = false,
   iconClass,
-  iconStrokeWidth = 2.25,
+  textClass,
 }: {
   icon?: LucideIcon;
   children: React.ReactNode;
-  capitalize?: boolean;
   iconClass?: string;
-  iconStrokeWidth?: number;
+  textClass?: string;
 }) {
   return (
     <span
       className={cn(
-        "border-border bg-card text-foreground inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-1 text-[12px] leading-tight font-semibold whitespace-nowrap tabular-nums [font-variant-numeric:tabular-nums_lining-nums]",
-        capitalize && "capitalize",
+        "inline-flex max-w-full items-center gap-1 font-medium whitespace-nowrap tabular-nums",
+        textClass,
       )}
     >
       {Icon && (
         <Icon
-          className={cn(
-            "h-3.5 w-3.5 shrink-0",
-            iconClass ?? "text-muted-foreground",
-          )}
-          strokeWidth={iconStrokeWidth}
+          className={cn("h-3 w-3 shrink-0 opacity-70", iconClass)}
+          strokeWidth={2.25}
         />
       )}
       {children}
+    </span>
+  );
+}
+
+function MetaDot() {
+  return (
+    <span className="text-muted-foreground/40 select-none" aria-hidden>
+      ·
     </span>
   );
 }
