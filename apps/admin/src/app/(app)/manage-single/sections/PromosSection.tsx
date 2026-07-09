@@ -4,9 +4,10 @@ import { Fragment, useState, useTransition } from "react";
 import { Crown, Loader2, Percent } from "lucide-react";
 import {
   SUBSCRIPTIONS,
+  VISIBILITY_LEVELS,
+  computeVisibility,
   dbStateForSubscription,
   subscriptionForPlan,
-  visibilityForPlan,
   type PlanVisibility,
   type SubscriptionId,
 } from "@/lib/business/plans";
@@ -64,8 +65,15 @@ export function PromosSection({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Visibility is the product signal — plan only exists to move this needle. */}
-      <VisibilityRail plan={v.plan} />
+      {/* Visibility is the product signal — plan + discounts + cap all move the needle. */}
+      <VisibilityRail
+        plan={v.plan}
+        welcome_free_rate={v.welcome_free_rate}
+        welcome_premium_rate={v.welcome_premium_rate}
+        free_rate={v.free_rate}
+        premium_rate={v.premium_rate}
+        monthly_promo_cap={v.monthly_promo_cap}
+      />
 
       <SectionCard
         icon={<Percent className="text-muted-foreground h-4 w-4" />}
@@ -165,36 +173,55 @@ export function PromosSection({
   );
 }
 
-// Visibility rail from mesita-web-business-legacy. Three levels (Low → Max),
-// one per plan. Mesita shows higher-plan places to more guests on every
-// discovery surface — this is the answer the operator needs at a glance.
-function VisibilityRail({ plan }: { plan: string | null }) {
-  const current = visibilityForPlan(plan);
-  const levels: { label: string; real: PlanVisibility }[] = [
-    { label: "Low", real: "Low" },
-    { label: "Medium", real: "Medium" },
-    { label: "Max", real: "Max" },
-  ];
-  const currentIdx = levels.findIndex((l) => l.real === current);
+// Visibility rail — six levels from plan + discount rates + ticket cap.
+// Mesita shows higher-visibility places to more guests on every discovery
+// surface — this is the answer the operator needs at a glance.
+function VisibilityRail({
+  plan,
+  welcome_free_rate,
+  welcome_premium_rate,
+  free_rate,
+  premium_rate,
+  monthly_promo_cap,
+}: {
+  plan: string | null;
+  welcome_free_rate: number | null;
+  welcome_premium_rate: number | null;
+  free_rate: number | null;
+  premium_rate: number | null;
+  monthly_promo_cap: number | null;
+}) {
+  const current = computeVisibility({
+    plan,
+    welcome_free_rate,
+    welcome_premium_rate,
+    free_rate,
+    premium_rate,
+    monthly_promo_cap,
+  });
+  const currentIdx = VISIBILITY_LEVELS.indexOf(current);
 
   return (
     <section className="border-border bg-card rounded-2xl border p-4 shadow-[0_10px_30px_-22px_rgba(236,72,153,0.6)]">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="font-display text-sm font-semibold tracking-tight">Visibility</h3>
         <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
-          Step {currentIdx + 1} of {levels.length}
+          Step {currentIdx + 1} of {VISIBILITY_LEVELS.length}
         </span>
       </div>
       <p className="font-display text-foreground mt-1 text-2xl font-semibold leading-none tracking-tight">
         {current}
       </p>
+      <p className="text-muted-foreground mt-1.5 text-[11px] leading-snug">
+        Plan, discount rates, and ticket cap all add up.
+      </p>
 
       <div className="mt-5 flex items-center">
-        {levels.map((l, i) => {
+        {VISIBILITY_LEVELS.map((label, i) => {
           const reached = i < currentIdx;
           const isCurrent = i === currentIdx;
           return (
-            <Fragment key={l.label}>
+            <Fragment key={label}>
               {i > 0 && (
                 <div
                   className={
@@ -219,12 +246,12 @@ function VisibilityRail({ plan }: { plan: string | null }) {
       </div>
 
       <div className="mt-2 flex justify-between text-[9px] font-semibold tracking-wider uppercase">
-        {levels.map((l, i) => (
+        {VISIBILITY_LEVELS.map((label, i) => (
           <span
-            key={l.label}
+            key={label}
             className={i === currentIdx ? "text-foreground" : "text-muted-foreground/70"}
           >
-            {l.label}
+            {label}
           </span>
         ))}
       </div>
