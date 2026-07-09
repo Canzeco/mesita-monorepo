@@ -1037,10 +1037,6 @@ function todayWeekdayLabel(tz: string | undefined): string {
   }
 }
 
-function shortWeekday(day: string): string {
-  return day.slice(0, 3);
-}
-
 function HoursDayRow({
   row,
   today,
@@ -1048,13 +1044,15 @@ function HoursDayRow({
   row: { day: string; range: string };
   today: string;
 }) {
+  // decision: Pato — full weekday on the stacked Time card (short Mon/Tue
+  // was only for the old cramped 2-col side-by-side layout).
   const isToday = row.day === today;
   const closed = row.range.toLowerCase() === "closed";
   return (
     <li
       className={cn(
-        "flex min-w-0 items-center justify-between gap-3 px-3 py-2 text-xs leading-tight",
-        isToday && "rounded-lg bg-violet-50/80",
+        "border-border/50 flex min-w-0 items-center justify-between gap-3 border-b px-3 py-2.5 text-xs leading-tight last:border-b-0",
+        isToday && "bg-violet-50/80",
       )}
     >
       <span
@@ -1063,7 +1061,7 @@ function HoursDayRow({
           isToday ? "text-violet-800" : "text-foreground",
         )}
       >
-        {shortWeekday(row.day)}
+        {row.day}
       </span>
       <span
         className={cn(
