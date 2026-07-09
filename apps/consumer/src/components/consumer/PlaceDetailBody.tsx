@@ -701,11 +701,13 @@ function ExternalCard({
 
 // ── 4. Individual reviews (Reviews tab: Google + Mesita, one box each) ──
 
-// decision: Pato — frontend-only Google review sort (no EF). Newest default;
-// Highest / Lowest by star rating with newest as tie-break.
-type GoogleReviewSort = "newest" | "highest" | "lowest";
+// decision: Pato — frontend-only review sort (no EF) for both Google and
+// Mesita. Newest default; Highest / Lowest by rating. Google uses published
+// date; Mesita uses avg(food/service/ambiance/value) and keeps source order
+// for Newest until visitors carry a date field.
+type ReviewSort = "newest" | "highest" | "lowest";
 
-const GOOGLE_REVIEW_SORTS: { key: GoogleReviewSort; label: string }[] = [
+const REVIEW_SORTS: { key: ReviewSort; label: string }[] = [
   { key: "newest", label: "Newest" },
   { key: "highest", label: "Highest" },
   { key: "lowest", label: "Lowest" },
@@ -716,8 +718,49 @@ function reviewTimeMs(date: string): number {
   return Number.isFinite(t) ? t : 0;
 }
 
+function mesitaOverall(
+  v: PlaceDetail["mesita_visitors"][number],
+): number {
+  return (v.food + v.service + v.ambiance + v.value) / 4;
+}
+
+function ReviewSortChips({
+  sort,
+  onSort,
+  label,
+}: {
+  sort: ReviewSort;
+  onSort: (next: ReviewSort) => void;
+  label: string;
+}) {
+  return (
+    <div
+      className="bg-muted/60 flex gap-1 rounded-xl p-1"
+      role="group"
+      aria-label={label}
+    >
+      {REVIEW_SORTS.map((mode) => (
+        <button
+          key={mode.key}
+          type="button"
+          onClick={() => onSort(mode.key)}
+          aria-pressed={sort === mode.key}
+          className={cn(
+            "flex-1 rounded-lg py-1.5 text-xs font-semibold transition",
+            sort === mode.key
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground",
+          )}
+        >
+          {mode.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
-  const [sort, setSort] = useState<GoogleReviewSort>("newest");
+  const [sort, setSort] = useState<ReviewSort>("newest");
   const reviews = place.google_reviews;
   const sorted = useMemo(() => {
     const copy = [...reviews];
@@ -741,28 +784,11 @@ function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
       iconColor="text-amber-400"
       right={`${formatCount(place.google.count, true)} total`}
     >
-      <div
-        className="bg-muted/60 flex gap-1 rounded-xl p-1"
-        role="group"
-        aria-label="Sort Google reviews"
-      >
-        {GOOGLE_REVIEW_SORTS.map((mode) => (
-          <button
-            key={mode.key}
-            type="button"
-            onClick={() => setSort(mode.key)}
-            aria-pressed={sort === mode.key}
-            className={cn(
-              "flex-1 rounded-lg py-1.5 text-xs font-semibold transition",
-              sort === mode.key
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground",
-            )}
-          >
-            {mode.label}
-          </button>
-        ))}
-      </div>
+      <ReviewSortChips
+        sort={sort}
+        onSort={setSort}
+        label="Sort Google reviews"
+      />
       <BoxHScroll>
         {sorted.map((data, i) => (
           <ReviewCard
@@ -780,7 +806,18 @@ function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
   // Always render below Google reviews — when there are no Mesita
   // visitors yet, show an explicit empty state instead of hiding the box
   // (Safi and other new places were dropping the section entirely).
+  const [sort, setSort] = useState<ReviewSort>("newest");
   const visitors = place.mesita_visitors;
+  const sorted = useMemo(() => {
+    if (sort === "newest") return visitors;
+    const copy = [...visitors];
+    copy.sort((a, b) => {
+      const diff = mesitaOverall(b) - mesitaOverall(a);
+      return sort === "highest" ? diff : -diff;
+    });
+    return copy;
+  }, [visitors, sort]);
+
   if (visitors.length === 0) {
     return (
       <Box
@@ -812,9 +849,18 @@ function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
       iconColor="text-pink-400"
       right={`${place.mesita_reviews.total} total`}
     >
+      <ReviewSortChips
+        sort={sort}
+        onSort={setSort}
+        label="Sort Mesita reviews"
+      />
       <BoxHScroll>
-        {visitors.map((data, i) => (
-          <ReviewCard key={`mesita-${i}`} kind="mesita" data={data} />
+        {sorted.map((data, i) => (
+          <ReviewCard
+            key={`mesita-${data.handle}-${i}`}
+            kind="mesita"
+            data={data}
+          />
         ))}
       </BoxHScroll>
     </Box>
