@@ -26,17 +26,20 @@ export function UnitEditChrome({
   const pathname = usePathname();
 
   return (
-    <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-b backdrop-blur-md">
+    // Dark sticky chrome for contrast against the light page body. Uses
+    // semantic foreground/background (not raw zinc/white) so the light theme
+    // token contract still holds.
+    <div className="bg-foreground text-background sticky top-0 z-30">
       <div className="flex items-center gap-3 px-4 py-2 sm:gap-4 sm:px-6 lg:px-8">
         <Link
           href="/manage-single/select"
-          className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition"
+          className="text-background/70 hover:bg-background/10 hover:text-background inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition"
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">Switch unit</span>
         </Link>
 
-        <span className="bg-border h-4 w-px shrink-0" aria-hidden />
+        <span className="bg-background/20 h-4 w-px shrink-0" aria-hidden />
 
         <p
           className="max-w-[8rem] shrink-0 truncate text-sm font-semibold sm:max-w-[12rem] lg:max-w-none"
@@ -62,8 +65,8 @@ export function UnitEditChrome({
                 className={
                   "inline-flex shrink-0 items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition sm:px-3 " +
                   (active
-                    ? "bg-secondary/10 text-secondary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")
+                    ? "bg-secondary text-secondary-foreground"
+                    : "text-background/70 hover:bg-background/10 hover:text-background")
                 }
               >
                 {label}
@@ -72,7 +75,7 @@ export function UnitEditChrome({
           })}
         </nav>
 
-        <span className="bg-border hidden h-4 w-px shrink-0 sm:block" aria-hidden />
+        <span className="bg-background/20 hidden h-4 w-px shrink-0 sm:block" aria-hidden />
 
         <ReEnrichButton projectId={projectId} />
       </div>
@@ -167,8 +170,8 @@ function ReEnrichButton({ projectId }: { projectId: string }) {
         className={
           "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition disabled:opacity-60 " +
           (state === "error"
-            ? "text-destructive hover:bg-destructive/10"
-            : "text-secondary hover:bg-secondary/10")
+            ? "text-red-300 hover:bg-red-500/20"
+            : "text-secondary hover:bg-background/10")
         }
       >
         {pending ? (
