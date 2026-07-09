@@ -499,8 +499,14 @@ export function SearchClient({
           search bar (which the user types into). */}
       {searchOpen && trimmed.length === 0 && (
         <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col items-center justify-center rounded-b-3xl border-b px-8 text-center shadow-sm">
-          <span className="text-5xl" role="img" aria-label="Search">
-            🔍
+          {/* decision: Lucide line Search in a tinted circle — not the 🔍
+              emoji, which Apple renders as a heavy 3D lupa that clashes
+              with the rest of the consumer icon language. */}
+          <span
+            className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-full"
+            aria-hidden="true"
+          >
+            <Search className="h-6 w-6" strokeWidth={1.75} />
           </span>
           <p className="mt-4 text-lg font-semibold">Where to today?</p>
           <p className="text-muted-foreground mt-1.5 max-w-[260px] text-sm">
