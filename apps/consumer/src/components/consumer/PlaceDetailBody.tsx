@@ -1617,23 +1617,21 @@ function VerificationBox({ place }: { place: PlaceDetail }) {
 }
 
 function LastUpdatedBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — one line only (title + value was redundant).
+  // decision: Pato — always show Updated …; when enrichment is in flight,
+  // also show Enriching status in the same box (don't replace the freshness).
   return (
-    <Box className="gap-0 py-3">
+    <Box className="gap-2 py-3">
+      {place.is_enriching && (
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" />
+          <p className="text-foreground text-sm font-semibold">Enriching…</p>
+        </div>
+      )}
       <div className="flex items-center gap-2">
-        {place.is_enriching ? (
-          <>
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" />
-            <p className="text-foreground text-sm font-semibold">Enriching…</p>
-          </>
-        ) : (
-          <>
-            <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />
-            <p className="text-muted-foreground text-sm font-medium">
-              Updated {place.last_updated_label}
-            </p>
-          </>
-        )}
+        <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />
+        <p className="text-muted-foreground text-sm font-medium">
+          Updated {place.last_updated_label}
+        </p>
       </div>
     </Box>
   );
