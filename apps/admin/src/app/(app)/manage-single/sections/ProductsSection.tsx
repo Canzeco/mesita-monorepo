@@ -30,8 +30,8 @@ type MenuDraft = {
   key: string;
   name: string;
   url: string;
-  /** Exclusive source — upload file XOR Drive link. */
-  source: MenuSource;
+  /** Exclusive source — upload file XOR Drive link. Null until the operator picks. */
+  source: MenuSource | null;
 };
 
 type ItemKind = "menu";
@@ -68,7 +68,7 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
     fromProducts.length > 0 ? fromProducts : fromLegacy;
 
   const fromJson = source
-    .map((m) => {
+    .map((m): MenuDraft | null => {
       const url =
         typeof m?.url === "string"
           ? m.url.trim()
@@ -165,7 +165,7 @@ export function ProductsSection({
   const addMenu = () => {
     setItems((prev) => [
       ...prev,
-      { key: newKey(), name: "", url: "", source: "upload" },
+      { key: newKey(), name: "", url: "", source: null },
     ]);
     setPickerOpen(false);
     setOk(false);
@@ -243,6 +243,10 @@ export function ProductsSection({
       }
       if (m.source === "drive" && !isDriveMenuUrl(normalized)) {
         setError("Drive menus need a Google Drive or Docs link.");
+        return;
+      }
+      if (!m.source) {
+        setError("Each menu needs a source — Upload file or Google Drive.");
         return;
       }
     }
@@ -424,7 +428,7 @@ function MenuItemCard({
 }) {
   const hasFile = item.source === "upload" && item.url.trim() !== "";
   const hasDrive = item.source === "drive" && item.url.trim() !== "";
-  const isNew = !item.name.trim() && !item.url.trim();
+  const isNew = !item.name.trim() && !item.url.trim() && item.source == null;
 
   return (
     <div className="border-border bg-background rounded-xl border p-4">
@@ -456,37 +460,42 @@ function MenuItemCard({
       />
 
       <div className="mt-4">
-        <p className="mb-2 text-sm font-medium">Source</p>
+        <p className="text-sm font-medium">How do you want to add it?</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          Pick one — upload a file or paste a Drive link, not both.
+        </p>
         <div
           role="radiogroup"
           aria-label="Menu source"
-          className="border-border bg-muted/40 grid grid-cols-2 gap-1 rounded-xl border p-1"
+          className="mt-3 grid gap-2 sm:grid-cols-2"
         >
-          <SourceOption
+          <SourceCard
             active={item.source === "upload"}
             disabled={pending || uploading}
-            icon={<Upload className="h-3.5 w-3.5" />}
+            icon={<Upload className="h-4 w-4" />}
             label="Upload file"
+            hint="PDF or image · max 8 MB"
             onClick={() => onSource("upload")}
           />
-          <SourceOption
+          <SourceCard
             active={item.source === "drive"}
             disabled={pending || uploading}
-            icon={<Link2 className="h-3.5 w-3.5" />}
+            icon={<Link2 className="h-4 w-4" />}
             label="Google Drive"
+            hint="Paste a share link"
             onClick={() => onSource("drive")}
           />
         </div>
       </div>
 
       {item.source === "upload" ? (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="border-border bg-muted/20 mt-3 rounded-xl border border-dashed p-4">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               disabled={pending || uploading}
               onClick={onUpload}
-              className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+              className="bg-foreground text-background inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition disabled:opacity-50"
             >
               {uploading ? (
                 <>
@@ -519,14 +528,15 @@ function MenuItemCard({
                   Clear file
                 </button>
               </>
-            ) : null}
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                JPG, PNG, WEBP, AVIF, or PDF
+              </p>
+            )}
           </div>
-          <p className="text-muted-foreground text-xs">
-            PDF or image (JPG, PNG, WEBP, AVIF) · max 8 MB
-          </p>
         </div>
-      ) : (
-        <div className="mt-3 flex flex-col gap-2">
+      ) : item.source === "drive" ? (
+        <div className="border-border bg-muted/20 mt-3 rounded-xl border border-dashed p-4">
           <TextField
             label="Drive link"
             value={item.url}
@@ -539,32 +549,34 @@ function MenuItemCard({
               href={normalizeHttpsUrl(item.url)}
               target="_blank"
               rel="noreferrer"
-              className="text-secondary inline-flex w-fit items-center gap-1.5 text-sm font-medium hover:underline"
+              className="text-secondary mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium hover:underline"
             >
               Open link <ExternalLink className="h-3.5 w-3.5" />
             </a>
           ) : (
-            <p className="text-muted-foreground text-xs">
-              Paste a Google Drive or Docs share link
+            <p className="text-muted-foreground mt-2 text-xs">
+              Google Drive or Docs share link only
             </p>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
-function SourceOption({
+function SourceCard({
   active,
   disabled,
   icon,
   label,
+  hint,
   onClick,
 }: {
   active: boolean;
   disabled?: boolean;
   icon: React.ReactNode;
   label: string;
+  hint: string;
   onClick: () => void;
 }) {
   return (
@@ -575,14 +587,26 @@ function SourceOption({
       disabled={disabled}
       onClick={onClick}
       className={
-        "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50 " +
+        "flex items-start gap-3 rounded-xl border p-3.5 text-left transition disabled:opacity-50 " +
         (active
-          ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/10"
-          : "text-muted-foreground hover:text-foreground")
+          ? "border-foreground bg-card ring-1 ring-foreground/15"
+          : "border-border bg-background hover:border-foreground/40")
       }
     >
-      {icon}
-      {label}
+      <span
+        className={
+          "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg " +
+          (active ? "bg-foreground text-background" : "bg-muted text-muted-foreground")
+        }
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+          {hint}
+        </span>
+      </span>
     </button>
   );
 }
