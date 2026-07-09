@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   MapPin,
@@ -20,6 +21,7 @@ import {
   ChevronRight,
   Utensils,
   Users,
+  Heart,
   Clock,
   Tags,
   Link2,
@@ -43,6 +45,7 @@ import {
   InstagramLogo,
   MesitaMark,
 } from "@/components/consumer/BrandLogos";
+import { useSavedPlaces } from "@/lib/saved-places";
 import { classProperLabel } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { toast } from "@/lib/toast";
@@ -429,10 +432,10 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-// Reserve · Share — stacked full-width, IG-style filled buttons.
-// Save moved to the place header (top-right). Reserve parked (Soon).
-// Share uses native share with clipboard fallback.
+// Save · Reserve · Share — one horizontal row, IG-style filled buttons.
+// Reserve parked (Soon). Share uses native share with clipboard fallback.
 function ProfileActions({
+  placeId,
   placeName,
   className,
 }: {
@@ -440,6 +443,27 @@ function ProfileActions({
   placeName: string;
   className?: string;
 }) {
+  const router = useRouter();
+  const { isSaved, toggle } = useSavedPlaces();
+  const saved = isSaved(placeId);
+
+  function onSavePlace() {
+    const nowSaved = !saved;
+    toggle(placeId);
+    if (nowSaved) {
+      toast.action(
+        `Saved ${placeName}`,
+        {
+          label: "View",
+          onClick: () => router.push(CONSUMER_ROUTES.favorites),
+        },
+        { tone: "success" },
+      );
+    } else {
+      toast(`Removed ${placeName} from saved`);
+    }
+  }
+
   async function onSharePlace() {
     const url = typeof window !== "undefined" ? window.location.href : "";
     const payload = {
@@ -471,26 +495,42 @@ function ProfileActions({
     toast.error("Sharing isn't available in this browser");
   }
 
-  // decision: Pato — Save is header-only; body keeps Reserve + Share as
-  // filled CTAs (IG blue / muted secondary).
+  // decision: Pato — three equal buttons on one line (not stacked).
   return (
-    <div className={cn("flex flex-col gap-2.5", className)}>
+    <div className={cn("grid grid-cols-3 gap-2", className)}>
+      <button
+        type="button"
+        onClick={onSavePlace}
+        aria-pressed={saved}
+        className={cn(
+          "inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold text-white shadow-sm transition active:scale-[0.99]",
+          saved
+            ? "bg-pink-600 hover:bg-pink-700"
+            : "bg-pink-gradient shadow-glow hover:brightness-110",
+        )}
+      >
+        <Heart
+          className={cn("h-4 w-4", saved && "fill-current")}
+          strokeWidth={2.25}
+        />
+        {saved ? "Saved" : "Save"}
+      </button>
       <button
         type="button"
         disabled
         aria-disabled="true"
-        className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#0095F6]/55 py-3 text-[14px] font-semibold text-white"
+        className="inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl bg-[#0095F6]/55 py-2.5 text-[13px] font-semibold text-white"
       >
         <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
         Reserve
-        <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+        <span className="rounded-md bg-white/20 px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
           Soon
         </span>
       </button>
       <button
         type="button"
         onClick={onSharePlace}
-        className="bg-muted text-foreground hover:bg-muted/80 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition active:scale-[0.99]"
+        className="bg-muted text-foreground hover:bg-muted/80 inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
       >
         <Share2 className="h-4 w-4" strokeWidth={2.25} />
         Share
