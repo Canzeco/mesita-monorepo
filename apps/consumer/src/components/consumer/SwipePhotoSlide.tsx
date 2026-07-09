@@ -139,7 +139,8 @@ function WitcPhotoSlide({
       >
         <div className="absolute inset-0 backdrop-blur-[2px]" />
         <div className="absolute inset-0 bg-black/20" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/14 to-black/52" />
+        {/* decision: Pato — a bit darker for name/chip contrast, still transparent */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/22 to-black/64" />
       </div>
     </div>
   );
