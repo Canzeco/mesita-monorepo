@@ -91,10 +91,10 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
       {tab === "place" && (
         <>
           <MediaBox place={place} />
-          {/* decision: Pato — Time + Location side by side */}
+          {/* decision: Pato — Location first, then Time side by side */}
           <div className="grid grid-cols-2 gap-2">
-            <HoursBox place={place} />
             <LocationBox place={place} />
+            <HoursBox place={place} />
           </div>
           <LinksBox place={place} />
           <AboutBox text={place.long_description} name={place.name} />
@@ -1044,6 +1044,46 @@ function shortWeekday(day: string): string {
   return day.slice(0, 3);
 }
 
+function HoursDayRow({
+  row,
+  today,
+}: {
+  row: { day: string; range: string };
+  today: string;
+}) {
+  const isToday = row.day === today;
+  const closed = row.range.toLowerCase() === "closed";
+  return (
+    <li
+      className={cn(
+        "flex min-w-0 flex-col gap-0.5 px-1.5 py-1 text-[10px] leading-tight",
+        isToday && "rounded-md bg-violet-50/80",
+      )}
+    >
+      <span
+        className={cn(
+          "font-semibold",
+          isToday ? "text-violet-800" : "text-foreground",
+        )}
+      >
+        {shortWeekday(row.day)}
+      </span>
+      <span
+        className={cn(
+          "min-w-0 truncate tabular-nums",
+          closed
+            ? "text-muted-foreground"
+            : isToday
+              ? "text-violet-950 font-semibold"
+              : "text-foreground/85",
+        )}
+      >
+        {row.range}
+      </span>
+    </li>
+  );
+}
+
 function HoursBox({ place }: { place: PlaceDetail }) {
   // decision: Pato — day/schedule list beside Location; keep timezone
   const today = todayWeekdayLabel(place.timezone);
@@ -1087,42 +1127,18 @@ function HoursBox({ place }: { place: PlaceDetail }) {
         )}
       </p>
       {place.hours_table.length > 0 && (
-        <ul className="divide-border border-border divide-y overflow-hidden rounded-lg border">
-          {place.hours_table.map((row) => {
-            const isToday = row.day === today;
-            const closed = row.range.toLowerCase() === "closed";
-            return (
-              <li
-                key={row.day}
-                className={cn(
-                  "grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-1.5 px-2 py-1.5 text-[11px]",
-                  isToday && "bg-violet-50/80",
-                )}
-              >
-                <span
-                  className={cn(
-                    "font-semibold",
-                    isToday ? "text-violet-800" : "text-foreground",
-                  )}
-                >
-                  {shortWeekday(row.day)}
-                </span>
-                <span
-                  className={cn(
-                    "min-w-0 truncate text-right tabular-nums",
-                    closed
-                      ? "text-muted-foreground"
-                      : isToday
-                        ? "text-violet-950 font-semibold"
-                        : "text-foreground/85",
-                  )}
-                >
-                  {row.range}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="border-border grid grid-cols-2 gap-1.5 overflow-hidden rounded-lg border p-1.5">
+          <ul className="flex flex-col gap-0.5">
+            {place.hours_table.slice(0, 4).map((row) => (
+              <HoursDayRow key={row.day} row={row} today={today} />
+            ))}
+          </ul>
+          <ul className="flex flex-col gap-0.5">
+            {place.hours_table.slice(4).map((row) => (
+              <HoursDayRow key={row.day} row={row} today={today} />
+            ))}
+          </ul>
+        </div>
       )}
     </Box>
   );
