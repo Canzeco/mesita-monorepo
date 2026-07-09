@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
-import { PlaceNameWithVerification } from "@/components/consumer/PlaceVerificationIcon";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -12,13 +11,12 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // route home because there's always a previous shell route; the hard-nav
 // page can't trust browser history.
 //
-// Instagram-profile chrome: back + place name + verification icon + ⋯.
-// Save moved into the ProfileSummary buttons inside the body; the ⋯ menu
-// has no options yet (share and friends land there when it opens).
+// decision: Pato — header is name only; verification lives in the body
+// tag row with category / price / zone / distance / hours.
 
 export function PlaceDetailPageHeader({
   placeName,
-  listingType,
+  listingType: _listingType,
   backHref = CONSUMER_ROUTES.home,
 }: {
   placeName: string;
@@ -34,9 +32,8 @@ export function PlaceDetailPageHeader({
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
-      {/* decision: Pato — place name a bit larger than default slide-over text-sm */}
-      <div className="font-display flex min-w-0 flex-1 items-center justify-center text-base font-semibold">
-        <PlaceNameWithVerification name={placeName} listingType={listingType} />
+      <div className="font-display min-w-0 flex-1 truncate text-center text-base font-semibold">
+        {placeName}
       </div>
       <PlaceMoreButton />
     </header>

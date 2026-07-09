@@ -63,11 +63,11 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. The two callers (full page at /place/[id] and the
 // intercepted modal at @modal/(.)place/[id]) each render their own top
-// bar (back + place name + verification + ⋯) on top of this. Structure:
+// bar (back + place name + ⋯) on top of this. Structure:
 //
-//   1. Profile summary — header (name + verification) in page chrome; body
-//      is photo + Google/Instagram/reward, then swipe-style meta tags
-//      (category · price · distance · zone · hours), then Save + Reserve.
+//   1. Profile summary — name in page chrome; photo + Google/Instagram/
+//      reward; swipe-style tags (verification · category · price · zone ·
+//      distance · hours); then Save + Reserve.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -227,9 +227,8 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 // ── 1. Profile summary (IG photo+stats + swipe-style tags) ───────────────
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // decision: Pato — back to IG row (photo · Google · IG · reward) + swipe-
-  // style tag line for category / price / distance / zone / hours. Name +
-  // verification stay in the page header.
+  // decision: Pato — name in header; photo · Google · IG · reward; then
+  // swipe-style tags: verification · category · price · zone · distance · hours.
   const googleRating = place.google.rating.toFixed(1);
   const googleCount = formatCount(place.google.count, false);
   const igFollowers = formatCount(place.instagram.followers, false);
@@ -243,6 +242,7 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
     ? `Open · until ${place.closes_at}`
     : `Closed · opens ${place.opens_at}`;
   const promoPlace = placeDetailAsPromoPlace(place);
+  const isPartner = place.listing_type === "partner";
 
   return (
     <section className="flex flex-col gap-3 pt-3">
@@ -283,8 +283,25 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
       </div>
 
-      {/* decision: Pato — swipe-style tags (light surface variant) */}
+      {/* decision: Pato — verification first, then category · price · zone ·
+          distance · hours (swipe-style tags on light surface) */}
       <div className="flex flex-wrap items-center gap-1.5">
+        <ProfileMetaChip>
+          {isPartner ? (
+            <>
+              <BadgeCheck
+                className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white"
+                strokeWidth={2}
+              />
+              <span className="font-semibold">Verified Partner</span>
+            </>
+          ) : (
+            <>
+              <Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+              <span className="font-semibold">Not Verified</span>
+            </>
+          )}
+        </ProfileMetaChip>
         {place.category && (
           <ProfileMetaChip>
             <span className="font-semibold">{place.category}</span>
@@ -296,14 +313,14 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
           </ProfileMetaChip>
         )}
         <ProfileMetaChip>
-          <Navigation className="text-muted-foreground h-3 w-3 shrink-0" />
-          <span className="font-semibold">{place.distance_km} km</span>
-        </ProfileMetaChip>
-        <ProfileMetaChip>
           <MapPin className="text-muted-foreground h-3 w-3 shrink-0" />
           <span className="max-w-[160px] truncate font-semibold">
             {place.zone}
           </span>
+        </ProfileMetaChip>
+        <ProfileMetaChip>
+          <Navigation className="text-muted-foreground h-3 w-3 shrink-0" />
+          <span className="font-semibold">{place.distance_km} km</span>
         </ProfileMetaChip>
         <ProfileMetaChip>
           <Clock
