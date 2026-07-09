@@ -9,6 +9,7 @@
 // PredictionRow cards — this panel intentionally diverges.
 
 import { BadgeCheck, SearchX } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/shared";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import type { AddState } from "./PredictionRow";
@@ -76,6 +77,7 @@ export function SearchResultsPanel({
                 <SuggestionLine
                   key={p.placeId}
                   prediction={p}
+                  source="mesita"
                   addState={addStates[p.placeId]}
                   onPick={onPickMesita}
                 />
@@ -98,6 +100,7 @@ export function SearchResultsPanel({
                 <SuggestionLine
                   key={p.placeId}
                   prediction={p}
+                  source="google"
                   addState={addStates[p.placeId]}
                   onPick={onPickGoogle}
                 />
@@ -112,15 +115,19 @@ export function SearchResultsPanel({
 
 // One plain text suggestion line — name bold, locality muted, all on a
 // single truncating line. The whole row is the tap target; the only chrome
-// allowed is the Verified badge and the "Enriching" pill for rows the
-// consumer just added (their profile is still being built, but tapping
-// still opens the preview sheet, which explains the state).
+// allowed is the leading source dot (Mesita pink vs Google blue, so the
+// eye can tell the sections apart mid-scroll), the Verified badge and the
+// "Enriching" pill for rows the consumer just added (their profile is
+// still being built, but tapping still opens the preview sheet, which
+// explains the state).
 function SuggestionLine({
   prediction,
+  source,
   addState,
   onPick,
 }: {
   prediction: PlacePrediction;
+  source: "mesita" | "google";
   addState: AddState | undefined;
   onPick: (prediction: PlacePrediction) => void;
 }) {
@@ -135,6 +142,13 @@ function SuggestionLine({
       onClick={() => onPick(prediction)}
       className="hover:bg-muted/50 flex w-full items-center gap-2 rounded-lg px-1 py-2.5 text-left transition"
     >
+      <span
+        aria-hidden
+        className={cn(
+          "h-2 w-2 shrink-0 rounded-full",
+          source === "mesita" ? "bg-pink-500" : "bg-blue-500",
+        )}
+      />
       <span className="min-w-0 flex-1 truncate text-sm">
         <span className="text-foreground font-medium">
           {prediction.mainText}
