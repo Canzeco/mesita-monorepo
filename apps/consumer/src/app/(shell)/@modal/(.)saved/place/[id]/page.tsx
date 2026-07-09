@@ -23,7 +23,7 @@ export default async function SavedPlaceModalPage({
     redirect(CONSUMER_ROUTES.favorites);
   }
   return (
-    <PlaceDetailModalShell projectId={place.id} placeName={place.name}>
+    <PlaceDetailModalShell placeName={place.name}>
       <PlaceDetailBody place={place} />
     </PlaceDetailModalShell>
   );

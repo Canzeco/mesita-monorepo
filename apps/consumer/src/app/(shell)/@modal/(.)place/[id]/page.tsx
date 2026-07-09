@@ -23,7 +23,7 @@ export default async function PlaceModalPage({
     redirect(CONSUMER_ROUTES.home);
   }
   return (
-    <PlaceDetailModalShell projectId={place.id} placeName={place.name}>
+    <PlaceDetailModalShell placeName={place.name}>
       <PlaceDetailBody place={place} />
     </PlaceDetailModalShell>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -34,6 +35,7 @@ import {
   Crown,
   Navigation,
   QrCode,
+  Camera,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { PopularTimesCard } from "@/components/consumer/PopularTimesCard";
@@ -45,7 +47,6 @@ import {
   InstagramLogo,
   MesitaMark,
 } from "@/components/consumer/BrandLogos";
-import { SectionAnchor } from "@/components/consumer/PlaceSectionNav";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { classProperLabel } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
@@ -59,52 +60,99 @@ import {
 import { cn, firstInitial } from "@/lib/utils";
 import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 
-// Pure presentation for the place detail surface. The two callers (full
-// page at /places/[id] and the intercepted modal at @modal/(.)places/[id])
-// each render their own close button on top of this. The summary header
-// sits loose at the top; every section below is wrapped in a Box. A
-// sticky action bar pins to the bottom of the scroll container.
+// Pure presentation for the place detail surface, laid out like an
+// Instagram profile. The two callers (full page at /place/[id] and the
+// intercepted modal at @modal/(.)place/[id]) each render their own top
+// bar (back + place name + ⋯) on top of this. Structure:
+//
+//   1. Profile summary — square avatar left, IG-style stat row right,
+//      bio lines, then Save place + Make reservation buttons (the old
+//      bottom action bar moved up here).
+//   2. Sticky tab strip — Place · Reviews · Products · Rewards.
+//   3. The active tab's boxes.
+
+type PlaceTab = "place" | "reviews" | "products" | "rewards";
+
+const PLACE_TABS: Array<{ key: PlaceTab; label: string }> = [
+  { key: "place", label: "Place" },
+  { key: "reviews", label: "Reviews" },
+  { key: "products", label: "Products" },
+  { key: "rewards", label: "Rewards" },
+];
 
 export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
+  const [tab, setTab] = useState<PlaceTab>("place");
   return (
     // pb-4 gives the last section breathing room above whatever footer
-    // (action bar / nav) the parent layout renders below the scroll area.
+    // (nav) the parent layout renders below the scroll area.
     <div className="flex flex-col gap-3 px-4 pb-4">
-      <MediaBox place={place} />
-      <SectionAnchor id="overview">
-        <SummaryHeader place={place} />
-      </SectionAnchor>
-      {/* Reward always renders. Web listings and rate-less partners get a
-          "doesn't offer rewards" state inside RewardsBox rather than a hidden
-          section, so all three cases (web / partner-no-rate / partner-with-
-          reward) are explicit to the guest. */}
-      <SectionAnchor id="rewards">
-        <RewardsBox place={place} />
-      </SectionAnchor>
-      <SectionAnchor id="about">
-        <AboutBox text={place.long_description} name={place.name} />
-      </SectionAnchor>
-      <SectionAnchor id="reviews">
-        <ReviewsSummaryBox place={place} />
-      </SectionAnchor>
-      <IndividualReviewsBox place={place} />
-      <SectionAnchor id="menu">
-        <ProductsBox place={place} />
-      </SectionAnchor>
-      <SectionAnchor id="hours">
-        <HoursBox place={place} />
-      </SectionAnchor>
-      <SectionAnchor id="location">
-        <LocationBox place={place} />
-      </SectionAnchor>
-      <SectionAnchor id="contact">
-        <LinksBox place={place} />
-      </SectionAnchor>
-      <SectionAnchor id="details">
-        <TagsBox place={place} />
-      </SectionAnchor>
-      <OwnershipClaimBox place={place} />
+      <ProfileSummary place={place} />
+      <PlaceTabBar tab={tab} onChange={setTab} />
+      {tab === "place" && (
+        <>
+          <MediaBox place={place} />
+          <HoursBox place={place} />
+          <LocationBox place={place} />
+          <LinksBox place={place} />
+          <AboutBox text={place.long_description} name={place.name} />
+          <TagsBox place={place} />
+          <OwnershipClaimBox place={place} />
+        </>
+      )}
+      {tab === "reviews" && (
+        <>
+          <ReviewsSummaryBox place={place} />
+          <GoogleReviewsBox place={place} />
+          <MesitaReviewsBox place={place} />
+        </>
+      )}
+      {tab === "products" && <ProductsBox place={place} />}
+      {/* Reward always renders on its tab. Web listings and rate-less
+          partners get a "doesn't offer rewards" state inside RewardsBox
+          rather than an empty tab, so all three cases (web / partner-no-
+          rate / partner-with-reward) are explicit to the guest. */}
+      {tab === "rewards" && <RewardsBox place={place} />}
     </div>
+  );
+}
+
+// ── Tab strip (Place · Reviews · Products · Rewards) ────────────────────
+
+function PlaceTabBar({
+  tab,
+  onChange,
+}: {
+  tab: PlaceTab;
+  onChange: (t: PlaceTab) => void;
+}) {
+  return (
+    // Sticky to the top of the scroll container so the tabs stay reachable
+    // while the user is deep in a tab's content. Solid bg-background (no
+    // translucency) so scrolled-out content can't bleed through the strip.
+    <nav
+      className="bg-background border-border sticky top-0 z-20 -mx-4 grid grid-cols-4 border-b px-2"
+      aria-label="Place sections"
+    >
+      {PLACE_TABS.map((t) => {
+        const active = t.key === tab;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onChange(t.key)}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "-mb-px border-b-2 py-3 text-center text-[13px] font-semibold tracking-wide transition",
+              active
+                ? "border-pink-500 text-foreground"
+                : "text-muted-foreground hover:text-foreground border-transparent",
+            )}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -195,149 +243,233 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── 1. Summary (loose header) ───────────────────────────────────────────
+// ── 1. Profile summary (Instagram-style header) ─────────────────────────
 
-function SummaryHeader({ place }: { place: PlaceDetail }) {
-  // 10-item layout, top to bottom:
-  //   row 1 (1 cell, full width)  : place name
-  //   rows 2–5 (2 cells each, 50/50): trust + identity + commerce + place
-  //     ↳ Verified Partner / Web Listed │ Updated …
-  //     ↳ Category                       │ Google rating + count
-  //     ↳ Price range                    │ Open/closed status
-  //     ↳ Neighbourhood (zone)           │ Distance
-  //
-  // The reward used to render as a full-width banner here too, but it's
-  // redundant now that the dedicated Reward section sits right below
-  // Overview — so this header is identity/commerce/place only.
-  //
-  // The middle 8 cells share a uniform StatCell shape — colored icon
-  // circle + display-font value + muted sub — so the grid reads as one
-  // legible matrix instead of seven different chip shapes piled on top.
+function ProfileSummary({ place }: { place: PlaceDetail }) {
+  // Instagram profile anatomy, Mesita data:
+  //   • avatar — first photo in a rounded square (gradient initial
+  //     fallback), where IG puts the profile picture
+  //   • stat row — Google rating · Google reviews · IG followers, the
+  //     three-column bold-number-over-muted-label strip
+  //   • bio — name + verified badge, category/price line, open status,
+  //     zone/distance, freshness
+  //   • buttons — Save place + Make reservation where IG puts
+  //     Following / Message (the old bottom action bar moved up here)
   const isPartner = place.listing_type === "partner";
-  const googleRating = place.google.rating.toFixed(1);
-  const igFollowers = formatCount(place.instagram.followers, false);
+  const statusValue = place.open_now
+    ? `Open · until ${place.closes_at}`
+    : `Closed · opens ${place.opens_at}`;
   const fullCategory = place.details.category_full.trim();
   const showFullCategory =
     fullCategory.length > 0 &&
     fullCategory.toLowerCase() !== place.category.toLowerCase();
-  const statusValue = place.open_now
-    ? `Open · until ${place.closes_at}`
-    : `Closed · opens ${place.opens_at}`;
   return (
-    // bg-card-soft is the gradient utility (white → faint pink) — gives
-    // the summary card a premium "anchor" feel against the discover
-    // surfaces it leads into, without competing with the photos above.
-    <Box className="bg-card-soft !gap-4">
-      <h1 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight break-words">
-        {place.name}
-      </h1>
-      <div className="flex flex-wrap items-center gap-2">
-        <OverviewChip capitalize>{place.category}</OverviewChip>
-        {showFullCategory && (
-          <OverviewChip capitalize>{fullCategory}</OverviewChip>
-        )}
-        <OverviewChip>{formatPerPersonPrice(place.price_range)}</OverviewChip>
-        <OverviewChip
-          icon={Star}
-          iconClass="text-amber-500 fill-amber-500"
-          iconStrokeWidth={0}
-        >
-          {googleRating}
-          <span className="text-muted-foreground">
-            ({formatCount(place.google.count, false)})
-          </span>
-        </OverviewChip>
-        <OverviewChip icon={Instagram} iconClass="text-pink-500">
-          {igFollowers}
-          <span className="text-muted-foreground">followers</span>
-        </OverviewChip>
-        <OverviewChip
-          icon={Clock}
-          iconClass={place.open_now ? "text-emerald-600" : "text-muted-foreground"}
-        >
-          {statusValue}
-        </OverviewChip>
-        <OverviewChip icon={Navigation} iconClass="text-muted-foreground">
-          {place.distance_km} km
-        </OverviewChip>
-        <OverviewChip icon={MapPin} iconClass="text-muted-foreground">
-          {place.zone}
-        </OverviewChip>
-        <OverviewChip
-          icon={isPartner ? BadgeCheck : ShieldAlert}
-          iconClass={isPartner ? "fill-sky-500 text-white" : "text-amber-500"}
-        >
-          {isPartner ? "Verified Partner" : "Not Verified"}
-        </OverviewChip>
-        <OverviewChip
-          icon={place.is_enriching ? Loader2 : Pencil}
-          iconClass={
-            place.is_enriching
-              ? "animate-spin text-violet-500"
-              : "text-muted-foreground"
-          }
-        >
-          {place.is_enriching
-            ? "Enriching…"
-            : `Updated ${place.last_updated_label}`}
-        </OverviewChip>
+    <section className="flex flex-col gap-4 pt-3">
+      <div className="flex items-center gap-4">
+        {/* Avatar — square with rounded borders, like an IG business pfp. */}
+        <div className="border-border h-20 w-20 shrink-0 overflow-hidden rounded-2xl border">
+          {place.photos.length > 0 ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={place.photos[0]}
+              alt={place.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
+              <span className="font-display text-3xl font-bold text-white/80">
+                {firstInitial(place.name)}
+              </span>
+            </div>
+          )}
+        </div>
+        {/* IG-style stat strip. */}
+        <div className="grid flex-1 grid-cols-3 gap-1">
+          <ProfileStat
+            value={place.google.rating.toFixed(1)}
+            label="rating"
+            icon={Star}
+            iconClass="fill-amber-400 text-amber-400"
+          />
+          <ProfileStat
+            value={formatCount(place.google.count, false)}
+            label="reviews"
+          />
+          <ProfileStat
+            value={formatCount(place.instagram.followers, false)}
+            label="followers"
+          />
+        </div>
       </div>
-    </Box>
+
+      {/* Bio. */}
+      <div className="flex flex-col gap-1">
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          {place.name}
+          {isPartner ? (
+            <BadgeCheck
+              className="h-4 w-4 shrink-0 fill-sky-500 text-white"
+              aria-label="Verified Partner"
+            />
+          ) : (
+            <ShieldAlert
+              className="h-4 w-4 shrink-0 text-amber-500"
+              aria-label="Not verified"
+            />
+          )}
+        </p>
+        <p className="text-muted-foreground text-[13px] leading-snug">
+          <span className="capitalize">{place.category}</span>
+          {showFullCategory && (
+            <span className="capitalize"> · {fullCategory}</span>
+          )}
+          <span> · {formatPerPersonPrice(place.price_range)}</span>
+        </p>
+        <p className="text-[13px] leading-snug">
+          <span
+            className={cn(
+              "font-semibold",
+              place.open_now ? "text-emerald-700" : "text-muted-foreground",
+            )}
+          >
+            {statusValue}
+          </span>
+        </p>
+        <p className="text-muted-foreground flex items-center gap-1 text-[13px] leading-snug">
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          {place.zone}
+          <span>·</span>
+          <Navigation className="h-3 w-3 shrink-0" />
+          {place.distance_km} km
+        </p>
+        <p className="text-muted-foreground flex items-center gap-1 text-[11px]">
+          {place.is_enriching ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+              Enriching…
+            </>
+          ) : (
+            <>
+              <Pencil className="h-3 w-3" />
+              Updated {place.last_updated_label}
+            </>
+          )}
+        </p>
+      </div>
+
+      <ProfileActions placeId={place.id} placeName={place.name} />
+    </section>
   );
 }
 
-function OverviewChip({
+function ProfileStat({
+  value,
+  label,
   icon: Icon,
-  children,
-  capitalize = false,
   iconClass,
-  iconStrokeWidth = 2.25,
 }: {
+  value: string;
+  label: string;
   icon?: LucideIcon;
-  children: React.ReactNode;
-  capitalize?: boolean;
   iconClass?: string;
-  iconStrokeWidth?: number;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-[15px] leading-tight font-semibold whitespace-nowrap text-foreground tabular-nums [font-variant-numeric:tabular-nums_lining-nums]",
-        capitalize && "capitalize",
-      )}
-    >
-      {Icon && (
-        <Icon
-          className={cn("h-4 w-4 shrink-0", iconClass ?? "text-muted-foreground")}
-          strokeWidth={iconStrokeWidth}
-        />
-      )}
-      {children}
-    </span>
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="font-display flex items-center gap-1 text-base leading-none font-semibold tabular-nums">
+        {Icon && (
+          <Icon className={cn("h-3.5 w-3.5", iconClass)} strokeWidth={0} />
+        )}
+        {value}
+      </span>
+      <span className="text-muted-foreground text-[11px]">{label}</span>
+    </div>
   );
 }
 
-// ── 2. Media ────────────────────────────────────────────────────────────
+// Save + Reserve, where Instagram puts Following / Message. Save toggles
+// the localStorage saved-places store (toast confirms; "View" jumps to
+// /saved). Reservations are still parked while the booking flow ships, so
+// Make reservation renders disabled with a "Soon" tag — un-park by
+// restoring an onReserve handler when reservations go live.
+function ProfileActions({
+  placeId,
+  placeName,
+}: {
+  placeId: string;
+  placeName: string;
+}) {
+  const router = useRouter();
+  const { isSaved, toggle } = useSavedPlaces();
+  const saved = isSaved(placeId);
+
+  function onSavePlace() {
+    const nowSaved = !saved;
+    toggle(placeId);
+    if (nowSaved) {
+      toast.action(
+        `Saved ${placeName}`,
+        {
+          label: "View",
+          onClick: () => router.push(CONSUMER_ROUTES.favorites),
+        },
+        { tone: "success" },
+      );
+    } else {
+      toast(`Removed ${placeName} from saved`);
+    }
+  }
+
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={onSavePlace}
+        aria-pressed={saved}
+        className={cn(
+          "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold transition active:scale-[0.99]",
+          saved
+            ? "bg-pink-gradient shadow-glow border-transparent text-white hover:brightness-110"
+            : "border-border bg-card text-foreground hover:bg-muted",
+        )}
+      >
+        <Heart
+          className={cn("h-4 w-4", saved && "fill-current")}
+          strokeWidth={2}
+        />
+        {saved ? "Saved" : "Save place"}
+      </button>
+      <button
+        type="button"
+        disabled
+        aria-disabled="true"
+        className="border-border bg-muted text-muted-foreground inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border py-2 text-[13px] font-semibold"
+      >
+        <CalendarCheck className="h-4 w-4" strokeWidth={2} />
+        Make reservation
+        <span className="bg-foreground/10 text-muted-foreground rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+          Soon
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// ── 2. Media (Place tab) ────────────────────────────────────────────────
 
 function MediaBox({ place }: { place: PlaceDetail }) {
-  // Hero treatment: bleeds past the body's px-4 so the photo spans the
-  // full page width under the sticky top bar.
+  // Photo catalog — the swipeable carousel inside a Box now that the
+  // avatar (not a full-bleed hero) leads the page.
+  if (place.photos.length === 0) return null;
   return (
-    <div className="-mx-4 overflow-hidden">
-      {place.photos.length > 0 ? (
+    <Box title="Photos" icon={Camera} iconColor="text-pink-400">
+      <div className="overflow-hidden rounded-xl">
         <ImageCarousel
           photos={place.photos}
           alt={place.name}
           aspect="aspect-square"
         />
-      ) : (
-        <div className="bg-pink-gradient flex aspect-square items-center justify-center">
-          <span className="font-display text-8xl font-bold text-white/70">
-            {firstInitial(place.name)}
-          </span>
-        </div>
-      )}
-    </div>
+      </div>
+    </Box>
   );
 }
 
@@ -477,38 +609,38 @@ function ExternalCard({
   );
 }
 
-// ── 4. Relevant reviews (merged carousel) ───────────────────────────────
+// ── 4. Individual reviews (Reviews tab: Google + Mesita, one box each) ──
 
-function IndividualReviewsBox({ place }: { place: PlaceDetail }) {
-  // Interleave Mesita visitors and Google reviews so featured cards from
-  // both sources sit in one carousel. Mesita leads (richer, owned data).
-  const items: Array<
-    | { kind: "mesita"; data: PlaceDetail["mesita_visitors"][number] }
-    | { kind: "google"; data: PlaceDetail["google_reviews"][number] }
-  > = [];
-  const maxLen = Math.max(
-    place.mesita_visitors.length,
-    place.google_reviews.length,
-  );
-  for (let i = 0; i < maxLen; i++) {
-    if (place.mesita_visitors[i]) {
-      items.push({ kind: "mesita", data: place.mesita_visitors[i] });
-    }
-    if (place.google_reviews[i]) {
-      items.push({ kind: "google", data: place.google_reviews[i] });
-    }
-  }
-  if (items.length === 0) return null;
-
+function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
+  if (place.google_reviews.length === 0) return null;
   return (
     <Box
-      title="Relevant reviews"
-      icon={MessageCircle}
-      iconColor="text-pink-400"
+      title="Google reviews"
+      icon={Star}
+      iconColor="text-amber-400"
+      right={`${formatCount(place.google.count, true)} total`}
     >
       <BoxHScroll>
-        {items.map((item, i) => (
-          <ReviewCard key={`${item.kind}-${i}`} {...item} />
+        {place.google_reviews.map((data, i) => (
+          <ReviewCard key={`google-${i}`} kind="google" data={data} />
+        ))}
+      </BoxHScroll>
+    </Box>
+  );
+}
+
+function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
+  if (place.mesita_visitors.length === 0) return null;
+  return (
+    <Box
+      title="Mesita reviews"
+      icon={MessageCircle}
+      iconColor="text-pink-400"
+      right={`${place.mesita_reviews.total} total`}
+    >
+      <BoxHScroll>
+        {place.mesita_visitors.map((data, i) => (
+          <ReviewCard key={`mesita-${i}`} kind="mesita" data={data} />
         ))}
       </BoxHScroll>
     </Box>
@@ -522,10 +654,31 @@ function IndividualReviewsBox({ place }: { place: PlaceDetail }) {
 // ── Products ────────────────────────────────────────────────────────────
 
 function ProductsBox({ place }: { place: PlaceDetail }) {
+  // Sole occupant of the Products tab, so it never returns null — an
+  // empty catalog renders an explicit "no menu" state instead of a
+  // blank tab.
   const menus = place.products.menu;
-  if (menus.length === 0) return null;
+  if (menus.length === 0) {
+    return (
+      <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
+        <div className="flex flex-col items-center gap-3 py-3 text-center">
+          <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
+            <Utensils className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="flex flex-col gap-1">
+            <p className="text-foreground text-sm font-semibold">
+              No menu available yet
+            </p>
+            <p className="text-muted-foreground text-xs leading-snug">
+              This place hasn&apos;t uploaded a menu or product catalog.
+            </p>
+          </div>
+        </div>
+      </Box>
+    );
+  }
   return (
-    <Box title="Products" icon={Utensils} iconColor="text-amber-400">
+    <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
       <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
         <Info
           className="h-3.5 w-3.5 shrink-0 text-amber-600"
@@ -1348,87 +1501,8 @@ function LinksBox({ place }: { place: PlaceDetail }) {
   );
 }
 
-// ── Action bar ──────────────────────────────────────────────────────────
-//
-// Rendered by the place modal shell + the hard-nav page as a sibling AFTER
-// the scrollable body so its opaque buttons can't occlude content. shrink-0
-// keeps it from compressing inside the parent's flex-col.
-//
-// Two equal buttons, full width each:
-//   • Save place — toggles the place in the localStorage saved-places
-//     store. Place-only since the "byebye coupons-as-entity" checkpoint:
-//     saving no longer mints a coupon as a side effect. Toast confirms;
-//     tap "View" to jump to /saved.
-//   • Reserve table — parked while the booking flow ships. Rendered
-//     disabled + muted so the action bar still reads complete, but it
-//     opens nothing (the ReservationSheet wiring was removed). Un-park by
-//     restoring an onReserve handler when reservations go live.
-export function PlaceDetailActionBar({
-  placeId,
-  placeName,
-}: {
-  placeId: string;
-  placeName: string;
-}) {
-  const router = useRouter();
-  const { isSaved, toggle } = useSavedPlaces();
-  const saved = isSaved(placeId);
-
-  function onSavePlace() {
-    const nowSaved = !saved;
-    toggle(placeId);
-    if (nowSaved) {
-      toast.action(
-        `Saved ${placeName}`,
-        {
-          label: "View",
-          onClick: () => router.push(CONSUMER_ROUTES.favorites),
-        },
-        { tone: "success" },
-      );
-    } else {
-      toast(`Removed ${placeName} from saved`);
-    }
-  }
-
-  return (
-    <div className="border-border bg-background/85 flex shrink-0 gap-2 border-t px-4 pt-3 pb-4 backdrop-blur">
-      <button
-        type="button"
-        onClick={onSavePlace}
-        aria-pressed={saved}
-        className={cn(
-          "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-semibold transition active:scale-[0.99]",
-          saved
-            ? "bg-pink-gradient shadow-glow border-transparent text-white hover:brightness-110"
-            : "border-border bg-card text-foreground hover:bg-muted",
-        )}
-      >
-        <Heart
-          className={cn("h-4 w-4", saved && "fill-current")}
-          strokeWidth={2}
-        />
-        {saved ? "Saved" : "Save place"}
-      </button>
-      {/* Parked: reservations aren't live yet, so this is a disabled,
-          muted CTA (no onClick, cursor-not-allowed) sitting beside the
-          live Save button. The "Soon" tag tells the user it's upcoming
-          rather than broken. */}
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        className="border-border bg-muted text-muted-foreground inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-semibold"
-      >
-        <CalendarCheck className="h-4 w-4" strokeWidth={2} />
-        Reserve table
-        <span className="bg-foreground/10 text-muted-foreground rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
-          Soon
-        </span>
-      </button>
-    </div>
-  );
-}
+// ── Action bar — removed. Save + Make reservation moved into the
+//    Instagram-style ProfileSummary buttons at the top of the body. ──────
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
