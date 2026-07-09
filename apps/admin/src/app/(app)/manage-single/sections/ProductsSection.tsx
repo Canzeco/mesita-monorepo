@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import {
   ExternalLink,
   FileText,
+  Link2,
   Loader2,
   Plus,
   Trash2,
@@ -23,10 +24,14 @@ import { SaveBar, SectionCard, TextField } from "../ui";
 
 const MENU_NAME_MAX = 80;
 
+type MenuSource = "upload" | "drive";
+
 type MenuDraft = {
   key: string;
   name: string;
   url: string;
+  /** Exclusive source — upload file XOR Drive link. */
+  source: MenuSource;
 };
 
 type ItemKind = "menu";
@@ -35,7 +40,7 @@ const ITEM_KINDS: { id: ItemKind; label: string; hint: string }[] = [
   {
     id: "menu",
     label: "Menu",
-    hint: "PDF or image upload, or Google Drive link",
+    hint: "Upload a PDF/image, or paste a Drive link — pick one",
   },
 ];
 
@@ -48,6 +53,10 @@ function normalizeHttpsUrl(raw: string): string {
   if (!trimmed) return "";
   if (/^[a-z]+:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+}
+
+function sourceFromUrl(url: string): MenuSource {
+  return isDriveMenuUrl(url) ? "drive" : "upload";
 }
 
 function menusFromPlace(place: AdminPlace): MenuDraft[] {
@@ -68,7 +77,7 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
             : "";
       const name = typeof m?.name === "string" ? m.name.trim() : "";
       if (!url && !name) return null;
-      return { key: newKey(), name, url };
+      return { key: newKey(), name, url, source: sourceFromUrl(url) };
     })
     .filter((m): m is MenuDraft => m != null);
 
@@ -76,11 +85,13 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
 
   // Legacy single-slot columns (pre-products.menu).
   if (place.menu_pdf_url?.trim() || place.menu_pdf_name?.trim()) {
+    const url = place.menu_pdf_url?.trim() ?? "";
     return [
       {
         key: newKey(),
         name: place.menu_pdf_name?.trim() ?? "",
-        url: place.menu_pdf_url?.trim() ?? "",
+        url,
+        source: sourceFromUrl(url),
       },
     ];
   }
@@ -124,9 +135,24 @@ export function ProductsSection({
     );
   }, [items, saved]);
 
-  const patchItem = (key: string, patch: Partial<Pick<MenuDraft, "name" | "url">>) => {
+  const patchItem = (
+    key: string,
+    patch: Partial<Pick<MenuDraft, "name" | "url" | "source">>,
+  ) => {
     setItems((prev) =>
       prev.map((m) => (m.key === key ? { ...m, ...patch } : m)),
+    );
+    setOk(false);
+  };
+
+  const setSource = (key: string, source: MenuSource) => {
+    setItems((prev) =>
+      prev.map((m) => {
+        if (m.key !== key) return m;
+        if (m.source === source) return m;
+        // Switching path clears the other — upload XOR drive, never both.
+        return { ...m, source, url: "" };
+      }),
     );
     setOk(false);
   };
@@ -137,7 +163,10 @@ export function ProductsSection({
   };
 
   const addMenu = () => {
-    setItems((prev) => [...prev, { key: newKey(), name: "", url: "" }]);
+    setItems((prev) => [
+      ...prev,
+      { key: newKey(), name: "", url: "", source: "upload" },
+    ]);
     setPickerOpen(false);
     setOk(false);
   };
@@ -187,6 +216,7 @@ export function ProductsSection({
           m.key === key
             ? {
                 ...m,
+                source: "upload",
                 url: data.publicUrl,
                 name: m.name.trim() || baseName,
               }
@@ -209,6 +239,10 @@ export function ProductsSection({
       const normalized = normalizeHttpsUrl(trimmed);
       if (!/^https:\/\//i.test(normalized)) {
         setError("Each menu needs a valid https:// URL (Drive link or uploaded file).");
+        return;
+      }
+      if (m.source === "drive" && !isDriveMenuUrl(normalized)) {
+        setError("Drive menus need a Google Drive or Docs link.");
         return;
       }
     }
@@ -245,7 +279,7 @@ export function ProductsSection({
     <SectionCard
       icon={<UtensilsCrossed className="text-muted-foreground h-4 w-4" />}
       title="Products"
-      subtitle="Add menus and other product items shown to consumers. Menu = PDF or image (JPG, PNG, WEBP, AVIF) · max 8 MB · or Google Drive link."
+      subtitle="Add menus shown to consumers. For each menu, choose Upload or Drive — not both."
     >
       <input
         ref={fileInputRef}
@@ -257,13 +291,16 @@ export function ProductsSection({
 
       {items.length === 0 ? (
         <div className="mt-6 flex flex-col items-start gap-3">
-          <p className="text-muted-foreground text-sm">No items yet.</p>
-          <AddItemsControl
-            open={pickerOpen}
-            onOpenChange={setPickerOpen}
-            onPick={onPickKind}
+          <p className="text-muted-foreground text-sm">No menus yet.</p>
+          <button
+            type="button"
             disabled={pending}
-          />
+            onClick={addMenu}
+            className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            New menu
+          </button>
         </div>
       ) : (
         <div className="mt-5 flex flex-col gap-4">
@@ -275,6 +312,7 @@ export function ProductsSection({
               pending={pending}
               uploading={uploadingKey === item.key}
               onPatch={(patch) => patchItem(item.key, patch)}
+              onSource={(source) => setSource(item.key, source)}
               onRemove={() => removeItem(item.key)}
               onUpload={() => startUpload(item.key)}
             />
@@ -312,6 +350,21 @@ function AddItemsControl({
   onPick: (kind: ItemKind) => void;
   disabled?: boolean;
 }) {
+  // Only one kind today — still keep the picker shell for future product types.
+  if (ITEM_KINDS.length === 1) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onPick(ITEM_KINDS[0].id)}
+        className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+      >
+        <Plus className="h-4 w-4" />
+        New menu
+      </button>
+    );
+  }
+
   return (
     <div className="relative">
       <button
@@ -356,6 +409,7 @@ function MenuItemCard({
   pending,
   uploading,
   onPatch,
+  onSource,
   onRemove,
   onUpload,
 }: {
@@ -364,12 +418,13 @@ function MenuItemCard({
   pending: boolean;
   uploading: boolean;
   onPatch: (patch: Partial<Pick<MenuDraft, "name" | "url">>) => void;
+  onSource: (source: MenuSource) => void;
   onRemove: () => void;
   onUpload: () => void;
 }) {
-  const hasUploadedFile = item.url.trim() !== "" && !isDriveMenuUrl(item.url);
-  const linkValue =
-    isDriveMenuUrl(item.url) || !hasUploadedFile ? item.url : "";
+  const hasFile = item.source === "upload" && item.url.trim() !== "";
+  const hasDrive = item.source === "drive" && item.url.trim() !== "";
+  const isNew = !item.name.trim() && !item.url.trim();
 
   return (
     <div className="border-border bg-background rounded-xl border p-4">
@@ -377,7 +432,7 @@ function MenuItemCard({
         <div className="flex items-center gap-2">
           <FileText className="text-muted-foreground h-4 w-4" />
           <span className="text-sm font-semibold">
-            Menu{itemsLabel(index)}
+            {isNew ? "New menu" : `Menu${itemsLabel(index)}`}
           </span>
         </div>
         <button
@@ -391,77 +446,144 @@ function MenuItemCard({
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TextField
-          label="Menu name"
-          value={item.name}
-          onChange={(v) => onPatch({ name: v.slice(0, MENU_NAME_MAX) })}
-          placeholder="Dinner menu"
-          maxLength={MENU_NAME_MAX}
-          disabled={pending || uploading}
-        />
-        <TextField
-          label="Drive link"
-          value={linkValue}
-          onChange={(v) => onPatch({ url: v })}
-          placeholder="https://drive.google.com/…"
-          disabled={pending || uploading}
-        />
+      <TextField
+        label="Menu name"
+        value={item.name}
+        onChange={(v) => onPatch({ name: v.slice(0, MENU_NAME_MAX) })}
+        placeholder="Dinner menu"
+        maxLength={MENU_NAME_MAX}
+        disabled={pending || uploading}
+      />
+
+      <div className="mt-4">
+        <p className="mb-2 text-sm font-medium">Source</p>
+        <div
+          role="radiogroup"
+          aria-label="Menu source"
+          className="border-border bg-muted/40 grid grid-cols-2 gap-1 rounded-xl border p-1"
+        >
+          <SourceOption
+            active={item.source === "upload"}
+            disabled={pending || uploading}
+            icon={<Upload className="h-3.5 w-3.5" />}
+            label="Upload file"
+            onClick={() => onSource("upload")}
+          />
+          <SourceOption
+            active={item.source === "drive"}
+            disabled={pending || uploading}
+            icon={<Link2 className="h-3.5 w-3.5" />}
+            label="Google Drive"
+            onClick={() => onSource("drive")}
+          />
+        </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          disabled={pending || uploading}
-          onClick={onUpload}
-          className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Uploading…
-            </>
-          ) : (
-            <>
-              <Upload className="h-4 w-4" />
-              {hasUploadedFile ? "Replace file" : "Upload file"}
-            </>
-          )}
-        </button>
-        {hasUploadedFile ? (
-          <>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-secondary inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
-            >
-              Open file <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+      {item.source === "upload" ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               disabled={pending || uploading}
-              onClick={() => onPatch({ url: "" })}
-              className="text-muted-foreground hover:text-destructive text-xs font-medium"
+              onClick={onUpload}
+              className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
             >
-              Clear file
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  {hasFile ? "Replace file" : "Choose file"}
+                </>
+              )}
             </button>
-          </>
-        ) : item.url.trim() && /^https:\/\//i.test(normalizeHttpsUrl(item.url)) ? (
-          <a
-            href={normalizeHttpsUrl(item.url)}
-            target="_blank"
-            rel="noreferrer"
-            className="text-secondary inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
-          >
-            Open link <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        ) : null}
-        <p className="text-muted-foreground text-xs">
-          PDF or image (JPG, PNG, WEBP, AVIF) · max 8 MB · or paste a Drive link
-        </p>
-      </div>
+            {hasFile ? (
+              <>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-secondary inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
+                >
+                  Open file <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+                <button
+                  type="button"
+                  disabled={pending || uploading}
+                  onClick={() => onPatch({ url: "" })}
+                  className="text-muted-foreground hover:text-destructive text-xs font-medium"
+                >
+                  Clear file
+                </button>
+              </>
+            ) : null}
+          </div>
+          <p className="text-muted-foreground text-xs">
+            PDF or image (JPG, PNG, WEBP, AVIF) · max 8 MB
+          </p>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2">
+          <TextField
+            label="Drive link"
+            value={item.url}
+            onChange={(v) => onPatch({ url: v })}
+            placeholder="https://drive.google.com/…"
+            disabled={pending || uploading}
+          />
+          {hasDrive && /^https:\/\//i.test(normalizeHttpsUrl(item.url)) ? (
+            <a
+              href={normalizeHttpsUrl(item.url)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-secondary inline-flex w-fit items-center gap-1.5 text-sm font-medium hover:underline"
+            >
+              Open link <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Paste a Google Drive or Docs share link
+            </p>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+function SourceOption({
+  active,
+  disabled,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      disabled={disabled}
+      onClick={onClick}
+      className={
+        "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50 " +
+        (active
+          ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/10"
+          : "text-muted-foreground hover:text-foreground")
+      }
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
