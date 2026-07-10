@@ -89,9 +89,29 @@ export function UnitEditChrome({
           aria-label="Unit sections"
           className="flex items-stretch gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {UNIT_SECTIONS.map(({ id, label, Icon }) => {
+          {UNIT_SECTIONS.map(({ id, label, Icon, soon }) => {
             const href = unitSectionHref(projectId, id);
             const active = pathname === href || pathname.startsWith(`${href}/`);
+
+            // Not-yet-built sections: non-navigable, dimmed, with a "Soon" badge.
+            if (soon) {
+              return (
+                <span
+                  key={id}
+                  role="tab"
+                  aria-disabled
+                  title={`${label} — coming soon`}
+                  className="text-background/35 relative inline-flex min-h-12 shrink-0 cursor-not-allowed items-center gap-2 px-3.5 text-sm font-semibold sm:min-h-[3.25rem] sm:px-4"
+                >
+                  <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                  <span>{label}</span>
+                  <span className="bg-background/10 text-background/60 rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase">
+                    Soon
+                  </span>
+                </span>
+              );
+            }
+
             return (
               <Link
                 key={id}

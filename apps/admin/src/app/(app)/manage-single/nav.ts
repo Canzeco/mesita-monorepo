@@ -9,14 +9,16 @@ import {
   UsersRound,
 } from "lucide-react";
 
+// `soon` sections are not yet built — shown in the tab bar with a "Soon" badge,
+// non-navigable, and their routes render a placeholder instead of the section.
 export const UNIT_SECTIONS = [
-  { id: "place", label: "Place", Icon: Store },
-  { id: "reviews", label: "Reviews", Icon: Star },
-  { id: "products", label: "Products", Icon: UtensilsCrossed },
-  { id: "promos", label: "Promos", Icon: Tag },
-  { id: "scan", label: "Scan", Icon: QrCode },
-  { id: "performance", label: "Performance", Icon: ChartLine },
-  { id: "team", label: "Team", Icon: UsersRound },
+  { id: "place", label: "Place", Icon: Store, soon: false },
+  { id: "reviews", label: "Reviews", Icon: Star, soon: false },
+  { id: "products", label: "Products", Icon: UtensilsCrossed, soon: true },
+  { id: "promos", label: "Promos", Icon: Tag, soon: true },
+  { id: "scan", label: "Scan", Icon: QrCode, soon: true },
+  { id: "performance", label: "Performance", Icon: ChartLine, soon: true },
+  { id: "team", label: "Team", Icon: UsersRound, soon: true },
 ] as const;
 
 export type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];

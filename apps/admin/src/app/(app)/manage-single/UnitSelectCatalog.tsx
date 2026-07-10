@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Crown,
+  ExternalLink,
+  ImageOff,
   Loader2,
   MapPin,
   Plus,
@@ -69,6 +71,9 @@ export function UnitSelectCatalog() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [creatingLabel, setCreatingLabel] = useState<string | null>(null);
   const [createPending, startCreate] = useTransition();
+  // The Google prediction awaiting an explicit "Add to Mesita" confirmation.
+  // Set only for creatable (not_in_mesita) results — existing units open directly.
+  const [confirm, setConfirm] = useState<PlacePrediction | null>(null);
 
   const trimmed = q.trim();
   const placeIdMode = looksLikePlaceId(trimmed);
@@ -139,7 +144,14 @@ export function UnitSelectCatalog() {
     });
   };
 
+  // Creatable results open a confirm modal (explicit "Add to Mesita"); results
+  // already on Mesita open directly — no confirmation needed.
   const onPickGoogle = (prediction: PlacePrediction) => {
+    if (prediction.status === "not_in_mesita") {
+      setCreateError(null);
+      setConfirm(prediction);
+      return;
+    }
     createFromPlaceId(prediction.placeId, prediction.mainText);
   };
 
@@ -170,6 +182,7 @@ export function UnitSelectCatalog() {
     setGoogleRemoteError(null);
     setCreateError(null);
     setCreatingLabel(null);
+    setConfirm(null);
     sessionTokenRef.current = newSessionToken();
   };
 
@@ -317,11 +330,18 @@ export function UnitSelectCatalog() {
                       )}
                       <span className="text-muted-foreground mt-1 block text-xs">
                         {canCreate
-                          ? "Click to create this unit"
+                          ? "Click to review & add"
                           : "Already on Mesita — click to open"}
                       </span>
                     </span>
-                    <ChevronRight className="text-muted-foreground mt-3 h-4 w-4 shrink-0" />
+                    {canCreate ? (
+                      <span className="bg-secondary text-secondary-foreground mt-1.5 inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+                        <Plus className="h-3.5 w-3.5" />
+                        Add
+                      </span>
+                    ) : (
+                      <ChevronRight className="text-muted-foreground mt-3 h-4 w-4 shrink-0" />
+                    )}
                   </button>
                 );
               })}
@@ -336,6 +356,195 @@ export function UnitSelectCatalog() {
             </div>
           </div>
         )}
+      </div>
+
+      {confirm && (
+        <AddPlaceModal
+          key={confirm.placeId}
+          prediction={confirm}
+          adding={createPending}
+          error={createError}
+          onConfirm={() => createFromPlaceId(confirm.placeId, confirm.mainText)}
+          onClose={() => {
+            setConfirm(null);
+            setCreateError(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+type GooglePlaceDetails = {
+  photoUrl: string | null;
+  address: string | null;
+  mapsUrl: string | null;
+};
+
+// Reopening the modal for the same place shouldn't refetch.
+const placeDetailCache = new Map<string, GooglePlaceDetails>();
+
+// Display-only Google Places Details (New) lookup for the confirm modal — one
+// client-side call per place for a hero photo + tidy address, keyed by
+// NEXT_PUBLIC_GMP_KEY. Nothing is persisted (mirrors the consumer add sheet).
+async function fetchGooglePlaceDetails(placeId: string): Promise<GooglePlaceDetails> {
+  const cached = placeDetailCache.get(placeId);
+  if (cached) return cached;
+  const empty: GooglePlaceDetails = { photoUrl: null, address: null, mapsUrl: null };
+  const key = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
+  if (!key) return empty;
+  try {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}` +
+        `?fields=photos,formattedAddress,googleMapsUri&key=${key}`,
+    );
+    if (!res.ok) return empty;
+    const data = (await res.json()) as {
+      photos?: { name?: string }[];
+      formattedAddress?: string;
+      googleMapsUri?: string;
+    };
+    const photoName = data.photos?.[0]?.name ?? null;
+    const details: GooglePlaceDetails = {
+      photoUrl: photoName
+        ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=1200&key=${key}`
+        : null,
+      address: data.formattedAddress ?? null,
+      mapsUrl: data.googleMapsUri ?? null,
+    };
+    placeDetailCache.set(placeId, details);
+    return details;
+  } catch {
+    return empty;
+  }
+}
+
+// Confirm-before-create modal for an external Google result. Fetches a display
+// photo + address on open; the primary action runs the existing create flow.
+function AddPlaceModal({
+  prediction,
+  adding,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  prediction: PlacePrediction;
+  adding: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const [details, setDetails] = useState<GooglePlaceDetails | null>(null);
+  const [photoFailed, setPhotoFailed] = useState(false);
+
+  // The modal is keyed by placeId at the render site, so it remounts fresh per
+  // place — no synchronous reset needed here (which the set-state-in-effect rule
+  // forbids). The only setState lands after the await.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const d = await fetchGooglePlaceDetails(prediction.placeId);
+      if (!cancelled) setDetails(d);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [prediction.placeId]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !adding) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, adding]);
+
+  const address = details?.address ?? prediction.secondaryText ?? null;
+  const photoUrl = details?.photoUrl ?? null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={() => {
+        if (!adding) onClose();
+      }}
+    >
+      <div
+        className="border-border bg-card w-full max-w-md overflow-hidden rounded-2xl border shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add place to Mesita"
+      >
+        <div className="bg-muted/40 flex h-44 w-full items-center justify-center overflow-hidden">
+          {photoUrl && !photoFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt={prediction.mainText}
+              onError={() => setPhotoFailed(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : details === null ? (
+            <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          ) : (
+            <ImageOff className="text-muted-foreground h-7 w-7" />
+          )}
+        </div>
+
+        <div className="p-5">
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+            Add to Mesita
+          </p>
+          <h3 className="mt-1 text-base font-semibold">{prediction.mainText}</h3>
+          {address && (
+            <p className="text-muted-foreground mt-1 flex items-start gap-1.5 text-sm">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{address}</span>
+            </p>
+          )}
+          {details?.mapsUrl && (
+            <a
+              href={details.mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-secondary mt-2 inline-flex items-center gap-1 text-xs font-medium hover:underline"
+            >
+              View on Google Maps <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+
+          <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
+            This place isn’t on Mesita yet. Adding it creates the unit and kicks off
+            AI enrichment in the background.
+          </p>
+
+          {error && <ErrorNote message={error} />}
+
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={adding}
+              className="text-foreground hover:bg-muted inline-flex h-10 items-center rounded-xl px-4 text-sm font-medium transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={adding}
+              className="bg-secondary text-secondary-foreground inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-60"
+            >
+              {adding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {adding ? "Adding…" : "Add to Mesita"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -875,22 +875,30 @@ function PhotosEditor({
 // Derives a display badge from the raw enrichment status. Prefers the live
 // place_research stage; falls back to the project's content_status when the
 // place has no research row yet (created but never enriched).
-function enrichmentBadge(s: PlaceEnrichmentStatus | null): { text: string; cls: string } {
+function enrichmentBadge(
+  s: PlaceEnrichmentStatus | null,
+): { text: string; cls: string; spinning: boolean } {
   const stage = s?.stage ?? null;
-  if (stage === "done") return { text: "Enriched", cls: "bg-green-500/10 text-green-600" };
-  if (stage === "failed") return { text: "Failed", cls: "bg-red-500/10 text-red-600" };
+  if (stage === "done")
+    return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
+  if (stage === "failed")
+    return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
   if (stage === "research" || stage === "analysis" || stage === "contents") {
-    return { text: `Enriching… (${stage})`, cls: "bg-blue-500/10 text-blue-600" };
+    return {
+      text: `Enriching… (${stage})`,
+      cls: "bg-blue-500/10 text-blue-600",
+      spinning: true,
+    };
   }
   switch (s?.content_status) {
     case "ready":
-      return { text: "Enriched", cls: "bg-green-500/10 text-green-600" };
+      return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
     case "generating":
-      return { text: "Enriching…", cls: "bg-blue-500/10 text-blue-600" };
+      return { text: "Enriching…", cls: "bg-blue-500/10 text-blue-600", spinning: true };
     case "failed":
-      return { text: "Failed", cls: "bg-red-500/10 text-red-600" };
+      return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
     default:
-      return { text: "Not enriched", cls: "bg-muted text-muted-foreground" };
+      return { text: "Not enriched", cls: "bg-muted text-muted-foreground", spinning: false };
   }
 }
 
@@ -902,10 +910,11 @@ function EnrichmentStatusField({ status }: { status: PlaceEnrichmentStatus | nul
       <div className="border-border bg-background flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2.5">
         <span
           className={
-            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+            "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold " +
             badge.cls
           }
         >
+          {badge.spinning && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
           {badge.text}
         </span>
         {status?.last_enriched_at && (

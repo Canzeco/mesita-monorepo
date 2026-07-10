@@ -1,9 +1,7 @@
-"use client";
+import { SoonSection } from "../../sections/SoonSection";
 
-import { TeamSection } from "../../sections/TeamSection";
-import { useUnitPlace } from "../../UnitPlaceContext";
-
+// Team is gated "Soon" in nav.ts — the tab is non-navigable; this handles
+// direct URLs with a coming-soon placeholder.
 export default function UnitTeamPage() {
-  const { place } = useUnitPlace();
-  return <TeamSection place={place} />;
+  return <SoonSection label="Team" />;
 }

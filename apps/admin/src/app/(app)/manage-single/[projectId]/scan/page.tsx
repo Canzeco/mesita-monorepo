@@ -1,9 +1,7 @@
-"use client";
+import { SoonSection } from "../../sections/SoonSection";
 
-import { ScanSection } from "../../sections/ScanSection";
-import { useUnitPlace } from "../../UnitPlaceContext";
-
+// Scan is gated "Soon" in nav.ts — the tab is non-navigable; this handles
+// direct URLs with a coming-soon placeholder.
 export default function UnitScanPage() {
-  const { place } = useUnitPlace();
-  return <ScanSection place={place} />;
+  return <SoonSection label="Scan" />;
 }

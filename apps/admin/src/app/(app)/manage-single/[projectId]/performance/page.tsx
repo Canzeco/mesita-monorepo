@@ -1,9 +1,7 @@
-"use client";
+import { SoonSection } from "../../sections/SoonSection";
 
-import { PerformanceSection } from "../../sections/PerformanceSection";
-import { useUnitPlace } from "../../UnitPlaceContext";
-
+// Performance is gated "Soon" in nav.ts — the tab is non-navigable; this handles
+// direct URLs with a coming-soon placeholder.
 export default function UnitPerformancePage() {
-  const { place } = useUnitPlace();
-  return <PerformanceSection place={place} />;
+  return <SoonSection label="Performance" />;
 }
