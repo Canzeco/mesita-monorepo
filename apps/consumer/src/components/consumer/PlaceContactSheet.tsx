@@ -2,7 +2,7 @@
 
 import { Fragment } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Globe, Instagram, Mail, MessageCircle, Phone } from "lucide-react";
+import { Globe, Instagram, MessageCircle, Phone } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   RowDivider,
@@ -16,8 +16,8 @@ import type { PlaceDetail } from "@/lib/mock/place";
 // the mediums this place actually exposes and reuses the Me-page row chrome so
 // every contact sheet in the app reads the same.
 //
-// decision: Pato — WhatsApp leads (the default direct line in MX), then Call,
-//   Instagram DM, Email, Website. tel:/mailto: open in place; the rest are
+// decision: Pato (MESITA-383) — exactly four channels: WhatsApp · Call ·
+//   Instagram · Website (Email removed). tel: opens in place; the rest are
 //   external.
 
 type ContactRow = {
@@ -73,16 +73,6 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
       sub: "Send a direct message",
       href: instagram_url,
       external: true,
-    });
-  }
-  if (place.email) {
-    rows.push({
-      key: "email",
-      Icon: Mail,
-      tint: "amber",
-      label: "Email",
-      sub: place.email,
-      href: `mailto:${place.email}`,
     });
   }
   if (website_url) {

@@ -1,20 +1,21 @@
 "use client";
 
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
+import { PlaceSaveButton } from "@/components/consumer/PlaceSaveButton";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
 // itself (enter/exit animation, backdrop, ESC, router.back on dismiss) is
 // SlideOverShell, mounted by the segment's layout.tsx — this component only
 // fills it with the place header and scrollable body.
 //
-// decision: Pato — Save · Reserve · Share are one body row; header is
-// name-only. SlideOverHeader keeps a right spacer when actions are omitted.
-//   1. SlideOverHeader (shrink-0) — dismiss + place name
+// decision: Pato (MESITA-383) — Save lives top-right in the header; the
+// body action row is Contact · Reserve · Share.
+//   1. SlideOverHeader (shrink-0) — dismiss + place name + Save
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody
 
 export function PlaceDetailModalShell({
   children,
-  placeId: _placeId,
+  placeId,
   placeName,
   listingType: _listingType,
 }: {
@@ -31,6 +32,7 @@ export function PlaceDetailModalShell({
             {placeName}
           </span>
         }
+        actions={<PlaceSaveButton placeId={placeId} placeName={placeName} />}
       />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child

@@ -8,7 +8,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // Client wrapper for the hard-nav /place/[id] page. Mirrors the modal
 // shell's header + scroll-area layout. The outer server page
 // (place/[id]/page.tsx) stays server-rendered and just hands the place
-// prop down. Save · Reserve · Share live as one row in PlaceDetailBody.
+// prop down. Save lives in the header; Contact · Reserve · Share in the body.
 export function PlaceDetailPageBody({
   place,
   backHref = CONSUMER_ROUTES.home,

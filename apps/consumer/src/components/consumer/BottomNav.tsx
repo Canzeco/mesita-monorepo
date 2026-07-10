@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { Search, QrCode, CalendarCheck, User } from "lucide-react";
 import { MesitaMark } from "./MesitaMark";
+import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
 import { useConsumerClass } from "@/lib/class-context";
 import {
@@ -25,12 +26,11 @@ type Item = {
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   match: string;
-  // Surface is parked behind a coming-soon gate. Mirrors the Home AI/Social
-  // block: the tab stays visible (so the surface reads as intentional and
-  // un-parking is a one-flag flip) but renders DISABLED and non-navigable —
-  // no <Link>, greyed out, with a muted "Soon" pill. The real page content
-  // stays untouched in the tree; flip `soon` off to unblock.
+  // Surface is parked. Tab stays visible and tappable; tap opens
+  // ComingSoonModal instead of navigating (MESITA-383 — no "Soon" pills).
   soon?: boolean;
+  soonTitle?: string;
+  soonBody?: string;
 };
 
 const ITEMS: Item[] = [
@@ -55,6 +55,9 @@ const ITEMS: Item[] = [
     label: "Rewards",
     match: CONSUMER_ROUTE_PREFIX.rewards,
     soon: true,
+    soonTitle: "Rewards coming soon",
+    soonBody:
+      "Pay with QR and claim Mesita rewards from here shortly. Hang tight.",
   },
   {
     href: CONSUMER_ROUTES.saved.reservations,
@@ -63,6 +66,9 @@ const ITEMS: Item[] = [
     // Singular prefix also catches /saved/reservation/[id] detail views.
     match: CONSUMER_RESERVATION_SURFACE_PREFIX,
     soon: true,
+    soonTitle: "Reservations coming soon",
+    soonBody:
+      "Your bookings will live here. For now, reach venues from Contact on a place.",
   },
   {
     href: CONSUMER_ROUTES.me,
@@ -85,82 +91,88 @@ export function BottomNav({ userId }: { userId?: string }) {
   // profile (harmless: a Premium member is shown Free for one paint at most).
   const { key: classKey } = useConsumerClass();
   const classLabel = classKey === "premium" ? "Premium" : "Free";
+  const [soonItem, setSoonItem] = useState<Item | null>(null);
 
   return (
-    <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-0.5 pt-2 backdrop-blur">
-      <div className="flex items-end justify-around">
-        {ITEMS.map(({ href, Icon, label, match, soon }) => {
-          const active =
-            pathname.startsWith(match) ||
-            // Legacy deep links still hit /profile; keep the Profile tab lit
-            // while those routes redirect.
-            (match === CONSUMER_ROUTE_PREFIX.me &&
-              pathname.startsWith(CONSUMER_ROUTES.legacy.profile)) ||
-            // Place detail modals opened from Home keep the Home tab lit.
-            (match === CONSUMER_ROUTE_PREFIX.home &&
-              pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
-          // The Me tab carries the live class suffix; every other tab keeps
-          // its static label.
-          const displayLabel =
-            match === CONSUMER_ROUTE_PREFIX.me
-              ? `${label} · ${classLabel}`
-              : label;
-          // Parked surfaces (Rewards/Reservations) are BLOCKED exactly like the
-          // Home AI/Social tabs: the tab stays visible but renders disabled and
-          // non-navigable (no <Link>) so it can't be reached, greyed out with a
-          // muted "Soon" pill. The real page content stays intact in the tree.
-          if (soon) {
-            return (
-              <span
-                key={href}
-                aria-disabled="true"
-                title="Coming soon"
-                className="text-muted-foreground/40 relative flex min-w-0 flex-1 cursor-not-allowed flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium"
-              >
-                <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
-                  <Icon className="h-5 w-5" strokeWidth={1.75} />
-                  <span className="border-border/70 bg-card text-muted-foreground/70 absolute -top-1.5 -right-3 rounded-full border px-1 py-px text-[7px] leading-3 font-semibold tracking-wide uppercase">
-                    Soon
+    <>
+      <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-0.5 pt-2 backdrop-blur">
+        <div className="flex items-end justify-around">
+          {ITEMS.map((item) => {
+            const { href, Icon, label, match, soon } = item;
+            const active =
+              pathname.startsWith(match) ||
+              // Legacy deep links still hit /profile; keep the Profile tab lit
+              // while those routes redirect.
+              (match === CONSUMER_ROUTE_PREFIX.me &&
+                pathname.startsWith(CONSUMER_ROUTES.legacy.profile)) ||
+              // Place detail modals opened from Home keep the Home tab lit.
+              (match === CONSUMER_ROUTE_PREFIX.home &&
+                pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
+            // The Me tab carries the live class suffix; every other tab keeps
+            // its static label.
+            const displayLabel =
+              match === CONSUMER_ROUTE_PREFIX.me
+                ? `${label} · ${classLabel}`
+                : label;
+            // Parked surfaces stay tappable — open ComingSoonModal (no Soon pill).
+            if (soon) {
+              return (
+                <button
+                  key={href}
+                  type="button"
+                  onClick={() => setSoonItem(item)}
+                  title={item.soonTitle ?? "Coming soon"}
+                  className="text-muted-foreground hover:text-foreground relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium transition"
+                >
+                  <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
                   </span>
+                  <span className="w-full truncate text-center">
+                    {displayLabel}
+                  </span>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium transition",
+                  active
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {active && (
+                  <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full" />
+                )}
+
+                <span
+                  className={cn(
+                    "relative flex h-8 w-8 items-center justify-center rounded-full transition",
+                    active && "bg-primary/10 ring-primary/20 ring-1",
+                  )}
+                >
+                  <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
                 </span>
                 <span className="w-full truncate text-center">
                   {displayLabel}
                 </span>
-              </span>
+              </Link>
             );
-          }
-
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium transition",
-                active
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {active && (
-                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full" />
-              )}
-
-              <span
-                className={cn(
-                  "relative flex h-8 w-8 items-center justify-center rounded-full transition",
-                  active && "bg-primary/10 ring-primary/20 ring-1",
-                )}
-              >
-                <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
-              </span>
-              <span className="w-full truncate text-center">
-                {displayLabel}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-      <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
-    </nav>
+          })}
+        </div>
+        <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
+      </nav>
+      <ComingSoonModal
+        open={soonItem != null}
+        onClose={() => setSoonItem(null)}
+        title={soonItem?.soonTitle ?? "Coming soon"}
+        body={soonItem?.soonBody}
+        icon={soonItem?.Icon === CalendarCheck ? CalendarCheck : QrCode}
+      />
+    </>
   );
 }

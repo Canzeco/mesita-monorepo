@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   MapPin,
@@ -21,7 +20,6 @@ import {
   ChevronRight,
   Utensils,
   Users,
-  Heart,
   Clock,
   Tags,
   Link2,
@@ -39,6 +37,7 @@ import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
+import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import {
   FacebookLogo,
   GoogleLogo,
@@ -46,7 +45,6 @@ import {
   MesitaMark,
 } from "@/components/consumer/BrandLogos";
 import { Spinner } from "@/components/shared";
-import { useSavedPlaces } from "@/lib/saved-places";
 import { classProperLabel } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { toast } from "@/lib/toast";
@@ -68,8 +66,7 @@ import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 // bar (back + place name + ⋯) on top of this. Structure:
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
-//      reward; swipe-style tags (verification · category · price · zone ·
-//      distance · hours); then Save + Reserve.
+//      reward; swipe-style tags; then Contact · Reserve · Share (Save in header).
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -430,11 +427,9 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-// Save · Reserve · Contact · Share — a 2×2 action grid of IG-style buttons.
-// Left column is live (save the place · contact the venue); the right column
-// is parked (Reserve · Share, both "Soon"). Contact opens a channel chooser;
-// Share's native-share handler stays wired behind the disabled state so an
-// un-park is a one-line change.
+// Contact · Reserve · Share — three equal outline buttons. Save lives in the
+// header (page + modal). Reserve + Share are parked: tap opens ComingSoonModal
+// (no "Soon" pills). Contact glyph prefers WhatsApp when the venue has it.
 function ProfileActions({
   place,
   className,
@@ -442,126 +437,71 @@ function ProfileActions({
   place: PlaceDetail;
   className?: string;
 }) {
-  const router = useRouter();
-  const { isSaved, toggle } = useSavedPlaces();
-  const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
+  const [soonKind, setSoonKind] = useState<"reserve" | "share" | null>(null);
+  const hasWhatsApp = Boolean(place.channels.whatsapp_url);
 
-  function onSavePlace() {
-    const nowSaved = !saved;
-    toggle(place.id);
-    if (nowSaved) {
-      toast.action(
-        `Saved ${place.name}`,
-        {
-          label: "View",
-          onClick: () => router.push(CONSUMER_ROUTES.favorites),
-        },
-        { tone: "success" },
-      );
-    } else {
-      toast(`Removed ${place.name} from saved`);
-    }
-  }
+  const outlineBtn =
+    "border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]";
 
-  async function onSharePlace() {
-    const url = typeof window !== "undefined" ? window.location.href : "";
-    const payload = {
-      title: `${place.name} on Mesita`,
-      text: `Check out ${place.name} on Mesita`,
-      url,
-    };
-    if (
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function"
-    ) {
-      try {
-        await navigator.share(payload);
-        return;
-      } catch {
-        // Cancelled or refused — fall through to clipboard.
-      }
-    }
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(url || `${payload.text}`);
-        toast.success("Link copied to clipboard");
-        return;
-      } catch {
-        toast.error("Couldn't copy link");
-        return;
-      }
-    }
-    toast.error("Sharing isn't available in this browser");
-  }
-
-  // decision: Pato — four buttons on a 2×2 grid (his layout). Live actions
-  //   fill the left column (Save · Contact); the "Soon" tiles stack in the
-  //   right column (Reserve · Share). Save stays the loud pink CTA, top-left.
-  // decision: Save vs Saved must read instantly — unsaved = loud pink CTA;
-  //   Saved = outline + filled heart (calm on-state), not another pink fill.
   return (
     <>
-      <div className={cn("grid grid-cols-2 gap-2", className)}>
-        <button
-          type="button"
-          onClick={onSavePlace}
-          aria-pressed={saved}
-          aria-label={saved ? "Remove from saved" : "Save place"}
-          className={cn(
-            "inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold transition active:scale-[0.99]",
-            saved
-              ? "border-primary/35 bg-primary/8 text-primary hover:bg-primary/12 border shadow-none"
-              : "bg-pink-gradient shadow-glow text-white hover:brightness-110",
-          )}
-        >
-          <Heart
-            className={cn("h-4 w-4", saved && "fill-current")}
-            strokeWidth={2.25}
-          />
-          {saved ? "Saved" : "Save"}
-        </button>
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
-        >
-          <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-          Reserve
-          <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
-            Soon
-          </span>
-        </button>
+      <div className={cn("grid grid-cols-3 gap-2", className)}>
         <button
           type="button"
           onClick={() => setContactOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={contactOpen}
-          className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+          className={outlineBtn}
         >
-          <Phone className="h-4 w-4" strokeWidth={2.25} />
+          {hasWhatsApp ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/channels/whatsapp.svg"
+              alt=""
+              aria-hidden
+              className="h-4 w-4"
+            />
+          ) : (
+            <Phone className="h-4 w-4" strokeWidth={2.25} />
+          )}
           Contact
         </button>
-        {/* Parked (Soon) — handler kept wired for un-park; disabled ignores onClick. */}
         <button
           type="button"
-          onClick={onSharePlace}
-          disabled
-          aria-disabled="true"
-          className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
+          onClick={() => setSoonKind("reserve")}
+          className={outlineBtn}
+        >
+          <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          Reserve
+        </button>
+        <button
+          type="button"
+          onClick={() => setSoonKind("share")}
+          className={outlineBtn}
         >
           <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
           Share
-          <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
-            Soon
-          </span>
         </button>
       </div>
       <PlaceContactSheet
         place={place}
         open={contactOpen}
         onClose={() => setContactOpen(false)}
+      />
+      <ComingSoonModal
+        open={soonKind === "reserve"}
+        onClose={() => setSoonKind(null)}
+        title="Reservations coming soon"
+        body="Book a table from Mesita shortly — for now, use Contact to reach the venue."
+        icon={CalendarCheck}
+      />
+      <ComingSoonModal
+        open={soonKind === "share"}
+        onClose={() => setSoonKind(null)}
+        title="Sharing coming soon"
+        body="You'll be able to share this place with friends from here soon."
+        icon={Share2}
       />
     </>
   );
