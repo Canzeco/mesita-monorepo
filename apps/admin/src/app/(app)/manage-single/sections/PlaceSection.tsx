@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
-  CalendarClock,
   Check,
   Clock,
   Copy,
@@ -20,9 +19,7 @@ import {
   Mail,
   MapPin,
   Phone,
-  Plus,
   Store,
-  Trash2,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -35,7 +32,8 @@ import {
   type PlaceEnrichmentStatus,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
-  type ReservationContact,
+  type ReservationChannel,
+  type ReservationTarget,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { SaveBar, SectionCard, TextArea, TextField } from "../ui";
@@ -58,6 +56,8 @@ const DAYS = [
   "sunday",
 ] as const;
 type Day = (typeof DAYS)[number];
+
+const str = (v: unknown) => (typeof v === "string" ? v : "");
 
 // Brand marks live in /public/channels (Simple Icons SVGs, same set as
 // consumer). Generic contact fields keep lucide fallbacks.
@@ -85,40 +85,22 @@ const CHANNELS: {
   { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
 ];
 
-// Resy has no general "profile" channel, so it stays a plain direct booking
-// link (resy_url column). OpenTable now lives in Channels and is routed below.
-const RESERVATION_LINKS: {
-  key: keyof AdminPlace;
-  label: string;
-  logo?: string;
-  Icon?: LucideIcon;
-}[] = [{ key: "resy_url", label: "Resy", Icon: CalendarClock }];
-
-// Routable reservation channels — each reuses the venue's profile channel
-// ("same" → profileKey column) or points the agent at a dedicated endpoint
-// ("different" → value). Persisted under products.reservations[key].
-const RESERVATION_ROUTES: {
-  key: string;
+const RESERVATION_CHANNELS: {
+  key: ReservationChannel;
   label: string;
   profileKey: keyof AdminPlace;
   kind: "url" | "phone";
   logo?: string;
   Icon?: LucideIcon;
+  placeholder: string;
 }[] = [
-  {
-    key: "opentable",
-    label: "OpenTable",
-    profileKey: "opentable_url",
-    kind: "url",
-    logo: "/channels/opentable.svg",
-  },
-  { key: "phone", label: "Phone", profileKey: "phone", kind: "phone", Icon: Phone },
   {
     key: "instagram",
     label: "Instagram",
     profileKey: "instagram_url",
     kind: "url",
     logo: "/channels/instagram.svg",
+    placeholder: "https://instagram.com/…",
   },
   {
     key: "whatsapp",
@@ -126,57 +108,68 @@ const RESERVATION_ROUTES: {
     profileKey: "whatsapp_url",
     kind: "url",
     logo: "/channels/whatsapp.svg",
+    placeholder: "https://wa.me/52…",
+  },
+  {
+    key: "phone",
+    label: "Phone",
+    profileKey: "phone",
+    kind: "phone",
+    Icon: Phone,
+    placeholder: "+52 55 0000 0000",
   },
 ];
 
-type RouteCfg = { mode: "same" | "different"; value: string };
+type ReservationForm = {
+  channel: ReservationChannel | "";
+  value: string;
+};
 
-function readRoutes(v: AdminPlace): Record<string, RouteCfg> {
-  const raw = (v.products?.reservations ?? {}) as Record<string, unknown>;
-  const out: Record<string, RouteCfg> = {};
-  for (const r of RESERVATION_ROUTES) {
-    const c = raw[r.key];
-    const obj = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
-    out[r.key] = {
-      mode: obj?.mode === "different" ? "different" : "same",
-      value: typeof obj?.value === "string" ? obj.value : "",
-    };
+function profileValueFor(place: AdminPlace, channel: ReservationChannel): string {
+  const meta = RESERVATION_CHANNELS.find((c) => c.key === channel);
+  return meta ? str(place[meta.profileKey]) : "";
+}
+
+/** Read the single contact target; tolerate the old per-channel routes shape. */
+function readReservationTarget(v: AdminPlace): ReservationForm {
+  const raw = v.products?.reservations as unknown;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>;
+    if (
+      (obj.channel === "instagram" || obj.channel === "whatsapp" || obj.channel === "phone") &&
+      typeof obj.channel === "string"
+    ) {
+      return {
+        channel: obj.channel,
+        value: typeof obj.value === "string" ? obj.value : "",
+      };
+    }
+    // Legacy MESITA-378 routes: prefer an explicit "different" value, else a
+    // profile channel that already has a value (phone → whatsapp → instagram).
+    for (const key of ["phone", "whatsapp", "instagram"] as const) {
+      const c = obj[key];
+      const route = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
+      if (route?.mode === "different" && typeof route.value === "string" && route.value.trim()) {
+        return { channel: key, value: route.value };
+      }
+    }
+    for (const key of ["phone", "whatsapp", "instagram"] as const) {
+      const c = obj[key];
+      const route = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
+      if (!route || route.mode === "different") continue;
+      const profile = profileValueFor(v, key);
+      if (profile) return { channel: key, value: profile };
+    }
   }
-  return out;
+  return { channel: "", value: "" };
 }
 
-function serializeRoutes(
-  routes: Record<string, RouteCfg>,
-): Record<string, { mode: "same" | "different"; value: string | null }> {
-  const out: Record<string, { mode: "same" | "different"; value: string | null }> = {};
-  for (const r of RESERVATION_ROUTES) {
-    const c = routes[r.key] ?? { mode: "same", value: "" };
-    out[r.key] = {
-      mode: c.mode,
-      value: c.mode === "different" ? (c.value.trim() ? c.value.trim() : null) : null,
-    };
-  }
-  return out;
-}
-
-const MAX_RESERVATION_CONTACTS = 8;
-
-function emptyContact(): ReservationContact {
-  return { name: "", role: "", phone: "", email: "", notes: "" };
-}
-
-function normalizeContacts(raw: unknown): ReservationContact[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
-    .map((c) => ({
-      name: typeof c.name === "string" ? c.name : "",
-      role: typeof c.role === "string" ? c.role : "",
-      phone: typeof c.phone === "string" ? c.phone : "",
-      email: typeof c.email === "string" ? c.email : "",
-      notes: typeof c.notes === "string" ? c.notes : "",
-    }))
-    .slice(0, MAX_RESERVATION_CONTACTS);
+function serializeReservationTarget(
+  target: ReservationForm,
+): ReservationTarget | null {
+  if (!target.channel) return null;
+  const value = target.value.trim();
+  return { channel: target.channel, value: value || null };
 }
 
 function ChannelLabelIcon({
@@ -225,14 +218,9 @@ type Form = {
   address: string;
   photos: string[];
   channels: Record<string, string>;
-  reservations: Record<string, string>;
-  reservationEndpoint: string;
-  reservationContacts: ReservationContact[];
-  routes: Record<string, RouteCfg>;
+  reservation: ReservationForm;
   hours: Record<Day, DayHours>;
 };
-
-const str = (v: unknown) => (typeof v === "string" ? v : "");
 
 // Fallback only until admin-web-get-atlas-fields returns; never the source of truth.
 const FALLBACK_LIMITS: PlaceFieldLimits = {
@@ -267,9 +255,6 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
   }
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
-  const reservations: Record<string, string> = {};
-  for (const c of RESERVATION_LINKS) reservations[c.key as string] = str(v[c.key]);
-  const routes = readRoutes(v);
   return {
     name: (v.name ?? "").slice(0, limits.placeNameMax),
     category: v.category ?? "",
@@ -280,10 +265,7 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     address: v.address ?? "",
     photos: (v.photos ?? []).slice(0, limits.photosMax),
     channels,
-    reservations,
-    reservationEndpoint: v.reservation_endpoint ?? "",
-    reservationContacts: normalizeContacts(v.reservation_contacts),
-    routes,
+    reservation: readReservationTarget(v),
     hours,
   };
 }
@@ -329,24 +311,16 @@ function boxToPatch(
     return patch;
   }
   if (box === "reservations") {
-    const patch: Record<string, unknown> = {
+    return {
       id,
-      reservation_endpoint: nz(f.reservationEndpoint),
-      reservation_contacts: f.reservationContacts
-        .map((c) => ({
-          name: c.name.trim(),
-          role: c.role?.trim() || null,
-          phone: c.phone?.trim() || null,
-          email: c.email?.trim() || null,
-          notes: c.notes?.trim() || null,
-        }))
-        .filter((c) => c.name && (c.phone || c.email))
-        .slice(0, MAX_RESERVATION_CONTACTS),
+      // Clear the overbuilt MESITA-377 fields — selector is the only source now.
+      reservation_endpoint: null,
+      reservation_contacts: [],
+      products: {
+        ...(existingProducts ?? {}),
+        reservations: serializeReservationTarget(f.reservation),
+      },
     };
-    for (const c of RESERVATION_LINKS) patch[c.key as string] = nz(f.reservations[c.key as string]);
-    // Per-channel routing lives in the generic products jsonb; preserve menu.
-    patch.products = { ...(existingProducts ?? {}), reservations: serializeRoutes(f.routes) };
-    return patch;
   }
   return { id, photos: f.photos.slice(0, limits.photosMax) };
 }
@@ -379,10 +353,7 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
   if (box === "reservations") {
     return {
       ...base,
-      reservations: from.reservations,
-      reservationEndpoint: from.reservationEndpoint,
-      reservationContacts: from.reservationContacts,
-      routes: from.routes,
+      reservation: from.reservation,
     };
   }
   return { ...base, photos: from.photos };
@@ -431,31 +402,8 @@ export function PlaceSection({
     [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
   );
   const dirtyReservations = useMemo(
-    () =>
-      !sliceEqual(
-        {
-          reservations: form.reservations,
-          reservationEndpoint: form.reservationEndpoint,
-          reservationContacts: form.reservationContacts,
-          routes: serializeRoutes(form.routes),
-        },
-        {
-          reservations: saved.reservations,
-          reservationEndpoint: saved.reservationEndpoint,
-          reservationContacts: saved.reservationContacts,
-          routes: serializeRoutes(saved.routes),
-        },
-      ),
-    [
-      form.reservations,
-      form.reservationEndpoint,
-      form.reservationContacts,
-      form.routes,
-      saved.reservations,
-      saved.reservationEndpoint,
-      saved.reservationContacts,
-      saved.routes,
-    ],
+    () => !sliceEqual(form.reservation, saved.reservation),
+    [form.reservation, saved.reservation],
   );
   const dirtyPhotos = useMemo(
     () => !sliceEqual(form.photos, saved.photos),
@@ -468,28 +416,19 @@ export function PlaceSection({
     setForm((f) => ({ ...f, [k]: val }));
   const setChannel = (key: string, val: string) =>
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
-  const setReservation = (key: string, val: string) =>
-    setForm((f) => ({ ...f, reservations: { ...f.reservations, [key]: val } }));
-  const setRoute = (key: string, patch: Partial<RouteCfg>) =>
-    setForm((f) => ({ ...f, routes: { ...f.routes, [key]: { ...f.routes[key], ...patch } } }));
-  const setContact = (idx: number, patch: Partial<ReservationContact>) =>
-    setForm((f) => ({
-      ...f,
-      reservationContacts: f.reservationContacts.map((c, i) =>
-        i === idx ? { ...c, ...patch } : c,
-      ),
-    }));
-  const addContact = () =>
-    setForm((f) =>
-      f.reservationContacts.length >= MAX_RESERVATION_CONTACTS
-        ? f
-        : { ...f, reservationContacts: [...f.reservationContacts, emptyContact()] },
-    );
-  const removeContact = (idx: number) =>
-    setForm((f) => ({
-      ...f,
-      reservationContacts: f.reservationContacts.filter((_, i) => i !== idx),
-    }));
+  const setReservationChannel = (channel: ReservationChannel | "") => {
+    setForm((f) => {
+      if (!channel) return { ...f, reservation: { channel: "", value: "" } };
+      const profile = profileValueFor(place, channel);
+      const keepValue =
+        f.reservation.channel === channel && f.reservation.value.trim()
+          ? f.reservation.value
+          : profile;
+      return { ...f, reservation: { channel, value: keepValue } };
+    });
+  };
+  const setReservationValue = (value: string) =>
+    setForm((f) => ({ ...f, reservation: { ...f.reservation, value } }));
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
@@ -624,27 +563,16 @@ export function PlaceSection({
       <SectionCard
         icon={<Store className="text-muted-foreground h-4 w-4" />}
         title="Basics"
-        subtitle="Name, price tier, category, about, and tags."
+        subtitle="Name, about, and tags."
       >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <TextField
-              label="Name"
-              value={form.name}
-              onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
-              maxLength={limits.placeNameMax}
-              disabled={anyPending}
-            />
-          </div>
-          {/* Price is Google Places–inferred in Enrich-Research — never editable. */}
-          <ReadField label="Price" auto>
-            <PriceDisplay level={place.price_level} />
-          </ReadField>
-          {/* Category is enrichment-derived (ADEA inferPlaceCategory). Show the
-              friendly label (e.g. "🪩 Nightclub"), never the snakecase slug. */}
-          <ReadField label="Category" auto>
-            {place.category_label ?? place.category ?? "—"}
-          </ReadField>
+        <div className="mt-5">
+          <TextField
+            label="Name"
+            value={form.name}
+            onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
+            maxLength={limits.placeNameMax}
+            disabled={anyPending}
+          />
         </div>
         <div className="mt-4">
           <TextArea
@@ -675,6 +603,23 @@ export function PlaceSection({
           error={errors.basics}
           onSave={() => saveBox("basics")}
         />
+      </SectionCard>
+
+      {/* Price + Category are Enricher/Google-derived — read-only, own box. */}
+      <SectionCard
+        icon={<BadgeCheck className="text-muted-foreground h-4 w-4" />}
+        title="Price & category"
+        subtitle="Inferred by Enricher / Google Places — not editable here."
+      >
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <ReadField label="Price">
+            <PriceDisplay level={place.price_level} />
+          </ReadField>
+          {/* Friendly label (e.g. "🪩 Nightclub"), never the snakecase slug. */}
+          <ReadField label="Category">
+            {place.category_label ?? place.category ?? "—"}
+          </ReadField>
+        </div>
       </SectionCard>
 
       <SectionCard
@@ -889,211 +834,57 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      {/* Reservations — booking endpoints + multi-contacts for the reservationist. */}
+      {/* Reservations — one contact channel for the reservationist. */}
       <SectionCard
         icon={<CalendarCheck className="text-muted-foreground h-4 w-4" />}
         title="Reservations"
-        subtitle="How the reservations agent reaches this venue — reuse a profile channel, add a booking endpoint, or list people to contact."
+        subtitle="What should we contact for reservations — Instagram, WhatsApp, or phone."
       >
-        {/* Per-channel routing: Same (reuse profile) or Different (dedicated). */}
-        <div className="mt-5 flex flex-col gap-3">
-          {RESERVATION_ROUTES.map((r) => {
-            const cfg = form.routes[r.key] ?? { mode: "same", value: "" };
-            const profileVal = str(place[r.profileKey]);
-            return (
-              <div key={r.key} className="border-border rounded-xl border p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-sm font-medium">
-                    <ChannelLabelIcon logo={r.logo} Icon={r.Icon} />
-                    {r.label}
-                  </span>
-                  <div
-                    className="bg-muted/60 inline-flex rounded-lg p-0.5"
-                    role="group"
-                    aria-label={`${r.label} reservations source`}
-                  >
-                    {(["same", "different"] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        disabled={anyPending}
-                        onClick={() => setRoute(r.key, { mode: m })}
-                        aria-pressed={cfg.mode === m}
-                        className={
-                          "rounded-md px-2.5 py-1 text-xs font-semibold capitalize transition disabled:opacity-50 " +
-                          (cfg.mode === m
-                            ? "bg-card text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground")
-                        }
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {cfg.mode === "same" ? (
-                  <p className="text-muted-foreground mt-2 truncate text-xs">
-                    {profileVal ? (
-                      <>
-                        Uses profile {r.label} ·{" "}
-                        <span className="text-foreground/80">{profileVal}</span>
-                      </>
-                    ) : (
-                      <span className="italic">No profile {r.label} set yet.</span>
-                    )}
-                  </p>
-                ) : (
-                  <input
-                    value={cfg.value}
-                    disabled={anyPending}
-                    onChange={(e) => setRoute(r.key, { value: e.target.value })}
-                    placeholder={r.kind === "phone" ? "+52 55 0000 0000" : "https://…"}
-                    className="border-border bg-background focus:border-ring focus:ring-ring/20 placeholder:text-muted-foreground/60 mt-2 h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-2"
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <TextField
-            label="POS / booking endpoint"
-            icon={<Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-            labelRight={
-              form.reservationEndpoint.trim() ? (
-                <OpenLink href={form.reservationEndpoint} />
-              ) : undefined
-            }
-            value={form.reservationEndpoint}
-            onChange={(x) => set("reservationEndpoint", x)}
-            placeholder="https://… or tel:+52…"
-            disabled={anyPending}
-          />
-          {RESERVATION_LINKS.map((c) => {
-            const val = form.reservations[c.key as string] ?? "";
-            return (
+        {(() => {
+          const selected = RESERVATION_CHANNELS.find((c) => c.key === form.reservation.channel);
+          const value = form.reservation.value;
+          const isUrl = selected?.kind === "url";
+          return (
+            <div className="mt-5 grid gap-3.5 sm:grid-cols-[minmax(0,11rem)_1fr]">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
+                  Contact via
+                </span>
+                <select
+                  value={form.reservation.channel}
+                  disabled={anyPending}
+                  onChange={(e) =>
+                    setReservationChannel(e.target.value as ReservationChannel | "")
+                  }
+                  aria-label="Reservation contact channel"
+                  className="border-border bg-background focus:border-ring focus:ring-ring/20 h-9 w-full rounded-lg border px-2.5 text-sm outline-none transition focus:ring-2 disabled:opacity-50"
+                >
+                  <option value="">Select…</option>
+                  {RESERVATION_CHANNELS.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <TextField
-                key={c.key as string}
-                label={c.label}
-                icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
-                labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
-                value={val}
-                onChange={(x) => setReservation(c.key as string, x)}
-                placeholder="https://…"
-                disabled={anyPending}
+                label={selected ? selected.label : "Value"}
+                icon={
+                  selected ? (
+                    <ChannelLabelIcon logo={selected.logo} Icon={selected.Icon} />
+                  ) : undefined
+                }
+                labelRight={
+                  isUrl && value.trim() ? <OpenLink href={value} /> : undefined
+                }
+                value={value}
+                onChange={setReservationValue}
+                placeholder={selected?.placeholder ?? "Pick a channel first"}
+                disabled={anyPending || !form.reservation.channel}
               />
-            );
-          })}
-        </div>
-
-        <div className="border-border bg-muted/30 text-muted-foreground mt-4 flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            Priority for the reservationist: POS/endpoint → OpenTable/Resy → contacts below →
-            place phone
-            {place.phone ? (
-              <>
-                {" "}
-                (<span className="text-foreground font-medium tabular-nums">{place.phone}</span>)
-              </>
-            ) : (
-              " (set under Channels)"
-            )}
-            .
-          </span>
-        </div>
-
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
-            Contacts
-          </p>
-          <span className="text-muted-foreground text-[11px] tabular-nums">
-            {form.reservationContacts.length} / {MAX_RESERVATION_CONTACTS}
-          </span>
-        </div>
-
-        <div className="mt-2 flex flex-col gap-3">
-          {form.reservationContacts.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No reservation contacts yet. Add hosts, managers, or a booking desk.
-            </p>
-          ) : (
-            form.reservationContacts.map((c, idx) => (
-              <div
-                key={idx}
-                className="border-border bg-background rounded-xl border p-3"
-              >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
-                    Contact {idx + 1}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={anyPending}
-                    onClick={() => removeContact(idx)}
-                    className="text-muted-foreground hover:text-foreground inline-flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-50"
-                    aria-label={`Remove contact ${idx + 1}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <TextField
-                    label="Name"
-                    value={c.name}
-                    onChange={(x) => setContact(idx, { name: x })}
-                    placeholder="Ana López"
-                    disabled={anyPending}
-                  />
-                  <TextField
-                    label="Role"
-                    value={c.role ?? ""}
-                    onChange={(x) => setContact(idx, { role: x })}
-                    placeholder="Host · Manager · Booking desk"
-                    disabled={anyPending}
-                  />
-                  <TextField
-                    label="Phone"
-                    icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-                    value={c.phone ?? ""}
-                    onChange={(x) => setContact(idx, { phone: x })}
-                    placeholder="+52…"
-                    disabled={anyPending}
-                  />
-                  <TextField
-                    label="Email"
-                    icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-                    type="email"
-                    value={c.email ?? ""}
-                    onChange={(x) => setContact(idx, { email: x })}
-                    placeholder="reservas@…"
-                    disabled={anyPending}
-                  />
-                  <div className="sm:col-span-2">
-                    <TextField
-                      label="Notes"
-                      value={c.notes ?? ""}
-                      onChange={(x) => setContact(idx, { notes: x })}
-                      placeholder="WhatsApp preferred · evenings only…"
-                      disabled={anyPending}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-          <button
-            type="button"
-            disabled={anyPending || form.reservationContacts.length >= MAX_RESERVATION_CONTACTS}
-            onClick={addContact}
-            className="border-border hover:border-foreground/40 inline-flex h-9 w-fit items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            Add contact
-          </button>
-        </div>
-
+            </div>
+          );
+        })()}
         <SaveBar
           pending={pendingBox === "reservations"}
           dirty={dirtyReservations}

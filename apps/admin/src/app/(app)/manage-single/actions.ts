@@ -93,21 +93,12 @@ export type AdminMenuItem = {
   items?: unknown[] | null;
 };
 
-/** One person the reservationist can call/message when booking a table. */
-export type ReservationContact = {
-  name: string;
-  role?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  notes?: string | null;
+/** How the reservationist reaches this place — one channel + its value. */
+export type ReservationChannel = "instagram" | "whatsapp" | "phone";
+export type ReservationTarget = {
+  channel: ReservationChannel;
+  value?: string | null;
 };
-
-// Per-channel reservations routing, stored under products.reservations (a
-// generic jsonb the update EF round-trips wholesale — no schema change).
-// "same" → the reservations agent reuses the venue's profile channel of that
-// kind; "different" → it uses `value` (a dedicated endpoint / number).
-export type ReservationRoute = { mode: "same" | "different"; value?: string | null };
-export type ReservationRoutes = Record<string, ReservationRoute>;
 
 // The full place row, loaded for a super-admin via business-get-overview
 // (which returns the single requested place when the caller is super-admin).
@@ -144,19 +135,18 @@ export type AdminPlace = {
   google_maps_url: string | null;
   opentable_url: string | null;
   resy_url: string | null;
-  // Custom POS / booking endpoint for the reservationist (MESITA-377).
+  // Legacy (MESITA-377) — no longer edited; cleared when saving the selector.
   reservation_endpoint: string | null;
-  // Multi-contact list the reservationist can call/message.
-  reservation_contacts: ReservationContact[] | null;
+  reservation_contacts: unknown;
   uber_eats_url: string | null;
   tripadvisor_url: string | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;
-  // Generic products payload. Menus live under products.menu; per-channel
-  // reservations routing under products.reservations.
+  // Generic products payload. Menus live under products.menu; reservation
+  // contact target under products.reservations ({ channel, value }).
   products?: {
     menu?: AdminMenuItem[] | null;
-    reservations?: ReservationRoutes | null;
+    reservations?: ReservationTarget | null;
   } | null;
   // Legacy parallel array; prefer products.menu when present.
   menus?: AdminMenuItem[] | null;
