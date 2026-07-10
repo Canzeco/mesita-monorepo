@@ -2,19 +2,16 @@ import {
   ChartLine,
   MapPin,
   QrCode,
-  Star,
   Store,
   Tag,
-  UtensilsCrossed,
   UsersRound,
 } from "lucide-react";
 
 // `soon` sections are not yet built — shown in the tab bar with a "Soon" badge,
 // non-navigable, and their routes render a placeholder instead of the section.
+// Products + Reviews live inside the Place page (not separate tabs).
 export const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store, soon: false },
-  { id: "reviews", label: "Reviews", Icon: Star, soon: false },
-  { id: "products", label: "Products", Icon: UtensilsCrossed, soon: true },
   { id: "promos", label: "Promos", Icon: Tag, soon: true },
   { id: "scan", label: "Scan", Icon: QrCode, soon: true },
   { id: "performance", label: "Performance", Icon: ChartLine, soon: true },

@@ -1,9 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { ReviewsSection } from "../../sections/ReviewsSection";
-import { useUnitPlace } from "../../UnitPlaceContext";
-
-export default function UnitReviewsPage() {
-  const { place } = useUnitPlace();
-  return <ReviewsSection place={place} />;
+/** Reviews now live on the Place tab — keep the old URL working. */
+export default async function UnitReviewsRedirectPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  redirect(`/manage-single/${projectId}/place`);
 }

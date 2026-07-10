@@ -1,7 +1,11 @@
-import { SoonSection } from "../../sections/SoonSection";
+import { redirect } from "next/navigation";
 
-// Products is gated "Soon" in nav.ts — the tab is non-navigable; this handles
-// direct URLs with a coming-soon placeholder.
-export default function UnitProductsPage() {
-  return <SoonSection label="Products" />;
+/** Products now live on the Place tab — keep the old URL working. */
+export default async function UnitProductsRedirectPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  redirect(`/manage-single/${projectId}/place`);
 }
