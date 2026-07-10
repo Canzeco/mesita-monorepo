@@ -531,13 +531,19 @@ function ProfileActions({
           Soon
         </span>
       </button>
+      {/* Parked (Soon) — handler kept wired for un-park; disabled ignores onClick. */}
       <button
         type="button"
         onClick={onSharePlace}
-        className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+        disabled
+        aria-disabled="true"
+        className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
       >
-        <Share2 className="h-4 w-4" strokeWidth={2.25} />
+        <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
         Share
+        <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+          Soon
+        </span>
       </button>
     </div>
   );

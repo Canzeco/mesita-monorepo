@@ -165,6 +165,7 @@ export function ProfileClient({
             title="Share"
             summary="Invite friends to Mesita"
             onClick={() => setShareOpen(true)}
+            soon
           />
 
           {/* decision: Pato — Consumer MCP connect (MESITA-265), not a tip */}
@@ -174,6 +175,7 @@ export function ProfileClient({
             title="AI"
             summary="Connect your Mesita profile to an AI · Premium"
             onClick={() => setAiOpen(true)}
+            soon
           />
 
           <BoxRow
