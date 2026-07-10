@@ -20,7 +20,9 @@ import {
   Mail,
   MapPin,
   Phone,
+  Plus,
   Store,
+  Trash2,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -33,6 +35,7 @@ import {
   type PlaceEnrichmentStatus,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
+  type ReservationContact,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { SaveBar, SectionCard, TextArea, TextField } from "../ui";
@@ -94,6 +97,26 @@ const RESERVATION_LINKS: {
   { key: "resy_url", label: "Resy", Icon: CalendarClock },
 ];
 
+const MAX_RESERVATION_CONTACTS = 8;
+
+function emptyContact(): ReservationContact {
+  return { name: "", role: "", phone: "", email: "", notes: "" };
+}
+
+function normalizeContacts(raw: unknown): ReservationContact[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+    .map((c) => ({
+      name: typeof c.name === "string" ? c.name : "",
+      role: typeof c.role === "string" ? c.role : "",
+      phone: typeof c.phone === "string" ? c.phone : "",
+      email: typeof c.email === "string" ? c.email : "",
+      notes: typeof c.notes === "string" ? c.notes : "",
+    }))
+    .slice(0, MAX_RESERVATION_CONTACTS);
+}
+
 function ChannelLabelIcon({
   logo,
   Icon,
@@ -141,6 +164,8 @@ type Form = {
   photos: string[];
   channels: Record<string, string>;
   reservations: Record<string, string>;
+  reservationEndpoint: string;
+  reservationContacts: ReservationContact[];
   hours: Record<Day, DayHours>;
 };
 
@@ -192,6 +217,8 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     photos: (v.photos ?? []).slice(0, limits.photosMax),
     channels,
     reservations,
+    reservationEndpoint: v.reservation_endpoint ?? "",
+    reservationContacts: normalizeContacts(v.reservation_contacts),
     hours,
   };
 }
@@ -236,7 +263,20 @@ function boxToPatch(
     return patch;
   }
   if (box === "reservations") {
-    const patch: Record<string, unknown> = { id };
+    const patch: Record<string, unknown> = {
+      id,
+      reservation_endpoint: nz(f.reservationEndpoint),
+      reservation_contacts: f.reservationContacts
+        .map((c) => ({
+          name: c.name.trim(),
+          role: c.role?.trim() || null,
+          phone: c.phone?.trim() || null,
+          email: c.email?.trim() || null,
+          notes: c.notes?.trim() || null,
+        }))
+        .filter((c) => c.name && (c.phone || c.email))
+        .slice(0, MAX_RESERVATION_CONTACTS),
+    };
     for (const c of RESERVATION_LINKS) patch[c.key as string] = nz(f.reservations[c.key as string]);
     return patch;
   }
@@ -268,7 +308,14 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
       email: from.email,
     };
   }
-  if (box === "reservations") return { ...base, reservations: from.reservations };
+  if (box === "reservations") {
+    return {
+      ...base,
+      reservations: from.reservations,
+      reservationEndpoint: from.reservationEndpoint,
+      reservationContacts: from.reservationContacts,
+    };
+  }
   return { ...base, photos: from.photos };
 }
 
@@ -315,8 +362,27 @@ export function PlaceSection({
     [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
   );
   const dirtyReservations = useMemo(
-    () => !sliceEqual(form.reservations, saved.reservations),
-    [form.reservations, saved.reservations],
+    () =>
+      !sliceEqual(
+        {
+          reservations: form.reservations,
+          reservationEndpoint: form.reservationEndpoint,
+          reservationContacts: form.reservationContacts,
+        },
+        {
+          reservations: saved.reservations,
+          reservationEndpoint: saved.reservationEndpoint,
+          reservationContacts: saved.reservationContacts,
+        },
+      ),
+    [
+      form.reservations,
+      form.reservationEndpoint,
+      form.reservationContacts,
+      saved.reservations,
+      saved.reservationEndpoint,
+      saved.reservationContacts,
+    ],
   );
   const dirtyPhotos = useMemo(
     () => !sliceEqual(form.photos, saved.photos),
@@ -331,6 +397,24 @@ export function PlaceSection({
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
   const setReservation = (key: string, val: string) =>
     setForm((f) => ({ ...f, reservations: { ...f.reservations, [key]: val } }));
+  const setContact = (idx: number, patch: Partial<ReservationContact>) =>
+    setForm((f) => ({
+      ...f,
+      reservationContacts: f.reservationContacts.map((c, i) =>
+        i === idx ? { ...c, ...patch } : c,
+      ),
+    }));
+  const addContact = () =>
+    setForm((f) =>
+      f.reservationContacts.length >= MAX_RESERVATION_CONTACTS
+        ? f
+        : { ...f, reservationContacts: [...f.reservationContacts, emptyContact()] },
+    );
+  const removeContact = (idx: number) =>
+    setForm((f) => ({
+      ...f,
+      reservationContacts: f.reservationContacts.filter((_, i) => i !== idx),
+    }));
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
@@ -728,14 +812,26 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      {/* Reservations stays out of social Channels so the booking target is
-          unambiguous; OpenTable / Resy write existing place columns. */}
+      {/* Reservations — booking endpoints + multi-contacts for the reservationist. */}
       <SectionCard
         icon={<CalendarCheck className="text-muted-foreground h-4 w-4" />}
         title="Reservations"
-        subtitle="Booking endpoints the consumer reservations agent uses to hold a table."
+        subtitle="Connect a POS / booking endpoint, OpenTable/Resy, or people the agent can call."
       >
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="POS / booking endpoint"
+            icon={<Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+            labelRight={
+              form.reservationEndpoint.trim() ? (
+                <OpenLink href={form.reservationEndpoint} />
+              ) : undefined
+            }
+            value={form.reservationEndpoint}
+            onChange={(x) => set("reservationEndpoint", x)}
+            placeholder="https://… or tel:+52…"
+            disabled={anyPending}
+          />
           {RESERVATION_LINKS.map((c) => {
             const val = form.reservations[c.key as string] ?? "";
             return (
@@ -751,14 +847,115 @@ export function PlaceSection({
               />
             );
           })}
-          <div className="border-border bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed sm:col-span-2">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              Connect an OpenTable or Resy listing to give the reservations agent a
-              direct booking endpoint. Leave blank to fall back to phone.
-            </span>
-          </div>
         </div>
+
+        <div className="border-border bg-muted/30 text-muted-foreground mt-4 flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            Priority for the reservationist: POS/endpoint → OpenTable/Resy → contacts below →
+            place phone
+            {place.phone ? (
+              <>
+                {" "}
+                (<span className="text-foreground font-medium tabular-nums">{place.phone}</span>)
+              </>
+            ) : (
+              " (set under Channels)"
+            )}
+            .
+          </span>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
+            Contacts
+          </p>
+          <span className="text-muted-foreground text-[11px] tabular-nums">
+            {form.reservationContacts.length} / {MAX_RESERVATION_CONTACTS}
+          </span>
+        </div>
+
+        <div className="mt-2 flex flex-col gap-3">
+          {form.reservationContacts.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No reservation contacts yet. Add hosts, managers, or a booking desk.
+            </p>
+          ) : (
+            form.reservationContacts.map((c, idx) => (
+              <div
+                key={idx}
+                className="border-border bg-background rounded-xl border p-3"
+              >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
+                    Contact {idx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={anyPending}
+                    onClick={() => removeContact(idx)}
+                    className="text-muted-foreground hover:text-foreground inline-flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-50"
+                    aria-label={`Remove contact ${idx + 1}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TextField
+                    label="Name"
+                    value={c.name}
+                    onChange={(x) => setContact(idx, { name: x })}
+                    placeholder="Ana López"
+                    disabled={anyPending}
+                  />
+                  <TextField
+                    label="Role"
+                    value={c.role ?? ""}
+                    onChange={(x) => setContact(idx, { role: x })}
+                    placeholder="Host · Manager · Booking desk"
+                    disabled={anyPending}
+                  />
+                  <TextField
+                    label="Phone"
+                    icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+                    value={c.phone ?? ""}
+                    onChange={(x) => setContact(idx, { phone: x })}
+                    placeholder="+52…"
+                    disabled={anyPending}
+                  />
+                  <TextField
+                    label="Email"
+                    icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+                    type="email"
+                    value={c.email ?? ""}
+                    onChange={(x) => setContact(idx, { email: x })}
+                    placeholder="reservas@…"
+                    disabled={anyPending}
+                  />
+                  <div className="sm:col-span-2">
+                    <TextField
+                      label="Notes"
+                      value={c.notes ?? ""}
+                      onChange={(x) => setContact(idx, { notes: x })}
+                      placeholder="WhatsApp preferred · evenings only…"
+                      disabled={anyPending}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          <button
+            type="button"
+            disabled={anyPending || form.reservationContacts.length >= MAX_RESERVATION_CONTACTS}
+            onClick={addContact}
+            className="border-border hover:border-foreground/40 inline-flex h-9 w-fit items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add contact
+          </button>
+        </div>
+
         <SaveBar
           pending={pendingBox === "reservations"}
           dirty={dirtyReservations}
@@ -826,12 +1023,15 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 
 // Small "Open ↗" affordance shown in a link field's label when it has a value.
 function OpenLink({ href }: { href: string }) {
-  const url = /^https?:\/\//i.test(href) ? href : `https://${href}`;
+  const trimmed = href.trim();
+  const url = /^(https?|tel|mailto|sms):/i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  const external = /^https?:/i.test(url);
   return (
     <a
       href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       onClick={(e) => e.stopPropagation()}
       className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium transition"
     >

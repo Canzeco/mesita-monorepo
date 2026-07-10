@@ -93,6 +93,15 @@ export type AdminMenuItem = {
   items?: unknown[] | null;
 };
 
+/** One person the reservationist can call/message when booking a table. */
+export type ReservationContact = {
+  name: string;
+  role?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+};
+
 // The full place row, loaded for a super-admin via business-get-overview
 // (which returns the single requested place when the caller is super-admin).
 // Typed loosely — the editor only touches the known fields below.
@@ -128,6 +137,10 @@ export type AdminPlace = {
   google_maps_url: string | null;
   opentable_url: string | null;
   resy_url: string | null;
+  // Custom POS / booking endpoint for the reservationist (MESITA-377).
+  reservation_endpoint: string | null;
+  // Multi-contact list the reservationist can call/message.
+  reservation_contacts: ReservationContact[] | null;
   uber_eats_url: string | null;
   tripadvisor_url: string | null;
   menu_pdf_url: string | null;
