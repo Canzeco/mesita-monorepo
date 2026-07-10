@@ -275,9 +275,12 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
 export function PlaceSection({
   place,
   onSaved,
+  children,
 }: {
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
+  /** Extra Place-page boxes (Products, Reviews) — same two-column grid. */
+  children?: React.ReactNode;
 }) {
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
@@ -452,18 +455,18 @@ export function PlaceSection({
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Read-only signals — clean summary strip, not a form of fake inputs. */}
+    // Every Place box shares one two-column grid — no full-width mono heroes.
+    // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
       <OverviewBand place={place} enrichStatus={enrichStatus} ownership={ownership} />
 
-      {/* Basics — the primary editable card, given full-width hero treatment. */}
       <SectionCard
         icon={<Store className="text-muted-foreground h-4 w-4" />}
         title="Basics"
         subtitle="Name, price tier, category, about, and tags."
       >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <TextField
               label="Name"
               value={form.name}
@@ -513,238 +516,226 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      {/* Balanced two-column stacks on xl — no ragged masonry. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="flex flex-col gap-6">
-          {/* LOCATION */}
-          <SectionCard
-            icon={<MapPin className="text-muted-foreground h-4 w-4" />}
-            title="Location"
-            subtitle="Address is editable · coordinates are Enricher/Google-sourced."
-          >
-            <div className="mt-5">
-              <TextField
-                label="Address"
-                value={form.address}
-                onChange={(x) => set("address", x)}
-                placeholder="Street, colonia, city"
-                disabled={anyPending}
-              />
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-              <Fact label="Zone">{place.zone ?? "—"}</Fact>
-              <Fact label="City">{place.city ?? "—"}</Fact>
-              <Fact label="Lat">
-                <span className="font-mono tabular-nums">
-                  {place.lat == null ? "—" : place.lat}
-                </span>
-              </Fact>
-              <Fact label="Lng">
-                <span className="font-mono tabular-nums">
-                  {place.lng == null ? "—" : place.lng}
-                </span>
-              </Fact>
-            </div>
-            {place.lat != null && place.lng != null ? (
-              <div className="border-border mt-4 overflow-hidden rounded-xl border">
-                <iframe
-                  src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
-                  title={`Map of ${place.name}`}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="block h-[160px] w-full border-0"
-                />
-              </div>
-            ) : null}
-            <SaveBar
-              pending={pendingBox === "location"}
-              dirty={dirtyLocation}
-              ok={!!oks.location}
-              error={errors.location}
-              onSave={() => saveBox("location")}
+      <SectionCard
+        icon={<MapPin className="text-muted-foreground h-4 w-4" />}
+        title="Location"
+        subtitle="Address is editable · coordinates are Enricher/Google-sourced."
+      >
+        <div className="mt-5">
+          <TextField
+            label="Address"
+            value={form.address}
+            onChange={(x) => set("address", x)}
+            placeholder="Street, colonia, city"
+            disabled={anyPending}
+          />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+          <Fact label="Zone">{place.zone ?? "—"}</Fact>
+          <Fact label="City">{place.city ?? "—"}</Fact>
+          <Fact label="Lat">
+            <span className="font-mono tabular-nums">
+              {place.lat == null ? "—" : place.lat}
+            </span>
+          </Fact>
+          <Fact label="Lng">
+            <span className="font-mono tabular-nums">
+              {place.lng == null ? "—" : place.lng}
+            </span>
+          </Fact>
+        </div>
+        {place.lat != null && place.lng != null ? (
+          <div className="border-border mt-4 overflow-hidden rounded-xl border">
+            <iframe
+              src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
+              title={`Map of ${place.name}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block h-[160px] w-full border-0"
             />
-          </SectionCard>
+          </div>
+        ) : null}
+        <SaveBar
+          pending={pendingBox === "location"}
+          dirty={dirtyLocation}
+          ok={!!oks.location}
+          error={errors.location}
+          onSave={() => saveBox("location")}
+        />
+      </SectionCard>
 
-          {/* HOURS */}
-          <SectionCard
-            icon={<Clock className="text-muted-foreground h-4 w-4" />}
-            title="Hours"
-            subtitle={
-              place.timezone
-                ? `One range per day · timezone ${place.timezone}`
-                : "One range per day. Toggle off for days the place isn't open."
-            }
-          >
-            <div className="border-border divide-border mt-5 divide-y overflow-hidden rounded-xl border">
-              {DAYS.map((d) => {
-                const h = form.hours[d];
-                return (
-                  <div
-                    key={d}
-                    className={
-                      "flex items-center gap-3 px-3.5 py-2.5 " +
-                      (h.closed ? "bg-muted/25" : "")
-                    }
-                  >
-                    <span
-                      className={
-                        "w-20 shrink-0 text-sm font-medium capitalize " +
-                        (h.closed ? "text-muted-foreground" : "")
-                      }
-                    >
-                      {d}
-                    </span>
-                    {h.closed ? (
-                      <span className="text-muted-foreground flex-1 text-xs italic">
-                        Closed
-                      </span>
-                    ) : (
-                      <div className="flex flex-1 flex-wrap items-center gap-2">
-                        <input
-                          type="time"
-                          value={h.open}
-                          disabled={anyPending}
-                          onChange={(e) => setDay(d, { open: e.target.value })}
-                          className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
-                        />
-                        <span className="text-muted-foreground text-xs">to</span>
-                        <input
-                          type="time"
-                          value={h.close}
-                          disabled={anyPending}
-                          onChange={(e) => setDay(d, { close: e.target.value })}
-                          className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
-                        />
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={!h.closed}
-                      aria-label={`${d} ${h.closed ? "closed" : "open"}`}
+      <SectionCard
+        icon={<Clock className="text-muted-foreground h-4 w-4" />}
+        title="Hours"
+        subtitle={
+          place.timezone
+            ? `One range per day · timezone ${place.timezone}`
+            : "One range per day. Toggle off for days the place isn't open."
+        }
+      >
+        <div className="border-border divide-border mt-5 divide-y overflow-hidden rounded-xl border">
+          {DAYS.map((d) => {
+            const h = form.hours[d];
+            return (
+              <div
+                key={d}
+                className={
+                  "flex items-center gap-3 px-3.5 py-2.5 " +
+                  (h.closed ? "bg-muted/25" : "")
+                }
+              >
+                <span
+                  className={
+                    "w-20 shrink-0 text-sm font-medium capitalize " +
+                    (h.closed ? "text-muted-foreground" : "")
+                  }
+                >
+                  {d}
+                </span>
+                {h.closed ? (
+                  <span className="text-muted-foreground flex-1 text-xs italic">
+                    Closed
+                  </span>
+                ) : (
+                  <div className="flex flex-1 flex-wrap items-center gap-2">
+                    <input
+                      type="time"
+                      value={h.open}
                       disabled={anyPending}
-                      onClick={() => setDay(d, { closed: !h.closed })}
-                      className={
-                        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
-                        (h.closed ? "bg-border" : "bg-green-500")
-                      }
-                    >
-                      <span
-                        className={
-                          "absolute h-4 w-4 rounded-full bg-white shadow transition " +
-                          (h.closed ? "translate-x-0.5" : "translate-x-4")
-                        }
-                      />
-                    </button>
+                      onChange={(e) => setDay(d, { open: e.target.value })}
+                      className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
+                    />
+                    <span className="text-muted-foreground text-xs">to</span>
+                    <input
+                      type="time"
+                      value={h.close}
+                      disabled={anyPending}
+                      onChange={(e) => setDay(d, { close: e.target.value })}
+                      className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
+                    />
                   </div>
-                );
-              })}
-            </div>
-            <SaveBar
-              pending={pendingBox === "time"}
-              dirty={dirtyTime}
-              ok={!!oks.time}
-              error={errors.time}
-              onSave={() => saveBox("time")}
-            />
-          </SectionCard>
-        </div>
-
-        <div className="flex flex-col gap-6">
-          {/* CHANNELS */}
-          <SectionCard
-            icon={<Globe className="text-muted-foreground h-4 w-4" />}
-            title="Channels"
-            subtitle="Official links + contact. Leave blank to clear."
-          >
-            <div className="mt-5 grid gap-3.5 sm:grid-cols-2">
-              {CHANNELS.map((c) => {
-                const val = form.channels[c.key as string] ?? "";
-                return (
-                  <TextField
-                    key={c.key as string}
-                    label={c.label}
-                    icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
-                    labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
-                    value={val}
-                    onChange={(x) => setChannel(c.key as string, x)}
-                    placeholder="https://…"
-                    disabled={anyPending}
+                )}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!h.closed}
+                  aria-label={`${d} ${h.closed ? "closed" : "open"}`}
+                  disabled={anyPending}
+                  onClick={() => setDay(d, { closed: !h.closed })}
+                  className={
+                    "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
+                    (h.closed ? "bg-border" : "bg-green-500")
+                  }
+                >
+                  <span
+                    className={
+                      "absolute h-4 w-4 rounded-full bg-white shadow transition " +
+                      (h.closed ? "translate-x-0.5" : "translate-x-4")
+                    }
                   />
-                );
-              })}
-            </div>
-            <p className="text-muted-foreground mt-5 mb-2 text-[11px] font-semibold tracking-[0.06em] uppercase">
-              Contact
-            </p>
-            <div className="grid gap-3.5 sm:grid-cols-2">
-              <TextField
-                label="Phone"
-                icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-                value={form.phone}
-                onChange={(x) => set("phone", x)}
-                disabled={anyPending}
-              />
-              <TextField
-                label="Email"
-                icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-                type="email"
-                value={form.email}
-                onChange={(x) => set("email", x)}
-                disabled={anyPending}
-              />
-            </div>
-            <SaveBar
-              pending={pendingBox === "channels"}
-              dirty={dirtyChannels}
-              ok={!!oks.channels}
-              error={errors.channels}
-              onSave={() => saveBox("channels")}
-            />
-          </SectionCard>
-
-          {/* PHOTOS */}
-          <SectionCard
-            icon={<Images className="text-muted-foreground h-4 w-4" />}
-            title="Photos"
-            subtitle="First photo is the hero. Reorder or remove; upload one at a time."
-            action={
-              <span className="text-muted-foreground text-[11px] tabular-nums">
-                {form.photos.length} / {limits.photosMax}
-              </span>
-            }
-          >
-            <PhotosEditor
-              placeId={place.id}
-              photos={form.photos}
-              photosMax={limits.photosMax}
-              pending={anyPending}
-              uploading={uploading}
-              onUpload={uploadPhoto}
-              onMove={movePhoto}
-              onRemove={removePhoto}
-              onInfo={setMetaFor}
-            />
-            <SaveBar
-              pending={pendingBox === "photos"}
-              dirty={dirtyPhotos}
-              ok={!!oks.photos}
-              error={errors.photos}
-              onSave={() => saveBox("photos")}
-            />
-          </SectionCard>
+                </button>
+              </div>
+            );
+          })}
         </div>
-      </div>
+        <SaveBar
+          pending={pendingBox === "time"}
+          dirty={dirtyTime}
+          ok={!!oks.time}
+          error={errors.time}
+          onSave={() => saveBox("time")}
+        />
+      </SectionCard>
 
-      {/* Reservations — full-width booking-integration band. Kept out of social
-          Channels so the agent's booking target is unambiguous; OpenTable / Resy
-          write existing place columns (no schema change). */}
+      <SectionCard
+        icon={<Globe className="text-muted-foreground h-4 w-4" />}
+        title="Channels"
+        subtitle="Official links + contact. Leave blank to clear."
+      >
+        <div className="mt-5 grid gap-3.5 sm:grid-cols-2">
+          {CHANNELS.map((c) => {
+            const val = form.channels[c.key as string] ?? "";
+            return (
+              <TextField
+                key={c.key as string}
+                label={c.label}
+                icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
+                labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
+                value={val}
+                onChange={(x) => setChannel(c.key as string, x)}
+                placeholder="https://…"
+                disabled={anyPending}
+              />
+            );
+          })}
+        </div>
+        <p className="text-muted-foreground mt-5 mb-2 text-[11px] font-semibold tracking-[0.06em] uppercase">
+          Contact
+        </p>
+        <div className="grid gap-3.5 sm:grid-cols-2">
+          <TextField
+            label="Phone"
+            icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+            value={form.phone}
+            onChange={(x) => set("phone", x)}
+            disabled={anyPending}
+          />
+          <TextField
+            label="Email"
+            icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+            type="email"
+            value={form.email}
+            onChange={(x) => set("email", x)}
+            disabled={anyPending}
+          />
+        </div>
+        <SaveBar
+          pending={pendingBox === "channels"}
+          dirty={dirtyChannels}
+          ok={!!oks.channels}
+          error={errors.channels}
+          onSave={() => saveBox("channels")}
+        />
+      </SectionCard>
+
+      <SectionCard
+        icon={<Images className="text-muted-foreground h-4 w-4" />}
+        title="Photos"
+        subtitle="First photo is the hero. Reorder or remove; upload one at a time."
+        action={
+          <span className="text-muted-foreground text-[11px] tabular-nums">
+            {form.photos.length} / {limits.photosMax}
+          </span>
+        }
+      >
+        <PhotosEditor
+          placeId={place.id}
+          photos={form.photos}
+          photosMax={limits.photosMax}
+          pending={anyPending}
+          uploading={uploading}
+          onUpload={uploadPhoto}
+          onMove={movePhoto}
+          onRemove={removePhoto}
+          onInfo={setMetaFor}
+        />
+        <SaveBar
+          pending={pendingBox === "photos"}
+          dirty={dirtyPhotos}
+          ok={!!oks.photos}
+          error={errors.photos}
+          onSave={() => saveBox("photos")}
+        />
+      </SectionCard>
+
+      {/* Reservations stays out of social Channels so the booking target is
+          unambiguous; OpenTable / Resy write existing place columns. */}
       <SectionCard
         icon={<CalendarCheck className="text-muted-foreground h-4 w-4" />}
         title="Reservations"
         subtitle="Booking endpoints the consumer reservations agent uses to hold a table."
       >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {RESERVATION_LINKS.map((c) => {
             const val = form.reservations[c.key as string] ?? "";
             return (
@@ -760,7 +751,7 @@ export function PlaceSection({
               />
             );
           })}
-          <div className="border-border bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed">
+          <div className="border-border bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed sm:col-span-2">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
               Connect an OpenTable or Resy listing to give the reservations agent a
@@ -776,6 +767,8 @@ export function PlaceSection({
           onSave={() => saveBox("reservations")}
         />
       </SectionCard>
+
+      {children}
 
       {metaFor !== null && (
         <MediaMetaDialog
@@ -921,7 +914,8 @@ function OverviewBand({
         ) : null}
       </div>
 
-      <div className="border-border bg-border mx-5 mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:mx-6 md:grid-cols-5">
+      {/* Half-width card: wrap facts 2→3 cols instead of a 5-wide mono strip. */}
+      <div className="border-border bg-border mx-5 mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border sm:mx-6 sm:grid-cols-3">
         <FactCell label="Status">
           <span className="flex items-center gap-1.5">
             <span className={"h-1.5 w-1.5 rounded-full " + statusDot} aria-hidden />

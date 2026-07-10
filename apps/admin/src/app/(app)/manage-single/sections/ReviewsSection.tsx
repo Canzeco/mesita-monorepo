@@ -390,10 +390,9 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
   const igFollowers = place.instagram_followers_count;
   const fbFollowers = place.facebook_followers;
 
+  // Cards are siblings of Place boxes — parent PlaceSection owns the 2-col grid.
   return (
-    // Two-column so review boxes don't stretch full-width; cards size to their
-    // content (items-start) and flow Summary → Google → Mesita.
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
+    <>
       <SectionCard
         icon={<Star className="text-muted-foreground h-4 w-4" />}
         title="Reviews summary"
@@ -512,6 +511,6 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
           )}
         </div>
       </SectionCard>
-    </div>
+    </>
   );
 }

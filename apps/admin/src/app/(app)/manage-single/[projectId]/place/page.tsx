@@ -9,14 +9,11 @@ export default function UnitPlacePage() {
   const { place, setPlace } = useUnitPlace();
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
-      <PlaceSection place={place} onSaved={setPlace} />
-      <div id="products" className="scroll-mt-28">
+    <div className="mx-auto max-w-7xl">
+      <PlaceSection place={place} onSaved={setPlace}>
         <ProductsSection key={place.id} place={place} onSaved={setPlace} />
-      </div>
-      <div id="reviews" className="scroll-mt-28">
         <ReviewsSection place={place} />
-      </div>
+      </PlaceSection>
     </div>
   );
 }
