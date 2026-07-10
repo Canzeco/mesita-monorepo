@@ -208,6 +208,8 @@ function PriceDisplay({ level }: { level: number | null | undefined }) {
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
+// Address is deliberately absent: it is native (Google/Enricher-sourced) and
+// business-web-update-project rejects manual writes — Location renders read-only.
 type Form = {
   name: string;
   category: string;
@@ -215,7 +217,6 @@ type Form = {
   phone: string;
   email: string;
   tags: string[];
-  address: string;
   photos: string[];
   channels: Record<string, string>;
   reservation: ReservationForm;
@@ -262,7 +263,6 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     phone: v.phone ?? "",
     email: v.email ?? "",
     tags: (v.tags ?? []).slice(0, limits.tagsPerPlaceMax),
-    address: v.address ?? "",
     photos: (v.photos ?? []).slice(0, limits.photosMax),
     channels,
     reservation: readReservationTarget(v),
@@ -272,7 +272,7 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
 
 // Build a partial business-update-project patch for one Place box.
 // Empty strings become null so a cleared field actually clears.
-type PlaceBox = "basics" | "location" | "time" | "channels" | "reservations" | "photos";
+type PlaceBox = "basics" | "time" | "channels" | "reservations" | "photos";
 
 function boxToPatch(
   box: PlaceBox,
@@ -289,9 +289,6 @@ function boxToPatch(
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
     };
-  }
-  if (box === "location") {
-    return { id, address: nz(f.address) };
   }
   if (box === "time") {
     const hours: Record<string, { open: string; close: string }[]> = {};
@@ -340,7 +337,6 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
       category: from.category,
     };
   }
-  if (box === "location") return { ...base, address: from.address };
   if (box === "time") return { ...base, hours: from.hours };
   if (box === "channels") {
     return {
@@ -384,10 +380,6 @@ export function PlaceSection({
         { name: saved.name, description: saved.description, tags: saved.tags },
       ),
     [form.name, form.description, form.tags, saved.name, saved.description, saved.tags],
-  );
-  const dirtyLocation = useMemo(
-    () => !sliceEqual(form.address, saved.address),
-    [form.address, saved.address],
   );
   const dirtyTime = useMemo(
     () => !sliceEqual(form.hours, saved.hours),
@@ -624,20 +616,18 @@ export function PlaceSection({
         </div>
       </SectionCard>
 
+      {/* Location is native — Google Places seed + Enricher synthesis. The EF
+          rejects manual address writes, so this whole box is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
         tint="sky"
         title="Location"
-        subtitle="Address is editable · coordinates are Enricher/Google-sourced."
+        subtitle="Native — address & coordinates come from Google / the Enricher."
       >
         <div className="mt-5">
-          <TextField
-            label="Address"
-            value={form.address}
-            onChange={(x) => set("address", x)}
-            placeholder="Street, colonia, city"
-            disabled={anyPending}
-          />
+          <ReadField label="Address" auto>
+            {place.address?.trim() ? place.address : "—"}
+          </ReadField>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
           <Fact label="Zone">{place.zone ?? "—"}</Fact>
@@ -664,13 +654,6 @@ export function PlaceSection({
             />
           </div>
         ) : null}
-        <SaveBar
-          pending={pendingBox === "location"}
-          dirty={dirtyLocation}
-          ok={!!oks.location}
-          error={errors.location}
-          onSave={() => saveBox("location")}
-        />
       </SectionCard>
 
       <SectionCard
