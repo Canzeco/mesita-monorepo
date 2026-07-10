@@ -82,20 +82,82 @@ const CHANNELS: {
     label: "Uber Eats",
     logo: "/channels/ubereats-mark.svg",
   },
+  { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
 ];
 
-// Booking endpoints for the consumer reservations agent — split out of the
-// social Channels box so the integration target is unambiguous. Backed by the
-// existing place columns (opentable_url / resy_url); no schema change.
+// Resy has no general "profile" channel, so it stays a plain direct booking
+// link (resy_url column). OpenTable now lives in Channels and is routed below.
 const RESERVATION_LINKS: {
   key: keyof AdminPlace;
   label: string;
   logo?: string;
   Icon?: LucideIcon;
+}[] = [{ key: "resy_url", label: "Resy", Icon: CalendarClock }];
+
+// Routable reservation channels — each reuses the venue's profile channel
+// ("same" → profileKey column) or points the agent at a dedicated endpoint
+// ("different" → value). Persisted under products.reservations[key].
+const RESERVATION_ROUTES: {
+  key: string;
+  label: string;
+  profileKey: keyof AdminPlace;
+  kind: "url" | "phone";
+  logo?: string;
+  Icon?: LucideIcon;
 }[] = [
-  { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
-  { key: "resy_url", label: "Resy", Icon: CalendarClock },
+  {
+    key: "opentable",
+    label: "OpenTable",
+    profileKey: "opentable_url",
+    kind: "url",
+    logo: "/channels/opentable.svg",
+  },
+  { key: "phone", label: "Phone", profileKey: "phone", kind: "phone", Icon: Phone },
+  {
+    key: "instagram",
+    label: "Instagram",
+    profileKey: "instagram_url",
+    kind: "url",
+    logo: "/channels/instagram.svg",
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    profileKey: "whatsapp_url",
+    kind: "url",
+    logo: "/channels/whatsapp.svg",
+  },
 ];
+
+type RouteCfg = { mode: "same" | "different"; value: string };
+
+function readRoutes(v: AdminPlace): Record<string, RouteCfg> {
+  const raw = (v.products?.reservations ?? {}) as Record<string, unknown>;
+  const out: Record<string, RouteCfg> = {};
+  for (const r of RESERVATION_ROUTES) {
+    const c = raw[r.key];
+    const obj = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
+    out[r.key] = {
+      mode: obj?.mode === "different" ? "different" : "same",
+      value: typeof obj?.value === "string" ? obj.value : "",
+    };
+  }
+  return out;
+}
+
+function serializeRoutes(
+  routes: Record<string, RouteCfg>,
+): Record<string, { mode: "same" | "different"; value: string | null }> {
+  const out: Record<string, { mode: "same" | "different"; value: string | null }> = {};
+  for (const r of RESERVATION_ROUTES) {
+    const c = routes[r.key] ?? { mode: "same", value: "" };
+    out[r.key] = {
+      mode: c.mode,
+      value: c.mode === "different" ? (c.value.trim() ? c.value.trim() : null) : null,
+    };
+  }
+  return out;
+}
 
 const MAX_RESERVATION_CONTACTS = 8;
 
@@ -166,6 +228,7 @@ type Form = {
   reservations: Record<string, string>;
   reservationEndpoint: string;
   reservationContacts: ReservationContact[];
+  routes: Record<string, RouteCfg>;
   hours: Record<Day, DayHours>;
 };
 
@@ -206,6 +269,7 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   const reservations: Record<string, string> = {};
   for (const c of RESERVATION_LINKS) reservations[c.key as string] = str(v[c.key]);
+  const routes = readRoutes(v);
   return {
     name: (v.name ?? "").slice(0, limits.placeNameMax),
     category: v.category ?? "",
@@ -219,6 +283,7 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     reservations,
     reservationEndpoint: v.reservation_endpoint ?? "",
     reservationContacts: normalizeContacts(v.reservation_contacts),
+    routes,
     hours,
   };
 }
@@ -232,6 +297,7 @@ function boxToPatch(
   f: Form,
   id: string,
   limits: PlaceFieldLimits,
+  existingProducts?: AdminPlace["products"],
 ): Record<string, unknown> {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
@@ -278,6 +344,8 @@ function boxToPatch(
         .slice(0, MAX_RESERVATION_CONTACTS),
     };
     for (const c of RESERVATION_LINKS) patch[c.key as string] = nz(f.reservations[c.key as string]);
+    // Per-channel routing lives in the generic products jsonb; preserve menu.
+    patch.products = { ...(existingProducts ?? {}), reservations: serializeRoutes(f.routes) };
     return patch;
   }
   return { id, photos: f.photos.slice(0, limits.photosMax) };
@@ -314,6 +382,7 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
       reservations: from.reservations,
       reservationEndpoint: from.reservationEndpoint,
       reservationContacts: from.reservationContacts,
+      routes: from.routes,
     };
   }
   return { ...base, photos: from.photos };
@@ -368,20 +437,24 @@ export function PlaceSection({
           reservations: form.reservations,
           reservationEndpoint: form.reservationEndpoint,
           reservationContacts: form.reservationContacts,
+          routes: serializeRoutes(form.routes),
         },
         {
           reservations: saved.reservations,
           reservationEndpoint: saved.reservationEndpoint,
           reservationContacts: saved.reservationContacts,
+          routes: serializeRoutes(saved.routes),
         },
       ),
     [
       form.reservations,
       form.reservationEndpoint,
       form.reservationContacts,
+      form.routes,
       saved.reservations,
       saved.reservationEndpoint,
       saved.reservationContacts,
+      saved.routes,
     ],
   );
   const dirtyPhotos = useMemo(
@@ -397,6 +470,8 @@ export function PlaceSection({
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
   const setReservation = (key: string, val: string) =>
     setForm((f) => ({ ...f, reservations: { ...f.reservations, [key]: val } }));
+  const setRoute = (key: string, patch: Partial<RouteCfg>) =>
+    setForm((f) => ({ ...f, routes: { ...f.routes, [key]: { ...f.routes[key], ...patch } } }));
   const setContact = (idx: number, patch: Partial<ReservationContact>) =>
     setForm((f) => ({
       ...f,
@@ -523,7 +598,9 @@ export function PlaceSection({
     setOks((o) => ({ ...o, [box]: false }));
     setPendingBox(box);
     start(async () => {
-      const r = await updatePlace(boxToPatch(box, form, place.id, limits) as { id: string });
+      const r = await updatePlace(
+        boxToPatch(box, form, place.id, limits, place.products) as { id: string },
+      );
       setPendingBox(null);
       if (!r.ok) {
         setErrors((e) => ({ ...e, [box]: r.error }));
@@ -816,9 +893,70 @@ export function PlaceSection({
       <SectionCard
         icon={<CalendarCheck className="text-muted-foreground h-4 w-4" />}
         title="Reservations"
-        subtitle="Connect a POS / booking endpoint, OpenTable/Resy, or people the agent can call."
+        subtitle="How the reservations agent reaches this venue — reuse a profile channel, add a booking endpoint, or list people to contact."
       >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {/* Per-channel routing: Same (reuse profile) or Different (dedicated). */}
+        <div className="mt-5 flex flex-col gap-3">
+          {RESERVATION_ROUTES.map((r) => {
+            const cfg = form.routes[r.key] ?? { mode: "same", value: "" };
+            const profileVal = str(place[r.profileKey]);
+            return (
+              <div key={r.key} className="border-border rounded-xl border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <ChannelLabelIcon logo={r.logo} Icon={r.Icon} />
+                    {r.label}
+                  </span>
+                  <div
+                    className="bg-muted/60 inline-flex rounded-lg p-0.5"
+                    role="group"
+                    aria-label={`${r.label} reservations source`}
+                  >
+                    {(["same", "different"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        disabled={anyPending}
+                        onClick={() => setRoute(r.key, { mode: m })}
+                        aria-pressed={cfg.mode === m}
+                        className={
+                          "rounded-md px-2.5 py-1 text-xs font-semibold capitalize transition disabled:opacity-50 " +
+                          (cfg.mode === m
+                            ? "bg-card text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {cfg.mode === "same" ? (
+                  <p className="text-muted-foreground mt-2 truncate text-xs">
+                    {profileVal ? (
+                      <>
+                        Uses profile {r.label} ·{" "}
+                        <span className="text-foreground/80">{profileVal}</span>
+                      </>
+                    ) : (
+                      <span className="italic">No profile {r.label} set yet.</span>
+                    )}
+                  </p>
+                ) : (
+                  <input
+                    value={cfg.value}
+                    disabled={anyPending}
+                    onChange={(e) => setRoute(r.key, { value: e.target.value })}
+                    placeholder={r.kind === "phone" ? "+52 55 0000 0000" : "https://…"}
+                    className="border-border bg-background focus:border-ring focus:ring-ring/20 placeholder:text-muted-foreground/60 mt-2 h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-2"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <TextField
             label="POS / booking endpoint"
             icon={<Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}

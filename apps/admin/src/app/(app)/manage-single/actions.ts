@@ -102,6 +102,13 @@ export type ReservationContact = {
   notes?: string | null;
 };
 
+// Per-channel reservations routing, stored under products.reservations (a
+// generic jsonb the update EF round-trips wholesale — no schema change).
+// "same" → the reservations agent reuses the venue's profile channel of that
+// kind; "different" → it uses `value` (a dedicated endpoint / number).
+export type ReservationRoute = { mode: "same" | "different"; value?: string | null };
+export type ReservationRoutes = Record<string, ReservationRoute>;
+
 // The full place row, loaded for a super-admin via business-get-overview
 // (which returns the single requested place when the caller is super-admin).
 // Typed loosely — the editor only touches the known fields below.
@@ -145,8 +152,12 @@ export type AdminPlace = {
   tripadvisor_url: string | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;
-  // Generic products payload. Menus live under products.menu.
-  products?: { menu?: AdminMenuItem[] | null } | null;
+  // Generic products payload. Menus live under products.menu; per-channel
+  // reservations routing under products.reservations.
+  products?: {
+    menu?: AdminMenuItem[] | null;
+    reservations?: ReservationRoutes | null;
+  } | null;
   // Legacy parallel array; prefer products.menu when present.
   menus?: AdminMenuItem[] | null;
   plan: string | null;

@@ -262,7 +262,8 @@ export function ProductsSection({
     start(async () => {
       const r = await updatePlace({
         id: place.id,
-        products: { menu },
+        // Preserve sibling products keys (e.g. reservations routing).
+        products: { ...(place.products ?? {}), menu },
         // Keep legacy single-slot columns in sync for older surfaces.
         menu_pdf_url: first?.url ?? null,
         menu_pdf_name: first?.name ?? null,
