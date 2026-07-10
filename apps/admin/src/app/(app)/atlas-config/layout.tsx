@@ -13,7 +13,7 @@ export default function AtlasConfigLayout({
     <PageContainer>
       <PageHeader
         title="Atlas Config"
-        description="Atlas Params — the controlled vocabulary and field limits the Enricher and operators write place profiles with."
+        description="Atlas Params — who can edit each place field, the controlled vocabulary, and field limits the Enricher and operators write place profiles with."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>

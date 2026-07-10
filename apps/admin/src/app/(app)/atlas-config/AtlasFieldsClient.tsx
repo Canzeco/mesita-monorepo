@@ -2,6 +2,11 @@
 
 import { useMemo } from "react";
 import type { AtlasFieldsPayload } from "./actions";
+import {
+  PLACE_FIELD_PERMISSIONS,
+  PLACE_FIELD_PERMISSION_GROUPS,
+  type PlaceFieldPermission,
+} from "./place-field-permissions";
 
 export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
   const { categories, tags } = data;
@@ -26,8 +31,58 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
     return map;
   }, [tags]);
 
+  const permissionsByGroup = useMemo(() => {
+    const map = new Map<PlaceFieldPermission["group"], PlaceFieldPermission[]>();
+    for (const row of PLACE_FIELD_PERMISSIONS) {
+      const list = map.get(row.group) ?? [];
+      list.push(row);
+      map.set(row.group, list);
+    }
+    return map;
+  }, []);
+
   return (
     <div className="flex flex-col gap-8">
+      <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
+        <h2 className="font-display text-base font-semibold tracking-tight">
+          Who can edit
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Place profile fields — who may write each one today. Read-only matrix
+          from shipped admin / business / Enricher contracts (not a live ACL
+          toggle).
+        </p>
+        <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
+          <table className="w-full min-w-[520px] border-separate border-spacing-0 px-4 sm:px-0">
+            <thead>
+              <tr className="text-muted-foreground text-left text-xs">
+                <th className="border-border border-b pb-2 pl-1 font-medium">
+                  Field
+                </th>
+                <th className="border-border border-b pb-2 text-center font-medium">
+                  Admin
+                </th>
+                <th className="border-border border-b pb-2 text-center font-medium">
+                  Business
+                </th>
+                <th className="border-border border-b pb-2 pr-1 text-center font-medium">
+                  Enricher
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {PLACE_FIELD_PERMISSION_GROUPS.map((group) => {
+                const rows = permissionsByGroup.get(group) ?? [];
+                if (rows.length === 0) return null;
+                return (
+                  <PermissionGroupRows key={group} group={group} rows={rows} />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
         <h2 className="font-display text-base font-semibold tracking-tight">Field limits</h2>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -134,6 +189,63 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function PermissionGroupRows({
+  group,
+  rows,
+}: {
+  group: PlaceFieldPermission["group"];
+  rows: PlaceFieldPermission[];
+}) {
+  return (
+    <>
+      <tr>
+        <td
+          colSpan={4}
+          className="text-muted-foreground pt-4 pb-1.5 pl-1 text-[10px] font-semibold tracking-wide uppercase"
+        >
+          {group}
+        </td>
+      </tr>
+      {rows.map((row) => (
+        <tr key={row.key} className="align-top">
+          <td className="border-border/60 border-b py-2.5 pl-1">
+            <div className="text-sm font-medium">{row.label}</div>
+            {row.note ? (
+              <div className="text-muted-foreground mt-0.5 max-w-md text-xs leading-snug">
+                {row.note}
+              </div>
+            ) : null}
+          </td>
+          <td className="border-border/60 border-b py-2.5 text-center">
+            <PermissionCell allowed={row.admin} />
+          </td>
+          <td className="border-border/60 border-b py-2.5 text-center">
+            <PermissionCell allowed={row.business} />
+          </td>
+          <td className="border-border/60 border-b py-2.5 pr-1 text-center">
+            <PermissionCell allowed={row.enricher} />
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function PermissionCell({ allowed }: { allowed: boolean }) {
+  return (
+    <span
+      className={
+        allowed
+          ? "bg-emerald-500/10 text-emerald-700 inline-flex min-w-[2.25rem] items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold"
+          : "bg-muted text-muted-foreground inline-flex min-w-[2.25rem] items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium"
+      }
+      title={allowed ? "Can edit" : "Cannot edit"}
+    >
+      {allowed ? "Yes" : "No"}
+    </span>
   );
 }
 
