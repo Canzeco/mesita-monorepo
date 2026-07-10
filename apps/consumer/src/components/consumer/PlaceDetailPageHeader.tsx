@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { PlaceSaveButton } from "@/components/consumer/PlaceSaveButton";
 
 // Header for the hard-nav /place/[id] page (refresh / direct URL / new
 // tab). Mirrors the modal shell's header but with an ArrowLeft Link back
@@ -11,11 +10,12 @@ import { PlaceSaveButton } from "@/components/consumer/PlaceSaveButton";
 // route home because there's always a previous shell route; the hard-nav
 // page can't trust browser history.
 //
-// decision: Pato (MESITA-383) — Save lives top-right in the header; the
-// body action row is Contact · Reserve · Share.
+// decision: Pato (MESITA-392, reverses MESITA-383) — Save moved into the
+// body action row (Save · Contact · Reserve · Share). The header is just
+// back + centered name now, so a w-9 spacer balances the back button.
 
 export function PlaceDetailPageHeader({
-  placeId,
+  placeId: _placeId,
   placeName,
   listingType: _listingType,
   backHref = CONSUMER_ROUTES.home,
@@ -37,7 +37,7 @@ export function PlaceDetailPageHeader({
       <div className="font-display min-w-0 flex-1 truncate text-center text-base font-semibold">
         {placeName}
       </div>
-      <PlaceSaveButton placeId={placeId} placeName={placeName} />
+      <div className="h-9 w-9 shrink-0" aria-hidden />
     </header>
   );
 }
