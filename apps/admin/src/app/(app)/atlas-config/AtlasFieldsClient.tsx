@@ -87,7 +87,9 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
       <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
         <h2 className="font-display text-base font-semibold tracking-tight">Field limits</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Enforced in the business Place editor and business-update-project.
+          Profile-spec caps from the Enricher shared limits — enforced in the
+          business Place editor / business-update-project, and (for Google
+          reviews) the Enricher Apify scrape.
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {Object.entries(data.fieldLimits).map(([key, limit]) => {
@@ -260,6 +262,7 @@ function humanizeKey(key: string): string {
   if (key === "tagsPerPlace") return "Tags per place";
   if (key === "tagCatalogSize") return "Tag catalog";
   if (key === "photos") return "Photos";
+  if (key === "googleReviews") return "Google reviews";
   if (key === "prWhatsappNumbers") return "PR WhatsApp numbers";
   if (key === "prInstagramAccounts") return "PR Instagram accounts";
   return key
@@ -273,11 +276,14 @@ function formatLimit(key: string, max: number): string {
     "tagsPerPlace",
     "tagCatalogSize",
     "photos",
+    "googleReviews",
     "prWhatsappNumbers",
     "prInstagramAccounts",
   ]);
   if (key === "tagsPerPlace") return `Up to ${max.toLocaleString()}`;
-  if (key === "photos") return `Up to ${max.toLocaleString()}`;
+  if (key === "photos" || key === "googleReviews") {
+    return `Up to ${max.toLocaleString()}`;
+  }
   if (key === "prWhatsappNumbers" || key === "prInstagramAccounts") {
     return `Up to ${max.toLocaleString()}`;
   }
