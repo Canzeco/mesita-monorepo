@@ -38,6 +38,7 @@ import {
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
+import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import {
   FacebookLogo,
   GoogleLogo,
@@ -343,11 +344,7 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </ProfileMetaChip>
       </div>
 
-      <ProfileActions
-        className="mt-5"
-        placeId={place.id}
-        placeName={place.name}
-      />
+      <ProfileActions className="mt-5" place={place} />
     </section>
   );
 }
@@ -433,27 +430,29 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
   } as unknown as Place;
 }
 
-// Save · Reserve · Share — one horizontal row, IG-style filled buttons.
-// Reserve parked (Soon). Share uses native share with clipboard fallback.
+// Save · Reserve · Contact · Share — a 2×2 action grid of IG-style buttons.
+// Left column is live (save the place · contact the venue); the right column
+// is parked (Reserve · Share, both "Soon"). Contact opens a channel chooser;
+// Share's native-share handler stays wired behind the disabled state so an
+// un-park is a one-line change.
 function ProfileActions({
-  placeId,
-  placeName,
+  place,
   className,
 }: {
-  placeId: string;
-  placeName: string;
+  place: PlaceDetail;
   className?: string;
 }) {
   const router = useRouter();
   const { isSaved, toggle } = useSavedPlaces();
-  const saved = isSaved(placeId);
+  const saved = isSaved(place.id);
+  const [contactOpen, setContactOpen] = useState(false);
 
   function onSavePlace() {
     const nowSaved = !saved;
-    toggle(placeId);
+    toggle(place.id);
     if (nowSaved) {
       toast.action(
-        `Saved ${placeName}`,
+        `Saved ${place.name}`,
         {
           label: "View",
           onClick: () => router.push(CONSUMER_ROUTES.favorites),
@@ -461,15 +460,15 @@ function ProfileActions({
         { tone: "success" },
       );
     } else {
-      toast(`Removed ${placeName} from saved`);
+      toast(`Removed ${place.name} from saved`);
     }
   }
 
   async function onSharePlace() {
     const url = typeof window !== "undefined" ? window.location.href : "";
     const payload = {
-      title: `${placeName} on Mesita`,
-      text: `Check out ${placeName} on Mesita`,
+      title: `${place.name} on Mesita`,
+      text: `Check out ${place.name} on Mesita`,
       url,
     };
     if (
@@ -496,56 +495,75 @@ function ProfileActions({
     toast.error("Sharing isn't available in this browser");
   }
 
-  // decision: Pato — three equal buttons on one line (not stacked).
+  // decision: Pato — four buttons on a 2×2 grid (his layout). Live actions
+  //   fill the left column (Save · Contact); the "Soon" tiles stack in the
+  //   right column (Reserve · Share). Save stays the loud pink CTA, top-left.
   // decision: Save vs Saved must read instantly — unsaved = loud pink CTA;
-  // Saved = outline + filled heart (calm on-state), not another pink fill.
+  //   Saved = outline + filled heart (calm on-state), not another pink fill.
   return (
-    <div className={cn("grid grid-cols-3 gap-2", className)}>
-      <button
-        type="button"
-        onClick={onSavePlace}
-        aria-pressed={saved}
-        aria-label={saved ? "Remove from saved" : "Save place"}
-        className={cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold transition active:scale-[0.99]",
-          saved
-            ? "border-primary/35 bg-primary/8 text-primary hover:bg-primary/12 border shadow-none"
-            : "bg-pink-gradient shadow-glow text-white hover:brightness-110",
-        )}
-      >
-        <Heart
-          className={cn("h-4 w-4", saved && "fill-current")}
-          strokeWidth={2.25}
-        />
-        {saved ? "Saved" : "Save"}
-      </button>
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
-      >
-        <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-        Reserve
-        <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
-          Soon
-        </span>
-      </button>
-      {/* Parked (Soon) — handler kept wired for un-park; disabled ignores onClick. */}
-      <button
-        type="button"
-        onClick={onSharePlace}
-        disabled
-        aria-disabled="true"
-        className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
-      >
-        <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-        Share
-        <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
-          Soon
-        </span>
-      </button>
-    </div>
+    <>
+      <div className={cn("grid grid-cols-2 gap-2", className)}>
+        <button
+          type="button"
+          onClick={onSavePlace}
+          aria-pressed={saved}
+          aria-label={saved ? "Remove from saved" : "Save place"}
+          className={cn(
+            "inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold transition active:scale-[0.99]",
+            saved
+              ? "border-primary/35 bg-primary/8 text-primary hover:bg-primary/12 border shadow-none"
+              : "bg-pink-gradient shadow-glow text-white hover:brightness-110",
+          )}
+        >
+          <Heart
+            className={cn("h-4 w-4", saved && "fill-current")}
+            strokeWidth={2.25}
+          />
+          {saved ? "Saved" : "Save"}
+        </button>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
+        >
+          <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          Reserve
+          <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+            Soon
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setContactOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={contactOpen}
+          className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+        >
+          <Phone className="h-4 w-4" strokeWidth={2.25} />
+          Contact
+        </button>
+        {/* Parked (Soon) — handler kept wired for un-park; disabled ignores onClick. */}
+        <button
+          type="button"
+          onClick={onSharePlace}
+          disabled
+          aria-disabled="true"
+          className="bg-muted text-muted-foreground inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-xl py-2.5 text-[13px] font-semibold"
+        >
+          <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          Share
+          <span className="bg-foreground/8 text-muted-foreground rounded-md px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase">
+            Soon
+          </span>
+        </button>
+      </div>
+      <PlaceContactSheet
+        place={place}
+        open={contactOpen}
+        onClose={() => setContactOpen(false)}
+      />
+    </>
   );
 }
 
