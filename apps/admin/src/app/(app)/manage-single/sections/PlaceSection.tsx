@@ -1097,6 +1097,16 @@ function OverviewBand({
             ) : null}
           </span>
         </FactTile>
+        {/* decision: Pato — price + category also surface on Overview (still
+            have their own Enricher-derived box beside this card). */}
+        <FactTile label="Price">
+          <PriceDisplay level={place.price_level} />
+        </FactTile>
+        <FactTile label="Category">
+          <span className="text-sm font-medium">
+            {place.category_label ?? place.category ?? "—"}
+          </span>
+        </FactTile>
       </div>
 
       {enrichStatus?.last_enriched_at ||
