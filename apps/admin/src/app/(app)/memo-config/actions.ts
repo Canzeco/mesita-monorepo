@@ -9,40 +9,14 @@
 // system prompt (instructions) is consumed live by consumer-web-ask-memo; the
 // model knobs are persisted for the forthcoming Memo model rebuild. No client
 // ever touches the DB.
+//
+// Types + model catalogs live in ./types (not here) — "use server" modules may
+// only export async functions to the client.
 
 import { efInvoke } from "@/lib/supabase-ef";
+import type { MemoConfig } from "./types";
 
-// The tunable surface an operator edits. Mirrors the knobs Memo actually reads
-// at runtime (persona prose, model params, retrieval shape).
-export type MemoConfig = {
-  greeting: string;
-  instructions: string;
-  // OpenAI is Memo's brain (intent + orchestration + prose).
-  provider: "openai";
-  openaiModel: string;
-  // Perplexity is the OPTIONAL web-grounding leg (live editorial color +
-  // citations). Off by default — Google Places + the catalog do place
-  // grounding. When on, Memo calls this Perplexity model for web color.
-  webGrounding: boolean;
-  perplexityModel: string;
-  updatedAt?: string;
-};
-
-// Selectable model ids surfaced in the admin picker (kept here so the page and
-// any future EF share one list).
-export const OPENAI_MODELS = [
-  "gpt-4o-mini",
-  "gpt-4o",
-  "gpt-4.1-mini",
-  "gpt-4.1",
-] as const;
-
-export const PERPLEXITY_MODELS = [
-  "sonar",
-  "sonar-pro",
-  "sonar-reasoning",
-  "sonar-reasoning-pro",
-] as const;
+export type { MemoConfig } from "./types";
 
 export type GetMemoConfigResult =
   | { ok: true; data: MemoConfig }

@@ -9,13 +9,12 @@ import {
   Switch,
   TextAreaField,
 } from "../enricher-config/atlas-ui";
+import { getMemoConfig, updateMemoConfig } from "./actions";
 import {
-  getMemoConfig,
   OPENAI_MODELS,
   PERPLEXITY_MODELS,
-  updateMemoConfig,
   type MemoConfig,
-} from "./actions";
+} from "./types";
 
 // Memo's config surface — kept deliberately small: the persona prose and the
 // models. These DEFAULTS are the pre-load placeholder; on mount the page loads
