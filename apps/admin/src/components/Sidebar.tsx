@@ -86,8 +86,8 @@ function NavLink({
         "pl-2.5 lg:pl-3 " +
         " flex items-center gap-2.5 rounded-2xl py-2 pr-2.5 text-[13px] font-medium transition lg:gap-3 lg:py-2.5 lg:pr-3 lg:text-sm " +
         (active
-          ? "bg-secondary/10 text-secondary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground")
+          ? "bg-secondary text-secondary-foreground"
+          : "text-background/60 hover:bg-background/10 hover:text-background")
       }
     >
       <Icon className="h-4 w-4 shrink-0" />
@@ -97,7 +97,7 @@ function NavLink({
 }
 
 function SidebarDivider() {
-  return <div className="border-border border-t" role="separator" />;
+  return <div className="border-background/10 border-t" role="separator" />;
 }
 
 function SectionGap() {
@@ -137,8 +137,9 @@ export function SidebarNav({ onNavigate }: SidebarProps) {
 }
 
 export function Sidebar({ onNavigate }: SidebarProps) {
+  // Dark lateral rail — only the main menu is inverted; content stays light.
   return (
-    <aside className="border-border bg-card flex h-full w-56 shrink-0 flex-col overflow-hidden border-r px-2.5 pt-5 pb-4 lg:w-64 lg:px-3">
+    <aside className="bg-foreground text-background flex h-full w-56 shrink-0 flex-col overflow-hidden border-r border-background/10 px-2.5 pt-5 pb-4 lg:w-64 lg:px-3">
       <Link
         href="/central"
         onClick={onNavigate}
@@ -150,7 +151,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <span className="font-display text-base font-semibold tracking-tight">
           mesita
           <span className="text-primary">.</span>
-          <span className="text-muted-foreground ml-1.5 text-[10px] font-medium tracking-[0.16em] uppercase">
+          <span className="text-background/50 ml-1.5 text-[10px] font-medium tracking-[0.16em] uppercase">
             admin
           </span>
         </span>

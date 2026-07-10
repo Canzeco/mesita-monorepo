@@ -37,12 +37,11 @@ export function UnitEditChrome({
     : null;
 
   return (
-    // Dark sticky chrome — two rows so identity and tabs each get real
-    // vertical space instead of fighting in one cramped strip.
-    <div className="bg-foreground text-background sticky top-0 z-30 shadow-md">
+    // Light sticky chrome — content area stays light; only the lateral menu is dark.
+    <div className="border-border bg-card text-foreground sticky top-0 z-30 border-b shadow-sm">
       {/* Row 1 — identity + actions */}
       <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
-        <UnitThumb photo={heroPhoto} name={place.name} size="lg" tone="onDark" />
+        <UnitThumb photo={heroPhoto} name={place.name} size="lg" tone="onLight" />
 
         <div className="min-w-0 flex-1">
           <p
@@ -51,16 +50,16 @@ export function UnitEditChrome({
           >
             {place.name}
           </p>
-          <div className="text-background/55 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             {statusLabel ? (
-              <span className="text-background/80 font-medium capitalize">
+              <span className="text-foreground/80 font-medium capitalize">
                 {statusLabel}
               </span>
             ) : null}
             {place.category_label || place.category ? (
               <>
                 {statusLabel ? (
-                  <span className="bg-background/25 h-1 w-1 rounded-full" aria-hidden />
+                  <span className="bg-border h-1 w-1 rounded-full" aria-hidden />
                 ) : null}
                 <span className="truncate">
                   {place.category_label ?? place.category}
@@ -73,7 +72,7 @@ export function UnitEditChrome({
         <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/manage-single/select"
-            className="text-background/80 hover:bg-background/10 hover:text-background inline-flex h-10 items-center gap-2 rounded-xl border border-background/15 px-3 text-sm font-medium transition sm:px-3.5"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium transition sm:px-3.5"
           >
             <ArrowLeftRight className="h-4 w-4" />
             <span className="hidden sm:inline">Switch unit</span>
@@ -83,7 +82,7 @@ export function UnitEditChrome({
       </div>
 
       {/* Row 2 — full-width section tabs */}
-      <div className="border-background/10 border-t px-2 sm:px-4 lg:px-6">
+      <div className="border-border border-t px-2 sm:px-4 lg:px-6">
         <nav
           role="tablist"
           aria-label="Unit sections"
@@ -101,11 +100,11 @@ export function UnitEditChrome({
                   role="tab"
                   aria-disabled
                   title={`${label} — coming soon`}
-                  className="text-background/35 relative inline-flex min-h-12 shrink-0 cursor-not-allowed items-center gap-2 px-3.5 text-sm font-semibold sm:min-h-[3.25rem] sm:px-4"
+                  className="text-muted-foreground/50 relative inline-flex min-h-12 shrink-0 cursor-not-allowed items-center gap-2 px-3.5 text-sm font-semibold sm:min-h-[3.25rem] sm:px-4"
                 >
                   <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
                   <span>{label}</span>
-                  <span className="bg-background/10 text-background/60 rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase">
+                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase">
                     Soon
                   </span>
                 </span>
@@ -121,8 +120,8 @@ export function UnitEditChrome({
                 className={
                   "relative inline-flex min-h-12 shrink-0 items-center gap-2 px-3.5 text-sm font-semibold transition sm:min-h-[3.25rem] sm:px-4 " +
                   (active
-                    ? "text-background"
-                    : "text-background/55 hover:bg-background/5 hover:text-background/90")
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")
                 }
               >
                 <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
@@ -232,7 +231,7 @@ function ReEnrichButton({ projectId }: { projectId: string }) {
         className={
           "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition disabled:opacity-60 sm:px-3.5 " +
           (state === "error"
-            ? "bg-red-500/20 text-red-200 hover:bg-red-500/30"
+            ? "bg-red-500/15 text-red-700 hover:bg-red-500/25"
             : "bg-secondary text-secondary-foreground hover:opacity-90")
         }
       >
@@ -283,7 +282,7 @@ export function UnitThumb({
   photo: string | null;
   name: string;
   size?: "sm" | "lg";
-  /** onDark = Manage Single Unit chrome; onLight = select catalog cards. */
+  /** onDark kept for any future dark surfaces; chrome + catalog use onLight. */
   tone?: "onLight" | "onDark";
 }) {
   const dim = size === "lg" ? "h-11 w-11 rounded-xl" : "h-8 w-8 rounded-md";
