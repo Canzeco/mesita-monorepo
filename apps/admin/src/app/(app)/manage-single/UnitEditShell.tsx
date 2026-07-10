@@ -61,7 +61,7 @@ export function UnitEditShell({
 
   if (loadingPlace) {
     return (
-      <div className="-mx-4 -mt-8 px-4 pt-8 sm:-mx-6 sm:-mt-12 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="px-4 pt-8 sm:px-6 sm:pt-10 lg:px-8">
         <Spinner label="Loading unit…" />
       </div>
     );
@@ -69,7 +69,7 @@ export function UnitEditShell({
 
   if (!place) {
     return (
-      <div className="-mx-4 -mt-8 px-4 pt-8 sm:-mx-6 sm:-mt-12 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="px-4 pt-8 sm:px-6 sm:pt-10 lg:px-8">
         {loadError && <ErrorNote message={loadError} />}
         <button
           type="button"
@@ -91,9 +91,9 @@ export function UnitEditShell({
         reload: () => void loadPlace(projectId),
       }}
     >
-      <div className="-mx-4 -mt-8 sm:-mx-6 sm:-mt-12 lg:-mx-8">
+      {/* Chrome is full-bleed across the main column; body keeps page padding. */}
+      <div className="w-full">
         <UnitEditChrome projectId={projectId} place={place} />
-
         <div className="px-4 pt-6 sm:px-6 lg:px-8">{children}</div>
       </div>
     </UnitPlaceProvider>

@@ -1,4 +1,3 @@
-import { PageContainer } from "@/components/PageContainer";
 import { ManageSingleLayoutShell } from "./ManageSingleLayoutShell";
 
 export default function ManageSingleLayout({
@@ -6,9 +5,7 @@ export default function ManageSingleLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <PageContainer className="pb-10 sm:pb-14">
-      <ManageSingleLayoutShell>{children}</ManageSingleLayoutShell>
-    </PageContainer>
-  );
+  // PageContainer lives inside ManageSingleLayoutShell so unit-editor routes
+  // can full-bleed the sticky chrome (no max-w-6xl gutters).
+  return <ManageSingleLayoutShell>{children}</ManageSingleLayoutShell>;
 }
