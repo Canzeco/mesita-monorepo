@@ -550,23 +550,16 @@ export function PlaceSection({
     // Every Place box shares one two-column grid — no full-width mono heroes.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
-      <OverviewBand place={place} enrichStatus={enrichStatus} ownership={ownership} />
-
-      <SectionCard
-        icon={<Store className="h-4 w-4" />}
-        tint="rose"
-        title="Basics"
-        subtitle="Name, about, and tags."
-      >
-        <div className="mt-5">
-          <TextField
-            label="Name"
-            value={form.name}
-            onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
-            maxLength={limits.placeNameMax}
-            disabled={anyPending}
-          />
-        </div>
+      {/* Overview + Basics live in ONE card: read-only signals on top, the
+          editable identity (name / about / tags) below a divider. */}
+      <OverviewBand place={place} enrichStatus={enrichStatus} ownership={ownership}>
+        <TextField
+          label="Name"
+          value={form.name}
+          onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
+          maxLength={limits.placeNameMax}
+          disabled={anyPending}
+        />
         <div className="mt-4">
           <TextArea
             label="About"
@@ -596,7 +589,7 @@ export function PlaceSection({
           error={errors.basics}
           onSave={() => saveBox("basics")}
         />
-      </SectionCard>
+      </OverviewBand>
 
       {/* Price + Category are Enricher/Google-derived — read-only, own box. */}
       <SectionCard
@@ -991,17 +984,21 @@ function CopyIdButton({ id }: { id: string }) {
 
 const GOOD_STATUS = new Set(["published", "active", "live", "ready"]);
 
-// The read-only Overview band — identity + enrichment/verification/ownership/
-// plan facts as soft tiles under a faint brand wash. The one "hero" card on
-// the page; everything else stays calm.
+// The Overview card — read-only signals (enrichment/verification/ownership/
+// plan facts as soft tiles under a faint brand wash) with the editable
+// identity basics (name / about / tags) folded in below a divider. The one
+// "hero" card on the page; everything else stays calm.
 function OverviewBand({
   place,
   enrichStatus,
   ownership,
+  children,
 }: {
   place: AdminPlace;
   enrichStatus: PlaceEnrichmentStatus | null;
   ownership: "loading" | "owned" | "unowned";
+  /** Editable basics (fields + SaveBar) rendered below the signals. */
+  children?: React.ReactNode;
 }) {
   const badge = enrichmentBadge(enrichStatus);
   const verified = place.listing_type === "partner";
@@ -1028,12 +1025,12 @@ function OverviewBand({
               TINT_CHIP.rose
             }
           >
-            <BadgeCheck className="h-4 w-4" />
+            <Store className="h-4 w-4" />
           </span>
           <div>
             <h2 className="font-display text-base font-semibold tracking-tight">Overview</h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              Read-only signals from the Enricher &amp; catalog.
+              Enricher &amp; catalog signals · name, about, and tags.
             </p>
           </div>
         </div>
@@ -1112,13 +1109,20 @@ function OverviewBand({
         </div>
       ) : null}
 
-      <div className="border-border/60 text-muted-foreground relative mt-4 flex items-center gap-2 border-t px-5 py-3 text-xs sm:px-6">
+      <div className="text-muted-foreground relative mt-3 flex items-center gap-2 px-5 pb-4 text-xs sm:px-6">
         <span className="font-medium">ID</span>
         <code className="bg-muted min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-[11px]">
           {place.id}
         </code>
         <CopyIdButton id={place.id} />
       </div>
+
+      {/* Editable identity zone — divided from the read-only signals above. */}
+      {children != null ? (
+        <div className="border-border/60 relative border-t px-5 pt-4 pb-5 sm:px-6">
+          {children}
+        </div>
+      ) : null}
     </section>
   );
 }
