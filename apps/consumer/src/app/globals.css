@@ -159,6 +159,46 @@
   animation: swipe-hint 2.6s ease-in-out infinite;
 }
 
+/* "Continue as guest" — the zero-friction entry we actively want tapped, so
+   it gets two slow, gentle motions that read as "alive" next to the quieter
+   phone CTA: a diagonal highlight that sweeps across the branded fill, and a
+   pink glow that breathes. Both are decorative and pause under
+   prefers-reduced-motion. Consumed by GuestSignInButton. */
+@keyframes guest-sheen {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  55%,
+  100% {
+    transform: translateX(100%) skewX(-12deg);
+  }
+}
+
+@keyframes guest-breathe {
+  0%,
+  100% {
+    box-shadow: 0 12px 26px -14px oklch(0.65 0.24 5 / 0.55);
+  }
+  50% {
+    box-shadow: 0 20px 44px -12px oklch(0.65 0.24 5 / 0.72);
+  }
+}
+
+.animate-guest-sheen {
+  animation: guest-sheen 2.8s ease-in-out infinite;
+}
+
+.animate-guest-breathe {
+  animation: guest-breathe 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-guest-sheen,
+  .animate-guest-breathe {
+    animation: none;
+  }
+}
+
 @theme inline {
   /* Tightened radius scale — flatter, less "pill-like" corners across the
      whole app. Deltas between steps are small so even rounded-3xl stays crisp. */

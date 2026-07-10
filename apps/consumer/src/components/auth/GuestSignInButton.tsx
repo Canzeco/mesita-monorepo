@@ -16,7 +16,11 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 const GUEST_PHONE = "+520000000";
 const GUEST_PASSWORD = "mesita-guest-public";
 
-export function GuestSignInButton({ redirectAfter }: { redirectAfter: string }) {
+export function GuestSignInButton({
+  redirectAfter,
+}: {
+  redirectAfter: string;
+}) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const [loading, setLoading] = useState(false);
@@ -46,16 +50,25 @@ export function GuestSignInButton({ redirectAfter }: { redirectAfter: string }) 
         type="button"
         onClick={() => void enterAsGuest()}
         disabled={loading}
-        className="border-border bg-card text-foreground hover:bg-muted flex h-12 w-full items-center justify-center gap-2 rounded-lg border text-sm font-semibold transition disabled:opacity-60"
+        className="bg-pink-gradient shadow-glow animate-guest-breathe relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-lg text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
       >
-        {loading ? (
-          <Spinner size="sm" />
-        ) : (
-          <>
-            <UserRound className="h-4 w-4" />
-            Continue as guest
-          </>
-        )}
+        {/* Decorative sheen — a diagonal highlight that sweeps across to keep
+            the button feeling alive. Parked off-screen (-translate-x-full) when
+            motion is reduced. See .animate-guest-sheen in globals.css. */}
+        <span
+          aria-hidden
+          className="animate-guest-sheen pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/45 to-transparent"
+        />
+        <span className="relative z-10 flex items-center gap-2">
+          {loading ? (
+            <Spinner size="sm" className="border-white/40 border-t-white" />
+          ) : (
+            <>
+              <UserRound className="h-4 w-4" />
+              Continue as guest
+            </>
+          )}
+        </span>
       </button>
       {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
     </div>
