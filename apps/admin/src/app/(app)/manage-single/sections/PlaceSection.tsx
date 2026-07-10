@@ -36,7 +36,7 @@ import {
   type ReservationTarget,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
-import { SaveBar, SectionCard, TextArea, TextField } from "../ui";
+import { GroupLabel, SaveBar, SectionCard, TextArea, TextField, TINT_CHIP } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -561,7 +561,8 @@ export function PlaceSection({
       <OverviewBand place={place} enrichStatus={enrichStatus} ownership={ownership} />
 
       <SectionCard
-        icon={<Store className="text-muted-foreground h-4 w-4" />}
+        icon={<Store className="h-4 w-4" />}
+        tint="rose"
         title="Basics"
         subtitle="Name, about, and tags."
       >
@@ -607,7 +608,8 @@ export function PlaceSection({
 
       {/* Price + Category are Enricher/Google-derived — read-only, own box. */}
       <SectionCard
-        icon={<BadgeCheck className="text-muted-foreground h-4 w-4" />}
+        icon={<BadgeCheck className="h-4 w-4" />}
+        tint="amber"
         title="Price & category"
         subtitle="Inferred by Enricher / Google Places — not editable here."
       >
@@ -623,7 +625,8 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<MapPin className="text-muted-foreground h-4 w-4" />}
+        icon={<MapPin className="h-4 w-4" />}
+        tint="sky"
         title="Location"
         subtitle="Address is editable · coordinates are Enricher/Google-sourced."
       >
@@ -651,7 +654,7 @@ export function PlaceSection({
           </Fact>
         </div>
         {place.lat != null && place.lng != null ? (
-          <div className="border-border mt-4 overflow-hidden rounded-xl border">
+          <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
             <iframe
               src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
               title={`Map of ${place.name}`}
@@ -671,7 +674,8 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<Clock className="text-muted-foreground h-4 w-4" />}
+        icon={<Clock className="h-4 w-4" />}
+        tint="violet"
         title="Hours"
         subtitle={
           place.timezone
@@ -679,27 +683,27 @@ export function PlaceSection({
             : "One range per day. Toggle off for days the place isn't open."
         }
       >
-        <div className="border-border divide-border mt-5 divide-y overflow-hidden rounded-xl border">
+        <div className="border-border/60 divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
           {DAYS.map((d) => {
             const h = form.hours[d];
             return (
               <div
                 key={d}
                 className={
-                  "flex items-center gap-3 px-3.5 py-2.5 " +
-                  (h.closed ? "bg-muted/25" : "")
+                  "flex items-center gap-3 px-3.5 py-2.5 transition " +
+                  (h.closed ? "bg-muted/30" : "")
                 }
               >
                 <span
                   className={
                     "w-20 shrink-0 text-sm font-medium capitalize " +
-                    (h.closed ? "text-muted-foreground" : "")
+                    (h.closed ? "text-muted-foreground/70" : "")
                   }
                 >
                   {d}
                 </span>
                 {h.closed ? (
-                  <span className="text-muted-foreground flex-1 text-xs italic">
+                  <span className="text-muted-foreground/70 flex-1 text-xs italic">
                     Closed
                   </span>
                 ) : (
@@ -709,15 +713,15 @@ export function PlaceSection({
                       value={h.open}
                       disabled={anyPending}
                       onChange={(e) => setDay(d, { open: e.target.value })}
-                      className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
+                      className="bg-muted/50 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border border-transparent px-2 text-sm tabular-nums outline-none transition focus:ring-4"
                     />
-                    <span className="text-muted-foreground text-xs">to</span>
+                    <span className="text-muted-foreground text-xs">–</span>
                     <input
                       type="time"
                       value={h.close}
                       disabled={anyPending}
                       onChange={(e) => setDay(d, { close: e.target.value })}
-                      className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
+                      className="bg-muted/50 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border border-transparent px-2 text-sm tabular-nums outline-none transition focus:ring-4"
                     />
                   </div>
                 )}
@@ -730,7 +734,7 @@ export function PlaceSection({
                   onClick={() => setDay(d, { closed: !h.closed })}
                   className={
                     "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
-                    (h.closed ? "bg-border" : "bg-green-500")
+                    (h.closed ? "bg-border" : "bg-pink-gradient")
                   }
                 >
                   <span
@@ -754,7 +758,8 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<Globe className="text-muted-foreground h-4 w-4" />}
+        icon={<Globe className="h-4 w-4" />}
+        tint="indigo"
         title="Channels"
         subtitle="Official links + contact. Leave blank to clear."
       >
@@ -765,7 +770,7 @@ export function PlaceSection({
               <TextField
                 key={c.key as string}
                 label={c.label}
-                icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
+                leading={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
                 labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
                 value={val}
                 onChange={(x) => setChannel(c.key as string, x)}
@@ -775,20 +780,20 @@ export function PlaceSection({
             );
           })}
         </div>
-        <p className="text-muted-foreground mt-5 mb-2 text-[11px] font-semibold tracking-[0.06em] uppercase">
-          Contact
-        </p>
+        <div className="mt-6 mb-2">
+          <GroupLabel>Contact</GroupLabel>
+        </div>
         <div className="grid gap-3.5 sm:grid-cols-2">
           <TextField
             label="Phone"
-            icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+            leading={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
             value={form.phone}
             onChange={(x) => set("phone", x)}
             disabled={anyPending}
           />
           <TextField
             label="Email"
-            icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+            leading={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
             type="email"
             value={form.email}
             onChange={(x) => set("email", x)}
@@ -805,7 +810,8 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<Images className="text-muted-foreground h-4 w-4" />}
+        icon={<Images className="h-4 w-4" />}
+        tint="pink"
         title="Photos"
         subtitle="First photo is the hero. Reorder or remove; upload one at a time."
         action={
@@ -836,7 +842,8 @@ export function PlaceSection({
 
       {/* Reservations — one contact channel for the reservationist. */}
       <SectionCard
-        icon={<CalendarCheck className="text-muted-foreground h-4 w-4" />}
+        icon={<CalendarCheck className="h-4 w-4" />}
+        tint="teal"
         title="Reservations"
         subtitle="What should we contact for reservations — Instagram, WhatsApp, or phone."
       >
@@ -847,7 +854,7 @@ export function PlaceSection({
           return (
             <div className="mt-5 grid gap-3.5 sm:grid-cols-[minmax(0,11rem)_1fr]">
               <label className="flex flex-col gap-1.5">
-                <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
+                <span className="text-foreground/80 flex min-h-4 items-center text-[13px] font-medium">
                   Contact via
                 </span>
                 <select
@@ -857,7 +864,7 @@ export function PlaceSection({
                     setReservationChannel(e.target.value as ReservationChannel | "")
                   }
                   aria-label="Reservation contact channel"
-                  className="border-border bg-background focus:border-ring focus:ring-ring/20 h-9 w-full rounded-lg border px-2.5 text-sm outline-none transition focus:ring-2 disabled:opacity-50"
+                  className="bg-muted/50 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border border-transparent px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
                 >
                   <option value="">Select…</option>
                   {RESERVATION_CHANNELS.map((c) => (
@@ -869,7 +876,7 @@ export function PlaceSection({
               </label>
               <TextField
                 label={selected ? selected.label : "Value"}
-                icon={
+                leading={
                   selected ? (
                     <ChannelLabelIcon logo={selected.logo} Icon={selected.Icon} />
                   ) : undefined
@@ -1001,8 +1008,9 @@ function CopyIdButton({ id }: { id: string }) {
 
 const GOOD_STATUS = new Set(["published", "active", "live", "ready"]);
 
-// The read-only Overview strip — identity + enrichment/verification/ownership/
-// plan facts, laid out as a scannable divided grid instead of fake input boxes.
+// The read-only Overview band — identity + enrichment/verification/ownership/
+// plan facts as soft tiles under a faint brand wash. The one "hero" card on
+// the page; everything else stays calm.
 function OverviewBand({
   place,
   enrichStatus,
@@ -1022,36 +1030,47 @@ function OverviewBand({
     : "bg-muted-foreground/40";
 
   return (
-    <section className="border-border bg-card rounded-2xl border shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <span className="bg-muted inline-flex h-8 w-8 items-center justify-center rounded-lg">
-            <BadgeCheck className="text-muted-foreground h-4 w-4" />
+    <section className="border-border/70 bg-card shadow-card relative overflow-hidden rounded-2xl border">
+      {/* Faint brand wash, top-right — identity card, read-only. */}
+      <div
+        aria-hidden
+        className="bg-pink-gradient pointer-events-none absolute -top-24 -right-16 h-52 w-80 rounded-full opacity-[0.08] blur-2xl"
+      />
+
+      <div className="relative flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+        <div className="flex items-center gap-3">
+          <span
+            className={
+              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " +
+              TINT_CHIP.rose
+            }
+          >
+            <BadgeCheck className="h-4 w-4" />
           </span>
           <div>
-            <h2 className="font-display text-[15px] font-semibold tracking-tight">Overview</h2>
-            <p className="text-muted-foreground text-xs">
+            <h2 className="font-display text-base font-semibold tracking-tight">Overview</h2>
+            <p className="text-muted-foreground mt-0.5 text-xs">
               Read-only signals from the Enricher &amp; catalog.
             </p>
           </div>
         </div>
         {place.updated_at ? (
-          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-            <Clock className="h-3.5 w-3.5" />
+          <span className="border-border/70 bg-background/70 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]">
+            <Clock className="h-3 w-3" />
             Updated {formatAbsoluteUtc(place.updated_at)}
           </span>
         ) : null}
       </div>
 
-      {/* Half-width card: wrap facts 2→3 cols instead of a 5-wide mono strip. */}
-      <div className="border-border bg-border mx-5 mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border sm:mx-6 sm:grid-cols-3">
-        <FactCell label="Status">
+      {/* Fact tiles — wrap 2→3 cols; each signal reads as its own soft chip. */}
+      <div className="relative mx-5 mt-4 grid grid-cols-2 gap-2 sm:mx-6 sm:grid-cols-3">
+        <FactTile label="Status">
           <span className="flex items-center gap-1.5">
             <span className={"h-1.5 w-1.5 rounded-full " + statusDot} aria-hidden />
             <span className="text-sm font-medium capitalize">{status ?? "—"}</span>
           </span>
-        </FactCell>
-        <FactCell label="Enrichment">
+        </FactTile>
+        <FactTile label="Enrichment">
           <span
             className={
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold " +
@@ -1061,8 +1080,8 @@ function OverviewBand({
             {badge.spinning ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
             {badge.text}
           </span>
-        </FactCell>
-        <FactCell label="Verification">
+        </FactTile>
+        <FactTile label="Verification">
           <span
             className={
               "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
@@ -1071,8 +1090,8 @@ function OverviewBand({
           >
             {listingLabel(place.listing_type)}
           </span>
-        </FactCell>
-        <FactCell label="Ownership">
+        </FactTile>
+        <FactTile label="Ownership">
           <span
             className={
               "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
@@ -1085,22 +1104,22 @@ function OverviewBand({
           >
             {ownership === "loading" ? "Checking…" : ownership === "owned" ? "Owned" : "Unowned"}
           </span>
-        </FactCell>
-        <FactCell label="Plan">
+        </FactTile>
+        <FactTile label="Plan">
           <span className="flex items-baseline gap-1.5">
-            <span className="text-sm font-semibold">{planLabel(place.plan)}</span>
+            <span className="font-display text-sm font-semibold">{planLabel(place.plan)}</span>
             {place.fiscal_type ? (
               <span className="text-muted-foreground text-xs capitalize">
                 · {place.fiscal_type}
               </span>
             ) : null}
           </span>
-        </FactCell>
+        </FactTile>
       </div>
 
       {enrichStatus?.last_enriched_at ||
       (enrichStatus?.stage === "failed" && enrichStatus?.error) ? (
-        <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-5 text-xs sm:px-6">
+        <div className="text-muted-foreground relative mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-5 text-xs sm:px-6">
           {enrichStatus?.last_enriched_at ? (
             <span>Last enriched {formatAbsoluteUtc(enrichStatus.last_enriched_at)}</span>
           ) : null}
@@ -1110,9 +1129,9 @@ function OverviewBand({
         </div>
       ) : null}
 
-      <div className="text-muted-foreground mt-3 flex items-center gap-2 px-5 pb-4 text-xs sm:px-6">
+      <div className="border-border/60 text-muted-foreground relative mt-4 flex items-center gap-2 border-t px-5 py-3 text-xs sm:px-6">
         <span className="font-medium">ID</span>
-        <code className="bg-muted min-w-0 truncate rounded px-1.5 py-0.5 font-mono text-[11px]">
+        <code className="bg-muted min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-[11px]">
           {place.id}
         </code>
         <CopyIdButton id={place.id} />
@@ -1121,9 +1140,9 @@ function OverviewBand({
   );
 }
 
-function FactCell({ label, children }: { label: string; children: React.ReactNode }) {
+function FactTile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-card px-4 py-3">
+    <div className="border-border/60 bg-background/60 rounded-xl border px-3.5 py-2.5">
       <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.09em] uppercase">
         {label}
       </p>
@@ -1176,26 +1195,26 @@ function PhotosEditor({
         {photos.map((src, idx) => (
           <div
             key={`${src}-${idx}`}
-            className="border-border bg-background group relative overflow-hidden rounded-xl border"
+            className="group relative overflow-hidden rounded-xl ring-1 ring-black/5"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src}
               alt={`Photo ${idx + 1}`}
-              className="aspect-square w-full object-cover"
+              className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.03]"
             />
             {idx === 0 && (
-              <span className="bg-foreground/85 text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+              <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-sm">
                 Hero
               </span>
             )}
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 via-black/25 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
               <div className="flex gap-1">
                 <button
                   type="button"
                   disabled={busy || idx === 0}
                   onClick={() => onMove(idx, -1)}
-                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20 disabled:opacity-40"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/30 disabled:opacity-40"
                   aria-label="Move earlier"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
@@ -1204,7 +1223,7 @@ function PhotosEditor({
                   type="button"
                   disabled={busy || idx === photos.length - 1}
                   onClick={() => onMove(idx, 1)}
-                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20 disabled:opacity-40"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/30 disabled:opacity-40"
                   aria-label="Move later"
                 >
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -1214,7 +1233,7 @@ function PhotosEditor({
                 <button
                   type="button"
                   onClick={() => onInfo(src)}
-                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/30"
                   aria-label="Photo metadata"
                   title="Image metadata"
                 >
@@ -1224,7 +1243,7 @@ function PhotosEditor({
                   type="button"
                   disabled={busy}
                   onClick={() => onRemove(idx)}
-                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-red-500/70"
                   aria-label="Remove photo"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -1238,7 +1257,7 @@ function PhotosEditor({
           <label
             htmlFor={inputId}
             className={
-              "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-center transition " +
+              "border-border text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/[0.03] flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-center transition " +
               (busy ? "pointer-events-none opacity-50" : "")
             }
           >
@@ -1399,11 +1418,11 @@ function MediaMetaDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="border-border bg-card flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
+        className="border-border/70 bg-card shadow-elev flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-border flex items-center justify-between gap-3 border-b px-4 py-3">

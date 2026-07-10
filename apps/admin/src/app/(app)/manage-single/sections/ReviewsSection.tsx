@@ -209,7 +209,7 @@ function ExternalCard({
   meta: string;
 }) {
   return (
-    <div className="border-border bg-background flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3">
+    <div className="border-border/60 bg-muted/30 flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3">
       <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
         {label}
       </p>
@@ -266,7 +266,7 @@ function ReviewSortChips({
 
 function GoogleReviewCard({ review }: { review: GoogleReview }) {
   return (
-    <article className="border-border bg-background flex w-72 shrink-0 snap-start flex-col gap-2 rounded-xl border p-3">
+    <article className="border-border/60 bg-muted/30 flex w-72 shrink-0 snap-start flex-col gap-2 rounded-xl border p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{review.author}</p>
@@ -291,7 +291,7 @@ function GoogleReviewCard({ review }: { review: GoogleReview }) {
 function MesitaReviewCard({ visitor }: { visitor: MesitaVisitor }) {
   const overall = Math.round(mesitaOverall(visitor));
   return (
-    <article className="border-border bg-background flex w-72 shrink-0 snap-start flex-col gap-2 rounded-xl border p-3">
+    <article className="border-border/60 bg-muted/30 flex w-72 shrink-0 snap-start flex-col gap-2 rounded-xl border p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{visitor.name}</p>
@@ -394,12 +394,13 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
   return (
     <>
       <SectionCard
-        icon={<Star className="text-muted-foreground h-4 w-4" />}
+        icon={<Star className="h-4 w-4" />}
+        tint="amber"
         title="Reviews summary"
         subtitle="Mesita aggregates plus Google, Instagram, and Facebook signals. Read-only."
       >
         <div className="mt-5 flex flex-col gap-4">
-          <div className="border-border bg-background rounded-xl border p-4">
+          <div className="border-border/60 bg-muted/30 rounded-xl border p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">Mesita</p>
               <span className="text-muted-foreground text-xs tabular-nums">
@@ -458,7 +459,8 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
 
       {googleReviews.length > 0 ? (
         <SectionCard
-          icon={<Star className="text-muted-foreground h-4 w-4" />}
+          icon={<Star className="h-4 w-4" />}
+          tint="sky"
           title="Google reviews"
           subtitle={`${formatCount(googleCount || googleReviews.length, true)} total · newest / highest / lowest.`}
         >
@@ -478,7 +480,8 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
       ) : null}
 
       <SectionCard
-        icon={<MessageCircle className="text-muted-foreground h-4 w-4" />}
+        icon={<MessageCircle className="h-4 w-4" />}
+        tint="rose"
         title="Mesita reviews"
         subtitle={`${place.mesita_review_count ?? 0} total · from Mesita guests after a visit.`}
       >

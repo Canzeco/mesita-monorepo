@@ -121,3 +121,28 @@
     box-shadow: var(--shadow-elev);
   }
 }
+
+/* Registered via @utility (not plain @layer classes) so variant prefixes
+   (hover:, focus:) compose — a plain class would shadow the core
+   shadow-<color> parse and silently no-op under hover:. */
+
+/* Card resting shadow — one soft ambient layer + a tight contact edge. */
+@utility shadow-card {
+  box-shadow:
+    0 1px 2px oklch(0.18 0.06 15 / 0.05),
+    0 16px 40px -28px oklch(0.18 0.06 15 / 0.22);
+}
+
+/* Brand-gradient CTA shadow (save pills, primary actions). */
+@utility shadow-save {
+  box-shadow: 0 8px 20px -8px oklch(0.65 0.24 5 / 0.55);
+}
+
+/* Gradient-filled text — self-contained so the background shorthand can't
+   reset background-clip out from under a separate utility. */
+@utility text-pink-gradient {
+  background: var(--gradient-pink);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

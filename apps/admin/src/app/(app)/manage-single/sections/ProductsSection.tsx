@@ -282,7 +282,8 @@ export function ProductsSection({
 
   return (
     <SectionCard
-      icon={<UtensilsCrossed className="text-muted-foreground h-4 w-4" />}
+      icon={<UtensilsCrossed className="h-4 w-4" />}
+      tint="orange"
       title="Products"
       subtitle="Add menus shown to consumers. For each menu, choose Upload or Drive — not both."
     >
@@ -301,7 +302,7 @@ export function ProductsSection({
             type="button"
             disabled={pending}
             onClick={addMenu}
-            className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+            className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
             New menu
@@ -362,7 +363,7 @@ function AddItemsControl({
         type="button"
         disabled={disabled}
         onClick={() => onPick(ITEM_KINDS[0].id)}
-        className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+        className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
       >
         <Plus className="h-4 w-4" />
         New menu
@@ -376,7 +377,7 @@ function AddItemsControl({
         type="button"
         disabled={disabled}
         onClick={() => onOpenChange(!open)}
-        className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+        className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
       >
         <Plus className="h-4 w-4" />
         Add items
@@ -432,7 +433,7 @@ function MenuItemCard({
   const isNew = !item.name.trim() && !item.url.trim() && item.source == null;
 
   return (
-    <div className="border-border bg-background rounded-xl border p-4">
+    <div className="border-border/60 bg-muted/30 rounded-xl border p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <FileText className="text-muted-foreground h-4 w-4" />
@@ -590,14 +591,14 @@ function SourceCard({
       className={
         "flex items-start gap-3 rounded-xl border p-3.5 text-left transition disabled:opacity-50 " +
         (active
-          ? "border-foreground bg-card ring-1 ring-foreground/15"
-          : "border-border bg-background hover:border-foreground/40")
+          ? "border-pink-400/60 bg-card ring-1 ring-pink-400/30"
+          : "border-border bg-card hover:border-foreground/40")
       }
     >
       <span
         className={
           "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg " +
-          (active ? "bg-foreground text-background" : "bg-muted text-muted-foreground")
+          (active ? "bg-pink-gradient text-white shadow-sm" : "bg-muted text-muted-foreground")
         }
       >
         {icon}

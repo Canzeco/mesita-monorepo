@@ -45,14 +45,25 @@ export function UnitEditChrome({
 
         <div className="min-w-0 flex-1">
           <p
-            className="truncate text-base font-semibold tracking-tight sm:text-lg"
+            className="font-display truncate text-base font-semibold tracking-tight sm:text-lg"
             title={place.name}
           >
             {place.name}
           </p>
           <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             {statusLabel ? (
-              <span className="text-foreground/80 font-medium capitalize">
+              <span className="text-foreground/80 inline-flex items-center gap-1.5 font-medium capitalize">
+                <span
+                  className={
+                    "h-1.5 w-1.5 rounded-full " +
+                    (["active", "published", "live", "ready"].includes(
+                      statusLabel.toLowerCase(),
+                    )
+                      ? "bg-green-500"
+                      : "bg-amber-500")
+                  }
+                  aria-hidden
+                />
                 {statusLabel}
               </span>
             ) : null}
@@ -128,7 +139,7 @@ export function UnitEditChrome({
                 <span>{label}</span>
                 {active ? (
                   <span
-                    className="bg-secondary absolute inset-x-2 bottom-0 h-0.5 rounded-full sm:inset-x-3"
+                    className="bg-pink-gradient absolute inset-x-2 bottom-0 h-[3px] rounded-full sm:inset-x-3"
                     aria-hidden
                   />
                 ) : null}
@@ -285,7 +296,8 @@ export function UnitThumb({
   /** onDark kept for any future dark surfaces; chrome + catalog use onLight. */
   tone?: "onLight" | "onDark";
 }) {
-  const dim = size === "lg" ? "h-11 w-11 rounded-xl" : "h-8 w-8 rounded-md";
+  const dim =
+    size === "lg" ? "h-11 w-11 rounded-xl shadow-sm" : "h-8 w-8 rounded-md";
   const icon = size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5";
   const border =
     tone === "onDark" ? "border-background/20" : "border-border";

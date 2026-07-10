@@ -114,9 +114,9 @@ export function PlaceTagsPicker({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium">Tags</span>
-        <span className="text-muted-foreground text-xs tabular-nums">
-          {value.length}/{max}
+        <span className="text-foreground/80 text-[13px] font-medium">Tags</span>
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {value.length} / {max}
         </span>
       </div>
 
@@ -124,7 +124,7 @@ export function PlaceTagsPicker({
         <ul className="flex flex-wrap gap-1.5">
           {value.map((slug) => (
             <li key={slug}>
-              <span className="border-border bg-muted/40 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
+              <span className="border-pink-200/80 bg-pink-500/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
                 {labelFor(slug)}
                 <button
                   type="button"
@@ -147,7 +147,7 @@ export function PlaceTagsPicker({
         type="button"
         disabled={disabled}
         onClick={openModal}
-        className="border-border hover:border-foreground/40 inline-flex h-9 w-fit items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+        className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 w-fit items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
       >
         <Tag className="h-3.5 w-3.5" />
         {value.length > 0 ? "Edit tags" : "Select tags"}
@@ -210,11 +210,11 @@ function TagsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="border-border bg-card flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border shadow-xl"
+        className="border-border/70 bg-card shadow-elev flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -286,7 +286,7 @@ function TagsModal({
                           className={
                             "border-border flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border " +
                             (isOn
-                              ? "bg-foreground border-foreground text-background"
+                              ? "bg-pink-gradient border-transparent text-white"
                               : "bg-card")
                           }
                         >
@@ -306,7 +306,7 @@ function TagsModal({
           <button
             type="button"
             onClick={onClose}
-            className="bg-foreground text-background inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold transition hover:opacity-90"
+            className="bg-pink-gradient shadow-save inline-flex h-9 items-center rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
           >
             Done
           </button>

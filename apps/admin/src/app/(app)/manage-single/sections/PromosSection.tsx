@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import { Crown, Loader2, Percent } from "lucide-react";
+import { Crown, Eye, Loader2, Percent, Zap } from "lucide-react";
 import {
   SUBSCRIPTIONS,
   VISIBILITY_LEVELS,
@@ -12,7 +12,7 @@ import {
   type SubscriptionId,
 } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
-import { ErrorNote, SectionCard } from "../ui";
+import { ErrorNote, GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 
 type RateCol =
   | "welcome_free_rate"
@@ -76,15 +76,16 @@ export function PromosSection({
       />
 
       <SectionCard
-        icon={<Percent className="text-muted-foreground h-4 w-4" />}
+        icon={<Percent className="h-4 w-4" />}
+        tint="pink"
         title="Promos"
         subtitle="Subscription plan, discount rates per user tier & visit, and the ticket cap. Discount-only — the place never holds money."
         action={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
       >
-        <p className="text-muted-foreground mt-5 text-[11px] font-semibold tracking-[0.12em] uppercase">
-          Subscription
-        </p>
-        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+        <div className="mt-6">
+          <GroupLabel>Subscription</GroupLabel>
+        </div>
+        <div className="mt-2.5 grid gap-3 sm:grid-cols-3">
           {SUBSCRIPTIONS.map((s) => (
             <SubscriptionCard
               key={s.id}
@@ -103,14 +104,17 @@ export function PromosSection({
           ))}
         </div>
 
-        <p className="text-muted-foreground mt-7 text-[11px] font-semibold tracking-[0.12em] uppercase">
-          Discount rates {isFree && <span className="normal-case">· enable a paid plan to set</span>}
-        </p>
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="mt-8">
+          <GroupLabel>
+            Discount rates{" "}
+            {isFree && <span className="normal-case">· enable a paid plan to set</span>}
+          </GroupLabel>
+        </div>
+        <div className="mt-2.5 flex flex-col gap-2">
           {RATE_ROWS.map((row) => (
             <div
               key={row.col}
-              className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+              className="border-border/60 bg-muted/30 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3"
             >
               <div>
                 <p className="text-sm font-medium">{row.label}</p>
@@ -140,10 +144,10 @@ export function PromosSection({
           ))}
         </div>
 
-        <p className="text-muted-foreground mt-7 text-[11px] font-semibold tracking-[0.12em] uppercase">
-          Ticket cap {v.currency ? `(${v.currency})` : ""}
-        </p>
-        <div className="border-border bg-background mt-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+        <div className="mt-8">
+          <GroupLabel>Ticket cap {v.currency ? `(${v.currency})` : ""}</GroupLabel>
+        </div>
+        <div className="border-border/60 bg-muted/30 mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
           <p className="text-muted-foreground text-xs">Max discount applied to a single ticket.</p>
           <div className="flex flex-wrap gap-1.5">
             <Pill
@@ -175,7 +179,8 @@ export function PromosSection({
 
 // Visibility rail — six levels from plan + discount rates + ticket cap.
 // Mesita shows higher-visibility places to more guests on every discovery
-// surface — this is the answer the operator needs at a glance.
+// surface — this is the answer the operator needs at a glance, so it gets
+// the hero treatment: gradient level name over a faint brand wash.
 function VisibilityRail({
   plan,
   welcome_free_rate,
@@ -202,21 +207,28 @@ function VisibilityRail({
   const currentIdx = VISIBILITY_LEVELS.indexOf(current);
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-4 shadow-[0_10px_30px_-22px_rgba(236,72,153,0.6)]">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-display text-sm font-semibold tracking-tight">Visibility</h3>
-        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+    <section className="border-border/70 bg-card shadow-card relative overflow-hidden rounded-2xl border p-5 sm:p-6">
+      <div
+        aria-hidden
+        className="bg-pink-gradient pointer-events-none absolute -top-28 -right-20 h-56 w-96 rounded-full opacity-[0.08] blur-2xl"
+      />
+
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <GroupLabel>Visibility</GroupLabel>
+          <p className="font-display mt-2 text-4xl leading-none font-semibold tracking-tight">
+            <span className="text-pink-gradient">{current}</span>
+          </p>
+          <p className="text-muted-foreground mt-2 text-xs leading-snug">
+            Plan, discount rates, and ticket cap all add up.
+          </p>
+        </div>
+        <span className="border-border/70 bg-background/70 text-muted-foreground shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-wider uppercase">
           Step {currentIdx + 1} of {VISIBILITY_LEVELS.length}
         </span>
       </div>
-      <p className="font-display text-foreground mt-1 text-2xl font-semibold leading-none tracking-tight">
-        {current}
-      </p>
-      <p className="text-muted-foreground mt-1.5 text-[11px] leading-snug">
-        Plan, discount rates, and ticket cap all add up.
-      </p>
 
-      <div className="mt-5 flex items-center">
+      <div className="relative mt-6 flex items-center">
         {VISIBILITY_LEVELS.map((label, i) => {
           const reached = i < currentIdx;
           const isCurrent = i === currentIdx;
@@ -234,7 +246,7 @@ function VisibilityRail({
                 className={
                   "shrink-0 rounded-full transition " +
                   (isCurrent
-                    ? "bg-pink-gradient shadow-glow ring-pink-500/30 h-4 w-4 ring-4"
+                    ? "bg-pink-gradient shadow-save ring-pink-500/25 h-4 w-4 ring-4"
                     : reached
                       ? "bg-pink-gradient h-3 w-3"
                       : "bg-muted/80 h-3 w-3")
@@ -245,7 +257,7 @@ function VisibilityRail({
         })}
       </div>
 
-      <div className="mt-2 flex justify-between text-[9px] font-semibold tracking-wider uppercase">
+      <div className="relative mt-2 flex justify-between text-[9px] font-semibold tracking-wider uppercase">
         {VISIBILITY_LEVELS.map((label, i) => (
           <span
             key={label}
@@ -290,11 +302,12 @@ function SubscriptionCard({
       onClick={onPick}
       disabled={isCurrent || pending}
       className={
-        "border-border bg-card relative flex flex-col gap-2 rounded-2xl border p-4 text-left transition disabled:cursor-default " +
+        "relative flex flex-col gap-2.5 rounded-2xl border p-4 text-left transition disabled:cursor-default " +
         (isCurrent
-          ? "border-foreground shadow-elev ring-1 ring-foreground/10"
-          : "hover:border-foreground/30 hover:-translate-y-0.5") +
-        (featured && !isCurrent ? " bg-pink-gradient/[0.04]" : "")
+          ? "border-foreground/80 bg-card shadow-elev ring-foreground/10 ring-1"
+          : featured
+            ? "border-pink-300/70 bg-gradient-to-b from-pink-500/[0.07] to-transparent hover:-translate-y-0.5 hover:shadow-card"
+            : "border-border bg-card hover:border-foreground/30 hover:-translate-y-0.5 hover:shadow-card")
       }
     >
       {isCurrent && (
@@ -303,13 +316,20 @@ function SubscriptionCard({
         </span>
       )}
       {!isCurrent && featured && (
-        <span className="bg-pink-gradient absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider text-white uppercase">
+        <span className="bg-pink-gradient absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider text-white uppercase shadow-sm">
           Recommended
         </span>
       )}
       <div className="flex items-center gap-2 pr-16">
         {id !== "free" && (
-          <span className="bg-muted text-foreground inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+          <span
+            className={
+              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full " +
+              (id === "ultra_discount"
+                ? "bg-pink-gradient text-white shadow-sm"
+                : TINT_CHIP.pink)
+            }
+          >
             {id === "ultra_discount" ? (
               <Crown className="h-3.5 w-3.5" />
             ) : (
@@ -322,20 +342,22 @@ function SubscriptionCard({
         </span>
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-foreground text-lg leading-none font-bold tabular-nums">
+        <span className="font-display text-foreground text-2xl leading-none font-bold tabular-nums">
           {price}
         </span>
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
       </div>
       <p className="text-muted-foreground text-[12px] leading-snug">{tagline}</p>
-      <div className="mt-auto flex flex-col gap-0.5">
-        <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+      <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+        <span className="border-border/60 bg-background/70 text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+          <Eye className="h-3 w-3" aria-hidden />
           {visibility} visibility
-        </p>
+        </span>
         {setup && (
-          <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
+          <span className="border-border/60 bg-background/70 text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+            <Zap className="h-3 w-3" aria-hidden />
             {setup} setup
-          </p>
+          </span>
         )}
       </div>
     </button>
@@ -363,9 +385,9 @@ function Pill({
       className={`h-8 min-w-11 rounded-lg border px-2.5 text-xs font-semibold tabular-nums transition disabled:opacity-40 ${
         active
           ? tone === "off"
-            ? "border-muted-foreground/40 bg-muted text-foreground"
-            : "border-foreground bg-foreground text-background"
-          : "border-border bg-card hover:border-foreground/40"
+            ? "border-transparent bg-foreground/90 text-background"
+            : "bg-pink-gradient border-transparent text-white shadow-sm"
+          : "border-border bg-card text-muted-foreground hover:border-pink-400/50 hover:text-foreground"
       }`}
     >
       {children}
