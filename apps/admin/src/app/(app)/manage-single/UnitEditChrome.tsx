@@ -81,12 +81,12 @@ export function UnitEditChrome({
         </div>
       </div>
 
-      {/* Row 2 — full-width section tabs */}
+      {/* Row 2 — centered section tabs */}
       <div className="border-border border-t px-2 sm:px-4 lg:px-6">
         <nav
           role="tablist"
           aria-label="Unit sections"
-          className="flex items-stretch gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-stretch justify-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {UNIT_SECTIONS.map(({ id, label, Icon, soon }) => {
             const href = unitSectionHref(projectId, id);
