@@ -760,11 +760,13 @@ export function PlaceSection({
           <GroupLabel>Contact</GroupLabel>
         </div>
         <div className="grid gap-3.5 sm:grid-cols-2">
+          {/* Country code is mandatory — the update EF rejects phones without +CC. */}
           <TextField
             label="Phone"
             leading={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
             value={form.phone}
             onChange={(x) => set("phone", x)}
+            placeholder="+52 81 8378 2164"
             disabled={anyPending}
           />
           <TextField
