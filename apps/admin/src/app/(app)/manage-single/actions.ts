@@ -24,6 +24,15 @@ export type UnitHit = {
   status: string | null;
   address: string | null;
   photo: string | null;
+  zone: string | null;
+  google_stars_overall: number | null;
+  google_review_count: number | null;
+  content_status: string | null;
+  listing_type: string | null;
+  /** content_status === "ready" */
+  enriched: boolean;
+  /** listing_type === "partner" */
+  verified: boolean;
 };
 
 /** @deprecated use UnitHit */
@@ -35,7 +44,31 @@ async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>>
     limit,
   });
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.places };
+  return { ok: true, data: (r.data.places ?? []).map(normalizeUnitHit) };
+}
+
+function normalizeUnitHit(raw: UnitHit): UnitHit {
+  const contentStatus = raw.content_status ?? null;
+  const listingType = raw.listing_type ?? null;
+  return {
+    id: raw.id,
+    slug: raw.slug ?? null,
+    name: raw.name,
+    category: raw.category ?? null,
+    category_label: raw.category_label ?? null,
+    status: raw.status ?? null,
+    address: raw.address ?? null,
+    photo: raw.photo ?? null,
+    zone: raw.zone ?? null,
+    google_stars_overall:
+      typeof raw.google_stars_overall === "number" ? raw.google_stars_overall : null,
+    google_review_count:
+      typeof raw.google_review_count === "number" ? raw.google_review_count : null,
+    content_status: contentStatus,
+    listing_type: listingType,
+    enriched: raw.enriched ?? contentStatus === "ready",
+    verified: raw.verified ?? listingType === "partner",
+  };
 }
 
 export async function listUnits(): Promise<Result<UnitHit[]>> {

@@ -19,6 +19,7 @@ function filterUnits(units: UnitHit[], query: string): UnitHit[] {
       u.name.toLowerCase().includes(q) ||
       u.id.toLowerCase().includes(q) ||
       u.address?.toLowerCase().includes(q) ||
+      u.zone?.toLowerCase().includes(q) ||
       u.category?.toLowerCase().includes(q) ||
       u.category_label?.toLowerCase().includes(q),
   );

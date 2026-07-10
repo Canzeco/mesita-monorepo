@@ -12,6 +12,7 @@ import {
   MapPin,
   Plus,
   Search,
+  Star,
   X,
 } from "lucide-react";
 import {
@@ -20,6 +21,7 @@ import {
   suggestPlaces,
   type PlacePrediction,
   type PlacePredictionStatus,
+  type UnitHit,
 } from "./actions";
 import { unitSectionHref } from "./nav";
 import { UnitThumb } from "./UnitEditChrome";
@@ -247,36 +249,47 @@ export function UnitSelectCatalog() {
           </div>
         )}
 
-        <div className="mt-4 flex flex-col gap-2">
-          {hits.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              onClick={() => pickUnit(u.id)}
-              disabled={createPending}
-              className="border-border bg-card hover:border-foreground/40 flex items-center gap-3 rounded-xl border p-3 text-left transition disabled:opacity-50"
-            >
-              <UnitThumb photo={u.photo} name={u.name} size="lg" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{u.name}</p>
-                <p className="text-muted-foreground truncate text-xs">
-                  {u.category_label ?? u.category ?? "—"}
-                  {u.status ? ` · ${u.status}` : ""}
-                  {u.address ? ` · ${u.address}` : ""}
-                </p>
-              </div>
-              <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
-            </button>
-          ))}
-
-          {!pending && hits.length === 0 && !error && searchedQuery === null && q.trim().length === 0 && (
-            <div className="border-border bg-card rounded-2xl border px-4 py-12 text-center">
+        {hits.length > 0 ? (
+          <div className="border-border bg-card mt-4 overflow-hidden rounded-xl border">
+            <div className="-mx-0 overflow-x-auto">
+              <table className="w-full min-w-[860px] border-separate border-spacing-0 text-sm">
+                <thead>
+                  <tr className="text-muted-foreground bg-muted/30 text-left text-[11px] font-semibold tracking-[0.08em] uppercase">
+                    <th className="w-14 px-3 py-2.5 font-semibold">Photo</th>
+                    <th className="px-3 py-2.5 font-semibold">Name</th>
+                    <th className="px-3 py-2.5 font-semibold">Category</th>
+                    <th className="px-3 py-2.5 font-semibold">Zone</th>
+                    <th className="px-3 py-2.5 font-semibold">Google revws</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Enriched</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Verified</th>
+                    <th className="w-10 px-3 py-2.5" aria-hidden />
+                  </tr>
+                </thead>
+                <tbody>
+                  {hits.map((u) => (
+                    <UnitCatalogRow
+                      key={u.id}
+                      unit={u}
+                      disabled={createPending}
+                      onPick={() => pickUnit(u.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          !pending &&
+          !error &&
+          searchedQuery === null &&
+          q.trim().length === 0 && (
+            <div className="border-border bg-card mt-4 rounded-2xl border px-4 py-12 text-center">
               <p className="text-muted-foreground text-sm">
                 No units in the catalog yet. Search a place name to create one from Google.
               </p>
             </div>
-          )}
-        </div>
+          )
+        )}
 
         {showGoogleSection && (
           <div className="mt-8">
@@ -373,6 +386,120 @@ export function UnitSelectCatalog() {
       )}
     </div>
   );
+}
+
+function UnitCatalogRow({
+  unit,
+  disabled,
+  onPick,
+}: {
+  unit: UnitHit;
+  disabled: boolean;
+  onPick: () => void;
+}) {
+  const category = unit.category_label ?? unit.category ?? "—";
+  const zone = unit.zone?.trim() || "—";
+  const reviews = formatGoogleReviews(unit.google_stars_overall, unit.google_review_count);
+
+  return (
+    <tr
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={`Open ${unit.name}`}
+      onClick={() => {
+        if (!disabled) onPick();
+      }}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onPick();
+        }
+      }}
+      className={
+        "hover:bg-muted/40 focus-visible:bg-muted/50 cursor-pointer outline-none transition " +
+        "[&>td]:border-border/60 [&>td]:border-t " +
+        (disabled ? "pointer-events-none opacity-50" : "")
+      }
+    >
+      <td className="px-3 py-2.5">
+        <UnitThumb photo={unit.photo} name={unit.name} size="sm" />
+      </td>
+      <td className="max-w-[220px] px-3 py-2.5">
+        <p className="truncate font-medium">{unit.name}</p>
+        {unit.status && (
+          <p className="text-muted-foreground truncate text-[11px] capitalize">{unit.status}</p>
+        )}
+      </td>
+      <td className="max-w-[160px] px-3 py-2.5">
+        <span className="text-muted-foreground truncate block">{category}</span>
+      </td>
+      <td className="max-w-[140px] px-3 py-2.5">
+        <span className="text-muted-foreground truncate block">{zone}</span>
+      </td>
+      <td className="px-3 py-2.5 whitespace-nowrap">
+        {reviews ? (
+          <span className="text-muted-foreground inline-flex items-center gap-1">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden />
+            {reviews}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <BoolCell value={unit.enriched} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <BoolCell value={unit.verified} trueLabel="Yes" falseLabel="No" accent />
+      </td>
+      <td className="px-3 py-2.5 text-right">
+        <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />
+      </td>
+    </tr>
+  );
+}
+
+function BoolCell({
+  value,
+  trueLabel,
+  falseLabel,
+  accent = false,
+}: {
+  value: boolean;
+  trueLabel: string;
+  falseLabel: string;
+  accent?: boolean;
+}) {
+  if (value) {
+    return (
+      <span
+        className={
+          "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold " +
+          (accent
+            ? "bg-amber-100 text-amber-800"
+            : "bg-green-500/10 text-green-700")
+        }
+      >
+        {trueLabel}
+      </span>
+    );
+  }
+  return (
+    <span className="text-muted-foreground text-[11px] font-medium">{falseLabel}</span>
+  );
+}
+
+function formatGoogleReviews(
+  stars: number | null | undefined,
+  count: number | null | undefined,
+): string | null {
+  const hasStars = typeof stars === "number" && Number.isFinite(stars);
+  const hasCount = typeof count === "number" && Number.isFinite(count);
+  if (!hasStars && !hasCount) return null;
+  const starPart = hasStars ? stars.toFixed(1) : "—";
+  if (!hasCount) return starPart;
+  return `${starPart} · ${count.toLocaleString()}`;
 }
 
 type GooglePlaceDetails = {
