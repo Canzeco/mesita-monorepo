@@ -1,7 +1,14 @@
-import { SoonSection } from "../../sections/SoonSection";
+"use client";
 
-// Promos is gated "Soon" in nav.ts — the tab is non-navigable; this handles
-// direct URLs with a coming-soon placeholder.
+import { PromosSection } from "../../sections/PromosSection";
+import { useUnitPlace } from "../../UnitPlaceContext";
+
 export default function UnitPromosPage() {
-  return <SoonSection label="Promos" />;
+  const { place, setPlace } = useUnitPlace();
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <PromosSection place={place} onSaved={setPlace} />
+    </div>
+  );
 }

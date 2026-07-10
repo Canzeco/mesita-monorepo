@@ -391,7 +391,9 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
   const fbFollowers = place.facebook_followers;
 
   return (
-    <div className="flex flex-col gap-6">
+    // Two-column so review boxes don't stretch full-width; cards size to their
+    // content (items-start) and flow Summary → Google → Mesita.
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
       <SectionCard
         icon={<Star className="text-muted-foreground h-4 w-4" />}
         title="Reviews summary"

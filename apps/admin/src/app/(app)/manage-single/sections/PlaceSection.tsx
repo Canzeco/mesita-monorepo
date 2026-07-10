@@ -5,16 +5,22 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
+  CalendarCheck,
+  CalendarClock,
+  Check,
   Clock,
+  Copy,
   ExternalLink,
   Globe,
-  ImageOff,
   ImagePlus,
+  Images,
   Info,
   Loader2,
+  Lock,
   Mail,
   MapPin,
   Phone,
+  Store,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -68,12 +74,24 @@ const CHANNELS: {
     label: "Google Maps",
     logo: "/channels/googlemaps.svg",
   },
-  { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
   {
     key: "uber_eats_url",
     label: "Uber Eats",
     logo: "/channels/ubereats-mark.svg",
   },
+];
+
+// Booking endpoints for the consumer reservations agent — split out of the
+// social Channels box so the integration target is unambiguous. Backed by the
+// existing place columns (opentable_url / resy_url); no schema change.
+const RESERVATION_LINKS: {
+  key: keyof AdminPlace;
+  label: string;
+  logo?: string;
+  Icon?: LucideIcon;
+}[] = [
+  { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
+  { key: "resy_url", label: "Resy", Icon: CalendarClock },
 ];
 
 function ChannelLabelIcon({
@@ -86,14 +104,7 @@ function ChannelLabelIcon({
   if (logo) {
     // Static 14px brand SVG — next/image adds nothing here.
     // eslint-disable-next-line @next/next/no-img-element
-    return (
-      <img
-        src={logo}
-        alt=""
-        aria-hidden
-        className="h-3.5 w-3.5 shrink-0"
-      />
-    );
+    return <img src={logo} alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />;
   }
   if (Icon) {
     return <Icon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />;
@@ -101,11 +112,21 @@ function ChannelLabelIcon({
   return null;
 }
 
-function priceLabel(level: number | null | undefined): string {
-  if (level == null || level < 1) return "—";
+const PRICE_NAMES = ["", "Budget", "Casual", "Upscale", "Fine dining"] as const;
+
+// Price is Google-Places inferred — read-only. Filled $ + dimmed remainder.
+function PriceDisplay({ level }: { level: number | null | undefined }) {
+  if (level == null || level < 1) return <span className="text-muted-foreground">—</span>;
   const n = Math.max(1, Math.min(4, level));
-  const names = ["", "Budget", "Casual", "Upscale", "Fine dining"] as const;
-  return `${names[n]} · ${"$".repeat(n)}`;
+  return (
+    <span className="flex items-center gap-2">
+      <span className="font-semibold tracking-wide">
+        <span className="text-foreground">{"$".repeat(n)}</span>
+        <span className="text-muted-foreground/40">{"$".repeat(4 - n)}</span>
+      </span>
+      <span className="text-muted-foreground">{PRICE_NAMES[n]}</span>
+    </span>
+  );
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
@@ -119,6 +140,7 @@ type Form = {
   address: string;
   photos: string[];
   channels: Record<string, string>;
+  reservations: Record<string, string>;
   hours: Record<Day, DayHours>;
 };
 
@@ -157,6 +179,8 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
   }
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
+  const reservations: Record<string, string> = {};
+  for (const c of RESERVATION_LINKS) reservations[c.key as string] = str(v[c.key]);
   return {
     name: (v.name ?? "").slice(0, limits.placeNameMax),
     category: v.category ?? "",
@@ -167,13 +191,14 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     address: v.address ?? "",
     photos: (v.photos ?? []).slice(0, limits.photosMax),
     channels,
+    reservations,
     hours,
   };
 }
 
 // Build a partial business-update-project patch for one Place box.
 // Empty strings become null so a cleared field actually clears.
-type PlaceBox = "basics" | "location" | "time" | "channels" | "photos";
+type PlaceBox = "basics" | "location" | "time" | "channels" | "reservations" | "photos";
 
 function boxToPatch(
   box: PlaceBox,
@@ -210,6 +235,11 @@ function boxToPatch(
     for (const c of CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
     return patch;
   }
+  if (box === "reservations") {
+    const patch: Record<string, unknown> = { id };
+    for (const c of RESERVATION_LINKS) patch[c.key as string] = nz(f.reservations[c.key as string]);
+    return patch;
+  }
   return { id, photos: f.photos.slice(0, limits.photosMax) };
 }
 
@@ -238,6 +268,7 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
       email: from.email,
     };
   }
+  if (box === "reservations") return { ...base, reservations: from.reservations };
   return { ...base, photos: from.photos };
 }
 
@@ -280,6 +311,10 @@ export function PlaceSection({
       ),
     [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
   );
+  const dirtyReservations = useMemo(
+    () => !sliceEqual(form.reservations, saved.reservations),
+    [form.reservations, saved.reservations],
+  );
   const dirtyPhotos = useMemo(
     () => !sliceEqual(form.photos, saved.photos),
     [form.photos, saved.photos],
@@ -291,6 +326,8 @@ export function PlaceSection({
     setForm((f) => ({ ...f, [k]: val }));
   const setChannel = (key: string, val: string) =>
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
+  const setReservation = (key: string, val: string) =>
+    setForm((f) => ({ ...f, reservations: { ...f.reservations, [key]: val } }));
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
@@ -415,102 +452,47 @@ export function PlaceSection({
   };
 
   return (
-    // Two-column Place layout (legacy EditVenueForm pattern). Single column
-    // until xl; then boxes flow left→right. Per-box Save stays inside each card.
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
-      <SectionCard
-        icon={<BadgeCheck className="text-muted-foreground h-4 w-4" />}
-        title="Meta"
-        subtitle="Identity, enrichment, verification, and plan. Read-only here — edit plan on Promos."
-      >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <MetaField label="ID">
-            <code className="text-foreground break-all font-mono text-xs">{place.id}</code>
-          </MetaField>
-          <MetaField label="Status">
-            <span className="text-sm capitalize">{place.status ?? "—"}</span>
-          </MetaField>
-          <div className="sm:col-span-2 lg:col-span-3">
-            <EnrichmentStatusField status={enrichStatus} />
-          </div>
-          {/* Verification + Ownership are a pair (listing vs claim) — keep them
-              on one row, separate from Plan billing. */}
-          <div className="grid gap-4 sm:grid-cols-2 sm:col-span-2 lg:col-span-3">
-            <MetaField label="Verification">
-              <span
-                className={
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                  (place.listing_type === "partner"
-                    ? "bg-green-500/10 text-green-600"
-                    : "bg-muted text-muted-foreground")
-                }
-              >
-                {listingLabel(place.listing_type)}
-              </span>
-            </MetaField>
-            <MetaField label="Ownership">
-              <span
-                className={
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                  (ownership === "owned"
-                    ? "bg-green-500/10 text-green-600"
-                    : ownership === "loading"
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-amber-500/10 text-amber-700")
-                }
-              >
-                {ownership === "loading"
-                  ? "Checking…"
-                  : ownership === "owned"
-                    ? "Owned"
-                    : "Unowned"}
-              </span>
-            </MetaField>
-          </div>
-          <MetaField label="Plan">
-            <span className="text-sm font-medium">{planLabel(place.plan)}</span>
-            {place.fiscal_type ? (
-              <span className="text-muted-foreground ml-1.5 text-xs capitalize">
-                · {place.fiscal_type}
-              </span>
-            ) : null}
-          </MetaField>
-        </div>
-      </SectionCard>
+    <div className="flex flex-col gap-6">
+      {/* Read-only signals — clean summary strip, not a form of fake inputs. */}
+      <OverviewBand place={place} enrichStatus={enrichStatus} ownership={ownership} />
 
+      {/* Basics — the primary editable card, given full-width hero treatment. */}
       <SectionCard
-        icon={<MapPin className="text-muted-foreground h-4 w-4" />}
+        icon={<Store className="text-muted-foreground h-4 w-4" />}
         title="Basics"
         subtitle="Name, price tier, category, about, and tags."
       >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <TextField
-            label="Name"
-            value={form.name}
-            onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
-            maxLength={limits.placeNameMax}
-            disabled={anyPending}
-          />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="lg:col-span-2">
+            <TextField
+              label="Name"
+              value={form.name}
+              onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
+              maxLength={limits.placeNameMax}
+              disabled={anyPending}
+            />
+          </div>
           {/* Price is Google Places–inferred in Enrich-Research — never editable. */}
-          <MetaField label="Price">
-            <span className="text-sm">{priceLabel(place.price_level)}</span>
-          </MetaField>
+          <ReadField label="Price" auto>
+            <PriceDisplay level={place.price_level} />
+          </ReadField>
           {/* Category is enrichment-derived (ADEA inferPlaceCategory). Show the
-              friendly label (e.g. "🪩 Nightclub"), never the snakecase slug;
-              read-only here — the slug isn't hand-edited. */}
-          <TextField
-            label="Category"
-            value={place.category_label ?? form.category}
-            placeholder="e.g. 🪩 Nightclub"
-            disabled
-          />
+              friendly label (e.g. "🪩 Nightclub"), never the snakecase slug. */}
+          <ReadField label="Category" auto>
+            {place.category_label ?? place.category ?? "—"}
+          </ReadField>
         </div>
         <div className="mt-4">
           <TextArea
             label="About"
+            labelRight={
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {form.description.length} / {limits.descriptionMax}
+              </span>
+            }
             value={form.description}
             onChange={(x) => set("description", x.slice(0, limits.descriptionMax))}
-            rows={5}
+            rows={4}
             maxLength={limits.descriptionMax}
             disabled={anyPending}
           />
@@ -531,181 +513,267 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      <SectionCard
-        icon={<MapPin className="text-muted-foreground h-4 w-4" />}
-        title="Location"
-        subtitle="Address and coordinates. Lat/lng are Enricher/Google-sourced (read-only)."
-      >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <TextField
-              label="Address"
-              value={form.address}
-              onChange={(x) => set("address", x)}
-              placeholder="Street, colonia, city"
-              disabled={anyPending}
-            />
-          </div>
-          <MetaField label="Zone">
-            <span className="text-sm">{place.zone ?? "—"}</span>
-          </MetaField>
-          <MetaField label="City">
-            <span className="text-sm">{place.city ?? "—"}</span>
-          </MetaField>
-          <MetaField label="Lat">
-            <span className="font-mono text-sm tabular-nums">
-              {place.lat == null ? "—" : place.lat}
-            </span>
-          </MetaField>
-          <MetaField label="Lng">
-            <span className="font-mono text-sm tabular-nums">
-              {place.lng == null ? "—" : place.lng}
-            </span>
-          </MetaField>
-        </div>
-        {place.lat != null && place.lng != null ? (
-          <div className="border-border mt-4 overflow-hidden rounded-xl border">
-            <iframe
-              src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
-              title={`Map of ${place.name}`}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="block h-[160px] w-full border-0"
-            />
-          </div>
-        ) : null}
-        <SaveBar
-          pending={pendingBox === "location"}
-          dirty={dirtyLocation}
-          ok={!!oks.location}
-          error={errors.location}
-          onSave={() => saveBox("location")}
-        />
-      </SectionCard>
-
-      <SectionCard
-        icon={<Clock className="text-muted-foreground h-4 w-4" />}
-        title="Time"
-        subtitle={
-          place.timezone
-            ? `One range per day · timezone ${place.timezone}`
-            : "One range per day. Toggle Closed for days the place isn't open."
-        }
-      >
-        <div className="mt-5 flex flex-col gap-2">
-          {DAYS.map((d) => {
-            const h = form.hours[d];
-            return (
-              <div
-                key={d}
-                className="border-border bg-background flex flex-wrap items-center gap-3 rounded-xl border p-3"
-              >
-                <span className="w-24 text-sm font-medium capitalize">{d}</span>
-                <label className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={h.closed}
-                    disabled={anyPending}
-                    onChange={(e) => setDay(d, { closed: e.target.checked })}
-                  />
-                  Closed
-                </label>
-                {!h.closed && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      value={h.open}
-                      disabled={anyPending}
-                      onChange={(e) => setDay(d, { open: e.target.value })}
-                      className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none"
-                    />
-                    <span className="text-muted-foreground text-xs">to</span>
-                    <input
-                      type="time"
-                      value={h.close}
-                      disabled={anyPending}
-                      onChange={(e) => setDay(d, { close: e.target.value })}
-                      className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-sm outline-none"
-                    />
-                  </div>
-                )}
+      {/* Balanced two-column stacks on xl — no ragged masonry. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="flex flex-col gap-6">
+          {/* LOCATION */}
+          <SectionCard
+            icon={<MapPin className="text-muted-foreground h-4 w-4" />}
+            title="Location"
+            subtitle="Address is editable · coordinates are Enricher/Google-sourced."
+          >
+            <div className="mt-5">
+              <TextField
+                label="Address"
+                value={form.address}
+                onChange={(x) => set("address", x)}
+                placeholder="Street, colonia, city"
+                disabled={anyPending}
+              />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              <Fact label="Zone">{place.zone ?? "—"}</Fact>
+              <Fact label="City">{place.city ?? "—"}</Fact>
+              <Fact label="Lat">
+                <span className="font-mono tabular-nums">
+                  {place.lat == null ? "—" : place.lat}
+                </span>
+              </Fact>
+              <Fact label="Lng">
+                <span className="font-mono tabular-nums">
+                  {place.lng == null ? "—" : place.lng}
+                </span>
+              </Fact>
+            </div>
+            {place.lat != null && place.lng != null ? (
+              <div className="border-border mt-4 overflow-hidden rounded-xl border">
+                <iframe
+                  src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
+                  title={`Map of ${place.name}`}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="block h-[160px] w-full border-0"
+                />
               </div>
+            ) : null}
+            <SaveBar
+              pending={pendingBox === "location"}
+              dirty={dirtyLocation}
+              ok={!!oks.location}
+              error={errors.location}
+              onSave={() => saveBox("location")}
+            />
+          </SectionCard>
+
+          {/* HOURS */}
+          <SectionCard
+            icon={<Clock className="text-muted-foreground h-4 w-4" />}
+            title="Hours"
+            subtitle={
+              place.timezone
+                ? `One range per day · timezone ${place.timezone}`
+                : "One range per day. Toggle off for days the place isn't open."
+            }
+          >
+            <div className="border-border divide-border mt-5 divide-y overflow-hidden rounded-xl border">
+              {DAYS.map((d) => {
+                const h = form.hours[d];
+                return (
+                  <div
+                    key={d}
+                    className={
+                      "flex items-center gap-3 px-3.5 py-2.5 " +
+                      (h.closed ? "bg-muted/25" : "")
+                    }
+                  >
+                    <span
+                      className={
+                        "w-20 shrink-0 text-sm font-medium capitalize " +
+                        (h.closed ? "text-muted-foreground" : "")
+                      }
+                    >
+                      {d}
+                    </span>
+                    {h.closed ? (
+                      <span className="text-muted-foreground flex-1 text-xs italic">
+                        Closed
+                      </span>
+                    ) : (
+                      <div className="flex flex-1 flex-wrap items-center gap-2">
+                        <input
+                          type="time"
+                          value={h.open}
+                          disabled={anyPending}
+                          onChange={(e) => setDay(d, { open: e.target.value })}
+                          className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
+                        />
+                        <span className="text-muted-foreground text-xs">to</span>
+                        <input
+                          type="time"
+                          value={h.close}
+                          disabled={anyPending}
+                          onChange={(e) => setDay(d, { close: e.target.value })}
+                          className="border-border bg-card focus:border-ring focus:ring-ring/20 h-8 rounded-lg border px-2 text-sm outline-none focus:ring-2"
+                        />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!h.closed}
+                      aria-label={`${d} ${h.closed ? "closed" : "open"}`}
+                      disabled={anyPending}
+                      onClick={() => setDay(d, { closed: !h.closed })}
+                      className={
+                        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
+                        (h.closed ? "bg-border" : "bg-green-500")
+                      }
+                    >
+                      <span
+                        className={
+                          "absolute h-4 w-4 rounded-full bg-white shadow transition " +
+                          (h.closed ? "translate-x-0.5" : "translate-x-4")
+                        }
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <SaveBar
+              pending={pendingBox === "time"}
+              dirty={dirtyTime}
+              ok={!!oks.time}
+              error={errors.time}
+              onSave={() => saveBox("time")}
+            />
+          </SectionCard>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          {/* CHANNELS */}
+          <SectionCard
+            icon={<Globe className="text-muted-foreground h-4 w-4" />}
+            title="Channels"
+            subtitle="Official links + contact. Leave blank to clear."
+          >
+            <div className="mt-5 grid gap-3.5 sm:grid-cols-2">
+              {CHANNELS.map((c) => {
+                const val = form.channels[c.key as string] ?? "";
+                return (
+                  <TextField
+                    key={c.key as string}
+                    label={c.label}
+                    icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
+                    labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
+                    value={val}
+                    onChange={(x) => setChannel(c.key as string, x)}
+                    placeholder="https://…"
+                    disabled={anyPending}
+                  />
+                );
+              })}
+            </div>
+            <p className="text-muted-foreground mt-5 mb-2 text-[11px] font-semibold tracking-[0.06em] uppercase">
+              Contact
+            </p>
+            <div className="grid gap-3.5 sm:grid-cols-2">
+              <TextField
+                label="Phone"
+                icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+                value={form.phone}
+                onChange={(x) => set("phone", x)}
+                disabled={anyPending}
+              />
+              <TextField
+                label="Email"
+                icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
+                type="email"
+                value={form.email}
+                onChange={(x) => set("email", x)}
+                disabled={anyPending}
+              />
+            </div>
+            <SaveBar
+              pending={pendingBox === "channels"}
+              dirty={dirtyChannels}
+              ok={!!oks.channels}
+              error={errors.channels}
+              onSave={() => saveBox("channels")}
+            />
+          </SectionCard>
+
+          {/* PHOTOS */}
+          <SectionCard
+            icon={<Images className="text-muted-foreground h-4 w-4" />}
+            title="Photos"
+            subtitle="First photo is the hero. Reorder or remove; upload one at a time."
+            action={
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {form.photos.length} / {limits.photosMax}
+              </span>
+            }
+          >
+            <PhotosEditor
+              placeId={place.id}
+              photos={form.photos}
+              photosMax={limits.photosMax}
+              pending={anyPending}
+              uploading={uploading}
+              onUpload={uploadPhoto}
+              onMove={movePhoto}
+              onRemove={removePhoto}
+              onInfo={setMetaFor}
+            />
+            <SaveBar
+              pending={pendingBox === "photos"}
+              dirty={dirtyPhotos}
+              ok={!!oks.photos}
+              error={errors.photos}
+              onSave={() => saveBox("photos")}
+            />
+          </SectionCard>
+        </div>
+      </div>
+
+      {/* Reservations — full-width booking-integration band. Kept out of social
+          Channels so the agent's booking target is unambiguous; OpenTable / Resy
+          write existing place columns (no schema change). */}
+      <SectionCard
+        icon={<CalendarCheck className="text-muted-foreground h-4 w-4" />}
+        title="Reservations"
+        subtitle="Booking endpoints the consumer reservations agent uses to hold a table."
+      >
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {RESERVATION_LINKS.map((c) => {
+            const val = form.reservations[c.key as string] ?? "";
+            return (
+              <TextField
+                key={c.key as string}
+                label={c.label}
+                icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
+                labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
+                value={val}
+                onChange={(x) => setReservation(c.key as string, x)}
+                placeholder="https://…"
+                disabled={anyPending}
+              />
             );
           })}
+          <div className="border-border bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Connect an OpenTable or Resy listing to give the reservations agent a
+              direct booking endpoint. Leave blank to fall back to phone.
+            </span>
+          </div>
         </div>
         <SaveBar
-          pending={pendingBox === "time"}
-          dirty={dirtyTime}
-          ok={!!oks.time}
-          error={errors.time}
-          onSave={() => saveBox("time")}
-        />
-      </SectionCard>
-
-      <SectionCard
-        icon={<Globe className="text-muted-foreground h-4 w-4" />}
-        title="Channels"
-        subtitle="Official links + contact. Leave blank to clear."
-      >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {CHANNELS.map((c) => (
-            <TextField
-              key={c.key as string}
-              label={c.label}
-              icon={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
-              value={form.channels[c.key as string] ?? ""}
-              onChange={(x) => setChannel(c.key as string, x)}
-              placeholder="https://…"
-              disabled={anyPending}
-            />
-          ))}
-          <TextField
-            label="Phone"
-            icon={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-            value={form.phone}
-            onChange={(x) => set("phone", x)}
-            disabled={anyPending}
-          />
-          <TextField
-            label="Email"
-            icon={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-            type="email"
-            value={form.email}
-            onChange={(x) => set("email", x)}
-            disabled={anyPending}
-          />
-        </div>
-        <SaveBar
-          pending={pendingBox === "channels"}
-          dirty={dirtyChannels}
-          ok={!!oks.channels}
-          error={errors.channels}
-          onSave={() => saveBox("channels")}
-        />
-      </SectionCard>
-
-      <SectionCard
-        icon={<ImageOff className="text-muted-foreground h-4 w-4" />}
-        title="Photos"
-        subtitle="Place gallery — first photo is the hero. Reorder or remove; upload one new photo at a time."
-      >
-        <PhotosEditor
-          placeId={place.id}
-          photos={form.photos}
-          photosMax={limits.photosMax}
-          pending={anyPending}
-          uploading={uploading}
-          onUpload={uploadPhoto}
-          onMove={movePhoto}
-          onRemove={removePhoto}
-          onInfo={setMetaFor}
-        />
-        <SaveBar
-          pending={pendingBox === "photos"}
-          dirty={dirtyPhotos}
-          ok={!!oks.photos}
-          error={errors.photos}
-          onSave={() => saveBox("photos")}
+          pending={pendingBox === "reservations"}
+          dirty={dirtyReservations}
+          ok={!!oks.reservations}
+          error={errors.reservations}
+          onSave={() => saveBox("reservations")}
         />
       </SectionCard>
 
@@ -722,19 +790,221 @@ export function PlaceSection({
   );
 }
 
-function MetaField({
+// ── Read-only display helpers ────────────────────────────────────────────
+
+// Labelled read-only value used inside editable cards (Price, Category). The
+// `auto` pill signals the value is Enricher-owned and not hand-edited.
+function ReadField({
   label,
+  auto,
   children,
 }: {
   label: string;
+  auto?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      <div className="border-border bg-background flex min-h-9 items-center rounded-lg border px-3 py-2">
-        {children}
+      <span className="text-muted-foreground flex min-h-4 items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase">
+        {label}
+        {auto ? (
+          <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 text-[10px] font-normal tracking-normal normal-case">
+            <Lock className="h-3 w-3" />
+            auto
+          </span>
+        ) : null}
+      </span>
+      <div className="flex min-h-9 items-center text-sm">{children}</div>
+    </div>
+  );
+}
+
+// Compact label→value fact (Location coordinates, etc.).
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.06em] uppercase">
+        {label}
+      </p>
+      <div className="mt-0.5 truncate text-sm">{children}</div>
+    </div>
+  );
+}
+
+// Small "Open ↗" affordance shown in a link field's label when it has a value.
+function OpenLink({ href }: { href: string }) {
+  const url = /^https?:\/\//i.test(href) ? href : `https://${href}`;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium transition"
+    >
+      Open
+      <ExternalLink className="h-3 w-3" />
+    </a>
+  );
+}
+
+function CopyIdButton({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(id);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1200);
+        } catch {
+          /* clipboard unavailable — ignore */
+        }
+      }}
+      className="hover:text-foreground inline-flex items-center gap-1 transition"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3.5 w-3.5 text-green-600" /> Copied
+        </>
+      ) : (
+        <>
+          <Copy className="h-3.5 w-3.5" /> Copy
+        </>
+      )}
+    </button>
+  );
+}
+
+const GOOD_STATUS = new Set(["published", "active", "live", "ready"]);
+
+// The read-only Overview strip — identity + enrichment/verification/ownership/
+// plan facts, laid out as a scannable divided grid instead of fake input boxes.
+function OverviewBand({
+  place,
+  enrichStatus,
+  ownership,
+}: {
+  place: AdminPlace;
+  enrichStatus: PlaceEnrichmentStatus | null;
+  ownership: "loading" | "owned" | "unowned";
+}) {
+  const badge = enrichmentBadge(enrichStatus);
+  const verified = place.listing_type === "partner";
+  const status = place.status?.trim() ? place.status : null;
+  const statusDot = status
+    ? GOOD_STATUS.has(status.toLowerCase())
+      ? "bg-green-500"
+      : "bg-amber-500"
+    : "bg-muted-foreground/40";
+
+  return (
+    <section className="border-border bg-card rounded-2xl border shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <span className="bg-muted inline-flex h-8 w-8 items-center justify-center rounded-lg">
+            <BadgeCheck className="text-muted-foreground h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="font-display text-[15px] font-semibold tracking-tight">Overview</h2>
+            <p className="text-muted-foreground text-xs">
+              Read-only signals from the Enricher &amp; catalog.
+            </p>
+          </div>
+        </div>
+        {place.updated_at ? (
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+            <Clock className="h-3.5 w-3.5" />
+            Updated {formatAbsoluteUtc(place.updated_at)}
+          </span>
+        ) : null}
       </div>
+
+      <div className="border-border bg-border mx-5 mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:mx-6 md:grid-cols-5">
+        <FactCell label="Status">
+          <span className="flex items-center gap-1.5">
+            <span className={"h-1.5 w-1.5 rounded-full " + statusDot} aria-hidden />
+            <span className="text-sm font-medium capitalize">{status ?? "—"}</span>
+          </span>
+        </FactCell>
+        <FactCell label="Enrichment">
+          <span
+            className={
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold " +
+              badge.cls
+            }
+          >
+            {badge.spinning ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
+            {badge.text}
+          </span>
+        </FactCell>
+        <FactCell label="Verification">
+          <span
+            className={
+              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+              (verified ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground")
+            }
+          >
+            {listingLabel(place.listing_type)}
+          </span>
+        </FactCell>
+        <FactCell label="Ownership">
+          <span
+            className={
+              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
+              (ownership === "owned"
+                ? "bg-green-500/10 text-green-600"
+                : ownership === "loading"
+                  ? "bg-muted text-muted-foreground"
+                  : "bg-amber-500/10 text-amber-700")
+            }
+          >
+            {ownership === "loading" ? "Checking…" : ownership === "owned" ? "Owned" : "Unowned"}
+          </span>
+        </FactCell>
+        <FactCell label="Plan">
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-sm font-semibold">{planLabel(place.plan)}</span>
+            {place.fiscal_type ? (
+              <span className="text-muted-foreground text-xs capitalize">
+                · {place.fiscal_type}
+              </span>
+            ) : null}
+          </span>
+        </FactCell>
+      </div>
+
+      {enrichStatus?.last_enriched_at ||
+      (enrichStatus?.stage === "failed" && enrichStatus?.error) ? (
+        <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-5 text-xs sm:px-6">
+          {enrichStatus?.last_enriched_at ? (
+            <span>Last enriched {formatAbsoluteUtc(enrichStatus.last_enriched_at)}</span>
+          ) : null}
+          {enrichStatus?.stage === "failed" && enrichStatus?.error ? (
+            <span className="text-red-600">· {enrichStatus.error}</span>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="text-muted-foreground mt-3 flex items-center gap-2 px-5 pb-4 text-xs sm:px-6">
+        <span className="font-medium">ID</span>
+        <code className="bg-muted min-w-0 truncate rounded px-1.5 py-0.5 font-mono text-[11px]">
+          {place.id}
+        </code>
+        <CopyIdButton id={place.id} />
+      </div>
+    </section>
+  );
+}
+
+function FactCell({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-card px-4 py-3">
+      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.09em] uppercase">
+        {label}
+      </p>
+      <div className="mt-1.5">{children}</div>
     </div>
   );
 }
@@ -766,108 +1036,107 @@ function PhotosEditor({
 
   return (
     <div className="mt-5">
-      {photos.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No photos yet.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {photos.map((src, idx) => (
-            <div
-              key={`${src}-${idx}`}
-              className="border-border bg-background group relative overflow-hidden rounded-xl border"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt={`Photo ${idx + 1}`}
-                className="aspect-square w-full object-cover"
-              />
-              {idx === 0 && (
-                <span className="bg-foreground/80 text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
-                  Hero
-                </span>
-              )}
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    disabled={busy || idx === 0}
-                    onClick={() => onMove(idx, -1)}
-                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition disabled:opacity-40"
-                    aria-label="Move earlier"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || idx === photos.length - 1}
-                    onClick={() => onMove(idx, 1)}
-                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition disabled:opacity-40"
-                    aria-label="Move later"
-                  >
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => onInfo(src)}
-                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
-                    aria-label="Photo metadata"
-                    title="Image metadata"
-                  >
-                    <Info className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => onRemove(idx)}
-                    className="text-background hover:bg-white/20 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
-                    aria-label="Remove photo"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+      <input
+        id={inputId}
+        type="file"
+        accept={ALLOWED_IMAGE_ACCEPT}
+        disabled={busy || atCap}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void onUpload(file);
+        }}
+      />
+
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+        {photos.map((src, idx) => (
+          <div
+            key={`${src}-${idx}`}
+            className="border-border bg-background group relative overflow-hidden rounded-xl border"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={`Photo ${idx + 1}`}
+              className="aspect-square w-full object-cover"
+            />
+            {idx === 0 && (
+              <span className="bg-foreground/85 text-background absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                Hero
+              </span>
+            )}
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  disabled={busy || idx === 0}
+                  onClick={() => onMove(idx, -1)}
+                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20 disabled:opacity-40"
+                  aria-label="Move earlier"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || idx === photos.length - 1}
+                  onClick={() => onMove(idx, 1)}
+                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20 disabled:opacity-40"
+                  aria-label="Move later"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => onInfo(src)}
+                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20"
+                  aria-label="Photo metadata"
+                  title="Image metadata"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onRemove(idx)}
+                  className="text-background inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-white/20"
+                  aria-label="Remove photo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <input
-          id={inputId}
-          type="file"
-          accept={ALLOWED_IMAGE_ACCEPT}
-          disabled={busy || atCap}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (file) void onUpload(file);
-          }}
-        />
-        <label
-          htmlFor={inputId}
-          className={`border-border hover:border-foreground/40 inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition ${
-            busy || atCap ? "pointer-events-none opacity-50" : ""
-          }`}
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Uploading…
-            </>
-          ) : (
-            <>
-              <ImagePlus className="h-4 w-4" />
-              Upload photo
-            </>
-          )}
-        </label>
-        <p className="text-muted-foreground text-xs tabular-nums">
-          {photos.length}/{photosMax} photos · JPG, PNG, WEBP, AVIF · max 8 MB
-        </p>
+        {!atCap && (
+          <label
+            htmlFor={inputId}
+            className={
+              "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-center transition " +
+              (busy ? "pointer-events-none opacity-50" : "")
+            }
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-[11px] font-medium">Uploading…</span>
+              </>
+            ) : (
+              <>
+                <ImagePlus className="h-5 w-5" />
+                <span className="text-[11px] font-medium">Add photo</span>
+              </>
+            )}
+          </label>
+        )}
       </div>
+
+      <p className="text-muted-foreground mt-3 text-[11px] tabular-nums">
+        {photos.length}/{photosMax} photos · JPG, PNG, WEBP, AVIF · max 8 MB
+      </p>
     </div>
   );
 }
@@ -900,34 +1169,6 @@ function enrichmentBadge(
     default:
       return { text: "Not enriched", cls: "bg-muted text-muted-foreground", spinning: false };
   }
-}
-
-function EnrichmentStatusField({ status }: { status: PlaceEnrichmentStatus | null }) {
-  const badge = enrichmentBadge(status);
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">Enrichment status</span>
-      <div className="border-border bg-background flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2.5">
-        <span
-          className={
-            "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold " +
-            badge.cls
-          }
-        >
-          {badge.spinning && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
-          {badge.text}
-        </span>
-        {status?.last_enriched_at && (
-          <span className="text-muted-foreground text-xs">
-            Last enriched {formatAbsoluteUtc(status.last_enriched_at)}
-          </span>
-        )}
-        {status?.stage === "failed" && status?.error && (
-          <span className="text-xs text-red-600">· {status.error}</span>
-        )}
-      </div>
-    </div>
-  );
 }
 
 const SOURCE_LABEL: Record<string, string> = {

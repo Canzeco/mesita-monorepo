@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 
 // Shared primitives for the single-unit console sections. Light-themed admin
-// surface — semantic tokens only.
+// surface — semantic tokens only, calm and high-density.
 
 export function SectionCard({
   icon,
@@ -19,18 +19,22 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {icon}
-            <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2>
-          </div>
-          {subtitle && (
-            <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">
-              {subtitle}
-            </p>
+    <section className="border-border bg-card rounded-2xl border p-5 shadow-sm sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {icon != null && (
+            <span className="bg-muted inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+              {icon}
+            </span>
           )}
+          <div className="min-w-0">
+            <h2 className="font-display text-[15px] font-semibold tracking-tight">{title}</h2>
+            {subtitle && (
+              <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">
+                {subtitle}
+              </p>
+            )}
+          </div>
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
@@ -42,6 +46,7 @@ export function SectionCard({
 export function TextField({
   label,
   icon,
+  labelRight,
   value,
   onChange,
   placeholder,
@@ -52,6 +57,8 @@ export function TextField({
   label: string;
   /** Optional leading mark next to the label (brand SVG or lucide). */
   icon?: React.ReactNode;
+  /** Optional trailing accessory in the label row (e.g. an "Open ↗" link). */
+  labelRight?: React.ReactNode;
   value: string;
   onChange?: (v: string) => void;
   placeholder?: string;
@@ -61,9 +68,12 @@ export function TextField({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="flex items-center gap-1.5 text-sm font-medium">
-        {icon}
-        {label}
+      <span className="flex min-h-4 items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          {icon}
+          {label}
+        </span>
+        {labelRight}
       </span>
       <input
         type={type}
@@ -73,7 +83,7 @@ export function TextField({
         maxLength={maxLength}
         readOnly={!onChange}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-        className="border-border bg-background focus:border-foreground h-9 rounded-lg border px-3 text-sm outline-none disabled:opacity-50"
+        className="border-border bg-background h-9 w-full rounded-lg border px-3 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
       />
     </label>
   );
@@ -81,6 +91,7 @@ export function TextField({
 
 export function TextArea({
   label,
+  labelRight,
   value,
   onChange,
   rows = 4,
@@ -89,6 +100,7 @@ export function TextArea({
   disabled,
 }: {
   label: string;
+  labelRight?: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   rows?: number;
@@ -98,7 +110,10 @@ export function TextArea({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium">{label}</span>
+        {labelRight}
+      </span>
       <textarea
         value={value}
         rows={rows}
@@ -106,7 +121,7 @@ export function TextArea({
         placeholder={placeholder}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="border-border bg-background focus:border-foreground rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none disabled:opacity-50"
+        className="border-border bg-background w-full rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
       />
     </label>
   );
@@ -132,7 +147,7 @@ export function SelectField({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="border-border bg-background focus:border-foreground h-9 rounded-lg border px-2 text-sm outline-none disabled:opacity-50"
+        className="border-border bg-background h-9 w-full rounded-lg border px-2 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -160,8 +175,20 @@ export function SaveBar({
   error?: string | null;
 }) {
   return (
-    <div className="mt-5 border-border border-t pt-4">
-      <div className="flex items-center gap-3">
+    <div className="border-border mt-5 border-t pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs">
+          {dirty && !pending ? (
+            <span className="text-muted-foreground inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+              Unsaved changes
+            </span>
+          ) : ok ? (
+            <span className="text-muted-foreground inline-flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> Saved
+            </span>
+          ) : null}
+        </span>
         <button
           type="button"
           onClick={onSave}
@@ -176,14 +203,6 @@ export function SaveBar({
             label
           )}
         </button>
-        {ok && !dirty && (
-          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Saved
-          </span>
-        )}
-        {dirty && !pending ? (
-          <span className="text-muted-foreground text-xs">Unsaved changes</span>
-        ) : null}
       </div>
       {error ? <ErrorNote message={error} /> : null}
     </div>

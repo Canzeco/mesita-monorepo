@@ -127,6 +127,7 @@ export type AdminPlace = {
   whatsapp_url: string | null;
   google_maps_url: string | null;
   opentable_url: string | null;
+  resy_url: string | null;
   uber_eats_url: string | null;
   tripadvisor_url: string | null;
   menu_pdf_url: string | null;
