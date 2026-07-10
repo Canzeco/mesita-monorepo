@@ -986,10 +986,12 @@ function CopyIdButton({ id }: { id: string }) {
 
 const GOOD_STATUS = new Set(["published", "active", "live", "ready"]);
 
-// The Overview card — read-only signals (enrichment/verification/ownership/
-// plan facts as soft tiles under a faint brand wash) with the editable
-// identity basics (name / about / tags) folded in below a divider. The one
-// "hero" card on the page; everything else stays calm.
+// Overview — identity hero for the Place page.
+// Internal structure (top → bottom):
+//   1. Catalog spotlight — photo + category + price/plan (what the place IS)
+//   2. Health rail — status / enrichment / verification / ownership as pills
+//   3. Quiet ID meta
+//   4. Editable basics (name / about / tags) below a divider
 function OverviewBand({
   place,
   enrichStatus,
@@ -1005,148 +1007,215 @@ function OverviewBand({
   const badge = enrichmentBadge(enrichStatus);
   const verified = place.listing_type === "partner";
   const status = place.status?.trim() ? place.status : null;
-  const statusDot = status
+  const statusTone = status
     ? GOOD_STATUS.has(status.toLowerCase())
-      ? "bg-green-500"
-      : "bg-amber-500"
-    : "bg-muted-foreground/40";
+      ? "good"
+      : "warn"
+    : "muted";
+  const category = place.category_label ?? place.category ?? null;
+  const heroPhoto = place.photos?.[0] ?? null;
+  const priceLevel =
+    place.price_level != null && place.price_level >= 1
+      ? Math.max(1, Math.min(4, place.price_level))
+      : null;
+
+  const ownershipLabel =
+    ownership === "loading" ? "Checking…" : ownership === "owned" ? "Owned" : "Unowned";
+  const ownershipTone =
+    ownership === "owned" ? "good" : ownership === "loading" ? "muted" : "warn";
 
   return (
     <section className="border-border/70 bg-card shadow-card relative overflow-hidden rounded-2xl border">
-      {/* Faint brand wash, top-right — identity card, read-only. */}
+      {/* Soft brand wash — atmosphere, not a second surface. */}
       <div
         aria-hidden
-        className="bg-pink-gradient pointer-events-none absolute -top-24 -right-16 h-52 w-80 rounded-full opacity-[0.08] blur-2xl"
+        className="bg-pink-gradient pointer-events-none absolute -top-28 -right-20 h-56 w-96 rounded-full opacity-[0.09] blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/35 to-transparent"
       />
 
-      <div className="relative flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
-        <div className="flex items-center gap-3">
-          <span
-            className={
-              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " +
-              TINT_CHIP.rose
-            }
-          >
-            <Store className="h-4 w-4" />
-          </span>
-          <div>
-            <h2 className="font-display text-base font-semibold tracking-tight">Overview</h2>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              Enricher &amp; catalog signals · name, about, and tags.
+      {/* 1. Catalog spotlight */}
+      <div className="relative flex gap-4 px-5 pt-5 sm:gap-5 sm:px-6 sm:pt-6">
+        <div className="border-border/70 bg-muted relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-2xl border sm:h-[5.25rem] sm:w-[5.25rem]">
+          {heroPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={heroPhoto}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span
+              className={
+                "flex h-full w-full items-center justify-center " + TINT_CHIP.rose
+              }
+            >
+              <Store className="h-6 w-6 opacity-80" />
+            </span>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase">
+              Overview
             </p>
+            {place.updated_at ? (
+              <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
+                <Clock className="h-3 w-3" />
+                Updated {formatAbsoluteUtc(place.updated_at)}
+              </span>
+            ) : null}
+          </div>
+
+          <h2 className="font-display text-foreground mt-1 text-xl leading-tight font-semibold tracking-tight sm:text-2xl">
+            {category ?? "Uncategorized"}
+          </h2>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            {priceLevel != null ? (
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="font-display text-[15px] font-semibold tracking-wide">
+                  <span className="text-foreground">{"$".repeat(priceLevel)}</span>
+                  <span className="text-muted-foreground/35">
+                    {"$".repeat(4 - priceLevel)}
+                  </span>
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {PRICE_NAMES[priceLevel]}
+                </span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-xs">No price level</span>
+            )}
+            <span className="bg-border h-1 w-1 rounded-full" aria-hidden />
+            <span className="text-foreground/85 text-xs font-medium">
+              {planLabel(place.plan)}
+              {place.fiscal_type ? (
+                <span className="text-muted-foreground font-normal capitalize">
+                  {" "}
+                  · {place.fiscal_type}
+                </span>
+              ) : null}
+            </span>
           </div>
         </div>
-        {place.updated_at ? (
-          <span className="border-border/70 bg-background/70 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]">
-            <Clock className="h-3 w-3" />
-            Updated {formatAbsoluteUtc(place.updated_at)}
-          </span>
+      </div>
+
+      {/* 2. Health rail — one row of signal pills, not a tile dashboard */}
+      <div className="relative mt-5 px-5 sm:px-6">
+        <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-[0.12em] uppercase">
+          Health
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          <SignalPill
+            label="Status"
+            tone={statusTone}
+            value={
+              <span className="capitalize">{status ?? "—"}</span>
+            }
+          />
+          <SignalPill
+            label="Enrichment"
+            tone={
+              badge.text.startsWith("Enrich") && badge.spinning
+                ? "info"
+                : badge.text === "Enriched"
+                  ? "good"
+                  : badge.text === "Failed"
+                    ? "bad"
+                    : "muted"
+            }
+            value={
+              <span className="inline-flex items-center gap-1">
+                {badge.spinning ? (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                ) : null}
+                {badge.text}
+              </span>
+            }
+          />
+          <SignalPill
+            label="Listing"
+            tone={verified ? "good" : "muted"}
+            value={listingLabel(place.listing_type)}
+          />
+          <SignalPill
+            label="Ownership"
+            tone={ownershipTone}
+            value={ownershipLabel}
+          />
+        </div>
+
+        {enrichStatus?.last_enriched_at ||
+        (enrichStatus?.stage === "failed" && enrichStatus?.error) ? (
+          <p className="text-muted-foreground mt-2.5 text-[11px] leading-snug">
+            {enrichStatus?.last_enriched_at ? (
+              <span>Last enriched {formatAbsoluteUtc(enrichStatus.last_enriched_at)}</span>
+            ) : null}
+            {enrichStatus?.stage === "failed" && enrichStatus?.error ? (
+              <span className="text-red-600">
+                {enrichStatus?.last_enriched_at ? " · " : null}
+                {enrichStatus.error}
+              </span>
+            ) : null}
+          </p>
         ) : null}
       </div>
 
-      {/* Fact tiles — wrap 2→3 cols; each signal reads as its own soft chip. */}
-      <div className="relative mx-5 mt-4 grid grid-cols-2 gap-2 sm:mx-6 sm:grid-cols-3">
-        <FactTile label="Status">
-          <span className="flex items-center gap-1.5">
-            <span className={"h-1.5 w-1.5 rounded-full " + statusDot} aria-hidden />
-            <span className="text-sm font-medium capitalize">{status ?? "—"}</span>
-          </span>
-        </FactTile>
-        <FactTile label="Enrichment">
-          <span
-            className={
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold " +
-              badge.cls
-            }
-          >
-            {badge.spinning ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
-            {badge.text}
-          </span>
-        </FactTile>
-        <FactTile label="Verification">
-          <span
-            className={
-              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-              (verified ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground")
-            }
-          >
-            {listingLabel(place.listing_type)}
-          </span>
-        </FactTile>
-        <FactTile label="Ownership">
-          <span
-            className={
-              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-              (ownership === "owned"
-                ? "bg-green-500/10 text-green-600"
-                : ownership === "loading"
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-amber-500/10 text-amber-700")
-            }
-          >
-            {ownership === "loading" ? "Checking…" : ownership === "owned" ? "Owned" : "Unowned"}
-          </span>
-        </FactTile>
-        <FactTile label="Plan">
-          <span className="flex items-baseline gap-1.5">
-            <span className="font-display text-sm font-semibold">{planLabel(place.plan)}</span>
-            {place.fiscal_type ? (
-              <span className="text-muted-foreground text-xs capitalize">
-                · {place.fiscal_type}
-              </span>
-            ) : null}
-          </span>
-        </FactTile>
-        {/* decision: Pato — price + category also surface on Overview (still
-            have their own Enricher-derived box beside this card). */}
-        <FactTile label="Price">
-          <PriceDisplay level={place.price_level} />
-        </FactTile>
-        <FactTile label="Category">
-          <span className="text-sm font-medium">
-            {place.category_label ?? place.category ?? "—"}
-          </span>
-        </FactTile>
-      </div>
-
-      {enrichStatus?.last_enriched_at ||
-      (enrichStatus?.stage === "failed" && enrichStatus?.error) ? (
-        <div className="text-muted-foreground relative mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-5 text-xs sm:px-6">
-          {enrichStatus?.last_enriched_at ? (
-            <span>Last enriched {formatAbsoluteUtc(enrichStatus.last_enriched_at)}</span>
-          ) : null}
-          {enrichStatus?.stage === "failed" && enrichStatus?.error ? (
-            <span className="text-red-600">· {enrichStatus.error}</span>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="text-muted-foreground relative mt-3 flex items-center gap-2 px-5 pb-4 text-xs sm:px-6">
-        <span className="font-medium">ID</span>
-        <code className="bg-muted min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-[11px]">
+      {/* 3. Quiet ID */}
+      <div className="text-muted-foreground relative mt-4 flex items-center gap-2 px-5 pb-4 text-xs sm:px-6">
+        <span className="font-medium tracking-wide uppercase text-[10px]">ID</span>
+        <code className="bg-muted/70 min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-[11px]">
           {place.id}
         </code>
         <CopyIdButton id={place.id} />
       </div>
 
-      {/* Editable identity zone — divided from the read-only signals above. */}
+      {/* 4. Editable identity */}
       {children != null ? (
-        <div className="border-border/60 relative border-t px-5 pt-4 pb-5 sm:px-6">
-          {children}
+        <div className="border-border/60 from-muted/20 relative border-t bg-gradient-to-b to-transparent px-5 pt-4 pb-5 sm:px-6">
+          <GroupLabel>Basics</GroupLabel>
+          <div className="mt-3">{children}</div>
         </div>
       ) : null}
     </section>
   );
 }
 
-function FactTile({ label, children }: { label: string; children: React.ReactNode }) {
+type SignalTone = "good" | "warn" | "bad" | "info" | "muted";
+
+const SIGNAL_TONE: Record<SignalTone, string> = {
+  good: "border-emerald-200/80 bg-emerald-50/80 text-emerald-800",
+  warn: "border-amber-200/80 bg-amber-50/80 text-amber-900",
+  bad: "border-red-200/80 bg-red-50/80 text-red-800",
+  info: "border-sky-200/80 bg-sky-50/80 text-sky-900",
+  muted: "border-border/70 bg-muted/50 text-foreground/80",
+};
+
+function SignalPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone: SignalTone;
+}) {
   return (
-    <div className="border-border/60 bg-background/60 rounded-xl border px-3.5 py-2.5">
-      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.09em] uppercase">
+    <span
+      className={
+        "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold " +
+        SIGNAL_TONE[tone]
+      }
+    >
+      <span className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-60">
         {label}
-      </p>
-      <div className="mt-1.5">{children}</div>
-    </div>
+      </span>
+      <span className="min-w-0 truncate font-semibold">{value}</span>
+    </span>
   );
 }
 
