@@ -447,7 +447,7 @@ export function ReviewsSection({
     <SectionCard
       icon={<Star className="text-muted-foreground h-4 w-4" />}
       title="Reviews"
-      subtitle="How many Google reviews the Enricher pulls from Apify (0–100). Reviews ground the profile's About, category, and tags — more reviews mean richer synthesis but a slower, pricier scrape (~$0.50 per 100)."
+      subtitle="How many Google reviews Apify scrapes for the Enricher (0–100). Google Places itself only returns ~5; 100 is Mesita's hard safety bound for Edge Function wall-clock and Apify cost (~$0.50 per 100), not a Google limit. More reviews ground richer About / category / tags synthesis, but slow and price the scrape."
     >
       <div className="mt-5 sm:max-w-xs">
         <NumberField
