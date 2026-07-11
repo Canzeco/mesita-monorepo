@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { cn } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 // Root of the admin subdomain. Strong routing contract:
 //
@@ -36,7 +38,7 @@ export default async function AdminRootPage({
       subtitle="Sign in with your Google account. Only allowlisted operators can perform admin actions — everyone else lands on a polite empty state."
       chip={
         errorMessage ? (
-          <p className="bg-destructive/10 text-destructive mt-3 rounded-lg px-3 py-2 text-xs leading-relaxed">
+          <p className={cn(ERROR_BOX_CLASS, "mt-3 leading-relaxed")}>
             {errorMessage}
           </p>
         ) : null
