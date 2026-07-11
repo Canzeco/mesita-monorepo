@@ -93,11 +93,14 @@ export type AdminMenuItem = {
   items?: unknown[] | null;
 };
 
-/** How the reservationist reaches this place — one channel + its value. */
+/** How the Reservationist reaches this place. `channel`/`value` is the 1st
+ *  choice (shape the Enricher also writes — its admin-override check keys on
+ *  `channel`); `fallbacks` is the ordered 2nd/3rd choices it tries next. */
 export type ReservationChannel = "instagram" | "whatsapp" | "phone";
 export type ReservationTarget = {
   channel: ReservationChannel;
   value?: string | null;
+  fallbacks?: { channel: ReservationChannel; value?: string | null }[];
 };
 
 // The full place row, loaded for a super-admin via business-get-overview
@@ -335,37 +338,6 @@ export async function enrichPlace(
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
-}
-
-// ── Per-place verification status (admin-only) ──────────────────────────
-// Latest ownership-verification request for one place, for the Ownership
-// box. Uses admin-web-list-verifications' per-place mode (projectId body
-// param → that place's full history, newest first, no queue method-gate).
-
-export type PlaceVerification = {
-  id: string;
-  project_id: string;
-  method: string | null;
-  status: "pending" | "approved" | "rejected" | string;
-  reject_reason: string | null;
-  requester_email: string | null;
-  decided_at: string | null;
-  decided_via: string | null;
-  created_at: string;
-};
-
-export async function getPlaceVerification(
-  projectId: string,
-): Promise<Result<PlaceVerification | null>> {
-  const r = await efInvoke<{ verifications: PlaceVerification[] }>(
-    "admin-web-list-verifications",
-    { projectId, limit: 5 },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  // Belt & braces: an EF build without the projectId filter would return the
-  // global queue — never show another place's request as this place's status.
-  const rows = (r.data.verifications ?? []).filter((v) => v.project_id === projectId);
-  return { ok: true, data: rows[0] ?? null };
 }
 
 // ── Team ─────────────────────────────────────────────────────────────────

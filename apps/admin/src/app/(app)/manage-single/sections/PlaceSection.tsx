@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import {
   getPlaceEnrichment,
-  getPlaceVerification,
   listPlaceTagCatalog,
   listTeam,
   updatePlace,
@@ -36,7 +35,6 @@ import {
   type PlaceEnrichmentStatus,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
-  type PlaceVerification,
   type ReservationChannel,
   type ReservationTarget,
 } from "../actions";
@@ -49,7 +47,7 @@ import {
   subscriptionForPlan,
   visibilityScore,
 } from "@/lib/business/plans";
-import { formatAbsoluteUtc, formatShortDate } from "@/lib/format";
+import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ALLOWED_IMAGE_ACCEPT,
@@ -107,47 +105,61 @@ const RESERVATION_CHANNELS: {
   { key: "phone", label: "Phone", profileKey: "phone" },
 ];
 
-type ReservationForm = ReservationChannel | "";
+/** Ordered channel priority — index 0 is the 1st choice. 0–3 entries, no dupes. */
+type ReservationOrder = ReservationChannel[];
+
+const isReservationChannel = (c: unknown): c is ReservationChannel =>
+  c === "instagram" || c === "whatsapp" || c === "phone";
 
 function profileValueFor(place: AdminPlace, channel: ReservationChannel): string {
   const meta = RESERVATION_CHANNELS.find((c) => c.key === channel);
   return meta ? str(place[meta.profileKey]) : "";
 }
 
-/** Read the selected contact channel; tolerate the old per-channel routes shape.
- *  Only the CHANNEL matters — reservations go to the primary channel, so the
- *  stored value is a snapshot resolved at save time, never hand-entered. */
-function readReservationTarget(v: AdminPlace): ReservationForm {
+/** Read the ordered channel priority; tolerate the older single-channel and
+ *  per-channel-routes shapes. Only CHANNELS matter — the stored values are
+ *  snapshots resolved at save time, never hand-entered. */
+function readReservationTarget(v: AdminPlace): ReservationOrder {
   const raw = v.products?.reservations as unknown;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
-    if (
-      obj.channel === "instagram" || obj.channel === "whatsapp" || obj.channel === "phone"
-    ) {
-      return obj.channel;
+    const order: ReservationOrder = [];
+    const push = (c: unknown) => {
+      if (isReservationChannel(c) && !order.includes(c)) order.push(c);
+    };
+    push(obj.channel);
+    if (Array.isArray(obj.fallbacks)) {
+      for (const f of obj.fallbacks) {
+        if (f && typeof f === "object") push((f as Record<string, unknown>).channel);
+      }
     }
+    if (order.length > 0) return order;
     // Legacy MESITA-378 routes: first channel that had a route or a profile value.
     for (const key of ["phone", "whatsapp", "instagram"] as const) {
       const c = obj[key];
       const route = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
-      if (route && (route.mode === "different" || profileValueFor(v, key))) return key;
+      if (route && (route.mode === "different" || profileValueFor(v, key))) return [key];
     }
   }
-  return "";
+  return [];
 }
 
-function serializeReservationTarget(
-  channel: ReservationForm,
-  resolvedValue: string,
-): ReservationTarget | null {
-  if (!channel) return null;
-  // Same convention as the Enricher's Selected Reservation Endpoint: value is
-  // a snapshot of the primary-channel contact at save time.
-  return { channel, value: resolvedValue.trim() || null };
+function serializeReservationTarget(order: ReservationOrder, f: Form): ReservationTarget | null {
+  const [first, ...rest] = order;
+  if (!first) return null;
+  // Same convention as the Enricher's Selected Reservation Endpoint: values
+  // are snapshots of the profile contacts at save time. The 1st choice keeps
+  // the flat { channel, value } shape the Enricher's override check reads.
+  const snapshot = (c: ReservationChannel) => formContactFor(f, c).trim() || null;
+  const target: ReservationTarget = { channel: first, value: snapshot(first) };
+  if (rest.length > 0) {
+    target.fallbacks = rest.map((c) => ({ channel: c, value: snapshot(c) }));
+  }
+  return target;
 }
 
-/** The primary-channel contact as currently held in the editor form. */
-function formContactFor(f: Form, channel: ReservationForm): string {
+/** The profile contact for one channel as currently held in the editor form. */
+function formContactFor(f: Form, channel: ReservationChannel | ""): string {
   if (channel === "phone") return f.phone;
   if (channel === "whatsapp") return f.channels.whatsapp_url ?? "";
   if (channel === "instagram") return f.channels.instagram_url ?? "";
@@ -201,7 +213,7 @@ type Form = {
   tags: string[];
   photos: string[];
   channels: Record<string, string>;
-  reservation: ReservationForm;
+  reservation: ReservationOrder;
   hours: Record<Day, DayHours>;
 };
 
@@ -291,10 +303,7 @@ function boxToPatch(
       reservation_contacts: [],
       products: {
         ...(existingProducts ?? {}),
-        reservations: serializeReservationTarget(
-          f.reservation,
-          formContactFor(f, f.reservation),
-        ),
+        reservations: serializeReservationTarget(f.reservation, f),
       },
     };
   }
@@ -372,7 +381,10 @@ export function PlaceSection({
       ),
     [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
   );
-  const dirtyReservations = form.reservation !== saved.reservation;
+  const dirtyReservations = useMemo(
+    () => !sliceEqual(form.reservation, saved.reservation),
+    [form.reservation, saved.reservation],
+  );
   const dirtyPhotos = useMemo(
     () => !sliceEqual(form.photos, saved.photos),
     [form.photos, saved.photos],
@@ -384,8 +396,17 @@ export function PlaceSection({
     setForm((f) => ({ ...f, [k]: val }));
   const setChannel = (key: string, val: string) =>
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
-  const setReservationChannel = (channel: ReservationChannel | "") =>
-    setForm((f) => ({ ...f, reservation: channel }));
+  // Set one priority slot; empties compact away and a channel picked twice
+  // keeps only its earliest slot, so the order never has holes or dupes.
+  const setReservationSlot = (slot: number, channel: ReservationChannel | "") =>
+    setForm((f) => {
+      const slots: (ReservationChannel | "")[] = [0, 1, 2].map((i) =>
+        i === slot ? channel : (f.reservation[i] ?? ""),
+      );
+      const next: ReservationOrder = [];
+      for (const c of slots) if (c && !next.includes(c)) next.push(c);
+      return { ...f, reservation: next };
+    });
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
@@ -452,10 +473,6 @@ export function PlaceSection({
   const [metaFor, setMetaFor] = useState<string | null>(null);
   // Owner emails (project_members role=owner) — null while loading.
   const [owners, setOwners] = useState<string[] | null>(null);
-  // Latest verification request — "loading" until fetched; null = none ever.
-  const [verification, setVerification] = useState<PlaceVerification | null | "loading">(
-    "loading",
-  );
 
   useEffect(() => {
     let alive = true;
@@ -487,10 +504,6 @@ export function PlaceSection({
           .filter((m) => m.role === "owner")
           .map((m) => m.email ?? m.fullName ?? m.userId),
       );
-    });
-    getPlaceVerification(place.id).then((r) => {
-      if (!alive) return;
-      setVerification(r.ok ? r.data : null);
     });
     return () => {
       alive = false;
@@ -535,7 +548,7 @@ export function PlaceSection({
           the editing boxes. Status stays in the sticky chrome up top. */}
       <MetaCard place={place} enrichStatus={enrichStatus} />
 
-      <OwnershipCard place={place} owners={owners} verification={verification} />
+      <OwnershipCard place={place} owners={owners} />
 
       <PromosCard place={place} />
 
@@ -810,55 +823,69 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      {/* Reservations — one contact channel for the reservationist. */}
+      {/* Reservations — ordered contact channels for the Reservationist. */}
       <SectionCard
         icon={<CalendarCheck className="h-4 w-4" />}
         tint="teal"
         title="Reservations"
-        subtitle="What should we contact for reservations — Instagram, WhatsApp, or phone."
+        subtitle="Mesita's AI agent makes the reservation by contacting the place — via phone, WhatsApp, or Instagram."
       >
-        {(() => {
-          const resolved = formContactFor(form, form.reservation);
-          return (
-            <div className="mt-5 grid gap-3.5">
-              <label className="flex flex-col gap-1.5">
+        <p className="text-muted-foreground mt-5 text-xs">
+          Order the channels the agent should try: it starts with the 1st choice and
+          falls back down the list. Enable one, two, or all three.
+        </p>
+        <div className="mt-3.5 grid gap-3.5">
+          {(["1st choice", "2nd choice", "3rd choice"] as const).map((slotLabel, slot) => {
+            // Show the next empty slot only once the previous one is set —
+            // the list grows as channels are enabled.
+            if (slot > form.reservation.length) return null;
+            const value = form.reservation[slot] ?? "";
+            const resolved = formContactFor(form, value);
+            const meta = RESERVATION_CHANNELS.find((c) => c.key === value);
+            return (
+              <label key={slotLabel} className="flex flex-col gap-1.5">
                 <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
-                  Contact via
+                  {slotLabel}
                 </span>
                 <select
-                  value={form.reservation}
+                  value={value}
                   disabled={anyPending}
                   onChange={(e) =>
-                    setReservationChannel(e.target.value as ReservationChannel | "")
+                    setReservationSlot(slot, e.target.value as ReservationChannel | "")
                   }
-                  aria-label="Reservation contact channel"
+                  aria-label={`Reservation channel — ${slotLabel}`}
                   className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
                 >
-                  <option value="">Select…</option>
-                  {RESERVATION_CHANNELS.map((c) => (
+                  <option value="">{slot === 0 ? "Select…" : "None"}</option>
+                  {RESERVATION_CHANNELS.filter(
+                    (c) => c.key === value || !form.reservation.includes(c.key),
+                  ).map((c) => (
                     <option key={c.key} value={c.key}>
                       {c.label}
                     </option>
                   ))}
                 </select>
+                {/* No free-text input — the agent always contacts the PROFILE
+                    value for the channel; the contact itself lives in Channels. */}
+                {value ? (
+                  resolved.trim() ? (
+                    <span className="text-muted-foreground text-xs">
+                      Uses the profile&apos;s {meta?.label ?? value}:{" "}
+                      <span className="text-foreground/90 font-medium break-all">
+                        {resolved}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-amber-700">
+                      No {meta?.label ?? value} on the profile yet — add it in Channels
+                      first.
+                    </span>
+                  )
+                ) : null}
               </label>
-              {/* No second input — reservations always go to the PRIMARY
-                  channel; the contact itself lives in the Channels box. */}
-              {form.reservation ? (
-                resolved.trim() ? (
-                  <p className="text-muted-foreground text-xs">
-                    Uses the profile&apos;s {form.reservation === "phone" ? "phone" : form.reservation === "whatsapp" ? "WhatsApp" : "Instagram"}:{" "}
-                    <span className="text-foreground/90 font-medium break-all">{resolved}</span>
-                  </p>
-                ) : (
-                  <p className="text-xs font-medium text-amber-700">
-                    No {form.reservation === "phone" ? "phone" : form.reservation === "whatsapp" ? "WhatsApp" : "Instagram"} on the profile yet — add it in Channels first.
-                  </p>
-                )
-              ) : null}
-            </div>
-          );
-        })()}
+            );
+          })}
+        </div>
         <SaveBar
           pending={pendingBox === "reservations"}
           dirty={dirtyReservations}
@@ -1214,11 +1241,9 @@ function PromosCard({ place }: { place: AdminPlace }) {
 function OwnershipCard({
   place,
   owners,
-  verification,
 }: {
   place: AdminPlace;
   owners: string[] | null;
-  verification: PlaceVerification | null | "loading";
 }) {
   const verified = place.listing_type === "partner";
   return (
@@ -1238,13 +1263,14 @@ function OwnershipCard({
       }
     >
       {/* One boxed field per row — same filled-input language as the
-          editable cards. */}
+          editable cards. Verification is a single binary field; request
+          history lives on the Team tab. */}
       <div className="mt-5 grid gap-4">
-        <ReadField label="Verified" boxed>
+        <ReadField label="Verification status" boxed>
           {verified ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
               <BadgeCheck className="h-3.5 w-3.5" />
-              Verified partner
+              Verified
             </span>
           ) : (
             <span className="border-border/70 bg-card text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
@@ -1252,77 +1278,26 @@ function OwnershipCard({
             </span>
           )}
         </ReadField>
-        <ReadField label="Verification status" boxed>
-          <VerificationStatus verification={verification} />
+        <ReadField label="Owners" boxed>
+          {owners === null ? (
+            <span className="text-muted-foreground text-xs">Checking…</span>
+          ) : owners.length === 0 ? (
+            <span className="text-muted-foreground text-xs italic">
+              No owners — nobody has claimed this place yet.
+            </span>
+          ) : (
+            <ul className="flex w-full flex-col gap-1.5 py-2.5">
+              {owners.map((email) => (
+                <li key={email} className="flex min-w-0 items-center gap-2 text-sm">
+                  <Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{email}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </ReadField>
       </div>
-      <div className="mt-5 mb-2">
-        <GroupLabel>Owners</GroupLabel>
-      </div>
-      {owners === null ? (
-        <p className="text-muted-foreground text-xs">Checking…</p>
-      ) : owners.length === 0 ? (
-        <p className="text-muted-foreground text-xs italic">
-          No owners — nobody has claimed this place yet.
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {owners.map((email) => (
-            <li key={email} className="flex min-w-0 items-center gap-2 text-sm">
-              <Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{email}</span>
-            </li>
-          ))}
-        </ul>
-      )}
     </SectionCard>
-  );
-}
-
-const VERIFICATION_METHOD_LABEL: Record<string, string> = {
-  ai_call: "AI call",
-  video: "Video",
-  postcard: "Postcard",
-};
-
-// Latest verification request, compact: status line + method/date, and the
-// reject reason when that's the terminal state.
-function VerificationStatus({
-  verification,
-}: {
-  verification: PlaceVerification | null | "loading";
-}) {
-  if (verification === "loading") {
-    return <span className="text-muted-foreground">Checking…</span>;
-  }
-  if (!verification) {
-    return <span className="text-muted-foreground">None requested</span>;
-  }
-  const method = verification.method
-    ? (VERIFICATION_METHOD_LABEL[verification.method] ?? verification.method)
-    : null;
-  const tone =
-    verification.status === "approved"
-      ? "text-emerald-700"
-      : verification.status === "rejected"
-        ? "text-red-600"
-        : "text-amber-700";
-  return (
-    <span className="flex min-w-0 flex-col">
-      <span className={"font-semibold capitalize " + tone}>{verification.status}</span>
-      <span className="text-muted-foreground text-xs">
-        {method ? `${method} · ` : ""}
-        {verification.decided_at
-          ? `decided ${formatShortDate(verification.decided_at)}`
-          : `requested ${formatShortDate(verification.created_at)}`}
-        {verification.decided_via === "auto" ? " · auto" : ""}
-      </span>
-      {verification.status === "rejected" && verification.reject_reason ? (
-        <span className="text-xs leading-snug text-red-600">
-          {verification.reject_reason}
-        </span>
-      ) : null}
-    </span>
   );
 }
 
