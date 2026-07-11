@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -27,6 +28,7 @@ async function fetchCatalogPlaces(): Promise<Place[]> {
 }
 
 export function AskAiTab() {
+  const router = useRouter();
   const [coords, setCoords] = useState<Coords | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
 
@@ -61,14 +63,20 @@ export function AskAiTab() {
     [places],
   );
 
-  const handleInfo = useCallback((prediction: PlacePrediction) => {
-    // Place detail route lands in MESITA-435 — surface identity until then.
-    const id = prediction.mesitaSlug ?? prediction.mesitaId ?? prediction.mainText;
-    Alert.alert(
-      prediction.mainText,
-      `Place detail is coming soon (${id}).`,
-    );
-  }, []);
+  const handleInfo = useCallback(
+    (prediction: PlacePrediction) => {
+      const id = prediction.mesitaId ?? prediction.mesitaSlug;
+      if (!id) {
+        Alert.alert(
+          prediction.mainText,
+          'This place isn’t on Mesita yet — add it first.',
+        );
+        return;
+      }
+      router.push(`/place/${id}`);
+    },
+    [router],
+  );
 
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {

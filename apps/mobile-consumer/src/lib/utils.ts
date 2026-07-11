@@ -9,6 +9,35 @@ export function firstInitial(name: string, fallback = '·'): string {
   return name.trim().slice(0, 1).toUpperCase() || fallback;
 }
 
+export function firstInitials(name: string, fallback = 'M'): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  const first = firstInitial(parts[0] ?? '', '');
+  const last =
+    parts.length > 1 ? firstInitial(parts[parts.length - 1] ?? '', '') : '';
+  return first + last || fallback;
+}
+
+/** Whole years since `birthday` (YYYY-MM-DD). Null for missing/unparseable. */
+export function ageFromBirthday(
+  birthday: string | null | undefined,
+): number | null {
+  if (!birthday) return null;
+  const dob = new Date(birthday);
+  if (Number.isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1;
+  return age >= 0 && age < 130 ? age : null;
+}
+
+/** Title-case the stored sex enum (male/female/other) for display; null-safe. */
+export function formatSex(sex: string | null | undefined): string | null {
+  if (!sex) return null;
+  return sex.charAt(0).toUpperCase() + sex.slice(1);
+}
+
 export function formatRating(
   rating: number | null | undefined,
 ): string | null {

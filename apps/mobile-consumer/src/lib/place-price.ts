@@ -18,3 +18,12 @@ export function formatPlacePriceLevelSymbols(
   if (level == null) return null;
   return '$'.repeat(level);
 }
+
+/** Detail profile: prefer numeric range, else $$$$. */
+export function formatPlacePriceChip(
+  priceRange: string | null | undefined,
+  priceLevel: number | null | undefined,
+): string | null {
+  if (priceRange && /\d/.test(priceRange)) return priceRange;
+  return formatPlacePriceLevelSymbols(priceLevel);
+}

@@ -3,7 +3,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { invokeEF } from '@/lib/ef';
+import { placeRowToDetail, type ResolvedTag } from '@/lib/adapters/place-to-detail';
+import { EFError, invokeEF } from '@/lib/ef';
+import type { PlaceDetail } from '@/lib/types/place-detail';
 
 type PlaceListingType = 'partner' | 'web';
 type PlaceStatus = 'lead' | 'active' | 'paused' | 'archived';
@@ -97,6 +99,27 @@ export async function apiRecommendDeck(
     input,
   );
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
+}
+
+export async function apiFetchPlaceDetail(
+  client: SupabaseClient,
+  idOrSlug: string,
+): Promise<PlaceDetail | null> {
+  try {
+    const { place, tags } = await invokeEF<{
+      place: Record<string, unknown>;
+      tags?: ResolvedTag[];
+    }>(client, 'consumer-web-get-place', { id: idOrSlug }, 'Place not found');
+    return place ? placeRowToDetail(place, tags) : null;
+  } catch (err) {
+    if (!(err instanceof EFError && err.status === 404)) {
+      console.error(
+        `[apiFetchPlaceDetail] consumer-get-place failed for "${idOrSlug}":`,
+        err,
+      );
+    }
+    return null;
+  }
 }
 
 function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {

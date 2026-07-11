@@ -1,10 +1,10 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { Gift, Heart, Navigation } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -173,6 +173,7 @@ function FavoriteRow({
   place: Place;
   onRemove: () => void;
 }) {
+  const router = useRouter();
   const photo = place.photos[0];
   const distanceLabel =
     place.distance_km != null && place.distance_km > 0
@@ -194,9 +195,7 @@ function FavoriteRow({
     <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-3">
       <Pressable
         className="min-w-0 flex-1 flex-row items-center gap-3"
-        onPress={() =>
-          Alert.alert(place.name, 'Place detail is coming soon.')
-        }
+        onPress={() => router.push(`/place/${place.id}`)}
       >
         <View className="size-16 overflow-hidden rounded-xl bg-muted">
           {photo ? (
