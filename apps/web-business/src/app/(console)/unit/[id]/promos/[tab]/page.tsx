@@ -7,6 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { promosPath, resolvePromosTab } from "@/lib/business-route-contract";
 import { errMsg } from "@/lib/utils";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { PromosClient } from "../PromosClient";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +59,7 @@ export default async function BusinessPromosTabPage({
             action={
               <Link
                 href="/add"
-                className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
+                className={CTA_BUTTON_CLASS}
               >
                 <Plus className="h-4 w-4" />
                 Add place

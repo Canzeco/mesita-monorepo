@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
+import { deslugify } from "./place-utils";
 
 export function PlaceCategorySelect({
   value,
@@ -29,8 +30,10 @@ export function PlaceCategorySelect({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // `loading` initializes to true and `supabase` is a stable memo, so the
+    // effect runs once — no synchronous setState needed to enter the loading
+    // state (which would trigger a cascading render).
     let cancelled = false;
-    setLoading(true);
     apiListPlaceCategories(supabase)
       .then((rows) => {
         if (!cancelled) setCategories(rows);
@@ -87,7 +90,7 @@ export function PlaceCategorySelect({
     >
       <option value="">Select category</option>
       {value && !categories.some((c) => c.slug === value) ? (
-        <option value={value}>{value.replace(/_/g, " ")}</option>
+        <option value={value}>{deslugify(value)}</option>
       ) : null}
       {sections.map(([section, rows]) => (
         <optgroup key={section} label={section}>

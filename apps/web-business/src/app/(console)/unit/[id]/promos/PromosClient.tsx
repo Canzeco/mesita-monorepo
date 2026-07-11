@@ -22,7 +22,7 @@ import { apiChangeSubscription } from "@/lib/api/subscription";
 import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, NUMBER_CLASS } from "@/lib/ui-classes";
 import {
   SUBSCRIPTIONS,
   subscriptionForPlace,
@@ -543,7 +543,12 @@ function TicketCapPicker({
         <span className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
           Per ticket
         </span>
-        <span className="font-display bg-pink-gradient rounded-full px-2.5 py-0.5 text-xl leading-none font-bold text-white tabular-nums shadow-sm">
+        <span
+          className={cn(
+            NUMBER_CLASS,
+            "bg-pink-gradient rounded-full px-2.5 py-0.5 text-xl text-white shadow-sm",
+          )}
+        >
           {displayCap == null ? "No cap" : formatMoney(displayCap, currency)}
         </span>
       </div>
@@ -727,7 +732,7 @@ function SubscriptionCard({
         </span>
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-foreground text-lg leading-none font-bold tabular-nums">
+        <span className={cn(NUMBER_CLASS, "text-foreground text-lg")}>
           {price}
         </span>
         <span className="text-muted-foreground text-[11px]">{cadence}</span>
@@ -798,7 +803,7 @@ function PromoCell({
     <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3">
       <div className="flex items-baseline justify-between gap-2">
         <TierChip tier={tier} label={TIER_LABEL[tier]} />
-        <span className="font-display text-primary text-xl leading-none font-bold tabular-nums">
+        <span className={cn(NUMBER_CLASS, "text-primary text-xl")}>
           {displayRate ?? "—"}
           {displayRate != null && (
             <span className="text-sm font-semibold">%</span>

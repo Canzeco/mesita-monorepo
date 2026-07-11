@@ -14,9 +14,8 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetBusinessProfile } from "@/lib/api/business";
-import { resolvePlaceCategoryName } from "@/lib/place-category";
-import type { MyPlace } from "@/lib/api/places";
-import { errMsg } from "@/lib/utils";
+import { placeSubtitle } from "@/components/business/place/place-utils";
+import { errMsg, initialLetter } from "@/lib/utils";
 import {
   ACTIVE_UNIT_COOKIE,
   resolveActiveUnitId,
@@ -219,7 +218,7 @@ function BackToAdminLink() {
 }
 
 function PlaceAvatar({ name }: { name: string }) {
-  const initial = name.trim().slice(0, 1).toUpperCase() || "·";
+  const initial = initialLetter(name);
   return (
     <span className="bg-pink-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold text-white shadow-sm">
       {initial}
@@ -227,21 +226,8 @@ function PlaceAvatar({ name }: { name: string }) {
   );
 }
 
-function placeSubtitle(v: MyPlace): string {
-  const parts = [
-    v.vibe,
-    resolvePlaceCategoryName({
-      categoryLabel: v.category_label,
-      category: v.category,
-    }),
-  ].filter(Boolean) as string[];
-  if (parts.length > 0) return parts.join(" · ");
-  return v.address ?? "—";
-}
-
 function personInitial(fullName: string | null, email: string | null): string {
-  const source = (fullName ?? email ?? "").trim();
-  return source.slice(0, 1).toUpperCase() || "?";
+  return initialLetter(fullName ?? email, "?");
 }
 
 function accountLabel(email: string | null): string {

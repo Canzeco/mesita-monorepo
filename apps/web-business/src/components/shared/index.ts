@@ -2,4 +2,4 @@
 export { Field } from "./Field";
 export { Section } from "./Section";
 export { EmptyState } from "./EmptyState";
-export { GoogleLogo, InstagramLogo, MesitaLogo } from "./BrandLogo";
+export { GoogleLogo, InstagramLogo } from "./BrandLogo";
