@@ -3,6 +3,7 @@
 import { Fragment, useState, useTransition } from "react";
 import { Crown, Eye, Loader2, Percent, Zap } from "lucide-react";
 import {
+  REWARD_ROWS,
   SUBSCRIPTIONS,
   VISIBILITY_LEVELS,
   computeVisibility,
@@ -14,21 +15,8 @@ import {
 import { updatePlace, type AdminPlace } from "../actions";
 import { ErrorNote, GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 
-type RateCol =
-  | "welcome_free_rate"
-  | "welcome_premium_rate"
-  | "free_rate"
-  | "premium_rate";
-
 const RATE_CHOICES = [10, 20, 50, 70] as const;
 const CAP_CHOICES = [200, 500, 1000, 2000] as const;
-
-const RATE_ROWS: { col: RateCol; label: string; hint: string }[] = [
-  { col: "welcome_free_rate", label: "Welcome · Free", hint: "First visit, Free users" },
-  { col: "welcome_premium_rate", label: "Welcome · Premium", hint: "First visit, Premium users" },
-  { col: "free_rate", label: "Returning · Free", hint: "Repeat visit, Free users" },
-  { col: "premium_rate", label: "Returning · Premium", hint: "Repeat visit, Premium users" },
-];
 
 export function PromosSection({
   place,
@@ -111,7 +99,7 @@ export function PromosSection({
           </GroupLabel>
         </div>
         <div className="mt-2.5 flex flex-col gap-2">
-          {RATE_ROWS.map((row) => (
+          {REWARD_ROWS.map((row) => (
             <div
               key={row.col}
               className="border-border/60 bg-muted/30 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3"

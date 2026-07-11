@@ -83,6 +83,24 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
   },
 ];
 
+/** The four per-place reward rate columns (percent off the bill, or null = off). */
+export type RewardRateCol =
+  | "welcome_free_rate"
+  | "welcome_premium_rate"
+  | "free_rate"
+  | "premium_rate";
+
+/**
+ * The four rewards, low → high tier, as rendered on every Promos surface
+ * (Promos tab editor + Place-tab summary). Single source so labels never fork.
+ */
+export const REWARD_ROWS: { col: RewardRateCol; label: string; hint: string }[] = [
+  { col: "welcome_free_rate", label: "Welcome · Free", hint: "First visit, Free users" },
+  { col: "welcome_premium_rate", label: "Welcome · Premium", hint: "First visit, Premium users" },
+  { col: "free_rate", label: "Returning · Free", hint: "Repeat visit, Free users" },
+  { col: "premium_rate", label: "Returning · Premium", hint: "Repeat visit, Premium users" },
+];
+
 /**
  * Plan floor. Pro alone → Medium; Ultra alone → Peak.
  * Max needs Ultra + strong discounts/cap; stingy promos can pull either down.
@@ -148,6 +166,26 @@ export function computeVisibility(input: VisibilityInput): VisibilityLevel {
     ]) +
     capPoints(input.monthly_promo_cap);
   return levelForScore(score);
+}
+
+/**
+ * Visibility as a 1–10 number for read-only summaries (Place-tab Promos box).
+ * Same score the ladder buckets: plan floor (0/3/6) + discount generosity
+ * (0–4) + ticket-cap generosity (0.25–1), so Free = 1 and a maxed-out Ultra
+ * (all rates 70%, no/MX$2,000 cap) = 10.
+ */
+export function visibilityScore(input: VisibilityInput): number {
+  if (subscriptionForPlan(input.plan) === "free") return 1;
+  const score =
+    planPoints(input.plan) +
+    discountPoints([
+      input.welcome_free_rate,
+      input.welcome_premium_rate,
+      input.free_rate,
+      input.premium_rate,
+    ]) +
+    capPoints(input.monthly_promo_cap);
+  return Math.max(1, Math.min(10, Math.round(score)));
 }
 
 /** Plan-floor only — kept for subscription card labels / legacy callers. */

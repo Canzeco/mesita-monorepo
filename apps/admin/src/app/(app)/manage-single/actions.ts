@@ -170,7 +170,11 @@ export type AdminPlace = {
   mesita_visitors: unknown;
   instagram_followers_count: number | null;
   facebook_followers: number | null;
+  created_at: string | null;
   updated_at: string | null;
+  // Stamped by the Enricher's final write — lets the Meta box attribute
+  // updated_at to the AI (≈ same instant) vs a human edit (later).
+  enriched_at: string | null;
   [k: string]: unknown;
 };
 
@@ -332,6 +336,37 @@ export async function enrichPlace(
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
+}
+
+// ── Per-place verification status (admin-only) ──────────────────────────
+// Latest ownership-verification request for one place, for the Ownership
+// box. Uses admin-web-list-verifications' per-place mode (projectId body
+// param → that place's full history, newest first, no queue method-gate).
+
+export type PlaceVerification = {
+  id: string;
+  project_id: string;
+  method: string | null;
+  status: "pending" | "approved" | "rejected" | string;
+  reject_reason: string | null;
+  requester_email: string | null;
+  decided_at: string | null;
+  decided_via: string | null;
+  created_at: string;
+};
+
+export async function getPlaceVerification(
+  projectId: string,
+): Promise<Result<PlaceVerification | null>> {
+  const r = await efInvoke<{ verifications: PlaceVerification[] }>(
+    "admin-web-list-verifications",
+    { projectId, limit: 5 },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  // Belt & braces: an EF build without the projectId filter would return the
+  // global queue — never show another place's request as this place's status.
+  const rows = (r.data.verifications ?? []).filter((v) => v.project_id === projectId);
+  return { ok: true, data: rows[0] ?? null };
 }
 
 // ── Team ─────────────────────────────────────────────────────────────────

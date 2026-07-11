@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
@@ -10,6 +11,7 @@ import {
   Clock,
   Copy,
   ExternalLink,
+  Fingerprint,
   Globe,
   ImagePlus,
   Images,
@@ -18,13 +20,16 @@ import {
   Lock,
   Mail,
   MapPin,
+  Percent,
   Phone,
+  ShieldCheck,
   Store,
   X,
   type LucideIcon,
 } from "lucide-react";
 import {
   getPlaceEnrichment,
+  getPlaceVerification,
   listPlaceTagCatalog,
   listTeam,
   updatePlace,
@@ -32,12 +37,20 @@ import {
   type PlaceEnrichmentStatus,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
+  type PlaceVerification,
   type ReservationChannel,
   type ReservationTarget,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
-import { GroupLabel, SaveBar, SectionCard, TextArea, TextField, TINT_CHIP } from "../ui";
-import { formatAbsoluteUtc } from "@/lib/format";
+import { GroupLabel, SaveBar, SectionCard, TextArea, TextField } from "../ui";
+import { unitSectionHref } from "../nav";
+import {
+  REWARD_ROWS,
+  SUBSCRIPTIONS,
+  subscriptionForPlan,
+  visibilityScore,
+} from "@/lib/business/plans";
+import { formatAbsoluteUtc, formatShortDate } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ALLOWED_IMAGE_ACCEPT,
@@ -237,12 +250,6 @@ function planLabel(plan: string | null): string {
   if (plan === "informal_pro" || plan === "formal_pro" || plan === "pro") return "Pro";
   if (plan === "informal_ultra" || plan === "formal_ultra" || plan === "ultra") return "Ultra";
   return plan.replace(/_/g, " ");
-}
-
-function listingLabel(listingType: string | null): string {
-  if (listingType === "partner") return "Verified partner";
-  if (listingType === "web") return "Listed";
-  return listingType?.trim() || "—";
 }
 
 function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS): Form {
@@ -485,7 +492,12 @@ export function PlaceSection({
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(null);
   const [metaFor, setMetaFor] = useState<string | null>(null);
-  const [ownership, setOwnership] = useState<"loading" | "owned" | "unowned">("loading");
+  // Owner emails (project_members role=owner) — null while loading.
+  const [owners, setOwners] = useState<string[] | null>(null);
+  // Latest verification request — "loading" until fetched; null = none ever.
+  const [verification, setVerification] = useState<PlaceVerification | null | "loading">(
+    "loading",
+  );
 
   useEffect(() => {
     let alive = true;
@@ -509,11 +521,18 @@ export function PlaceSection({
     listTeam(place.id).then((r) => {
       if (!alive) return;
       if (!r.ok) {
-        setOwnership("unowned");
+        setOwners([]);
         return;
       }
-      const hasOwner = r.data.businesses.some((m) => m.role === "owner");
-      setOwnership(hasOwner ? "owned" : "unowned");
+      setOwners(
+        r.data.businesses
+          .filter((m) => m.role === "owner")
+          .map((m) => m.email ?? m.fullName ?? m.userId),
+      );
+    });
+    getPlaceVerification(place.id).then((r) => {
+      if (!alive) return;
+      setVerification(r.ok ? r.data : null);
     });
     return () => {
       alive = false;
@@ -550,16 +569,40 @@ export function PlaceSection({
     // Every Place box shares one two-column grid — no full-width mono heroes.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
-      {/* Overview + Basics live in ONE card: read-only signals on top, the
-          editable identity (name / about / tags) below a divider. */}
-      <OverviewBand place={place} enrichStatus={enrichStatus} ownership={ownership}>
-        <TextField
-          label="Name"
-          value={form.name}
-          onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
-          maxLength={limits.placeNameMax}
-          disabled={anyPending}
-        />
+      {/* Spec order (MESITA-398): Meta · Promos · Ownership · Basics, then
+          the editing boxes. Status stays in the sticky chrome up top. */}
+      <MetaCard place={place} enrichStatus={enrichStatus} />
+
+      <PromosCard place={place} />
+
+      <OwnershipCard place={place} owners={owners} verification={verification} />
+
+      {/* Basics — editable identity. Price + category are Enricher/Google-
+          derived and stay read-only inside the same box. */}
+      <SectionCard
+        icon={<Store className="h-4 w-4" />}
+        tint="rose"
+        title="Basics"
+        subtitle="Name, about & tags are editable — price & category come from the Enricher / Google Places."
+      >
+        <div className="mt-5">
+          <TextField
+            label="Name"
+            value={form.name}
+            onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
+            maxLength={limits.placeNameMax}
+            disabled={anyPending}
+          />
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <ReadField label="Price level" auto>
+            <PriceDisplay level={place.price_level} />
+          </ReadField>
+          {/* Friendly label (e.g. "🪩 Nightclub"), never the snakecase slug. */}
+          <ReadField label="Category" auto>
+            {place.category_label ?? place.category ?? "—"}
+          </ReadField>
+        </div>
         <div className="mt-4">
           <TextArea
             label="About"
@@ -589,24 +632,6 @@ export function PlaceSection({
           error={errors.basics}
           onSave={() => saveBox("basics")}
         />
-      </OverviewBand>
-
-      {/* Price + Category are Enricher/Google-derived — read-only, own box. */}
-      <SectionCard
-        icon={<BadgeCheck className="h-4 w-4" />}
-        tint="amber"
-        title="Price & category"
-        subtitle="Inferred by Enricher / Google Places — not editable here."
-      >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <ReadField label="Price">
-            <PriceDisplay level={place.price_level} />
-          </ReadField>
-          {/* Friendly label (e.g. "🪩 Nightclub"), never the snakecase slug. */}
-          <ReadField label="Category">
-            {place.category_label ?? place.category ?? "—"}
-          </ReadField>
-        </div>
       </SectionCard>
 
       {/* Location is native — Google Places seed + Enricher synthesis. The EF
@@ -789,7 +814,7 @@ export function PlaceSection({
 
       <SectionCard
         icon={<Images className="h-4 w-4" />}
-        tint="pink"
+        tint="orange"
         title="Photos"
         subtitle="First photo is the hero. Reorder or remove; upload one at a time."
         action={
@@ -984,237 +1009,285 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-const GOOD_STATUS = new Set(["published", "active", "live", "ready"]);
+// ── The four spec boxes (MESITA-398) ─────────────────────────────────────
 
-// Overview — identity hero for the Place page.
-// Internal structure (top → bottom):
-//   1. Catalog spotlight — photo + category + price/plan (what the place IS)
-//   2. Health rail — status / enrichment / verification / ownership as pills
-//   3. Quiet ID meta
-//   4. Editable basics (name / about / tags) below a divider
-function OverviewBand({
+// No updated_by column exists, so attribute the last write by proximity: the
+// Enricher's final write stamps enriched_at and bumps updated_at in the same
+// statement — a tiny gap means the AI wrote last; anything later is a human
+// edit (admin / business save).
+function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
+  if (!place.updated_at) return null;
+  if (!place.enriched_at) return "human";
+  const updated = new Date(place.updated_at).getTime();
+  const enriched = new Date(place.enriched_at).getTime();
+  if (Number.isNaN(updated) || Number.isNaN(enriched)) return null;
+  return updated - enriched <= 90_000 ? "ai" : "human";
+}
+
+// Meta — row identity + audit trail: UID, created, updated (and by whom),
+// plus a live callout while an AI (the Enricher) is rewriting the place.
+function MetaCard({
   place,
   enrichStatus,
-  ownership,
-  children,
 }: {
   place: AdminPlace;
   enrichStatus: PlaceEnrichmentStatus | null;
-  ownership: "loading" | "owned" | "unowned";
-  /** Editable basics (fields + SaveBar) rendered below the signals. */
-  children?: React.ReactNode;
 }) {
   const badge = enrichmentBadge(enrichStatus);
-  const verified = place.listing_type === "partner";
-  const status = place.status?.trim() ? place.status : null;
-  const statusTone = status
-    ? GOOD_STATUS.has(status.toLowerCase())
-      ? "good"
-      : "warn"
-    : "muted";
-  const category = place.category_label ?? place.category ?? null;
-  const heroPhoto = place.photos?.[0] ?? null;
-  const priceLevel =
-    place.price_level != null && place.price_level >= 1
-      ? Math.max(1, Math.min(4, place.price_level))
-      : null;
-
-  const ownershipLabel =
-    ownership === "loading" ? "Checking…" : ownership === "owned" ? "Owned" : "Unowned";
-  const ownershipTone =
-    ownership === "owned" ? "good" : ownership === "loading" ? "muted" : "warn";
-
+  const by = lastUpdatedBy(place);
   return (
-    <section className="border-border/70 bg-card shadow-card relative overflow-hidden rounded-2xl border">
-      {/* Soft brand wash — atmosphere, not a second surface. */}
-      <div
-        aria-hidden
-        className="bg-pink-gradient pointer-events-none absolute -top-28 -right-20 h-56 w-96 rounded-full opacity-[0.09] blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/35 to-transparent"
-      />
-
-      {/* 1. Catalog spotlight */}
-      <div className="relative flex gap-4 px-5 pt-5 sm:gap-5 sm:px-6 sm:pt-6">
-        <div className="border-border/70 bg-muted relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-2xl border sm:h-[5.25rem] sm:w-[5.25rem]">
-          {heroPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={heroPhoto}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span
-              className={
-                "flex h-full w-full items-center justify-center " + TINT_CHIP.rose
-              }
-            >
-              <Store className="h-6 w-6 opacity-80" />
+    <SectionCard
+      icon={<Fingerprint className="h-4 w-4" />}
+      tint="slate"
+      title="Meta"
+      subtitle="Row identity & audit trail."
+    >
+      <div className="mt-5 flex flex-col gap-4">
+        <ReadField label="UID">
+          <span className="flex min-w-0 items-center gap-2">
+            <code className="bg-muted/70 min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-[11px]">
+              {place.id}
+            </code>
+            <span className="text-muted-foreground text-xs">
+              <CopyIdButton id={place.id} />
             </span>
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase">
-              Overview
-            </p>
-            {place.updated_at ? (
-              <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
-                <Clock className="h-3 w-3" />
-                Updated {formatAbsoluteUtc(place.updated_at)}
-              </span>
-            ) : null}
-          </div>
-
-          <h2 className="font-display text-foreground mt-1 text-xl leading-tight font-semibold tracking-tight sm:text-2xl">
-            {category ?? "Uncategorized"}
-          </h2>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            {priceLevel != null ? (
-              <span className="inline-flex items-baseline gap-1.5">
-                <span className="font-display text-[15px] font-semibold tracking-wide">
-                  <span className="text-foreground">{"$".repeat(priceLevel)}</span>
-                  <span className="text-muted-foreground/35">
-                    {"$".repeat(4 - priceLevel)}
-                  </span>
+          </span>
+        </ReadField>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ReadField label="Created at">
+            {place.created_at ? formatAbsoluteUtc(place.created_at) : "—"}
+          </ReadField>
+          <ReadField label="Updated at">
+            <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+              {place.updated_at ? formatAbsoluteUtc(place.updated_at) : "—"}
+              {by != null && (
+                <span
+                  className={
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                    (by === "ai"
+                      ? "bg-sky-500/10 text-sky-700"
+                      : "bg-muted text-muted-foreground")
+                  }
+                >
+                  by {by === "ai" ? "Enricher (AI)" : "human"}
                 </span>
-                <span className="text-muted-foreground text-xs">
-                  {PRICE_NAMES[priceLevel]}
-                </span>
-              </span>
-            ) : (
-              <span className="text-muted-foreground text-xs">No price level</span>
-            )}
-            <span className="bg-border h-1 w-1 rounded-full" aria-hidden />
-            <span className="text-foreground/85 text-xs font-medium">
-              {planLabel(place.plan)}
-              {place.fiscal_type ? (
-                <span className="text-muted-foreground font-normal capitalize">
-                  {" "}
-                  · {place.fiscal_type}
-                </span>
-              ) : null}
+              )}
             </span>
-          </div>
+          </ReadField>
         </div>
-      </div>
-
-      {/* 2. Health rail — one row of signal pills, not a tile dashboard */}
-      <div className="relative mt-5 px-5 sm:px-6">
-        <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-[0.12em] uppercase">
-          Health
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          <SignalPill
-            label="Status"
-            tone={statusTone}
-            value={
-              <span className="capitalize">{status ?? "—"}</span>
-            }
-          />
-          <SignalPill
-            label="Enrichment"
-            tone={
-              badge.text.startsWith("Enrich") && badge.spinning
-                ? "info"
-                : badge.text === "Enriched"
-                  ? "good"
-                  : badge.text === "Failed"
-                    ? "bad"
-                    : "muted"
-            }
-            value={
-              <span className="inline-flex items-center gap-1">
-                {badge.spinning ? (
-                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                ) : null}
-                {badge.text}
-              </span>
-            }
-          />
-          <SignalPill
-            label="Listing"
-            tone={verified ? "good" : "muted"}
-            value={listingLabel(place.listing_type)}
-          />
-          <SignalPill
-            label="Ownership"
-            tone={ownershipTone}
-            value={ownershipLabel}
-          />
-        </div>
-
-        {enrichStatus?.last_enriched_at ||
-        (enrichStatus?.stage === "failed" && enrichStatus?.error) ? (
-          <p className="text-muted-foreground mt-2.5 text-[11px] leading-snug">
-            {enrichStatus?.last_enriched_at ? (
-              <span>Last enriched {formatAbsoluteUtc(enrichStatus.last_enriched_at)}</span>
-            ) : null}
-            {enrichStatus?.stage === "failed" && enrichStatus?.error ? (
-              <span className="text-red-600">
-                {enrichStatus?.last_enriched_at ? " · " : null}
-                {enrichStatus.error}
-              </span>
-            ) : null}
+        {badge.spinning ? (
+          <p className="flex items-center gap-2 rounded-xl border border-sky-200/80 bg-sky-50/80 px-3 py-2 text-xs font-medium text-sky-900">
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+            Being enriched by an AI right now
+            {enrichStatus?.stage ? ` · ${enrichStatus.stage} stage` : "…"}
+          </p>
+        ) : enrichStatus?.stage === "failed" && enrichStatus?.error ? (
+          <p className="text-xs leading-snug text-red-600">
+            Last enrichment failed: {enrichStatus.error}
           </p>
         ) : null}
       </div>
-
-      {/* 3. Quiet ID */}
-      <div className="text-muted-foreground relative mt-4 flex items-center gap-2 px-5 pb-4 text-xs sm:px-6">
-        <span className="font-medium tracking-wide uppercase text-[10px]">ID</span>
-        <code className="bg-muted/70 min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-[11px]">
-          {place.id}
-        </code>
-        <CopyIdButton id={place.id} />
-      </div>
-
-      {/* 4. Editable identity */}
-      {children != null ? (
-        <div className="border-border/60 from-muted/20 relative border-t bg-gradient-to-b to-transparent px-5 pt-4 pb-5 sm:px-6">
-          <GroupLabel>Basics</GroupLabel>
-          <div className="mt-3">{children}</div>
-        </div>
-      ) : null}
-    </section>
+    </SectionCard>
   );
 }
 
-type SignalTone = "good" | "warn" | "bad" | "info" | "muted";
-
-const SIGNAL_TONE: Record<SignalTone, string> = {
-  good: "border-emerald-200/80 bg-emerald-50/80 text-emerald-800",
-  warn: "border-amber-200/80 bg-amber-50/80 text-amber-900",
-  bad: "border-red-200/80 bg-red-50/80 text-red-800",
-  info: "border-sky-200/80 bg-sky-50/80 text-sky-900",
-  muted: "border-border/70 bg-muted/50 text-foreground/80",
-};
-
-function SignalPill({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: React.ReactNode;
-  tone: SignalTone;
-}) {
+// Promos — read-only summary of the money levers; editing lives on the
+// Promos tab. Plan · the four rewards (low → high) · visibility as 1–10.
+function PromosCard({ place }: { place: AdminPlace }) {
+  const sub = SUBSCRIPTIONS.find((s) => s.id === subscriptionForPlan(place.plan));
+  const score = visibilityScore({
+    plan: place.plan,
+    welcome_free_rate: place.welcome_free_rate,
+    welcome_premium_rate: place.welcome_premium_rate,
+    free_rate: place.free_rate,
+    premium_rate: place.premium_rate,
+    monthly_promo_cap: place.monthly_promo_cap,
+  });
   return (
-    <span
-      className={
-        "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold " +
-        SIGNAL_TONE[tone]
+    <SectionCard
+      icon={<Percent className="h-4 w-4" />}
+      tint="pink"
+      title="Promos"
+      subtitle="Plan, rewards & visibility — edit on the Promos tab."
+      action={
+        <Link
+          href={unitSectionHref(place.id, "promos")}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
+        >
+          Edit
+          <ArrowRight className="h-3 w-3" />
+        </Link>
       }
     >
-      <span className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-60">
-        {label}
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <ReadField label="Plan">
+          <span className="flex flex-wrap items-baseline gap-1.5">
+            <span className="font-semibold">{planLabel(place.plan)}</span>
+            {sub != null && (
+              <span className="text-muted-foreground text-xs">
+                {sub.price} {sub.cadence}
+              </span>
+            )}
+            {place.fiscal_type ? (
+              <span className="text-muted-foreground text-xs capitalize">
+                · {place.fiscal_type}
+              </span>
+            ) : null}
+          </span>
+        </ReadField>
+        <ReadField label="Visibility on Mesita">
+          <span className="w-full">
+            <span className="flex items-baseline gap-1">
+              <span className="font-display text-base leading-none font-bold tabular-nums">
+                {score}
+              </span>
+              <span className="text-muted-foreground text-xs">/ 10</span>
+            </span>
+            <span className="mt-1.5 flex gap-0.5">
+              {Array.from({ length: 10 }, (_, i) => (
+                <span
+                  key={i}
+                  className={
+                    "h-1.5 flex-1 rounded-full " +
+                    (i < score ? "bg-pink-gradient" : "bg-muted/80")
+                  }
+                />
+              ))}
+            </span>
+          </span>
+        </ReadField>
+      </div>
+      <div className="mt-5 mb-2">
+        <GroupLabel>Rewards</GroupLabel>
+      </div>
+      <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-xl border">
+        {REWARD_ROWS.map((row) => {
+          const rate = place[row.col];
+          return (
+            <div
+              key={row.col}
+              className="flex items-center justify-between gap-3 px-3.5 py-2.5"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{row.label}</p>
+                <p className="text-muted-foreground truncate text-xs">{row.hint}</p>
+              </div>
+              {typeof rate === "number" ? (
+                <span className="text-foreground shrink-0 text-sm font-semibold tabular-nums">
+                  {rate}%
+                </span>
+              ) : (
+                <span className="text-muted-foreground shrink-0 text-xs italic">Off</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+// Ownership — partner verification + the accounts that own the place.
+function OwnershipCard({
+  place,
+  owners,
+  verification,
+}: {
+  place: AdminPlace;
+  owners: string[] | null;
+  verification: PlaceVerification | null | "loading";
+}) {
+  const verified = place.listing_type === "partner";
+  return (
+    <SectionCard
+      icon={<ShieldCheck className="h-4 w-4" />}
+      tint="emerald"
+      title="Ownership"
+      subtitle="Partner verification & owner accounts."
+    >
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <ReadField label="Verified">
+          {verified ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+              <BadgeCheck className="h-3.5 w-3.5" />
+              Verified partner
+            </span>
+          ) : (
+            <span className="border-border/70 bg-muted/50 text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
+              Not verified
+            </span>
+          )}
+        </ReadField>
+        <ReadField label="Verification status">
+          <VerificationStatus verification={verification} />
+        </ReadField>
+      </div>
+      <div className="mt-5 mb-2">
+        <GroupLabel>Owners</GroupLabel>
+      </div>
+      {owners === null ? (
+        <p className="text-muted-foreground text-xs">Checking…</p>
+      ) : owners.length === 0 ? (
+        <p className="text-muted-foreground text-xs italic">
+          No owners — nobody has claimed this place yet.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {owners.map((email) => (
+            <li key={email} className="flex min-w-0 items-center gap-2 text-sm">
+              <Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{email}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SectionCard>
+  );
+}
+
+const VERIFICATION_METHOD_LABEL: Record<string, string> = {
+  ai_call: "AI call",
+  video: "Video",
+  postcard: "Postcard",
+};
+
+// Latest verification request, compact: status line + method/date, and the
+// reject reason when that's the terminal state.
+function VerificationStatus({
+  verification,
+}: {
+  verification: PlaceVerification | null | "loading";
+}) {
+  if (verification === "loading") {
+    return <span className="text-muted-foreground">Checking…</span>;
+  }
+  if (!verification) {
+    return <span className="text-muted-foreground">None requested</span>;
+  }
+  const method = verification.method
+    ? (VERIFICATION_METHOD_LABEL[verification.method] ?? verification.method)
+    : null;
+  const tone =
+    verification.status === "approved"
+      ? "text-emerald-700"
+      : verification.status === "rejected"
+        ? "text-red-600"
+        : "text-amber-700";
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className={"font-semibold capitalize " + tone}>{verification.status}</span>
+      <span className="text-muted-foreground text-xs">
+        {method ? `${method} · ` : ""}
+        {verification.decided_at
+          ? `decided ${formatShortDate(verification.decided_at)}`
+          : `requested ${formatShortDate(verification.created_at)}`}
+        {verification.decided_via === "auto" ? " · auto" : ""}
       </span>
-      <span className="min-w-0 truncate font-semibold">{value}</span>
+      {verification.status === "rejected" && verification.reject_reason ? (
+        <span className="text-xs leading-snug text-red-600">
+          {verification.reject_reason}
+        </span>
+      ) : null}
     </span>
   );
 }
