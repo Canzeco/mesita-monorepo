@@ -46,6 +46,7 @@ export function PlaceUrlField({
   missing,
   onToggleMissing,
   hint,
+  readOnly = false,
 }: {
   label: string;
   placeholder?: string;
@@ -54,6 +55,7 @@ export function PlaceUrlField({
   missing?: boolean;
   onToggleMissing?: (missing: boolean) => void;
   hint?: string;
+  readOnly?: boolean;
 }) {
   return (
     <PlaceFormField label={label} hint={hint}>
@@ -63,14 +65,15 @@ export function PlaceUrlField({
         placeholder={missing ? "Skipped" : placeholder}
         spellCheck={false}
         autoCapitalize="none"
-        disabled={!!missing}
+        disabled={!!missing || readOnly}
+        readOnly={readOnly}
         className={cn(
           INPUT,
           "h-10 text-[13px] placeholder:text-muted-foreground/50",
-          missing && "bg-muted/40 text-muted-foreground cursor-not-allowed",
+          (missing || readOnly) && "bg-muted/40 text-muted-foreground cursor-not-allowed",
         )}
       />
-      {onToggleMissing ? (
+      {onToggleMissing && !readOnly ? (
         <button
           type="button"
           onClick={() => onToggleMissing(!missing)}

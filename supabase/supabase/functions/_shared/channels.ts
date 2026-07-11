@@ -49,8 +49,9 @@ export function matchChannel(host: string): ChannelKey | null {
   // (es./fr.tripadvisor.com) AND country TLDs (tripadvisor.com.mx) both resolve.
   if (/(^|\.)tripadvisor\./.test(h)) return "tripadvisor_url";
   if (/(^|\.)yelp\./.test(h)) return "yelp_url";
-  if (h === "google.com/maps" || h === "maps.google.com" || h.endsWith(".google.com/maps"))
-    return "google_maps_url";
+  // maps.google.com + goo.gl short links. (google.com/maps/* needs the path —
+  // see matchChannelFromUrl / classifyLinks path check.)
+  if (h === "maps.google.com" || h.endsWith(".maps.google.com")) return "google_maps_url";
   if (h === "maps.app.goo.gl" || h === "goo.gl") return "google_maps_url";
   return null;
 }
@@ -61,6 +62,22 @@ export function matchChannel(host: string): ChannelKey | null {
 function isRetiredSocialHost(host: string): boolean {
   const h = host.replace(/^www\./, "").toLowerCase();
   return h === "tiktok.com" || h.endsWith(".tiktok.com");
+}
+
+/** google.com/maps/* (and locale hosts) — host-only matchChannel misses these. */
+function isGoogleMapsUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const h = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (h === "maps.google.com" || h.endsWith(".maps.google.com")) return true;
+    if (h === "maps.app.goo.gl" || h === "goo.gl") return true;
+    if ((h === "google.com" || h.endsWith(".google.com")) && u.pathname.startsWith("/maps")) {
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
 }
 
 // Trim tracking junk + trailing slashes so two near-identical links from the
@@ -101,6 +118,8 @@ export function classifyLinks(input: (string | null | undefined)[]): Channels {
     const channel = matchChannel(host);
     if (channel) {
       (buckets[channel] ??= []).push(url);
+    } else if (isGoogleMapsUrl(url)) {
+      (buckets.google_maps_url ??= []).push(url);
     } else if (!isRetiredSocialHost(host)) {
       websiteCandidates.push(url);
     }

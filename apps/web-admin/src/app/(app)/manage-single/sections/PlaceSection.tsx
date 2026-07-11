@@ -76,6 +76,8 @@ const CHANNELS: {
   label: string;
   logo?: string;
   Icon?: LucideIcon;
+  /** Native-locked — shown read-only, never patched (MESITA-468). */
+  readOnly?: boolean;
 }[] = [
   { key: "website_url", label: "Website", Icon: Globe },
   { key: "instagram_url", label: "Instagram", logo: "/channels/instagram.svg" },
@@ -85,6 +87,7 @@ const CHANNELS: {
     key: "google_maps_url",
     label: "Google Maps",
     logo: "/channels/googlemaps.svg",
+    readOnly: true,
   },
   {
     key: "uber_eats_url",
@@ -93,6 +96,8 @@ const CHANNELS: {
   },
   { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
 ];
+
+const EDITABLE_CHANNELS = CHANNELS.filter((c) => !c.readOnly);
 
 const RESERVATION_CHANNELS: {
   key: ReservationChannel;
@@ -292,7 +297,7 @@ function boxToPatch(
       phone: nz(f.phone),
       email: nz(f.email),
     };
-    for (const c of CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
+    for (const c of EDITABLE_CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
     return patch;
   }
   if (box === "reservations") {
@@ -780,13 +785,32 @@ export function PlaceSection({
         icon={<Globe className="h-4 w-4" />}
         tint="indigo"
         title="Channels"
-        subtitle="Official links + contact. Leave blank to clear."
+        subtitle="Official links + contact. Google Maps is native (create spine) — read-only. Leave other blanks to clear."
       >
         {/* One column, one list — links and contacts are all just channels;
             no sub-grouping. */}
         <div className="mt-5 grid gap-3.5">
           {CHANNELS.map((c) => {
             const val = form.channels[c.key as string] ?? "";
+            if (c.readOnly) {
+              return (
+                <ReadField
+                  key={c.key as string}
+                  label={c.label}
+                  boxed
+                  auto
+                >
+                  {val.trim() ? (
+                    <span className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="min-w-0 truncate">{val}</span>
+                      <OpenLink href={val} />
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </ReadField>
+              );
+            }
             if (c.key === "whatsapp_url") {
               // WhatsApp is a PHONE, not a link — same flag + dial-code picker
               // as Phone. Storage stays a wa.me URL (the update EF validates it
