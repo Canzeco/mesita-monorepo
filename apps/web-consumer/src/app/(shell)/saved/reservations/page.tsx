@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 
 // The Reservations surface (the Reservations bottom-tab lands here). It used
 // to be the "Saved" page — a Places grid + a parked Reservations tab — but
@@ -100,7 +101,7 @@ function ReservationsEmptyState({
               {eyebrow}
             </span>
           )}
-          <h2 className="font-display text-xl font-semibold tracking-tight">
+          <h2 className={SHEET_TITLE_CLASS}>
             {title}
           </h2>
           <p className="text-muted-foreground max-w-xs text-sm leading-snug">

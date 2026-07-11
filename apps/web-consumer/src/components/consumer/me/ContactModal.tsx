@@ -3,6 +3,7 @@
 import { HelpCircle, Instagram, Mail, MessageCircle } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
   IconCircle,
   RowDivider,
   SettingsGroup,
@@ -29,7 +30,7 @@ export function ContactModal({
             <MessageCircle className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className={SHEET_TITLE_CLASS}>
               Contact us
             </h2>
             <p className="text-muted-foreground text-[12px]">
