@@ -10,6 +10,7 @@
 // the recommender EFs to expose those signals before they can filter.
 
 import type { Place } from "@/lib/api/places";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 
 export type ChipTone = "vibe" | "availability" | "price";
 
@@ -87,7 +88,7 @@ const AVAILABILITY_CHIPS: FilterChip[] = [
 
 const PRICE_CHIPS: FilterChip[] = [1, 2, 3, 4].map((level) => ({
   id: `price-${level}`,
-  label: "$".repeat(level),
+  label: formatPlacePriceLevelSymbols(level) ?? "$".repeat(level),
   tone: "price" as const,
   match: (place: Place) => place.price_level === level,
 }));
