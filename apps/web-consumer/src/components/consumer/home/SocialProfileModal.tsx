@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Crown, Instagram, X } from "lucide-react";
 import type { SocialPerson } from "./social-feed-data";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
 // Profile modal for the Social feed, on the shared LocalDialog (portals
 // into the app card so the backdrop covers the whole surface, animated
@@ -70,7 +72,12 @@ export function SocialProfileModal({
                   <Crown className="h-3.5 w-3.5 fill-current" />
                 </span>
               )}
-              <span className="ring-background absolute -right-0.5 -bottom-0.5 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white ring-2">
+              <span
+                className={cn(
+                  "ring-background absolute -right-0.5 -bottom-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2",
+                  INSTAGRAM_BADGE_GRADIENT_CLASS,
+                )}
+              >
                 <Instagram className="h-3.5 w-3.5" />
               </span>
             </div>

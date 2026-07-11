@@ -36,3 +36,6 @@ export const SHEET_TITLE_CLASS =
 export const SHEET_BODY_CLASS =
   "scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5";
 
+// Instagram brand badge fill used on social avatars (feed + profile modal).
+export const INSTAGRAM_BADGE_GRADIENT_CLASS =
+  "bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5]";
