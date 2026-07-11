@@ -9,7 +9,12 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
-import { INPUT_CLASS, SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
+  INPUT_CLASS,
+  SHEET_BODY_CLASS,
+  SHEET_CANCEL_BUTTON_CLASS,
+  SHEET_TITLE_CLASS,
+} from "@/lib/ui-classes";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -134,7 +139,7 @@ export function EditProfileSheet({
           <button
             type="button"
             onClick={onClose}
-            className="border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition"
+            className={SHEET_CANCEL_BUTTON_CLASS}
           >
             Cancel
           </button>
