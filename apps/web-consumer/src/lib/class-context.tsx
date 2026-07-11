@@ -8,6 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import type { ConsumerClass } from "@/lib/api/profile";
+import {
+  DEMO_INSTAGRAM_FOLLOWERS,
+  DEMO_INSTAGRAM_HANDLE,
+} from "@/lib/instagram-demo";
 
 // Real, server-sourced class for the signed-in consumer, shared with
 // every client surface under the (shell) layout: the Profile Class tab, the
@@ -76,13 +80,7 @@ export const MOCK_CLASS_KEY = "mesita:mock-class";
 export type MockClass = "free" | "subscription" | "instagram";
 const MOCK_CLASS_VALUES: MockClass[] = ["free", "subscription", "instagram"];
 
-// Follower count shown when the Instagram override is active but no real
-// follower reach is seeded — matches VerifySocialSheet's demo value.
-const DEMO_INSTAGRAM_FOLLOWERS = 4200;
-
-// Demo @handle shown alongside the demo follower count in the Instagram
-// preview state (no real profile is connected there).
-const DEMO_INSTAGRAM_HANDLE = "patricio";
+// Demo IG followers/handle: see @/lib/instagram-demo.
 
 // Same-tab + cross-tab notifier for the client-only mock flags. A local
 // listener set fires same-tab writes (so the toggle updates the whole shell
