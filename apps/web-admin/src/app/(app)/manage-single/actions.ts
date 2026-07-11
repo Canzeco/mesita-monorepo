@@ -229,9 +229,17 @@ export type PlaceFieldLimits = {
   photosMax: number;
 };
 
+export type PlaceCategoryOption = {
+  slug: string;
+  label: string;
+  section: string;
+  sort_order: number;
+};
+
 export type PlaceTagCatalog = {
   tags: PlaceTagOption[];
   facets: PlaceTagFacet[];
+  categories: PlaceCategoryOption[];
   tagsPerPlaceMax: number;
   fieldLimits: PlaceFieldLimits;
 };
@@ -260,6 +268,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
   const r = await efInvoke<{
     tags: PlaceTagOption[];
     facets: PlaceTagFacet[];
+    categories: PlaceCategoryOption[];
     fieldLimits?: Record<string, { max: number; note: string }>;
   }>("admin-web-get-atlas-fields", {});
   if (!r.ok) return { ok: false, error: r.error };
@@ -269,6 +278,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
     data: {
       tags: r.data.tags ?? [],
       facets: r.data.facets ?? [],
+      categories: r.data.categories ?? [],
       tagsPerPlaceMax: fieldLimits.tagsPerPlaceMax,
       fieldLimits,
     },

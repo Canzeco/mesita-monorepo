@@ -39,6 +39,7 @@ import {
   type ReservationTarget,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
+import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { GroupLabel, PhoneField, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 import { unitSectionHref } from "../nav";
 import {
@@ -281,6 +282,8 @@ function boxToPatch(
       name: f.name.trim().slice(0, limits.placeNameMax),
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
+      // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
+      category: nz(f.category) || "undefined",
     };
   }
   if (box === "time") {
@@ -369,10 +372,29 @@ export function PlaceSection({
   const dirtyBasics = useMemo(
     () =>
       !sliceEqual(
-        { name: form.name, description: form.description, tags: form.tags },
-        { name: saved.name, description: saved.description, tags: saved.tags },
+        {
+          name: form.name,
+          description: form.description,
+          tags: form.tags,
+          category: form.category,
+        },
+        {
+          name: saved.name,
+          description: saved.description,
+          tags: saved.tags,
+          category: saved.category,
+        },
       ),
-    [form.name, form.description, form.tags, saved.name, saved.description, saved.tags],
+    [
+      form.name,
+      form.description,
+      form.tags,
+      form.category,
+      saved.name,
+      saved.description,
+      saved.tags,
+      saved.category,
+    ],
   );
   const dirtyTime = useMemo(
     () => !sliceEqual(form.hours, saved.hours),
@@ -581,13 +603,13 @@ export function PlaceSection({
 
       <PromosCard place={place} />
 
-      {/* Basics — editable identity. Price + category are Enricher/Google-
-          derived and stay read-only inside the same box. */}
+      {/* Basics — editable identity. Price stays Enricher/Google-derived
+          read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}
         tint="rose"
         title="Basics"
-        subtitle="Name, about & tags are editable — price & category come from the Enricher / Google Places."
+        subtitle="Name, category, about & tags are editable — price comes from the Enricher / Google Places."
       >
         <div className="mt-5">
           <TextField
@@ -603,10 +625,12 @@ export function PlaceSection({
           <ReadField label="Price level" auto boxed>
             <PriceDisplay level={place.price_level} />
           </ReadField>
-          {/* Friendly label (e.g. "🪩 Nightclub"), never the snakecase slug. */}
-          <ReadField label="Category" auto boxed>
-            {place.category_label ?? place.category ?? "—"}
-          </ReadField>
+          <PlaceCategorySelect
+            value={form.category === "undefined" ? "" : form.category}
+            onChange={(slug) => set("category", slug)}
+            disabled={anyPending}
+            googleLabel={place.category_label}
+          />
         </div>
         <div className="mt-4">
           <TextArea

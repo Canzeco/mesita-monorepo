@@ -129,10 +129,10 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     key: "category",
     label: "Category",
     group: "Enriched",
-    note: "Seed lands 'undefined'; the Enricher infers the slug. Admin Place UI shows it read-only — only the business picker corrects it.",
+    note: "Seed lands 'undefined'; the Enricher infers the slug. Admin and business may correct via the category picker.",
     native: false,
     enricher: true,
-    admin: false,
+    admin: true,
     business: true,
   },
   {
