@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import { Crown, Eye, Loader2, Percent, Zap } from "lucide-react";
+import { Crown, Eye, Loader2, Percent, Users, Zap } from "lucide-react";
 import {
   REWARD_ROWS,
   SUBSCRIPTIONS,
@@ -161,6 +161,138 @@ export function PromosSection({
 
         {error && <ErrorNote message={error} />}
       </SectionCard>
+
+      <RewardsExplainer />
+    </div>
+  );
+}
+
+// ── Rewards explainer ─────────────────────────────────────────────────────
+// Static teaching box under the rate matrix: the four rewards are the cross
+// of visit type (Welcome / Returning) × guest class (Free / Premium). Two
+// mock guests make the mapping concrete — names and handles are illustrative
+// only, not real accounts.
+
+const EXPLAINER_TILES: { label: string; text: string }[] = [
+  {
+    label: "Welcome",
+    text: "A guest’s first-ever visit at this place. The acquisition lever — a strong Welcome rate is what pulls new people in.",
+  },
+  {
+    label: "Returning",
+    text: "Every visit after the first. What keeps regulars choosing this place again.",
+  },
+  {
+    label: "Free user",
+    text: "A guest on the standard Mesita account, no subscription — most guests start here.",
+  },
+  {
+    label: "Premium user",
+    text: "A guest paying the monthly Mesita membership — they expect the stronger Premium rates.",
+  },
+];
+
+const MOCK_GUESTS: { name: string; handle: string; premium: boolean }[] = [
+  { name: "Sofía Ramírez", handle: "sofia.descubre", premium: false },
+  { name: "Diego Torres", handle: "diego.antojos", premium: true },
+];
+
+function RewardsExplainer() {
+  return (
+    <SectionCard
+      icon={<Users className="h-4 w-4" />}
+      tint="violet"
+      title="Rewards explained"
+      subtitle="Welcome vs Returning is the visit; Free vs Premium is the guest’s Mesita class. The four rates above are that cross."
+    >
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {EXPLAINER_TILES.map((t) => (
+          <div
+            key={t.label}
+            className="border-border/60 bg-muted/30 rounded-xl border px-4 py-3"
+          >
+            <p className="text-sm font-semibold">{t.label}</p>
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              {t.text}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 mb-2">
+        <GroupLabel>Example guests · mock data</GroupLabel>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {MOCK_GUESTS.map((g) => (
+          <MockGuestCard key={g.handle} {...g} />
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
+function MockGuestCard({
+  name,
+  handle,
+  premium,
+}: {
+  name: string;
+  handle: string;
+  premium: boolean;
+}) {
+  const tier = premium ? "Premium" : "Free";
+  const initials = name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("");
+  return (
+    <div className="border-border/60 bg-muted/30 rounded-xl border p-4">
+      <div className="flex items-center gap-3">
+        <span
+          className={
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
+            (premium ? "bg-pink-gradient text-white shadow-sm" : TINT_CHIP.sky)
+          }
+          aria-hidden
+        >
+          {initials}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{name}</p>
+          <a
+            href={`https://instagram.com/${handle}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-foreground inline-flex max-w-full items-center gap-1 text-xs transition"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/channels/instagram.svg"
+              alt=""
+              aria-hidden
+              className="h-3 w-3 shrink-0"
+            />
+            <span className="truncate">@{handle}</span>
+          </a>
+        </div>
+        <span
+          className={
+            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase " +
+            (premium
+              ? "bg-pink-gradient text-white shadow-sm"
+              : "bg-muted text-muted-foreground")
+          }
+        >
+          {tier}
+        </span>
+      </div>
+      <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+        First visit here gets{" "}
+        <span className="text-foreground font-medium">Welcome · {tier}</span>; every
+        visit after gets{" "}
+        <span className="text-foreground font-medium">Returning · {tier}</span>.
+      </p>
     </div>
   );
 }
@@ -208,7 +340,8 @@ function VisibilityRail({
             <span className="text-pink-gradient">{current}</span>
           </p>
           <p className="text-muted-foreground mt-2 text-xs leading-snug">
-            Plan, discount rates, and ticket cap all add up.
+            The visibility Mesita’s algorithm gives this place on every discovery
+            surface — plan, discount rates, and ticket cap all add up.
           </p>
         </div>
         <span className="border-border/70 bg-background/70 text-muted-foreground shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-wider uppercase">
