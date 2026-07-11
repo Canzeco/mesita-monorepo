@@ -1745,7 +1745,7 @@ function VerificationBox({ place }: { place: PlaceDetail }) {
             <span className="text-foreground font-semibold">Not verified.</span>{" "}
             This is a web listing Mesita found online. Details may be
             incomplete, and the place can’t offer Mesita rewards until an owner
-            claims it.
+            claims it. Claiming ownership is completely free.
           </p>
           <a
             href="https://business.mesita.ai/add"
@@ -1753,7 +1753,7 @@ function VerificationBox({ place }: { place: PlaceDetail }) {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full bg-slate-500/10 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-500/25 transition hover:bg-slate-500/15"
           >
-            Are you the owner of this place? Claim ownership
+            Are you the owner? Claim ownership — it&apos;s free
             <ChevronRight className="h-3.5 w-3.5" />
           </a>
         </>
