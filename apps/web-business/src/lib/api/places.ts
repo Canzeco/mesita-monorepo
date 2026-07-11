@@ -224,7 +224,8 @@ export type UpdatePlaceInput = {
   phone?: string | null;
   pitch?: string | null;
   story?: string | null;
-  // Four per-tier promo rates. One of 10 / 20 / 50 / 70 or null to clear.
+  // Four per-tier promo rates. One of the tens grid 10 / 20 / 30 / 40 / 50 or
+  // null to clear. Written together by the Promos strategy presets.
   welcome_free_rate?: number | null;
   welcome_premium_rate?: number | null;
   free_rate?: number | null;

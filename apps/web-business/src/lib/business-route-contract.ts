@@ -3,11 +3,6 @@ import {
   isPlaceSubTab,
   resolvePlaceSubTab,
 } from "@/components/business/place/place-subtabs";
-import type { PromosSubTab } from "@/components/business/promos/promos-subtabs";
-import {
-  isPromosSubTab,
-  resolvePromosSubTab,
-} from "@/components/business/promos/promos-subtabs";
 
 export const BUSINESS_ROUTES = {
   central: "/central",
@@ -22,11 +17,8 @@ export function placePath(projectId: string, tab: PlaceSubTab = "preview"): stri
   return `/unit/${projectId}/place/${tab}`;
 }
 
-export function promosPath(
-  projectId: string,
-  tab: PromosSubTab = "plan",
-): string {
-  return `/unit/${projectId}/promos/${tab}`;
+export function promosPath(projectId: string): string {
+  return `/unit/${projectId}/promos`;
 }
 
 export function unitSectionPath(projectId: string, section: UnitSection): string {
@@ -38,13 +30,6 @@ export function resolvePlaceTab(segment: string | null | undefined): PlaceSubTab
   if (isPlaceSubTab(segment)) return segment;
   if (segment === "photos" || segment === "menu") return "media";
   return null;
-}
-
-export function resolvePromosTab(
-  segment: string | null | undefined,
-): PromosSubTab | null {
-  if (!segment) return null;
-  return isPromosSubTab(segment) ? segment : null;
 }
 
 export function pathnameUnitId(pathname: string): string | null {
@@ -66,14 +51,13 @@ export function placeSwitchHref(
   pathname: string,
 ): string {
   const placeTab = pathname.match(/\/place\/([^/]+)/)?.[1];
-  const promosTab = pathname.match(/\/promos\/([^/]+)/)?.[1];
   const section = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
 
   if (section === "place") {
     return placePath(projectId, resolvePlaceSubTab(placeTab ?? null));
   }
   if (section === "promos") {
-    return promosPath(projectId, resolvePromosSubTab(promosTab ?? null));
+    return promosPath(projectId);
   }
   if (section === "scan") return unitSectionPath(projectId, "scan");
   if (section === "performance") return unitSectionPath(projectId, "performance");

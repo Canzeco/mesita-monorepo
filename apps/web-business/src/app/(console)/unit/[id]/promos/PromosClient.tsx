@@ -1,141 +1,49 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Crown,
-  Instagram,
+  AlertTriangle,
+  Check,
   Loader2,
+  Lock,
+  MessageCircle,
   Percent,
-  Smile,
+  ShieldCheck,
+  Ticket,
   type LucideIcon,
 } from "lucide-react";
-import { SubTabs } from "@/components/business/SubTabs";
-import {
-  PROMOS_SUB_TABS,
-  type PromosSubTab,
-} from "@/components/business/promos/promos-subtabs";
-import { promosPath } from "@/lib/business-route-contract";
+import { Section } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdatePlace, type MyPlace } from "@/lib/api/places";
-import { apiChangeSubscription } from "@/lib/api/subscription";
-import { Badge } from "@/components/ui/badge";
-import { Section } from "@/components/shared";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
-  SUBSCRIPTIONS,
-  subscriptionForPlace,
-  planForSubscription,
-  visibilityForPlan,
-  type SubscriptionId,
-  type PlanVisibility,
-} from "@/lib/business/plans";
+  STRATEGIES,
+  STRATEGY_BY_ID,
+  STRATEGY_VISIBILITY_LADDER,
+  UNIVERSAL_CAP_MXN,
+  strategyForPlace,
+  type Strategy,
+  type StrategyId,
+  type StrategyVisibility,
+} from "@/lib/business/strategies";
 
-// Promos — minimal layout. Three blocks stacked top to bottom:
-//   1. Visibility    — slim 3-step rail (Low → Max), no prose
-//   2. Subscription  — Free / Pro / Ultra, all discount-only
-//   3. Promos        — Welcome row + 4 tier rows; rate + audience count
+// Promos — Buzz v4. Two boxes, top to bottom:
+//   1. Strategy   — pick ONE of four presets (Zero → Dominant). Each writes the
+//                   four per-tier rate columns + the universal cap in one save.
+//   2. Membership — the MX$1,000/year Verified signing fee that unlocks the paid
+//                   strategies + the promo lane, with the strikes rules.
 //
-// "OFF" is the neutral label for the rate scale, applied across every tier.
+// The old model (Free/Pro/Ultra monthly subscriptions, four independent rate
+// pickers, Instagram + Guests subtabs) is retired: important venues now rank
+// free in the organic lane, so rank is never for sale and there's nothing to
+// tune cell-by-cell — you choose a posture, not sixteen knobs.
 
-// ─── Rate picker scale ────────────────────────────────────────────────────
-
-// Four per-tier promo rates land in the places table as smallint columns
-// constrained to this set (or null). See migration 0032. Zero is no longer
-// a legal value — to "turn off" a tier, write null.
-const RATE_CHOICES = [10, 20, 50, 70] as const;
-type RateChoice = (typeof RATE_CHOICES)[number];
-
-// Ticket cap amount — persisted to places.monthly_promo_cap for now
-// (legacy column name), denominated in the place's currency. Null means
-// no cap. Semantics in product/UI: applies per ticket, not per month.
-const CAP_CHOICES = [200, 500, 1000, 2000] as const;
-type CapChoice = (typeof CAP_CHOICES)[number];
-
-type MesitaUserExample = {
-  tier: "Free" | "Premium";
-  premiumVia: "instagram" | "subscription" | null;
-  instagram: string | null;
-  totalSpendMesita: string;
-  avatarUrl: string;
-};
-
-const MESITA_USER_EXAMPLES: MesitaUserExample[] = [
-  {
-    tier: "Premium",
-    premiumVia: "instagram",
-    instagram: "@sofiadines",
-    totalSpendMesita: "MX$18,000",
-    avatarUrl: "https://i.pravatar.cc/120?img=12",
-  },
-  {
-    tier: "Free",
-    premiumVia: null,
-    instagram: null,
-    totalSpendMesita: "MX$12,500",
-    avatarUrl: "https://i.pravatar.cc/120?img=15",
-  },
-  {
-    tier: "Premium",
-    premiumVia: "subscription",
-    instagram: "@vale.gourmet",
-    totalSpendMesita: "MX$9,800",
-    avatarUrl: "https://i.pravatar.cc/120?img=31",
-  },
-  {
-    tier: "Free",
-    premiumVia: null,
-    instagram: null,
-    totalSpendMesita: "MX$15,500",
-    avatarUrl: "https://i.pravatar.cc/120?img=53",
-  },
-  {
-    tier: "Premium",
-    premiumVia: "instagram",
-    instagram: "@fernnightlife",
-    totalSpendMesita: "MX$23,000",
-    avatarUrl: "https://i.pravatar.cc/120?img=45",
-  },
-  {
-    tier: "Free",
-    premiumVia: null,
-    instagram: null,
-    totalSpendMesita: "MX$19,000",
-    avatarUrl: "https://i.pravatar.cc/120?img=60",
-  },
-  {
-    tier: "Premium",
-    premiumVia: "subscription",
-    instagram: "@maricuisine",
-    totalSpendMesita: "MX$21,000",
-    avatarUrl: "https://i.pravatar.cc/120?img=23",
-  },
-  {
-    tier: "Free",
-    premiumVia: null,
-    instagram: null,
-    totalSpendMesita: "MX$11,500",
-    avatarUrl: "https://i.pravatar.cc/120?img=68",
-  },
-  {
-    tier: "Premium",
-    premiumVia: "instagram",
-    instagram: "@reginaout",
-    totalSpendMesita: "MX$14,200",
-    avatarUrl: "https://i.pravatar.cc/120?img=5",
-  },
-  {
-    tier: "Free",
-    premiumVia: null,
-    instagram: null,
-    totalSpendMesita: "MX$13,000",
-    avatarUrl: "https://i.pravatar.cc/120?img=41",
-  },
-];
-
-const STORY_INSTRUCTION =
-  "Guest should post a positive Instagram story with a photo/video of the place or food, tag this place account, and show the story at check-in (no negative content).";
+// One-time yearly signing fee. Presented here; the annual-billing flow itself
+// is a human-gated follow-up (live money), so this box is status + model, not a
+// self-serve charge.
+const MEMBERSHIP_FEE_MXN = 1000;
 
 // "MX$1,000" for MXN places; falls back to a generic "$" prefix elsewhere.
 function formatMoney(amount: number, currency: string): string {
@@ -143,482 +51,395 @@ function formatMoney(amount: number, currency: string): string {
   return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
-// ─── Tier ladder catalog ──────────────────────────────────────────────────
-
-type Tier = "free" | "premium";
-
-// Each cell maps to one of the four DB columns: `welcome_<tier>_rate`
-// (first visit at the place) or `<tier>_rate` (every visit afterwards).
-type PromoColumn =
-  | "welcome_free_rate"
-  | "welcome_premium_rate"
-  | "free_rate"
-  | "premium_rate";
-
-const TIER_LABEL: Record<Tier, string> = {
-  free: "Free",
-  premium: "Premium",
-};
-
-// ─── Subscription icons + accents ─────────────────────────────────────────
-
-// Tier icon + accent — paid discount tiers get the gold percent badge.
-// Pro vs Ultra is communicated through price/visibility on the card, not
-// a separate icon.
-const SUB_VISUAL: Record<
-  SubscriptionId,
-  { icon?: LucideIcon; accent?: string }
-> = {
-  free: {},
-  pro_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
-  ultra_discount: { icon: Percent, accent: "bg-tier-gold text-black" },
-};
+// Membership status is derived from the existing plan column: a place still on
+// `free` is not Verified (Zero only); any paid plan is treated as a member.
+// The self-serve annual-membership billing rewire is a separate, human-gated
+// change — this page reads status, it doesn't move money.
+function isVerifiedMember(place: MyPlace): boolean {
+  return place.plan !== "free";
+}
 
 // ─── Client ───────────────────────────────────────────────────────────────
 
-export function PromosClient({
-  place,
-  tab,
-}: {
-  place: MyPlace;
-  tab: PromosSubTab;
-}) {
+export function PromosClient({ place }: { place: MyPlace }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
-  const setTab = (next: PromosSubTab) => {
-    router.replace(promosPath(place.id, next), { scroll: false });
-  };
+  const isMember = isVerifiedMember(place);
 
-  const [pending, startSubmit] = useTransition();
+  // The strategy the stored rates currently reflect (null = custom/legacy).
+  const storedStrategy = strategyForPlace(place);
+  const [selectedId, setSelectedId] = useState<StrategyId | null>(storedStrategy);
+  const [pendingId, setPendingId] = useState<StrategyId | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
-  const currentSub: SubscriptionId = subscriptionForPlace(place.plan);
-  const [pendingSubId, setPendingSubId] = useState<SubscriptionId | null>(null);
-  const igTagAccount =
-    deriveInstagramHandle(place.instagram_url) || "Not found on Place page";
+  // Selecting a strategy writes all four rate columns + the cap atomically.
+  // Optimistic: the card lights up immediately and reverts on failure.
+  const applyStrategy = (target: StrategyId) => {
+    if (pendingId) return;
+    if (target === selectedId) return;
+    // Paid strategies require Verified membership; Zero is always available.
+    if (target !== "zero" && !isMember) return;
 
-  // Paid plans are Stripe subscriptions: the EF returns a Checkout URL to
-  // redirect into (real mode) or grants instantly (mock mode). Downgrades on
-  // a live paid subscription are scheduled for period end.
-  const selectSubscription = (target: SubscriptionId) => {
-    if (target === currentSub || pending) return;
+    const strat = STRATEGY_BY_ID[target];
+    const previous = selectedId;
+    setSelectedId(target);
+    setPendingId(target);
     setError(null);
-    setNotice(null);
-    setPendingSubId(target);
-    startSubmit(async () => {
-      try {
-        const origin = window.location.origin;
-        const returnPath = `${origin}${promosPath(place.id, "plan")}`;
-        const result = await apiChangeSubscription(supabase, {
-          projectId: place.id,
-          plan: planForSubscription(target),
-          successUrl: `${returnPath}?subscription=success`,
-          cancelUrl: `${returnPath}?subscription=cancelled`,
-        });
-        if (result.checkout_url && !result.mock) {
-          // Off to Stripe Checkout; the webhook flips the plan on payment.
-          window.location.href = result.checkout_url;
-          return;
-        }
-        if (result.scheduled_downgrade) {
-          const until = result.current_period_end
-            ? new Date(result.current_period_end).toLocaleDateString()
-            : "the end of the billing period";
-          setNotice(
-            `Subscription cancelled — the current plan stays until ${until}, then the place moves to Free.`,
-          );
-        }
-        router.refresh();
-      } catch (err) {
-        setError(errMsg(err, "Couldn't save the subscription."));
-      } finally {
-        setPendingSubId(null);
-      }
-    });
+    void apiUpdatePlace(supabase, {
+      id: place.id,
+      welcome_free_rate: strat.rates.welcome_free_rate,
+      welcome_premium_rate: strat.rates.welcome_premium_rate,
+      free_rate: strat.rates.free_rate,
+      premium_rate: strat.rates.premium_rate,
+      monthly_promo_cap: strat.cap,
+    })
+      .then(() => router.refresh())
+      .catch((err) => {
+        setSelectedId(previous);
+        setError(errMsg(err, "Couldn't save the strategy."));
+      })
+      .finally(() => setPendingId(null));
   };
 
-  const isFree = currentSub === "free";
+  // Numbers to preview in the matrix + rail: the selection, falling back to
+  // Zero when the place carries custom legacy rates.
+  const activeStrategy = STRATEGY_BY_ID[selectedId ?? "zero"];
 
   return (
-    <div className="flex flex-col gap-5 px-4 pt-5 pb-10">
-      <SubTabs
-        tabs={PROMOS_SUB_TABS}
-        active={tab}
-        onChange={setTab}
-        equalWidth
-        variant="segmented"
-        className="-mx-4"
+    <div className="flex flex-col gap-4 px-4 pt-5 pb-10">
+      <header className="flex flex-col gap-1">
+        <h2 className="font-display text-lg font-semibold tracking-tight">
+          Promos
+        </h2>
+        <p className="text-muted-foreground text-[13px] leading-snug">
+          Big discounts to win them, fair discounts to keep them — and Premium
+          guests always get more.
+        </p>
+      </header>
+
+      <StrategyBox
+        selectedId={selectedId}
+        pendingId={pendingId}
+        isMember={isMember}
+        isCustom={storedStrategy === null}
+        currency={place.currency}
+        activeStrategy={activeStrategy}
+        error={error}
+        onSelect={applyStrategy}
       />
 
-      {tab === "plan" ? (
-        <>
-          <VisibilityRail plan={place.plan} />
-
-          <Section
-            title="Subscription"
-            className="shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]"
-          >
-            <div className="flex flex-col gap-3">
-              {SUBSCRIPTIONS.map((s) => {
-                const v = SUB_VISUAL[s.id];
-                return (
-                  <SubscriptionCard
-                    key={s.id}
-                    label={s.label}
-                    price={s.price}
-                    cadence={s.cadence}
-                    tagline={s.tagline}
-                    visibility={s.visibility}
-                    setup={s.setup}
-                    featured={!!s.featured}
-                    icon={v.icon}
-                    iconAccent={v.accent}
-                    isCurrent={s.id === currentSub}
-                    pending={pendingSubId === s.id}
-                    onPick={() => selectSubscription(s.id)}
-                  />
-                );
-              })}
-            </div>
-            {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
-            {notice && (
-              <p className="text-muted-foreground rounded-lg bg-amber-50 p-3 text-xs">
-                {notice}
-              </p>
-            )}
-            {isFree && (
-              <p className="text-muted-foreground text-xs">
-                On <span className="text-foreground font-semibold">Free</span>{" "}
-                rates are locked to 0% — pick Pro or Ultra to set them.
-              </p>
-            )}
-          </Section>
-        </>
-      ) : null}
-
-      {tab === "rates" ? (
-        <>
-          <Section
-            title="Promos"
-            className="bg-gradient-to-b from-white to-fuchsia-50/[0.25]"
-          >
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <ColumnHeader>First visit</ColumnHeader>
-                {(["free", "premium"] as const).map((tier) => (
-                  <PromoCell
-                    key={`welcome-${tier}`}
-                    column={`welcome_${tier}_rate` as PromoColumn}
-                    tier={tier}
-                    initial={place[`welcome_${tier}_rate`]}
-                    projectId={place.id}
-                    disabled={isFree}
-                  />
-                ))}
-              </div>
-              <div className="flex flex-col gap-2">
-                <ColumnHeader>Returning visits</ColumnHeader>
-                {(["free", "premium"] as const).map((tier) => (
-                  <PromoCell
-                    key={`default-${tier}`}
-                    column={`${tier}_rate` as PromoColumn}
-                    tier={tier}
-                    initial={place[`${tier}_rate`]}
-                    projectId={place.id}
-                    disabled={isFree}
-                  />
-                ))}
-              </div>
-            </div>
-          </Section>
-
-          <Section
-            title="Ticket cap"
-            description="Discount applies only to the first X amount of each ticket. Example: 20% on the first MX$500, then no discount on the rest."
-            className="bg-gradient-to-b from-white to-rose-50/[0.2]"
-          >
-            <TicketCapPicker
-              initial={place.monthly_promo_cap}
-              currency={place.currency}
-              projectId={place.id}
-              disabled={isFree}
-            />
-          </Section>
-        </>
-      ) : null}
-
-      {tab === "instagram" ? (
-        <Section
-          title="Subscription by Instagram"
-          description="Manager preview of the Instagram subscription requirement so you can see what you're buying."
-          className="bg-gradient-to-b from-white to-fuchsia-50/[0.22]"
-        >
-          <div className="bg-muted/25 border-border/60 grid grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-2">
-            <div className="flex items-center justify-between gap-2 sm:col-span-2">
-              <p className="text-[12px] font-semibold">Story posting required</p>
-              <span className="bg-pink-gradient rounded-full px-3 py-1 text-[11px] font-semibold text-white">
-                Required
-              </span>
-            </div>
-
-            <label className="block">
-              <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
-                <Instagram className="h-3.5 w-3.5" />
-                Instagram to tag
-              </span>
-              <input
-                value={igTagAccount}
-                readOnly
-                aria-readonly
-                spellCheck={false}
-                autoCapitalize="none"
-                className="border-border bg-muted/35 text-foreground/85 w-full rounded-full border px-3 py-2 text-[13px] outline-none"
-              />
-            </label>
-
-            <div className="block">
-              <span className="text-muted-foreground mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium">
-                Story instruction
-              </span>
-              <div className="border-border bg-background text-foreground/85 rounded-xl border px-3 py-2 text-[12px] font-medium">
-                Post a positive story with a photo/video of the place or food,
-                tag this place account, and show it at check-in (no negative
-                content).
-              </div>
-            </div>
-          </div>
-          <p className="text-foreground/80 text-[11px]">
-            Selected rule:{" "}
-            <span className="font-semibold">{STORY_INSTRUCTION}</span>
-          </p>
-          <p className="text-muted-foreground text-[11px]">
-            No follow is required from guests.
-          </p>
-          <p className="text-muted-foreground text-[11px]">
-            Placeholder preview for managers only. It communicates the expected
-            Instagram requirement that comes with this subscription.
-          </p>
-        </Section>
-      ) : null}
-
-      {tab === "guests" ? (
-        <Section
-          title="Mesita user examples"
-          description="Includes Free and Premium users."
-          className="bg-gradient-to-b from-white to-zinc-50/70"
-        >
-          <div className="bg-muted/20 border-border/50 mb-3 rounded-xl border px-3 py-2">
-            <p className="text-muted-foreground text-xs">
-              Illustrative Mesita users across Free and Premium classes. Most Free
-              users typically have no Instagram linked yet.
-            </p>
-          </div>
-          <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            {MESITA_USER_EXAMPLES.map((guest) => (
-              <MesitaUserCard
-                key={`${guest.tier}-${guest.instagram ?? guest.totalSpendMesita}`}
-                guest={guest}
-              />
-            ))}
-          </div>
-        </Section>
-      ) : null}
+      <MembershipBox isMember={isMember} currency={place.currency} />
     </div>
   );
 }
 
-function deriveInstagramHandle(url: string | null): string {
-  if (!url) return "";
-  const trimmed = url.trim();
-  if (!trimmed) return "";
-  if (trimmed.startsWith("@")) return trimmed;
-  try {
-    const normalized = /^https?:\/\//i.test(trimmed)
-      ? trimmed
-      : `https://${trimmed}`;
-    const parsed = new URL(normalized);
-    const firstPath = parsed.pathname.split("/").filter(Boolean)[0];
-    if (!firstPath) return "";
-    return `@${firstPath.replace(/^@+/, "")}`;
-  } catch {
-    return "";
-  }
-}
+// ─── Box 1 · Strategy ───────────────────────────────────────────────────────
 
-function MesitaUserCard({ guest }: { guest: MesitaUserExample }) {
+function StrategyBox({
+  selectedId,
+  pendingId,
+  isMember,
+  isCustom,
+  currency,
+  activeStrategy,
+  error,
+  onSelect,
+}: {
+  selectedId: StrategyId | null;
+  pendingId: StrategyId | null;
+  isMember: boolean;
+  isCustom: boolean;
+  currency: string;
+  activeStrategy: Strategy;
+  error: string | null;
+  onSelect: (id: StrategyId) => void;
+}) {
   return (
-    <article className="bg-background border-border w-[240px] shrink-0 rounded-xl border p-3 shadow-[0_12px_30px_-24px_rgba(0,0,0,0.6)]">
-      <div className="mb-2 flex items-center gap-2.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={guest.avatarUrl}
-          alt={`${guest.instagram} avatar`}
-          className="h-11 w-11 rounded-full object-cover"
-          loading="lazy"
-        />
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-            guest.tier === "Premium"
-              ? "bg-pink-500/10 text-pink-700"
-              : "bg-slate-500/10 text-slate-700",
-          )}
-        >
-          {guest.tier === "Premium" ? (
-            <Crown className="h-3 w-3" />
-          ) : (
-            <Smile className="h-3 w-3" />
-          )}
-          {guest.tier}
-        </span>
-        {guest.tier === "Premium" && guest.premiumVia && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-700">
-            {guest.premiumVia === "instagram"
-              ? "Premium by Instagram"
-              : "Premium by Subscription"}
+    <Section
+      title="Discount strategy"
+      description="Pick one posture. A stronger discount reads as a stronger card and shows to more guests."
+      className="bg-gradient-to-b from-white to-fuchsia-50/[0.25]"
+    >
+      <CapBanner currency={currency} />
+
+      {!isMember && (
+        <div className="border-border bg-muted/30 text-foreground/75 flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px]">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Only <span className="font-semibold">Zero</span> is available until
+            you activate Verified membership — see below.
           </span>
-        )}
-      </div>
-      {guest.instagram ? (
-        <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
-          <Instagram className="h-3 w-3" />
-          {guest.instagram}
-        </div>
-      ) : (
-        <div className="text-muted-foreground mb-2 inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold">
-          <Instagram className="h-3 w-3" />
-          Instagram not linked
         </div>
       )}
-      <p className="mt-1 text-[11px] font-semibold tracking-wide uppercase">
-        Total spend on Mesita:{" "}
-        <span className="text-primary">{guest.totalSpendMesita}</span>
-      </p>
-    </article>
+
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {STRATEGIES.map((s) => (
+          <StrategyCard
+            key={s.id}
+            strategy={s}
+            selected={s.id === selectedId}
+            pending={s.id === pendingId}
+            locked={s.id !== "zero" && !isMember}
+            onSelect={() => onSelect(s.id)}
+          />
+        ))}
+      </div>
+
+      {isCustom && (
+        <p className="text-muted-foreground text-[11px]">
+          Your current rates don&apos;t match a preset — pick a strategy to
+          standardize them.
+        </p>
+      )}
+
+      <SelectedMatrix strategy={activeStrategy} currency={currency} />
+      <VisibilityRail visibility={activeStrategy.visibility} />
+
+      {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
+    </Section>
   );
 }
 
-// ─── Ticket cap picker ──────────────────────────────────────────────────────
-
-// Per-ticket eligible amount ceiling. Same optimistic save pattern as
-// PromoCell — persists each pick through apiUpdatePlace and reverts on
-// failure. "No cap" writes null. Backed by places.monthly_promo_cap until
-// we run the column rename migration.
-function TicketCapPicker({
-  initial,
-  currency,
-  projectId,
-  disabled,
-}: {
-  initial: number | null;
-  currency: string;
-  projectId: string;
-  disabled: boolean;
-}) {
-  const supabase = useBrowserSupabase();
-  const [cap, setCap] = useState<CapChoice | null>(initial as CapChoice | null);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const onPick = (next: CapChoice | null) => {
-    if (disabled || pending) return;
-    const previous = cap;
-    setCap(next);
-    setPending(true);
-    setError(null);
-    void apiUpdatePlace(supabase, { id: projectId, monthly_promo_cap: next })
-      .catch((err) => {
-        setCap(previous);
-        setError(errMsg(err, "Couldn't save."));
-      })
-      .finally(() => setPending(false));
-  };
-
-  const displayCap = disabled ? null : cap;
+// Universal cap — always displayed. The discount only ever applies to the
+// first MX$500 of the bill, so a headline percentage stays a bounded cost.
+function CapBanner({ currency }: { currency: string }) {
   return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          Per ticket
-        </span>
-        <span className="font-display bg-pink-gradient rounded-full px-2.5 py-0.5 text-xl leading-none font-bold text-white tabular-nums shadow-sm">
-          {displayCap == null ? "No cap" : formatMoney(displayCap, currency)}
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {CAP_CHOICES.map((c) => (
-          <RatePill
-            key={c}
-            label={formatMoney(c, currency)}
-            active={c === displayCap}
-            disabled={disabled || pending}
-            onClick={() => onPick(c)}
-          />
-        ))}
-        <RatePill
-          label="No cap"
-          active={displayCap == null}
-          disabled={disabled || pending}
-          onClick={() => onPick(null)}
-        />
-      </div>
-      {error && <p className="text-destructive text-[10px]">{error}</p>}
+    <div className="border-border bg-muted/30 flex items-center gap-2 rounded-xl border px-3 py-2">
+      <Percent className="text-primary h-4 w-4 shrink-0" />
+      <p className="text-foreground/80 text-[11px] leading-snug">
+        Every discount applies to the first{" "}
+        <span className="text-foreground font-semibold">
+          {formatMoney(UNIVERSAL_CAP_MXN, currency)}
+        </span>{" "}
+        of the bill — a platform-wide cap, always shown to guests.
+      </p>
     </div>
   );
 }
 
-function ColumnHeader({ children }: { children: React.ReactNode }) {
+function StrategyCard({
+  strategy,
+  selected,
+  pending,
+  locked,
+  onSelect,
+}: {
+  strategy: Strategy;
+  selected: boolean;
+  pending: boolean;
+  locked: boolean;
+  onSelect: () => void;
+}) {
+  // Best-case headline = the Premium welcome rate (always the top cell).
+  const top = strategy.rates.welcome_premium_rate;
   return (
-    <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-      {children}
-    </p>
+    <button
+      type="button"
+      onClick={locked ? undefined : onSelect}
+      disabled={pending || locked}
+      aria-pressed={selected}
+      className={cn(
+        "relative flex flex-col gap-2 rounded-2xl border p-3.5 text-left transition",
+        selected
+          ? "border-foreground shadow-elev ring-foreground/10 bg-white ring-1"
+          : "border-border bg-card",
+        !selected &&
+          !locked &&
+          "hover:border-foreground/30 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-24px_rgba(236,72,153,0.5)]",
+        locked && "cursor-not-allowed opacity-65",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5">
+          <span className="text-lg leading-none">{strategy.emoji}</span>
+          <span className="font-display text-sm font-semibold tracking-tight">
+            {strategy.name}
+          </span>
+        </span>
+        {selected ? (
+          <span className="bg-foreground text-background inline-flex h-5 w-5 items-center justify-center rounded-full">
+            <Check className="h-3 w-3" />
+          </span>
+        ) : locked ? (
+          <Lock className="text-muted-foreground h-3.5 w-3.5" />
+        ) : null}
+      </div>
+
+      <div className="flex items-baseline gap-1">
+        {top == null ? (
+          <span className="text-muted-foreground text-sm font-semibold">
+            No promos
+          </span>
+        ) : (
+          <>
+            <span className="text-muted-foreground text-[11px]">up to</span>
+            <span className="font-display text-primary text-2xl leading-none font-bold tabular-nums">
+              {top}
+              <span className="text-base">%</span>
+            </span>
+            <span className="text-muted-foreground text-[11px]">off</span>
+          </>
+        )}
+      </div>
+
+      <p className="text-muted-foreground text-[11px] leading-snug">
+        {strategy.tagline}
+      </p>
+
+      <span className="bg-muted/70 text-foreground/70 mt-auto inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
+        {strategy.visibility} visibility
+      </span>
+
+      {pending && (
+        <Loader2 className="text-muted-foreground absolute top-3 right-3 h-4 w-4 animate-spin" />
+      )}
+    </button>
   );
 }
 
-// ─── Visibility rail ──────────────────────────────────────────────────────
-
-// Visibility rail. Three levels (Low → Max), one per plan. Mesita shows
-// higher-plan places to more guests on every discovery surface (swipe,
-// catalog, map), so the business needs to see at a glance where their
-// plan lands on the ladder. Rendered as a stepped dot-ladder with the
-// current node ringed + a "Step X of 3" headline so the answer is
-// immediate.
-
-function VisibilityRail({
-  plan,
+// The exact discount the selected strategy offers, as a Welcome/Returning ×
+// Free/Premium grid. Premium column is tinted so "Premium always gets more"
+// reads at a glance.
+function SelectedMatrix({
+  strategy,
+  currency,
 }: {
-  plan: Parameters<typeof visibilityForPlan>[0];
+  strategy: Strategy;
+  currency: string;
 }) {
-  const current = visibilityForPlan(plan);
-  const levels: { label: string; real: PlanVisibility }[] = [
-    { label: "Low", real: "Low" },
-    { label: "Medium", real: "Medium" },
-    { label: "Max", real: "Max" },
-  ];
-  const currentIdx = levels.findIndex((l) => l.real === current);
-
+  if (strategy.id === "zero") {
+    return (
+      <div className="border-border bg-muted/20 rounded-xl border border-dashed px-3 py-3 text-center">
+        <p className="text-muted-foreground text-[12px] leading-snug">
+          No discounts on Zero — your place still appears in the catalog and the
+          free organic lane.
+        </p>
+      </div>
+    );
+  }
+  const r = strategy.rates;
   return (
-    <section className="border-border bg-card rounded-2xl border p-4 shadow-[0_10px_30px_-22px_rgba(236,72,153,0.6)]">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-display text-sm font-semibold tracking-tight">
+    <div className="border-border overflow-hidden rounded-xl border bg-white">
+      <div className="grid grid-cols-[1.1fr_1fr_1fr]">
+        <MatrixHead>
+          {strategy.emoji} {strategy.name}
+        </MatrixHead>
+        <MatrixHead center>Free</MatrixHead>
+        <MatrixHead center premium>
+          Premium
+        </MatrixHead>
+
+        <MatrixRowLabel>First visit</MatrixRowLabel>
+        <MatrixValue value={r.welcome_free_rate} />
+        <MatrixValue value={r.welcome_premium_rate} premium />
+
+        <MatrixRowLabel last>Returning</MatrixRowLabel>
+        <MatrixValue value={r.free_rate} last />
+        <MatrixValue value={r.premium_rate} premium last />
+      </div>
+      <div className="border-border text-muted-foreground border-t px-3 py-1.5 text-[10px]">
+        Off the first {formatMoney(UNIVERSAL_CAP_MXN, currency)} of the bill.
+      </div>
+    </div>
+  );
+}
+
+function MatrixHead({
+  children,
+  center,
+  premium,
+}: {
+  children: React.ReactNode;
+  center?: boolean;
+  premium?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-border border-b px-3 py-2 text-[10px] font-bold tracking-wide uppercase",
+        center && "text-center",
+        premium
+          ? "text-tier-premium bg-tier-premium/10"
+          : "text-muted-foreground",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function MatrixRowLabel({
+  children,
+  last,
+}: {
+  children: React.ReactNode;
+  last?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "text-foreground/70 px-3 py-2.5 text-[11px] font-semibold",
+        !last && "border-border border-b",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function MatrixValue({
+  value,
+  premium,
+  last,
+}: {
+  value: number | null;
+  premium?: boolean;
+  last?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-center px-3 py-2.5 tabular-nums",
+        !last && "border-border border-b",
+        premium && "bg-tier-premium/[0.06]",
+      )}
+    >
+      {value == null ? (
+        <span className="text-muted-foreground text-sm">—</span>
+      ) : (
+        <span
+          className={cn(
+            "font-display text-lg leading-none font-bold",
+            premium ? "text-tier-premium" : "text-foreground/80",
+          )}
+        >
+          {value}
+          <span className="text-[11px] font-semibold">%</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Where the selected strategy lands on the four-step visibility ladder.
+function VisibilityRail({ visibility }: { visibility: StrategyVisibility }) {
+  const currentIdx = STRATEGY_VISIBILITY_LADDER.indexOf(visibility);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
           Visibility
-        </h3>
-        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
-          Step {currentIdx + 1} of {levels.length}
+        </span>
+        <span className="text-foreground text-[11px] font-semibold">
+          {visibility}
         </span>
       </div>
-      <p className="font-display text-foreground mt-1 text-2xl leading-none font-semibold tracking-tight">
-        {current}
-      </p>
-
-      <div className="mt-5 flex items-center">
-        {levels.map((l, i) => {
-          const reached = i < currentIdx;
+      <div className="flex items-center">
+        {STRATEGY_VISIBILITY_LADDER.map((level, i) => {
           const isCurrent = i === currentIdx;
           return (
-            <Fragment key={l.label}>
+            <Fragment key={level}>
               {i > 0 && (
                 <div
                   className={cn(
@@ -631,8 +452,8 @@ function VisibilityRail({
                 className={cn(
                   "shrink-0 rounded-full transition",
                   isCurrent
-                    ? "bg-pink-gradient shadow-glow h-4 w-4 ring-4 ring-pink-500/30"
-                    : reached
+                    ? "bg-pink-gradient shadow-glow h-4 w-4 ring-4 ring-pink-500/25"
+                    : i < currentIdx
                       ? "bg-pink-gradient h-3 w-3"
                       : "bg-muted/80 h-3 w-3",
                 )}
@@ -641,237 +462,204 @@ function VisibilityRail({
           );
         })}
       </div>
-
-      <div className="mt-2 flex justify-between text-[9px] font-semibold tracking-wider uppercase">
-        {levels.map((l, i) => (
-          <span
-            key={l.label}
-            className={cn(
-              i === currentIdx ? "text-foreground" : "text-muted-foreground/70",
-            )}
-          >
-            {l.label}
-          </span>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ─── Subscription card ────────────────────────────────────────────────────
-
-function SubscriptionCard({
-  label,
-  price,
-  cadence,
-  tagline,
-  visibility,
-  setup,
-  featured,
-  icon: Icon,
-  iconAccent,
-  isCurrent,
-  pending,
-  onPick,
-}: {
-  label: string;
-  price: string;
-  cadence: string;
-  tagline: string;
-  visibility: PlanVisibility;
-  setup?: string;
-  featured: boolean;
-  icon?: LucideIcon;
-  iconAccent?: string;
-  isCurrent: boolean;
-  pending: boolean;
-  onPick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      disabled={isCurrent || pending}
-      className={cn(
-        "border-border bg-card relative flex flex-col gap-2 rounded-2xl border p-4 text-left shadow-[0_12px_26px_-24px_rgba(0,0,0,0.7)] transition disabled:cursor-default",
-        !isCurrent && "hover:border-foreground/30",
-        !isCurrent &&
-          "hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-22px_rgba(236,72,153,0.55)]",
-        isCurrent && "border-foreground shadow-elev ring-foreground/10 ring-1",
-        featured && !isCurrent && "bg-pink-gradient/[0.04]",
-      )}
-    >
-      {isCurrent && (
-        <Badge className="bg-foreground text-background absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-          Current
-        </Badge>
-      )}
-      {!isCurrent && featured && (
-        <Badge className="bg-pink-gradient absolute top-3 right-3 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider text-white uppercase">
-          Recommended
-        </Badge>
-      )}
-      <div className="flex items-center gap-2 pr-16">
-        {Icon && (
-          <span
-            className={cn(
-              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-              iconAccent,
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </span>
-        )}
-        <span className="font-display min-w-0 truncate text-base font-semibold tracking-tight">
-          {label}
-        </span>
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-foreground text-lg leading-none font-bold tabular-nums">
-          {price}
-        </span>
-        <span className="text-muted-foreground text-[11px]">{cadence}</span>
-      </div>
-      <p className="text-muted-foreground text-[12px] leading-snug">
-        {tagline}
-      </p>
-      <div className="mt-auto flex flex-col gap-0.5">
-        <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
-          {visibility} visibility
-        </p>
-        {setup && (
-          <p className="text-muted-foreground/80 text-[10px] font-semibold tracking-[0.14em] uppercase">
-            {setup} setup
-          </p>
-        )}
-      </div>
-      {pending && (
-        <Loader2 className="text-muted-foreground absolute right-3 bottom-3 h-4 w-4 animate-spin" />
-      )}
-    </button>
-  );
-}
-
-// ─── Promo cell ───────────────────────────────────────────────────────────
-
-// One cell in the 2-column grid. Owns the local state for its DB column
-// and persists each pick through apiUpdatePlace (optimistic — reverts on
-// failure). Same tier chip colors across both columns (Free cool gray,
-// Premium violet) — the "First visit" vs "Every visit" distinction lives
-// in the column header above, not in the chip styling.
-function PromoCell({
-  column,
-  tier,
-  initial,
-  projectId,
-  disabled,
-}: {
-  column: PromoColumn;
-  tier: Tier;
-  initial: number | null;
-  projectId: string;
-  disabled: boolean;
-}) {
-  const supabase = useBrowserSupabase();
-  const [rate, setRate] = useState<RateChoice | null>(
-    initial as RateChoice | null,
-  );
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const onPick = (next: RateChoice | null) => {
-    if (disabled || pending) return;
-    const previous = rate;
-    setRate(next);
-    setPending(true);
-    setError(null);
-    void apiUpdatePlace(supabase, { id: projectId, [column]: next })
-      .catch((err) => {
-        setRate(previous);
-        setError(errMsg(err, "Couldn't save."));
-      })
-      .finally(() => setPending(false));
-  };
-
-  const displayRate = disabled ? null : rate;
-  return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <TierChip tier={tier} label={TIER_LABEL[tier]} />
-        <span className="font-display text-primary text-xl leading-none font-bold tabular-nums">
-          {displayRate ?? "—"}
-          {displayRate != null && (
-            <span className="text-sm font-semibold">%</span>
-          )}
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        <RatePill
-          label="Off"
-          active={displayRate == null}
-          disabled={disabled || pending}
-          onClick={() => onPick(null)}
-        />
-        {RATE_CHOICES.map((c) => (
-          <RatePill
-            key={c}
-            label={String(c)}
-            active={c === displayRate}
-            disabled={disabled || pending}
-            onClick={() => onPick(c)}
-          />
-        ))}
-      </div>
-      {error && <p className="text-destructive text-[10px]">{error}</p>}
     </div>
   );
 }
 
-function RatePill({
-  label,
-  active,
-  disabled,
-  onClick,
+// ─── Box 2 · Membership ─────────────────────────────────────────────────────
+
+const STRIKES: { n: string; consequence: string }[] = [
+  { n: "1", consequence: "Warning, and we re-run the activation test." },
+  { n: "2", consequence: "Your promo lane is paused for 30 days." },
+  {
+    n: "3",
+    consequence:
+      "Removed from Verified and the fee is forfeited — the place stays in the catalog.",
+  },
+];
+
+function MembershipBox({
+  isMember,
+  currency,
 }: {
-  label: string;
-  active: boolean;
-  disabled: boolean;
-  onClick: () => void;
+  isMember: boolean;
+  currency: string;
 }) {
+  const [notice, setNotice] = useState(false);
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
-        active && (label === "Off" || label === "No cap")
-          ? "bg-foreground text-background shadow-sm"
-          : active
-            ? "bg-pink-gradient text-white shadow-sm"
-            : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/20 border",
-        disabled && "hover:text-muted-foreground cursor-not-allowed opacity-60",
-      )}
+    <Section
+      title="Verified membership"
+      description="The commitment that turns on paid promos."
+      right={<StatusPill active={isMember} />}
     >
-      {label}
-    </button>
+      <div className="border-border bg-muted/25 flex items-start gap-3 rounded-xl border p-3">
+        <ShieldCheck className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+        <div className="flex flex-col gap-0.5">
+          <p className="text-sm font-semibold">
+            {formatMoney(MEMBERSHIP_FEE_MXN, currency)}{" "}
+            <span className="text-muted-foreground text-[11px] font-normal">
+              / year
+            </span>
+          </p>
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            A yearly signing fee — a security deposit against dead coupons, not a
+            subscription. It buys commitment, not placement: important venues
+            rank free in the organic lane, and rank is never for sale.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <FeatureRow>
+          Run a paid strategy — Conservative through Dominant.
+        </FeatureRow>
+        <FeatureRow>Eligible for the promo lane in the Swipe deck.</FeatureRow>
+        <FeatureRow muted>
+          Your catalog listing and the free organic lane never go away.
+        </FeatureRow>
+      </div>
+
+      <SubHeading icon={Ticket}>Activation</SubHeading>
+      <div className="flex flex-col gap-1.5">
+        <ActivationStep icon={MessageCircle}>
+          Your staff WhatsApp channel passes a test ping.
+        </ActivationStep>
+        <ActivationStep icon={Ticket}>
+          The first guest ticket is honored at the bill.
+        </ActivationStep>
+      </div>
+
+      <SubHeading icon={AlertTriangle}>If you turn a guest away</SubHeading>
+      <div className="border-border overflow-hidden rounded-xl border">
+        {STRIKES.map((s, i) => (
+          <div
+            key={s.n}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5",
+              i > 0 && "border-border border-t",
+            )}
+          >
+            <span
+              className={cn(
+                "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                s.n === "3"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-amber-500/15 text-amber-700",
+              )}
+            >
+              {s.n}
+            </span>
+            <span className="text-foreground/80 text-[11px] leading-snug">
+              {s.consequence}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="text-muted-foreground text-[11px] leading-snug">
+        A refused or ignored QR is a strike. Strikes decay after 6 months clean,
+        and a guest who&apos;s turned away is compensated instantly.
+      </p>
+
+      {!isMember &&
+        (notice ? (
+          <p className="rounded-lg bg-emerald-50 p-3 text-[11px] leading-snug text-emerald-800">
+            Noted — Mesita will reach out on your staff WhatsApp to run the test
+            ping and switch Verified on.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNotice(true)}
+            className="bg-foreground text-background inline-flex w-fit items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition hover:opacity-90"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Request activation
+          </button>
+        ))}
+    </Section>
   );
 }
 
-const TIER_TONE: Record<Tier, string> = {
-  free: "bg-tier-free text-foreground",
-  premium: "bg-tier-premium text-white",
-};
-
-function TierChip({ tier, label }: { tier: Tier; label: string }) {
+function StatusPill({ active }: { active: boolean }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit rounded-full px-2 py-1 text-[10px] font-bold tracking-wider uppercase",
-        TIER_TONE[tier],
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase",
+        active
+          ? "bg-emerald-500/12 text-emerald-700"
+          : "bg-muted text-muted-foreground",
       )}
     >
-      {label}
+      <span
+        className={cn(
+          "h-1.5 w-1.5 rounded-full",
+          active ? "bg-emerald-500" : "bg-muted-foreground/50",
+        )}
+      />
+      {active ? "Active" : "Not active"}
     </span>
+  );
+}
+
+function FeatureRow({
+  children,
+  muted,
+}: {
+  children: React.ReactNode;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <Check
+        className={cn(
+          "mt-0.5 h-3.5 w-3.5 shrink-0",
+          muted ? "text-muted-foreground" : "text-primary",
+        )}
+      />
+      <span
+        className={cn(
+          "text-[12px] leading-snug",
+          muted ? "text-muted-foreground" : "text-foreground/85",
+        )}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function SubHeading({
+  icon: Icon,
+  children,
+}: {
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <Icon className="text-muted-foreground h-3.5 w-3.5" />
+      <span className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function ActivationStep({
+  icon: Icon,
+  children,
+}: {
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-border bg-card flex items-center gap-2.5 rounded-xl border px-3 py-2">
+      <span className="bg-muted/70 text-foreground/70 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="text-foreground/80 text-[12px] leading-snug">
+        {children}
+      </span>
+    </div>
   );
 }
