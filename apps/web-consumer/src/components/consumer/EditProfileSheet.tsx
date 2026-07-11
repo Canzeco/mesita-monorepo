@@ -4,11 +4,12 @@ import { useState } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, firstInitial } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -46,7 +47,7 @@ export function EditProfileSheet({
     firstName.trim() !== (profile.first_name ?? "") ||
     birthday !== (profile.birthday ?? "");
 
-  const initials = firstName.trim().charAt(0).toUpperCase() || "M";
+  const initials = firstInitial(firstName, "M");
 
   async function save() {
     if (!dirty || saving) return;
@@ -76,8 +77,8 @@ export function EditProfileSheet({
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Edit profile">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
+      <div className={SHEET_BODY_CLASS}>
+        <h2 className={SHEET_TITLE_CLASS}>
           Personal details
         </h2>
         <p className="text-muted-foreground text-[12px]">

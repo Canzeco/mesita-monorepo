@@ -13,6 +13,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   RowDivider,
@@ -78,13 +79,13 @@ export function SettingsModal({
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Settings">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
+      <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="bg-foreground/[0.06] text-foreground/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
             <SettingsIcon className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className={SHEET_TITLE_CLASS}>
               Settings
             </h2>
             <p className="text-muted-foreground text-[12px]">

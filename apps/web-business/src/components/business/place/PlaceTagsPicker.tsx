@@ -14,6 +14,7 @@ import {
   type PlaceTagOption,
 } from "@/lib/api/place-tags";
 import { cn } from "@/lib/utils";
+import { deslugify } from "./place-utils";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
 
 const TAG_MAX_COUNT = 20;
@@ -119,7 +120,7 @@ export function PlaceTagsPicker({
   };
 
   const labelFor = (slug: string) =>
-    bySlug.get(slug)?.label_en ?? slug.replace(/_/g, " ");
+    bySlug.get(slug)?.label_en ?? deslugify(slug);
 
   return (
     <div className="flex flex-col gap-2">

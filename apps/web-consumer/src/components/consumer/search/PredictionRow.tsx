@@ -25,7 +25,8 @@ import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { cn } from "@/lib/utils";
+import { cn, firstInitial, formatRating } from "@/lib/utils";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { formatKm } from "./search-utils";
 
 export type AddState = "adding" | "added";
@@ -54,6 +55,7 @@ export function PredictionRow({
   const added = addState === "added";
   const adding = addState === "adding";
   const photo = matchedPlace?.photos[0];
+  const priceSymbols = formatPlacePriceLevelSymbols(matchedPlace?.price_level);
 
   const category = matchedPlace
     ? resolvePlaceCategoryName({
@@ -90,7 +92,7 @@ export function PredictionRow({
           />
         ) : onMesita ? (
           <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-base font-bold text-white">
-            {prediction.mainText[0]?.toUpperCase() ?? "·"}
+            {firstInitial(prediction.mainText)}
           </span>
         ) : (
           <span className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center">
@@ -143,12 +145,10 @@ export function PredictionRow({
             {matchedPlace.google_rating != null && (
               <span className="flex items-center gap-0.5">
                 <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                {matchedPlace.google_rating.toFixed(1)}
+                {formatRating(matchedPlace.google_rating)}
               </span>
             )}
-            {matchedPlace.price_level != null && (
-              <span>{"$".repeat(matchedPlace.price_level)}</span>
-            )}
+            {priceSymbols && <span>{priceSymbols}</span>}
             {matchedPlace.distance_km != null && (
               <span>{formatKm(matchedPlace.distance_km)}</span>
             )}

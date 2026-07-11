@@ -2,6 +2,7 @@
 
 import { HelpCircle, Instagram, Mail, MessageCircle } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
   IconCircle,
   RowDivider,
@@ -23,13 +24,13 @@ export function ContactModal({
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Contact Mesita">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
+      <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-500/10 text-sky-600">
             <MessageCircle className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className={SHEET_TITLE_CLASS}>
               Contact us
             </h2>
             <p className="text-muted-foreground text-[12px]">

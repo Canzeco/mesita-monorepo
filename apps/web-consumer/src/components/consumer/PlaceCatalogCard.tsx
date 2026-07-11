@@ -3,8 +3,11 @@ import Link from "next/link";
 import { Navigation, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { PromoChip } from "./PromoChip";
 import { placeHref } from "@/lib/place-route";
+import { firstInitial, formatRating } from "@/lib/utils";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 
 // Catalog row card — used by /saved and /discover/catalog.
 //
@@ -36,10 +39,8 @@ export function PlaceCatalogCard({
     categoryLabel: place.category_label,
     category: place.category,
   });
-  const priceLevel =
-    place.price_level != null ? "$".repeat(place.price_level) : null;
-  const ratingLabel =
-    place.google_rating != null ? place.google_rating.toFixed(1) : null;
+  const priceLevel = formatPlacePriceLevelSymbols(place.price_level);
+  const ratingLabel = formatRating(place.google_rating);
   const distanceLabel =
     place.distance_km != null ? `${place.distance_km} km` : null;
   const subtitleParts = [category, priceLevel].filter(Boolean) as string[];
@@ -58,7 +59,7 @@ export function PlaceCatalogCard({
         ) : (
           <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/70">
             <span className="font-display text-4xl font-bold tracking-tight">
-              {place.name[0]?.toUpperCase() ?? "·"}
+              {firstInitial(place.name)}
             </span>
           </div>
         )}

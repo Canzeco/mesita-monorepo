@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
   APIProvider,
   APILoadingStatus,
   Map,
@@ -20,6 +21,7 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
+import { firstInitial } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { PartnerBadge, RatePill, Skeleton, Spinner } from "@/components/shared";
@@ -396,7 +398,7 @@ function PlacePreview({
               />
             ) : (
               <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-base font-bold text-white">
-                {place.name[0]?.toUpperCase() ?? "·"}
+                {firstInitial(place.name)}
               </span>
             )}
           </span>
@@ -502,7 +504,7 @@ function SetupCard({ title, body }: { title: string; body: React.ReactNode }) {
       <div className="bg-muted flex h-12 w-12 items-center justify-center rounded-2xl">
         <MapPinIcon className="text-muted-foreground h-5 w-5" />
       </div>
-      <h2 className="font-display text-xl font-semibold tracking-tight">
+      <h2 className={SHEET_TITLE_CLASS}>
         {title}
       </h2>
       <p className="text-muted-foreground max-w-sm text-sm">{body}</p>

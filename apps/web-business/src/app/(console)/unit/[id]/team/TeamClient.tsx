@@ -5,17 +5,15 @@ import {
   Check,
   Copy,
   Crown,
-  Instagram,
   Loader2,
   Mail,
-  Megaphone,
   MessageCircle,
   Phone as PhoneIcon,
   Send,
   Trash2,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, initialLetter } from "@/lib/utils";
 import {
   ERROR_BOX_CLASS,
   ICON_BUTTON_CLASS,
@@ -23,7 +21,6 @@ import {
   PILL_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 import { PhonePicker } from "@/components/ui/phone-picker";
-import { apiUpdatePlace } from "@/lib/api/places";
 import {
   apiInviteEditor,
   apiInviteStaff,
@@ -1017,8 +1014,7 @@ function Avatar({ initial, tint }: { initial: string; tint: string }) {
 // ── Helpers ──────────────────────────────────────────────────────────
 
 function initialOf(name: string | null, email: string | null): string {
-  const src = (name ?? email ?? "?").trim();
-  return src.slice(0, 1).toUpperCase();
+  return initialLetter(name ?? email ?? "?", "");
 }
 
 function buildAcceptUrl(token: string, kind?: "staff"): string {

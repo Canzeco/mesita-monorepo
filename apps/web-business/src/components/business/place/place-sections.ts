@@ -76,10 +76,6 @@ export const PLACE_SECTIONS: readonly {
   },
 ];
 
-export const PLACE_NAV_SECTIONS = PLACE_SECTIONS.filter(
-  (section) => section.inNav !== false,
-);
-
 export function placeSectionDomId(id: PlaceSectionId): string {
   return `place-${id}`;
 }

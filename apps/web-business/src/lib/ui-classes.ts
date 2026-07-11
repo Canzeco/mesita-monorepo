@@ -51,3 +51,9 @@ export const PILL_BUTTON_CLASS =
 // row content. Pair with `aria-label` and `title` for accessibility.
 export const ICON_BUTTON_CLASS =
   "border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border transition disabled:opacity-50";
+
+// Solid dark pill CTA — the empty-state / error-state primary action
+// ("Add a place", "Try again"). Roomier padding than PILL_BUTTON_CLASS and
+// not full-width like PRIMARY_BUTTON_CLASS. Compose with cn() for margins.
+export const CTA_BUTTON_CLASS =
+  "bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90";

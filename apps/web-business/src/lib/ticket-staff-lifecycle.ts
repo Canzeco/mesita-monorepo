@@ -227,16 +227,6 @@ export function ticketNeedsStaffPaymentConfirm(
   return ticket.status === "awaiting_payment_confirm";
 }
 
-export function ticketNeedsStoryConfirm(ticket: BusinessTicket): boolean {
-  if (!STORY_KINDS.has(ticket.kind)) return false;
-  if (ticket.status === "cancelled" || !ticketHasBill(ticket)) return false;
-  return (
-    ticket.story_status === "pending" ||
-    ticket.story_status === "submitted" ||
-    ticket.story_status === "ai_rejected"
-  );
-}
-
 export function ticketNeedsBill(ticket: BusinessTicket): boolean {
   return ticket.status === "open" && !ticketHasBill(ticket);
 }

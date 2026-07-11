@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 
 export function PageErrorState({
   heading,
@@ -23,7 +25,7 @@ export function PageErrorState({
           </p>
           <Link
             href={retryHref}
-            className="bg-foreground text-background mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
+            className={cn(CTA_BUTTON_CLASS, "mt-5")}
           >
             Try again
           </Link>

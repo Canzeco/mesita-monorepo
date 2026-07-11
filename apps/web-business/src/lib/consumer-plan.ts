@@ -16,15 +16,3 @@ export function isPremiumClass(classKey: string | null | undefined): boolean {
 export function planLabel(classKey: string | null | undefined): ConsumerPlan {
   return isPremiumClass(classKey) ? "Premium" : "Free";
 }
-
-// Human label for the Premium door (consumers.class_origin), or null when
-// the origin isn't one of the three known doors.
-export function premiumDoorLabel(
-  origin: string | null | undefined,
-): string | null {
-  const o = (origin ?? "").toLowerCase();
-  if (o.includes("insta") || o === "ig") return "Instagram";
-  if (o.includes("sub")) return "Subscription";
-  if (o.includes("invit")) return "Invitation";
-  return null;
-}

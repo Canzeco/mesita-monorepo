@@ -2,7 +2,6 @@ export { PlaceCategorySelect } from "./PlaceCategorySelect";
 export { PlaceBasicsSection } from "./PlaceBasicsSection";
 export { PlaceAboutField } from "./PlaceAboutField";
 export { PlaceBox } from "./PlaceBox";
-export { PlaceTagsField } from "./PlaceTagsField";
 export { PlaceHoursEditor } from "./PlaceHoursEditor";
 export { PlaceHoursSection } from "./PlaceHoursSection";
 export { PlaceModule } from "./PlaceModule";
@@ -25,8 +24,6 @@ export {
   PLACE_DESCRIPTION_MAX,
   PLACE_PLACE_NAME_MAX,
   humanizePlaceToken,
-  resolvePlaceCategory,
-  resolvePlacePriceLabel,
   resolvePlaceVerification,
   resolvePlaceTierLabel,
 } from "./place-utils";
@@ -39,7 +36,6 @@ export {
 } from "./place-hours";
 export {
   PLACE_SECTIONS,
-  PLACE_NAV_SECTIONS,
   placeSectionDomId,
   placeSectionLabel,
   placeSectionDescription,
