@@ -7,7 +7,11 @@ import { BadgeCheck, Check, Crown, Instagram, Smile } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { CLASSES, classBadgeClass } from "@/lib/consumer-data";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
+  INSTAGRAM_ICON_GRADIENT_CLASS,
+  SHEET_TITLE_CLASS,
+  SHEET_BODY_CLASS,
+} from "@/lib/ui-classes";
 import {
   useConsumerClass,
   useMockClass,
@@ -237,7 +241,7 @@ function WaysToClimb({
       key: "instagram",
       icon: Instagram,
       iconBg:
-        "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white",
+        [INSTAGRAM_ICON_GRADIENT_CLASS, "text-white"].join(" "),
       title: "Premium",
       via: "Instagram",
       accent: true,
@@ -281,7 +285,12 @@ function WaysToClimb({
 function InstagramConnectedSummary({ followers }: { followers: number }) {
   return (
     <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-4">
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white shadow-sm">
+      <span
+        className={cn(
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
+          INSTAGRAM_ICON_GRADIENT_CLASS,
+        )}
+      >
         <Instagram className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
