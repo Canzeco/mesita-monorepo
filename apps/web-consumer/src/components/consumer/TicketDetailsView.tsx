@@ -1,5 +1,8 @@
 "use client";
 
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
+
 import { useMemo, useState, type ReactNode } from "react";
 import { TicketActionCard } from "@/components/consumer/TicketActionCard";
 import { TicketVisitComplete } from "@/components/consumer/TicketVisitComplete";
@@ -169,7 +172,7 @@ export function TicketDetailsView({
       ) : null}
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-2xl px-4 py-3 text-sm">
+        <p className={cn(ERROR_BOX_CLASS, "rounded-2xl px-4 py-3 text-sm")}>
           {error}
         </p>
       ) : null}
