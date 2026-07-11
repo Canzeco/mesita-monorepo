@@ -42,9 +42,10 @@ export type PlaceDetail = {
   zone: string;
   listing_type: "partner" | "web";
   last_updated_label: string;
-  // True while the Enricher is still building this place's profile
-  // (projects.content_status is 'queued' or 'generating'). Drives the
-  // summary chip: "Enriching…" while true, "Updated <when>" once ready.
+  // True while the Enricher is still building this place's profile across the
+  // FULL pipeline (research → analysis → contents). Driven by
+  // projects.content_status ∈ {queued, generating} — stays generating until
+  // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.
   is_enriching: boolean;
 
   // 2. Media
