@@ -50,7 +50,3 @@ export function isManageSingleHubRoute(pathname: string): boolean {
   return pathname === "/manage-single/select" || parseUnitId(pathname) !== null;
 }
 
-/** @deprecated use isManageSingleHubRoute */
-export function isEditSingleUnitRoute(pathname: string): boolean {
-  return isManageSingleHubRoute(pathname);
-}
