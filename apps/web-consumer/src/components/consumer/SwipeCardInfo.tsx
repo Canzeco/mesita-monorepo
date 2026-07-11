@@ -8,7 +8,10 @@ import {
 } from "lucide-react";
 import { cn, formatRating } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
-import { neighborhoodFromAddress } from "@/lib/adapters/place-to-detail";
+import {
+  cityFromAddress,
+  neighborhoodFromAddress,
+} from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStatusLabel } from "@/lib/place-status";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
@@ -174,17 +177,3 @@ function resolveZoneLabel(place: Place): string | null {
   return cityFromAddress(place.address ?? undefined);
 }
 
-function cityFromAddress(address: string | undefined): string | null {
-  if (!address) return null;
-  const postCodeCityMatch = address.match(/\d{5}\s+([^,]+)/);
-  const direct = postCodeCityMatch?.[1]?.trim();
-  if (direct && !/\d/.test(direct)) return direct;
-
-  const parts = address
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const fallback = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-  if (!fallback || /\d/.test(fallback)) return null;
-  return fallback;
-}
