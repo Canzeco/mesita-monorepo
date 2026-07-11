@@ -12,7 +12,7 @@ export default function ReservationsScreen() {
         </View>
         <Text className="mt-4 font-display text-2xl text-foreground">Reservations coming soon</Text>
         <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-          Your bookings will live here. For now, reach venues from Contact on a place.
+          Your bookings will live here. For now, reach places from Contact on a place.
         </Text>
       </View>
     </SafeAreaView>
