@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -24,7 +24,7 @@ const SEX_OPTIONS = [
 // consumer-web-update-profile, then into the app.
 export default function Onboard() {
   const router = useRouter();
-  const { refreshProfile, signOut, session } = useAuth();
+  const { refreshProfile, signOut, session, onboarded } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [sex, setSex] = useState<(typeof SEX_OPTIONS)[number]['value'] | null>(null);
   const [birthday, setBirthday] = useState('');
@@ -33,6 +33,16 @@ export default function Onboard() {
 
   const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim());
   const canSubmit = firstName.trim().length > 0 && sex !== null && validBirthday;
+
+  // Already-onboarded users can land here transiently: after sign-in the
+  // entry gate reads a still-loading (null) profile as "not onboarded" and
+  // routes to /onboard, and after submit refreshProfile flips this true.
+  // Bounce into the app as soon as the profile shows a complete row instead
+  // of stranding a returning user on the form. Mirrors the web
+  // (shell)/layout onboarded guard.
+  if (onboarded) {
+    return <Redirect href="/(tabs)/home" />;
+  }
 
   const submit = async () => {
     if (!sex) return;
