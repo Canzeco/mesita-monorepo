@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Crown, Instagram, RefreshCw } from "lucide-react";
 import type { Place } from "@/lib/api/places";
+import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, firstInitial } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
 import {
@@ -156,7 +157,12 @@ export function SocialFeed({ places }: { places: Place[] }) {
                         <Crown className="h-2.5 w-2.5 fill-current" />
                       </span>
                     )}
-                    <span className="ring-background absolute -right-0.5 -bottom-0.5 grid h-4 w-4 place-items-center rounded-full bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white ring-2">
+                    <span
+                      className={cn(
+                        "ring-background absolute -right-0.5 -bottom-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2",
+                        INSTAGRAM_BADGE_GRADIENT_CLASS,
+                      )}
+                    >
                       <Instagram className="h-2.5 w-2.5" />
                     </span>
                   </div>
