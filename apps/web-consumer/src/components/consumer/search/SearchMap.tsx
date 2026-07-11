@@ -27,6 +27,7 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
+  MAP_CIRCLE_PATH,
 } from "@/lib/map-defaults";
 
 // Every place shows as a neutral gray dot; the one currently held in the
@@ -35,11 +36,9 @@ import {
 const DOT_COLOR = "#9ca3af"; // Gray — default resting state
 const SELECTED_COLOR = "#EF4444"; // Red — the picked/held place
 
-const CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
-
 function placeIcon(isSelected: boolean) {
   return {
-    path: CIRCLE_PATH,
+    path: MAP_CIRCLE_PATH,
     fillColor: isSelected ? SELECTED_COLOR : DOT_COLOR,
     fillOpacity: 1,
     strokeColor: "#ffffff",
