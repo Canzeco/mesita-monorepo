@@ -156,15 +156,9 @@ export function PromosSection({
         </div>
         <div className="border-border/60 bg-muted/30 mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
           <p className="text-muted-foreground text-xs">Max discount applied to a single ticket.</p>
+          {/* Ascending amounts first, "No cap" last — it reads as the step
+              above the MX$2,000 maximum, not as the default. */}
           <div className="flex flex-wrap gap-1.5">
-            <Pill
-              active={v.monthly_promo_cap == null}
-              disabled={pending}
-              onClick={() => persist({ monthly_promo_cap: null })}
-              tone="off"
-            >
-              No cap
-            </Pill>
             {CAP_CHOICES.map((cap) => (
               <Pill
                 key={cap}
@@ -175,6 +169,14 @@ export function PromosSection({
                 {formatMoney(cap, v.currency)}
               </Pill>
             ))}
+            <Pill
+              active={v.monthly_promo_cap == null}
+              disabled={pending}
+              onClick={() => persist({ monthly_promo_cap: null })}
+              tone="off"
+            >
+              No cap
+            </Pill>
           </div>
         </div>
 

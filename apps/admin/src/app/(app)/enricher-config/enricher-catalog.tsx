@@ -21,8 +21,8 @@ import { Collapsible, SectionCard } from "./atlas-ui";
 //   • Pipeline — Link · Contents · Analysis · Cognition · Persist · Config.
 //   • Methods — providers from Notion's "Sources & Methods". For Link nodes
 //     the order is the seed→fallback chain: Mesita Input → Google Places →
-//     Firecrawl Search & Perplexity Agent (PS3). TikTok/Yelp are
-//     resolve-only (never actively discovered).
+//     Firecrawl Search & Perplexity Agent (PS3). Yelp is
+//     resolve-only (never actively discovered). TikTok retired 2026-07-11.
 // Read-only — runs are tuned with the image/vision/model knobs below, not by
 // toggling nodes.
 export type Pipeline = "Link" | "Contents" | "Analysis" | "Cognition" | "Persist" | "Config";
@@ -74,7 +74,6 @@ const ADEA_NODES: AdeaNode[] = [
   { name: "Facebook Page Link", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
   { name: "OpenTable Page Link", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
   { name: "UberEats Page Link", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
-  { name: "TikTok Page Link", pipeline: "Link", step: "S3", methods: RESOLVE_ONLY },
   { name: "Yelp Page Link", pipeline: "Link", step: "S3", methods: RESOLVE_ONLY },
   { name: "Phone Number", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
   { name: "Email Address", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },

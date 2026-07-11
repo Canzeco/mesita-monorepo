@@ -83,7 +83,6 @@ const CHANNELS: {
   { key: "website_url", label: "Website", Icon: Globe },
   { key: "instagram_url", label: "Instagram", logo: "/channels/instagram.svg" },
   { key: "facebook_url", label: "Facebook", logo: "/channels/facebook.svg" },
-  { key: "tiktok_url", label: "TikTok", logo: "/channels/tiktok.svg" },
   { key: "whatsapp_url", label: "WhatsApp", logo: "/channels/whatsapp.svg" },
   {
     key: "google_maps_url",
@@ -598,7 +597,8 @@ export function PlaceSection({
             disabled={anyPending}
           />
         </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {/* One field per row — the whole card is a single column. */}
+        <div className="mt-4 grid gap-4">
           <ReadField label="Price level" auto boxed>
             <PriceDisplay level={place.price_level} />
           </ReadField>
@@ -718,7 +718,7 @@ export function PlaceSection({
                       value={h.open}
                       disabled={anyPending}
                       onChange={(e) => setDay(d, { open: e.target.value })}
-                      className="bg-muted/50 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border border-transparent px-2 text-sm tabular-nums outline-none transition focus:ring-4"
+                      className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
                     />
                     <span className="text-muted-foreground text-xs">–</span>
                     <input
@@ -726,7 +726,7 @@ export function PlaceSection({
                       value={h.close}
                       disabled={anyPending}
                       onChange={(e) => setDay(d, { close: e.target.value })}
-                      className="bg-muted/50 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border border-transparent px-2 text-sm tabular-nums outline-none transition focus:ring-4"
+                      className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
                     />
                   </div>
                 )}
@@ -827,37 +827,6 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      <SectionCard
-        icon={<Images className="h-4 w-4" />}
-        tint="orange"
-        title="Photos"
-        subtitle="First photo is the hero. Reorder or remove; upload one at a time."
-        action={
-          <span className="text-muted-foreground text-[11px] tabular-nums">
-            {form.photos.length} / {limits.photosMax}
-          </span>
-        }
-      >
-        <PhotosEditor
-          placeId={place.id}
-          photos={form.photos}
-          photosMax={limits.photosMax}
-          pending={anyPending}
-          uploading={uploading}
-          onUpload={uploadPhoto}
-          onMove={movePhoto}
-          onRemove={removePhoto}
-          onInfo={setMetaFor}
-        />
-        <SaveBar
-          pending={pendingBox === "photos"}
-          dirty={dirtyPhotos}
-          ok={!!oks.photos}
-          error={errors.photos}
-          onSave={() => saveBox("photos")}
-        />
-      </SectionCard>
-
       {/* Reservations — one contact channel for the reservationist. */}
       <SectionCard
         icon={<CalendarCheck className="h-4 w-4" />}
@@ -872,7 +841,7 @@ export function PlaceSection({
           return (
             <div className="mt-5 grid gap-3.5 sm:grid-cols-[minmax(0,11rem)_1fr]">
               <label className="flex flex-col gap-1.5">
-                <span className="text-foreground/80 flex min-h-4 items-center text-[13px] font-medium">
+                <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
                   Contact via
                 </span>
                 <select
@@ -882,7 +851,7 @@ export function PlaceSection({
                     setReservationChannel(e.target.value as ReservationChannel | "")
                   }
                   aria-label="Reservation contact channel"
-                  className="bg-muted/50 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border border-transparent px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
+                  className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
                 >
                   <option value="">Select…</option>
                   {RESERVATION_CHANNELS.map((c) => (
@@ -931,6 +900,37 @@ export function PlaceSection({
         />
       </SectionCard>
 
+      <SectionCard
+        icon={<Images className="h-4 w-4" />}
+        tint="orange"
+        title="Photos"
+        subtitle="First photo is the hero. Reorder or remove; upload one at a time."
+        action={
+          <span className="text-muted-foreground text-[11px] tabular-nums">
+            {form.photos.length} / {limits.photosMax}
+          </span>
+        }
+      >
+        <PhotosEditor
+          placeId={place.id}
+          photos={form.photos}
+          photosMax={limits.photosMax}
+          pending={anyPending}
+          uploading={uploading}
+          onUpload={uploadPhoto}
+          onMove={movePhoto}
+          onRemove={removePhoto}
+          onInfo={setMetaFor}
+        />
+        <SaveBar
+          pending={pendingBox === "photos"}
+          dirty={dirtyPhotos}
+          ok={!!oks.photos}
+          error={errors.photos}
+          onSave={() => saveBox("photos")}
+        />
+      </SectionCard>
+
       {children}
 
       {metaFor !== null && (
@@ -968,7 +968,7 @@ function ReadField({
       <span
         className={
           boxed
-            ? "text-foreground/80 flex min-h-4 items-center gap-1.5 text-[13px] font-medium"
+            ? "text-foreground/90 flex min-h-4 items-center gap-1.5 text-[13px] font-medium"
             : "text-muted-foreground flex min-h-4 items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
         }
       >
@@ -983,7 +983,7 @@ function ReadField({
       <div
         className={
           boxed
-            ? "bg-muted/50 flex min-h-10 items-center rounded-xl px-3.5 text-sm"
+            ? "bg-muted/60 border-border/60 flex min-h-10 items-center rounded-xl border px-3.5 text-sm"
             : "flex min-h-9 items-center text-sm"
         }
       >
@@ -1164,8 +1164,10 @@ function PromosCard({ place }: { place: AdminPlace }) {
         </Link>
       }
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <ReadField label="Plan">
+      {/* One boxed field per row — same filled-input language as the
+          editable cards. */}
+      <div className="mt-5 grid gap-4">
+        <ReadField label="Plan" boxed>
           <span className="flex flex-wrap items-baseline gap-1.5">
             <span className="font-semibold">{planLabel(place.plan)}</span>
             {sub != null && (
@@ -1180,8 +1182,8 @@ function PromosCard({ place }: { place: AdminPlace }) {
             ) : null}
           </span>
         </ReadField>
-        <ReadField label="Visibility on Mesita">
-          <span className="w-full">
+        <ReadField label="Visibility on Mesita" boxed>
+          <span className="w-full py-2.5">
             <span className="flex items-baseline gap-1">
               <span className="font-display text-base leading-none font-bold tabular-nums">
                 {score}
@@ -1259,20 +1261,22 @@ function OwnershipCard({
         </Link>
       }
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <ReadField label="Verified">
+      {/* One boxed field per row — same filled-input language as the
+          editable cards. */}
+      <div className="mt-5 grid gap-4">
+        <ReadField label="Verified" boxed>
           {verified ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
               <BadgeCheck className="h-3.5 w-3.5" />
               Verified partner
             </span>
           ) : (
-            <span className="border-border/70 bg-muted/50 text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
+            <span className="border-border/70 bg-card text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
               Not verified
             </span>
           )}
         </ReadField>
-        <ReadField label="Verification status">
+        <ReadField label="Verification status" boxed>
           <VerificationStatus verification={verification} />
         </ReadField>
       </div>

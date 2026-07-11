@@ -57,7 +57,7 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border/70 bg-card shadow-card rounded-2xl border p-5 sm:p-6">
+    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {icon != null && (
@@ -95,8 +95,11 @@ export function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Filled fields with a visible resting edge — a hairline border on the gray
+// well makes fields read as fields on the white card (the old transparent
+// border left them as faint smudges at a glance).
 const INPUT_BASE =
-  "w-full rounded-xl border border-transparent bg-muted/50 text-sm outline-none transition " +
+  "w-full rounded-xl border border-border/60 bg-muted/60 text-sm outline-none transition " +
   "placeholder:text-muted-foreground/50 focus:border-ring/60 focus:bg-card focus:ring-4 " +
   "focus:ring-ring/10 disabled:opacity-50";
 
@@ -129,7 +132,7 @@ export function TextField({
   return (
     <label className="flex flex-col gap-1.5">
       <span className="flex min-h-4 items-center justify-between gap-2">
-        <span className="text-foreground/80 flex items-center gap-1.5 text-[13px] font-medium">
+        <span className="text-foreground/90 flex items-center gap-1.5 text-[13px] font-medium">
           {icon}
           {label}
         </span>
@@ -202,12 +205,12 @@ export function PhoneField({
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-foreground/80 flex min-h-4 items-center text-[13px] font-medium">
+      <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
         {label}
       </span>
       <span
         className={
-          "bg-muted/50 border-transparent focus-within:border-ring/60 focus-within:bg-card " +
+          "bg-muted/60 border-border/60 focus-within:border-ring/60 focus-within:bg-card " +
           "focus-within:ring-ring/10 relative flex h-10 w-full items-stretch overflow-hidden " +
           "rounded-xl border transition focus-within:ring-4" +
           (disabled ? " opacity-50" : "")

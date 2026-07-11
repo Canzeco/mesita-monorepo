@@ -3,9 +3,12 @@
 :root {
   --radius: 0.875rem;
 
-  /* Mesita — pink-red palette */
-  --background: oklch(0.985 0.012 10);
-  --foreground: oklch(0.18 0.06 15);
+  /* Mesita — pink-red brand accents on a near-neutral canvas. The canvas,
+     borders, and body text carry only a whisper of the brand hue (chroma
+     ≤0.012) so white cards read crisp and the pink stays an ACCENT — the
+     old rose-washed background made everything blend and lowered contrast. */
+  --background: oklch(0.978 0.005 15);
+  --foreground: oklch(0.16 0.035 15);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.06 15);
   --popover: oklch(1 0 0);
@@ -19,14 +22,16 @@
   --secondary: oklch(0.55 0.22 5);
   --secondary-foreground: oklch(0.99 0.005 10);
 
-  --muted: oklch(0.96 0.012 10);
-  --muted-foreground: oklch(0.48 0.05 15);
+  --muted: oklch(0.955 0.006 15);
+  /* Darker than the old 0.48 — this is the workhorse for 11–12px labels and
+     hints, so it must clear WCAG-ish contrast on white cards. */
+  --muted-foreground: oklch(0.42 0.035 15);
   --accent: oklch(0.75 0.2 355);
   --accent-foreground: oklch(0.18 0.06 15);
   --destructive: oklch(0.58 0.24 28);
   --destructive-foreground: oklch(0.99 0.005 10);
-  --border: oklch(0.9 0.02 10);
-  --input: oklch(0.94 0.015 10);
+  --border: oklch(0.875 0.012 15);
+  --input: oklch(0.93 0.008 15);
   --ring: oklch(0.65 0.24 5);
 
   --gradient-hero:

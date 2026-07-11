@@ -184,15 +184,6 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     business: true,
   },
   {
-    key: "tiktok_url",
-    label: "TikTok",
-    group: "Channels",
-    native: true,
-    enricher: true,
-    admin: true,
-    business: true,
-  },
-  {
     key: "whatsapp_url",
     label: "WhatsApp",
     group: "Channels",
