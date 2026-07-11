@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 function getAuthBaseUrl() {
@@ -65,7 +64,7 @@ export function GoogleSignInButton() {
         Sign in with Google
       </button>
       {error && (
-        <p className={cn(ERROR_BOX_CLASS, "leading-relaxed")}>
+        <p className={`${ERROR_BOX_CLASS} leading-relaxed`}>
           {error}
         </p>
       )}
