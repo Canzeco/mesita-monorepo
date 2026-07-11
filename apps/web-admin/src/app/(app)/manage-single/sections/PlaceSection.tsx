@@ -113,7 +113,8 @@ const RESERVATION_CHANNELS: {
   { key: "phone", label: "Phone", profileKey: "phone" },
 ];
 
-/** Ordered channel priority — index 0 is the 1st choice. 0–3 entries, no dupes. */
+/** Reservation channel — single-choice now: a 0-or-1-element list. Kept as an
+ *  array so the read/serialize back-compat with older fallback shapes holds. */
 type ReservationOrder = ReservationChannel[];
 
 const isReservationChannel = (c: unknown): c is ReservationChannel =>
@@ -124,9 +125,10 @@ function profileValueFor(place: AdminPlace, channel: ReservationChannel): string
   return meta ? str(place[meta.profileKey]) : "";
 }
 
-/** Read the ordered channel priority; tolerate the older single-channel and
- *  per-channel-routes shapes. Only CHANNELS matter — the stored values are
- *  snapshots resolved at save time, never hand-entered. */
+/** Read the reservation channel — collapses any stored fallbacks to the single
+ *  primary (reservations are single-choice now). Tolerates the older
+ *  single-channel and per-channel-routes shapes. Only CHANNELS matter — the
+ *  stored values are snapshots resolved at save time, never hand-entered. */
 function readReservationTarget(v: AdminPlace): ReservationOrder {
   const raw = v.products?.reservations as unknown;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
@@ -141,7 +143,7 @@ function readReservationTarget(v: AdminPlace): ReservationOrder {
         if (f && typeof f === "object") push((f as Record<string, unknown>).channel);
       }
     }
-    if (order.length > 0) return order;
+    if (order.length > 0) return order.slice(0, 1);
     // Legacy MESITA-378 routes: first channel that had a route or a profile value.
     for (const key of ["phone", "whatsapp", "instagram"] as const) {
       const c = obj[key];
@@ -445,17 +447,15 @@ export function PlaceSection({
     setForm((f) => ({ ...f, [k]: val }));
   const setChannel = (key: string, val: string) =>
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
-  // Set one priority slot; empties compact away and a channel picked twice
-  // keeps only its earliest slot, so the order never has holes or dupes.
-  const setReservationSlot = (slot: number, channel: ReservationChannel | "") =>
-    setForm((f) => {
-      const slots: (ReservationChannel | "")[] = [0, 1, 2].map((i) =>
-        i === slot ? channel : (f.reservation[i] ?? ""),
-      );
-      const next: ReservationOrder = [];
-      for (const c of slots) if (c && !next.includes(c)) next.push(c);
-      return { ...f, reservation: next };
-    });
+  // Single reservation channel — the agent contacts exactly one channel, so the
+  // form holds a 0-or-1-element order. Selecting "" (Select…) clears it.
+  const setReservationChannel = (channel: ReservationChannel | "") =>
+    setForm((f) => ({ ...f, reservation: channel ? [channel] : [] }));
+  const reservationChannel = form.reservation[0] ?? "";
+  const reservationResolved = formContactFor(form, reservationChannel);
+  const reservationMeta = RESERVATION_CHANNELS.find(
+    (c) => c.key === reservationChannel,
+  );
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
@@ -881,7 +881,7 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      {/* Reservations — ordered contact channels for the Reservationist. */}
+      {/* Reservations — the single contact channel for the Reservationist. */}
       <SectionCard
         icon={<CalendarCheck className="h-4 w-4" />}
         tint="teal"
@@ -889,65 +889,52 @@ export function PlaceSection({
         subtitle="Mesita's AI agent makes the reservation by contacting the place — via phone, WhatsApp, or Instagram."
       >
         <p className="text-muted-foreground mt-5 text-xs">
-          Order the channels the agent should try: it starts with the 1st choice and
-          falls back down the list. Enable one, two, or all three.
+          Pick the channel the agent uses to reach the place. It always contacts
+          the profile value for that channel — set it under Channels.
         </p>
         <div className="mt-3.5 grid gap-3.5">
-          {(["1st choice", "2nd choice", "3rd choice"] as const).map((slotLabel, slot) => {
-            // Show the next empty slot only once the previous one is set —
-            // the list grows as channels are enabled.
-            if (slot > form.reservation.length) return null;
-            const value = form.reservation[slot] ?? "";
-            const resolved = formContactFor(form, value);
-            const meta = RESERVATION_CHANNELS.find((c) => c.key === value);
-            return (
-              <label key={slotLabel} className="flex flex-col gap-1.5">
-                <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
-                  {slotLabel}
+          <label className="flex flex-col gap-1.5">
+            <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
+              Channel
+            </span>
+            <select
+              value={reservationChannel}
+              disabled={anyPending}
+              onChange={(e) =>
+                setReservationChannel(e.target.value as ReservationChannel | "")
+              }
+              aria-label="Reservation channel"
+              required
+              className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
+            >
+              {/* Select… is display-only — never a choosable / saveable value. */}
+              <option value="" disabled>
+                Select…
+              </option>
+              {RESERVATION_CHANNELS.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            {/* No free-text input — the agent always contacts the PROFILE value
+                for the channel; the contact itself lives in Channels. */}
+            {reservationChannel ? (
+              reservationResolved.trim() ? (
+                <span className="text-muted-foreground text-xs">
+                  Uses the profile&apos;s {reservationMeta?.label ?? reservationChannel}:{" "}
+                  <span className="text-foreground/90 font-medium break-all">
+                    {reservationResolved}
+                  </span>
                 </span>
-                <select
-                  value={value}
-                  disabled={anyPending}
-                  onChange={(e) =>
-                    setReservationSlot(slot, e.target.value as ReservationChannel | "")
-                  }
-                  aria-label={`Reservation channel — ${slotLabel}`}
-                  required={slot === 0}
-                  className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
-                >
-                  {/* 1st choice: Select… is display-only — never a choosable /
-                      saveable value. Fallbacks keep None so they can be cleared. */}
-                  <option value="" disabled={slot === 0}>
-                    {slot === 0 ? "Select…" : "None"}
-                  </option>
-                  {RESERVATION_CHANNELS.filter(
-                    (c) => c.key === value || !form.reservation.includes(c.key),
-                  ).map((c) => (
-                    <option key={c.key} value={c.key}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                {/* No free-text input — the agent always contacts the PROFILE
-                    value for the channel; the contact itself lives in Channels. */}
-                {value ? (
-                  resolved.trim() ? (
-                    <span className="text-muted-foreground text-xs">
-                      Uses the profile&apos;s {meta?.label ?? value}:{" "}
-                      <span className="text-foreground/90 font-medium break-all">
-                        {resolved}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium text-amber-700">
-                      No {meta?.label ?? value} on the profile yet — add it in Channels
-                      first.
-                    </span>
-                  )
-                ) : null}
-              </label>
-            );
-          })}
+              ) : (
+                <span className="text-xs font-medium text-amber-700">
+                  No {reservationMeta?.label ?? reservationChannel} on the profile yet —
+                  add it in Channels first.
+                </span>
+              )
+            ) : null}
+          </label>
         </div>
         <SaveBar
           pending={pendingBox === "reservations"}
