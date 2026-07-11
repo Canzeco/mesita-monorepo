@@ -6,6 +6,7 @@ import type { AtlasFieldsPayload } from "./actions";
 import {
   PLACE_FIELD_PERMISSIONS,
   PLACE_FIELD_PERMISSION_GROUPS,
+  PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS,
   PLACE_FIELD_EDIT_ROLES,
   PLACE_FIELD_EDIT_ROLE_LABELS,
   type PlaceFieldPermission,
@@ -51,9 +52,10 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           Who can edit
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Place profile fields — who may write each one today. Native fields
-          are Google-owned and locked: nobody edits them. Read-only matrix (not
-          a live ACL toggle).
+          Place profile fields grouped by owner — who may write each one
+          today. Native = Google-sourced and re-stamped on every enrich, so
+          manual edits there don&apos;t stick. Read-only matrix (not a live ACL
+          toggle).
         </p>
         <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
           <table className="w-full min-w-[600px] border-separate border-spacing-0 px-4 sm:px-0">
@@ -216,11 +218,13 @@ function PermissionGroupRows({
   return (
     <>
       <tr>
-        <td
-          colSpan={1 + PLACE_FIELD_EDIT_ROLES.length}
-          className="text-muted-foreground pt-4 pb-1.5 pl-1 text-[10px] font-semibold tracking-wide uppercase"
-        >
-          {group}
+        <td colSpan={1 + PLACE_FIELD_EDIT_ROLES.length} className="pt-4 pb-1.5 pl-1">
+          <div className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+            {group}
+          </div>
+          <div className="text-muted-foreground/80 mt-0.5 text-xs font-normal normal-case">
+            {PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS[group]}
+          </div>
         </td>
       </tr>
       {rows.map((row) => (
