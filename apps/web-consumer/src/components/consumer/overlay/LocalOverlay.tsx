@@ -1,5 +1,6 @@
 "use client";
 
+import { Z_LOCAL_OVERLAY } from "@/lib/z-index";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -121,7 +122,8 @@ export function LocalSheet({
         aria-label={ariaLabel}
         aria-hidden={!open}
         className={cn(
-          "absolute inset-0 z-[130] flex flex-col justify-end overflow-hidden",
+          "absolute inset-0 flex flex-col justify-end overflow-hidden",
+          Z_LOCAL_OVERLAY,
           !open && "pointer-events-none",
         )}
       >
@@ -176,7 +178,7 @@ export function LocalDialog({
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        className="absolute inset-0 z-[130] flex items-center justify-center overflow-hidden p-5"
+        className={cn("absolute inset-0 flex items-center justify-center overflow-hidden p-5", Z_LOCAL_OVERLAY)}
       >
         <button
           type="button"
