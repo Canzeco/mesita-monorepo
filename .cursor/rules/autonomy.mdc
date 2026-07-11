@@ -3,7 +3,7 @@ description: All Mesita agent rules live in the Notion Rules page — read it fi
 alwaysApply: true
 ---
 
-Read and follow the Notion **Rules** page before doing anything; it is the single source of truth for all Mesita agent rules (full autonomy policy, SWARM protocol, technical rules, nomenclature):
+Read and follow the Notion **Rules** page before doing anything; it is the single source of truth for all Mesita agent rules (full autonomy policy, the ASDM protocol, technical rules, nomenclature):
 https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8
 
 This is a monorepo: monorepo-wide rules live in the root `AGENTS.md`; package-specific rules in each package's `AGENTS.md`.

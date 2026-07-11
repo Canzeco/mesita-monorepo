@@ -2,7 +2,7 @@
 // sync-rules.ts — regenerate the agent-instruction files across the monorepo
 // from ONE canonical source (scripts/rules-quickstart.md).
 //
-// CONTRACT (monorepo form, SWARM v5 — 2026-07-11 / MESITA-456):
+// CONTRACT (monorepo form, ASDM v5 — 2026-07-11 / MESITA-456):
 //   Root CLAUDE.md    = generated quickstart block (between the markers below)
 //                       + hand-written "## This repo …" tail below the END marker.
 //   Package CLAUDE.md = hand-written package rules ONLY. The quickstart lives at

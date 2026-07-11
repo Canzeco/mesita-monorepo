@@ -44,6 +44,6 @@ jobs:
 
       # One checkout covers the whole monorepo — the old per-repo --only
       # self-scoping (and its "cross-repo enforcement stays manual" caveat)
-      # is gone with SWARM v5 (MESITA-456).
+      # is gone with ASDM v5 (MESITA-456).
       - name: Check
         run: deno task sync-rules:check
