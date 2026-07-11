@@ -29,7 +29,9 @@ export function currentUnitSection(pathname: string) {
   return "place" as const;
 }
 
-/** True while the Enricher pipeline is actively rewriting this place. */
+/** True while the Enricher pipeline is mid-flight.
+ *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
+ *  research OR analysis OR contents. Never clear after research alone. */
 function isEnriching(s: PlaceEnrichmentStatus | null): boolean {
   const stage = s?.stage ?? null;
   if (stage === "research" || stage === "analysis" || stage === "contents") {
