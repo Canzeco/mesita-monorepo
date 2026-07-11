@@ -68,6 +68,16 @@ export async function createMinimalPlace(opts: {
 }): Promise<CreatePlaceOutcome> {
   const { admin, callerName, googlePlaceId } = opts;
 
+  // decision: Pato (MESITA-468) — every create path requires a Google Place ID;
+  // callers already validate, but guard here so a future caller can't skip it.
+  if (!googlePlaceId.trim()) {
+    return {
+      ok: false,
+      status: 400,
+      body: { ok: false, error: "googlePlaceId is required" },
+    };
+  }
+
   // ── Early dedupe (idempotency on google_place_id): reject already-onboarded
   // places BEFORE spending any budget. savePlaceData dedupes again as a race
   // guard; gating here keeps a duplicate click cheap. ──

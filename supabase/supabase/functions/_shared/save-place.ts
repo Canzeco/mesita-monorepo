@@ -57,6 +57,10 @@ export async function savePlaceData(
   const name = (place.name ?? "").toString().trim();
   if (!googlePlaceId) return fail(400, { error: "place.google_place_id is required" });
   if (!name) return fail(400, { error: "place.name is required" });
+  // decision: Pato (MESITA-468) — Maps URL is part of the native spine; create
+  // must never persist a place without it (fetchGoogleBasics always supplies one).
+  const mapsUrl = (place.google_maps_url ?? "").toString().trim();
+  if (!mapsUrl) return fail(400, { error: "place.google_maps_url is required" });
   const status = CONTENT_STATUSES.has(contentStatus) ? contentStatus : "ready";
 
   // ── Idempotency: already onboarded? (read the joined view) ──

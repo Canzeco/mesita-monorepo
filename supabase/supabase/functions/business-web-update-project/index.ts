@@ -43,6 +43,8 @@ type UpdateBody = {
   // NOTE: `price_level` is deliberately NOT editable here. It is inferred
   // from Google Places during Enrich-Research and must not be overridden
   // by admin, business, or any client.
+  // NOTE: `google_maps_url` / `google_place_id` are native — seeded at create
+  // from the Google Place ID spine; the EF rejects manual writes (MESITA-468).
   // ISO 4217 code. Mesita defaults every place to MXN; the business
   // can switch to USD/EUR/etc. only when we extend coverage outside
   // Mexico. Kept as text so the EF doesn't hard-code an enum.
@@ -84,7 +86,9 @@ type UpdateBody = {
   reddit_url?: string | null;
   didi_food_url?: string | null;
   tripadvisor_url?: string | null;
+  // Native — rejected below (kept in the type so stale clients get the reject).
   google_maps_url?: string | null;
+  google_place_id?: string | null;
   // Plain contact (not URL-shaped)
   email?: string | null;
   // Reservationist booking target (any POS / booking URL) + multi-contacts.
@@ -154,7 +158,6 @@ const URL_FIELDS = [
   "reddit_url",
   "didi_food_url",
   "tripadvisor_url",
-  "google_maps_url",
 ] as const;
 type UrlField = (typeof URL_FIELDS)[number];
 
@@ -264,6 +267,19 @@ Deno.serve(async (req) => {
         code: "address_via_enrich",
         error:
           "address is set from Google Places / the Enricher and cannot be updated manually.",
+      },
+      400,
+    );
+  }
+  if ("google_maps_url" in body || "google_place_id" in body) {
+    // decision: Pato (MESITA-468) — Google Maps + Place ID are native-locked.
+    // Seeded at create from the Google spine; nobody edits them afterwards.
+    return json(
+      {
+        ok: false,
+        code: "google_maps_native",
+        error:
+          "google_maps_url / google_place_id are set at create from Google Places and cannot be updated manually.",
       },
       400,
     );

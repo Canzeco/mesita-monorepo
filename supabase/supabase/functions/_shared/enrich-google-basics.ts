@@ -193,9 +193,14 @@ export async function fetchGoogleBasics(
   const timezone = timezoneResult.status === "fulfilled" ? timezoneResult.value : null;
   const photos = placesPhotos.map((p) => p.photoUri).filter(Boolean).slice(0, MAX_PHOTOS_TO_KEEP);
 
-  // Google-derived identity links only (website + maps). No email here — the
-  // enricher fills socials/email via its link-discovery step.
-  const channels = classifyLinks([details.websiteUri, details.googleMapsUri]);
+  // Google-derived identity links: website via classifyLinks; Maps URL is
+  // native-locked (MESITA-468) — prefer Google's googleMapsUri, else a
+  // place-id deep link so create ALWAYS populates google_maps_url.
+  const channels = classifyLinks([details.websiteUri]);
+  const placeIdSpine = (details.id ?? placeId).trim();
+  const mapsUrl =
+    (details.googleMapsUri && details.googleMapsUri.trim()) ||
+    `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeIdSpine)}`;
 
   // Cheap Google placeholder category; the enricher re-infers the real one.
   const categorySlug = slugify(details.primaryTypeDisplayName?.text ?? details.primaryType ?? "") || null;
@@ -208,7 +213,7 @@ export async function fetchGoogleBasics(
     ok: true,
     primaryType: details.primaryType ?? null,
     basics: {
-      google_place_id: details.id ?? placeId,
+      google_place_id: placeIdSpine,
       name: name.slice(0, ENRICH_FIELD_LIMITS.placeName.max),
       category: categorySlug,
       category_label: categoryLabel ?? humanizeCategorySlug(categorySlug ?? ""),
@@ -239,7 +244,7 @@ export async function fetchGoogleBasics(
       didi_food_url: channels.didi_food_url,
       tripadvisor_url: channels.tripadvisor_url,
       yelp_url: channels.yelp_url,
-      google_maps_url: channels.google_maps_url,
+      google_maps_url: mapsUrl,
       email: null,
       google_stars_overall: details.rating ?? null,
       google_review_count: details.userRatingCount ?? null,

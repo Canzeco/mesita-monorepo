@@ -95,9 +95,13 @@ export function PlaceChannelsModule({
       />
       <PlaceUrlField
         label="Google Maps"
-        placeholder="https://maps.google.com/..."
+        placeholder="Native — set at create from Google"
         value={form.google_maps_url}
-        onChange={(val) => set("google_maps_url", val)}
+        onChange={() => {
+          /* native-locked (MESITA-468) */
+        }}
+        readOnly
+        hint="Set from the Google Place ID at create — not editable."
       />
       <PlaceUrlField
         label="Email"
