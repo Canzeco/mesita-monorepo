@@ -1,5 +1,7 @@
 "use client";
 
+import { Z_BOTTOM_NAV } from "@/lib/z-index";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
@@ -95,7 +97,7 @@ export function BottomNav({ userId }: { userId?: string }) {
 
   return (
     <>
-      <nav className="border-border bg-card/95 z-40 shrink-0 border-t px-0.5 pt-2 backdrop-blur">
+      <nav className={cn("border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur", Z_BOTTOM_NAV)}>
         <div className="flex items-end justify-around">
           {ITEMS.map((item) => {
             const { href, Icon, label, match, soon } = item;

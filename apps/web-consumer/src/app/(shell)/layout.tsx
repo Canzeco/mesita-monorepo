@@ -1,3 +1,5 @@
+import { Z_ROUTE_MODAL } from "@/lib/z-index";
+import { cn } from "@/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
@@ -89,7 +91,7 @@ export default async function ConsumerShellLayout({
           {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}
-          <div className="pointer-events-none absolute inset-0 z-[120]">
+          <div className={cn("pointer-events-none absolute inset-0", Z_ROUTE_MODAL)}>
             {modal}
           </div>
         </div>

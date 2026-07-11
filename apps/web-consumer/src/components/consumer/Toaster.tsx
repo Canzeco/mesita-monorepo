@@ -1,5 +1,7 @@
 "use client";
 
+import { Z_TOASTER } from "@/lib/z-index";
+
 import { useEffect, useState } from "react";
 import { Check, AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,7 +28,7 @@ export function Toaster() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-4 z-[140] flex flex-col items-center gap-2 px-4">
+    <div className={cn("pointer-events-none absolute inset-x-0 top-4 flex flex-col items-center gap-2 px-4", Z_TOASTER)}>
       {toasts.map((t) => (
         <ToastCard key={t.id} t={t} />
       ))}
