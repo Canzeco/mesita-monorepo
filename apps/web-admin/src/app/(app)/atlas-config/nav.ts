@@ -9,10 +9,3 @@ export const ATLAS_PARENT = {
   label: "Atlas Config",
   Icon: Sparkles,
 } as const;
-
-export function isAtlasRoute(pathname: string): boolean {
-  return (
-    pathname === ATLAS_PARENT.href ||
-    pathname.startsWith(`${ATLAS_PARENT.href}/`)
-  );
-}
