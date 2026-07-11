@@ -21,6 +21,7 @@ import type {
   LinkedReservationSummary,
   NormalCouponStatus,
 } from "@/lib/mock/coupons-mock";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
@@ -210,7 +211,7 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
       {meta.banner && <StatusBanner banner={meta.banner} />}
 
       {c.kind === "instagram" && c.status === "rejected" && c.rejectReason && (
-        <p className="bg-destructive/10 text-destructive rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug">
+        <p className={cn(ERROR_BOX_CLASS, "rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug")}>
           {c.rejectReason}
         </p>
       )}
