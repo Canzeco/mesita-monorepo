@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
-import { StatusBar } from "@/components/consumer/StatusBar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -51,7 +50,6 @@ export default async function ConsumerOnboardPage() {
 
   return (
     <MobileFrame>
-      <StatusBar />
       <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-6 pb-8">
         <div className="border-border bg-card mb-6 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5">
           <div className="min-w-0">

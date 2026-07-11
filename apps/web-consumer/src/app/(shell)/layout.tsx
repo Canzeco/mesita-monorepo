@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
-import { StatusBar } from "@/components/consumer/StatusBar";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
@@ -66,11 +65,10 @@ export default async function ConsumerShellLayout({
   }
 
   // Two-box layout strategy (per user spec):
-  //   - Top: StatusBar only (the old logo/invite/class TopBar band was
-  //     removed — its invite + class entry points now live on the Me page).
   //   - Bottom: BottomNav (shrink-0).
   //   - Middle: the body — flex-1, overflows internally via the page's
-  //     own scroll container; never affects the chrome bands.
+  //     own scroll container; never affects the chrome band.
+  //   (No top status bar — the app fills the frame from the very top.)
   //
   // The bottom nav is shown on every shell route. (Invite/Share used to hide
   // it, which made the chrome appear to "break" when entering that surface —
@@ -81,7 +79,6 @@ export default async function ConsumerShellLayout({
   // cover BOTH top bar and bottom nav while preserving the underlying shell.
   return (
     <MobileFrame>
-      <StatusBar />
       <ClassProvider consumerClass={consumerClass}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

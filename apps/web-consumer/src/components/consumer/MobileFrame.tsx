@@ -1,21 +1,24 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Consumer surface frame.
+ * Consumer surface frame — a mobile / vertical visualizer.
  *
  * Two-box model:
  *   - Outer: gradient page background. Mobile uses STRICT viewport
  *     height (\`h-dvh\`) so the inner card can never grow past the
- *     visible viewport. Desktop uses \`min-h-dvh\` + py padding so the
- *     card is centered on the hero gradient with breathing room.
- *   - Card: the actual app surface. STRICT height on mobile
- *     (\`h-full\` of the outer = h-dvh), capped \`max-h\` on desktop.
+ *     visible viewport. Desktop centers the card on the hero gradient
+ *     with only a thin margin (\`py-4\`).
+ *   - Card: the actual app surface. STRICT height on BOTH breakpoints —
+ *     \`h-full\` (= h-dvh) on mobile, \`h-[calc(100dvh-2rem)]\` on desktop —
+ *     so the visualizer fills almost the entire viewport height and
+ *     leaves just a small margin. Width stays mobile-narrow (\`max-w-md\`);
+ *     it's a vertical visualizer, not a desktop layout.
  *     The shell layout inside lays out as flex-col:
- *       [StatusBar][body flex-1][BottomNav]
+ *       [body flex-1][BottomNav]
  *     With a strict card height, BottomNav as a shrink-0 flex child
  *     sits at the bottom of the viewport, and the body's own
- *     \`overflow-y-auto\` scrolls inside the available space — neither
- *     chrome band can scroll out of view.
+ *     \`overflow-y-auto\` scrolls inside the available space — the chrome
+ *     band can never scroll out of view.
  *
  * The strict height is load-bearing: without it, anything that pushed
  * past viewport (a long loading skeleton, a tall page, a slow paint)
@@ -36,7 +39,7 @@ export function MobileFrame({
   className?: string;
 }) {
   return (
-    <div className="bg-background md:bg-hero flex h-dvh items-stretch justify-center md:h-auto md:min-h-dvh md:py-6">
+    <div className="bg-background md:bg-hero flex h-dvh items-stretch justify-center md:min-h-dvh md:items-center md:py-4">
       <div
         id={APP_CARD_ID}
         className={cn(
@@ -45,8 +48,10 @@ export function MobileFrame({
           // flush to the viewport edge and scrolling reads as one boundless
           // sheet — the border gives the screen a contained edge all around.
           "bg-background border-border relative flex h-full w-full max-w-md flex-col overflow-hidden border",
-          // Rounded corners, elevation, and the height cap only kick in at md+.
-          "md:shadow-elev md:h-auto md:max-h-[min(900px,calc(100dvh-3rem))] md:rounded-3xl",
+          // Desktop: fill almost the whole viewport height (thin py-4 margin),
+          // keeping the mobile-narrow width — a tall vertical visualizer.
+          // Rounded corners + elevation only kick in at md+.
+          "md:shadow-elev md:h-[calc(100dvh-2rem)] md:rounded-3xl",
         )}
       >
         <div className={cn("flex flex-1 flex-col overflow-hidden", className)}>
