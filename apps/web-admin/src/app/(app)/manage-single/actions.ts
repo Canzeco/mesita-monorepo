@@ -35,9 +35,6 @@ export type UnitHit = {
   verified: boolean;
 };
 
-/** @deprecated use UnitHit */
-export type PlaceHit = UnitHit;
-
 async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>> {
   const r = await efInvoke<{ places: UnitHit[] }>("admin-web-search-places", {
     query,
@@ -79,11 +76,6 @@ export async function searchUnits(query: string): Promise<Result<UnitHit[]>> {
   const q = (query ?? "").trim();
   if (q.length < 2) return { ok: true, data: [] };
   return fetchUnits(q);
-}
-
-/** @deprecated use searchUnits */
-export async function searchPlaces(query: string): Promise<Result<UnitHit[]>> {
-  return searchUnits(query);
 }
 
 // One menu / catalog entry under products.menu (and legacy menus).
