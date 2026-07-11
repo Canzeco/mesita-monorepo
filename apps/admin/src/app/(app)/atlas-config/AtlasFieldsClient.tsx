@@ -6,6 +6,8 @@ import type { AtlasFieldsPayload } from "./actions";
 import {
   PLACE_FIELD_PERMISSIONS,
   PLACE_FIELD_PERMISSION_GROUPS,
+  PLACE_FIELD_EDIT_ROLES,
+  PLACE_FIELD_EDIT_ROLE_LABELS,
   type PlaceFieldPermission,
 } from "./place-field-permissions";
 
@@ -50,25 +52,28 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Place profile fields — who may write each one today. Read-only matrix
-          from shipped admin / business / Enricher contracts (not a live ACL
-          toggle).
+          from shipped native / admin / business / consumer contracts (not a
+          live ACL toggle).
         </p>
         <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[520px] border-separate border-spacing-0 px-4 sm:px-0">
+          <table className="w-full min-w-[600px] border-separate border-spacing-0 px-4 sm:px-0">
             <thead>
               <tr className="text-muted-foreground text-left text-xs">
                 <th className="border-border border-b pb-2 pl-1 font-medium">
                   Field
                 </th>
-                <th className="border-border border-b pb-2 text-center font-medium">
-                  Admin
-                </th>
-                <th className="border-border border-b pb-2 text-center font-medium">
-                  Business
-                </th>
-                <th className="border-border border-b pb-2 pr-1 text-center font-medium">
-                  Enricher
-                </th>
+                {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
+                  <th
+                    key={role}
+                    className={
+                      i === PLACE_FIELD_EDIT_ROLES.length - 1
+                        ? "border-border border-b pb-2 pr-1 text-center font-medium"
+                        : "border-border border-b pb-2 text-center font-medium"
+                    }
+                  >
+                    {PLACE_FIELD_EDIT_ROLE_LABELS[role]}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -212,7 +217,7 @@ function PermissionGroupRows({
     <>
       <tr>
         <td
-          colSpan={4}
+          colSpan={1 + PLACE_FIELD_EDIT_ROLES.length}
           className="text-muted-foreground pt-4 pb-1.5 pl-1 text-[10px] font-semibold tracking-wide uppercase"
         >
           {group}
@@ -228,15 +233,18 @@ function PermissionGroupRows({
               </div>
             ) : null}
           </td>
-          <td className="border-border/60 border-b py-2.5 text-center">
-            <PermissionCell allowed={row.admin} />
-          </td>
-          <td className="border-border/60 border-b py-2.5 text-center">
-            <PermissionCell allowed={row.business} />
-          </td>
-          <td className="border-border/60 border-b py-2.5 pr-1 text-center">
-            <PermissionCell allowed={row.enricher} />
-          </td>
+          {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
+            <td
+              key={role}
+              className={
+                i === PLACE_FIELD_EDIT_ROLES.length - 1
+                  ? "border-border/60 border-b py-2.5 pr-1 text-center"
+                  : "border-border/60 border-b py-2.5 text-center"
+              }
+            >
+              <PermissionCell allowed={row[role]} />
+            </td>
+          ))}
         </tr>
       ))}
     </>
