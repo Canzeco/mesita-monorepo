@@ -38,7 +38,10 @@ export function SwipeCardInfo({
     categoryLabel: place.category_label,
     category: place.category,
   });
-  const igFollowersLabel = formatFollowers(place.instagram_followers_count);
+  const igFollowersLabel =
+    place.instagram_followers_count != null
+      ? formatCompactCount(place.instagram_followers_count)
+      : null;
   const statusLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
   // decision: Pato — no Verified/Not Verified tag on swipe; partners get an
@@ -154,12 +157,6 @@ function MetaChip({
       {children}
     </span>
   );
-}
-
-
-function formatFollowers(n: number | null | undefined): string | null {
-  if (n == null) return null;
-  return formatCompactCount(n);
 }
 
 
