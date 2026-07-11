@@ -57,6 +57,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       bundleIdentifier: 'com.mesita.consumer',
       supportsTablet: false,
       config: gmpKey ? { googleMapsApiKey: gmpKey } : undefined,
+      infoPlist: {
+        // HTTPS-only; no custom crypto — skips the App Store Connect export-compliance prompt.
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       package: 'com.mesita.consumer',
