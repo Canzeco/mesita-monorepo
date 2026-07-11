@@ -412,6 +412,16 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
   const igFollowers = place.instagram_followers_count;
   const fbFollowers = place.facebook_followers;
 
+  // Google's aggregate count (google_review_count) can run to thousands, but the
+  // Enricher only scrapes review *texts* up to Apify's hard 100 cap — so the list
+  // below is at most 100. Spell that out to defuse the "12,847 total / short list"
+  // confusion (mirrors Atlas Config → Field limits and Enricher Config → Reviews).
+  const scrapedGoogle = googleReviews.length;
+  const googleReviewsSubtitle =
+    googleCount > scrapedGoogle
+      ? `${scrapedGoogle} of ${formatCount(googleCount, true)} scraped · Apify caps the pull at 100.`
+      : `${scrapedGoogle} scraped · Apify caps the pull at 100.`;
+
   // Cards are siblings of Place boxes — parent PlaceSection owns the 2-col grid.
   return (
     <>
@@ -484,7 +494,7 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
           icon={<Star className="h-4 w-4" />}
           tint="sky"
           title="Google reviews"
-          subtitle={`${formatCount(googleCount || googleReviews.length, true)} total · newest / highest / lowest.`}
+          subtitle={googleReviewsSubtitle}
         >
           <div className="mt-5 flex flex-col gap-3">
             <ReviewSortChips
