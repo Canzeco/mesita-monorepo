@@ -1,0 +1,461 @@
+# Supabase project config — Mesita
+# Docs: https://supabase.com/docs/guides/cli/config
+
+project_id = "yjalywfzdelacdzccpgb"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["https://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+# MFA — required only for admin sign-in, kept available so businesses can
+# enrol if they want. Admin-side enforcement lives in admin-signin-email.
+enable_manual_linking = false
+
+# Email — password only. No magic link, no email OTP. Consumers don't get
+# email auth at all; business + admin live here.
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 3600
+
+# Phone — Twilio Verify, Mexico template at signup. Consumers + staff sign
+# in here; businesses + admins never see this provider.
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+template = "Your Mesita code is {{ .Code }}"
+max_frequency = "60s"
+
+[auth.sms.twilio]
+enabled = true
+account_sid = "env(TWILIO_ACCOUNT_SID)"
+message_service_sid = "env(TWILIO_MESSAGE_SERVICE_SID)"
+auth_token = "env(TWILIO_AUTH_TOKEN)"
+
+# OAuth providers — all explicitly disabled. Spec: no Google, no Apple.
+[auth.external.google]
+enabled = false
+
+[auth.external.apple]
+enabled = false
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+
+[analytics]
+enabled = true
+port = 54327
+backend = "postgres"
+
+[experimental]
+orioledb_version = ""
+s3_host = "env(S3_HOST)"
+s3_region = "env(S3_REGION)"
+s3_access_key = "env(S3_ACCESS_KEY)"
+s3_secret_key = "env(S3_SECRET_KEY)"
+
+# Per-function overrides. Naming rule: <caller>-<verb>-<noun> (e.g.
+# business-web-create-project, consumer-list-tickets). All functions verify the
+# JWT except the truly public catalog reads, which rely on RLS to gate
+# visibility instead.
+
+# --- Sign-in / accept-invite (post-signin housekeeping per role) ---
+#
+# These run AFTER the Supabase Auth call lands a session. They set
+# app_metadata.role, create the corresponding profile row, and (admin)
+# enforce @canzeco.com + MFA. verify_jwt = true gates each to a real
+# session.
+
+[functions.business-web-signin-email]
+verify_jwt = true
+
+[functions.consumer-web-signin-phone]
+verify_jwt = true
+
+[functions.business-web-accept-invite]
+verify_jwt = true
+
+# Internal-only (supabase-edgefunc caller). verify_jwt = true so the gateway
+# verifies the service_role JWT signature; requireInternalCaller then checks
+# role=service_role.
+[functions.supabase-edgefunc-discover-places]
+verify_jwt = true
+
+# Async media persistence worker — stores source metadata immediately and mirrors
+# source images to Supabase Storage in background. Internal-only; invoked by
+# supabase-cron-enrich-place-contents (S9) so mirroring runs in its own wall clock.
+[functions.supabase-edgefunc-store-place-images]
+verify_jwt = true
+
+# --- Enricher v2 pipeline (the Enricher is a PROCESS: cron-driven stages) ---
+#
+# Three stage EFs walk a place_research row research → analysis → contents.
+# The pg_cron poller (run_place_enrichment_stages) claims pending rows and
+# fires one net.http_post per row with the Vault service-role bearer; each EF
+# acks immediately and works in an EdgeRuntime background task. Internal-only.
+[functions.supabase-cron-enrich-place-research]
+verify_jwt = true
+
+[functions.supabase-cron-enrich-place-analysis]
+verify_jwt = true
+
+[functions.supabase-cron-enrich-place-contents]
+verify_jwt = true
+
+# LIVE admin create path — seeds the minimal 'generating' place in-process
+# (_shared/save-place.ts) and queues deep enrichment (place_research →
+# supabase-cron-enrich-place-*). Operator JWT + super_admins allowlist.
+[functions.admin-web-create-project]
+verify_jwt = true
+
+# Authed consumer writes / reads tied to the signed-in consumer's own data.
+# Public catalog reads. RLS enforces which place statuses are visible.
+[functions.consumer-web-list-places]
+verify_jwt = false
+
+[functions.consumer-web-get-place]
+verify_jwt = false
+
+# Memo — the consumer AI concierge (Mesita's third agent, alongside the
+# Enricher/Atlas and the Reservationist). Public like the catalog reads:
+# decision — the concierge answers signed-out visitors, and it only READS
+# (Perplexity + Google Places + projects_view). Auth is read optionally for
+# personalisation via getOptionalAuthedUser; RLS still gates place visibility.
+[functions.consumer-web-ask-memo]
+verify_jwt = false
+
+# Personalised discovery surfaces. JWT required so we can read the
+# consumer's class + history; the recommendation logic still respects
+# RLS for place visibility.
+[functions.consumer-web-recommend-map]
+verify_jwt = true
+
+[functions.consumer-web-recommend-swipe]
+verify_jwt = true
+
+# The former recommender-rank-map / recommender-rank-swipe artificial
+# callers were absorbed into consumer-web-recommend-* as in-process
+# _shared/recommender-rank-*.ts modules (MESITA-54) — the HTTP hop was a
+# synchronous 1:1 forward that didn't earn its cost. Their cloud slugs
+# stay live until the MESITA-59 cleanup.
+
+# Consumer "Add to Mesita": creates the place inline (MESITA-128; MESITA-127
+# dropped the staggered creation queue — only enrichment is scheduled now).
+[functions.consumer-web-create-place]
+verify_jwt = true
+
+# COMPAT ALIAS for the deployed consumer app (also creates inline, keeps the old
+# response keys). Delete once the app is verified on consumer-web-create-place.
+[functions.consumer-web-schedule-project-creation]
+verify_jwt = true
+
+# Entity-split EFs (migration 0031). consumer-list-tickets stays for
+# now while clients migrate; the new surfaces split saved-places,
+# reservations, and coupons into first-class entities.
+[functions.consumer-web-save-place]
+verify_jwt = true
+
+[functions.consumer-web-list-saved-places]
+verify_jwt = true
+
+[functions.consumer-web-list-coupons]
+verify_jwt = true
+
+[functions.consumer-web-create-reservation]
+verify_jwt = true
+
+[functions.consumer-web-list-tickets]
+verify_jwt = true
+
+# Entity-split EFs (migration 0031). consumer-list-tickets stays for
+# now while clients migrate; the new surfaces split saved-places,
+# reservations, and coupons into first-class entities.
+
+[functions.consumer-web-delete-account]
+verify_jwt = true
+
+# --- Business (all authed) ---
+
+# Identity
+
+[functions.consumer-web-submit-story]
+verify_jwt = true
+
+[functions.business-web-verify-story]
+verify_jwt = true
+
+# Consumer lookup at the table (resolve 6-char code → name + balance).
+
+[functions.consumer-web-claim-instagram]
+verify_jwt = true
+
+# Ownership-verification submit + status-poll, called from /add on
+# business.mesita.ai.
+[functions.business-web-get-verification]
+verify_jwt = true
+
+[functions.business-web-request-manual-review]
+verify_jwt = true
+
+# Email / phone OTP flow for ownership verification.
+
+[functions.consumer-web-get-profile]
+verify_jwt = true
+
+[functions.consumer-web-update-profile]
+verify_jwt = true
+
+[functions.consumer-web-list-reservations]
+verify_jwt = true
+
+[functions.consumer-web-list-pay-notifications]
+verify_jwt = true
+
+# Consumer MCP — personal access tokens + Streamable HTTP MCP endpoint.
+# Mint/list/revoke use the consumer session JWT; consumer-mcp itself uses
+# a mesita_mcp_… bearer (verify_jwt off — custom auth in-handler).
+[functions.consumer-web-create-mcp-token]
+verify_jwt = true
+
+[functions.consumer-web-list-mcp-tokens]
+verify_jwt = true
+
+[functions.consumer-web-revoke-mcp-token]
+verify_jwt = true
+
+[functions.consumer-mcp]
+verify_jwt = false
+
+[functions.consumer-web-mock-story-detect]
+verify_jwt = true
+
+[functions.consumer-web-submit-ticket-review]
+verify_jwt = true
+
+[functions.business-web-get-profile]
+verify_jwt = true
+
+[functions.business-web-create-profile]
+verify_jwt = true
+
+# Unit (place) lifecycle
+[functions.business-web-create-project]
+verify_jwt = true
+
+[functions.business-web-update-project]
+verify_jwt = true
+
+[functions.business-web-list-tags]
+verify_jwt = true
+
+[functions.business-web-list-categories]
+verify_jwt = true
+
+# Ownership-verification submit + status-poll, called from /add on
+# business.mesita.ai.
+[functions.business-web-send-email-otp]
+verify_jwt = true
+
+[functions.business-web-verify-email-otp]
+verify_jwt = true
+
+[functions.business-web-send-phone-otp]
+verify_jwt = true
+
+[functions.business-web-verify-phone-otp]
+verify_jwt = true
+
+# State-aware Place ID → Mesita place lookup. Powers the /add page's
+# inline result card (not_in_mesita / web_listed_unclaimed / pending /
+# verified_partner).
+[functions.business-web-find-place]
+verify_jwt = true
+
+# One-shot dashboard bundle: user + places + active place + recent tickets.
+[functions.business-web-get-overview]
+verify_jwt = true
+
+# Ticket workflow
+[functions.business-web-create-ticket]
+verify_jwt = true
+
+[functions.business-web-submit-ticket-bill]
+verify_jwt = true
+
+[functions.business-web-mark-ticket-paid]
+verify_jwt = true
+
+[functions.business-web-list-tickets]
+verify_jwt = true
+
+[functions.business-web-cancel-ticket]
+verify_jwt = true
+
+[functions.business-web-suggest-places]
+verify_jwt = true
+
+# Team management — owner / editor / viewer tier + waiters.
+[functions.business-web-list-team]
+verify_jwt = true
+
+[functions.business-web-invite-member]
+verify_jwt = true
+
+[functions.business-web-invite-staff]
+verify_jwt = true
+
+[functions.business-web-remove-member]
+verify_jwt = true
+
+[functions.business-web-update-member-role]
+verify_jwt = true
+
+[functions.business-web-test-staff-channel]
+verify_jwt = true
+
+# --- Admin (Supabase Auth + super_admins allowlist) ---
+#
+# Operators sign in as themselves (Google OAuth via the admin web).
+# Each EF re-checks the caller's JWT email against public.super_admins
+# before doing anything privileged.
+
+# Per-caller identity doors over _shared/identity.ts (the endpoint name IS
+# the ACL). The old shared auth-get-identity door was deleted in MESITA-59.
+[functions.admin-web-get-identity]
+verify_jwt = true
+
+[functions.business-web-get-identity]
+verify_jwt = true
+
+# Ownership-verification queue surface for super-admins.
+[functions.admin-web-list-verifications]
+verify_jwt = true
+
+# Global Performance notifications feed for super-admins (derived,
+# non-realtime — the console pulls it on Refresh).
+[functions.admin-web-list-notifications]
+verify_jwt = true
+
+[functions.admin-web-decide-verification]
+verify_jwt = true
+
+[functions.admin-web-set-auto-verify]
+verify_jwt = true
+
+[functions.admin-web-get-atlas-fields]
+verify_jwt = true
+
+# Bulk Google Places Text Search proxy. Many queries in, deduped
+# Place IDs out.
+[functions.admin-web-discover-places]
+verify_jwt = true
+
+# Google Places autocomplete for Create Single Unit (admin console).
+[functions.admin-web-suggest-places]
+verify_jwt = true
+
+# Resolve a Google Place ID to a Mesita place. Powers the admin
+# console's "open in business" link generator.
+[functions.admin-web-find-place]
+verify_jwt = true
+
+# Super-admin free-text place search (name / slug / id) for the admin
+# console's Manage Single Unit place picker.
+[functions.admin-web-search-places]
+verify_jwt = true
+
+# DESTRUCTIVE full reset. Gated on super_admins + a typed "RESET"
+# confirmation. Wipes all data, keeps the super-admin allowlist.
+[functions.admin-web-reset-database]
+verify_jwt = true
+
+# Super-admin allowlist management (public.super_admins). Each re-checks
+# super_admins on the caller. Powers the Admin Configuration
+# "Add/remove admins" card.
+[functions.admin-web-list-admins]
+verify_jwt = true
+
+[functions.admin-web-grant-admin]
+verify_jwt = true
+
+[functions.admin-web-revoke-admin]
+verify_jwt = true
+
+# Atlas configuration — place research/enrichment knobs on app_settings,
+# owned by admins.
+[functions.admin-web-get-settings]
+verify_jwt = true
+
+[functions.admin-web-update-atlas-config]
+verify_jwt = true
+
+# Re-run the profile enricher on an existing place (super-admin only).
+[functions.consumer-web-create-subscription]
+verify_jwt = true
+
+# Owner-only place plan changes (Free / Promote / Ultra) via Stripe Checkout.
+[functions.business-web-change-subscription]
+verify_jwt = true
+
+[functions.stripe-webhook-handle-event]
+verify_jwt = false
+
+# --- Twilio (external webhooks) ---
+#
+# WhatsApp inbound + delivery status. Public at the gateway; security
+# is X-Twilio-Signature validation inside each EF (TWILIO_AUTH_TOKEN).
+
+[functions.business-whats-handle-message]
+verify_jwt = false
+
+[functions.twilio-webhook-update-delivery]
+verify_jwt = false
+
+# Diagnostic-only (not client-wired): runs the 5 link-discovery strategies from
+# _shared/linklab against a venue and returns each strategy's {website, instagram}.
+# Same module the offline benchmark (scripts/linklab) scores. Service-role JWT.
+[functions.staff-web-benchmark-link-strategies]
+verify_jwt = true
