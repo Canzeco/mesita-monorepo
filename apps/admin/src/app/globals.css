@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+:root {
+  --radius: 0.875rem;
+
+  /* Mesita — pink-red brand accents on a near-neutral canvas. The canvas,
+     borders, and body text carry only a whisper of the brand hue (chroma
+     ≤0.012) so white cards read crisp and the pink stays an ACCENT — the
+     old rose-washed background made everything blend and lowered contrast. */
+  --background: oklch(0.978 0.005 15);
+  --foreground: oklch(0.16 0.035 15);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.06 15);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.06 15);
+
+  /* Hot pink-red primary (buttons, brand) */
+  --primary: oklch(0.65 0.24 5);
+  --primary-foreground: oklch(0.99 0.005 10);
+
+  /* Deeper rose for accents / "part" italics */
+  --secondary: oklch(0.55 0.22 5);
+  --secondary-foreground: oklch(0.99 0.005 10);
+
+  --muted: oklch(0.955 0.006 15);
+  /* Darker than the old 0.48 — this is the workhorse for 11–12px labels and
+     hints, so it must clear WCAG-ish contrast on white cards. */
+  --muted-foreground: oklch(0.42 0.035 15);
+  --accent: oklch(0.75 0.2 355);
+  --accent-foreground: oklch(0.18 0.06 15);
+  --destructive: oklch(0.58 0.24 28);
+  --destructive-foreground: oklch(0.99 0.005 10);
+  --border: oklch(0.875 0.012 15);
+  --input: oklch(0.93 0.008 15);
+  --ring: oklch(0.65 0.24 5);
+
+  --gradient-hero:
+    radial-gradient(
+      1200px 600px at 20% -10%,
+      oklch(0.85 0.16 5 / 0.55),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 90% 10%,
+      oklch(0.85 0.18 355 / 0.5),
+      transparent 60%
+    ),
+    linear-gradient(180deg, oklch(0.99 0.012 10), oklch(0.96 0.02 5));
+  --gradient-peacock: linear-gradient(
+    135deg,
+    oklch(0.68 0.24 5),
+    oklch(0.62 0.24 0) 50%,
+    oklch(0.65 0.22 355)
+  );
+  --gradient-pink: linear-gradient(
+    135deg,
+    oklch(0.72 0.22 355),
+    oklch(0.6 0.25 5)
+  );
+  --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.4);
+  --shadow-elev: 0 25px 60px -15px oklch(0.18 0.06 15 / 0.18);
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer utilities {
+  .bg-hero {
+    background: var(--gradient-hero);
+  }
+  .bg-peacock {
+    background: var(--gradient-peacock);
+  }
+  .bg-pink-gradient {
+    background: var(--gradient-pink);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .shadow-elev {
+    box-shadow: var(--shadow-elev);
+  }
+}
+
+/* Registered via @utility (not plain @layer classes) so variant prefixes
+   (hover:, focus:) compose — a plain class would shadow the core
+   shadow-<color> parse and silently no-op under hover:. */
+
+/* Card resting shadow — one soft ambient layer + a tight contact edge. */
+@utility shadow-card {
+  box-shadow:
+    0 1px 2px oklch(0.18 0.06 15 / 0.05),
+    0 16px 40px -28px oklch(0.18 0.06 15 / 0.22);
+}
+
+/* Brand-gradient CTA shadow (save pills, primary actions). */
+@utility shadow-save {
+  box-shadow: 0 8px 20px -8px oklch(0.65 0.24 5 / 0.55);
+}
+
+/* Gradient-filled text — self-contained so the background shorthand can't
+   reset background-clip out from under a separate utility. */
+@utility text-pink-gradient {
+  background: var(--gradient-pink);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

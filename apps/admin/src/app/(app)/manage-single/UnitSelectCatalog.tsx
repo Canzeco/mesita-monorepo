@@ -1,0 +1,697 @@
+"use client";
+
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  CheckCircle2,
+  ChevronRight,
+  Crown,
+  ExternalLink,
+  ImageOff,
+  Loader2,
+  MapPin,
+  Plus,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
+import {
+  createUnitFromPlaceId,
+  findPlaceByPlaceId,
+  suggestPlaces,
+  type PlacePrediction,
+  type PlacePredictionStatus,
+  type UnitHit,
+} from "./actions";
+import { unitSectionHref } from "./nav";
+import { UnitThumb } from "./UnitEditChrome";
+import { useUnitCatalogSearch } from "./useUnitCatalogSearch";
+import { ErrorNote } from "./ui";
+
+const STATUS_BADGE: Record<
+  PlacePredictionStatus,
+  { label: string; className: string; Icon: typeof MapPin }
+> = {
+  not_in_mesita: {
+    label: "New · create",
+    className: "bg-muted text-muted-foreground",
+    Icon: Plus,
+  },
+  web_listed: {
+    label: "On Mesita · unclaimed",
+    className: "bg-secondary/15 text-secondary",
+    Icon: MapPin,
+  },
+  verified_partner_other: {
+    label: "On Mesita · claimed",
+    className: "bg-amber-100 text-amber-800",
+    Icon: CheckCircle2,
+  },
+  verified_partner_self: {
+    label: "On Mesita · claimed",
+    className: "bg-amber-100 text-amber-800",
+    Icon: Crown,
+  },
+};
+
+export function UnitSelectCatalog() {
+  const router = useRouter();
+  const { q, setQ, hits, pending, error, metaLabel, searchedQuery, clear } =
+    useUnitCatalogSearch();
+
+  const sessionTokenRef = useRef(newSessionToken());
+  const googleRequestIdRef = useRef(0);
+  // Query-keyed Google results — setState only after await (same pattern as useUnitCatalogSearch).
+  const [googleRemote, setGoogleRemote] = useState<{
+    query: string;
+    predictions: PlacePrediction[];
+  } | null>(null);
+  const [googleRemoteError, setGoogleRemoteError] = useState<{
+    query: string;
+    message: string;
+  } | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creatingLabel, setCreatingLabel] = useState<string | null>(null);
+  const [createPending, startCreate] = useTransition();
+  // The Google prediction awaiting an explicit "Add to Mesita" confirmation.
+  // Set only for creatable (not_in_mesita) results — existing units open directly.
+  const [confirm, setConfirm] = useState<PlacePrediction | null>(null);
+
+  const trimmed = q.trim();
+  const placeIdMode = looksLikePlaceId(trimmed);
+  const catalogSettledEmpty =
+    !pending &&
+    !error &&
+    searchedQuery !== null &&
+    searchedQuery === trimmed &&
+    hits.length === 0 &&
+    trimmed.length >= 2;
+
+  const googleActive = catalogSettledEmpty && !placeIdMode;
+
+  // When Mesita catalog search settles empty, fetch Google Places suggestions
+  // so the operator can create from an external match. Catalog already debounced.
+  useEffect(() => {
+    if (!googleActive) return;
+
+    const query = trimmed;
+    const id = ++googleRequestIdRef.current;
+    void (async () => {
+      const r = await suggestPlaces(query, sessionTokenRef.current);
+      if (id !== googleRequestIdRef.current) return;
+      if (!r.ok) {
+        setGoogleRemoteError({ query, message: r.error });
+        return;
+      }
+      setGoogleRemoteError(null);
+      setGoogleRemote({ query, predictions: r.data });
+    })();
+  }, [googleActive, trimmed]);
+
+  const googleReady = googleRemote !== null && googleRemote.query === trimmed;
+  const googleFailed = googleRemoteError !== null && googleRemoteError.query === trimmed;
+  const googleSearching = googleActive && !googleReady && !googleFailed;
+  const googlePredictions = googleReady ? googleRemote.predictions : [];
+  const googleError = googleFailed && googleRemoteError ? googleRemoteError.message : null;
+  const showGoogleSection = googleActive;
+
+  const pickUnit = (projectId: string) => {
+    router.push(unitSectionHref(projectId, "place"));
+  };
+
+  const createFromPlaceId = (placeId: string, label?: string) => {
+    setCreateError(null);
+    setCreatingLabel(label ?? placeId);
+
+    startCreate(async () => {
+      const found = await findPlaceByPlaceId(placeId);
+      if (!found.ok) {
+        setCreateError(found.error);
+        setCreatingLabel(null);
+        return;
+      }
+      if (found.found) {
+        setCreatingLabel(null);
+        router.push(unitSectionHref(found.place.id, "place"));
+        return;
+      }
+
+      const created = await createUnitFromPlaceId(placeId);
+      if (!created.ok) {
+        setCreateError(created.error);
+        setCreatingLabel(null);
+        return;
+      }
+      router.push(`/manage-single/${created.projectId}/place`);
+    });
+  };
+
+  // Creatable results open a confirm modal (explicit "Add to Mesita"); results
+  // already on Mesita open directly — no confirmation needed.
+  const onPickGoogle = (prediction: PlacePrediction) => {
+    if (prediction.status === "not_in_mesita") {
+      setCreateError(null);
+      setConfirm(prediction);
+      return;
+    }
+    createFromPlaceId(prediction.placeId, prediction.mainText);
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trimmed || createPending) return;
+
+    if (placeIdMode) {
+      createFromPlaceId(trimmed, trimmed);
+      return;
+    }
+
+    if (hits.length === 1) {
+      pickUnit(hits[0].id);
+      return;
+    }
+
+    const creatable = googlePredictions.filter((p) => p.status === "not_in_mesita");
+    if (googleActive && creatable.length === 1) {
+      onPickGoogle(creatable[0]);
+    }
+  };
+
+  const onClear = () => {
+    clear();
+    googleRequestIdRef.current += 1;
+    setGoogleRemote(null);
+    setGoogleRemoteError(null);
+    setCreateError(null);
+    setCreatingLabel(null);
+    setConfirm(null);
+    sessionTokenRef.current = newSessionToken();
+  };
+
+  return (
+    <div className="w-full">
+      <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-b px-4 py-4 backdrop-blur-md sm:px-6 sm:py-5 lg:px-8">
+        <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+          Manage Single Unit
+        </p>
+        <form onSubmit={onSubmit}>
+          <div className="border-border bg-background focus-within:border-foreground focus-within:ring-foreground/10 mt-3 flex h-14 items-center gap-3 rounded-xl border px-4 shadow-sm transition focus-within:ring-2 sm:h-16 sm:gap-4 sm:px-5">
+            <Search className="text-muted-foreground h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
+            <input
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setCreateError(null);
+                setCreatingLabel(null);
+              }}
+              placeholder="Search by name, unit id, or Google Place ID…"
+              autoFocus
+              aria-label="Search units"
+              spellCheck={false}
+              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
+            />
+            {(pending || googleSearching || createPending) && trimmed.length >= 2 && (
+              <Loader2 className="text-primary h-5 w-5 shrink-0 animate-spin sm:h-6 sm:w-6" />
+            )}
+            {!pending && !googleSearching && !createPending && q.length > 0 && (
+              <button
+                type="button"
+                onClick={onClear}
+                aria-label="Clear search"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </form>
+        {placeIdMode && !createPending && (
+          <p className="text-muted-foreground mt-2 text-xs sm:text-sm">
+            Google Place ID detected. Press Enter to create or open this unit.
+          </p>
+        )}
+      </div>
+
+      <div className="px-4 pt-5 sm:px-6 lg:px-8">
+        <p
+          className={
+            "flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors " +
+            (pending ? "text-primary" : "text-muted-foreground")
+          }
+        >
+          {pending && (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+          )}
+          Manage Single Unit · {metaLabel}
+        </p>
+
+        {error && <ErrorNote message={error} />}
+        {createError && <ErrorNote message={createError} />}
+
+        {creatingLabel && createPending && (
+          <div className="border-border bg-card mt-4 rounded-xl border p-4">
+            <p className="text-sm font-medium">{creatingLabel}</p>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Creating unit… Deep enrichment runs in the background once it exists.
+            </p>
+          </div>
+        )}
+
+        {hits.length > 0 ? (
+          <div className="border-border bg-card mt-4 overflow-hidden rounded-xl border">
+            <div className="-mx-0 overflow-x-auto">
+              <table className="w-full min-w-[860px] border-separate border-spacing-0 text-sm">
+                <thead>
+                  <tr className="text-muted-foreground bg-muted/30 text-left text-[11px] font-semibold tracking-[0.08em] uppercase">
+                    <th className="w-14 px-3 py-2.5 font-semibold">Photo</th>
+                    <th className="px-3 py-2.5 font-semibold">Name</th>
+                    <th className="px-3 py-2.5 font-semibold">Category</th>
+                    <th className="px-3 py-2.5 font-semibold">Zone</th>
+                    <th className="px-3 py-2.5 font-semibold">Google revws</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Enriched</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Verified</th>
+                    <th className="w-10 px-3 py-2.5" aria-hidden />
+                  </tr>
+                </thead>
+                <tbody>
+                  {hits.map((u) => (
+                    <UnitCatalogRow
+                      key={u.id}
+                      unit={u}
+                      disabled={createPending}
+                      onPick={() => pickUnit(u.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          !pending &&
+          !error &&
+          searchedQuery === null &&
+          q.trim().length === 0 && (
+            <div className="border-border bg-card mt-4 rounded-2xl border px-4 py-12 text-center">
+              <p className="text-muted-foreground text-sm">
+                No units in the catalog yet. Search a place name to create one from Google.
+              </p>
+            </div>
+          )
+        )}
+
+        {showGoogleSection && (
+          <div className="mt-8">
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Not on Mesita · Google results
+              {googleSearching
+                ? " · Searching…"
+                : googleReady
+                  ? ` · ${googlePredictions.length}`
+                  : ""}
+            </p>
+
+            {googleError && <ErrorNote message={googleError} />}
+
+            <div className="mt-4 flex flex-col gap-2">
+              {googlePredictions.map((p) => {
+                const badge = STATUS_BADGE[p.status];
+                const canCreate = p.status === "not_in_mesita";
+                return (
+                  <button
+                    key={p.placeId}
+                    type="button"
+                    disabled={createPending}
+                    onClick={() => onPickGoogle(p)}
+                    className="border-border bg-card hover:border-foreground/40 flex items-start gap-3 rounded-xl border p-3 text-left transition disabled:opacity-50"
+                  >
+                    <span
+                      className={
+                        "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full " +
+                        badge.className
+                      }
+                    >
+                      <badge.Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-medium">{p.mainText}</span>
+                        <span
+                          className={
+                            "inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase " +
+                            badge.className
+                          }
+                        >
+                          {badge.label}
+                        </span>
+                      </span>
+                      {p.secondaryText && (
+                        <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+                          {p.secondaryText}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground mt-1 block text-xs">
+                        {canCreate
+                          ? "Click to review & add"
+                          : "Already on Mesita — click to open"}
+                      </span>
+                    </span>
+                    {canCreate ? (
+                      <span className="bg-secondary text-secondary-foreground mt-1.5 inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+                        <Plus className="h-3.5 w-3.5" />
+                        Add
+                      </span>
+                    ) : (
+                      <ChevronRight className="text-muted-foreground mt-3 h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+
+              {!googleSearching && !googleError && googleReady && googlePredictions.length === 0 && (
+                <div className="border-border bg-card rounded-2xl border px-4 py-12 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    {`No Mesita units or Google matches for “${trimmed}”. Try another spelling or paste a Place ID.`}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {confirm && (
+        <AddPlaceModal
+          key={confirm.placeId}
+          prediction={confirm}
+          adding={createPending}
+          error={createError}
+          onConfirm={() => createFromPlaceId(confirm.placeId, confirm.mainText)}
+          onClose={() => {
+            setConfirm(null);
+            setCreateError(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function UnitCatalogRow({
+  unit,
+  disabled,
+  onPick,
+}: {
+  unit: UnitHit;
+  disabled: boolean;
+  onPick: () => void;
+}) {
+  const category = unit.category_label ?? unit.category ?? "—";
+  const zone = unit.zone?.trim() || "—";
+  const reviews = formatGoogleReviews(unit.google_stars_overall, unit.google_review_count);
+
+  return (
+    <tr
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={`Open ${unit.name}`}
+      onClick={() => {
+        if (!disabled) onPick();
+      }}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onPick();
+        }
+      }}
+      className={
+        "hover:bg-muted/40 focus-visible:bg-muted/50 cursor-pointer outline-none transition " +
+        "[&>td]:border-border/60 [&>td]:border-t " +
+        (disabled ? "pointer-events-none opacity-50" : "")
+      }
+    >
+      <td className="px-3 py-2.5">
+        <UnitThumb photo={unit.photo} name={unit.name} size="sm" />
+      </td>
+      <td className="max-w-[220px] px-3 py-2.5">
+        <p className="truncate font-medium">{unit.name}</p>
+        {unit.status && (
+          <p className="text-muted-foreground truncate text-[11px] capitalize">{unit.status}</p>
+        )}
+      </td>
+      <td className="max-w-[160px] px-3 py-2.5">
+        <span className="text-muted-foreground truncate block">{category}</span>
+      </td>
+      <td className="max-w-[140px] px-3 py-2.5">
+        <span className="text-muted-foreground truncate block">{zone}</span>
+      </td>
+      <td className="px-3 py-2.5 whitespace-nowrap">
+        {reviews ? (
+          <span className="text-muted-foreground inline-flex items-center gap-1">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden />
+            {reviews}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <BoolCell value={unit.enriched} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <BoolCell value={unit.verified} trueLabel="Yes" falseLabel="No" accent />
+      </td>
+      <td className="px-3 py-2.5 text-right">
+        <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />
+      </td>
+    </tr>
+  );
+}
+
+function BoolCell({
+  value,
+  trueLabel,
+  falseLabel,
+  accent = false,
+}: {
+  value: boolean;
+  trueLabel: string;
+  falseLabel: string;
+  accent?: boolean;
+}) {
+  if (value) {
+    return (
+      <span
+        className={
+          "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold " +
+          (accent
+            ? "bg-amber-100 text-amber-800"
+            : "bg-green-500/10 text-green-700")
+        }
+      >
+        {trueLabel}
+      </span>
+    );
+  }
+  return (
+    <span className="text-muted-foreground text-[11px] font-medium">{falseLabel}</span>
+  );
+}
+
+function formatGoogleReviews(
+  stars: number | null | undefined,
+  count: number | null | undefined,
+): string | null {
+  const hasStars = typeof stars === "number" && Number.isFinite(stars);
+  const hasCount = typeof count === "number" && Number.isFinite(count);
+  if (!hasStars && !hasCount) return null;
+  const starPart = hasStars ? stars.toFixed(1) : "—";
+  if (!hasCount) return starPart;
+  return `${starPart} · ${count.toLocaleString()}`;
+}
+
+type GooglePlaceDetails = {
+  photoUrl: string | null;
+  address: string | null;
+  mapsUrl: string | null;
+};
+
+// Reopening the modal for the same place shouldn't refetch.
+const placeDetailCache = new Map<string, GooglePlaceDetails>();
+
+// Display-only Google Places Details (New) lookup for the confirm modal — one
+// client-side call per place for a hero photo + tidy address, keyed by
+// NEXT_PUBLIC_GMP_KEY. Nothing is persisted (mirrors the consumer add sheet).
+async function fetchGooglePlaceDetails(placeId: string): Promise<GooglePlaceDetails> {
+  const cached = placeDetailCache.get(placeId);
+  if (cached) return cached;
+  const empty: GooglePlaceDetails = { photoUrl: null, address: null, mapsUrl: null };
+  const key = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
+  if (!key) return empty;
+  try {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}` +
+        `?fields=photos,formattedAddress,googleMapsUri&key=${key}`,
+    );
+    if (!res.ok) return empty;
+    const data = (await res.json()) as {
+      photos?: { name?: string }[];
+      formattedAddress?: string;
+      googleMapsUri?: string;
+    };
+    const photoName = data.photos?.[0]?.name ?? null;
+    const details: GooglePlaceDetails = {
+      photoUrl: photoName
+        ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=1200&key=${key}`
+        : null,
+      address: data.formattedAddress ?? null,
+      mapsUrl: data.googleMapsUri ?? null,
+    };
+    placeDetailCache.set(placeId, details);
+    return details;
+  } catch {
+    return empty;
+  }
+}
+
+// Confirm-before-create modal for an external Google result. Fetches a display
+// photo + address on open; the primary action runs the existing create flow.
+function AddPlaceModal({
+  prediction,
+  adding,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  prediction: PlacePrediction;
+  adding: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const [details, setDetails] = useState<GooglePlaceDetails | null>(null);
+  const [photoFailed, setPhotoFailed] = useState(false);
+
+  // The modal is keyed by placeId at the render site, so it remounts fresh per
+  // place — no synchronous reset needed here (which the set-state-in-effect rule
+  // forbids). The only setState lands after the await.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const d = await fetchGooglePlaceDetails(prediction.placeId);
+      if (!cancelled) setDetails(d);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [prediction.placeId]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !adding) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, adding]);
+
+  const address = details?.address ?? prediction.secondaryText ?? null;
+  const photoUrl = details?.photoUrl ?? null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={() => {
+        if (!adding) onClose();
+      }}
+    >
+      <div
+        className="border-border bg-card w-full max-w-md overflow-hidden rounded-2xl border shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add place to Mesita"
+      >
+        <div className="bg-muted/40 flex h-44 w-full items-center justify-center overflow-hidden">
+          {photoUrl && !photoFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt={prediction.mainText}
+              onError={() => setPhotoFailed(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : details === null ? (
+            <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          ) : (
+            <ImageOff className="text-muted-foreground h-7 w-7" />
+          )}
+        </div>
+
+        <div className="p-5">
+          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+            Add to Mesita
+          </p>
+          <h3 className="mt-1 text-base font-semibold">{prediction.mainText}</h3>
+          {address && (
+            <p className="text-muted-foreground mt-1 flex items-start gap-1.5 text-sm">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{address}</span>
+            </p>
+          )}
+          {details?.mapsUrl && (
+            <a
+              href={details.mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-secondary mt-2 inline-flex items-center gap-1 text-xs font-medium hover:underline"
+            >
+              View on Google Maps <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+
+          <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
+            This place isn’t on Mesita yet. Adding it creates the unit and kicks off
+            AI enrichment in the background.
+          </p>
+
+          {error && <ErrorNote message={error} />}
+
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={adding}
+              className="text-foreground hover:bg-muted inline-flex h-10 items-center rounded-xl px-4 text-sm font-medium transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={adding}
+              className="bg-secondary text-secondary-foreground inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-60"
+            >
+              {adding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {adding ? "Adding…" : "Add to Mesita"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function looksLikePlaceId(raw: string): boolean {
+  const s = raw.trim();
+  if (s.length < 10 || /\s/.test(s)) return false;
+  if (/^(ChI|EhI|GhI)/.test(s)) return true;
+  return /^[A-Za-z0-9_-]+$/.test(s) && s.length >= 20;
+}
+
+function newSessionToken(): string {
+  return crypto.randomUUID();
+}
