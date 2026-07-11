@@ -8,8 +8,8 @@ import {
   UsersRound,
 } from "lucide-react";
 
-// `soon` sections are not yet built — shown in the tab bar with a "Soon" badge,
-// non-navigable, and their routes render a placeholder instead of the section.
+// `soon` sections stay in the catalog for routes/placeholders but are hidden
+// from the primary tablist until shipped (MESITA-547 — dead tabs dilute IA).
 // Products + Reviews live inside the Place page (not separate tabs).
 export const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store, soon: false },
@@ -19,6 +19,9 @@ export const UNIT_SECTIONS = [
   { id: "performance", label: "Performance", Icon: ChartLine, soon: true },
   { id: "team", label: "Team", Icon: UsersRound, soon: false },
 ] as const;
+
+/** Tabs shown in UnitEditChrome — excludes not-yet-shipped sections. */
+export const UNIT_TAB_SECTIONS = UNIT_SECTIONS.filter((s) => !s.soon);
 
 export type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];
 

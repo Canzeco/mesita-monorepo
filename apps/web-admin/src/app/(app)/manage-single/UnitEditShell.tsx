@@ -71,25 +71,35 @@ export function UnitEditShell({
     return (
       <div className="px-4 pt-8 sm:px-6 sm:pt-10 lg:px-8">
         {loadError && <ErrorNote message={loadError} />}
-        <button
-          type="button"
-          onClick={() => router.push("/manage-single/select")}
-          className="border-border hover:border-foreground/40 mt-4 inline-flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition"
-        >
-          <Search className="h-4 w-4" /> Back to Manage Single Unit
-        </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setLoadedId(null);
+              void loadPlace(projectId);
+            }}
+            className="bg-foreground text-background inline-flex h-10 items-center gap-1.5 rounded-full px-5 text-sm font-semibold transition hover:opacity-90"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/manage-single/select")}
+            className="border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition"
+          >
+            <Search className="h-4 w-4" /> Back to Manage Single Unit
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <UnitPlaceProvider
-      value={{
-        projectId,
-        place,
-        setPlace,
-        reload: () => void loadPlace(projectId),
-      }}
+      projectId={projectId}
+      place={place}
+      setPlace={setPlace}
+      reload={() => void loadPlace(projectId)}
     >
       {/* Chrome is full-bleed across the main column; body keeps page padding. */}
       <div className="w-full">

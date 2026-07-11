@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   ArrowLeftRight,
   CheckCircle2,
@@ -18,10 +18,12 @@ import {
   type PlaceEnrichmentStatus,
   type ReenrichMode,
 } from "./actions";
-import { UNIT_SECTIONS, unitSectionHref } from "./nav";
+import { UNIT_TAB_SECTIONS, unitSectionHref } from "./nav";
+import { useUnitPlace } from "./UnitPlaceContext";
+import { ConfirmDialog } from "./ui";
 
 export function currentUnitSection(pathname: string) {
-  for (const { id } of UNIT_SECTIONS) {
+  for (const { id } of UNIT_TAB_SECTIONS) {
     if (pathname.endsWith(`/${id}`) || pathname.includes(`/${id}/`)) {
       return id;
     }
@@ -41,6 +43,10 @@ function isEnriching(s: PlaceEnrichmentStatus | null): boolean {
   return cs === "generating" || cs === "queued";
 }
 
+type PendingNav =
+  | { kind: "href"; href: string }
+  | { kind: "reenrich"; mode: ReenrichMode };
+
 export function UnitEditChrome({
   projectId,
   place,
@@ -49,6 +55,8 @@ export function UnitEditChrome({
   place: AdminPlace;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isDirty, requestDiscard } = useUnitPlace();
   const heroPhoto = place.photos?.[0] ?? null;
   const statusLabel = place.status?.trim()
     ? place.status.charAt(0).toUpperCase() + place.status.slice(1)
@@ -56,7 +64,10 @@ export function UnitEditChrome({
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
     null,
   );
+  const [enrichPollError, setEnrichPollError] = useState(false);
   const enriching = isEnriching(enrichStatus);
+  const enrichFailed = enrichStatus?.stage === "failed";
+  const [pendingNav, setPendingNav] = useState<PendingNav | null>(null);
 
   // decision: Pato (MESITA-451) — Enriching badge also lives next to the place
   // name in this chrome. Meta card shows enriching status too (MESITA-466).
@@ -66,7 +77,12 @@ export function UnitEditChrome({
     const load = () => {
       getPlaceEnrichment(projectId).then((r) => {
         if (!alive) return;
-        setEnrichStatus(r.ok ? r.data.status : null);
+        if (!r.ok) {
+          setEnrichPollError(true);
+          return;
+        }
+        setEnrichPollError(false);
+        setEnrichStatus(r.data.status);
       });
     };
     load();
@@ -76,6 +92,84 @@ export function UnitEditChrome({
       window.clearInterval(id);
     };
   }, [projectId]);
+
+  // Warn on tab close / refresh when Place edits are dirty.
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
+
+  const guardNav = useCallback(
+    (href: string, e?: React.MouseEvent) => {
+      if (!isDirty) return false;
+      e?.preventDefault();
+      setPendingNav({ kind: "href", href });
+      return true;
+    },
+    [isDirty],
+  );
+
+  const guardReenrich = useCallback(
+    (mode: ReenrichMode): boolean => {
+      if (!isDirty) return false;
+      setPendingNav({ kind: "reenrich", mode });
+      return true;
+    },
+    [isDirty],
+  );
+
+  const [reenrichPending, startReenrich] = useTransition();
+  const [reenrichState, setReenrichState] = useState<"idle" | "done" | "error">(
+    "idle",
+  );
+  const [reenrichError, setReenrichError] = useState<string | null>(null);
+  const [ranMode, setRanMode] = useState<ReenrichMode | null>(null);
+
+  const runReenrich = useCallback(
+    (mode: ReenrichMode) => {
+      setReenrichState("idle");
+      setReenrichError(null);
+      setRanMode(mode);
+      startReenrich(async () => {
+        const r = await enrichPlace(projectId, mode);
+        if (r.ok) {
+          setReenrichState("done");
+          setEnrichStatus((prev) => ({
+            content_status: "generating",
+            stage:
+              prev?.stage && prev.stage !== "done" && prev.stage !== "failed"
+                ? prev.stage
+                : "research",
+            stage_status: "queued",
+            error: null,
+            last_enriched_at: prev?.last_enriched_at ?? null,
+            updated_at: new Date().toISOString(),
+          }));
+        } else {
+          setReenrichState("error");
+          setReenrichError(r.error);
+        }
+      });
+    },
+    [projectId],
+  );
+
+  const confirmDiscard = () => {
+    if (!pendingNav) return;
+    const nav = pendingNav;
+    setPendingNav(null);
+    requestDiscard();
+    if (nav.kind === "href") {
+      router.push(nav.href);
+      return;
+    }
+    runReenrich(nav.mode);
+  };
 
   return (
     // Light sticky chrome — content area stays light; only the lateral menu is dark.
@@ -97,6 +191,21 @@ export function UnitEditChrome({
               >
                 <span className="whitespace-nowrap">(Enriching)</span>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              </span>
+            ) : enrichFailed ? (
+              <span
+                className="inline-flex shrink-0 items-center text-sm font-semibold text-red-600"
+                title={enrichStatus?.error ?? "Enrichment failed"}
+                aria-live="polite"
+              >
+                (Enrich failed)
+              </span>
+            ) : enrichPollError ? (
+              <span
+                className="text-muted-foreground inline-flex shrink-0 items-center text-xs font-medium"
+                aria-live="polite"
+              >
+                (status unknown)
               </span>
             ) : null}
           </p>
@@ -133,59 +242,35 @@ export function UnitEditChrome({
         <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/manage-single/select"
+            onClick={(e) => guardNav("/manage-single/select", e)}
             className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium transition sm:px-3.5"
           >
             <ArrowLeftRight className="h-4 w-4" />
-            <span className="hidden sm:inline">Switch unit</span>
+            <span className="hidden sm:inline">Switch place</span>
           </Link>
           <ReEnrichButton
-            projectId={projectId}
-            onQueued={() =>
-              setEnrichStatus((prev) => ({
-                content_status: "generating",
-                stage:
-                  prev?.stage && prev.stage !== "done" && prev.stage !== "failed"
-                    ? prev.stage
-                    : "research",
-                stage_status: "queued",
-                error: null,
-                last_enriched_at: prev?.last_enriched_at ?? null,
-                updated_at: new Date().toISOString(),
-              }))
-            }
+            pending={reenrichPending}
+            state={reenrichState}
+            error={reenrichError}
+            ranMode={ranMode}
+            onPick={(mode) => {
+              if (guardReenrich(mode)) return;
+              runReenrich(mode);
+            }}
           />
         </div>
       </div>
 
-      {/* Row 2 — centered section tabs */}
+      {/* Row 2 — centered section tabs (shipped sections only — MESITA-547) */}
       <div className="border-border border-t px-2 sm:px-4 lg:px-6">
         <nav
           role="tablist"
           aria-label="Unit sections"
           className="flex items-stretch justify-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {UNIT_SECTIONS.map(({ id, label, Icon, soon }) => {
+          {UNIT_TAB_SECTIONS.map(({ id, label, Icon }) => {
             const href = unitSectionHref(projectId, id);
             const active = pathname === href || pathname.startsWith(`${href}/`);
-
-            // Not-yet-built sections: non-navigable, dimmed, with a "Soon" badge.
-            if (soon) {
-              return (
-                <span
-                  key={id}
-                  role="tab"
-                  aria-disabled
-                  title={`${label} — coming soon`}
-                  className="text-muted-foreground/50 relative inline-flex min-h-12 shrink-0 cursor-not-allowed items-center gap-2 px-3.5 text-sm font-semibold sm:min-h-[3.25rem] sm:px-4"
-                >
-                  <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                  <span>{label}</span>
-                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase">
-                    Soon
-                  </span>
-                </span>
-              );
-            }
 
             return (
               <Link
@@ -193,6 +278,10 @@ export function UnitEditChrome({
                 href={href}
                 role="tab"
                 aria-selected={active}
+                onClick={(e) => {
+                  if (active) return;
+                  guardNav(href, e);
+                }}
                 className={
                   "relative inline-flex min-h-12 shrink-0 items-center gap-2 px-3.5 text-sm font-semibold transition sm:min-h-[3.25rem] sm:px-4 " +
                   (active
@@ -213,6 +302,30 @@ export function UnitEditChrome({
           })}
         </nav>
       </div>
+
+      <ConfirmDialog
+        open={pendingNav != null}
+        title="Unsaved Place edits"
+        body={
+          pendingNav?.kind === "reenrich" ? (
+            <p>
+              Re-enrich can overwrite fields you&apos;re editing. Discard unsaved
+              changes and queue the Enricher, or cancel and save first.
+            </p>
+          ) : (
+            <p>
+              You have unsaved Place edits. Discard them to leave this page, or
+              cancel and save first.
+            </p>
+          )
+        }
+        confirmLabel={
+          pendingNav?.kind === "reenrich" ? "Discard & re-enrich" : "Discard & leave"
+        }
+        danger
+        onConfirm={confirmDiscard}
+        onCancel={() => setPendingNav(null)}
+      />
     </div>
   );
 }
@@ -244,26 +357,24 @@ const REENRICH_MODES: {
   },
 ];
 
-// Manual re-enrich trigger. Re-queues the place through the Enricher pipeline at a
-// chosen depth (full / analysis+contents / contents-only); it runs async, so the
-// control just confirms the job was queued — progress shows next to the place
-// name in this chrome (MESITA-451). The lighter modes need a prior full run
-// (EF rejects otherwise).
+// Manual re-enrich trigger. Ghost/secondary styling — expensive overwrite sits
+// beside Switch place without competing as the primary chrome action (MESITA-547).
 function ReEnrichButton({
-  projectId,
-  onQueued,
+  pending,
+  state,
+  error,
+  ranMode,
+  onPick,
 }: {
-  projectId: string;
-  onQueued?: () => void;
+  pending: boolean;
+  state: "idle" | "done" | "error";
+  error: string | null;
+  ranMode: ReenrichMode | null;
+  onPick: (mode: ReenrichMode) => void;
 }) {
-  const [pending, startTransition] = useTransition();
-  const [state, setState] = useState<"idle" | "done" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const [ranMode, setRanMode] = useState<ReenrichMode | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Close the menu on outside click / Escape.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -279,23 +390,6 @@ function ReEnrichButton({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  const run = (mode: ReenrichMode) => {
-    setOpen(false);
-    setState("idle");
-    setError(null);
-    setRanMode(mode);
-    startTransition(async () => {
-      const r = await enrichPlace(projectId, mode);
-      if (r.ok) {
-        setState("done");
-        onQueued?.();
-      } else {
-        setState("error");
-        setError(r.error);
-      }
-    });
-  };
 
   const ranLabel = REENRICH_MODES.find((m) => m.mode === ranMode)?.label ?? "Re-enrich";
 
@@ -313,10 +407,10 @@ function ReEnrichButton({
             : "Re-run the Enricher pipeline for this place"
         }
         className={
-          "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition disabled:opacity-60 sm:px-3.5 " +
+          "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition disabled:opacity-60 sm:px-3.5 " +
           (state === "error"
-            ? "bg-red-500/15 text-red-700 hover:bg-red-500/25"
-            : "bg-secondary text-secondary-foreground hover:opacity-90")
+            ? "border-red-300 bg-red-500/10 text-red-700 hover:bg-red-500/15"
+            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground")
         }
       >
         {pending ? (
@@ -342,7 +436,10 @@ function ReEnrichButton({
               key={mode}
               type="button"
               role="menuitem"
-              onClick={() => run(mode)}
+              onClick={() => {
+                setOpen(false);
+                onPick(mode);
+              }}
               className="hover:bg-muted/60 block w-full px-4 py-3 text-left transition"
             >
               <span className="text-foreground block text-sm font-medium">{label}</span>
