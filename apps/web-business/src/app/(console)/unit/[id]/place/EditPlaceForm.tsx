@@ -31,6 +31,7 @@ import {
   type PlaceSubTab,
 } from "@/components/business/place/place-subtabs";
 import { MAX_PHOTOS } from "@/components/business/place/place-upload-utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
 const DAYS = PLACE_HOUR_DAYS;
@@ -323,7 +324,7 @@ export function EditPlaceForm({
       </div>
 
       {error && (
-        <p className="bg-destructive/10 text-destructive mx-4 mb-2 rounded-lg px-3 py-2 text-sm">
+        <p className={cn(ERROR_BOX_CLASS, "mx-4 mb-2 text-sm")}>
           {error}
         </p>
       )}
