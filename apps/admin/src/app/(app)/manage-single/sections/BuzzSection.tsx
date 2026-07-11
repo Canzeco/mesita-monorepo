@@ -1,42 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Braces, Eye, MapPin, Megaphone, Radar, Star } from "lucide-react";
+import { Braces, Megaphone } from "lucide-react";
 import { visibilityScore } from "@/lib/business/plans";
 import type { AdminPlace } from "../actions";
 import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 
 // ════════════════════════════════════════════════════════════════════════
-// Buzz — the place's potency for the recommendation engines (Swipe · Memo ·
-// Map). Admin-only by nature: the whole console sits behind the super-admin
-// gate; businesses and consumers never see this.
+// Buzz — the place's potency for the recommendation engines (Swipe · Map ·
+// Memo). Admin-only: the whole console sits behind the super-admin gate.
 //
-// DRAFT MODEL, frontend only — every number is computed client-side from the
-// loaded place so the idea can be polished before anything ships to the
-// engines:
+// DRAFT MODEL, frontend only:
 //
 //   buzz(d) = (visibility + importance) ÷ decay(d)      decay(d) = 1 + d/d₀
 //
-//   visibility  1–10  what the business bought — the live Promos score
-//                     (plan floor + discount generosity + ticket cap).
+//   visibility  1–10  what the business bought — the live Promos score.
 //   importance  1–10  consumer quality prior — Google stars weighted by
-//                     review volume plus a small social-proof nudge. Keeps
-//                     weak places out of the engines.
-//   decay(d)          proximity is the product — potency halves every d₀ km;
-//                     each engine reads distance at its own sensitivity.
+//                     review volume + a small social-proof nudge.
+//   decay(d)          proximity app — potency halves every d₀ km; each
+//                     engine reads distance at its own sensitivity.
 // ════════════════════════════════════════════════════════════════════════
 
 const BUZZ_MAX = 20; // V(10) + I(10) at distance 0
 const BASE_D0 = 1.5; // km at which potency halves for the headline number
 
-/** Consumer quality prior, 1–10. Stars carry most of it; volume earns trust. */
+/** Consumer quality prior, 1–10: stars ≤6 pts, review volume ≤3 (log), social ≤1. */
 function importanceScore(place: AdminPlace): number {
   const stars = place.google_stars_overall ?? 0;
   const reviews = place.google_review_count ?? 0;
   const followers = place.instagram_followers_count ?? 0;
 
-  // 0–6 from the rating itself, 0–3 from review volume (logarithmic — 5,000
-  // reviews maxes it), 0–1 from social proof (100k followers maxes it).
   const starPts = (Math.max(0, Math.min(5, stars)) / 5) * 6;
   const volumePts = Math.min(3, (Math.log10(reviews + 1) / Math.log10(5000)) * 3);
   const socialPts = Math.min(1, Math.log10(followers + 1) / 5);
@@ -46,24 +39,9 @@ function importanceScore(place: AdminPlace): number {
 
 /** Per-engine distance sensitivity — d₀ in km at which potency halves. */
 const ENGINES = [
-  {
-    id: "swipe",
-    label: "Swipe",
-    d0: 1.5,
-    hint: "Deck ordering on Home — the most local surface; buzz decides who shows up first.",
-  },
-  {
-    id: "map",
-    label: "Map",
-    d0: 3,
-    hint: "Pin prominence on Search — mid-range; high-buzz places read louder on the map.",
-  },
-  {
-    id: "memo",
-    label: "Memo",
-    d0: 5,
-    hint: "Retrieval re-rank for the concierge — meaning first, buzz breaks the ties.",
-  },
+  { id: "swipe", label: "Swipe", d0: 1.5 },
+  { id: "map", label: "Map", d0: 3 },
+  { id: "memo", label: "Memo", d0: 5 },
 ] as const;
 
 function decay(km: number, d0: number): number {
@@ -96,25 +74,15 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
 
   const vector = useMemo(() => mockVector(place.id, 48), [place.id]);
 
-  const meta: { label: string; value: string | null }[] = [
-    { label: "Category", value: place.category_label ?? place.category },
-    { label: "Zone", value: place.zone },
-    { label: "City", value: place.city },
-    {
-      label: "Price",
-      value: place.price_level ? "$".repeat(place.price_level) : null,
-    },
-  ];
-
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      {/* ── Hero — the live formula ─────────────────────────────────── */}
+      {/* ── Buzz — score, distance, ingredients, engines ────────────── */}
       <SectionCard
         icon={<Megaphone className="h-4.5 w-4.5" />}
         tint="pink"
         title="Buzz"
-        subtitle="Potency for the recommendation engines — Swipe, Memo and the Map. Hidden from businesses and consumers; admins only."
-        action={<DraftPill />}
+        subtitle="Potency for the recommendation engines — Swipe, the Map and Memo. Admins only."
+        action={<Pill>Draft model</Pill>}
       >
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -125,10 +93,6 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               <p className="text-muted-foreground pb-1.5 text-sm">/ {BUZZ_MAX}</p>
             </div>
             <Meter value={buzz / BUZZ_MAX} className="mt-3 w-56" />
-            <p className="text-muted-foreground mt-3 font-mono text-xs">
-              buzz = (visibility {fmt(V, 0)} + importance {fmt(I)}) ÷ decay(
-              {fmt(km)}&nbsp;km) {fmt(decay(km, BASE_D0), 2)}
-            </p>
           </div>
 
           <div className="w-full max-w-sm">
@@ -146,164 +110,62 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               className="accent-primary mt-2 w-full"
               aria-label="Consumer distance in km"
             />
-            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              Mesita is a proximity app — drag to see what this place is worth
-              to a consumer standing that far away.
-            </p>
           </div>
         </div>
-      </SectionCard>
 
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
-        {/* ── Visibility — what the business bought ─────────────────── */}
-        <SectionCard
-          icon={<Eye className="h-4.5 w-4.5" />}
-          tint="violet"
-          title={`Visibility · ${fmt(V, 0)}/10`}
-          subtitle="How much the business has boosted on Mesita — the live Promos score."
-        >
-          <div className="mt-4 flex flex-col gap-2.5">
-            <StatRow
-              label="Plan"
-              value={place.plan ? place.plan.replace(/_/g, " ") : "free"}
-            />
-            <StatRow
-              label="Reward rates"
-              value={[
-                place.welcome_free_rate,
-                place.welcome_premium_rate,
-                place.free_rate,
-                place.premium_rate,
-              ]
-                .map((r) => (typeof r === "number" ? `${r}%` : "off"))
-                .join(" · ")}
-            />
-            <StatRow
-              label="Monthly cap"
-              value={
-                place.monthly_promo_cap == null
-                  ? "No cap"
-                  : `MX$${place.monthly_promo_cap.toLocaleString("en-US")}`
-              }
-            />
-          </div>
-          <Meter value={V / 10} className="mt-4" />
-          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-            Same 1–10 the Place tab shows: plan floor + discount generosity +
-            ticket cap. Edit it on the Promos tab — buzz follows.
-          </p>
-        </SectionCard>
+        <p className="text-muted-foreground mt-4 font-mono text-xs">
+          buzz = (visibility + importance) ÷ distance decay
+        </p>
 
-        {/* ── Importance — the consumer quality prior ───────────────── */}
-        <SectionCard
-          icon={<Star className="h-4.5 w-4.5" />}
-          tint="amber"
-          title={`Importance · ${fmt(I)}/10`}
-          subtitle="How much the place matters to consumers — so the engines never push weak places."
-        >
-          <div className="mt-4 flex flex-col gap-2.5">
-            <StatRow
-              label="Google rating"
-              value={
-                place.google_stars_overall != null
-                  ? `${fmt(place.google_stars_overall)} ★`
-                  : "No rating yet"
-              }
-            />
-            <StatRow
-              label="Google reviews"
-              value={
-                place.google_review_count != null
-                  ? place.google_review_count.toLocaleString("en-US")
-                  : "—"
-              }
-            />
-            <StatRow
-              label="Instagram followers"
-              value={
-                place.instagram_followers_count != null
-                  ? place.instagram_followers_count.toLocaleString("en-US")
-                  : "—"
-              }
-            />
-          </div>
-          <Meter value={I / 10} className="mt-4" />
-          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-            Draft prior: stars carry up to 6 pts, review volume up to 3
-            (logarithmic — 5,000 reviews maxes it), social proof up to 1.
-          </p>
-        </SectionCard>
+        <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
+          <Tile label="Visibility" value={`${fmt(V, 0)}/10`} hint="Promos boost" />
+          <Tile label="Importance" value={`${fmt(I)}/10`} hint="Google quality" />
+          <Tile
+            label="Decay"
+            value={`÷${fmt(decay(km, BASE_D0), 2)}`}
+            hint={`at ${fmt(km)} km`}
+          />
+        </div>
 
-        {/* ── Proximity — the divisor ───────────────────────────────── */}
-        <SectionCard
-          icon={<MapPin className="h-4.5 w-4.5" />}
-          tint="sky"
-          title="Proximity decay"
-          subtitle="Closer places are better — potency divides by distance."
-        >
-          <DecayCurve V={V} I={I} km={km} />
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {[0.5, 2, 5].map((d) => (
-              <div key={d} className="bg-muted/60 border-border/60 rounded-xl border px-3 py-2 text-center">
-                <p className="text-muted-foreground text-[11px]">at {d} km</p>
-                <p className="text-sm font-semibold">{fmt(buzzAt(d))}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-            decay(d) = 1 + d/1.5 km — worth half at 1.5 km, a third at 3 km.
-            {place.lat != null && place.lng != null
-              ? " Anchored at the place's stored coordinates."
-              : " This place has no coordinates yet — distance can't be scored live."}
-          </p>
-        </SectionCard>
-
-        {/* ── Engines — where buzz is spent ─────────────────────────── */}
-        <SectionCard
-          icon={<Radar className="h-4.5 w-4.5" />}
-          tint="emerald"
-          title="Engines"
-          subtitle="The three consumers of buzz, each with its own distance sensitivity."
-        >
-          <div className="mt-4 flex flex-col gap-3.5">
+        <div className="mt-6">
+          <GroupLabel>Engines</GroupLabel>
+          <div className="mt-3 flex flex-col gap-3">
             {ENGINES.map((e) => {
               const potency = buzzAt(km, e.d0);
               return (
-                <div key={e.id}>
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-sm font-semibold">{e.label}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {fmt(potency)} / {BUZZ_MAX} at {fmt(km)} km
-                    </p>
-                  </div>
-                  <Meter value={potency / BUZZ_MAX} className="mt-1.5" />
-                  <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-                    {e.hint}
+                <div key={e.id} className="flex items-center gap-3">
+                  <p className="w-14 shrink-0 text-sm font-semibold">{e.label}</p>
+                  <Meter value={potency / BUZZ_MAX} className="flex-1" />
+                  <p className="text-muted-foreground w-10 shrink-0 text-right text-xs">
+                    {fmt(potency)}
                   </p>
                 </div>
               );
             })}
           </div>
-        </SectionCard>
-      </div>
+          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+            Same buzz, three appetites for distance — Swipe is the most local,
+            Memo cares the least.
+          </p>
+        </div>
+      </SectionCard>
 
-      {/* ── Semantic profile — the RAG side ─────────────────────────── */}
+      {/* ── Semantic — meaning retrieves, buzz ranks ────────────────── */}
       <SectionCard
         icon={<Braces className="h-4.5 w-4.5" />}
         tint="indigo"
-        title="Semantic profile"
-        subtitle="Buzz ranks; meaning retrieves. The place must be queryable mathematically — its description embedded as a vector, plus hard metadata filters."
-        action={<DraftPill label="Mock — no vectors stored yet" />}
+        title="Semantic"
+        subtitle="The place is queried by meaning — its description embedded as a vector, filtered by metadata; buzz orders what survives."
+        action={<Pill>Mock — no vectors yet</Pill>}
       >
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div>
-            <GroupLabel>Embedding text</GroupLabel>
             {place.description ? (
-              <p className="bg-muted/60 border-border/60 mt-2 rounded-xl border px-4 py-3 text-sm leading-relaxed">
+              <p className="bg-muted/60 border-border/60 rounded-xl border px-4 py-3 text-sm leading-relaxed">
                 {place.description}
               </p>
             ) : (
-              <p className="text-muted-foreground bg-muted/60 border-border/60 mt-2 rounded-xl border px-4 py-3 text-sm italic">
+              <p className="text-muted-foreground bg-muted/60 border-border/60 rounded-xl border px-4 py-3 text-sm italic">
                 No description yet — the Enricher writes this; until then there
                 is nothing to embed.
               </p>
@@ -326,8 +188,7 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
           </div>
 
           <div>
-            <GroupLabel>Vector preview</GroupLabel>
-            <div className="bg-muted/60 border-border/60 mt-2 flex border h-16 items-end gap-px overflow-hidden rounded-xl px-3 pt-2">
+            <div className="bg-muted/60 border-border/60 flex h-16 items-end gap-px overflow-hidden rounded-xl border px-3 pt-2">
               {vector.map((v, i) => (
                 <span
                   key={i}
@@ -337,28 +198,9 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               ))}
             </div>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              48 of 1,536 dims, derived from the place id as a stand-in — the
-              real vector comes from embedding the text on the left.
+              48 of 1,536 dims, mocked from the place id — the real vector
+              comes from embedding the text on the left.
             </p>
-            <div className="mt-4">
-              <GroupLabel>Metadata filters</GroupLabel>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {meta
-                  .filter((m) => m.value)
-                  .map((m) => (
-                    <span
-                      key={m.label}
-                      className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-[11px] font-medium"
-                    >
-                      {m.label}: <span className="text-foreground">{m.value}</span>
-                    </span>
-                  ))}
-              </div>
-              <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-                A query hits meaning first (vector similarity), filters on
-                metadata, then buzz orders what survives.
-              </p>
-            </div>
           </div>
         </div>
       </SectionCard>
@@ -368,10 +210,10 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
 
 // ── Local bits ─────────────────────────────────────────────────────────
 
-function DraftPill({ label = "Draft model — frontend only" }: { label?: string }) {
+function Pill({ children }: { children: React.ReactNode }) {
   return (
     <span className="bg-muted text-muted-foreground rounded-full px-3 py-1.5 text-[11px] font-semibold">
-      {label}
+      {children}
     </span>
   );
 }
@@ -388,55 +230,22 @@ function Meter({ value, className = "" }: { value: number; className?: string })
   );
 }
 
-function StatRow({ label, value }: { label: string; value: string }) {
+function Tile({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="truncate text-sm font-medium capitalize">{value}</p>
-    </div>
-  );
-}
-
-/** buzz(d) over 0–8 km as a small inline chart, with the slider's marker. */
-function DecayCurve({ V, I, km }: { V: number; I: number; km: number }) {
-  const W = 320;
-  const H = 96;
-  const PAD = 6;
-  const maxKm = 8;
-
-  const xAt = (d: number) => PAD + (d / maxKm) * (W - PAD * 2);
-  const yAt = (d: number) =>
-    H - PAD - ((V + I) / decay(d, BASE_D0) / BUZZ_MAX) * (H - PAD * 2);
-
-  const pts: string[] = [];
-  for (let d = 0; d <= maxKm; d += 0.25) {
-    pts.push(`${pts.length === 0 ? "M" : "L"}${fmt(xAt(d))},${fmt(yAt(d))}`);
-  }
-
-  return (
-    <div className="mt-4">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        role="img"
-        aria-label="Buzz vs distance curve"
-      >
-        <line
-          x1={PAD}
-          y1={H - PAD}
-          x2={W - PAD}
-          y2={H - PAD}
-          className="stroke-border"
-          strokeWidth="1"
-        />
-        <path d={pts.join(" ")} fill="none" className="stroke-sky-500" strokeWidth="2" />
-        <circle cx={xAt(km)} cy={yAt(km)} r="4" className="fill-sky-500" />
-      </svg>
-      <div className="text-muted-foreground flex justify-between text-[10px]">
-        <span>0 km</span>
-        <span>4 km</span>
-        <span>8 km</span>
-      </div>
+    <div className="bg-muted/60 border-border/60 rounded-xl border px-3 py-2.5 text-center">
+      <p className="text-muted-foreground text-[11px]">{label}</p>
+      <p className="font-display mt-0.5 text-lg font-semibold tracking-tight">
+        {value}
+      </p>
+      <p className="text-muted-foreground text-[11px]">{hint}</p>
     </div>
   );
 }
