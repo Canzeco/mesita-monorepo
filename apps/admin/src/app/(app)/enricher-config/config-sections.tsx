@@ -13,6 +13,7 @@ import {
   Images,
   Instagram,
   Link2,
+  Lock,
   ShoppingBag,
   Sparkles,
   Star,
@@ -481,7 +482,12 @@ const PERPLEXITY_OPTIONS: { value: PerplexityPreset; label: string; hint: string
   { value: "advanced-deep-research", label: "Advanced", hint: "15 steps · priciest" },
 ];
 
-// ─── Models (text synthesis model + image vision model) ─────────────────────
+// ─── Models (text / vision / search knobs + locked embeddings) ──────────────
+// Embeddings are display-only on purpose: swapping the model changes vector
+// dims and forces a full catalog re-embed. Text / Image / Search stay knobs.
+
+const EMBEDDINGS_MODEL_LABEL = "OpenAI · text-embedding-3-small";
+const EMBEDDINGS_MODEL_DETAIL = "1536-d · place ↔ intent · locked";
 
 export function ModelsSection({
   initialSynthesisQuality,
@@ -539,9 +545,9 @@ export function ModelsSection({
     <SectionCard
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
       title="Models"
-      subtitle="Which AI models write the profile (text), analyze photos (vision), and search the web (Perplexity, for the SERP summary + link discovery)."
+      subtitle="Text and image quality, Perplexity Search preset (Agent X SERP + Agent Y link select), and the locked embeddings model used by the Recommender."
     >
-      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ModelSelect
           icon={<Brain className="text-muted-foreground h-4 w-4" />}
           label="Text model"
@@ -563,11 +569,18 @@ export function ModelsSection({
         <ModelSelect
           icon={<Globe className="text-muted-foreground h-4 w-4" />}
           label="Search model"
-          hint="Perplexity preset"
+          hint="Agent X + Y preset"
           value={search}
           onChange={setSearch}
           options={PERPLEXITY_OPTIONS}
           disabled={pending}
+        />
+        <ModelDisplay
+          icon={<Database className="text-muted-foreground h-4 w-4" />}
+          label="Embeddings model"
+          hint="place vectors"
+          value={EMBEDDINGS_MODEL_LABEL}
+          detail={EMBEDDINGS_MODEL_DETAIL}
         />
       </div>
 
@@ -614,5 +627,38 @@ function ModelSelect<T extends string>({
         ))}
       </select>
     </label>
+  );
+}
+
+/** Read-only model card — pipeline-locked values the admin must not change. */
+function ModelDisplay({
+  icon,
+  label,
+  hint,
+  value,
+  detail,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="border-border bg-muted/40 flex flex-col gap-2 rounded-xl border p-4">
+      <span className="flex items-center gap-2 text-sm font-medium">
+        {icon}
+        {label}
+        <span className="text-muted-foreground text-[11px] font-normal">· {hint}</span>
+        <Lock className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" aria-hidden />
+      </span>
+      <div
+        className="border-border bg-card text-foreground flex h-9 items-center rounded-lg border px-2 text-sm"
+        aria-readonly="true"
+      >
+        <span className="truncate">{value}</span>
+      </div>
+      <p className="text-muted-foreground text-[11px] leading-snug">{detail}</p>
+    </div>
   );
 }
