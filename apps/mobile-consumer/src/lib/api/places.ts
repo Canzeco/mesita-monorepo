@@ -102,3 +102,19 @@ export async function apiRecommendDeck(
 function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
   return { ...v, photos: v.photos.filter((p) => p.startsWith('https://')) };
 }
+
+// Per-row status from consumer-web-suggest-places / ask-memo predictions.
+export type PlacePredictionStatus =
+  | 'not_in_mesita'
+  | 'web_listed'
+  | 'verified_partner_other'
+  | 'verified_partner_self';
+
+export type PlacePrediction = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  status: PlacePredictionStatus;
+  mesitaId?: string;
+  mesitaSlug?: string;
+};
