@@ -9,6 +9,7 @@
 // PredictionRow cards — this panel intentionally diverges.
 
 import { BadgeCheck, SearchX } from "lucide-react";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/shared";
 import type { PlacePrediction } from "@/lib/api/place-search";
@@ -52,7 +53,7 @@ export function SearchResultsPanel({
         )}
 
         {searchError && (
-          <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-xs">
+          <p className={cn(ERROR_BOX_CLASS, "rounded-xl")}>
             {searchError}
           </p>
         )}
