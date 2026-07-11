@@ -26,19 +26,18 @@ Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion*
 <!-- RULES-QUICKSTART:END -->
 ## This repo — mesita-monorepo (root)
 
-> ⚠️ **CUTOVER IN PROGRESS** (temporary banner, 2026-07-11): Vercel still deploys the web apps from the frozen standalone repos. Until the deploy cutover lands and this banner is removed, do not merge product changes here — docs/tooling only.
-
 | Path | Was | What |
 | --- | --- | --- |
-| `apps/web-admin` | `mesita-web-admin` | Internal admin console (Next.js · Vercel) |
+| `apps/web-admin` | `mesita-web-admin` | Internal admin console · admin.mesita.ai (Next.js · Vercel) |
 | `apps/web-business` | `mesita-web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
 | `apps/web-consumer` | `mesita-web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
-| `apps/web-landing` | `mesita-web-landing` | Marketing landing (Next.js · Vercel) |
+| `apps/web-landing` | `mesita-web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
 | `apps/mobile-consumer` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `supabase` | `mesita-supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
 | `assets` | — | Shared brand assets (`assets/brand` = canonical marks; update here first, propagate to apps same PR) |
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; **no root pnpm workspace on purpose** — mobile needs `nodeLinker: hoisted`, web apps use the default isolated linker). `cd` into a package and use it as before; `supabase/` is Deno + the Supabase CLI (run every `supabase` command from `supabase/`).
+- **All four web apps deploy from this one monorepo** — each `apps/web-*` is its own Vercel project (canzeco team) linked to `Canzeco/mesita-monorepo` with **Root Directory `apps/web-<app>`**; a push to `main` auto-deploys only the app(s) that changed (Vercel "skip unaffected" on). One repo → four Vercel projects → four domains: web-landing→mesita.ai · web-admin→admin.mesita.ai · web-business→business.mesita.ai · web-consumer→consumer.mesita.ai. The frozen standalone `mesita-web-*` repos no longer deploy anything.
 - **CI is path-filtered per package** (`.github/workflows/{web-admin,web-business,web-consumer,web-landing,mobile-consumer,supabase}.yml` + `rules.yml`) — a PR only runs the pipelines of what it touches.
 - **Instruction files are generated:** root `CLAUDE.md` = quickstart block (markers) + this tail; package `CLAUDE.md` = package rules only (no quickstart block); every `AGENTS.md` = generated mirror — never hand-edit one. Edit `scripts/rules-quickstart.md` (quickstart) or a `CLAUDE.md` tail, then run `deno task sync-rules`; strict `--check` runs in CI (`rules.yml`).
 - **Worktrees:** `.worktreeinclude` lists the gitignored local state every new worktree needs (Claude Code copies it automatically; Cursor via `.cursor/worktrees.json`; otherwise copy those paths manually).
