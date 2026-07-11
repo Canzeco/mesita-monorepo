@@ -146,4 +146,3 @@ assertMode("16:9 landscape", 1920, 1080, "witc");
   }
 }
 
-console.log("swipe-card-layout tests passed", { WITC_THRESHOLD });
