@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   CalendarCheck,
   Check,
+  ChevronDown,
   Clock,
   Copy,
   ExternalLink,
@@ -45,9 +46,10 @@ import { unitSectionHref } from "../nav";
 import {
   REWARD_ROWS,
   SUBSCRIPTIONS,
+  computeVisibility,
   subscriptionForPlan,
-  visibilityScore,
 } from "@/lib/business/plans";
+import { useUnitPlace } from "../UnitPlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -417,6 +419,26 @@ export function PlaceSection({
     [form.photos, saved.photos],
   );
 
+  const placeDirty =
+    dirtyBasics || dirtyTime || dirtyChannels || dirtyReservations || dirtyPhotos;
+
+  const { setSectionDirty, registerDiscardHandler } = useUnitPlace();
+  useEffect(() => {
+    setSectionDirty("place", placeDirty);
+    return () => setSectionDirty("place", false);
+  }, [placeDirty, setSectionDirty]);
+
+  useEffect(() => {
+    registerDiscardHandler("place", () => {
+      const next = placeToForm(place, limits);
+      setForm(next);
+      setSaved(next);
+      setOks({});
+      setErrors({});
+    });
+    return () => registerDiscardHandler("place", null);
+  }, [registerDiscardHandler, place, limits]);
+
   const anyPending = pendingBox !== null;
 
   const set = <K extends keyof Form>(k: K, val: Form[K]) =>
@@ -502,6 +524,7 @@ export function PlaceSection({
   const [metaFor, setMetaFor] = useState<string | null>(null);
   // Owner emails (project_members role=owner) — null while loading.
   const [owners, setOwners] = useState<string[] | null>(null);
+  const [ownersError, setOwnersError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -536,9 +559,11 @@ export function PlaceSection({
     listTeam(place.id).then((r) => {
       if (!alive) return;
       if (!r.ok) {
-        setOwners([]);
+        setOwnersError(r.error);
+        setOwners(null);
         return;
       }
+      setOwnersError(null);
       setOwners(
         r.data.businesses
           .filter((m) => m.role === "owner")
@@ -584,6 +609,9 @@ export function PlaceSection({
       setSaved((prev) => mergeBoxSlice(prev, fresh, box));
       onSaved(r.data);
       setOks((o) => ({ ...o, [box]: true }));
+      window.setTimeout(() => {
+        setOks((o) => (o[box] ? { ...o, [box]: false } : o));
+      }, 2500);
     });
   };
 
@@ -594,16 +622,11 @@ export function PlaceSection({
     // (SectionCard) and gets the gutter margin + break-inside-avoid via
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
-    <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
-      {/* Box order (MESITA-399): Meta · Ownership · Promos · Basics, then
-          the editing boxes. Place status stays in the sticky chrome up top. */}
-      <MetaCard place={place} enrichStatus={enrichStatus} />
-
-      <OwnershipCard place={place} owners={owners} />
-
-      <PromosCard place={place} />
-
-      {/* Basics — editable identity. Price stays Enricher/Google-derived
+    <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
+      {/* Box order (MESITA-547): edit-first — Basics → Hours → Channels →
+          Reservations → Photos → Products/Reviews → Location → Ownership →
+          Promos → Meta (Internals, collapsed). */}
+{/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}
@@ -656,56 +679,12 @@ export function PlaceSection({
         </div>
         <SaveBar
           pending={pendingBox === "basics"}
+          dirtyLabel="Basics · unsaved"
           dirty={dirtyBasics}
           ok={!!oks.basics}
           error={errors.basics}
           onSave={() => saveBox("basics")}
         />
-      </SectionCard>
-
-      {/* Location is native — Google Places seed + Enricher synthesis. The EF
-          rejects manual address writes, so this whole box is read-only. */}
-      <SectionCard
-        icon={<MapPin className="h-4 w-4" />}
-        tint="sky"
-        title="Location"
-        subtitle="Native — address & coordinates come from Google / the Enricher."
-      >
-        {/* One boxed field per row — same filled-input language as every
-            other card. Lat/Lng share one box (a coordinate pair is one
-            fact); everything else stacks. */}
-        <div className="mt-5 grid gap-4">
-          <ReadField label="Address" auto boxed>
-            {place.address?.trim() ? place.address : "—"}
-          </ReadField>
-          <ReadField label="Zone" auto boxed>
-            {place.zone ?? "—"}
-          </ReadField>
-          <ReadField label="City" auto boxed>
-            {place.city ?? "—"}
-          </ReadField>
-          <ReadField label="Lat / Lng" auto boxed>
-            <span className="font-mono text-[13px] tabular-nums">
-              {place.lat == null || place.lng == null
-                ? "—"
-                : `${place.lat}, ${place.lng}`}
-            </span>
-          </ReadField>
-          <ReadField label="Timezone" auto boxed>
-            {place.timezone?.trim() ? place.timezone : "—"}
-          </ReadField>
-        </div>
-        {place.lat != null && place.lng != null ? (
-          <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
-            <iframe
-              src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
-              title={`Map of ${place.name}`}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="block h-[160px] w-full border-0"
-            />
-          </div>
-        ) : null}
       </SectionCard>
 
       <SectionCard
@@ -798,6 +777,7 @@ export function PlaceSection({
         </div>
         <SaveBar
           pending={pendingBox === "time"}
+          dirtyLabel="Hours · unsaved"
           dirty={dirtyTime}
           ok={!!oks.time}
           error={errors.time}
@@ -893,6 +873,7 @@ export function PlaceSection({
         </div>
         <SaveBar
           pending={pendingBox === "channels"}
+          dirtyLabel="Channels · unsaved"
           dirty={dirtyChannels}
           ok={!!oks.channels}
           error={errors.channels}
@@ -970,6 +951,7 @@ export function PlaceSection({
         </div>
         <SaveBar
           pending={pendingBox === "reservations"}
+          dirtyLabel="Reservations · unsaved"
           dirty={dirtyReservations}
           ok={!!oks.reservations}
           error={errors.reservations}
@@ -1001,6 +983,7 @@ export function PlaceSection({
         />
         <SaveBar
           pending={pendingBox === "photos"}
+          dirtyLabel="Photos · unsaved"
           dirty={dirtyPhotos}
           ok={!!oks.photos}
           error={errors.photos}
@@ -1009,6 +992,57 @@ export function PlaceSection({
       </SectionCard>
 
       {children}
+
+      {/* Location is native — Google Places seed + Enricher synthesis. The EF
+          rejects manual address writes, so this whole box is read-only. */}
+      <SectionCard
+        icon={<MapPin className="h-4 w-4" />}
+        tint="sky"
+        title="Location"
+        subtitle="Native — address & coordinates come from Google / the Enricher."
+      >
+        {/* One boxed field per row — same filled-input language as every
+            other card. Lat/Lng share one box (a coordinate pair is one
+            fact); everything else stacks. */}
+        <div className="mt-5 grid gap-4">
+          <ReadField label="Address" auto boxed>
+            {place.address?.trim() ? place.address : "—"}
+          </ReadField>
+          <ReadField label="Zone" auto boxed>
+            {place.zone ?? "—"}
+          </ReadField>
+          <ReadField label="City" auto boxed>
+            {place.city ?? "—"}
+          </ReadField>
+          <ReadField label="Lat / Lng" auto boxed>
+            <span className="font-mono text-[13px] tabular-nums">
+              {place.lat == null || place.lng == null
+                ? "—"
+                : `${place.lat}, ${place.lng}`}
+            </span>
+          </ReadField>
+          <ReadField label="Timezone" auto boxed>
+            {place.timezone?.trim() ? place.timezone : "—"}
+          </ReadField>
+        </div>
+        {place.lat != null && place.lng != null ? (
+          <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
+            <iframe
+              src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
+              title={`Map of ${place.name}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block h-[160px] w-full border-0"
+            />
+          </div>
+        ) : null}
+      </SectionCard>
+
+      <OwnershipCard place={place} owners={owners} ownersError={ownersError} />
+
+      <PromosCard place={place} />
+
+      <MetaCard place={place} enrichStatus={enrichStatus} />
 
       {metaFor !== null && (
         <MediaMetaDialog
@@ -1162,8 +1196,8 @@ function enrichmentBadge(
   }
 }
 
-// Meta — UID + audit trail + enriching status (MESITA-466). Place status
-// stays in the sticky chrome; the header Enriching badge stays too.
+// Internals — UID + audit trail + enriching status. Collapsed by default so
+// edit-first Place IA leads with Basics (MESITA-547); opens on enrich failure.
 function MetaCard({
   place,
   enrichStatus,
@@ -1173,14 +1207,30 @@ function MetaCard({
 }) {
   const by = lastUpdatedBy(place);
   const badge = enrichmentBadge(enrichStatus);
+  const failed = enrichStatus?.stage === "failed";
   return (
-    <SectionCard
-      icon={<Fingerprint className="h-4 w-4" />}
-      tint="slate"
-      title="Meta"
-      subtitle="Row identity & audit trail."
+    <details
+      className="border-border bg-card shadow-card group rounded-2xl border"
+      open={failed || undefined}
     >
-      <div className="mt-5 flex flex-col gap-4">
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+        <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+          <Fingerprint className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-base font-semibold tracking-tight">
+            Internals
+          </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+            UID, audit trail & enriching status — collapsed by default.
+          </p>
+        </div>
+        <ChevronDown
+          className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-5 sm:px-6 sm:pb-6">
         <ReadField label="UID" boxed>
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
             <code className="min-w-0 truncate font-mono text-[11px]">
@@ -1224,21 +1274,20 @@ function MetaCard({
             {badge.text}
           </span>
         </ReadField>
-        {enrichStatus?.stage === "failed" && enrichStatus?.error ? (
+        {failed && enrichStatus?.error ? (
           <p className="text-xs leading-snug text-red-600">
             Last enrichment failed: {enrichStatus.error}
           </p>
         ) : null}
       </div>
-    </SectionCard>
+    </details>
   );
 }
 
-// Promos — read-only summary of the money levers; editing lives on the
-// Promos tab. Plan · the four rewards (low → high) · visibility as 1–10.
+// Promos — read-only summary; named visibility ladder matches Promos tab (MESITA-547).
 function PromosCard({ place }: { place: AdminPlace }) {
   const sub = SUBSCRIPTIONS.find((s) => s.id === subscriptionForPlan(place.plan));
-  const score = visibilityScore({
+  const visibility = computeVisibility({
     plan: place.plan,
     welcome_free_rate: place.welcome_free_rate,
     welcome_premium_rate: place.welcome_premium_rate,
@@ -1257,7 +1306,7 @@ function PromosCard({ place }: { place: AdminPlace }) {
           href={unitSectionHref(place.id, "promos")}
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
         >
-          Edit
+          Edit on Promos
           <ArrowRight className="h-3 w-3" />
         </Link>
       }
@@ -1281,24 +1330,8 @@ function PromosCard({ place }: { place: AdminPlace }) {
           </span>
         </ReadField>
         <ReadField label="Visibility on Mesita" boxed>
-          <span className="w-full py-2.5">
-            <span className="flex items-baseline gap-1">
-              <span className="font-display text-base leading-none font-bold tabular-nums">
-                {score}
-              </span>
-              <span className="text-muted-foreground text-xs">/ 10</span>
-            </span>
-            <span className="mt-1.5 flex gap-0.5">
-              {Array.from({ length: 10 }, (_, i) => (
-                <span
-                  key={i}
-                  className={
-                    "h-1.5 flex-1 rounded-full " +
-                    (i < score ? "bg-pink-gradient" : "bg-muted/80")
-                  }
-                />
-              ))}
-            </span>
+          <span className="font-display text-pink-gradient text-base font-semibold tracking-tight">
+            {visibility}
           </span>
         </ReadField>
       </div>
@@ -1336,9 +1369,11 @@ function PromosCard({ place }: { place: AdminPlace }) {
 function OwnershipCard({
   place,
   owners,
+  ownersError,
 }: {
   place: AdminPlace;
   owners: string[] | null;
+  ownersError: string | null;
 }) {
   const verified = place.listing_type === "partner";
   return (
@@ -1374,7 +1409,9 @@ function OwnershipCard({
           )}
         </ReadField>
         <ReadField label="Owners" boxed>
-          {owners === null ? (
+          {ownersError ? (
+            <span className="text-destructive text-xs">{ownersError}</span>
+          ) : owners === null ? (
             <span className="text-muted-foreground text-xs">Checking…</span>
           ) : owners.length === 0 ? (
             <span className="text-muted-foreground text-xs italic">
@@ -1521,9 +1558,16 @@ function PhotosEditor({
         )}
       </div>
 
-      <p className="text-muted-foreground mt-3 text-[11px] tabular-nums">
-        {photos.length}/{photosMax} photos · JPG, PNG, WEBP, AVIF · max 8 MB
-      </p>
+      {photos.length === 0 ? (
+        <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+          No photos yet — the hero drives consumer cards. Run a Contents
+          re-enrich, or upload the first image.
+        </p>
+      ) : (
+        <p className="text-muted-foreground mt-3 text-[11px] tabular-nums">
+          {photos.length}/{photosMax} photos · JPG, PNG, WEBP, AVIF · max 8 MB
+        </p>
+      )}
     </div>
   );
 }
