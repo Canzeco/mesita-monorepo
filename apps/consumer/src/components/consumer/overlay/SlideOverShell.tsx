@@ -96,7 +96,7 @@ export function SlideOverHeader({
 }) {
   const close = useSlideOverClose();
   return (
-    <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
+    <header className="bg-card z-20 flex shrink-0 items-center gap-2 px-3 py-3">
       <button
         type="button"
         onClick={close}

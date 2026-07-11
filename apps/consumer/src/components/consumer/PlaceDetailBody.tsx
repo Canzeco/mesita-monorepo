@@ -85,37 +85,41 @@ const PLACE_TABS: Array<{ key: PlaceTab; label: string }> = [
 export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
   const [tab, setTab] = useState<PlaceTab>("place");
   return (
+    // decision: Pato — white profile-summary header vs pink tab body for
+    // contrast. Summary sits on bg-card; tabs + content keep bg-background.
     // pb-4 gives the last section breathing room above whatever footer
     // (nav) the parent layout renders below the scroll area.
-    <div className="flex flex-col gap-3 px-4 pb-4">
+    <div className="flex flex-col pb-4">
       <ProfileSummary place={place} />
-      <PlaceTabBar tab={tab} onChange={setTab} />
-      {tab === "place" && (
-        <>
-          <MediaBox place={place} />
-          {/* decision: Pato — Location first, then Time stacked (not side by side) */}
-          <LocationBox place={place} />
-          <HoursBox place={place} />
-          <LinksBox place={place} />
-          <AboutBox text={place.long_description} name={place.name} />
-          <TagsBox place={place} />
-          <VerificationBox place={place} />
-          <LastUpdatedBox place={place} />
-        </>
-      )}
-      {tab === "reviews" && (
-        <>
-          <ReviewsSummaryBox place={place} />
-          <GoogleReviewsBox place={place} />
-          <MesitaReviewsBox place={place} />
-        </>
-      )}
-      {tab === "products" && <ProductsBox place={place} />}
-      {/* Reward always renders on its tab. Web listings and rate-less
-          partners get a "doesn't offer rewards" state inside RewardsBox
-          rather than an empty tab, so all three cases (web / partner-no-
-          rate / partner-with-reward) are explicit to the guest. */}
-      {tab === "rewards" && <RewardsBox place={place} />}
+      <div className="flex flex-col gap-3 px-4">
+        <PlaceTabBar tab={tab} onChange={setTab} />
+        {tab === "place" && (
+          <>
+            <MediaBox place={place} />
+            {/* decision: Pato — Location first, then Time stacked (not side by side) */}
+            <LocationBox place={place} />
+            <HoursBox place={place} />
+            <LinksBox place={place} />
+            <AboutBox text={place.long_description} name={place.name} />
+            <TagsBox place={place} />
+            <VerificationBox place={place} />
+            <LastUpdatedBox place={place} />
+          </>
+        )}
+        {tab === "reviews" && (
+          <>
+            <ReviewsSummaryBox place={place} />
+            <GoogleReviewsBox place={place} />
+            <MesitaReviewsBox place={place} />
+          </>
+        )}
+        {tab === "products" && <ProductsBox place={place} />}
+        {/* Reward always renders on its tab. Web listings and rate-less
+            partners get a "doesn't offer rewards" state inside RewardsBox
+            rather than an empty tab, so all three cases (web / partner-no-
+            rate / partner-with-reward) are explicit to the guest. */}
+        {tab === "rewards" && <RewardsBox place={place} />}
+      </div>
     </div>
   );
 }
@@ -247,7 +251,9 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   const isPartner = place.listing_type === "partner";
 
   return (
-    <section className="flex flex-col gap-3 pt-3">
+    // Full-bleed white band under the top chrome so the summary reads as
+    // the page header; pink body starts at the tab strip below.
+    <section className="border-border bg-card flex flex-col gap-3 border-b px-4 pt-3 pb-4">
       <div className="flex items-center gap-4">
         <div className="border-border h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border">
           {place.photos.length > 0 ? (
@@ -399,10 +405,11 @@ function ProfileRewardStat({ place }: { place: Place }) {
   );
 }
 
-/** Light-surface tag chip — same shape language as swipe MetaChip. */
+/** Light-surface tag chip — same shape language as swipe MetaChip.
+ *  Soft pink fill (`bg-background`) so chips read against the white summary. */
 function ProfileMetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="border-border bg-muted/50 text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11.5px] whitespace-nowrap tabular-nums">
+    <span className="border-border bg-background text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11.5px] whitespace-nowrap tabular-nums">
       {children}
     </span>
   );
