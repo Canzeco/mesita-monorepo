@@ -25,7 +25,7 @@ import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { cn, firstInitial } from "@/lib/utils";
+import { cn, firstInitial, formatRating } from "@/lib/utils";
 import { formatKm } from "./search-utils";
 
 export type AddState = "adding" | "added";
@@ -143,7 +143,7 @@ export function PredictionRow({
             {matchedPlace.google_rating != null && (
               <span className="flex items-center gap-0.5">
                 <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                {matchedPlace.google_rating.toFixed(1)}
+                {formatRating(matchedPlace.google_rating)}
               </span>
             )}
             {matchedPlace.price_level != null && (
