@@ -26,6 +26,7 @@ import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { cn, firstInitial, formatRating } from "@/lib/utils";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { formatKm } from "./search-utils";
 
 export type AddState = "adding" | "added";
@@ -54,6 +55,7 @@ export function PredictionRow({
   const added = addState === "added";
   const adding = addState === "adding";
   const photo = matchedPlace?.photos[0];
+  const priceSymbols = formatPlacePriceLevelSymbols(matchedPlace?.price_level);
 
   const category = matchedPlace
     ? resolvePlaceCategoryName({
@@ -146,9 +148,7 @@ export function PredictionRow({
                 {formatRating(matchedPlace.google_rating)}
               </span>
             )}
-            {matchedPlace.price_level != null && (
-              <span>{"$".repeat(matchedPlace.price_level)}</span>
-            )}
+            {priceSymbols && <span>{priceSymbols}</span>}
             {matchedPlace.distance_km != null && (
               <span>{formatKm(matchedPlace.distance_km)}</span>
             )}
