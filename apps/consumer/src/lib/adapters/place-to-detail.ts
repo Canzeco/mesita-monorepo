@@ -267,6 +267,8 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     timezone: str(row.timezone) ?? "",
     city: str(row.city) ?? "",
     address: str(row.address) ?? "",
+    lat: num(row.lat) ?? null,
+    lng: num(row.lng) ?? null,
     zone:
       str(row.zone) ??
       neighborhoodFromAddress(str(row.address)) ??

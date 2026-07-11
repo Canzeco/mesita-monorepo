@@ -35,6 +35,10 @@ export type PlaceDetail = {
   timezone: string;
   city: string;
   address: string;
+  // Coordinates from public.places — used for Uber / Maps deep links.
+  // Null when the place row has no geo yet (enrichment still pending).
+  lat: number | null;
+  lng: number | null;
   zone: string;
   listing_type: "partner" | "web";
   last_updated_label: string;
@@ -233,6 +237,8 @@ export const mockPlace: PlaceDetail = {
   city: "Monterrey",
   address:
     "Eje Metropolitano 10 2400, Zona Loma Larga Oriente, 66260 Monterrey, N.L.",
+  lat: 25.6515,
+  lng: -100.361,
   zone: "Loma Larga Oriente",
   listing_type: "partner",
   last_updated_label: "2 days ago",

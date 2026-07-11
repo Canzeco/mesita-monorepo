@@ -60,6 +60,7 @@ import type { Place } from "@/lib/api/places";
 
 import { cn, firstInitial } from "@/lib/utils";
 import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
+import { buildUberDropoffUrl } from "@/lib/uber-link";
 
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. The two callers (full page at /place/[id] and the
@@ -967,7 +968,10 @@ function LocationBox({ place }: { place: PlaceDetail }) {
   const mapsUrl =
     place.reviews_maps.google_maps_url ??
     `https://maps.google.com/?q=${encodeURIComponent(place.address)}`;
-  const uberUrl = `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[formatted_address]=${encodeURIComponent(place.address)}`;
+  // decision: Pato — Ask Uber must open a working ride deep link with the
+  // venue as dropoff (name + address + lat/lng when present). Legacy
+  // m.uber.com/ul/?action=setPickup often fails to prefill destination.
+  const uberUrl = buildUberDropoffUrl(place);
   return (
     <Box
       title="Location"
