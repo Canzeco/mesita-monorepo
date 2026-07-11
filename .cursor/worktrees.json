@@ -1,0 +1,15 @@
+{
+  "setup-worktree-unix": [
+    "for f in apps/admin/.env.local apps/business/.env.local apps/consumer/.env.local apps/landing/.env.local apps/mobile/.env supabase/.env supabase/.env.twilio.local; do test -f \"$ROOT_WORKTREE_PATH/$f\" && cp \"$ROOT_WORKTREE_PATH/$f\" \"$f\" || true; done",
+    "test -d \"$ROOT_WORKTREE_PATH/supabase/supabase/.temp\" && cp -R \"$ROOT_WORKTREE_PATH/supabase/supabase/.temp\" supabase/supabase/.temp || true"
+  ],
+  "setup-worktree-windows": [
+    "if exist \"%ROOT_WORKTREE_PATH%\\apps\\admin\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\admin\\.env.local\" apps\\admin\\.env.local",
+    "if exist \"%ROOT_WORKTREE_PATH%\\apps\\business\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\business\\.env.local\" apps\\business\\.env.local",
+    "if exist \"%ROOT_WORKTREE_PATH%\\apps\\consumer\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\consumer\\.env.local\" apps\\consumer\\.env.local",
+    "if exist \"%ROOT_WORKTREE_PATH%\\apps\\landing\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\landing\\.env.local\" apps\\landing\\.env.local",
+    "if exist \"%ROOT_WORKTREE_PATH%\\apps\\mobile\\.env\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\mobile\\.env\" apps\\mobile\\.env",
+    "if exist \"%ROOT_WORKTREE_PATH%\\supabase\\.env\" copy /Y \"%ROOT_WORKTREE_PATH%\\supabase\\.env\" supabase\\.env",
+    "if exist \"%ROOT_WORKTREE_PATH%\\supabase\\supabase\\.temp\" xcopy /E /I /Y \"%ROOT_WORKTREE_PATH%\\supabase\\supabase\\.temp\" supabase\\supabase\\.temp"
+  ]
+}

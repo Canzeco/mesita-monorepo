@@ -1,0 +1,49 @@
+name: rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "apps/*/CLAUDE.md"
+      - "apps/*/AGENTS.md"
+      - "supabase/CLAUDE.md"
+      - "supabase/AGENTS.md"
+      - "scripts/**"
+      - "deno.json"
+      - ".github/workflows/rules.yml"
+  pull_request:
+    paths:
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "apps/*/CLAUDE.md"
+      - "apps/*/AGENTS.md"
+      - "supabase/CLAUDE.md"
+      - "supabase/AGENTS.md"
+      - "scripts/**"
+      - "deno.json"
+      - ".github/workflows/rules.yml"
+
+concurrency:
+  group: rules-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: instruction files in sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.1
+
+      # One checkout covers the whole monorepo — the old per-repo --only
+      # self-scoping (and its "cross-repo enforcement stays manual" caveat)
+      # is gone with SWARM v5 (MESITA-456).
+      - name: Check
+        run: deno task sync-rules:check
