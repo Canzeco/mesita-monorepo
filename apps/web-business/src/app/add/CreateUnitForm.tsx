@@ -35,7 +35,7 @@ import {
   type LookupResult,
   type LookupPlace,
 } from "@/lib/api/verifications";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { CTA_BUTTON_CLASS, ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { OtpInput } from "@/components/business/OtpInput";
 import { cn, errMsg } from "@/lib/utils";
 import { placePath } from "@/lib/business-route-contract";
@@ -541,7 +541,7 @@ function VerifiedPartnerCard({
             href={`mailto:${ownerEmail}?subject=${encodeURIComponent(
               `About ${place.name} on Mesita`,
             )}`}
-            className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+            className={cn(CTA_BUTTON_CLASS, "px-4 py-2")}
           >
             <Mail className="h-4 w-4" />
             Contact owner
