@@ -29,4 +29,4 @@ Native consumer app (Expo SDK 57 · React Native · Expo Router · NativeWind) �
 - `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,reservations,me}` (mirrors web BottomNav; Rewards + Reservations are parked "coming soon", same as web MESITA-383).
 - `src/lib/` — `supabase.ts` (client) · `storage.ts` · `ef.ts` · `api/` (EF helpers, mirror `apps/web-consumer/src/lib/api/*`).
 - `src/providers/auth.tsx` — session + profile + `onboarded` predicate (`full_name && birthday && sex`, same as the web shell layout).
-- Home hub modes (Swipe · Ask AI · Social · Favorites) are tiles awaiting per-screen ports — see the Linear project **Mobile Consumer App** for the roadmap.
+- Home hub modes: **Swipe** is live (MESITA-431); Ask AI · Social · Favorites are tiles awaiting per-screen ports — see the Linear project **Mobile Consumer App**.
