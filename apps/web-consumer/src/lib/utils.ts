@@ -84,3 +84,10 @@ export function formatKm(km: number): string {
   return `${km < 10 ? km.toFixed(1) : Math.round(km).toString()} km`;
 }
 
+/** Compact count for chips: 1.2K / 12K / 1.5M. */
+export function formatCompactCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return n.toString();
+}
+

@@ -6,7 +6,7 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { cn, formatRating } from "@/lib/utils";
+import { cn, formatCompactCount, formatRating } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
@@ -26,7 +26,7 @@ export function SwipeCardInfo({
   const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
   const ratingLabel = formatRating(place.google_rating);
   const ratingCountLabel =
-    place.google_count != null ? formatCount(place.google_count) : null;
+    place.google_count != null ? formatCompactCount(place.google_count) : null;
   // distance_km === 0 is the "couldn't calculate" placeholder — show "- km".
   const distanceLabel =
     place.distance_km == null || place.distance_km <= 0
@@ -156,15 +156,10 @@ function MetaChip({
   );
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
-  return n.toString();
-}
 
 function formatFollowers(n: number | null | undefined): string | null {
   if (n == null) return null;
-  return formatCount(n);
+  return formatCompactCount(n);
 }
 
 
