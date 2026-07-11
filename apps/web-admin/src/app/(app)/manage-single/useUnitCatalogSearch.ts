@@ -131,6 +131,8 @@ export function useUnitCatalogSearch(options: Options = {}) {
   return {
     q,
     setQ,
+    /** Debounced trimmed query — use to fan out parallel lookups (e.g. Google). */
+    debouncedQuery: dq,
     hits,
     pending: searching,
     error,
