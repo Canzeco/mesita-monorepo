@@ -21,10 +21,12 @@ Native consumer app (Expo SDK 57 · React Native · Expo Router · NativeWind) �
 - `app.config.ts` (not static `app.json`): `web.output` must stay `"single"`; `userInterfaceStyle` stays `"light"`, which requires `darkMode: 'class'` in tailwind.config.js (NativeWind throws "Cannot manually set color scheme" otherwise).
 - Auth = **phone OTP only** (`signInWithOtp` → `verifyOtp` → EF `consumer-web-signin-phone`). The guest flow was REMOVED from the product (PR #530, MESITA-395) — do not re-add it here.
 - Session storage = `LargeSecureStore` ([src/lib/storage.ts](src/lib/storage.ts)): AES in AsyncStorage, key in SecureStore (SecureStore has a ~2KB cap; a plain SecureStore adapter silently breaks sessions).
-- Env: `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (same publishable-key naming as web). Optional `EXPO_PUBLIC_GMP_KEY` for Google Maps SDK (Search). Public values only; never a service key.
+- Env: `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (same publishable-key naming as web). Optional `EXPO_PUBLIC_GMP_KEY` (Maps) + `EXPO_PUBLIC_SENTRY_DSN` (crashes). Public values only; never a service key. EAS project `@canzeco/mesita-mobile-consumer` — secrets live in EAS env, not git.
 - **No payment UI, Stripe calls, or subscribe links in this app** (Apple review posture) — Premium renders status only; subscribing happens on the web.
-- Bundle ID `com.mesita.consumer` is STAGED, not blessed — no EAS builds / store submissions until Pato confirms it and the Apple Developer account exists (both human-gated).
+- Bundle ID `com.mesita.consumer` is STAGED, not blessed — no App Store / TestFlight submit until Pato confirms Apple Developer + the ID. EAS **builds** may still run once Apple creds are linked.
 - Maps: react-native-maps with **Google provider on both platforms** (`SearchMap.native.tsx`). Web export uses the placeholder in `SearchMap.tsx`. Missing `EXPO_PUBLIC_GMP_KEY` → placeholder; suggest/rail/add still work via EFs.
+- EAS: `eas.json` profiles `development` (dev client, channel `development`) + `production` (channel `production`, autoIncrement). OTA via `expo-updates`.
+- Sentry: `@sentry/react-native` — init only when `EXPO_PUBLIC_SENTRY_DSN` is set (`src/lib/sentry.ts`).
 
 ## Structure
 - `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,reservations,me}` (mirrors web BottomNav; Rewards + Reservations are parked "coming soon", same as web MESITA-383).
