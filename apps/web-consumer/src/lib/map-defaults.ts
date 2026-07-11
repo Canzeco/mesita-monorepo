@@ -36,3 +36,7 @@ export const MAP_MINIMAL_STYLES = [
 // SVG circle path for place markers + the user location dot.
 export const MAP_CIRCLE_PATH =
   "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
+
+// Discover-map pin colours — partners vs scraped web listings.
+export const MAP_PARTNER_PIN_COLOR = "#E91E63";
+export const MAP_WEB_PIN_COLOR = "#9ca3af";

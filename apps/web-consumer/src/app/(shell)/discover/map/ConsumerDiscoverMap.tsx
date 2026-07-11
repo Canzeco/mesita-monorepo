@@ -34,17 +34,14 @@ import {
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
   MAP_CIRCLE_PATH,
+  MAP_PARTNER_PIN_COLOR,
+  MAP_WEB_PIN_COLOR,
 } from "@/lib/map-defaults";
-
-// Marker colours — the visual gate between Mesita partners and scraped web
-// listings. Close enough to the brand palette.
-const PARTNER_COLOR = "#E91E63";
-const WEB_COLOR = "#9ca3af";
 
 function placeIcon(isPartner: boolean) {
   return {
     path: MAP_CIRCLE_PATH,
-    fillColor: isPartner ? PARTNER_COLOR : WEB_COLOR,
+    fillColor: isPartner ? MAP_PARTNER_PIN_COLOR : MAP_WEB_PIN_COLOR,
     fillOpacity: 1,
     strokeColor: "#ffffff",
     strokeWeight: 2.5,
@@ -233,12 +230,12 @@ function MapView({
         </div>
         <div className="bg-card/95 text-foreground pointer-events-auto flex flex-col gap-1 rounded-2xl p-2 text-[10px] font-semibold backdrop-blur">
           <LegendDot
-            color={PARTNER_COLOR}
+            color={MAP_PARTNER_PIN_COLOR}
             icon={<Sparkles className="h-2.5 w-2.5" />}
           >
             Partner
           </LegendDot>
-          <LegendDot color={WEB_COLOR} icon={<Globe className="h-2.5 w-2.5" />}>
+          <LegendDot color={MAP_WEB_PIN_COLOR} icon={<Globe className="h-2.5 w-2.5" />}>
             Web listing
           </LegendDot>
         </div>
