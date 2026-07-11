@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { displayConsumerCode } from "@/lib/consumer-code";
 import { formatCurrency } from "@/lib/api/profile";
 import { useConsumerClass } from "@/lib/class-context";
-import { cn, firstInitial, formatCompactCount } from "@/lib/utils";
+import { cn, firstInitials, formatCompactCount } from "@/lib/utils";
 import type { RewardStats } from "@/lib/hooks/useConsumerPayTickets";
 
 // The Rewards passport — a branded coral card that carries the QR, the member
@@ -21,14 +21,6 @@ const ORIGIN_LABEL: Record<string, string> = {
   invitation: "Invite",
 };
 
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "M";
-  const first = firstInitial(parts[0] ?? "", "");
-  const last =
-    parts.length > 1 ? firstInitial(parts[parts.length - 1] ?? "", "") : "";
-  return (first + last) || "M";
-}
 
 
 function Stat({ value, label }: { value: string; label: string }) {
@@ -135,7 +127,7 @@ export function MyQrCard({
           the class door. */}
       <div className="mt-4 flex items-center gap-3 border-t border-white/22 pt-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/18 text-sm font-extrabold ring-2 ring-white/30">
-          {initialsOf(displayName)}
+          {firstInitials(displayName)}
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-extrabold tracking-tight">
