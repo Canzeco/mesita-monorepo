@@ -7,7 +7,6 @@ import type { PlaceFormState, SetPlaceForm } from "../place-form-types";
 
 type SecondaryChannelKey =
   | "facebook_url"
-  | "tiktok_url"
   | "opentable_url"
   | "uber_eats_url"
   | "didi_food_url";
@@ -25,7 +24,6 @@ export function PlaceChannelsModule({
     Record<SecondaryChannelKey, boolean>
   >({
     facebook_url: false,
-    tiktok_url: false,
     opentable_url: false,
     uber_eats_url: false,
     didi_food_url: false,
@@ -33,7 +31,6 @@ export function PlaceChannelsModule({
 
   const hasOptionalValues =
     form.facebook_url.trim() !== "" ||
-    form.tiktok_url.trim() !== "" ||
     form.opentable_url.trim() !== "" ||
     form.uber_eats_url.trim() !== "" ||
     form.didi_food_url.trim() !== "";
@@ -52,11 +49,6 @@ export function PlaceChannelsModule({
       key: "facebook_url",
       label: "Facebook",
       placeholder: "https://facebook.com/yourplace",
-    },
-    {
-      key: "tiktok_url",
-      label: "TikTok",
-      placeholder: "https://tiktok.com/@yourplace",
     },
     {
       key: "opentable_url",

@@ -16,7 +16,6 @@ export type PlaceFormState = {
   website_url: string;
   instagram_url: string;
   facebook_url: string;
-  tiktok_url: string;
   threads_url: string;
   reddit_url: string;
   opentable_url: string;
