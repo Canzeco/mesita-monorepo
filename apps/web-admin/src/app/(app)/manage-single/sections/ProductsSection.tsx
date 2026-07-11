@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ExternalLink,
   FileText,
@@ -20,6 +20,7 @@ import {
   validateMenuUploadFile,
 } from "@/lib/place-upload-utils";
 import { updatePlace, type AdminMenuItem, type AdminPlace } from "../actions";
+import { useUnitPlace } from "../UnitPlaceContext";
 import { SaveBar, SectionCard, TextField } from "../ui";
 
 const MENU_NAME_MAX = 80;
@@ -134,6 +135,23 @@ export function ProductsSection({
       (m, i) => (m.name ?? "") !== (b[i]?.name ?? "") || (m.url ?? "") !== (b[i]?.url ?? ""),
     );
   }, [items, saved]);
+
+  const { setSectionDirty, registerDiscardHandler } = useUnitPlace();
+  useEffect(() => {
+    setSectionDirty("products", dirty);
+    return () => setSectionDirty("products", false);
+  }, [dirty, setSectionDirty]);
+
+  useEffect(() => {
+    registerDiscardHandler("products", () => {
+      const next = menusFromPlace(place);
+      setItems(next);
+      setSaved(next);
+      setOk(false);
+      setError(null);
+    });
+    return () => registerDiscardHandler("products", null);
+  }, [registerDiscardHandler, place]);
 
   const patchItem = (
     key: string,
@@ -277,6 +295,7 @@ export function ProductsSection({
       setSaved(next);
       onSaved(r.data);
       setOk(true);
+      window.setTimeout(() => setOk(false), 2500);
     });
   };
 
@@ -336,6 +355,7 @@ export function ProductsSection({
         <SaveBar
           pending={pending}
           dirty={dirty}
+          dirtyLabel="Products · unsaved"
           ok={ok}
           error={error}
           onSave={save}

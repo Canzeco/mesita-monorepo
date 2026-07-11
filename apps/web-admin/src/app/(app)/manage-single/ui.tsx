@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
@@ -334,6 +334,7 @@ export function SaveBar({
   ok,
   onSave,
   label = "Save changes",
+  dirtyLabel,
   error,
 }: {
   pending: boolean;
@@ -341,19 +342,22 @@ export function SaveBar({
   ok: boolean;
   onSave: () => void;
   label?: string;
+  /** e.g. "Basics · unsaved" — replaces generic copy when dirty. */
+  dirtyLabel?: string;
   error?: string | null;
 }) {
   const live = pending || dirty;
+
   return (
     <div className="border-border/60 mt-5 border-t pt-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs">
+        <span className="text-xs" aria-live="polite">
           {dirty && !pending ? (
             <span className="text-muted-foreground inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
-              Unsaved changes
+              {dirtyLabel ?? "Unsaved changes"}
             </span>
-          ) : ok ? (
+          ) : ok && !pending ? (
             <span className="text-muted-foreground inline-flex items-center gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> Saved
             </span>
@@ -385,6 +389,89 @@ export function SaveBar({
 }
 
 export { ErrorNote };
+
+/** Shared confirm modal — focus Escape + backdrop cancel. */
+export function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  danger,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  body: React.ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, busy, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+      <button
+        type="button"
+        aria-label="Dismiss"
+        disabled={busy}
+        className="absolute inset-0 bg-black/40"
+        onClick={() => {
+          if (!busy) onCancel();
+        }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        className="border-border bg-card relative z-10 w-full max-w-md rounded-2xl border p-5 shadow-lg"
+      >
+        <h2 id="confirm-dialog-title" className="font-display text-base font-semibold tracking-tight">
+          {title}
+        </h2>
+        <div className="text-muted-foreground mt-2 text-sm leading-relaxed">{body}</div>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            className="border-border hover:bg-muted inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition disabled:opacity-50"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className={
+              "inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition disabled:opacity-50 " +
+              (danger
+                ? "bg-destructive text-destructive-foreground hover:opacity-90"
+                : "bg-foreground text-background hover:opacity-90")
+            }
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Spinner({ label }: { label?: string }) {
   return (

@@ -24,7 +24,7 @@ import {
   type SubscriptionId,
 } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
-import { ErrorNote, GroupLabel, SectionCard, TINT_CHIP } from "../ui";
+import { ConfirmDialog, ErrorNote, GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 
 const RATE_CHOICES = [10, 20, 50, 70] as const;
 const CAP_CHOICES = [200, 500, 1000, 2000] as const;
@@ -45,6 +45,7 @@ export function PromosSection({
   const [v, setV] = useState(place);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [planConfirm, setPlanConfirm] = useState<SubscriptionId | null>(null);
   const sub = subscriptionForPlan(v.plan);
   const isFree = sub === "free";
 
@@ -68,6 +69,20 @@ export function PromosSection({
     });
   };
 
+  const pendingPlan = planConfirm
+    ? SUBSCRIPTIONS.find((s) => s.id === planConfirm)
+    : null;
+  const pendingVisibility = planConfirm
+    ? computeVisibility({
+        ...dbStateForSubscription(planConfirm),
+        welcome_free_rate: planConfirm === "free" ? null : v.welcome_free_rate,
+        welcome_premium_rate: planConfirm === "free" ? null : v.welcome_premium_rate,
+        free_rate: planConfirm === "free" ? null : v.free_rate,
+        premium_rate: planConfirm === "free" ? null : v.premium_rate,
+        monthly_promo_cap: v.monthly_promo_cap,
+      })
+    : null;
+
   return (
     <div className="flex flex-col gap-5">
       {/* Visibility is the product signal — plan + discounts + cap all move the needle. */}
@@ -84,9 +99,12 @@ export function PromosSection({
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
         title="Promos"
-        subtitle="Subscription plan, discount rates per user tier & visit, and the ticket cap. Discount-only — the place never holds money. A better plan and stronger promos boost this place's visibility on Mesita."
+        subtitle="Subscription plan, discount rates per user tier & visit, and the ticket discount cap. Discount-only — the place never holds money. Rates save immediately; plan changes ask first."
         action={pending ? <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" /> : null}
       >
+        <p className="text-muted-foreground mt-4 text-xs">
+          Saves immediately on rate &amp; cap clicks · plan change requires confirm.
+        </p>
         <RewardsExplainer place={v} />
 
         <div className="mt-6">
@@ -106,7 +124,7 @@ export function PromosSection({
               featured={!!s.featured}
               isCurrent={sub === s.id}
               pending={pending}
-              onPick={() => persist(dbStateForSubscription(s.id))}
+              onPick={() => setPlanConfirm(s.id)}
             />
           ))}
         </div>
@@ -152,7 +170,7 @@ export function PromosSection({
         </div>
 
         <div className="mt-8">
-          <GroupLabel>Ticket cap {v.currency ? `(${v.currency})` : ""}</GroupLabel>
+          <GroupLabel>Ticket discount cap {v.currency ? `(${v.currency})` : ""}</GroupLabel>
         </div>
         <div className="border-border/60 bg-muted/30 mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
           <p className="text-muted-foreground text-xs">Max discount applied to a single ticket.</p>
@@ -182,6 +200,32 @@ export function PromosSection({
 
         {error && <ErrorNote message={error} />}
       </SectionCard>
+
+      <ConfirmDialog
+        open={planConfirm != null}
+        title={`Set plan to ${pendingPlan?.label ?? ""}?`}
+        body={
+          <div className="space-y-2">
+            <p>
+              Visibility will become{" "}
+              <span className="text-foreground font-semibold">{pendingVisibility}</span>
+              {pendingPlan ? ` (${pendingPlan.price} ${pendingPlan.cadence})` : ""}.
+            </p>
+            <p>
+              Admin sets Mesita plan flags only — does not charge Stripe.
+            </p>
+          </div>
+        }
+        confirmLabel="Set plan"
+        busy={pending}
+        onConfirm={() => {
+          if (!planConfirm) return;
+          const id = planConfirm;
+          setPlanConfirm(null);
+          persist(dbStateForSubscription(id));
+        }}
+        onCancel={() => setPlanConfirm(null)}
+      />
     </div>
   );
 }
