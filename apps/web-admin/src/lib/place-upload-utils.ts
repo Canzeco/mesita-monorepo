@@ -93,6 +93,57 @@ export function isDriveMenuUrl(url: string): boolean {
   }
 }
 
+export type MenuFileKind = "image" | "pdf" | "drive";
+
+const IMAGE_EXT = /\.(jpe?g|png|webp|avif|gif)(\?|#|$)/i;
+const PDF_EXT = /\.pdf(\?|#|$)/i;
+
+/** Classify a menu URL for compact preview / viewer routing. */
+export function detectMenuFileKind(url: string): MenuFileKind {
+  const trimmed = url.trim();
+  if (!trimmed) return "pdf";
+  if (isDriveMenuUrl(trimmed)) return "drive";
+  if (IMAGE_EXT.test(trimmed) || /\/menu-images\//i.test(trimmed)) return "image";
+  if (PDF_EXT.test(trimmed) || /\/menu-pdfs\//i.test(trimmed)) return "pdf";
+  return "pdf";
+}
+
+/** Convert a Drive/Docs share link into an embeddable /preview URL when possible. */
+export function drivePreviewUrl(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed || !isDriveMenuUrl(trimmed)) return null;
+  try {
+    const parsed = new URL(
+      /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
+    );
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname;
+
+    const fileMatch = path.match(/\/file\/d\/([^/]+)/);
+    if (fileMatch?.[1]) {
+      return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+    }
+
+    const id = parsed.searchParams.get("id");
+    if (id) {
+      return `https://drive.google.com/file/d/${id}/preview`;
+    }
+
+    if (host.includes("docs.google.com")) {
+      const docMatch = path.match(
+        /\/(document|spreadsheets|presentation)\/d\/([^/]+)/,
+      );
+      if (docMatch?.[1] && docMatch[2]) {
+        return `https://docs.google.com/${docMatch[1]}/d/${docMatch[2]}/preview`;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** Storage object path for a business/admin gallery upload. */
 export function placeImageObjectPath(placeId: string, file: File): string {
   const ext = extForFile(file);

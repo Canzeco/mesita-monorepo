@@ -10,10 +10,69 @@ import type { PlaceFormState, SetPlaceForm } from "./place-form-types";
 import {
   ALLOWED_MENU_ACCEPT,
   bucketForMenuFile,
+  detectMenuFileKind,
+  drivePreviewUrl,
   extForMenuFile,
   isDriveMenuUrl,
   validateMenuUploadFile,
 } from "./place-upload-utils";
+
+function normalizeHttpsUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (/^[a-z]+:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+/** Compact thumbnail / embed for the uploaded or shared menu file. */
+function MenuFilePreview({ url }: { url: string }) {
+  const kind = detectMenuFileKind(url);
+  const src = normalizeHttpsUrl(url);
+
+  if (kind === "image") {
+    return (
+      <div className="border-border/60 bg-background overflow-hidden rounded-lg border">
+        {/* eslint-disable-next-line @next/next/no-img-element -- remote Storage URL; sizes unknown */}
+        <img
+          src={src}
+          alt="Menu preview"
+          className="mx-auto max-h-48 w-full object-contain p-2"
+        />
+      </div>
+    );
+  }
+
+  if (kind === "drive") {
+    const preview = drivePreviewUrl(src);
+    if (!preview) {
+      return (
+        <p className="text-muted-foreground text-[11px]">
+          Preview unavailable for this Drive link — open it to view.
+        </p>
+      );
+    }
+    return (
+      <div className="border-border/60 bg-background overflow-hidden rounded-lg border">
+        <iframe
+          title="Drive menu preview"
+          src={preview}
+          className="bg-background h-52 w-full border-0"
+          allow="autoplay"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-border/60 bg-background overflow-hidden rounded-lg border">
+      <iframe
+        title="PDF menu preview"
+        src={src}
+        className="h-52 w-full border-0 bg-white"
+      />
+    </div>
+  );
+}
 
 export function PlaceMenuFields({
   projectId,
@@ -34,8 +93,8 @@ export function PlaceMenuFields({
     set("menu_links", [{ ...link, ...patch }]);
   };
 
-  const hasUploadedFile =
-    link.url.trim() !== "" && !isDriveMenuUrl(link.url);
+  const hasUrl = link.url.trim() !== "";
+  const hasUploadedFile = hasUrl && !isDriveMenuUrl(link.url);
 
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -141,6 +200,7 @@ export function PlaceMenuFields({
           </button>
         ) : null}
       </div>
+      {hasUrl ? <MenuFilePreview url={link.url} /> : null}
     </div>
   );
 }
