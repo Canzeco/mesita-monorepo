@@ -12,8 +12,8 @@ import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useConsumerClass } from "@/lib/class-context";
-import {
 import { SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
   apiCreateMcpToken,
   apiListMcpTokens,
   apiRevokeMcpToken,
