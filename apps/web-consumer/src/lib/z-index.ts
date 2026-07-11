@@ -5,3 +5,6 @@ export const Z_BOTTOM_NAV = "z-40";
 export const Z_ROUTE_MODAL = "z-[120]";
 export const Z_LOCAL_OVERLAY = "z-[130]";
 export const Z_TOASTER = "z-[140]";
+
+// In-card overlays that share the bottom-nav numeric tier (save/skip badges).
+export const Z_IN_FRAME_OVERLAY = "z-40";

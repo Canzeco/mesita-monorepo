@@ -18,6 +18,7 @@ import { PlaceSwipeCardFace } from "@/components/consumer/PlaceSwipeCardFace";
 import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
 import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn, haversineKm } from "@/lib/utils";
+import { Z_IN_FRAME_OVERLAY } from "@/lib/z-index";
 import { useUserLocation, type Coords } from "@/lib/use-user-location";
 import { apiRecommendDeck, type Place } from "@/lib/api/places";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
@@ -550,7 +551,7 @@ function Deck({ places }: { places: Place[] }) {
           </div>
 
           {exiting === "right" && (
-            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+            <div className={cn("pointer-events-none absolute inset-0 flex items-center justify-center", Z_IN_FRAME_OVERLAY)}>
               <span className="bg-pink-gradient shadow-glow animate-in fade-in zoom-in-50 inline-flex -rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] border-white px-5 py-2.5 text-2xl font-black tracking-[0.15em] text-white uppercase duration-200 ease-out">
                 <Heart className="h-6 w-6 fill-white" />
                 Saved
@@ -558,7 +559,7 @@ function Deck({ places }: { places: Place[] }) {
             </div>
           )}
           {exiting === "left" && (
-            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+            <div className={cn("pointer-events-none absolute inset-0 flex items-center justify-center", Z_IN_FRAME_OVERLAY)}>
               <span className="border-foreground/70 bg-foreground/85 text-background animate-in fade-in zoom-in-50 inline-flex rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.15em] uppercase duration-200 ease-out">
                 <X className="h-6 w-6 stroke-[3]" />
                 Skip
