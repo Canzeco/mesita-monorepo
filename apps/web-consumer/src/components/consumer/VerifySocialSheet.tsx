@@ -10,6 +10,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
 // Premium. 1,000+ followers (and a story per visit) unlocks Premium. Extracted
@@ -28,8 +29,6 @@ export type SocialPlatform = "instagram";
 // the handle + count and sets class_key=premium / origin=instagram
 // server-side, so every surface reads the class from the profile, not a
 // device flag. Swap the constant for the bot-reported count when it lands.
-const DEMO_FOLLOWERS = 4200;
-
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
 export function VerifySocialSheet({
@@ -58,7 +57,7 @@ export function VerifySocialSheet({
     setVerifying(true);
     try {
       await apiClaimInstagram(supabase, {
-        followers: DEMO_FOLLOWERS,
+        followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: handle.trim().replace(/^@/, "").toLowerCase(),
       });
       window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
