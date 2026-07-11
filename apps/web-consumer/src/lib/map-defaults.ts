@@ -32,3 +32,7 @@ export const MAP_MINIMAL_STYLES = [
     stylers: [{ visibility: "off" }],
   },
 ] as const;
+
+// SVG circle path for place markers + the user location dot.
+export const MAP_CIRCLE_PATH =
+  "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";

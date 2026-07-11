@@ -33,6 +33,7 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
+  MAP_CIRCLE_PATH,
 } from "@/lib/map-defaults";
 
 // Marker colours — the visual gate between Mesita partners and scraped web
@@ -40,14 +41,9 @@ import {
 const PARTNER_COLOR = "#E91E63";
 const WEB_COLOR = "#9ca3af";
 
-// SVG circle path. Both place markers + the user dot use this; we just
-// swap fill colour. Path-symbols don't need google.maps.Size/Point so we
-// can declare them up-front instead of waiting for the SDK to load.
-const CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
-
 function placeIcon(isPartner: boolean) {
   return {
-    path: CIRCLE_PATH,
+    path: MAP_CIRCLE_PATH,
     fillColor: isPartner ? PARTNER_COLOR : WEB_COLOR,
     fillOpacity: 1,
     strokeColor: "#ffffff",
