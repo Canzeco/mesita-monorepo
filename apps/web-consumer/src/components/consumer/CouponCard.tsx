@@ -18,6 +18,7 @@ import type {
   InstagramCouponStatus,
   LinkedReservationSummary,
 } from "@/lib/mock/coupons-mock";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
 
 // Coupon card. Split by kind because the lifecycles + the calls to
@@ -166,7 +167,7 @@ export function CouponCard({ c }: { c: CouponItem }) {
           </div>
 
           {isInstagram && c.status === "rejected" && c.rejectReason && (
-            <p className="bg-destructive/10 text-destructive rounded-lg px-2.5 py-1.5 text-[11px] leading-snug">
+            <p className={cn(ERROR_BOX_CLASS, "rounded-lg px-2.5 py-1.5 text-[11px] leading-snug")}>
               {c.rejectReason}
             </p>
           )}
