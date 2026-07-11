@@ -1123,13 +1123,20 @@ function MetaCard({
             )}
           </span>
         </ReadField>
-        {badge.spinning ? (
-          <p className="flex items-center gap-2 rounded-xl border border-sky-200/80 bg-sky-50/80 px-3 py-2 text-xs font-medium text-sky-900">
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
-            Being enriched by an AI right now
-            {enrichStatus?.stage ? ` · ${enrichStatus.stage} stage` : "…"}
-          </p>
-        ) : enrichStatus?.stage === "failed" && enrichStatus?.error ? (
+        <ReadField label="Enriching status" boxed>
+          <span
+            className={
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold " +
+              badge.cls
+            }
+          >
+            {badge.spinning && (
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
+            )}
+            {badge.text}
+          </span>
+        </ReadField>
+        {enrichStatus?.stage === "failed" && enrichStatus?.error ? (
           <p className="text-xs leading-snug text-red-600">
             Last enrichment failed: {enrichStatus.error}
           </p>

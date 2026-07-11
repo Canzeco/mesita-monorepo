@@ -211,7 +211,7 @@ export function UnitSelectCatalog() {
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
             />
             {(pending || googleSearching || createPending) && trimmed.length >= 2 && (
-              <Loader2 className="text-muted-foreground h-5 w-5 shrink-0 animate-spin" />
+              <Loader2 className="text-primary h-5 w-5 shrink-0 animate-spin sm:h-6 sm:w-6" />
             )}
             {!pending && !googleSearching && !createPending && q.length > 0 && (
               <button
@@ -233,7 +233,15 @@ export function UnitSelectCatalog() {
       </div>
 
       <div className="px-4 pt-5 sm:px-6 lg:px-8">
-        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        <p
+          className={
+            "flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors " +
+            (pending ? "text-primary" : "text-muted-foreground")
+          }
+        >
+          {pending && (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+          )}
           Manage Single Unit · {metaLabel}
         </p>
 
