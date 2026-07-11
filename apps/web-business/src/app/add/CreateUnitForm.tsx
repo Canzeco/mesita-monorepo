@@ -284,7 +284,7 @@ export function CreateUnitForm({ signedInEmail }: { signedInEmail: string }) {
       </div>
 
       {searchError && (
-        <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm">
+        <p className={cn(ERROR_BOX_CLASS, "rounded-xl px-4 py-3 text-sm")}>
           {searchError}
         </p>
       )}
