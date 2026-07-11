@@ -26,6 +26,7 @@ import {
   MONTERREY_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
+  MAP_MINIMAL_STYLES,
 } from "@/lib/map-defaults";
 
 // Every place shows as a neutral gray dot; the one currently held in the
@@ -33,33 +34,6 @@ import {
 // is the only thing the pin colour encodes on this page.
 const DOT_COLOR = "#9ca3af"; // Gray — default resting state
 const SELECTED_COLOR = "#EF4444"; // Red — the picked/held place
-
-// Hide every Google POI so Mesita pins own the canvas; keep roads +
-// locality labels for orientation. Inline styles work because no mapId.
-const MINIMAL_STYLES = [
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  {
-    featureType: "road",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "road.local",
-    elementType: "labels",
-    stylers: [{ visibility: "off" }],
-  },
-  { featureType: "water", stylers: [{ color: "#e9f1f7" }] },
-  { featureType: "landscape", stylers: [{ color: "#f7f2ec" }] },
-  {
-    featureType: "administrative.land_parcel",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "administrative.neighborhood",
-    stylers: [{ visibility: "off" }],
-  },
-] as const;
 
 const CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
@@ -201,7 +175,7 @@ function SearchMapCanvas({
       reuseMaps
       className="absolute inset-0 h-full w-full"
       colorScheme="LIGHT"
-      styles={MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]}
+      styles={MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]}
       onTilesLoaded={onReady}
       // Bare canvas tap toggles search — open when idle, close when the
       // overlay is up. Pan/drag and marker taps don't reach here.

@@ -32,42 +32,13 @@ import {
   MONTERREY_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
+  MAP_MINIMAL_STYLES,
 } from "@/lib/map-defaults";
 
 // Marker colours — the visual gate between Mesita partners and scraped web
 // listings. Close enough to the brand palette.
 const PARTNER_COLOR = "#E91E63";
 const WEB_COLOR = "#9ca3af";
-
-// Minimalist map styling — turns off every POI Google would otherwise draw
-// (restaurants, hospitals, schools, transit stops…) so our own place pins
-// are the only things on the canvas. Roads + locality labels stay so the
-// map is still navigable. Inline styles work because we don't pass a
-// mapId; switching to a cloud-based Map Style would override these.
-const MINIMAL_STYLES = [
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  {
-    featureType: "road",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "road.local",
-    elementType: "labels",
-    stylers: [{ visibility: "off" }],
-  },
-  { featureType: "water", stylers: [{ color: "#e9f1f7" }] },
-  { featureType: "landscape", stylers: [{ color: "#f7f2ec" }] },
-  {
-    featureType: "administrative.land_parcel",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "administrative.neighborhood",
-    stylers: [{ visibility: "off" }],
-  },
-] as const;
 
 // SVG circle path. Both place markers + the user dot use this; we just
 // swap fill colour. Path-symbols don't need google.maps.Size/Point so we
@@ -222,7 +193,7 @@ function MapView({
         className="absolute inset-0 h-full w-full"
         colorScheme="LIGHT"
         styles={
-          MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
+          MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
         }
         onTilesLoaded={handleMapReady}
       >
