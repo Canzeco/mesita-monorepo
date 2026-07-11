@@ -10,6 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: 'Mesita',
     slug: 'mesita-mobile-consumer',
+    owner: 'canzeco',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
@@ -51,6 +52,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     experiments: {
       typedRoutes: true,
       reactCompiler: true,
+    },
+    extra: {
+      eas: {
+        projectId: 'e1be2458-e8f7-4626-9828-51eee49bc592',
+      },
     },
   };
 };

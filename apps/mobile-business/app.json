@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Mesita Business",
+    "slug": "mesita-mobile-business",
+    "owner": "canzeco",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "mesitabusiness",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.mesita.business",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.mesita.business",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "aa2fc707-f877-462e-b7a2-76f0d431dbc1"
+      }
+    }
+  }
+}
