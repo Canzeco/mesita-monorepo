@@ -272,7 +272,7 @@ export function SearchTab() {
             step={3}
             title="Quality filters"
             icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
-            hint="Places with many Google reviews and a high rating are almost always real, good venues. Filter out the noise — the results tell you how many each query dropped, so you never mistake a filter for an empty search."
+            hint="Places with many Google reviews and a high rating are almost always real, good places. Filter out the noise — the results tell you how many each query dropped, so you never mistake a filter for an empty search."
           />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FilterCard
