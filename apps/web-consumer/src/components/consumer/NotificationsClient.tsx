@@ -11,7 +11,9 @@ import {
 } from "@/lib/api/notifications";
 import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
 import { formatPayMx } from "@/lib/api/pay";
-import { errMsg } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import {
   GLOBAL_ACTIVITY,
   MY_ACTIVITY,
@@ -179,7 +181,7 @@ export function NotificationsClient({
       </div>
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive mt-4 rounded-xl px-3 py-2 text-sm">
+        <p className={cn(ERROR_BOX_CLASS, "mt-4 rounded-xl text-sm")}>
           {error}
         </p>
       ) : null}
