@@ -162,16 +162,17 @@ export function PromosSection({
         {error && <ErrorNote message={error} />}
       </SectionCard>
 
-      <RewardsExplainer />
+      <RewardsExplainer place={v} />
     </div>
   );
 }
 
 // ── Rewards explainer ─────────────────────────────────────────────────────
-// Static teaching box under the rate matrix: the four rewards are the cross
-// of visit type (Welcome / Returning) × guest class (Free / Premium). Two
-// mock guests make the mapping concrete — names and handles are illustrative
-// only, not real accounts.
+// Teaching box under the rate matrix: the four rewards are the cross of
+// visit type (Welcome / Returning) × guest class (Free / Premium). Two mock
+// guests make the mapping concrete and echo the place's live configured
+// rates (optimistic state, so they track clicks instantly) — names and
+// handles are illustrative only, not real accounts.
 
 const EXPLAINER_TILES: { label: string; text: string }[] = [
   {
@@ -197,7 +198,7 @@ const MOCK_GUESTS: { name: string; handle: string; premium: boolean }[] = [
   { name: "Diego Torres", handle: "diego.antojos", premium: true },
 ];
 
-function RewardsExplainer() {
+function RewardsExplainer({ place }: { place: AdminPlace }) {
   return (
     <SectionCard
       icon={<Users className="h-4 w-4" />}
@@ -224,7 +225,12 @@ function RewardsExplainer() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {MOCK_GUESTS.map((g) => (
-          <MockGuestCard key={g.handle} {...g} />
+          <MockGuestCard
+            key={g.handle}
+            {...g}
+            welcomeRate={g.premium ? place.welcome_premium_rate : place.welcome_free_rate}
+            returningRate={g.premium ? place.premium_rate : place.free_rate}
+          />
         ))}
       </div>
     </SectionCard>
@@ -235,10 +241,14 @@ function MockGuestCard({
   name,
   handle,
   premium,
+  welcomeRate,
+  returningRate,
 }: {
   name: string;
   handle: string;
   premium: boolean;
+  welcomeRate: number | null;
+  returningRate: number | null;
 }) {
   const tier = premium ? "Premium" : "Free";
   const initials = name
@@ -289,11 +299,24 @@ function MockGuestCard({
       </div>
       <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
         First visit here gets{" "}
-        <span className="text-foreground font-medium">Welcome · {tier}</span>; every
-        visit after gets{" "}
-        <span className="text-foreground font-medium">Returning · {tier}</span>.
+        <span className="text-foreground font-medium">Welcome · {tier}</span>{" "}
+        <RateNow rate={welcomeRate} />; every visit after gets{" "}
+        <span className="text-foreground font-medium">Returning · {tier}</span>{" "}
+        <RateNow rate={returningRate} />.
       </p>
     </div>
+  );
+}
+
+// Live echo of one configured rate — reads off the optimistic Promos state,
+// so it tracks the operator's clicks in the matrix above instantly.
+function RateNow({ rate }: { rate: number | null }) {
+  return typeof rate === "number" ? (
+    <span className="text-foreground font-semibold tabular-nums">
+      (currently {rate}%)
+    </span>
+  ) : (
+    <span className="italic">(currently Off)</span>
   );
 }
 
