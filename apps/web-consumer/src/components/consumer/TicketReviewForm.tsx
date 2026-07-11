@@ -2,6 +2,7 @@
 
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TEXTAREA_CLASS } from "@/lib/ui-classes";
 
 const NOTE_MIN = 50;
 
@@ -174,7 +175,7 @@ export function TicketReviewForm({
           onChange={(e) => onChange({ ...draft, comments: e.target.value })}
           placeholder="e.g. great tacos, slow drinks…"
           rows={2}
-          className="border-border bg-background text-foreground placeholder:text-muted-foreground/70 w-full resize-none rounded-xl border px-3 py-2 text-sm"
+          className={cn(TEXTAREA_CLASS, "bg-background text-foreground placeholder:text-muted-foreground/70")}
         />
       </label>
 
