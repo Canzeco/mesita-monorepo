@@ -40,3 +40,6 @@ export const MAP_CIRCLE_PATH =
 // Discover-map pin colours — partners vs scraped web listings.
 export const MAP_PARTNER_PIN_COLOR = "#E91E63";
 export const MAP_WEB_PIN_COLOR = "#9ca3af";
+
+// Search-map selection pin (held place in the rail).
+export const MAP_SELECTED_PIN_COLOR = "#EF4444";
