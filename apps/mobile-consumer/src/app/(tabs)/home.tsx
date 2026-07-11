@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FavoritesTab } from '@/components/home/FavoritesTab';
+import { SocialTab } from '@/components/home/SocialTab';
 import { AskAiTab } from '@/components/memo/AskAiTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 
-// Home hub — web parity: Swipe is the default mode; Ask AI is live
-// (MESITA-432); Social / Favorites stay placeholders until MESITA-433.
+// Home hub — Swipe · Ask AI · Social · Favorites (MESITA-431/432/433).
 type Mode = 'swipe' | 'ai' | 'social' | 'favorites';
 
 const MODES: {
@@ -57,36 +58,13 @@ export default function HomeScreen() {
             <SwipeDeck />
           ) : mode === 'ai' ? (
             <AskAiTab />
+          ) : mode === 'social' ? (
+            <SocialTab />
           ) : (
-            <ModePlaceholder mode={mode} />
+            <FavoritesTab />
           )}
         </View>
       </SafeAreaView>
-    </View>
-  );
-}
-
-function ModePlaceholder({ mode }: { mode: 'social' | 'favorites' }) {
-  const copy: Record<'social' | 'favorites', { title: string; body: string }> =
-    {
-      social: {
-        title: 'Social',
-        body: "Your circle's loves land here once the Social feed is ported.",
-      },
-      favorites: {
-        title: 'Favorites',
-        body: 'Saved places from Swipe already persist — the Favorites list UI is next.',
-      },
-    };
-  const { title, body } = copy[mode];
-  return (
-    <View className="flex-1 items-center justify-center gap-2 px-8">
-      <Text className="font-display text-2xl font-semibold text-foreground">
-        {title}
-      </Text>
-      <Text className="max-w-xs text-center text-sm text-muted-foreground">
-        {body}
-      </Text>
     </View>
   );
 }
