@@ -12,13 +12,19 @@ import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 //
 // DRAFT MODEL, frontend only:
 //
-//   buzz(d) = (visibility + importance) ÷ decay(d)      decay(d) = 1 + d/d₀
+//   score(d) = (promotional visibility + organic importance) × match ÷ decay(d)
 //
-//   visibility  1–10  what the business bought — the live Promos score.
-//   importance  1–10  consumer quality prior — Google stars weighted by
-//                     review volume + a small social-proof nudge.
-//   decay(d)          proximity app — potency halves every d₀ km; each
-//                     engine reads distance at its own sensitivity.
+//   promotional visibility  1–10   bought — the live Promos score.
+//   organic importance      1–10   earned — Google stars weighted by review
+//                                  volume + a small social-proof nudge.
+//   match                   0–1    ALWAYS semantic (RAG/LLM), never binary
+//                                  tags. Multiplies: zero relevance zeroes
+//                                  the score — money can't buy irrelevance.
+//                                  Memo's query is the question; Swipe/Map's
+//                                  query is the consumer's taste embedding.
+//   decay(d) = 1 + d/d₀            proximity app — potency halves every d₀
+//                                  km; each engine reads distance at its own
+//                                  sensitivity.
 // ════════════════════════════════════════════════════════════════════════
 
 const BUZZ_MAX = 20; // V(10) + I(10) at distance 0
@@ -66,10 +72,14 @@ function fmt(n: number, digits = 1): string {
 
 export function BuzzSection({ place }: { place: AdminPlace }) {
   const [km, setKm] = useState(1);
+  // Simulated semantic match (0–1). In production this comes from RAG — the
+  // consumer's query (Memo) or taste embedding (Swipe/Map) judged by an LLM.
+  const [match, setMatch] = useState(1);
 
   const V = visibilityScore(place);
   const I = importanceScore(place);
-  const buzzAt = (d: number, d0: number = BASE_D0) => (V + I) / decay(d, d0);
+  const buzzAt = (d: number, d0: number = BASE_D0) =>
+    ((V + I) * match) / decay(d, d0);
   const buzz = buzzAt(km);
 
   const vector = useMemo(() => mockVector(place.id, 48), [place.id]);
@@ -95,29 +105,50 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
             <Meter value={buzz / BUZZ_MAX} className="mt-3 w-56" />
           </div>
 
-          <div className="w-full max-w-sm">
-            <div className="flex items-baseline justify-between">
-              <GroupLabel>Consumer distance</GroupLabel>
-              <span className="text-sm font-semibold">{fmt(km)} km</span>
+          <div className="flex w-full max-w-sm flex-col gap-3">
+            <div>
+              <div className="flex items-baseline justify-between">
+                <GroupLabel>Semantic match</GroupLabel>
+                <span className="text-sm font-semibold">
+                  {Math.round(match * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={match}
+                onChange={(e) => setMatch(Number(e.target.value))}
+                className="accent-primary mt-2 w-full"
+                aria-label="Semantic match percentage"
+              />
             </div>
-            <input
-              type="range"
-              min={0}
-              max={8}
-              step={0.1}
-              value={km}
-              onChange={(e) => setKm(Number(e.target.value))}
-              className="accent-primary mt-2 w-full"
-              aria-label="Consumer distance in km"
-            />
+            <div>
+              <div className="flex items-baseline justify-between">
+                <GroupLabel>Consumer distance</GroupLabel>
+                <span className="text-sm font-semibold">{fmt(km)} km</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={8}
+                step={0.1}
+                value={km}
+                onChange={(e) => setKm(Number(e.target.value))}
+                className="accent-primary mt-2 w-full"
+                aria-label="Consumer distance in km"
+              />
+            </div>
           </div>
         </div>
 
         <p className="text-muted-foreground mt-4 font-mono text-xs">
-          buzz = (promotional visibility + organic importance) ÷ distance decay
+          score = (promotional visibility + organic importance) × match ÷
+          distance decay
         </p>
 
-        <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           <Tile
             label="Promotional Visibility"
             value={`${fmt(V, 0)}/10`}
@@ -127,6 +158,11 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
             label="Organic Importance"
             value={`${fmt(I)}/10`}
             hint="Google quality"
+          />
+          <Tile
+            label="Match"
+            value={`×${fmt(match, 2)}`}
+            hint="RAG · per query"
           />
           <Tile
             label="Decay"
@@ -163,7 +199,7 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
         icon={<Braces className="h-4.5 w-4.5" />}
         tint="indigo"
         title="Semantic"
-        subtitle="The place is queried by meaning — its description embedded as a vector, filtered by metadata; buzz orders what survives."
+        subtitle="Match is never binary tags — the place is queried by meaning: its profile embedded as a vector, judged by an LLM. Tags only enrich the text."
         action={<Pill>Mock — no vectors yet</Pill>}
       >
         <div className="mt-5 grid gap-5 md:grid-cols-2">
