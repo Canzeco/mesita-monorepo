@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 
 // Root of the admin subdomain. Strong routing contract:
 //
@@ -33,7 +34,7 @@ export default async function AdminRootPage({
   return (
     <EnterpriseAuthLayout
       title="Admin"
-      subtitle="Sign in with your Google account. Only allowlisted operators can perform admin actions — everyone else lands on a polite empty state."
+      subtitle="Sign in with your Google account or your phone number. Only allowlisted operators can perform admin actions — everyone else lands on a polite empty state."
       chip={
         errorMessage ? (
           <p className="bg-destructive/10 text-destructive mt-3 rounded-lg px-3 py-2 text-xs leading-relaxed">
@@ -42,7 +43,17 @@ export default async function AdminRootPage({
         ) : null
       }
     >
-      <GoogleSignInButton />
+      <div className="flex flex-col gap-4">
+        <GoogleSignInButton />
+        <div className="flex items-center gap-3">
+          <span className="bg-border h-px flex-1" />
+          <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+            or
+          </span>
+          <span className="bg-border h-px flex-1" />
+        </div>
+        <PhoneOtpForm />
+      </div>
     </EnterpriseAuthLayout>
   );
 }
