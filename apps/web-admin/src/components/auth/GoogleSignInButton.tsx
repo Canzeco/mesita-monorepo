@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { cn } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 function getAuthBaseUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -63,7 +65,7 @@ export function GoogleSignInButton() {
         Sign in with Google
       </button>
       {error && (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs leading-relaxed">
+        <p className={cn(ERROR_BOX_CLASS, "leading-relaxed")}>
           {error}
         </p>
       )}
