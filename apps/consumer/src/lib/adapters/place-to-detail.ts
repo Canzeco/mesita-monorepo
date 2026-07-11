@@ -400,7 +400,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       website_url: str(row.website_url),
       whatsapp_url: str(row.whatsapp_url),
       instagram_url: str(row.instagram_url),
-      tiktok_url: str(row.tiktok_url),
       facebook_url: str(row.facebook_url),
       x_url: str(row.x_url),
       threads_url: str(row.threads_url),

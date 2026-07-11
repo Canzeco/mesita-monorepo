@@ -51,7 +51,6 @@ export type Place = {
   photos: string[];
   website_url: string | null;
   instagram_url: string | null;
-  tiktok_url: string | null;
   facebook_url: string | null;
   whatsapp_url: string | null;
   opentable_url: string | null;

@@ -197,7 +197,6 @@ export type PlaceDetail = {
     website_url?: string;
     whatsapp_url?: string;
     instagram_url?: string;
-    tiktok_url?: string;
     facebook_url?: string;
     x_url?: string;
     threads_url?: string;
