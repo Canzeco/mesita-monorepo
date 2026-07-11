@@ -1,0 +1,48 @@
+// Frontend helper for the business-web-get-overview Edge Function.
+//
+// Wrapped in React.cache so the business layout and the active page (which
+// both need the bundle) reuse a single Edge Function round trip per render.
+// The EF decides super-admin elevation server-side from the caller's JWT
+// against public.super_admins; the client never carries a key.
+
+import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { MyPlace } from "./places";
+import { invokeEF } from "./_invoke";
+
+// The business app never renders a ticket list today — every call site
+// passes ticketsLimit = 0, so this stays as an opaque placeholder shape
+// matching the EF response. If we ever surface tickets here, replace this
+// with the full Ticket type and re-introduce the ticket helpers EF wrappers.
+type PlaceTicketStub = Record<string, unknown>;
+
+export type UnitOverview = {
+  user: { id: string; email: string | null };
+  // True when the EF resolved the caller as a super-admin (their email
+  // is in public.super_admins). Drives the Topbar banner.
+  isSuperAdmin: boolean;
+  places: MyPlace[];
+  active: { place: MyPlace; recentTickets: PlaceTicketStub[] } | null;
+};
+
+async function fetchUnitOverview(
+  client: SupabaseClient,
+  activeUnitId: string | null,
+  ticketsLimit = 20,
+): Promise<UnitOverview> {
+  return invokeEF<UnitOverview>(
+    client,
+    "business-web-get-overview",
+    {
+      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+      placeId: activeUnitId ?? undefined,
+      ticketsLimit,
+    },
+    "Couldn't load your overview.",
+  );
+}
+
+// `cache` dedupes by argument identity. Within a single server render pass,
+// calling `getUnitOverview(client, "abc")` from the layout and the page both
+// resolve to the same Promise — exactly one fetch hits the wire.
+export const getUnitOverview = cache(fetchUnitOverview);

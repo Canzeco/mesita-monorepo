@@ -1,0 +1,201 @@
+// Frontend API surface for ownership-verification Edge Functions.
+//
+// Two auto-verify methods power the /add flow:
+//
+//   ai_call         — Twilio call/SMS reads a 6-digit code to the
+//                     Google-listed phone. (Currently mock-only;
+//                     mockCode is returned when Twilio env vars are
+//                     missing.) Auto-grants ownership on correct code.
+//   ai_email        — Transactional email sends a 6-digit code to a
+//                     Firecrawl-discovered on-domain email. (Currently
+//                     mock-only; same mockCode contract.) Auto-grants
+//                     ownership on correct code.
+//
+// The third "Talk to us" option is now a direct wa.me deep-link to
+// Mesita ops — no EF round-trip, no admin queue row. See the WhatsApp
+// constant in CreateUnitForm. The legacy business-web-request-manual-review
+// EF still exists server-side for historical rows but is no longer
+// wrapped here.
+//
+// All EFs follow the <caller>-<verb>-<words> naming convention; this
+// module is a thin typed wrapper around them via invokeEF.
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { invokeEF } from "./_invoke";
+
+// ── Shared types ──────────────────────────────────────────────────────
+
+// The UI doesn't pick `video` or `postcard` anymore; those values
+// remain in the DB enum for backwards compatibility with historical
+// rows the admin queue might still surface, but the FE only emits the
+// three live methods.
+type VerificationMethod = "ai_call" | "ai_email" | "manual_contact";
+type VerificationStatus = "pending" | "approved" | "rejected";
+
+type Verification = {
+  id: string;
+  method: VerificationMethod;
+  payload: Record<string, unknown>;
+  requester_email: string;
+  status: VerificationStatus;
+  reject_reason: string | null;
+  decided_at: string | null;
+  decided_via: "auto" | "admin" | null;
+  created_at: string;
+};
+
+export type LookupPlace = {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  listing_type: "web" | "partner" | "unclaimed";
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website_url: string | null;
+  photos: string[];
+  category: string | null;
+  vibe: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+// What the UI needs to decide which auto-verify cards to render.
+// Returned by business-web-find-place for every claim-able state. The
+// "Talk to us" WhatsApp fallback is rendered unconditionally on the
+// FE and isn't surfaced here.
+export type LookupMethods = {
+  phone: { available: boolean; displayPhone: string | null };
+  email: { available: boolean; displayEmail: string | null };
+};
+
+export type LookupResult =
+  | { state: "not_in_mesita"; place: null }
+  | {
+      state: "web_listed_unclaimed";
+      place: LookupPlace;
+      methods: LookupMethods;
+    }
+  | {
+      state: "pending_by_me";
+      place: LookupPlace;
+      verification: Verification;
+      methods: LookupMethods;
+    }
+  | { state: "pending_by_other"; place: LookupPlace; methods: LookupMethods }
+  | {
+      state: "verified_partner";
+      place: LookupPlace;
+      owner: { id: string; email: string | null };
+    };
+
+export async function apiLookupPlace(
+  client: SupabaseClient,
+  googlePlaceId: string,
+): Promise<LookupResult> {
+  return invokeEF<LookupResult>(
+    client,
+    "business-web-find-place",
+    // Canonical Google Place ID key (MESITA-53 Addendum 9). Legacy `placeId`
+    // is still accepted server-side; new callers send googlePlaceId.
+    { googlePlaceId },
+    "Couldn't look up that place.",
+  );
+}
+
+// ── Phone OTP path ────────────────────────────────────────────────────
+
+export type SendPhoneOtpResult = {
+  verificationId: string;
+  // "call" or "sms" — chosen by the EF based on place country (call for
+  // LatAm landlines, SMS for US/CA). Surfaced so the UI can phrase the
+  // confirmation correctly ("We called …" vs. "We texted …").
+  channel: "call" | "sms";
+  phoneDialed: string;
+  /** True until PLACE_OTP_PLACE_CALLS=true — no real outbound call yet. */
+  mockMode?: boolean;
+  // Populated in mock mode so the operator can complete the loop without a call.
+  mockCode: string | null;
+};
+
+export async function apiBusinessSendsPhoneOtp(
+  client: SupabaseClient,
+  projectId: string,
+  requesterEmail?: string,
+): Promise<SendPhoneOtpResult> {
+  return invokeEF<SendPhoneOtpResult>(
+    client,
+    "business-web-send-phone-otp",
+    {
+      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+      placeId: projectId,
+      ...(requesterEmail?.trim()
+        ? { requesterEmail: requesterEmail.trim() }
+        : {}),
+    },
+    "Couldn't start the phone verification.",
+  );
+}
+
+export type VerifyOtpResult = {
+  projectId: string;
+  // True when the EF accepted the OTP but auto-verify was off for this
+  // method, so the row sits in the admin queue. False (default) means
+  // ownership was granted on the spot.
+  awaitingAdmin: boolean;
+};
+
+export async function apiBusinessVerifiesPhone(
+  client: SupabaseClient,
+  verificationId: string,
+  code: string,
+): Promise<VerifyOtpResult> {
+  return invokeEF<VerifyOtpResult>(
+    client,
+    "business-web-verify-phone-otp",
+    { verificationId, code },
+    "Couldn't verify that code.",
+  );
+}
+
+// ── Email OTP path ────────────────────────────────────────────────────
+
+export type SendEmailOtpResult = {
+  verificationId: string;
+  sentTo: string;
+  mockMode?: boolean;
+  mockCode: string | null;
+};
+
+export async function apiBusinessSendsEmailOtp(
+  client: SupabaseClient,
+  projectId: string,
+  requesterEmail?: string,
+): Promise<SendEmailOtpResult> {
+  return invokeEF<SendEmailOtpResult>(
+    client,
+    "business-web-send-email-otp",
+    {
+      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
+      placeId: projectId,
+      ...(requesterEmail?.trim()
+        ? { requesterEmail: requesterEmail.trim() }
+        : {}),
+    },
+    "Couldn't start the email verification.",
+  );
+}
+
+export async function apiBusinessVerifiesEmail(
+  client: SupabaseClient,
+  verificationId: string,
+  code: string,
+): Promise<VerifyOtpResult> {
+  return invokeEF<VerifyOtpResult>(
+    client,
+    "business-web-verify-email-otp",
+    { verificationId, code },
+    "Couldn't verify that code.",
+  );
+}
