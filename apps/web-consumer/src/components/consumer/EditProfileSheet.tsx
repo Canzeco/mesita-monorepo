@@ -9,7 +9,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { INPUT_CLASS, SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -181,7 +181,7 @@ function SheetField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         inputMode={inputMode}
-        className="border-border bg-background focus:border-primary w-full rounded-lg border px-3 py-2 text-sm outline-none"
+        className={cn(INPUT_CLASS, "h-auto rounded-lg py-2")}
       />
     </label>
   );
