@@ -34,6 +34,7 @@ Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion*
 | `apps/web-landing` | `mesita-web-landing` | Marketing landing (Next.js · Vercel) |
 | `apps/mobile-consumer` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `supabase` | `mesita-supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
+| `assets` | — | Shared brand assets (`assets/brand` = canonical marks; update here first, propagate to apps same PR) |
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; **no root pnpm workspace on purpose** — mobile needs `nodeLinker: hoisted`, web apps use the default isolated linker). `cd` into a package and use it as before; `supabase/` is Deno + the Supabase CLI (run every `supabase` command from `supabase/`).
 - **CI is path-filtered per package** (`.github/workflows/{web-admin,web-business,web-consumer,web-landing,mobile-consumer,supabase}.yml` + `rules.yml`) — a PR only runs the pipelines of what it touches.
