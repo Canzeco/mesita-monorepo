@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { GoogleLogo, InstagramLogo, Section } from "@/components/shared";
 import type { MyPlace } from "@/lib/api/places";
-import { cn } from "@/lib/utils";
+import { cn, formatCompactCount } from "@/lib/utils";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 export function PlaceReviewsPanel({ place }: { place: MyPlace }) {
@@ -36,7 +36,7 @@ function ReviewsSummarySection({ place }: { place: MyPlace }) {
       meta:
         place.google_review_count == null
           ? "reviews"
-          : `${formatCount(place.google_review_count)} reviews`,
+          : `${formatCompactCount(place.google_review_count)} reviews`,
       icon: "star",
       logo: <GoogleLogo size={12} />,
     },
@@ -45,7 +45,7 @@ function ReviewsSummarySection({ place }: { place: MyPlace }) {
       value:
         place.instagram_followers_count == null
           ? null
-          : formatCount(place.instagram_followers_count),
+          : formatCompactCount(place.instagram_followers_count),
       meta: "followers",
       icon: "users",
       logo: <InstagramLogo size={12} />,
@@ -338,10 +338,4 @@ function normalizeRating(v: unknown): number {
     if (Number.isFinite(num)) return Math.min(5, Math.max(1, Math.round(num)));
   }
   return 5;
-}
-
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
 }

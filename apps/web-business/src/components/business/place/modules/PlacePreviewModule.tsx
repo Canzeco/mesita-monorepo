@@ -3,22 +3,14 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import type { MyPlace } from "@/lib/api/places";
-import { cn } from "@/lib/utils";
-import {
-  formatPlaceCategoryName,
-  resolvePlaceCategoryName,
-} from "@/lib/place-category";
+import { cn, formatCompactCount, initialLetter } from "@/lib/utils";
+import { formatPlaceCategoryName } from "@/lib/place-category";
 import { PlaceModule } from "../PlaceModule";
 import { PlaceProfileProgressModule } from "./PlaceProfileProgressModule";
 import { PlaceRefreshModule } from "./PlaceRefreshModule";
 import type { PlaceFormState } from "../place-form-types";
 import { MAX_PHOTOS } from "../place-upload-utils";
-
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
+import { placeCategoryName } from "../place-utils";
 
 function shortLocationFromAddress(address: string): string {
   const parts = address
@@ -44,10 +36,7 @@ function previewMeta(place: MyPlace, v: PlaceFormState) {
   const name = v.name || place.name || "Place name";
   const category =
     (v.category && formatPlaceCategoryName(v.category)) ||
-    resolvePlaceCategoryName({
-      categoryLabel: place.category_label,
-      category: place.category,
-    }) ||
+    placeCategoryName(place) ||
     null;
   const price =
     place.price_level != null ? "$".repeat(place.price_level) : null;
@@ -57,11 +46,11 @@ function previewMeta(place: MyPlace, v: PlaceFormState) {
       : null;
   const googleCount =
     place.google_review_count != null
-      ? formatCount(place.google_review_count)
+      ? formatCompactCount(place.google_review_count)
       : null;
   const instagramFollowers =
     place.instagram_followers_count != null
-      ? formatCount(place.instagram_followers_count)
+      ? formatCompactCount(place.instagram_followers_count)
       : null;
   const zone = place.address
     ? shortLocationFromAddress(place.address)
@@ -127,7 +116,7 @@ function PreviewSwipeCard({
         ) : (
           <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/70">
             <span className="font-display text-5xl font-bold tracking-tight">
-              {meta.name.trim().slice(0, 1).toUpperCase() || "·"}
+              {initialLetter(meta.name)}
             </span>
           </div>
         )}

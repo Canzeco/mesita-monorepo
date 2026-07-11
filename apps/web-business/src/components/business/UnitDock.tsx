@@ -16,9 +16,8 @@ import {
   BarChart3,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { resolvePlaceCategoryName } from "@/lib/place-category";
-import type { MyPlace } from "@/lib/api/places";
+import { cn, initialLetter } from "@/lib/utils";
+import { placeSubtitle } from "@/components/business/place/place-utils";
 import { useUnitChrome } from "./UnitChrome";
 import {
   BUSINESS_ROUTES,
@@ -50,9 +49,9 @@ export function UnitDock() {
   // Anchored to the dock's own box so the portaled menu stays inside the
   // phone frame instead of spanning the whole viewport.
   const [menuRect, setMenuRect] = useState({ bottom: 0, left: 0, width: 0 });
-  const [mounted, setMounted] = useState(false);
+  const [lastPathname, setLastPathname] = useState(pathname);
 
-  const places = chrome?.places ?? [];
+  const places = useMemo(() => chrome?.places ?? [], [chrome?.places]);
   const projectIds = useMemo(() => places.map((v) => v.id), [places]);
   const urlUnitId = pathnameUnitId(pathname);
   const activeUnitId = resolveActiveUnitId({
@@ -77,11 +76,13 @@ export function UnitDock() {
 
   const settingsActive = pathname === BUSINESS_ROUTES.settings;
 
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
+  // Close the place picker on any route change (including browser
+  // back/forward). React's reset-during-render pattern avoids the
+  // cascading re-render that a setState-in-effect would trigger.
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
     setPickerOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!pickerOpen) return;
@@ -109,7 +110,7 @@ export function UnitDock() {
   }, [pickerOpen]);
 
   const picker =
-    pickerOpen && mounted && canOpenPlaceMenu
+    pickerOpen && canOpenPlaceMenu
       ? createPortal(
           <>
             <button
@@ -143,7 +144,7 @@ export function UnitDock() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{v.name}</p>
                     <p className="text-muted-foreground truncate text-[11px]">
-                      {placeSubtitle(v)}
+                      {placeSubtitle(v, "Tap to switch")}
                     </p>
                   </div>
                   {v.id === activePlace?.id ? (
@@ -284,7 +285,7 @@ export function UnitDock() {
 }
 
 function PlaceChip({ name }: { name: string }) {
-  const initial = name.trim().slice(0, 1).toUpperCase() || "·";
+  const initial = initialLetter(name);
   return (
     <span className="bg-pink-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white shadow-sm">
       {initial}
@@ -293,22 +294,10 @@ function PlaceChip({ name }: { name: string }) {
 }
 
 function PlaceAvatar({ name }: { name: string }) {
-  const initial = name.trim().slice(0, 1).toUpperCase() || "·";
+  const initial = initialLetter(name);
   return (
     <span className="bg-pink-gradient flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
       {initial}
     </span>
   );
-}
-
-function placeSubtitle(v: MyPlace): string {
-  const parts = [
-    v.vibe,
-    resolvePlaceCategoryName({
-      categoryLabel: v.category_label,
-      category: v.category,
-    }),
-  ].filter(Boolean) as string[];
-  if (parts.length > 0) return parts.join(" · ");
-  return v.address ?? "Tap to switch";
 }

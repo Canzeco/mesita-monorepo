@@ -8,15 +8,6 @@ export const PLACE_PLACE_NAME_MAX = 80;
 export const PLACE_DESCRIPTION_PLACEHOLDER =
   "Describe your vibe, what you serve, and what makes you worth a visit.";
 
-const PRICE_LEVEL_MAX = 4;
-
-const PRICE_TIER_LABEL: Record<number, string> = {
-  1: "Budget",
-  2: "Casual",
-  3: "Upscale",
-  4: "Fine dining",
-};
-
 export function humanizePlaceToken(value: string | null | undefined): string {
   if (!value?.trim()) return "—";
   return value
@@ -25,19 +16,27 @@ export function humanizePlaceToken(value: string | null | undefined): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function resolvePlaceCategory(place: MyPlace): string {
-  return (
-    resolvePlaceCategoryName({
-      categoryLabel: place.category_label,
-      category: place.category,
-    }) ?? "—"
-  );
+export function placeCategoryName(place: MyPlace): string | null {
+  return resolvePlaceCategoryName({
+    categoryLabel: place.category_label,
+    category: place.category,
+  });
 }
 
-export function resolvePlacePriceLabel(place: MyPlace): string {
-  if (place.price_level == null) return "—";
-  const level = Math.max(1, Math.min(PRICE_LEVEL_MAX, place.price_level));
-  return `${PRICE_TIER_LABEL[level]} · ${"$".repeat(level)}`;
+// Compact "vibe · category" subtitle for a place, falling back to its
+// address (or the caller's `emptyFallback`) when neither is present.
+export function placeSubtitle(place: MyPlace, emptyFallback = "—"): string {
+  const parts = [place.vibe, placeCategoryName(place)].filter(
+    Boolean,
+  ) as string[];
+  if (parts.length > 0) return parts.join(" · ");
+  return place.address ?? emptyFallback;
+}
+
+// Turn a snake_case slug into a spaced label (no title-casing — for that
+// use humanizePlaceToken).
+export function deslugify(slug: string): string {
+  return slug.replace(/_/g, " ");
 }
 
 export type PlaceVerificationPresentation = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, initialLetter } from "@/lib/utils";
 import type { BusinessTicket } from "@/lib/api/tickets";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -80,7 +80,7 @@ export function TicketCard({
             className="bg-muted text-foreground/70 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
             aria-hidden
           >
-            {ticketTitle(ticket).charAt(0).toUpperCase()}
+            {initialLetter(ticketTitle(ticket), "")}
           </div>
 
           <div className="min-w-0 flex-1">
