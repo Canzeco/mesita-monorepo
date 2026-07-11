@@ -1,5 +1,7 @@
 "use client";
 
+import { Z_IN_FRAME_OVERLAY } from "@/lib/z-index";
+
 // Ask AI — the Memo concierge chat. Lives as a full tab on Home (inline
 // layout); the "overlay" layout is retained for any floating-panel host.
 //
@@ -170,7 +172,7 @@ export function AskAiPanel({
       className={cn(
         "flex flex-col overflow-hidden",
         layout === "overlay"
-          ? "border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] z-40 max-h-[88%] min-h-[72%] rounded-2xl border backdrop-blur-xl"
+          ? cn("border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] max-h-[88%] min-h-[72%] rounded-2xl border backdrop-blur-xl", Z_IN_FRAME_OVERLAY)
           : "h-full min-h-0",
       )}
     >
