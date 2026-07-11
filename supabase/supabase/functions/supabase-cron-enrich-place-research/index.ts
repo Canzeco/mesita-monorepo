@@ -139,12 +139,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
   let resolvedWebsite = basics.website_url;
   let resolvedOpenTable = basics.opentable_url;
   let resolvedUberEats = basics.uber_eats_url;
-  let resolvedTripAdvisor = basics.tripadvisor_url;
-  let resolvedYelp = basics.yelp_url;
 
   const needsDiscovery = (!!FIRECRAWL_KEY || !!PERPLEXITY_KEY) &&
     (!resolvedInstagram || !resolvedFacebook || !resolvedWebsite || !resolvedOpenTable ||
-      !resolvedUberEats || !resolvedTripAdvisor || !resolvedYelp);
+      !resolvedUberEats);
 
   if (needsDiscovery) {
     // S4 gather (Firecrawl Search, per-source N) → S5 Agent Y select.
@@ -164,8 +162,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
         website: resolvedWebsite,
         opentable: resolvedOpenTable,
         uberEats: resolvedUberEats,
-        tripadvisor: resolvedTripAdvisor,
-        yelp: resolvedYelp,
       },
     });
     if (!resolvedInstagram && found.instagram_url) resolvedInstagram = found.instagram_url;
@@ -173,14 +169,11 @@ serveEnrichStage("research", async (admin, _env, row) => {
     if (!resolvedWebsite && found.website_url) resolvedWebsite = found.website_url;
     if (!resolvedOpenTable && found.opentable_url) resolvedOpenTable = found.opentable_url;
     if (!resolvedUberEats && found.uber_eats_url) resolvedUberEats = found.uber_eats_url;
-    if (!resolvedTripAdvisor && found.tripadvisor_url) resolvedTripAdvisor = found.tripadvisor_url;
-    if (!resolvedYelp && found.yelp_url) resolvedYelp = found.yelp_url;
 
     sources.discovery = {
       ok: true, via: found.via, provenance: found.provenance,
       instagram: !!resolvedInstagram, facebook: !!resolvedFacebook, website: !!resolvedWebsite,
       opentable: !!resolvedOpenTable, ubereats: !!resolvedUberEats,
-      tripadvisor: !!resolvedTripAdvisor, yelp: !!resolvedYelp,
     };
   }
 
@@ -189,8 +182,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
   place.website_url = resolvedWebsite;
   place.opentable_url = resolvedOpenTable;
   place.uber_eats_url = resolvedUberEats;
-  place.tripadvisor_url = resolvedTripAdvisor;
-  place.yelp_url = resolvedYelp;
 
   // ━━━ Contacts — phone is persisted HERE, in the research stage only ━━━
   // Phone + email come from Mesita input or the Google spine, never a web search.

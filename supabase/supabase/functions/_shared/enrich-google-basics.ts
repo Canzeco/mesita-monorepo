@@ -125,8 +125,6 @@ export type GoogleBasics = {
   resy_url: string | null;
   uber_eats_url: string | null;
   didi_food_url: string | null;
-  tripadvisor_url: string | null;
-  yelp_url: string | null;
   google_maps_url: string | null;
   email: string | null;
   google_stars_overall: number | null;
@@ -242,8 +240,6 @@ export async function fetchGoogleBasics(
       resy_url: channels.resy_url,
       uber_eats_url: channels.uber_eats_url,
       didi_food_url: channels.didi_food_url,
-      tripadvisor_url: channels.tripadvisor_url,
-      yelp_url: channels.yelp_url,
       google_maps_url: mapsUrl,
       email: null,
       google_stars_overall: details.rating ?? null,

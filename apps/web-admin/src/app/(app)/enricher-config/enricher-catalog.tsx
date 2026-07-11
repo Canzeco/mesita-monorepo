@@ -21,8 +21,8 @@ import { Collapsible, SectionCard } from "./atlas-ui";
 //   • Pipeline — Link · Contents · Analysis · Cognition · Persist · Config.
 //   • Methods — providers from Notion's "Sources & Methods". For Link nodes
 //     the order is the seed→fallback chain: Mesita Input → Google Places →
-//     Firecrawl Search & Perplexity Agent (PS3). Yelp is
-//     resolve-only (never actively discovered). TikTok retired 2026-07-11.
+//     Firecrawl Search & Perplexity Agent (PS3). TikTok / TripAdvisor / Yelp
+//     are retired product-wide (MESITA-470) — no node, no discovery.
 // Read-only — runs are tuned with the image/vision/model knobs below, not by
 // toggling nodes.
 export type Pipeline = "Link" | "Contents" | "Analysis" | "Cognition" | "Persist" | "Config";
@@ -55,8 +55,6 @@ const FC_PPLX_AGENT: Method[] = [
   "Firecrawl Search and Perplexity Agent Y",
 ];
 
-const RESOLVE_ONLY: Method[] = ["Mesita Input", "Google Places"];
-
 const ADEA_NODES: AdeaNode[] = [
   // S0 · run config + identity seed
   { name: "Atlas and Enricher Configuration", pipeline: "Config", step: "S0", methods: ["Supabase"] },
@@ -74,7 +72,6 @@ const ADEA_NODES: AdeaNode[] = [
   { name: "Facebook Page Link", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
   { name: "OpenTable Page Link", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
   { name: "UberEats Page Link", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
-  { name: "Yelp Page Link", pipeline: "Link", step: "S3", methods: RESOLVE_ONLY },
   { name: "Phone Number", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
   { name: "Email Address", pipeline: "Link", step: "S3", methods: FC_PPLX_AGENT },
   // S4 · source harvest — parallel scrapers

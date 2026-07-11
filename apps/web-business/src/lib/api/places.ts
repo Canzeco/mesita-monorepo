@@ -99,7 +99,6 @@ type Place = {
   threads_url: string | null;
   reddit_url: string | null;
   didi_food_url: string | null;
-  tripadvisor_url: string | null;
   google_maps_url: string | null;
   google_business_url: string | null;
   google_stars_overall: number | null;
@@ -244,7 +243,6 @@ export type UpdatePlaceInput = {
   threads_url?: string | null;
   reddit_url?: string | null;
   didi_food_url?: string | null;
-  tripadvisor_url?: string | null;
   google_maps_url?: string | null;
   email?: string | null;
   // Place-redesign editable surface (Business-E=YES in Notion Components).

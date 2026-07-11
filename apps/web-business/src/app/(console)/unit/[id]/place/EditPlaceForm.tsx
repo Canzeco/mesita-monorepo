@@ -153,7 +153,6 @@ function placeToFormState(place: MyPlace): PlaceFormState {
     reddit_url: place.reddit_url ?? "",
     opentable_url: place.opentable_url ?? "",
     resy_url: place.resy_url ?? "",
-    tripadvisor_url: place.tripadvisor_url ?? "",
     google_maps_url: place.google_maps_url ?? "",
     uber_eats_url: place.uber_eats_url ?? "",
     didi_food_url: place.didi_food_url ?? "",
@@ -251,7 +250,6 @@ export function EditPlaceForm({
       reddit_url: nullableUrl(v.reddit_url),
       opentable_url: nullableUrl(v.opentable_url),
       resy_url: nullableUrl(v.resy_url),
-      tripadvisor_url: nullableUrl(v.tripadvisor_url),
       // google_maps_url is native-locked (MESITA-468) — never patch.
       uber_eats_url: nullableUrl(v.uber_eats_url),
       didi_food_url: nullableUrl(v.didi_food_url),
