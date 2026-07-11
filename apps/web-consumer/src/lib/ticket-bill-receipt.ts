@@ -86,12 +86,3 @@ export function buildTicketReceipt(
   return { lines, footerNote };
 }
 
-/** @deprecated Use buildTicketReceipt */
-export function buildTicketReceiptLines(
-  p: TicketBillPayload,
-  ticketKind?: string | null,
-  opts?: { capMxn?: number | null },
-): TicketReceiptLine[] | null {
-  const view = buildTicketReceipt(p, ticketKind, opts);
-  return view?.lines ?? null;
-}
