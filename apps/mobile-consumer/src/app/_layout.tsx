@@ -15,6 +15,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AuthProvider } from '@/providers/auth';
 
@@ -49,16 +50,18 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: '#fff7f8' },
-          }}
-        />
-      </AuthProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: '#fff7f8' },
+            }}
+          />
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

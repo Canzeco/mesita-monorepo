@@ -1,74 +1,93 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Bot, Heart, Sparkles, Users } from 'lucide-react-native';
 import type { ComponentType } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
-import { useAuth } from '@/providers/auth';
+import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 
-// Home hub — the four discovery modes from the web (/home/{swipe,ai,social,
-// favorites}). Mode screens are ported one by one (see Linear project);
-// these tiles are the hub frame they'll mount into.
+// Home hub — web parity: Swipe is the default mode; other modes stay
+// placeholder tiles until MESITA-432/433 land.
+type Mode = 'swipe' | 'ai' | 'social' | 'favorites';
+
 const MODES: {
-  key: string;
+  key: Mode;
   title: string;
-  hint: string;
   Icon: ComponentType<{ color?: string; size?: number }>;
 }[] = [
-  { key: 'swipe', title: 'Swipe', hint: 'Discover places one card at a time', Icon: Sparkles },
-  { key: 'ai', title: 'Ask AI', hint: 'Don Memo knows where to go', Icon: Bot },
-  { key: 'social', title: 'Social', hint: 'What your circle is loving', Icon: Users },
-  { key: 'favorites', title: 'Favorites', hint: 'Your saved places', Icon: Heart },
+  { key: 'swipe', title: 'Swipe', Icon: Sparkles },
+  { key: 'ai', title: 'Ask AI', Icon: Bot },
+  { key: 'social', title: 'Social', Icon: Users },
+  { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
 
 export default function HomeScreen() {
-  const { profile } = useAuth();
-  const firstName = profile?.full_name?.split(' ')[0];
+  const [mode, setMode] = useState<Mode>('swipe');
 
   return (
     <View className="flex-1 bg-background">
-      <LinearGradient
-        colors={[...GRADIENTS.hero]}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
-      />
-      <SafeAreaView className="flex-1">
-        <ScrollView contentContainerClassName="px-5 pb-10">
-          <Text className="mt-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Mesita
-          </Text>
-          <Text className="mt-1 font-display text-3xl text-foreground">
-            {firstName ? `Hola, ${firstName}` : 'Hola'}
-          </Text>
-          <Text className="mt-1 text-sm text-muted-foreground">
-            ¿Dónde comemos hoy?
-          </Text>
-
-          <View className="mt-6 flex-row flex-wrap justify-between">
-            {MODES.map(({ key, title, hint, Icon }) => (
-              <View
+      <SafeAreaView className="flex-1" edges={['top']}>
+        <View className="flex-row items-center gap-1 px-3 pt-1 pb-2">
+          {MODES.map(({ key, title, Icon }) => {
+            const active = mode === key;
+            return (
+              <Pressable
                 key={key}
-                className="mb-4 w-[48%] rounded-2xl border border-border bg-card p-4"
-                style={SHADOW_ELEV}
+                onPress={() => setMode(key)}
+                className={`flex-1 flex-row items-center justify-center gap-1 rounded-full px-2 py-2 ${
+                  active ? 'bg-primary/10' : 'bg-transparent'
+                }`}
               >
-                <View className="size-9 items-center justify-center rounded-xl bg-primary/10">
-                  <Icon color="#fb2b7b" size={18} />
-                </View>
-                <Text className="mt-3 text-sm font-semibold text-foreground">{title}</Text>
-                <Text className="mt-1 text-xs leading-4 text-muted-foreground">{hint}</Text>
-              </View>
-            ))}
-          </View>
+                <Icon color={active ? '#fb2b7b' : '#775254'} size={14} />
+                <Text
+                  className={`text-[11px] font-medium ${
+                    active ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  {title}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-          <View className="mt-2 rounded-2xl border border-border bg-card p-5" style={SHADOW_ELEV}>
-            <Text className="text-sm font-semibold text-foreground">Screens landing soon</Text>
-            <Text className="mt-1 text-xs leading-5 text-muted-foreground">
-              This is the mobile bootstrap — each mode above is being ported from the web app
-              (mesita-web-consumer) screen by screen.
-            </Text>
-          </View>
-        </ScrollView>
+        <View className="min-h-0 flex-1">
+          {mode === 'swipe' ? (
+            <SwipeDeck />
+          ) : (
+            <ModePlaceholder mode={mode} />
+          )}
+        </View>
       </SafeAreaView>
+    </View>
+  );
+}
+
+function ModePlaceholder({ mode }: { mode: Exclude<Mode, 'swipe'> }) {
+  const copy: Record<Exclude<Mode, 'swipe'>, { title: string; body: string }> =
+    {
+      ai: {
+        title: 'Ask AI',
+        body: 'Don Memo is landing next — chat recommendations from the web Ask AI panel.',
+      },
+      social: {
+        title: 'Social',
+        body: 'Your circle’s loves land here once the Social feed is ported.',
+      },
+      favorites: {
+        title: 'Favorites',
+        body: 'Saved places from Swipe already persist — the Favorites list UI is next.',
+      },
+    };
+  const { title, body } = copy[mode];
+  return (
+    <View className="flex-1 items-center justify-center gap-2 px-8">
+      <Text className="font-display text-2xl font-semibold text-foreground">
+        {title}
+      </Text>
+      <Text className="max-w-xs text-center text-sm text-muted-foreground">
+        {body}
+      </Text>
     </View>
   );
 }

@@ -5,5 +5,7 @@ module.exports = function (api) {
       ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
       'nativewind/babel',
     ],
+    // Reanimated plugin must be listed last (MESITA-431 swipe deck).
+    plugins: ['react-native-reanimated/plugin'],
   };
 };
