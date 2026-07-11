@@ -41,7 +41,7 @@ import { getOpeningStatusLabel } from "@/lib/place-status";
 import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
-import { cn, errMsg, firstInitial } from "@/lib/utils";
+import { cn, errMsg, firstInitial, formatRating } from "@/lib/utils";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { FiltersComingSoon } from "@/components/consumer/FiltersComingSoon";
 import { SearchMap } from "./SearchMap";
@@ -613,7 +613,7 @@ function RailCard({
             {place.google_rating != null && (
               <span className="flex items-center gap-1">
                 <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
-                {place.google_rating.toFixed(1)}
+                {formatRating(place.google_rating)}
               </span>
             )}
             {place.price_level != null && place.price_level > 0 && (
