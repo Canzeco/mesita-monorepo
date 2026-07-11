@@ -31,3 +31,8 @@ export const PRIMARY_BUTTON_CLASS =
 export const SHEET_TITLE_CLASS =
   "font-display text-xl font-semibold tracking-tight";
 
+// Scrollable body region under a LocalSheet / BottomSheet header — the padded
+// content column every modal shares. Compose with cn() for per-sheet tweaks.
+export const SHEET_BODY_CLASS =
+  "scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5";
+

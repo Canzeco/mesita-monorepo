@@ -9,8 +9,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
-import {
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
   apiUpdateConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
@@ -77,7 +76,7 @@ export function EditProfileSheet({
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Edit profile">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
+      <div className={SHEET_BODY_CLASS}>
         <h2 className={SHEET_TITLE_CLASS}>
           Personal details
         </h2>

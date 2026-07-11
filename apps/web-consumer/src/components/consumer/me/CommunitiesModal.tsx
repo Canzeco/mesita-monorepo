@@ -4,7 +4,7 @@ import { Check, Plus, Users } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { COMMUNITIES, useCommunities } from "@/lib/communities";
 import { cn } from "@/lib/utils";
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
 // Communities picker opened from the Me page's Communities box. Membership is
 // client-only (localStorage) until the social graph ships — tap to join or
@@ -21,7 +21,7 @@ export function CommunitiesModal({
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Communities">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
+      <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-violet-600">
             <Users className="h-5 w-5" />
