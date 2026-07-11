@@ -8,6 +8,7 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { CLASSES, classBadgeClass } from "@/lib/consumer-data";
 import {
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
   useConsumerClass,
   useMockClass,
   setMockClass,
@@ -39,7 +40,7 @@ export function ClassModal({
             <Crown className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className={SHEET_TITLE_CLASS}>
               Your class
             </h2>
             <p className="text-muted-foreground text-[12px]">

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
   APIProvider,
   APILoadingStatus,
   Map,
@@ -502,7 +503,7 @@ function SetupCard({ title, body }: { title: string; body: React.ReactNode }) {
       <div className="bg-muted flex h-12 w-12 items-center justify-center rounded-2xl">
         <MapPinIcon className="text-muted-foreground h-5 w-5" />
       </div>
-      <h2 className="font-display text-xl font-semibold tracking-tight">
+      <h2 className={SHEET_TITLE_CLASS}>
         {title}
       </h2>
       <p className="text-muted-foreground max-w-sm text-sm">{body}</p>

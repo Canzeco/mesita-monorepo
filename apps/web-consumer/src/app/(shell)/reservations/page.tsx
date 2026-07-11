@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarCheck } from "lucide-react";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 
 // Reservations is parked behind a "Soon" coming-soon state for now. The
 // booking flow isn't live yet, so this surface renders ZERO tickets (no
@@ -31,7 +32,7 @@ export function ReservationsBody() {
           <span className="text-primary text-[11px] font-semibold tracking-[0.18em] uppercase">
             Coming soon
           </span>
-          <h2 className="font-display text-xl font-semibold tracking-tight">
+          <h2 className={SHEET_TITLE_CLASS}>
             Reservations
           </h2>
           <p className="text-muted-foreground max-w-xs text-sm leading-snug">

@@ -3,6 +3,7 @@
 import { UserPlus } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { GiftCardDeck } from "@/components/consumer/share/GiftCardDeck";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 
 // Share sheet opened from the Me page's Share box. Renders the full five-card
 // referral deck (friend · business · influencer · marketing agency · modeling
@@ -23,7 +24,7 @@ export function ShareModal({
             <UserPlus className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className={SHEET_TITLE_CLASS}>
               Share Mesita
             </h2>
             <p className="text-muted-foreground text-[12px]">

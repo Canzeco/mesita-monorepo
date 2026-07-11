@@ -1,6 +1,7 @@
 "use client";
 
 import {
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
   Bell,
   Contact,
   Download,
@@ -84,7 +85,7 @@ export function SettingsModal({
             <SettingsIcon className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className={SHEET_TITLE_CLASS}>
               Settings
             </h2>
             <p className="text-muted-foreground text-[12px]">

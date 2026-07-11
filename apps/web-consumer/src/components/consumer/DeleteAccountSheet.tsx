@@ -8,6 +8,7 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiDeleteConsumerAccount } from "@/lib/api/profile";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 
 // Destructive confirm sheet for Settings → Privacy & data → Delete account.
 // Type-to-confirm ("DELETE") gates the real consumer-web-delete-account call;
@@ -53,7 +54,7 @@ export function DeleteAccountSheet({
             <Trash2 className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className={SHEET_TITLE_CLASS}>
               Delete account
             </h2>
             <p className="text-muted-foreground text-[12px]">
