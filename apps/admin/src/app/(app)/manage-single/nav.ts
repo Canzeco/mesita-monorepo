@@ -1,6 +1,7 @@
 import {
   ChartLine,
   MapPin,
+  Megaphone,
   QrCode,
   Store,
   Tag,
@@ -13,6 +14,7 @@ import {
 export const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store, soon: false },
   { id: "promos", label: "Promos", Icon: Tag, soon: false },
+  { id: "buzz", label: "Buzz", Icon: Megaphone, soon: false },
   { id: "scan", label: "Scan", Icon: QrCode, soon: true },
   { id: "performance", label: "Performance", Icon: ChartLine, soon: true },
   { id: "team", label: "Team", Icon: UsersRound, soon: false },
