@@ -1,5 +1,5 @@
 import { getAtlasSettings } from "../actions";
-import { AtlasSettingsError } from "../AtlasSettingsError";
+import { AtlasSettingsError } from "@/components/AtlasSettingsError";
 import { AtlasConfigurationClient } from "../AtlasClient";
 
 export const dynamic = "force-dynamic";
