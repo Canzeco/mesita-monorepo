@@ -4,7 +4,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { invokeEF } from '@/lib/ef';
 
-export type { PlacePrediction, PlacePredictionStatus } from '@/lib/api/places';
+export {
+  apiSuggestPlaces,
+  type PlacePrediction,
+  type PlacePredictionStatus,
+} from '@/lib/api/places';
 
 export type CreatedProject = {
   ok: boolean;

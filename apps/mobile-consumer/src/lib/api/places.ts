@@ -101,6 +101,21 @@ export async function apiRecommendDeck(
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
 }
 
+export async function apiSuggestPlaces(
+  client: SupabaseClient,
+  input: string,
+  sessionToken: string,
+): Promise<PlacePrediction[]> {
+  const trimmed = input.trim();
+  if (trimmed.length < 2) return [];
+  const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
+    client,
+    'consumer-web-suggest-places',
+    { input: trimmed, sessionToken },
+  );
+  return predictions;
+}
+
 export async function apiFetchPlaceDetail(
   client: SupabaseClient,
   idOrSlug: string,
