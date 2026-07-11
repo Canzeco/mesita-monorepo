@@ -14,8 +14,8 @@ import {
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ALLOWED_MENU_ACCEPT,
+  bucketForMenuFile,
   isDriveMenuUrl,
-  MENU_IMAGES_BUCKET,
   placeMenuObjectPath,
   validateMenuUploadFile,
 } from "@/lib/place-upload-utils";
@@ -216,15 +216,16 @@ export function ProductsSection({
     try {
       const supabase = createBrowserSupabase();
       const path = placeMenuObjectPath(place.id, file);
+      const bucket = bucketForMenuFile(file);
       const { error: uploadError } = await supabase.storage
-        .from(MENU_IMAGES_BUCKET)
+        .from(bucket)
         .upload(path, file, {
           upsert: false,
           contentType: file.type,
           cacheControl: "31536000",
         });
       if (uploadError) throw new Error(uploadError.message);
-      const { data } = supabase.storage.from(MENU_IMAGES_BUCKET).getPublicUrl(path);
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
       if (!data?.publicUrl) {
         throw new Error("Upload succeeded but no public URL was returned.");
       }

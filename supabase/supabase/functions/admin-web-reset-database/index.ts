@@ -16,13 +16,13 @@
 // delegates.
 //
 // Storage: nothing is purged here. The reset intentionally preserves the
-// image buckets — `place-images` (gallery) and `menu-images` (menus /
-// catalog files). The legacy `venue-images` bucket was dropped in MESITA-555
-// (migration 20260711182500); the older `atlas` snapshot bucket was removed
-// on 2026-05-31 (migration 0062). Neither must return, so there is no bucket
-// left to clear. (The prior purge also listed via `.from("storage.objects")`,
-// which is not a valid PostgREST path and errored on every run — dropped
-// along with the dead atlas bucket.)
+// media buckets — `place-images` (gallery), `menu-images` (menu images) and
+// `menu-pdfs` (menu PDFs). The legacy `venue-images` bucket was dropped in
+// MESITA-555 (migration 20260711182500); the older `atlas` snapshot bucket was
+// removed on 2026-05-31 (migration 0062). Neither must return, so there is no
+// bucket left to clear. (The prior purge also listed via
+// `.from("storage.objects")`, which is not a valid PostgREST path and errored
+// on every run — dropped along with the dead atlas bucket.)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";

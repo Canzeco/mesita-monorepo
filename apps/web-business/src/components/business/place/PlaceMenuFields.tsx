@@ -9,9 +9,9 @@ import { PlaceFormField } from "./PlaceFormField";
 import type { PlaceFormState, SetPlaceForm } from "./place-form-types";
 import {
   ALLOWED_MENU_ACCEPT,
+  bucketForMenuFile,
   extForMenuFile,
   isDriveMenuUrl,
-  MENU_IMAGES_BUCKET,
   validateMenuUploadFile,
 } from "./place-upload-utils";
 
@@ -52,9 +52,10 @@ export function PlaceMenuFields({
     onError(null);
     try {
       const ext = extForMenuFile(file);
+      const bucket = bucketForMenuFile(file);
       const path = `business/${projectId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from(MENU_IMAGES_BUCKET)
+        .from(bucket)
         .upload(path, file, {
           upsert: false,
           contentType: file.type,
@@ -63,9 +64,7 @@ export function PlaceMenuFields({
       if (uploadError) {
         throw new Error(uploadError.message);
       }
-      const { data } = supabase.storage
-        .from(MENU_IMAGES_BUCKET)
-        .getPublicUrl(path);
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
       if (!data?.publicUrl) {
         throw new Error("Couldn't get a public URL for the upload.");
       }
