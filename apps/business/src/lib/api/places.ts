@@ -88,8 +88,6 @@ type Place = {
   // Generic products payload. Menus are carried in products.menu.
   products: Record<string, unknown> | null;
   tags: string[];
-  whatsapp_pr_urls: string[];
-  instagram_pr_urls: string[];
   website_url: string | null;
   instagram_url: string | null;
   tiktok_url: string | null;
@@ -260,8 +258,6 @@ export type UpdatePlaceInput = {
   product_catalog_name?: string | null;
   products?: { menu?: unknown[] | null } | null;
   tags?: string[];
-  whatsapp_pr_urls?: string[];
-  instagram_pr_urls?: string[];
   // Promos page section toggles — persisted so they survive reloads.
   segmentation_basic_enabled?: boolean;
   segmentation_advanced_enabled?: boolean;

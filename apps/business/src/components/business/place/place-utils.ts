@@ -4,8 +4,6 @@ import { SUBSCRIPTIONS, subscriptionForPlace } from "@/lib/business/plans";
 
 export const PLACE_DESCRIPTION_MAX = 2000;
 export const PLACE_PLACE_NAME_MAX = 80;
-export const PLACE_PR_WHATSAPP_MAX = 3;
-export const PLACE_PR_INSTAGRAM_MAX = 3;
 
 export const PLACE_DESCRIPTION_PLACEHOLDER =
   "Describe your vibe, what you serve, and what makes you worth a visit.";

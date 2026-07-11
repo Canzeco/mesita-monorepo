@@ -12,11 +12,9 @@ export type PlaceFormState = {
   tags: string[];
   phone: string;
   whatsapp_url: string;
-  whatsapp_pr_urls: string[];
   email: string;
   website_url: string;
   instagram_url: string;
-  instagram_pr_urls: string[];
   facebook_url: string;
   tiktok_url: string;
   threads_url: string;

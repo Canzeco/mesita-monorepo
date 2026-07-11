@@ -16,8 +16,6 @@ import {
   PLACE_DESCRIPTION_MAX,
   PLACE_HOUR_DAYS,
   PLACE_PLACE_NAME_MAX,
-  PLACE_PR_WHATSAPP_MAX,
-  PLACE_PR_INSTAGRAM_MAX,
   PlaceBasicsModule,
   PlaceChannelsModule,
   PlaceMediaModule,
@@ -147,11 +145,9 @@ function placeToFormState(place: MyPlace): PlaceFormState {
     tags: place.tags ?? [],
     phone: place.phone ?? "",
     whatsapp_url: place.whatsapp_url ?? "",
-    whatsapp_pr_urls: (place.whatsapp_pr_urls ?? []).slice(0, PLACE_PR_WHATSAPP_MAX),
     email: place.email ?? "",
     website_url: place.website_url ?? "",
     instagram_url: place.instagram_url ?? "",
-    instagram_pr_urls: (place.instagram_pr_urls ?? []).slice(0, PLACE_PR_INSTAGRAM_MAX),
     facebook_url: place.facebook_url ?? "",
     tiktok_url: place.tiktok_url ?? "",
     threads_url: place.threads_url ?? "",
@@ -248,17 +244,9 @@ export function EditPlaceForm({
         .slice(0, TAG_MAX_COUNT),
       phone: nullable(v.phone),
       whatsapp_url: nullableUrl(v.whatsapp_url),
-      whatsapp_pr_urls: v.whatsapp_pr_urls
-        .map(nullableUrl)
-        .filter((u): u is string => u !== null)
-        .slice(0, PLACE_PR_WHATSAPP_MAX),
       email: v.email.trim() === "" ? null : v.email.trim(),
       website_url: nullableUrl(v.website_url),
       instagram_url: nullableUrl(v.instagram_url),
-      instagram_pr_urls: v.instagram_pr_urls
-        .map(nullableUrl)
-        .filter((u): u is string => u !== null)
-        .slice(0, PLACE_PR_INSTAGRAM_MAX),
       facebook_url: nullableUrl(v.facebook_url),
       tiktok_url: nullableUrl(v.tiktok_url),
       threads_url: nullableUrl(v.threads_url),

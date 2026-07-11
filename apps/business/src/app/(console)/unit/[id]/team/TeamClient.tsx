@@ -68,14 +68,10 @@ export function TeamClient({
   projectId,
   currentUserId,
   initialSnapshot,
-  initialWhatsappPrUrl,
-  initialInstagramPrUrl,
 }: {
   projectId: string;
   currentUserId: string;
   initialSnapshot: TeamSnapshot;
-  initialWhatsappPrUrl: string;
-  initialInstagramPrUrl: string;
 }) {
   const supabase = useBrowserSupabase();
   // Seeded from the server fetch in page.tsx — no client-side initial
@@ -85,12 +81,6 @@ export function TeamClient({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState<InviteOpen>(null);
-  const [prWhatsapp, setPrWhatsapp] = useState(initialWhatsappPrUrl);
-  const [prInstagram, setPrInstagram] = useState(initialInstagramPrUrl);
-  const [savedPrChannels, setSavedPrChannels] = useState({
-    whatsapp: initialWhatsappPrUrl,
-    instagram: initialInstagramPrUrl,
-  });
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -147,30 +137,6 @@ export function TeamClient({
       },
       "Couldn't send that manager invite.",
     );
-
-  const persistPrChannels = () => {
-    const whatsapp = prWhatsapp.trim();
-    const instagram = prInstagram.trim();
-    if (
-      whatsapp === savedPrChannels.whatsapp.trim() &&
-      instagram === savedPrChannels.instagram.trim()
-    ) {
-      return;
-    }
-    return runAction(
-      "save-pr-channels",
-      async () => {
-        await apiUpdatePlace(supabase, {
-          id: projectId,
-          whatsapp_pr_urls: whatsapp ? [whatsapp] : [],
-          instagram_pr_urls: instagram ? [instagram] : [],
-        });
-        setSavedPrChannels({ whatsapp: prWhatsapp, instagram: prInstagram });
-        setNotice("PR channels saved.");
-      },
-      "Couldn't save PR channels.",
-    );
-  };
 
   const applyStaffInviteResult = (
     res: Awaited<ReturnType<typeof apiInviteStaff>>,
@@ -565,35 +531,6 @@ export function TeamClient({
         )}
       </TeamModule>
 
-      <TeamModule
-        icon={<Megaphone className="h-4 w-4" />}
-        title="PR channels"
-        active={0}
-        meta={`${(prWhatsapp.trim() ? 1 : 0) + (prInstagram.trim() ? 1 : 0)} connected`}
-      >
-        <TeamList>
-          <PrChannelEditRow
-            label="WhatsApp"
-            icon={<MessageCircle className="h-3.5 w-3.5" />}
-            iconTone="bg-whatsapp/15 text-whatsapp-deep"
-            placeholder="https://wa.me/52…"
-            value={prWhatsapp}
-            disabled={busy === "save-pr-channels"}
-            onChange={setPrWhatsapp}
-            onCommit={persistPrChannels}
-          />
-          <PrChannelEditRow
-            label="Instagram"
-            icon={<Instagram className="h-3.5 w-3.5" />}
-            iconTone="bg-pink-500/12 text-pink-600"
-            placeholder="https://instagram.com/…"
-            value={prInstagram}
-            disabled={busy === "save-pr-channels"}
-            onChange={setPrInstagram}
-            onCommit={persistPrChannels}
-          />
-        </TeamList>
-      </TeamModule>
     </div>
   );
 }
@@ -834,52 +771,6 @@ function EditorInviteForm({
         {submitLabel}
       </button>
     </form>
-  );
-}
-
-function PrChannelEditRow({
-  label,
-  icon,
-  iconTone,
-  placeholder,
-  value,
-  disabled,
-  onChange,
-  onCommit,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  iconTone: string;
-  placeholder: string;
-  value: string;
-  disabled?: boolean;
-  onChange: (value: string) => void;
-  onCommit: () => void;
-}) {
-  return (
-    <TeamMemberRow>
-      <span
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-          iconTone,
-        )}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-semibold">{label}</p>
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onCommit}
-          placeholder={placeholder}
-          disabled={disabled}
-          spellCheck={false}
-          autoCapitalize="none"
-          className="placeholder:text-muted-foreground/50 text-muted-foreground focus:text-foreground w-full truncate bg-transparent py-0.5 text-[11px] outline-none disabled:opacity-60"
-        />
-      </div>
-    </TeamMemberRow>
   );
 }
 

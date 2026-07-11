@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListTeam, type TeamSnapshot } from "@/lib/api/team";
-import { getUnitOverview } from "@/lib/api/unit";
 import { errMsg } from "@/lib/utils";
 import { TeamClient } from "./TeamClient";
 
@@ -21,23 +20,9 @@ export default async function TeamPage({
   if (!user) redirect(`/?next=/unit/${id}/team`);
 
   let initialSnapshot: TeamSnapshot | null = null;
-  let initialWhatsappPrUrl = "";
-  let initialInstagramPrUrl = "";
   let initialError: string | null = null;
   try {
-    const [snapshot, overview] = await Promise.all([
-      apiListTeam(supabase, id),
-      getUnitOverview(supabase, id, 0),
-    ]);
-    initialSnapshot = snapshot;
-    const place =
-      overview.active?.place ??
-      overview.places.find((v) => v.id === id) ??
-      overview.places[0];
-    if (place) {
-      initialWhatsappPrUrl = place.whatsapp_pr_urls[0] ?? "";
-      initialInstagramPrUrl = place.instagram_pr_urls[0] ?? "";
-    }
+    initialSnapshot = await apiListTeam(supabase, id);
   } catch (err) {
     initialError = errMsg(err, "Couldn't load the team.");
   }
@@ -59,8 +44,6 @@ export default async function TeamPage({
           projectId={id}
           currentUserId={user.id}
           initialSnapshot={initialSnapshot}
-          initialWhatsappPrUrl={initialWhatsappPrUrl}
-          initialInstagramPrUrl={initialInstagramPrUrl}
         />
       </div>
     </div>
