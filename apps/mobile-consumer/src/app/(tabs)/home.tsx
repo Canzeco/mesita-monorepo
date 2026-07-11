@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AskAiTab } from '@/components/memo/AskAiTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 
-// Home hub — web parity: Swipe is the default mode; other modes stay
-// placeholder tiles until MESITA-432/433 land.
+// Home hub — web parity: Swipe is the default mode; Ask AI is live
+// (MESITA-432); Social / Favorites stay placeholders until MESITA-433.
 type Mode = 'swipe' | 'ai' | 'social' | 'favorites';
 
 const MODES: {
@@ -54,6 +55,8 @@ export default function HomeScreen() {
         <View className="min-h-0 flex-1">
           {mode === 'swipe' ? (
             <SwipeDeck />
+          ) : mode === 'ai' ? (
+            <AskAiTab />
           ) : (
             <ModePlaceholder mode={mode} />
           )}
@@ -63,16 +66,12 @@ export default function HomeScreen() {
   );
 }
 
-function ModePlaceholder({ mode }: { mode: Exclude<Mode, 'swipe'> }) {
-  const copy: Record<Exclude<Mode, 'swipe'>, { title: string; body: string }> =
+function ModePlaceholder({ mode }: { mode: 'social' | 'favorites' }) {
+  const copy: Record<'social' | 'favorites', { title: string; body: string }> =
     {
-      ai: {
-        title: 'Ask AI',
-        body: 'Don Memo is landing next — chat recommendations from the web Ask AI panel.',
-      },
       social: {
         title: 'Social',
-        body: 'Your circle’s loves land here once the Social feed is ported.',
+        body: "Your circle's loves land here once the Social feed is ported.",
       },
       favorites: {
         title: 'Favorites',
