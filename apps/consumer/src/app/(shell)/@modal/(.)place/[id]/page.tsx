@@ -27,6 +27,7 @@ export default async function PlaceModalPage({
       placeId={place.id}
       placeName={place.name}
       listingType={place.listing_type}
+      isEnriching={place.is_enriching}
     >
       <PlaceDetailBody place={place} />
     </PlaceDetailModalShell>

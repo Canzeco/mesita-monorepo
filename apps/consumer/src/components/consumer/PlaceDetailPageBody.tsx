@@ -22,6 +22,7 @@ export function PlaceDetailPageBody({
         placeId={place.id}
         placeName={place.name}
         listingType={place.listing_type}
+        isEnriching={place.is_enriching}
         backHref={backHref}
       />
       {/*

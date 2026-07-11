@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { PlaceDetailTitle } from "@/components/consumer/PlaceDetailTitle";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Header for the hard-nav /place/[id] page (refresh / direct URL / new
@@ -13,16 +14,21 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // decision: Pato (MESITA-392, reverses MESITA-383) — Save moved into the
 // body action row (Save · Contact · Reserve · Share). The header is just
 // back + centered name now, so a w-9 spacer balances the back button.
+//
+// decision: Pato (MESITA-451) — when enriching, "(Enriching)" + spinner
+// sits to the right of the name in this header (not the bottom Meta box).
 
 export function PlaceDetailPageHeader({
   placeId: _placeId,
   placeName,
   listingType: _listingType,
+  isEnriching = false,
   backHref = CONSUMER_ROUTES.home,
 }: {
   placeId: string;
   placeName: string;
   listingType: "partner" | "web";
+  isEnriching?: boolean;
   backHref?: string;
 }) {
   return (
@@ -34,9 +40,7 @@ export function PlaceDetailPageHeader({
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
-      <div className="font-display min-w-0 flex-1 truncate text-center text-base font-semibold">
-        {placeName}
-      </div>
+      <PlaceDetailTitle placeName={placeName} isEnriching={isEnriching} />
       <div className="h-9 w-9 shrink-0" aria-hidden />
     </header>
   );
