@@ -68,7 +68,7 @@ const ITEMS: Item[] = [
     soon: true,
     soonTitle: "Reservations coming soon",
     soonBody:
-      "Your bookings will live here. For now, reach venues from Contact on a place.",
+      "Your bookings will live here. For now, reach places from Contact on a place.",
   },
   {
     href: CONSUMER_ROUTES.me,
