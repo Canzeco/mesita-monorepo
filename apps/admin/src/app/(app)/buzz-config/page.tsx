@@ -5,20 +5,29 @@ export const dynamic = "force-dynamic";
 // ════════════════════════════════════════════════════════════════════════
 // Buzz Config — the GLOBAL side of Buzz, read-only draft. Two cards:
 //
-//   Model     score = (promotional visibility + organic importance) × match
-//             ÷ decay(d). Match multiplies so zero relevance zeroes the
-//             score — money can't buy irrelevance.
+//   Model     score = worth × fit ÷ decay(d). A great visit = a place worth
+//             going to × a moment that fits ÷ a distance you'll cross.
+//             WORTH is cached on the place; FIT is computed per query;
+//             fit factors multiply so any zero kills the score — money
+//             can't buy irrelevance, a closed club, or a bored regular.
 //   Semantic  ALL matching is semantic (RAG/LLM) — there is no binary tag
-//             search. One box: what gets embedded, the spec, the pipeline,
-//             and how each engine queries it.
+//             search. What gets embedded, the two AI lanes, and how each
+//             engine queries it.
 //
 // Everything becomes editable / backed by real vectors once the model ships.
 // ════════════════════════════════════════════════════════════════════════
 
-const IMPORTANCE_WEIGHTS = [
-  { label: "Google stars", value: "≤ 6 pts", hint: "rating / 5 × 6" },
-  { label: "Review volume", value: "≤ 3 pts", hint: "log — 5,000 maxes it" },
-  { label: "Social proof", value: "≤ 1 pt", hint: "IG followers, log" },
+const WORTH_PARAMS = [
+  { label: "Promotional Visibility", value: "0–10", hint: "bought · Promos" },
+  { label: "Earned Reputation", value: "0–10", hint: "proven · stars × volume" },
+  { label: "Magnetism", value: "0–10", hint: "desired · AI-judged" },
+  { label: "Momentum", value: "×0.8–1.2", hint: "trending · velocity" },
+];
+
+const FIT_PARAMS = [
+  { label: "Match", value: "0–1", hint: "meaning · RAG/LLM" },
+  { label: "Right-now", value: "0–1", hint: "timing · hours + daypart" },
+  { label: "Novelty", value: "0–1", hint: "per consumer · unseen floor" },
 ];
 
 const ENGINE_D0 = [
@@ -33,25 +42,22 @@ const EMBEDDING_SPEC = [
   { label: "Refresh", value: "on write", hint: "Enricher + edits" },
 ];
 
-// No metadata-filter step: matching is semantic end to end. The only
-// non-semantic survivors are reality gates — open now + radius.
-const PIPELINE = [
-  {
-    step: "1",
-    label: "Embed",
-    detail: "the query — Memo's question, or the consumer's taste vector",
-  },
+// Lane 1 — runs when the Enricher finishes a place (or an edit lands).
+// Everything expensive happens here, cached as plain numbers on the place.
+const ON_WRITE_LANE = [
+  { step: "1", label: "Embed", detail: "fold the profile into one passage → place vector" },
+  { step: "2", label: "Judge", detail: "LLM + vision score Magnetism 0–10 against a rubric" },
+  { step: "3", label: "Refresh", detail: "Earned Reputation from fresh Google + IG numbers" },
+  { step: "4", label: "Diff", detail: "Momentum from review/follower velocity vs last snapshot" },
+];
+
+// Lane 2 — runs on every engine request. Reads cached numbers; the only
+// model call is the match judge on the recalled shortlist.
+const PER_QUERY_LANE = [
+  { step: "1", label: "Embed", detail: "the query — Memo's question, or the consumer's taste vector" },
   { step: "2", label: "Recall", detail: "cosine top-K over place vectors" },
-  {
-    step: "3",
-    label: "Match",
-    detail: "LLM judges the shortlist → match 0–1 per place",
-  },
-  {
-    step: "4",
-    label: "Score",
-    detail: "(PV + OI) × match ÷ decay orders what's left",
-  },
+  { step: "3", label: "Match", detail: "LLM judges the shortlist → match 0–1 per place" },
+  { step: "4", label: "Score", detail: "worth × match × right-now × novelty ÷ decay" },
 ];
 
 const ENGINE_RECIPES = [
@@ -77,45 +83,51 @@ export default function BuzzConfigPage() {
         icon={<Megaphone className="h-4.5 w-4.5" />}
         chip="bg-pink-500/10 text-pink-600"
         title="Model"
-        subtitle="One score per place per query — potency × semantic match, divided by distance."
+        subtitle="A great visit = a place worth going to × a moment that fits ÷ a distance you'll actually cross."
         pill="Draft — read-only"
       >
-        <p className="text-muted-foreground mt-5 font-mono text-xs">
-          score = (promotional visibility + organic importance) × match ÷ (1 +
-          distance/d₀)
-        </p>
+        <div className="text-muted-foreground mt-5 flex flex-col gap-1 font-mono text-xs">
+          <p>score = worth × fit ÷ (1 + distance/d₀)</p>
+          <p>worth = (promotional visibility + reputation + magnetism) / 3 × momentum</p>
+          <p>fit = match × right-now × novelty</p>
+        </div>
         <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-          Match (0–1) multiplies — a place that means nothing to the query
-          scores zero no matter what it paid. Bought and earned worth add;
-          relevance gates.
+          Worth adds — bought, proven and desired value compensate each other.
+          Fit multiplies — any zero kills the score: money can&apos;t buy
+          irrelevance, a closed club, or a consumer who&apos;s already swiped
+          it away.
         </p>
 
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
+        <div className="mt-5 grid gap-5 lg:grid-cols-2">
           <div>
-            <GroupHead>Organic importance weights · 1–10</GroupHead>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {IMPORTANCE_WEIGHTS.map((k) => (
+            <GroupHead>Worth · the place — cached on write</GroupHead>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {WORTH_PARAMS.map((k) => (
                 <Knob key={k.label} {...k} />
               ))}
             </div>
-            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              Promotional visibility (the other 10) is the live Promos score —
-              configured per place on its Promos tab.
-            </p>
           </div>
+          <div>
+            <GroupHead>Fit · the moment — per query</GroupHead>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {FIT_PARAMS.map((k) => (
+                <Knob key={k.label} {...k} />
+              ))}
+            </div>
+          </div>
+        </div>
 
-          <div>
-            <GroupHead>Engine distance sensitivity · d₀</GroupHead>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {ENGINE_D0.map((k) => (
-                <Knob key={k.label} {...k} />
-              ))}
-            </div>
-            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              Potency halves every d₀ — each engine has its own appetite for
-              distance.
-            </p>
+        <div className="mt-5">
+          <GroupHead>Engine distance sensitivity · d₀</GroupHead>
+          <div className="mt-2 grid grid-cols-3 gap-2 sm:max-w-md">
+            {ENGINE_D0.map((k) => (
+              <Knob key={k.label} {...k} />
+            ))}
           </div>
+          <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+            The score halves every d₀ — each engine has its own appetite for
+            distance.
+          </p>
         </div>
       </Card>
 
@@ -159,23 +171,26 @@ export default function BuzzConfigPage() {
         </div>
 
         <div className="mt-5">
-          <GroupHead>Pipeline · every engine query walks it</GroupHead>
+          <GroupHead>Lane 1 · on write — the Enricher finishes a place</GroupHead>
           <div className="mt-2 grid gap-2 sm:grid-cols-4">
-            {PIPELINE.map((s) => (
-              <div
-                key={s.step}
-                className="bg-muted/60 border-border/60 rounded-xl border px-3 py-2.5"
-              >
-                <p className="text-muted-foreground text-[11px]">{s.step}</p>
-                <p className="font-display mt-0.5 text-sm font-semibold tracking-tight">
-                  {s.label}
-                </p>
-                <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-                  {s.detail}
-                </p>
-              </div>
+            {ON_WRITE_LANE.map((s) => (
+              <PipelineStep key={s.step} {...s} />
             ))}
           </div>
+        </div>
+
+        <div className="mt-4">
+          <GroupHead>Lane 2 · per query — every engine request</GroupHead>
+          <div className="mt-2 grid gap-2 sm:grid-cols-4">
+            {PER_QUERY_LANE.map((s) => (
+              <PipelineStep key={s.step} {...s} />
+            ))}
+          </div>
+          <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+            Expensive work lives in lane 1 and is cached as numbers; lane 2
+            reads them and makes exactly one model call — the match judge on
+            the recalled shortlist.
+          </p>
         </div>
 
         <div className="mt-5">
@@ -267,6 +282,28 @@ function Knob({
         {value}
       </p>
       <p className="text-muted-foreground text-[11px]">{hint}</p>
+    </div>
+  );
+}
+
+function PipelineStep({
+  step,
+  label,
+  detail,
+}: {
+  step: string;
+  label: string;
+  detail: string;
+}) {
+  return (
+    <div className="bg-muted/60 border-border/60 rounded-xl border px-3 py-2.5">
+      <p className="text-muted-foreground text-[11px]">{step}</p>
+      <p className="font-display mt-0.5 text-sm font-semibold tracking-tight">
+        {label}
+      </p>
+      <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+        {detail}
+      </p>
     </div>
   );
 }
