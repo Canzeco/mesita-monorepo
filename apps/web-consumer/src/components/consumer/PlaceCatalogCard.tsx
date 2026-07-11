@@ -7,7 +7,6 @@ import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { PromoChip } from "./PromoChip";
 import { placeHref } from "@/lib/place-route";
 import { firstInitial, formatRating } from "@/lib/utils";
-import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 
 // Catalog row card — used by /saved and /discover/catalog.
 //

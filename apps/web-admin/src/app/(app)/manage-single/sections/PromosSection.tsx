@@ -24,7 +24,7 @@ import {
 } from "@/lib/business/strategies";
 import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
-import { SectionCard, GroupLabel, ErrorNote } from "../ui";
+import { SectionCard, GroupLabel, ErrorNote, ConfirmDialog } from "../ui";
 
 // Admin Promos — Buzz v4 (mirrors the business console, MESITA-511). Two boxes:
 //   1. Strategy   — pick ONE of four presets (Zero → Dominant); each writes the
@@ -64,6 +64,9 @@ export function PromosSection({
   const [v, setV] = useState(place);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Membership is a plan write → confirm first (matches the console's
+  // plan-change trust guard). Holds the target Verified/Zero value.
+  const [memberConfirm, setMemberConfirm] = useState<boolean | null>(null);
 
   // Optimistic write: patch local + bubble, persist, revert on error.
   const persist = (patch: Record<string, unknown>) => {
@@ -104,10 +107,16 @@ export function PromosSection({
     });
   };
 
-  // Admin flips membership directly (business owner can't). "pro_discount"
-  // maps to plan=informal_pro; "free" clears it back to Zero.
-  const setMembership = (member: boolean) => {
+  // Admin flips membership (business owner can't) — a plan write, so it opens
+  // a confirm. "pro_discount" maps to plan=informal_pro; "free" clears to Zero.
+  const requestMembership = (member: boolean) => {
     if (pending || member === isMember) return;
+    setMemberConfirm(member);
+  };
+  const commitMembership = () => {
+    const member = memberConfirm;
+    setMemberConfirm(null);
+    if (member == null) return;
     persist(dbStateForSubscription(member ? "pro_discount" : "free"));
   };
 
@@ -181,9 +190,45 @@ export function PromosSection({
           isMember={isMember}
           currency={v.currency}
           pending={pending}
-          onSet={setMembership}
+          onSet={requestMembership}
         />
       </SectionCard>
+
+      <ConfirmDialog
+        open={memberConfirm != null}
+        title={
+          memberConfirm ? "Set this place Verified?" : "Set this place to Zero?"
+        }
+        body={
+          memberConfirm ? (
+            <div className="space-y-2">
+              <p>
+                Unlocks the paid strategies (Conservative → Dominant) and the
+                promo lane.
+              </p>
+              <p>
+                Admin sets the Mesita plan flags only — it does not charge
+                Stripe.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p>
+                Locks this place to Zero — catalog and the free organic lane
+                only, no paid promos.
+              </p>
+              <p>
+                Configured rates stay saved but stop applying until it&apos;s
+                Verified again.
+              </p>
+            </div>
+          )
+        }
+        confirmLabel={memberConfirm ? "Set Verified" : "Set Zero"}
+        busy={pending}
+        onConfirm={commitMembership}
+        onCancel={() => setMemberConfirm(null)}
+      />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Braces, Megaphone } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Braces, Megaphone } from "lucide-react";
 import { visibilityScore } from "@/lib/business/plans";
 import type { AdminPlace } from "../actions";
 import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
@@ -182,6 +183,23 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
+      <div
+        role="status"
+        className="border-amber-200/80 bg-amber-50 text-amber-950 flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm leading-relaxed"
+      >
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+        <div className="min-w-0">
+          <p className="font-semibold">Draft simulator — does not affect Swipe, Map, or Memo.</p>
+          <p className="mt-0.5 text-xs text-amber-900/80">
+            Scores below are frontend heuristics for operators. Global knobs live in{" "}
+            <Link href="/buzz-config" className="font-semibold underline-offset-2 hover:underline">
+              Buzz Config
+            </Link>
+            .
+          </p>
+        </div>
+      </div>
+
       {/* ── Buzz — score, sliders, params, engines ──────────────────── */}
       <SectionCard
         icon={<Megaphone className="h-4.5 w-4.5" />}
@@ -254,21 +272,25 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               label="Promotional Visibility"
               value={`${fmt(pv, 0)}/10`}
               hint="bought · Promos"
+              kind="live"
             />
             <Tile
               label="Earned Reputation"
               value={`${fmt(reputation)}/10`}
               hint="proven · Google"
+              kind="live"
             />
             <Tile
               label="Magnetism"
               value={`${fmt(magnetism)}/10`}
               hint="desired · AI-judged"
+              kind="heuristic"
             />
             <Tile
               label="Momentum"
               value={`×${fmt(momentum, 2)}`}
               hint="trending · needs history"
+              kind="mock"
             />
           </div>
         </div>
@@ -285,16 +307,19 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               label="Match"
               value={`×${fmt(match, 2)}`}
               hint="RAG · per query"
+              kind="mock"
             />
             <Tile
               label="Right-now"
               value={`×${fmt(rightNow.factor, 2)}`}
               hint={rightNow.label}
+              kind="live"
             />
             <Tile
               label="Decay"
               value={`÷${fmt(decay(km, BASE_D0), 2)}`}
               hint={`at ${fmt(km)} km`}
+              kind="mock"
             />
           </div>
         </div>
@@ -407,11 +432,15 @@ function Tile({
   label,
   value,
   hint,
+  kind,
 }: {
   label: string;
   value: string;
   hint: string;
+  kind: "live" | "heuristic" | "mock";
 }) {
+  const kindLabel =
+    kind === "live" ? "live data" : kind === "heuristic" ? "heuristic" : "mock control";
   return (
     <div className="bg-muted/60 border-border/60 rounded-xl border px-3 py-2.5 text-center">
       <p className="text-muted-foreground text-[11px]">{label}</p>
@@ -419,6 +448,9 @@ function Tile({
         {value}
       </p>
       <p className="text-muted-foreground text-[11px]">{hint}</p>
+      <p className="text-muted-foreground/80 mt-1 text-[9px] font-semibold tracking-wider uppercase">
+        {kindLabel}
+      </p>
     </div>
   );
 }

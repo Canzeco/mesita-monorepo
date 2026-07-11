@@ -13,9 +13,9 @@ import {
   type PlaceHours,
 } from "@/lib/api/places";
 import {
-  PLACE_PLACE_DESCRIPTION_MAX,
+  PLACE_DESCRIPTION_MAX,
   PLACE_HOUR_DAYS,
-  PLACE_PLACE_NAME_MAX,
+  PLACE_NAME_MAX,
   PlaceBasicsModule,
   PlaceChannelsModule,
   PlaceMediaModule,
@@ -37,7 +37,6 @@ import { cn, errMsg } from "@/lib/utils";
 const DAYS = PLACE_HOUR_DAYS;
 const MAX_SHIFTS_PER_DAY = 1;
 const SAVED_TOAST_MS = 2200;
-const PLACE_NAME_MAX = PLACE_PLACE_NAME_MAX;
 const TAG_MAX = 40;
 const TAG_MAX_COUNT = 20;
 

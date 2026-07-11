@@ -9,6 +9,7 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react";
+import { ErrorNote } from "@/components/ErrorNote";
 import {
   grantAdmin,
   resetDatabase,
@@ -312,11 +313,3 @@ function ResetCard() {
   );
 }
 
-function ErrorNote({ message }: { message: string }) {
-  return (
-    <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-2 rounded-xl border p-3 text-xs">
-      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <p className="font-medium">{message}</p>
-    </div>
-  );
-}
