@@ -26,7 +26,7 @@ import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { MockControls } from "@/components/consumer/me/MockControls";
 import { CLASSES } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, firstInitials } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -297,9 +297,7 @@ function ProfileSummaryCard({
     [first, last].filter(Boolean).join(" ") ||
     profile?.full_name ||
     "Mesita member";
-  const initials =
-    `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() ||
-    name.charAt(0).toUpperCase();
+  const initials = firstInitials(name);
   const avatarUrl = profile?.avatar_url ?? null;
   const phone = profile?.phone ?? null;
 
