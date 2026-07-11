@@ -66,20 +66,20 @@ export default function BuzzConfigPage() {
         pill="Draft — read-only"
       >
         <p className="text-muted-foreground mt-5 font-mono text-xs">
-          buzz = (visibility + importance) ÷ (1 + distance/d₀)
+          buzz = (promotional visibility + organic importance) ÷ (1 + distance/d₀)
         </p>
 
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div>
-            <GroupHead>Importance weights · 1–10</GroupHead>
+            <GroupHead>Organic importance weights · 1–10</GroupHead>
             <div className="mt-2 grid grid-cols-3 gap-2">
               {IMPORTANCE_WEIGHTS.map((k) => (
                 <Knob key={k.label} {...k} />
               ))}
             </div>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              Visibility (the other 10) is the live Promos score — configured
-              per place on its Promos tab.
+              Promotional visibility (the other 10) is the live Promos score —
+              configured per place on its Promos tab.
             </p>
           </div>
 

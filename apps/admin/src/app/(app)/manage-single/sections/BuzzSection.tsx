@@ -114,12 +114,20 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
         </div>
 
         <p className="text-muted-foreground mt-4 font-mono text-xs">
-          buzz = (visibility + importance) ÷ distance decay
+          buzz = (promotional visibility + organic importance) ÷ distance decay
         </p>
 
         <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
-          <Tile label="Visibility" value={`${fmt(V, 0)}/10`} hint="Promos boost" />
-          <Tile label="Importance" value={`${fmt(I)}/10`} hint="Google quality" />
+          <Tile
+            label="Promotional Visibility"
+            value={`${fmt(V, 0)}/10`}
+            hint="Promos boost"
+          />
+          <Tile
+            label="Organic Importance"
+            value={`${fmt(I)}/10`}
+            hint="Google quality"
+          />
           <Tile
             label="Decay"
             value={`÷${fmt(decay(km, BASE_D0), 2)}`}
