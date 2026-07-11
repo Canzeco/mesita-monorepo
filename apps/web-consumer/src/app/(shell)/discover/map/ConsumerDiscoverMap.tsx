@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import {
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import {
   APIProvider,
   APILoadingStatus,
   Map,
@@ -24,6 +24,7 @@ import {
 import { firstInitial } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { PartnerBadge, RatePill, Skeleton, Spinner } from "@/components/shared";
 import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import { placeHref } from "@/lib/place-route";
@@ -374,7 +375,7 @@ function PlacePreview({
       category: place.category,
     }) ?? "";
   const meta = [
-    place.price_level != null ? "$".repeat(place.price_level) : null,
+    formatPlacePriceLevelSymbols(place.price_level),
     place.closes_at ? `until ${place.closes_at}` : null,
   ]
     .filter(Boolean)
