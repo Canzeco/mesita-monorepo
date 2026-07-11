@@ -45,3 +45,7 @@ export const INSTAGRAM_BADGE_GRADIENT_CLASS =
 export const TEXTAREA_CLASS =
   "w-full resize-none rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition focus:border-foreground/40";
 
+// Mesita Instagram icon tint (oklch warm→magenta) — IconCircle + verify/class UI.
+export const INSTAGRAM_ICON_GRADIENT_CLASS =
+  "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]";
+
