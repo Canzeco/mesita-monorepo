@@ -41,6 +41,7 @@ import { getOpeningStatusLabel } from "@/lib/place-status";
 import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, firstInitial, formatRating } from "@/lib/utils";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -379,7 +380,7 @@ export function SearchClient({
         </div>
 
         {fetchError && idle && (
-          <p className="bg-destructive/10 text-destructive mt-2 rounded-xl px-3 py-2 text-xs backdrop-blur">
+          <p className={cn(ERROR_BOX_CLASS, "mt-2 rounded-xl backdrop-blur")}>
             {fetchError}
           </p>
         )}
