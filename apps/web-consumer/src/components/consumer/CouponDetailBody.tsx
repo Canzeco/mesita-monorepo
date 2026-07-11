@@ -21,7 +21,7 @@ import type {
   LinkedReservationSummary,
   NormalCouponStatus,
 } from "@/lib/mock/coupons-mock";
-import { cn } from "@/lib/utils";
+import { cn, guestNoun } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
 import { reservationPath } from "@/lib/consumer-route-contract";
@@ -378,7 +378,7 @@ function LinkedReservationCard({
           {reservation.when}{" "}
           <span className="text-muted-foreground font-normal">
             · {reservation.partySize}{" "}
-            {reservation.partySize === 1 ? "person" : "people"}
+            {guestNoun(reservation.partySize)}
           </span>
         </p>
       </div>

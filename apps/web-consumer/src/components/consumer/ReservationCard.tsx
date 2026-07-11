@@ -16,7 +16,7 @@ import type {
   ReservationStatus,
   LinkedCouponSummary,
 } from "@/lib/mock/reservations-mock";
-import { cn } from "@/lib/utils";
+import { cn, guestNoun } from "@/lib/utils";
 import { reservationPath } from "@/lib/consumer-route-contract";
 
 // Reservation card. Booking metadata only. When the reservation has a
@@ -113,7 +113,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
             <span className="text-muted-foreground/60">·</span>
             <span className="inline-flex items-center gap-1">
               <Users className="h-3 w-3" />
-              {r.partySize} {r.partySize === 1 ? "person" : "people"}
+              {r.partySize} {guestNoun(r.partySize)}
             </span>
           </div>
         </div>

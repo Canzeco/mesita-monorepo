@@ -19,7 +19,7 @@ import type {
   ReservationItem,
   ReservationStatus,
 } from "@/lib/mock/reservations-mock";
-import { cn } from "@/lib/utils";
+import { cn, guestNoun } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
 import { couponPath } from "@/lib/consumer-route-contract";
@@ -130,7 +130,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
         <MetaRow
           Icon={Users}
           label="Party"
-          value={`${r.partySize} ${r.partySize === 1 ? "person" : "people"}`}
+          value={`${r.partySize} ${guestNoun(r.partySize)}`}
         />
         <MetaRow
           Icon={meta.Icon}

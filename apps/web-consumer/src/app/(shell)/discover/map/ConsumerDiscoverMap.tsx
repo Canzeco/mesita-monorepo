@@ -21,6 +21,7 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
+import { firstInitial } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { PartnerBadge, RatePill, Skeleton, Spinner } from "@/components/shared";
@@ -397,7 +398,7 @@ function PlacePreview({
               />
             ) : (
               <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-base font-bold text-white">
-                {place.name[0]?.toUpperCase() ?? "·"}
+                {firstInitial(place.name)}
               </span>
             )}
           </span>

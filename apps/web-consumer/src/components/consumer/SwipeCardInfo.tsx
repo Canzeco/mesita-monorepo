@@ -6,7 +6,7 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatRating } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 import { neighborhoodFromAddress } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
@@ -24,8 +24,7 @@ export function SwipeCardInfo({
 }) {
   // decision: Pato — swipe uses $$$$ symbols; numeric amounts only on profile
   const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
-  const ratingLabel =
-    place.google_rating != null ? place.google_rating.toFixed(1) : null;
+  const ratingLabel = formatRating(place.google_rating);
   const ratingCountLabel =
     place.google_count != null ? formatCount(place.google_count) : null;
   // distance_km === 0 is the "couldn't calculate" placeholder — show "- km".

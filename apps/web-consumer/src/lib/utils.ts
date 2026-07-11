@@ -18,6 +18,19 @@ export function firstInitial(name: string, fallback = "·"): string {
   return name.trim().slice(0, 1).toUpperCase() || fallback;
 }
 
+// Guest-count noun: "person" for 1, "people" otherwise. Pair with the count
+// at the call site — `${n} ${guestNoun(n)}`.
+export function guestNoun(n: number): string {
+  return n === 1 ? "person" : "people";
+}
+
+// A star rating rounded to one decimal for display, or null when absent.
+export function formatRating(
+  rating: number | null | undefined,
+): string | null {
+  return rating != null ? rating.toFixed(1) : null;
+}
+
 // "2 days ago" style relative label from an ISO timestamp. Returns
 // undefined for missing / unparseable input so callers can fall back to
 // their own copy ("recently"). Shared by the place detail adapter and the

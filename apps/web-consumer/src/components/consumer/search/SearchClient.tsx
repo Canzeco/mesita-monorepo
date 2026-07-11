@@ -41,7 +41,7 @@ import { getOpeningStatusLabel } from "@/lib/place-status";
 import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, firstInitial } from "@/lib/utils";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { FiltersComingSoon } from "@/components/consumer/FiltersComingSoon";
 import { SearchMap } from "./SearchMap";
@@ -582,7 +582,7 @@ function RailCard({
           />
         ) : (
           <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-lg font-bold text-white">
-            {place.name[0]?.toUpperCase() ?? "·"}
+            {firstInitial(place.name)}
           </span>
         )}
       </div>
