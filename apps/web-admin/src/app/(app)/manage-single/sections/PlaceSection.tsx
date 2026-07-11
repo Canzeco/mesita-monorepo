@@ -625,7 +625,7 @@ export function PlaceSection({
     <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* Box order (MESITA-547): edit-first — Basics → Hours → Channels →
           Reservations → Photos → Products/Reviews → Location → Ownership →
-          Promos → Meta (Internals, collapsed). */}
+          Promos → Metadata (collapsed). */}
 {/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard
@@ -1196,7 +1196,7 @@ function enrichmentBadge(
   }
 }
 
-// Internals — UID + audit trail + enriching status. Collapsed by default so
+// Metadata — UID + audit trail + enriching status. Collapsed by default so
 // edit-first Place IA leads with Basics (MESITA-547); opens on enrich failure.
 function MetaCard({
   place,
@@ -1219,7 +1219,7 @@ function MetaCard({
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold tracking-tight">
-            Internals
+            Metadata
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
             UID, audit trail & enriching status — collapsed by default.
