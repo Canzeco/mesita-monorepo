@@ -18,6 +18,17 @@ export function firstInitial(name: string, fallback = "·"): string {
   return name.trim().slice(0, 1).toUpperCase() || fallback;
 }
 
+// Two-letter initials from a display name (first + last). Falls back to a
+// single letter or the provided placeholder when parts are empty.
+export function firstInitials(name: string, fallback = "M"): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  const first = firstInitial(parts[0] ?? "", "");
+  const last =
+    parts.length > 1 ? firstInitial(parts[parts.length - 1] ?? "", "") : "";
+  return (first + last) || fallback;
+}
+
 // Guest-count noun: "person" for 1, "people" otherwise. Pair with the count
 // at the call site — `${n} ${guestNoun(n)}`.
 export function guestNoun(n: number): string {
