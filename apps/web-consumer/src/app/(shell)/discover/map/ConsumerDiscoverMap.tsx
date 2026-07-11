@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
   APIProvider,
   APILoadingStatus,
   Map,
@@ -22,6 +21,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { firstInitial } from "@/lib/utils";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { PartnerBadge, RatePill, Skeleton, Spinner } from "@/components/shared";
@@ -374,7 +375,7 @@ function PlacePreview({
       category: place.category,
     }) ?? "";
   const meta = [
-    place.price_level != null ? "$".repeat(place.price_level) : null,
+    formatPlacePriceLevelSymbols(place.price_level),
     place.closes_at ? `until ${place.closes_at}` : null,
   ]
     .filter(Boolean)
