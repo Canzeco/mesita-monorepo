@@ -20,6 +20,10 @@ export const ALLOWED_MENU_ACCEPT = Array.from(ALLOWED_MENU_MIME_TYPES).join(",")
 
 export const PLACE_IMAGES_BUCKET = "place-images";
 
+// Menus / catalog files go to their own bucket, separate from gallery photos
+// (see supabase migration 20260711182000_menu_images_bucket).
+export const MENU_IMAGES_BUCKET = "menu-images";
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

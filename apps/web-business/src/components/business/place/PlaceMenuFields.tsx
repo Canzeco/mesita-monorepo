@@ -11,6 +11,7 @@ import {
   ALLOWED_MENU_ACCEPT,
   extForMenuFile,
   isDriveMenuUrl,
+  MENU_IMAGES_BUCKET,
   validateMenuUploadFile,
 } from "./place-upload-utils";
 
@@ -53,7 +54,7 @@ export function PlaceMenuFields({
       const ext = extForMenuFile(file);
       const path = `business/${projectId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from("place-images")
+        .from(MENU_IMAGES_BUCKET)
         .upload(path, file, {
           upsert: false,
           contentType: file.type,
@@ -62,7 +63,9 @@ export function PlaceMenuFields({
       if (uploadError) {
         throw new Error(uploadError.message);
       }
-      const { data } = supabase.storage.from("place-images").getPublicUrl(path);
+      const { data } = supabase.storage
+        .from(MENU_IMAGES_BUCKET)
+        .getPublicUrl(path);
       if (!data?.publicUrl) {
         throw new Error("Couldn't get a public URL for the upload.");
       }
