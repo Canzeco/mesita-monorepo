@@ -7,7 +7,8 @@ import { BadgeCheck, Check, Crown, Instagram, Smile } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { CLASSES, classBadgeClass } from "@/lib/consumer-data";
-import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
   useConsumerClass,
   useMockClass,
   setMockClass,

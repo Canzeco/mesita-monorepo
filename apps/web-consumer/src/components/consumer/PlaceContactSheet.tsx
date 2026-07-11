@@ -4,7 +4,8 @@ import { Fragment } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Globe, Instagram, MessageCircle, Phone } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
   RowDivider,
   SettingsGroup,
   SettingsLinkRow,

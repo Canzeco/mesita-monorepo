@@ -9,7 +9,8 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
-import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";

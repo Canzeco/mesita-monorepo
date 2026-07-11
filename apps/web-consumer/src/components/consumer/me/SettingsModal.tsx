@@ -1,6 +1,6 @@
 "use client";
 
-import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
   Bell,
   Contact,
   Download,
@@ -13,6 +13,7 @@ import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
   Trash2,
   Users,
 } from "lucide-react";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   RowDivider,
