@@ -1,0 +1,125 @@
+// Consumer route contract (canonical surface paths + modal paths).
+// Keep this as the single source of truth so nav, headers, middleware, and
+// route handlers don't drift into stringly-typed mismatches.
+
+export const CONSUMER_ROUTES = {
+  onboard: "/onboard",
+  // The referral page is named Share — /share is canonical. /invite is the
+  // legacy path (redirects here).
+  share: "/share",
+  // Discovery hub. The modes are REAL nested routes (/home/{swipe,ai,social,
+  // favorites}); bare /home redirects to the default (swipe).
+  home: "/home",
+  homeTabs: {
+    swipe: "/home/swipe",
+    ai: "/home/ai",
+    social: "/home/social",
+    favorites: "/home/favorites",
+  },
+  // Default landing for the Home tab — link straight here so the bare /home
+  // redirect hop is only hit by direct URLs / legacy deep links.
+  homeDefault: "/home/swipe",
+  // Map + catalog search (Ask AI now lives on Home).
+  search: "/search",
+  // The saved-places list lives on the Home > Favorites route. This is the
+  // canonical "view my saved places" destination — the old standalone
+  // /saved/places grid was a duplicate and was removed.
+  favorites: "/home/favorites",
+  place: {
+    prefix: "/place/",
+  },
+  saved: {
+    reservations: "/saved/reservations",
+    placePrefix: "/saved/place/",
+    reservationPrefix: "/saved/reservation/",
+  },
+  // Rewards is a single page (banner + Mesita passport + tickets). The tab
+  // used to live at /pay — that whole tree now redirects here. Ticket detail
+  // is /rewards/ticket/[id].
+  rewards: {
+    root: "/rewards",
+    ticketPrefix: "/rewards/ticket/",
+  },
+  inbox: {
+    mine: "/inbox/mine",
+    global: "/inbox/global",
+  },
+  // The Me tab is a single flat page — identity hero + modular boxes that open
+  // as modals (Class, Settings, …). There are NO nested tab routes; /me is the
+  // whole surface. Legacy /me/class, /me/settings, and /me/plan redirect here.
+  me: "/me",
+  legacy: {
+    profile: "/profile",
+    invite: "/invite",
+    meClass: "/me/class",
+    meSettings: "/me/settings",
+    mePlan: "/me/plan",
+    notifications: "/notifications",
+    inboxMine: "/inbox/my-activity",
+    inboxGlobal: "/inbox/global-activity",
+    placePrefix: "/place/",
+    reservationPrefix: "/reservation/",
+    ticketPrefix: "/ticket/",
+    // The Rewards surface used to be /pay; these paths redirect to /rewards.
+    pay: "/pay",
+    payTicketPrefix: "/pay/ticket/",
+    payTicketsPrefix: "/pay/tickets/",
+  },
+} as const;
+
+export const CONSUMER_ROUTE_PREFIX = {
+  home: "/home",
+  search: "/search",
+  place: "/place",
+  saved: "/saved",
+  rewards: "/rewards",
+  inbox: "/inbox",
+  me: "/me",
+} as const;
+
+// The Reservations tab surface: the singular prefix matches both the
+// /saved/reservations list and /saved/reservation/[id] details, so nav
+// highlighting and headers share one matcher instead of string literals.
+export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/saved/reservation";
+
+export type PlaceSurface = "place" | "saved";
+
+export function placePath(
+  idOrSlug: string,
+  surface: PlaceSurface = "place",
+): string {
+  const prefix =
+    surface === "saved"
+      ? CONSUMER_ROUTES.saved.placePrefix
+      : CONSUMER_ROUTES.place.prefix;
+  return `${prefix}${idOrSlug}`;
+}
+
+export function reservationPath(id: string): string {
+  return `${CONSUMER_ROUTES.saved.reservationPrefix}${id}`;
+}
+
+// Coupon detail is singular /coupon/[id] (list lives at /coupons).
+export const COUPON_PATH_PREFIX = "/coupon/";
+
+export function couponPath(id: string): string {
+  return `${COUPON_PATH_PREFIX}${id}`;
+}
+
+export function rewardsTicketPath(id: string): string {
+  return `${CONSUMER_ROUTES.rewards.ticketPrefix}${id}`;
+}
+
+export function ticketPath(id: string): string {
+  return rewardsTicketPath(id);
+}
+
+export function isModalContractPath(pathname: string): boolean {
+  return (
+    pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.saved.placePrefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.saved.reservationPrefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.rewards.ticketPrefix) ||
+    pathname.startsWith(COUPON_PATH_PREFIX)
+  );
+}

@@ -1,0 +1,193 @@
+import {
+  Clock,
+  Instagram,
+  MapPin,
+  Navigation,
+  Star,
+  Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Place } from "@/lib/api/places";
+import { neighborhoodFromAddress } from "@/lib/adapters/place-to-detail";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
+import { getOpeningStatusLabel } from "@/lib/place-status";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
+import { PromoChip } from "./PromoChip";
+
+/** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
+export function SwipeCardInfo({
+  place,
+  compact = false,
+}: {
+  place: Place;
+  compact?: boolean;
+}) {
+  // decision: Pato — swipe uses $$$$ symbols; numeric amounts only on profile
+  const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
+  const ratingLabel =
+    place.google_rating != null ? place.google_rating.toFixed(1) : null;
+  const ratingCountLabel =
+    place.google_count != null ? formatCount(place.google_count) : null;
+  // distance_km === 0 is the "couldn't calculate" placeholder — show "- km".
+  const distanceLabel =
+    place.distance_km == null || place.distance_km <= 0
+      ? "- km"
+      : `${place.distance_km} km`;
+  const zoneLabel = resolveZoneLabel(place);
+  const zoneDisplay = zoneLabel ?? "Neighborhood";
+  const categoryLabel = resolvePlaceCategoryName({
+    categoryLabel: place.category_label,
+    category: place.category,
+  });
+  const igFollowersLabel = formatFollowers(place.instagram_followers_count);
+  const statusLabel = getOpeningStatusLabel(place);
+  const isOpen = place.open_now === true;
+  // decision: Pato — no Verified/Not Verified tag on swipe; partners get an
+  // IG-style blue check beside the name (asset: /brand/verified-check.svg).
+  const isVerified = place.listing_type === "partner";
+
+  return (
+    <div
+      className={cn("flex flex-col", compact ? "gap-1.5" : "gap-2.5 p-4 pt-3")}
+    >
+      <h2
+        className={cn(
+          "inline-flex min-w-0 max-w-full items-center gap-1.5 leading-[1.15] font-semibold tracking-[-0.01em] text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]",
+          compact ? "text-[1.3rem]" : "text-[1.95rem]",
+        )}
+      >
+        <span className={cn("min-w-0", compact && "truncate")}>
+          {place.name}
+        </span>
+        {isVerified && (
+          // eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset
+          <img
+            src="/brand/verified-check.svg"
+            alt="Verified Partner"
+            width={18}
+            height={18}
+            className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+          />
+        )}
+      </h2>
+
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-1.5",
+          // Keep compact swipe overlays to: place name + up to 3 lines of tags.
+          compact && "max-h-[102px] overflow-hidden",
+        )}
+      >
+        {categoryLabel && (
+          <MetaChip compact={compact}>
+            <span className="font-semibold">{categoryLabel}</span>
+          </MetaChip>
+        )}
+        {priceLabel && (
+          <MetaChip compact={compact}>
+            <span className="font-semibold">{priceLabel}</span>
+          </MetaChip>
+        )}
+        {ratingLabel && (
+          <MetaChip compact={compact}>
+            <span className="font-semibold">{ratingLabel}</span>
+            <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+            {ratingCountLabel && (
+              <span className="text-white/70">({ratingCountLabel})</span>
+            )}
+          </MetaChip>
+        )}
+        {igFollowersLabel && (
+          <MetaChip compact={compact}>
+            <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
+            <span className="font-semibold">{igFollowersLabel}</span>
+            <Users className="h-3 w-3 shrink-0 text-white/70" />
+          </MetaChip>
+        )}
+        {distanceLabel && (
+          <MetaChip compact={compact}>
+            <Navigation className="h-3 w-3 shrink-0 text-white/70" />
+            <span className="font-semibold">{distanceLabel}</span>
+          </MetaChip>
+        )}
+        <MetaChip compact={compact}>
+          <MapPin className="h-3 w-3 shrink-0 text-white/70" />
+          <span
+            className={cn(
+              "max-w-[180px] truncate font-semibold",
+              !zoneLabel && "text-white/75",
+            )}
+          >
+            {zoneDisplay}
+          </span>
+        </MetaChip>
+        {statusLabel && (
+          <MetaChip compact={compact}>
+            <Clock
+              className={cn(
+                "h-3 w-3 shrink-0",
+                isOpen ? "text-emerald-400" : "text-white/70",
+              )}
+            />
+            <span className="font-semibold">{statusLabel}</span>
+          </MetaChip>
+        )}
+        <PromoChip place={place} size="md" showWhenEmpty />
+      </div>
+    </div>
+  );
+}
+
+function MetaChip({
+  children,
+  compact = false,
+}: {
+  children: React.ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md border border-white/35 bg-black/45 whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
+        compact ? "px-[9px] py-[3px] text-[11px]" : "px-2.5 py-1 text-[11.5px]",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return n.toString();
+}
+
+function formatFollowers(n: number | null | undefined): string | null {
+  if (n == null) return null;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function resolveZoneLabel(place: Place): string | null {
+  if (place.zone && place.zone.trim().length > 0) return place.zone;
+  const fromNeighborhood = neighborhoodFromAddress(place.address ?? undefined);
+  if (fromNeighborhood) return fromNeighborhood;
+  return cityFromAddress(place.address ?? undefined);
+}
+
+function cityFromAddress(address: string | undefined): string | null {
+  if (!address) return null;
+  const postCodeCityMatch = address.match(/\d{5}\s+([^,]+)/);
+  const direct = postCodeCityMatch?.[1]?.trim();
+  if (direct && !/\d/.test(direct)) return direct;
+
+  const parts = address
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const fallback = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  if (!fallback || /\d/.test(fallback)) return null;
+  return fallback;
+}

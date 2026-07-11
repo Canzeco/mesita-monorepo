@@ -1,0 +1,353 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.5rem;
+
+  /* Mesita — pink-red palette */
+  --background: oklch(0.985 0.012 10);
+  --foreground: oklch(0.18 0.06 15);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.06 15);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.06 15);
+
+  /* Hot pink-red primary (buttons, brand) */
+  --primary: oklch(0.65 0.24 5);
+  --primary-foreground: oklch(0.99 0.005 10);
+
+  /* Deeper rose for accents / "part" italics */
+  --secondary: oklch(0.55 0.22 5);
+  --secondary-foreground: oklch(0.99 0.005 10);
+
+  --muted: oklch(0.96 0.012 10);
+  --muted-foreground: oklch(0.48 0.05 15);
+  --accent: oklch(0.75 0.2 355);
+  --accent-foreground: oklch(0.18 0.06 15);
+  --destructive: oklch(0.58 0.24 28);
+  --destructive-foreground: oklch(0.99 0.005 10);
+  --border: oklch(0.9 0.02 10);
+  --input: oklch(0.94 0.015 10);
+  --ring: oklch(0.65 0.24 5);
+
+  --tier-bronze: oklch(0.62 0.13 55);
+  --tier-silver: oklch(0.72 0.02 250);
+  --tier-gold: oklch(0.84 0.16 88);
+  --tier-diamond: oklch(0.7 0.18 320);
+
+  /* Two-tier membership (Free / Premium). Free reads as a calm neutral;
+     Premium reuses the violet "diamond" hue so it stays the aspirational,
+     richest-looking chip on a light surface. */
+  --tier-free: oklch(0.72 0.02 250);
+  --tier-premium: oklch(0.7 0.18 320);
+
+  --gradient-hero:
+    radial-gradient(
+      1200px 600px at 20% -10%,
+      oklch(0.85 0.16 5 / 0.55),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 90% 10%,
+      oklch(0.85 0.18 355 / 0.5),
+      transparent 60%
+    ),
+    linear-gradient(180deg, oklch(0.99 0.012 10), oklch(0.96 0.02 5));
+  --gradient-peacock: linear-gradient(
+    135deg,
+    oklch(0.68 0.24 5),
+    oklch(0.62 0.24 0) 50%,
+    oklch(0.65 0.22 355)
+  );
+  --gradient-gold: linear-gradient(
+    135deg,
+    oklch(0.86 0.14 90),
+    oklch(0.72 0.16 60)
+  );
+  --gradient-silver: linear-gradient(
+    135deg,
+    oklch(0.88 0.02 250),
+    oklch(0.72 0.02 250)
+  );
+  --gradient-bronze: linear-gradient(
+    135deg,
+    oklch(0.68 0.13 55),
+    oklch(0.52 0.12 45)
+  );
+  --gradient-diamond: linear-gradient(
+    135deg,
+    oklch(0.92 0.1 200),
+    oklch(0.7 0.16 280)
+  );
+  --gradient-free: linear-gradient(
+    135deg,
+    oklch(0.88 0.02 250),
+    oklch(0.72 0.02 250)
+  );
+  --gradient-premium: linear-gradient(
+    to right,
+    oklch(0.62 0.18 292),
+    oklch(0.83 0.12 252)
+  );
+  --gradient-card: linear-gradient(
+    180deg,
+    oklch(1 0 0 / 0.95),
+    oklch(0.97 0.012 10 / 0.85)
+  );
+  --gradient-pink: linear-gradient(
+    135deg,
+    oklch(0.72 0.22 355),
+    oklch(0.6 0.25 5)
+  );
+  --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.4);
+  --shadow-elev: 0 25px 60px -15px oklch(0.18 0.06 15 / 0.18);
+  --swipe-card-panel: oklch(0.52 0.14 250);
+  --swipe-card-panel-foreground: oklch(0.99 0.005 250);
+
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.98 0.01 10);
+  --sidebar-foreground: oklch(0.18 0.06 15);
+  --sidebar-primary: oklch(0.65 0.24 5);
+  --sidebar-primary-foreground: oklch(0.99 0.005 10);
+  --sidebar-accent: oklch(0.95 0.016 10);
+  --sidebar-accent-foreground: oklch(0.18 0.06 15);
+  --sidebar-border: oklch(0.9 0.02 10);
+  --sidebar-ring: oklch(0.65 0.24 5);
+}
+
+/* No `.dark` overrides: consumer is locked to the light theme to match
+   business / admin / waiter. The earlier dark variant lived here because
+   the guest discovery surfaces leaned image-heavy and the nightlife
+   positioning called for near-black; that tradeoff was reversed
+   2026-05-27 — consumer joins the rest of the suite on light. See
+   project_theme_strategy memory note for the reasoning. */
+
+/* First-time swipe hint — a hand drifts left then right to teach the
+   gesture. Used by SwipeTutorialOverlay. Tailwind doesn't ship a
+   left-right oscillation; defining it here keeps the component lean. */
+@keyframes swipe-hint {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 0.85;
+  }
+  20% {
+    transform: translateX(46px) rotate(8deg);
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 0.85;
+  }
+  60% {
+    transform: translateX(-46px) rotate(-8deg);
+    opacity: 1;
+  }
+  80% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 0.85;
+  }
+}
+
+.animate-swipe-hint {
+  animation: swipe-hint 2.6s ease-in-out infinite;
+}
+
+@theme inline {
+  /* Tightened radius scale — flatter, less "pill-like" corners across the
+     whole app. Deltas between steps are small so even rounded-3xl stays crisp. */
+  --radius-sm: calc(var(--radius) - 3px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 4px);
+  --radius-3xl: calc(var(--radius) + 6px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer utilities {
+  .bg-hero {
+    background: var(--gradient-hero);
+  }
+  .bg-peacock {
+    background: var(--gradient-peacock);
+  }
+  .bg-card-soft {
+    background: var(--gradient-card);
+  }
+  .bg-pink-gradient {
+    background: var(--gradient-pink);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .shadow-elev {
+    box-shadow: var(--shadow-elev);
+  }
+  .bg-swipe-panel {
+    background-color: var(--swipe-card-panel);
+    color: var(--swipe-card-panel-foreground);
+  }
+  .text-gold {
+    color: var(--tier-gold);
+  }
+  .text-silver {
+    color: var(--tier-silver);
+  }
+  .text-bronze {
+    color: var(--tier-bronze);
+  }
+  .bg-tier-gold {
+    background: var(--gradient-gold);
+  }
+  .bg-tier-silver {
+    background: var(--gradient-silver);
+  }
+  .bg-tier-bronze {
+    background: var(--gradient-bronze);
+  }
+  .bg-tier-diamond {
+    background: var(--gradient-diamond);
+  }
+  .text-free {
+    color: var(--tier-free);
+  }
+  .text-premium {
+    color: var(--tier-premium);
+  }
+  .bg-tier-free {
+    background: var(--gradient-free);
+  }
+  .bg-tier-premium {
+    background: var(--gradient-premium);
+  }
+  .border-whatsapp {
+    border-color: var(--whatsapp);
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+  /* Always-visible slim scrollbar (overrides the OS overlay auto-hide). */
+  .scrollbar-always {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scrollbar-always::-webkit-scrollbar {
+    width: 8px;
+    -webkit-appearance: none;
+  }
+  .scrollbar-always::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-always::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-always::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+    background-clip: content-box;
+  }
+  .eyebrow {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted-foreground);
+  }
+  .caption {
+    font-size: 10px;
+    color: var(--muted-foreground);
+  }
+  .surface-card {
+    @apply border-border bg-card rounded-2xl border;
+    box-shadow: var(--shadow-elev);
+  }
+  .surface-card-soft {
+    @apply border-border/80 rounded-3xl border;
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-elev);
+  }
+  .btn-primary {
+    @apply w-full rounded-lg py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50;
+    background: var(--gradient-pink);
+    box-shadow: var(--shadow-glow);
+  }
+  .segment-control {
+    @apply border-border/80 bg-card/80 flex items-center gap-0.5 rounded-lg border p-1 backdrop-blur-sm;
+  }
+  .segment-tab {
+    @apply flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-xs font-medium whitespace-nowrap transition;
+  }
+  .segment-tab-active {
+    @apply rounded-md text-white;
+    background: var(--gradient-pink);
+    box-shadow: var(--shadow-glow);
+  }
+  .segment-tab-idle {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+  .reward-highlight {
+    @apply border-secondary/20 from-secondary/12 to-accent/8 flex items-center gap-3 rounded-2xl border bg-gradient-to-br px-3 py-2.5;
+  }
+}

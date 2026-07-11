@@ -1,0 +1,8 @@
+{
+  "setup-worktree-unix": [
+    "test -f \"$ROOT_WORKTREE_PATH/.env.local\" && cp \"$ROOT_WORKTREE_PATH/.env.local\" .env.local || true"
+  ],
+  "setup-worktree-windows": [
+    "if exist \"%ROOT_WORKTREE_PATH%\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\.env.local\" .env.local"
+  ]
+}

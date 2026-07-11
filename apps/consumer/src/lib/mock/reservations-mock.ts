@@ -1,0 +1,106 @@
+// Reservation entity. Booking metadata only — no money fields. When a
+// reservation has a coupon riding along with it (the auto-issued one
+// from saving the place, or one specifically linked at booking time),
+// the embedded `linkedCoupon` summary travels with the reservation so
+// the card can render a "tied coupon" stub without a cross-lookup.
+
+export type ReservationStatus = "booking" | "booked" | "cancelled";
+
+/** Compact coupon summary shown as a stub below a reservation card. */
+export type LinkedCouponSummary = {
+  id: string;
+  percent: number;
+  classLabel: string;
+  kind: "normal" | "instagram";
+  /** Lifecycle hint — surfaced as a small pill. Subset of the full status. */
+  state: "active" | "pending";
+};
+
+export type ReservationItem = {
+  id: string;
+  projectId: string;
+  placeName: string;
+  placePhoto: string | null;
+  when: string;
+  partySize: number;
+  status: ReservationStatus;
+  statusNote?: string;
+  linkedCoupon?: LinkedCouponSummary;
+};
+
+export const MOCK_RESERVATIONS: ReservationItem[] = [
+  {
+    id: "res-mar-verde",
+    projectId: "mar-verde",
+    placeName: "Mar Verde",
+    placePhoto:
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
+    when: "Wed May 28 · 8:00 PM",
+    partySize: 2,
+    status: "booked",
+    linkedCoupon: {
+      id: "cp-mar-verde",
+      percent: 20,
+      classLabel: "Mesita Premium",
+      kind: "normal",
+      state: "active",
+    },
+  },
+  {
+    id: "res-neon-bar",
+    projectId: "neon-bar",
+    placeName: "Neón Bar",
+    placePhoto:
+      "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80",
+    when: "Sat May 31 · 9:00 PM",
+    partySize: 6,
+    status: "booking",
+    statusNote: "AI calling place · expect a call in ~3 min to confirm",
+    linkedCoupon: {
+      id: "cp-neon-bar",
+      percent: 20,
+      classLabel: "Mesita Premium",
+      kind: "normal",
+      state: "active",
+    },
+  },
+  {
+    id: "res-casa-luminar",
+    projectId: "casa-luminar",
+    placeName: "Casa Luminar",
+    placePhoto:
+      "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80",
+    when: "Fri Jun 6 · 8:30 PM",
+    partySize: 4,
+    status: "booked",
+    linkedCoupon: {
+      id: "cp-casa-luminar",
+      percent: 10,
+      classLabel: "Mesita Premium",
+      kind: "normal",
+      state: "active",
+    },
+  },
+  {
+    id: "res-atelier",
+    projectId: "atelier-nueve",
+    placeName: "Atelier Nueve",
+    placePhoto:
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
+    when: "Sun Jun 8 · 7:00 PM",
+    partySize: 2,
+    status: "booking",
+    statusNote: "Booking via OpenTable · usually under a minute",
+    // No linkedCoupon — this place isn't a Mesita partner.
+  },
+];
+
+/**
+ * Lookup by id used by `/reservation/[id]` (both the hard-nav page and
+ * the intercepted modal). Returns null on a miss so the route can render
+ * a not-found state without crashing — every id is mock for now, but
+ * once the real Edge Function lands the same shape applies.
+ */
+export function getMockReservationById(id: string): ReservationItem | null {
+  return MOCK_RESERVATIONS.find((r) => r.id === id) ?? null;
+}

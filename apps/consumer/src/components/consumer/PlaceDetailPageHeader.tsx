@@ -1,0 +1,47 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { PlaceDetailTitle } from "@/components/consumer/PlaceDetailTitle";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+
+// Header for the hard-nav /place/[id] page (refresh / direct URL / new
+// tab). Mirrors the modal shell's header but with an ArrowLeft Link back
+// to /discover/swipe instead of a router.back() X close — the modal can
+// route home because there's always a previous shell route; the hard-nav
+// page can't trust browser history.
+//
+// decision: Pato (MESITA-392, reverses MESITA-383) — Save moved into the
+// body action row (Save · Contact · Reserve · Share). The header is just
+// back + centered name now, so a w-9 spacer balances the back button.
+//
+// decision: Pato (MESITA-451) — when enriching, "(Enriching)" + spinner
+// sits to the right of the name in this header (not the bottom Meta box).
+
+export function PlaceDetailPageHeader({
+  placeId: _placeId,
+  placeName,
+  listingType: _listingType,
+  isEnriching = false,
+  backHref = CONSUMER_ROUTES.home,
+}: {
+  placeId: string;
+  placeName: string;
+  listingType: "partner" | "web";
+  isEnriching?: boolean;
+  backHref?: string;
+}) {
+  return (
+    <header className="bg-card z-20 flex shrink-0 items-center gap-2 px-3 py-3">
+      <Link
+        href={backHref}
+        aria-label="Back"
+        className="bg-card text-foreground border-border hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Link>
+      <PlaceDetailTitle placeName={placeName} isEnriching={isEnriching} />
+      <div className="h-9 w-9 shrink-0" aria-hidden />
+    </header>
+  );
+}
