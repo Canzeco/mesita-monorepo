@@ -5,11 +5,9 @@ import { Collapsible } from "../enricher-config/atlas-ui";
 import type { AtlasFieldsPayload } from "./actions";
 import {
   PLACE_FIELD_PERMISSIONS,
-  PLACE_FIELD_PERMISSION_GROUPS,
-  PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS,
   PLACE_FIELD_EDIT_ROLES,
   PLACE_FIELD_EDIT_ROLE_LABELS,
-  type PlaceFieldPermission,
+  PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS,
 } from "./place-field-permissions";
 
 export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
@@ -35,16 +33,6 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
     return map;
   }, [tags]);
 
-  const permissionsByGroup = useMemo(() => {
-    const map = new Map<PlaceFieldPermission["group"], PlaceFieldPermission[]>();
-    for (const row of PLACE_FIELD_PERMISSIONS) {
-      const list = map.get(row.group) ?? [];
-      list.push(row);
-      map.set(row.group, list);
-    }
-    return map;
-  }, []);
-
   return (
     <div className="flex flex-col gap-8">
       <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
@@ -57,38 +45,72 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           manual edits there don&apos;t stick. Read-only matrix (not a live ACL
           toggle).
         </p>
-        <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[600px] border-separate border-spacing-0 px-4 sm:px-0">
-            <thead>
-              <tr className="text-muted-foreground text-left text-xs">
-                <th className="border-border border-b pb-2 pl-1 font-medium">
-                  Field
-                </th>
-                {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
-                  <th
-                    key={role}
-                    className={
-                      i === PLACE_FIELD_EDIT_ROLES.length - 1
-                        ? "border-border border-b pb-2 pr-1 text-center font-medium"
-                        : "border-border border-b pb-2 text-center font-medium"
-                    }
-                  >
-                    {PLACE_FIELD_EDIT_ROLE_LABELS[role]}
+        <Collapsible
+          summary={`Show ${PLACE_FIELD_PERMISSIONS.length} fields · who can edit`}
+        >
+          <div className="-mx-4 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[720px] border-separate border-spacing-0 px-4 sm:px-0">
+              <thead>
+                <tr className="text-muted-foreground text-left text-xs">
+                  <th className="border-border border-b pb-2 pl-1 font-medium">
+                    Category
                   </th>
+                  <th className="border-border border-b pb-2 font-medium">
+                    Field
+                  </th>
+                  {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
+                    <th
+                      key={role}
+                      className={
+                        i === PLACE_FIELD_EDIT_ROLES.length - 1
+                          ? "border-border border-b pb-2 pr-1 text-center font-medium"
+                          : "border-border border-b pb-2 text-center font-medium"
+                      }
+                    >
+                      {PLACE_FIELD_EDIT_ROLE_LABELS[role]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PLACE_FIELD_PERMISSIONS.map((row) => (
+                  <tr key={row.key} className="align-top">
+                    <td
+                      className="border-border/60 border-b py-2.5 pr-3 pl-1 align-top"
+                      title={
+                        PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS[row.group]
+                      }
+                    >
+                      <div className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase whitespace-nowrap">
+                        {row.group}
+                      </div>
+                    </td>
+                    <td className="border-border/60 border-b py-2.5">
+                      <div className="text-sm font-medium">{row.label}</div>
+                      {row.note ? (
+                        <div className="text-muted-foreground mt-0.5 max-w-md text-xs leading-snug">
+                          {row.note}
+                        </div>
+                      ) : null}
+                    </td>
+                    {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
+                      <td
+                        key={role}
+                        className={
+                          i === PLACE_FIELD_EDIT_ROLES.length - 1
+                            ? "border-border/60 border-b py-2.5 pr-1 text-center"
+                            : "border-border/60 border-b py-2.5 text-center"
+                        }
+                      >
+                        <PermissionCell allowed={row[role]} />
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {PLACE_FIELD_PERMISSION_GROUPS.map((group) => {
-                const rows = permissionsByGroup.get(group) ?? [];
-                if (rows.length === 0) return null;
-                return (
-                  <PermissionGroupRows key={group} group={group} rows={rows} />
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        </Collapsible>
       </section>
 
       <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
@@ -205,53 +227,6 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
         </Collapsible>
       </section>
     </div>
-  );
-}
-
-function PermissionGroupRows({
-  group,
-  rows,
-}: {
-  group: PlaceFieldPermission["group"];
-  rows: PlaceFieldPermission[];
-}) {
-  return (
-    <>
-      <tr>
-        <td colSpan={1 + PLACE_FIELD_EDIT_ROLES.length} className="pt-4 pb-1.5 pl-1">
-          <div className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
-            {group}
-          </div>
-          <div className="text-muted-foreground/80 mt-0.5 text-xs font-normal normal-case">
-            {PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS[group]}
-          </div>
-        </td>
-      </tr>
-      {rows.map((row) => (
-        <tr key={row.key} className="align-top">
-          <td className="border-border/60 border-b py-2.5 pl-1">
-            <div className="text-sm font-medium">{row.label}</div>
-            {row.note ? (
-              <div className="text-muted-foreground mt-0.5 max-w-md text-xs leading-snug">
-                {row.note}
-              </div>
-            ) : null}
-          </td>
-          {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
-            <td
-              key={role}
-              className={
-                i === PLACE_FIELD_EDIT_ROLES.length - 1
-                  ? "border-border/60 border-b py-2.5 pr-1 text-center"
-                  : "border-border/60 border-b py-2.5 text-center"
-              }
-            >
-              <PermissionCell allowed={row[role]} />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
   );
 }
 
