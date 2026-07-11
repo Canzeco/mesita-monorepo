@@ -18,16 +18,15 @@ export function ManageSingleLayoutShell({
     return <div className="w-full">{children}</div>;
   }
 
-  // Select hub owns its chrome — constrained page, no generic header.
+  // Select hub owns its chrome — full-bleed like the per-unit editor so the
+  // search bar spans sidebar-edge → window-edge (no max-w-6xl gutters).
   if (
     pathname === "/manage-single" ||
     pathname === "/manage-single/select" ||
     pathname.startsWith("/manage-single/create") ||
     pathname.startsWith("/manage-single/add")
   ) {
-    return (
-      <PageContainer className="pb-10 sm:pb-14">{children}</PageContainer>
-    );
+    return <div className="w-full pb-10 sm:pb-14">{children}</div>;
   }
 
   return (

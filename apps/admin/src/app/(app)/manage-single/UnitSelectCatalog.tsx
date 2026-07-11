@@ -189,7 +189,7 @@ export function UnitSelectCatalog() {
   };
 
   return (
-    <div className="-mx-4 -mt-8 sm:-mx-6 sm:-mt-12 lg:-mx-8">
+    <div className="w-full">
       <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-b px-4 py-4 backdrop-blur-md sm:px-6 sm:py-5 lg:px-8">
         <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
           Manage Single Unit
