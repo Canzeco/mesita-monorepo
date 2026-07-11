@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useStoredFlag, useStoredString } from "@/lib/local-store";
+import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 // Presentational building blocks for the Me page and its Settings modal —
 // grouped, rounded, icon-led rows in the app's premium light-theme language.
@@ -54,8 +55,7 @@ export type RowTint =
 const TINT_CLASSES: Record<RowTint, string> = {
   primary: "bg-primary/10 text-primary",
   muted: "bg-muted text-foreground/70",
-  instagram:
-    "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white",
+  instagram: [INSTAGRAM_ICON_GRADIENT_CLASS, "text-white"].join(" "),
   emerald: "bg-emerald-500/10 text-emerald-600",
   amber: "bg-amber-500/10 text-amber-600",
   sky: "bg-sky-500/10 text-sky-600",
