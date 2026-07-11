@@ -1,0 +1,50 @@
+name: mobile-business CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile-business/**"
+      - ".github/workflows/mobile-business.yml"
+  pull_request:
+    paths:
+      - "apps/mobile-business/**"
+      - ".github/workflows/mobile-business.yml"
+
+concurrency:
+  group: mobile-business-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/mobile-business
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version pinned here: the monorepo root has no package.json, so the
+      # action can't read apps/mobile-business's `packageManager` field. Keep in sync
+      # with apps/mobile-business/package.json (pnpm@11.1.2).
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+
+      # Node 22+ required: pnpm 11 needs node:sqlite (workspace-wide gotcha).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/mobile-business/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      # Full Metro + NativeWind compile — catches resolver/config breaks
+      # that tsc and eslint can't see (e.g. css-interop hoisting).
+      - run: npx expo export --platform web
