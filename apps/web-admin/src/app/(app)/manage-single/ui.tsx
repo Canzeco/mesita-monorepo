@@ -130,7 +130,7 @@ export function TextField({
   maxLength?: number;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="flex min-h-4 items-center justify-between gap-2">
         <span className="text-foreground/90 flex items-center gap-1.5 text-[13px] font-medium">
           {icon}

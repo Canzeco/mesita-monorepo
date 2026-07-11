@@ -812,8 +812,10 @@ export function PlaceSection({
         subtitle="Official links + contact. Google Maps is native (create spine) — read-only. Leave other blanks to clear."
       >
         {/* One column, one list — links and contacts are all just channels;
-            no sub-grouping. */}
-        <div className="mt-5 grid gap-3.5">
+            no sub-grouping. grid-cols-1 (minmax(0,1fr)) bounds the column so a
+            long unbreakable URL truncates instead of blowing the card wider
+            than its masonry column. */}
+        <div className="mt-5 grid grid-cols-1 gap-3.5">
           {CHANNELS.map((c) => {
             const val = form.channels[c.key as string] ?? "";
             if (c.readOnly) {
@@ -1039,7 +1041,7 @@ function ReadField({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <span
         className={
           boxed
@@ -1058,7 +1060,7 @@ function ReadField({
       <div
         className={
           boxed
-            ? "bg-muted/60 border-border/60 flex min-h-10 items-center rounded-xl border px-3.5 text-sm"
+            ? "bg-muted/60 border-border/60 flex min-h-10 min-w-0 items-center rounded-xl border px-3.5 text-sm"
             : "flex min-h-9 items-center text-sm"
         }
       >
