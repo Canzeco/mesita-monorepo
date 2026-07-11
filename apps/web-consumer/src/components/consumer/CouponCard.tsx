@@ -18,7 +18,7 @@ import type {
   InstagramCouponStatus,
   LinkedReservationSummary,
 } from "@/lib/mock/coupons-mock";
-import { cn } from "@/lib/utils";
+import { cn, guestNoun } from "@/lib/utils";
 
 // Coupon card. Split by kind because the lifecycles + the calls to
 // action diverge enough that one card with every possible state is
@@ -202,7 +202,7 @@ function LinkedReservationStub({
           {reservation.when}{" "}
           <span className="text-muted-foreground font-normal">
             · {reservation.partySize}{" "}
-            {reservation.partySize === 1 ? "person" : "people"}
+            {guestNoun(reservation.partySize)}
           </span>
         </p>
       </div>

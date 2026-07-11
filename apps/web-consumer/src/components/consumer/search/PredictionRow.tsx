@@ -25,7 +25,7 @@ import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { cn } from "@/lib/utils";
+import { cn, firstInitial } from "@/lib/utils";
 import { formatKm } from "./search-utils";
 
 export type AddState = "adding" | "added";
@@ -90,7 +90,7 @@ export function PredictionRow({
           />
         ) : onMesita ? (
           <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-base font-bold text-white">
-            {prediction.mainText[0]?.toUpperCase() ?? "·"}
+            {firstInitial(prediction.mainText)}
           </span>
         ) : (
           <span className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center">

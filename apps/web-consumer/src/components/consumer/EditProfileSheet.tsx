@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, firstInitial } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
@@ -46,7 +46,7 @@ export function EditProfileSheet({
     firstName.trim() !== (profile.first_name ?? "") ||
     birthday !== (profile.birthday ?? "");
 
-  const initials = firstName.trim().charAt(0).toUpperCase() || "M";
+  const initials = firstInitial(firstName, "M");
 
   async function save() {
     if (!dirty || saving) return;
