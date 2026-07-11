@@ -8,10 +8,7 @@ import {
 } from "lucide-react";
 import { cn, formatRating } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
-import {
-  cityFromAddress,
-  neighborhoodFromAddress,
-} from "@/lib/adapters/place-to-detail";
+import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStatusLabel } from "@/lib/place-status";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
@@ -35,7 +32,7 @@ export function SwipeCardInfo({
     place.distance_km == null || place.distance_km <= 0
       ? "- km"
       : `${place.distance_km} km`;
-  const zoneLabel = resolveZoneLabel(place);
+  const zoneLabel = resolveZoneLabel({ zone: place.zone, address: place.address });
   const zoneDisplay = zoneLabel ?? "Neighborhood";
   const categoryLabel = resolvePlaceCategoryName({
     categoryLabel: place.category_label,
@@ -170,10 +167,4 @@ function formatFollowers(n: number | null | undefined): string | null {
   return formatCount(n);
 }
 
-function resolveZoneLabel(place: Place): string | null {
-  if (place.zone && place.zone.trim().length > 0) return place.zone;
-  const fromNeighborhood = neighborhoodFromAddress(place.address ?? undefined);
-  if (fromNeighborhood) return fromNeighborhood;
-  return cityFromAddress(place.address ?? undefined);
-}
 

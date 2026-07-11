@@ -87,6 +87,18 @@ export function cityFromAddress(
   return fallback;
 }
 
+/** Zone chip: prefer explicit zone, else colonia, else city from address. */
+export function resolveZoneLabel(input: {
+  zone?: string | null;
+  address?: string | null;
+}): string | null {
+  if (input.zone && input.zone.trim().length > 0) return input.zone;
+  const fromNeighborhood = neighborhoodFromAddress(input.address ?? undefined);
+  if (fromNeighborhood) return fromNeighborhood;
+  return cityFromAddress(input.address ?? undefined);
+}
+
+
 const DAY_LABELS: Record<string, string> = {
   monday: "Monday",
   tuesday: "Tuesday",
