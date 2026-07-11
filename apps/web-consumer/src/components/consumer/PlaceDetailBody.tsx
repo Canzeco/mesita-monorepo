@@ -58,7 +58,7 @@ import {
 import { formatPlacePriceChip } from "@/lib/place-price";
 import type { Place } from "@/lib/api/places";
 
-import { formatCompactCount, cn, firstInitial } from "@/lib/utils";
+import { cn, firstInitial, formatCompactCount, formatRating } from "@/lib/utils";
 import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 import { buildUberDropoffUrl } from "@/lib/uber-link";
 
@@ -234,7 +234,7 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 function ProfileSummary({ place }: { place: PlaceDetail }) {
   // decision: Pato — name in header; photo · Google · IG · reward; then
   // swipe-style tags: verification · category · price · zone · distance · hours.
-  const googleRating = place.google.rating.toFixed(1);
+  const googleRating = formatRating(place.google.rating)!;
   const googleCount = formatCompactCount(place.google.count, false);
   const igFollowers = formatCompactCount(place.instagram.followers, false);
   const priceLabel =
@@ -611,7 +611,7 @@ function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
           <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-pink-500/10 ring-1 ring-pink-500/30">
             <div className="flex items-baseline gap-1">
               <span className="font-display text-foreground text-2xl leading-none font-semibold">
-                {overall.toFixed(1)}
+                {formatRating(overall)!}
               </span>
               <Star
                 className="h-3 w-3 fill-amber-400 text-amber-400"
@@ -638,7 +638,7 @@ function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
         <ExternalCard
           logo={<GoogleLogo />}
           icon="star"
-          value={place.google.rating.toFixed(1)}
+          value={formatRating(place.google.rating)!}
           meta={`${formatCompactCount(place.google.count, true)} reviews`}
         />
         <ExternalCard
@@ -674,7 +674,7 @@ function RatingBar({ label, value }: { label: string; value: number }) {
         />
       </div>
       <span className="text-foreground w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums">
-        {value.toFixed(1)}
+        {formatRating(value)!}
       </span>
     </div>
   );
