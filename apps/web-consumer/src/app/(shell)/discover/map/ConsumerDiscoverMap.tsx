@@ -30,8 +30,8 @@ import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import { placeHref } from "@/lib/place-route";
 import {
   MONTERREY_CENTER,
-  MAP_MAP_DEFAULT_ZOOM,
-  MAP_MAP_USER_ZOOM,
+  MAP_DEFAULT_ZOOM,
+  MAP_USER_ZOOM,
 } from "@/lib/map-defaults";
 
 // Marker colours — the visual gate between Mesita partners and scraped web

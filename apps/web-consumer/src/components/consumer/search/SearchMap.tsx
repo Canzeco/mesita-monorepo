@@ -24,8 +24,8 @@ import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import {
   MONTERREY_CENTER,
-  MAP_MAP_DEFAULT_ZOOM,
-  MAP_MAP_USER_ZOOM,
+  MAP_DEFAULT_ZOOM,
+  MAP_USER_ZOOM,
 } from "@/lib/map-defaults";
 
 // Every place shows as a neutral gray dot; the one currently held in the
