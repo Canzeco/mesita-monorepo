@@ -86,12 +86,18 @@ const AVAILABILITY_CHIPS: FilterChip[] = [
   { id: "walk-in", label: "Walk-in", tone: "availability" },
 ];
 
-const PRICE_CHIPS: FilterChip[] = [1, 2, 3, 4].map((level) => ({
-  id: `price-${level}`,
-  label: formatPlacePriceLevelSymbols(level) ?? "$".repeat(level),
-  tone: "price" as const,
-  match: (place: Place) => place.price_level === level,
-}));
+const PRICE_CHIPS: FilterChip[] = ([1, 2, 3, 4] as const).flatMap((level) => {
+  const label = formatPlacePriceLevelSymbols(level);
+  if (!label) return [];
+  return [
+    {
+      id: `price-${level}`,
+      label,
+      tone: "price" as const,
+      match: (place: Place) => place.price_level === level,
+    },
+  ];
+});
 
 // TODO(EF): recommender filters — sheet-only until the signals exist.
 const SOON_CHIPS: FilterChip[] = [
