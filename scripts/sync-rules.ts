@@ -37,11 +37,11 @@ const only = onlyIdx === -1 ? undefined : rawArgs[onlyIdx + 1];
 
 const TARGETS = [
   { label: "root", dir: repoRoot, quickstart: true },
-  { label: "apps/admin", dir: join(repoRoot, "apps", "admin"), quickstart: false },
-  { label: "apps/business", dir: join(repoRoot, "apps", "business"), quickstart: false },
-  { label: "apps/consumer", dir: join(repoRoot, "apps", "consumer"), quickstart: false },
-  { label: "apps/landing", dir: join(repoRoot, "apps", "landing"), quickstart: false },
-  { label: "apps/mobile", dir: join(repoRoot, "apps", "mobile"), quickstart: false },
+  { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false },
+  { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false },
+  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false },
+  { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
+  { label: "apps/mobile-consumer", dir: join(repoRoot, "apps", "mobile-consumer"), quickstart: false },
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false },
 ];
 

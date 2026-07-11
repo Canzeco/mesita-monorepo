@@ -1,23 +1,23 @@
-name: admin CI
+name: web-admin CI
 
 on:
   push:
     branches: [main]
     paths:
-      - "apps/admin/**"
-      - ".github/workflows/admin.yml"
+      - "apps/web-admin/**"
+      - ".github/workflows/web-admin.yml"
   pull_request:
     paths:
-      - "apps/admin/**"
-      - ".github/workflows/admin.yml"
+      - "apps/web-admin/**"
+      - ".github/workflows/web-admin.yml"
 
 concurrency:
-  group: admin-ci-${{ github.ref }}
+  group: web-admin-ci-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
   run:
-    working-directory: apps/admin
+    working-directory: apps/web-admin
 
 jobs:
   check:
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: apps/admin/pnpm-lock.yaml
+          cache-dependency-path: apps/web-admin/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

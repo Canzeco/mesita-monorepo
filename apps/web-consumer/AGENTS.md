@@ -1,4 +1,5 @@
-# apps/consumer — consumer app (consumer.mesita.ai)
+<!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
+# apps/web-consumer — consumer app (consumer.mesita.ai)
 
 > Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
 
@@ -8,4 +9,4 @@
 - **Overlay & loading primitives are mandatory:** route modals via `SlideOverShell`/`BottomSheetShell` mounted from the segment `layout.tsx` (never `page.tsx`); state overlays via `LocalSheet`/`LocalDialog` (never `fixed inset-0` / bare `absolute`); loading via `Spinner`/`Skeleton`. Z-scale: BottomNav 40 · @modal 120 · local 130 · Toaster 140. Lint baseline = **0**.
 - Five bottom tabs (Home/Search/Rewards/Reservations/Profile). Consumers have a **class** (Free / Premium) on the flat **`/me`** page — Class & Settings open as modals, not sub-routes; legacy `/me/class`, `/me/settings`, `/me/plan`, and `/profile` all redirect to `/me`. Favorites = localStorage (`useSavedPlaces()`), not an EF. Referral page = `/share` (`/invite` redirects). AI persona = **Don Memo** (`/discover/ai`, Spanish-first — only the AI's own messages are Spanish).
 - Clients never call the DB — everything via `consumer-web-*` Edge Functions.
-- CI: `consumer.yml` — typecheck · build blocking, lint non-blocking (MESITA-145) (Node 22+), path-filtered to `apps/consumer/**`.
+- CI: `web-consumer.yml` — typecheck · build blocking, lint non-blocking (MESITA-145) (Node 22+), path-filtered to `apps/web-consumer/**`.

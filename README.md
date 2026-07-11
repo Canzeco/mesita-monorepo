@@ -4,11 +4,11 @@ One repository for the whole Mesita product — assembled 2026-07-11 from the si
 
 | Path | Was | What |
 | --- | --- | --- |
-| `apps/admin` | `mesita-web-admin` | Internal admin console (Next.js · Vercel) |
-| `apps/business` | `mesita-web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
-| `apps/consumer` | `mesita-web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
-| `apps/landing` | `mesita-web-landing` | Marketing landing (Next.js · Vercel) |
-| `apps/mobile` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · React Native) |
+| `apps/web-admin` | `mesita-web-admin` | Internal admin console (Next.js · Vercel) |
+| `apps/web-business` | `mesita-web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
+| `apps/web-consumer` | `mesita-web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
+| `apps/web-landing` | `mesita-web-landing` | Marketing landing (Next.js · Vercel) |
+| `apps/mobile-consumer` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · React Native) |
 | `supabase` | `mesita-supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
 
 ## Working in it
