@@ -638,6 +638,9 @@ export function PlaceSection({
                 : `${place.lat}, ${place.lng}`}
             </span>
           </ReadField>
+          <ReadField label="Timezone" auto boxed>
+            {place.timezone?.trim() ? place.timezone : "—"}
+          </ReadField>
         </div>
         {place.lat != null && place.lng != null ? (
           <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
@@ -658,7 +661,7 @@ export function PlaceSection({
         title="Hours"
         subtitle={
           place.timezone
-            ? `One range per day · timezone ${place.timezone}`
+            ? `Shown in the place's local time (${place.timezone}) — one range per day.`
             : "One range per day. Toggle off for days the place isn't open."
         }
       >
