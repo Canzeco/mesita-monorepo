@@ -1,5 +1,5 @@
 /**
- * Build an Uber universal deep link that prefills the venue as dropoff.
+ * Build an Uber universal deep link that prefills the place as dropoff.
  *
  * Uses the current `m.uber.com/looking` format (not the legacy
  * `m.uber.com/ul/?action=setPickup` path). Opens the Uber app when
