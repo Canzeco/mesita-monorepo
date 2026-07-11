@@ -20,7 +20,6 @@ export type PlaceFormState = {
   reddit_url: string;
   opentable_url: string;
   resy_url: string;
-  tripadvisor_url: string;
   google_maps_url: string;
   uber_eats_url: string;
   didi_food_url: string;

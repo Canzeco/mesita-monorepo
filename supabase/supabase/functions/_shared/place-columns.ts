@@ -73,7 +73,6 @@ const COLUMNS: readonly string[] = [
   "threads_url",
   "reddit_url",
   "didi_food_url",
-  "tripadvisor_url",
   "google_maps_url",
   "google_business_url",
   // Reservationist booking target + multi-contact list (MESITA-377).

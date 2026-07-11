@@ -1565,12 +1565,6 @@ const RESERVATION_DEFS = [
 
 const REVIEW_DEFS = [
   {
-    key: "tripadvisor_url",
-    label: "TripAdvisor",
-    Icon: Star,
-    logo: "/channels/tripadvisor.svg",
-  },
-  {
     key: "google_maps_url",
     label: "Google Maps",
     Icon: MapPin,
@@ -1597,8 +1591,6 @@ const CHANNEL_CLAY: Record<string, string> = {
     "border-green-200/70 bg-green-50 text-green-900 hover:bg-green-100/70",
   didi_food_url:
     "border-orange-200/70 bg-orange-50 text-orange-900 hover:bg-orange-100/70",
-  tripadvisor_url:
-    "border-lime-200/70 bg-lime-50 text-lime-900 hover:bg-lime-100/70",
   google_maps_url:
     "border-amber-200/70 bg-amber-50 text-amber-950 hover:bg-amber-100/70",
 };

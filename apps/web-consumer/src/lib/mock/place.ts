@@ -214,7 +214,6 @@ export type PlaceDetail = {
     didi_food_url?: string;
   };
   reviews_maps: {
-    tripadvisor_url?: string;
     google_maps_url?: string;
   };
 
@@ -528,7 +527,6 @@ export const mockPlace: PlaceDetail = {
     uber_eats_url: "https://www.ubereats.com/store/mochomos",
   },
   reviews_maps: {
-    tripadvisor_url: "https://www.tripadvisor.com/Restaurant_Review-mochomos",
     google_maps_url: "https://maps.google.com/?q=Mochomos+Monterrey",
   },
 

@@ -141,7 +141,6 @@ export type AdminPlace = {
   reservation_endpoint: string | null;
   reservation_contacts: unknown;
   uber_eats_url: string | null;
-  tripadvisor_url: string | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;
   // Generic products payload. Menus live under products.menu; reservation

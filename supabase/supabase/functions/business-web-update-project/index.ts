@@ -85,7 +85,6 @@ type UpdateBody = {
   threads_url?: string | null;
   reddit_url?: string | null;
   didi_food_url?: string | null;
-  tripadvisor_url?: string | null;
   // Native — rejected below (kept in the type so stale clients get the reject).
   google_maps_url?: string | null;
   google_place_id?: string | null;
@@ -157,7 +156,6 @@ const URL_FIELDS = [
   "threads_url",
   "reddit_url",
   "didi_food_url",
-  "tripadvisor_url",
 ] as const;
 type UrlField = (typeof URL_FIELDS)[number];
 

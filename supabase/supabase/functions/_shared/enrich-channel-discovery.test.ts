@@ -14,24 +14,6 @@ const NO_COUNTS = {
 // validateFieldUrl is the single host+shape gate every candidate passes through
 // (footer link, Perplexity answer, citation, degraded search) before it's trusted.
 
-Deno.test("tripadvisor: accepts detail (-d…) page, rejects a city list", () => {
-  assert(
-    validateFieldUrl(
-      "tripadvisor_url",
-      "https://www.tripadvisor.com/Restaurant_Review-g150800-d1234567-Reviews-Pujol-Mexico_City.html",
-    ),
-  );
-  assertEquals(
-    validateFieldUrl("tripadvisor_url", "https://www.tripadvisor.com/Restaurants-g150800-Mexico_City.html"),
-    null,
-  );
-});
-
-Deno.test("yelp: accepts /biz/<slug>, rejects /search", () => {
-  assert(validateFieldUrl("yelp_url", "https://www.yelp.com/biz/pujol-mexico-city"));
-  assertEquals(validateFieldUrl("yelp_url", "https://www.yelp.com/search?find_desc=pujol"), null);
-});
-
 Deno.test("opentable: accepts /r/<slug>, rejects other paths", () => {
   assert(validateFieldUrl("opentable_url", "https://www.opentable.com/r/pujol-mexico-city"));
   assertEquals(validateFieldUrl("opentable_url", "https://www.opentable.com/pujol"), null);
@@ -58,11 +40,7 @@ Deno.test("website: accepts a real site, rejects a social host", () => {
 });
 
 Deno.test("wrong host for the field returns null", () => {
-  assertEquals(
-    validateFieldUrl("yelp_url", "https://www.tripadvisor.com/Restaurant_Review-d1234567-Reviews-Pujol.html"),
-    null,
-  );
-  assertEquals(validateFieldUrl("tripadvisor_url", "https://www.instagram.com/pujol"), null);
+  assertEquals(validateFieldUrl("opentable_url", "https://www.instagram.com/pujol"), null);
 });
 
 // ── resolveChannels orchestration (no-network early-return paths) ────────────

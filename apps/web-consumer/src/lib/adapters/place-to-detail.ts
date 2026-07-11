@@ -415,7 +415,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       didi_food_url: str(row.didi_food_url),
     },
     reviews_maps: {
-      tripadvisor_url: str(row.tripadvisor_url),
       google_maps_url: str(row.google_maps_url),
     },
 

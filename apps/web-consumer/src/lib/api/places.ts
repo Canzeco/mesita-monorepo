@@ -60,7 +60,6 @@ export type Place = {
   threads_url: string | null;
   reddit_url: string | null;
   didi_food_url: string | null;
-  tripadvisor_url: string | null;
   google_maps_url: string | null;
   email: string | null;
   created_at: string;

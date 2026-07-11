@@ -18,14 +18,12 @@ export type ChannelKey =
   | "resy_url"
   | "uber_eats_url"
   | "didi_food_url"
-  | "tripadvisor_url"
-  | "yelp_url"
   | "google_maps_url";
 
 export type Channels = Record<ChannelKey, string | null>;
 
 // Hostname → channel column. Accepts exact hostnames and subdomain matches
-// (`m.facebook.com` → `facebook_url`). `tripadvisor` / `didi` rules are loose
+// (`m.facebook.com` → `facebook_url`). `didi` rules are loose
 // because the TLD varies by country (`.com`, `.com.mx`, `.es`, `.com.ar`).
 export function matchChannel(host: string): ChannelKey | null {
   const h = host.replace(/^www\./, "").toLowerCase();
@@ -45,10 +43,6 @@ export function matchChannel(host: string): ChannelKey | null {
   if (h === "didi.com" || h.endsWith(".didi.com")) return "didi_food_url";
   if (h.startsWith("didifood.")) return "didi_food_url";
   if (h === "sindelantal.com.mx" || h.endsWith(".sindelantal.com.mx")) return "didi_food_url";
-  // Match the brand label anywhere in the host so locale subdomains
-  // (es./fr.tripadvisor.com) AND country TLDs (tripadvisor.com.mx) both resolve.
-  if (/(^|\.)tripadvisor\./.test(h)) return "tripadvisor_url";
-  if (/(^|\.)yelp\./.test(h)) return "yelp_url";
   // maps.google.com + goo.gl short links. (google.com/maps/* needs the path —
   // see matchChannelFromUrl / classifyLinks path check.)
   if (h === "maps.google.com" || h.endsWith(".maps.google.com")) return "google_maps_url";
@@ -56,12 +50,18 @@ export function matchChannel(host: string): ChannelKey | null {
   return null;
 }
 
-// Social hosts we still RECOGNISE but no longer track as a channel (TikTok
-// retired product-wide). matchChannel returns null for them, and classifyLinks
-// absorbs them here so a TikTok link can never leak into website_url.
+// Social hosts we still RECOGNISE but no longer track as a channel (TikTok /
+// TripAdvisor / Yelp retired product-wide). matchChannel returns null for
+// them, and classifyLinks absorbs them here so a link to any of these can
+// never leak into website_url.
 function isRetiredSocialHost(host: string): boolean {
   const h = host.replace(/^www\./, "").toLowerCase();
-  return h === "tiktok.com" || h.endsWith(".tiktok.com");
+  if (h === "tiktok.com" || h.endsWith(".tiktok.com")) return true;
+  // Brand label anywhere in the host so locale subdomains (es./fr.tripadvisor.com)
+  // AND country TLDs (tripadvisor.com.mx) both match.
+  if (/(^|\.)tripadvisor\./.test(h)) return true;
+  if (/(^|\.)yelp\./.test(h)) return true;
+  return false;
 }
 
 /** google.com/maps/* (and locale hosts) — host-only matchChannel misses these. */
@@ -146,8 +146,6 @@ export function classifyLinks(input: (string | null | undefined)[]): Channels {
     resy_url: pickShortest(buckets.resy_url),
     uber_eats_url: pickShortest(buckets.uber_eats_url),
     didi_food_url: pickShortest(buckets.didi_food_url),
-    tripadvisor_url: pickShortest(buckets.tripadvisor_url),
-    yelp_url: pickShortest(buckets.yelp_url),
     google_maps_url: pickShortest(buckets.google_maps_url),
   };
 }

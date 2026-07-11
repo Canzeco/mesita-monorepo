@@ -41,9 +41,7 @@ export type ChannelField =
   | "instagram_url"
   | "facebook_url"
   | "opentable_url"
-  | "uber_eats_url"
-  | "tripadvisor_url"
-  | "yelp_url";
+  | "uber_eats_url";
 
 type ChannelMap = Record<ChannelField, string | null>;
 type ChannelSource = "seed" | "search" | "perplexity";
@@ -54,11 +52,9 @@ export type DiscoverCandidateCounts = Record<
   number
 >;
 
-// Channels the discovery pass actively searches for. Yelp / TripAdvisor are
-// TEMPORARILY disabled — we don't discover them for the moment, so their
-// columns stay null. To re-enable, add the two "*_url" entries back here; the
-// field hints / pickChannel cases / query map below are left in place for that.
-// (TikTok is RETIRED product-wide — not disabled, removed.)
+// Channels the discovery pass actively searches for. TripAdvisor / Yelp are
+// RETIRED product-wide (same posture as TikTok) — not discovered, not
+// persisted; their columns stay dormant.
 const CHANNEL_FIELDS: ChannelField[] = [
   "website_url",
   "instagram_url",
@@ -74,8 +70,6 @@ const CHANNEL_SEARCH_TERM: Record<ChannelField, string> = {
   facebook_url: "facebook",
   opentable_url: "opentable",
   uber_eats_url: "uber eats",
-  tripadvisor_url: "tripadvisor",
-  yelp_url: "yelp",
 };
 
 // Human-readable field spec for the Agent Y selection prompt.
@@ -88,9 +82,6 @@ const FIELD_SPEC: Record<ChannelField, string> = {
     "opentable_url: the canonical OpenTable restaurant page (opentable.com/r/… or a country domain). A brand page is acceptable.",
   uber_eats_url:
     "uber_eats_url: the canonical Uber Eats store page (ubereats.com/.../store/...).",
-  tripadvisor_url:
-    "tripadvisor_url: the place's TripAdvisor detail page (a Restaurant_Review / -d… page, not a city or category list).",
-  yelp_url: "yelp_url: the place's Yelp business page (yelp.com/biz/<slug>).",
 };
 
 export type ResolvedChannels = ChannelMap & {
@@ -100,32 +91,6 @@ export type ResolvedChannels = ChannelMap & {
 };
 
 // ── Shape validators (real domain knowledge, kept verbatim) ──────────────────
-
-function urlPathSegments(url: string): string[] {
-  try {
-    return new URL(url).pathname.toLowerCase().split("/").filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-// A TripAdvisor DETAIL listing (reject city/category/list pages): a -d<id>
-// location id and/or a *_Review path token, anchored so aggregator pages fail.
-function isTripAdvisorListing(url: string): boolean {
-  let path: string;
-  try {
-    path = new URL(url).pathname.toLowerCase();
-  } catch {
-    return false;
-  }
-  return /[-/]d\d{3,}/.test(path) || /_review[-/]/.test(path);
-}
-
-// A Yelp business listing is /biz/<slug> (reject /search, /c/<cat>, city pages).
-function isYelpListing(url: string): boolean {
-  const segs = urlPathSegments(url);
-  return segs[0] === "biz" && segs.length >= 2;
-}
 
 function pathStartsWith(url: string, prefix: string): boolean {
   try {
@@ -163,14 +128,6 @@ export function validateFieldUrl(field: ChannelField, rawUrl: string): string | 
     case "uber_eats_url": {
       const hit = pickChannel([canon], "uber_eats_url");
       return hit && pathIncludes(hit, "/store/") ? hit : null;
-    }
-    case "tripadvisor_url": {
-      const hit = pickChannel([canon], "tripadvisor_url");
-      return hit && isTripAdvisorListing(hit) ? hit : null;
-    }
-    case "yelp_url": {
-      const hit = pickChannel([canon], "yelp_url");
-      return hit && isYelpListing(hit) ? hit : null;
     }
   }
 }
@@ -391,8 +348,6 @@ export async function resolveChannels(opts: {
     website: string | null;
     opentable: string | null;
     uberEats: string | null;
-    tripadvisor?: string | null;
-    yelp?: string | null;
   };
 }): Promise<ResolvedChannels> {
   const { firecrawlKey, perplexityKey, name, city, locationLine, category, serpContext } = opts;
@@ -405,8 +360,6 @@ export async function resolveChannels(opts: {
     facebook_url: opts.have.facebook,
     opentable_url: opts.have.opentable,
     uber_eats_url: opts.have.uberEats,
-    tripadvisor_url: opts.have.tripadvisor ?? null,
-    yelp_url: opts.have.yelp ?? null,
   };
   const via: ResolvedChannels["via"] = {};
   const provenance: ResolvedChannels["provenance"] = {};
