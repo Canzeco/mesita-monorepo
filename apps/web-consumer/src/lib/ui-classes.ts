@@ -49,3 +49,7 @@ export const TEXTAREA_CLASS =
 export const INSTAGRAM_ICON_GRADIENT_CLASS =
   "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]";
 
+// Secondary Cancel action used in LocalSheet footers (bordered, card fill).
+export const SHEET_CANCEL_BUTTON_CLASS =
+  "border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition";
+
