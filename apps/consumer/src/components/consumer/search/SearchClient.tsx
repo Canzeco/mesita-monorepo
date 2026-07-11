@@ -586,9 +586,16 @@ function RailCard({
           </span>
         )}
       </div>
-      <div className="min-w-0 flex-1">
+      {/* Text column — a strict 4-row grid (name / subtitle / meta / status)
+          with one uniform gap and one type size + leading for the secondary
+          rows, centred against the 80px photo. Meta items join with the same
+          "·" separator as the subtitle so the block reads as ordered lines,
+          not floating fragments. */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 py-0.5">
         <span className="flex items-center gap-1">
-          <span className="truncate text-sm font-semibold">{place.name}</span>
+          <span className="truncate text-sm leading-tight font-semibold">
+            {place.name}
+          </span>
           {place.listing_type === "partner" && (
             <BadgeCheck
               className="text-primary h-3.5 w-3.5 shrink-0"
@@ -597,28 +604,37 @@ function RailCard({
           )}
         </span>
         {subtitle && (
-          <p className="text-muted-foreground truncate text-[11px]">
+          <p className="text-muted-foreground truncate text-[11px] leading-4">
             {subtitle}
           </p>
         )}
         {hasMeta && (
-          <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[11px]">
+          <p className="text-muted-foreground flex items-center gap-1 text-[11px] leading-4">
             {place.google_rating != null && (
-              <span className="flex items-center gap-0.5">
-                <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+              <span className="flex items-center gap-1">
+                <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
                 {place.google_rating.toFixed(1)}
               </span>
             )}
             {place.price_level != null && place.price_level > 0 && (
-              <span>{"$".repeat(place.price_level)}</span>
+              <span className="flex items-center gap-1">
+                {place.google_rating != null && <span>·</span>}
+                <span>{"$".repeat(place.price_level)}</span>
+              </span>
             )}
             {place.distance_km != null && (
-              <span>{formatKm(place.distance_km)}</span>
+              <span className="flex items-center gap-1">
+                {(place.google_rating != null ||
+                  (place.price_level != null && place.price_level > 0)) && (
+                  <span>·</span>
+                )}
+                <span>{formatKm(place.distance_km)}</span>
+              </span>
             )}
           </p>
         )}
         {openingLabel && (
-          <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium">
+          <span className="flex items-center gap-1.5 text-[11px] leading-4 font-medium">
             <span
               className={cn(
                 "h-1.5 w-1.5 shrink-0 rounded-full",
