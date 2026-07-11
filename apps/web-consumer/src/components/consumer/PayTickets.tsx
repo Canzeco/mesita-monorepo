@@ -9,6 +9,8 @@ import {
   type PayTicketsState,
 } from "@/lib/hooks/useConsumerPayTickets";
 import { TicketCardSkeleton } from "@/app/(shell)/rewards/PayTabLoading";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
 // Presentational tickets list — the fetch/poll lives in useConsumerPayTickets
 // (lifted so the passport card and this list share one source). Renders the
@@ -34,7 +36,7 @@ export function PayTickets({
           <TicketCardSkeleton />
         </>
       ) : status === "error" ? (
-        <div className="border-destructive/30 bg-destructive/5 rounded-2xl border px-4 py-6 text-center">
+        <div className={cn(ERROR_BOX_CLASS, "rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-6 text-center text-sm")}>
           <p className="text-destructive text-sm font-semibold">
             Couldn&apos;t load your tickets.
           </p>
