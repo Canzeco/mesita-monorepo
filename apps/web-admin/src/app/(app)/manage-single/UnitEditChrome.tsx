@@ -58,9 +58,9 @@ export function UnitEditChrome({
   );
   const enriching = isEnriching(enrichStatus);
 
-  // decision: Pato (MESITA-451) — Enriching badge lives next to the place
-  // name in this chrome (not in the Meta card). Poll while open so the
-  // spinner clears when the pipeline finishes.
+  // decision: Pato (MESITA-451) — Enriching badge also lives next to the place
+  // name in this chrome. Meta card shows enriching status too (MESITA-466).
+  // Poll while open so the spinner clears when the pipeline finishes.
   useEffect(() => {
     let alive = true;
     const load = () => {
