@@ -1080,6 +1080,26 @@ function MetaCard({
       {/* One boxed field per row — same filled-input language as every other
           card on this page. */}
       <div className="mt-5 flex flex-col gap-4">
+        <ReadField label="Status" boxed>
+          {place.status?.trim() ? (
+            <span className="flex items-center gap-1.5 font-medium capitalize">
+              <span
+                className={
+                  "h-1.5 w-1.5 shrink-0 rounded-full " +
+                  (["active", "published", "live", "ready"].includes(
+                    place.status.trim().toLowerCase(),
+                  )
+                    ? "bg-green-500"
+                    : "bg-amber-500")
+                }
+                aria-hidden
+              />
+              {place.status}
+            </span>
+          ) : (
+            "—"
+          )}
+        </ReadField>
         <ReadField label="UID" boxed>
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
             <code className="min-w-0 truncate font-mono text-[11px]">
