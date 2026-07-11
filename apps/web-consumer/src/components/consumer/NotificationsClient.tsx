@@ -12,7 +12,6 @@ import {
 import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
 import { formatPayMx } from "@/lib/api/pay";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 import { cn, errMsg } from "@/lib/utils";
 import {
   GLOBAL_ACTIVITY,
