@@ -51,9 +51,9 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           Who can edit
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Place profile fields — who may write each one today. Read-only matrix
-          from shipped native / enricher / admin / business contracts (not a
-          live ACL toggle).
+          Place profile fields — who may write each one today. Native fields
+          are Google-owned and locked: nobody edits them. Read-only matrix (not
+          a live ACL toggle).
         </p>
         <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
           <table className="w-full min-w-[600px] border-separate border-spacing-0 px-4 sm:px-0">
