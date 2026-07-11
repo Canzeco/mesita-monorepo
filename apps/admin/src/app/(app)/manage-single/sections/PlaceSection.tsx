@@ -646,24 +646,26 @@ export function PlaceSection({
         title="Location"
         subtitle="Native — address & coordinates come from Google / the Enricher."
       >
-        <div className="mt-5">
-          <ReadField label="Address" auto>
+        {/* One boxed field per row — same filled-input language as every
+            other card. Lat/Lng share one box (a coordinate pair is one
+            fact); everything else stacks. */}
+        <div className="mt-5 grid gap-4">
+          <ReadField label="Address" auto boxed>
             {place.address?.trim() ? place.address : "—"}
           </ReadField>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
-          <Fact label="Zone">{place.zone ?? "—"}</Fact>
-          <Fact label="City">{place.city ?? "—"}</Fact>
-          <Fact label="Lat">
-            <span className="font-mono tabular-nums">
-              {place.lat == null ? "—" : place.lat}
+          <ReadField label="Zone" auto boxed>
+            {place.zone ?? "—"}
+          </ReadField>
+          <ReadField label="City" auto boxed>
+            {place.city ?? "—"}
+          </ReadField>
+          <ReadField label="Lat / Lng" auto boxed>
+            <span className="font-mono text-[13px] tabular-nums">
+              {place.lat == null || place.lng == null
+                ? "—"
+                : `${place.lat}, ${place.lng}`}
             </span>
-          </Fact>
-          <Fact label="Lng">
-            <span className="font-mono tabular-nums">
-              {place.lng == null ? "—" : place.lng}
-            </span>
-          </Fact>
+          </ReadField>
         </div>
         {place.lat != null && place.lng != null ? (
           <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
@@ -993,18 +995,6 @@ function ReadField({
   );
 }
 
-// Compact label→value fact (Location coordinates, etc.).
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.06em] uppercase">
-        {label}
-      </p>
-      <div className="mt-0.5 truncate text-sm">{children}</div>
-    </div>
-  );
-}
-
 // Small "Open ↗" affordance shown in a link field's label when it has a value.
 function OpenLink({ href }: { href: string }) {
   const trimmed = href.trim();
@@ -1087,39 +1077,39 @@ function MetaCard({
       title="Meta"
       subtitle="Row identity & audit trail."
     >
+      {/* One boxed field per row — same filled-input language as every other
+          card on this page. */}
       <div className="mt-5 flex flex-col gap-4">
-        <ReadField label="UID">
-          <span className="flex min-w-0 items-center gap-2">
-            <code className="bg-muted/70 min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-[11px]">
+        <ReadField label="UID" boxed>
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <code className="min-w-0 truncate font-mono text-[11px]">
               {place.id}
             </code>
-            <span className="text-muted-foreground text-xs">
+            <span className="text-muted-foreground shrink-0 text-xs">
               <CopyIdButton id={place.id} />
             </span>
           </span>
         </ReadField>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ReadField label="Created at">
-            {place.created_at ? formatAbsoluteUtc(place.created_at) : "—"}
-          </ReadField>
-          <ReadField label="Updated at">
-            <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-              {place.updated_at ? formatAbsoluteUtc(place.updated_at) : "—"}
-              {by != null && (
-                <span
-                  className={
-                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold " +
-                    (by === "ai"
-                      ? "bg-sky-500/10 text-sky-700"
-                      : "bg-muted text-muted-foreground")
-                  }
-                >
-                  by {by === "ai" ? "Enricher (AI)" : "human"}
-                </span>
-              )}
-            </span>
-          </ReadField>
-        </div>
+        <ReadField label="Created at" boxed>
+          {place.created_at ? formatAbsoluteUtc(place.created_at) : "—"}
+        </ReadField>
+        <ReadField label="Updated at" boxed>
+          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {place.updated_at ? formatAbsoluteUtc(place.updated_at) : "—"}
+            {by != null && (
+              <span
+                className={
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                  (by === "ai"
+                    ? "bg-sky-500/10 text-sky-700"
+                    : "bg-card text-muted-foreground border-border/70 border")
+                }
+              >
+                by {by === "ai" ? "Enricher (AI)" : "human"}
+              </span>
+            )}
+          </span>
+        </ReadField>
         {badge.spinning ? (
           <p className="flex items-center gap-2 rounded-xl border border-sky-200/80 bg-sky-50/80 px-3 py-2 text-xs font-medium text-sky-900">
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
