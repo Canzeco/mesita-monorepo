@@ -92,6 +92,41 @@ export function upsertSavedPlacePreview<T extends { id: string }>(
   })();
 }
 
+export async function readSavedPlacePreviews<
+  T extends { id: string },
+>(): Promise<Map<string, T>> {
+  try {
+    const raw = await AsyncStorage.getItem(PREVIEW_STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return new Map();
+    }
+    const map = new Map<string, T>();
+    for (const [id, value] of Object.entries(parsed)) {
+      if (value && typeof value === 'object') {
+        map.set(id, value as T);
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+export function removeSavedPlacePreview(placeId: string): void {
+  void (async () => {
+    try {
+      const map = await readSavedPlacePreviews<{ id: string }>();
+      if (!map.delete(placeId)) return;
+      const obj = Object.fromEntries(map.entries());
+      await AsyncStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(obj));
+    } catch {
+      /* degrade silently */
+    }
+  })();
+}
+
 export function useSavedPlaces() {
   // Kick hydration on first hook mount so AsyncStorage loads before paints settle.
   useEffect(() => {
