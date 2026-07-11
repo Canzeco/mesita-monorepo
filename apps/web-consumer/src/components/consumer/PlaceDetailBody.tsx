@@ -439,7 +439,7 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
 // Save · Contact · Reserve · Share — four equal outline buttons. Save toggles
 // the localStorage favorite (saved state = primary tint + filled heart).
 // Reserve + Share are parked: tap opens ComingSoonModal (no "Soon" pills).
-// Contact glyph prefers WhatsApp when the venue has it.
+// Contact glyph prefers WhatsApp when the place has it.
 function ProfileActions({
   place,
   className,
@@ -541,7 +541,7 @@ function ProfileActions({
         open={soonKind === "reserve"}
         onClose={() => setSoonKind(null)}
         title="Reservations coming soon"
-        body="Book a table from Mesita shortly — for now, use Contact to reach the venue."
+        body="Book a table from Mesita shortly — for now, use Contact to reach the place."
         icon={CalendarCheck}
       />
       <ComingSoonModal
@@ -969,7 +969,7 @@ function LocationBox({ place }: { place: PlaceDetail }) {
     place.reviews_maps.google_maps_url ??
     `https://maps.google.com/?q=${encodeURIComponent(place.address)}`;
   // decision: Pato — Ask Uber must open a working ride deep link with the
-  // venue as dropoff (name + address + lat/lng when present). Legacy
+  // place as dropoff (name + address + lat/lng when present). Legacy
   // m.uber.com/ul/?action=setPickup often fails to prefill destination.
   const uberUrl = buildUberDropoffUrl(place);
   return (
