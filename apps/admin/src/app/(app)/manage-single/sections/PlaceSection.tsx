@@ -515,6 +515,16 @@ export function PlaceSection({
       setErrors((e) => ({ ...e, basics: "Name is required." }));
       return;
     }
+    // "Select…" is a placeholder, not a contact channel — refuse empty saves
+    // so reservations never land as null after a successful Save (MESITA-441).
+    if (box === "reservations" && form.reservation.length === 0) {
+      setErrors((e) => ({
+        ...e,
+        reservations: "Pick Instagram, WhatsApp, or phone — Select… isn’t a contact channel.",
+      }));
+      setOks((o) => ({ ...o, reservations: false }));
+      return;
+    }
     setErrors((e) => ({ ...e, [box]: undefined }));
     setOks((o) => ({ ...o, [box]: false }));
     setPendingBox(box);
@@ -857,9 +867,14 @@ export function PlaceSection({
                     setReservationSlot(slot, e.target.value as ReservationChannel | "")
                   }
                   aria-label={`Reservation channel — ${slotLabel}`}
+                  required={slot === 0}
                   className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
                 >
-                  <option value="">{slot === 0 ? "Select…" : "None"}</option>
+                  {/* 1st choice: Select… is display-only — never a choosable /
+                      saveable value. Fallbacks keep None so they can be cleared. */}
+                  <option value="" disabled={slot === 0}>
+                    {slot === 0 ? "Select…" : "None"}
+                  </option>
                   {RESERVATION_CHANNELS.filter(
                     (c) => c.key === value || !form.reservation.includes(c.key),
                   ).map((c) => (
