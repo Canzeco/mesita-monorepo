@@ -30,3 +30,13 @@ export function formatCompactCount(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toLocaleString();
 }
+
+
+/** $-symbol price level for catalog/preview chips (e.g. $$$). */
+export function formatPriceLevelSymbols(
+  priceLevel: number | null | undefined,
+): string | null {
+  if (priceLevel == null || priceLevel < 1) return null;
+  const level = Math.min(4, Math.max(1, Math.round(priceLevel)));
+  return "$".repeat(level);
+}
