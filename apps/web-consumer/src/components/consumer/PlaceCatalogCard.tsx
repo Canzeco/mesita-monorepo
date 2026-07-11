@@ -6,6 +6,7 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { PromoChip } from "./PromoChip";
 import { placeHref } from "@/lib/place-route";
 import { firstInitial, formatRating } from "@/lib/utils";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 
 // Catalog row card — used by /saved and /discover/catalog.
 //
@@ -37,8 +38,7 @@ export function PlaceCatalogCard({
     categoryLabel: place.category_label,
     category: place.category,
   });
-  const priceLevel =
-    place.price_level != null ? "$".repeat(place.price_level) : null;
+  const priceLevel = formatPlacePriceLevelSymbols(place.price_level);
   const ratingLabel = formatRating(place.google_rating);
   const distanceLabel =
     place.distance_km != null ? `${place.distance_km} km` : null;

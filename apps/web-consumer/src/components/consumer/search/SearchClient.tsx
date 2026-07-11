@@ -42,6 +42,7 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { cn, errMsg, firstInitial, formatRating } from "@/lib/utils";
+import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { FiltersComingSoon } from "@/components/consumer/FiltersComingSoon";
 import { SearchMap } from "./SearchMap";
@@ -556,9 +557,10 @@ function RailCard({
   const subtitle = [category, place.zone].filter(Boolean).join(" · ");
   const openingLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
+  const priceSymbols = formatPlacePriceLevelSymbols(place.price_level);
   const hasMeta =
     place.google_rating != null ||
-    (place.price_level != null && place.price_level > 0) ||
+    priceSymbols != null ||
     place.distance_km != null;
 
   return (
@@ -616,16 +618,15 @@ function RailCard({
                 {formatRating(place.google_rating)}
               </span>
             )}
-            {place.price_level != null && place.price_level > 0 && (
+            {priceSymbols && (
               <span className="flex items-center gap-1">
                 {place.google_rating != null && <span>·</span>}
-                <span>{"$".repeat(place.price_level)}</span>
+                <span>{priceSymbols}</span>
               </span>
             )}
             {place.distance_km != null && (
               <span className="flex items-center gap-1">
-                {(place.google_rating != null ||
-                  (place.price_level != null && place.price_level > 0)) && (
+                {(place.google_rating != null || priceSymbols != null) && (
                   <span>·</span>
                 )}
                 <span>{formatKm(place.distance_km)}</span>
