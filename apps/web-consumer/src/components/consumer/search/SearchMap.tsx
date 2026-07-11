@@ -22,12 +22,11 @@ import {
 } from "@vis.gl/react-google-maps";
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
-
-// Default map centre — Monterrey, the launch city. When geolocation
-// resolves we re-centre on the consumer instead.
-const DEFAULT_CENTER = { lat: 25.6714, lng: -100.3094 };
-const DEFAULT_ZOOM = 13;
-const USER_ZOOM = 14;
+import {
+  MONTERREY_CENTER,
+  MAP_MAP_DEFAULT_ZOOM,
+  MAP_MAP_USER_ZOOM,
+} from "@/lib/map-defaults";
 
 // Every place shows as a neutral gray dot; the one currently held in the
 // rail (selected) turns red. No partner/web colour split here — selection
@@ -194,8 +193,8 @@ function SearchMapCanvas({
 
   return (
     <Map
-      defaultCenter={userLocation ?? DEFAULT_CENTER}
-      defaultZoom={userLocation ? USER_ZOOM : DEFAULT_ZOOM}
+      defaultCenter={userLocation ?? MONTERREY_CENTER}
+      defaultZoom={userLocation ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
       gestureHandling="greedy"
       disableDefaultUI
       clickableIcons={false}
@@ -245,8 +244,8 @@ function Recentre({ target }: { target: LatLng | null }) {
   useEffect(() => {
     if (!map || !target) return;
     map.panTo(target);
-    if ((map.getZoom() ?? DEFAULT_ZOOM) < USER_ZOOM) {
-      map.setZoom(USER_ZOOM);
+    if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
+      map.setZoom(MAP_USER_ZOOM);
     }
   }, [map, target]);
   return null;
@@ -260,8 +259,8 @@ function PanTo({ lat, lng }: { lat: number; lng: number }) {
   useEffect(() => {
     if (!map) return;
     map.panTo({ lat, lng });
-    if ((map.getZoom() ?? DEFAULT_ZOOM) < USER_ZOOM) {
-      map.setZoom(USER_ZOOM);
+    if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
+      map.setZoom(MAP_USER_ZOOM);
     }
   }, [map, lat, lng]);
   return null;

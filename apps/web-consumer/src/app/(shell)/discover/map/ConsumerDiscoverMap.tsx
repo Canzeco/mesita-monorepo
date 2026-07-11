@@ -28,13 +28,11 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { PartnerBadge, RatePill, Skeleton, Spinner } from "@/components/shared";
 import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import { placeHref } from "@/lib/place-route";
-
-// Default map centre — Monterrey, since that's the city the project is
-// shipping in first. If the geolocation permission lands we re-centre on
-// the user instead.
-const DEFAULT_CENTER = { lat: 25.6714, lng: -100.3094 };
-const DEFAULT_ZOOM = 13;
-const USER_ZOOM = 14;
+import {
+  MONTERREY_CENTER,
+  MAP_MAP_DEFAULT_ZOOM,
+  MAP_MAP_USER_ZOOM,
+} from "@/lib/map-defaults";
 
 // Marker colours — the visual gate between Mesita partners and scraped web
 // listings. Close enough to the brand palette.
@@ -209,8 +207,8 @@ function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const center = userLocation ?? DEFAULT_CENTER;
-  const zoom = userLocation ? USER_ZOOM : DEFAULT_ZOOM;
+  const center = userLocation ?? MONTERREY_CENTER;
+  const zoom = userLocation ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM;
 
   return (
     <div className="relative flex h-full flex-col">
@@ -338,8 +336,8 @@ function PanToSelected({ target }: { target: LatLng }) {
     if (!map) return;
     // Bias the pan so the marker sits roughly above the preview card.
     map.panTo(target);
-    if ((map.getZoom() ?? DEFAULT_ZOOM) < USER_ZOOM) {
-      map.setZoom(USER_ZOOM);
+    if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
+      map.setZoom(MAP_USER_ZOOM);
     }
   }, [map, target]);
   return null;
@@ -444,8 +442,8 @@ function Recentre({ target }: { target: LatLng | null }) {
   useEffect(() => {
     if (!map || !target) return;
     map.panTo(target);
-    if ((map.getZoom() ?? DEFAULT_ZOOM) < USER_ZOOM) {
-      map.setZoom(USER_ZOOM);
+    if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
+      map.setZoom(MAP_USER_ZOOM);
     }
   }, [map, target]);
   return null;
@@ -465,7 +463,7 @@ function RecentreButton({
       onClick={() => {
         if (!map) return;
         map.panTo(target);
-        map.setZoom(USER_ZOOM);
+        map.setZoom(MAP_USER_ZOOM);
       }}
       aria-label="Centre map on me"
       className={`bg-card text-foreground shadow-elev hover:bg-muted absolute right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full transition ${
