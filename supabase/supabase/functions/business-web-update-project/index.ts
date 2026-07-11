@@ -320,16 +320,20 @@ Deno.serve(async (req) => {
   }
   if ("pitch" in body) update.pitch = optString(body.pitch, 200);
   if ("story" in body) update.story = optString(body.story, 1500);
-  // Four per-tier promo rates. Each is nullable (null clears the offer) or
-  // one of {10, 20, 50, 70}. The DB has a matching CHECK constraint so a
-  // mis-shaped client can't slip through; this is the friendly 400 layer.
+  // Four per-tier promo rates. Each is nullable (null clears the offer). The
+  // Buzz v4 Promos page sends only the tens grid {10, 20, 30, 40, 50} via its
+  // four preset strategies (30/40 added, 50 the ceiling). We keep the retired
+  // 70 legal too — the union {10,20,30,40,50,70} — so the previous Promos UI
+  // still on production (until the Buzz v4 frontend merges) doesn't regress on
+  // a 70 write. The coupon snapshot CHECK admits the same union. Tighten to
+  // {10..50} once the old UI is gone.
   const PROMO_RATE_FIELDS = [
     "welcome_free_rate",
     "welcome_premium_rate",
     "free_rate",
     "premium_rate",
   ] as const;
-  const LEGAL_PROMO_RATES = new Set([10, 20, 50, 70]);
+  const LEGAL_PROMO_RATES = new Set([10, 20, 30, 40, 50, 70]);
   for (const field of PROMO_RATE_FIELDS) {
     if (!(field in body)) continue;
     const raw = body[field];
@@ -340,7 +344,10 @@ Deno.serve(async (req) => {
     const v = Number(raw);
     if (!LEGAL_PROMO_RATES.has(v)) {
       return json(
-        { ok: false, error: `${field} must be null or one of 10, 20, 50, 70` },
+        {
+          ok: false,
+          error: `${field} must be null or one of 10, 20, 30, 40, 50, 70`,
+        },
         400,
       );
     }
