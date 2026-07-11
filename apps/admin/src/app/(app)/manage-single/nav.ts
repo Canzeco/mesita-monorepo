@@ -15,7 +15,7 @@ export const UNIT_SECTIONS = [
   { id: "promos", label: "Promos", Icon: Tag, soon: false },
   { id: "scan", label: "Scan", Icon: QrCode, soon: true },
   { id: "performance", label: "Performance", Icon: ChartLine, soon: true },
-  { id: "team", label: "Team", Icon: UsersRound, soon: true },
+  { id: "team", label: "Team", Icon: UsersRound, soon: false },
 ] as const;
 
 export type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];

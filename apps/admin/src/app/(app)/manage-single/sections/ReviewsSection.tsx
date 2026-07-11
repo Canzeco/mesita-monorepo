@@ -264,7 +264,15 @@ function ReviewSortChips({
   );
 }
 
+// Quotes shorter than this comfortably fit the 5-line clamp — no toggle. The
+// threshold is a heuristic (≈5 lines × ~44 chars at w-72), not a measurement;
+// a few borderline quotes showing a needless "Read more" beats truncating a
+// long one with no way to expand.
+const REVIEW_CLAMP_CHARS = 220;
+
 function GoogleReviewCard({ review }: { review: GoogleReview }) {
+  const [expanded, setExpanded] = useState(false);
+  const clampable = review.quote.length > REVIEW_CLAMP_CHARS;
   return (
     <article className="border-border/60 bg-muted/30 flex w-72 shrink-0 snap-start flex-col gap-2 rounded-xl border p-3">
       <div className="flex items-start justify-between gap-2">
@@ -281,9 +289,23 @@ function GoogleReviewCard({ review }: { review: GoogleReview }) {
         </span>
       </div>
       <Stars rating={review.rating} />
-      <p className="text-muted-foreground line-clamp-5 text-sm leading-snug">
+      <p
+        className={
+          "text-muted-foreground text-sm leading-snug" +
+          (expanded ? "" : " line-clamp-5")
+        }
+      >
         “{review.quote}”
       </p>
+      {clampable ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-primary self-start text-xs font-semibold transition hover:opacity-80"
+        >
+          {expanded ? "Show less" : "Read more"}
+        </button>
+      ) : null}
     </article>
   );
 }

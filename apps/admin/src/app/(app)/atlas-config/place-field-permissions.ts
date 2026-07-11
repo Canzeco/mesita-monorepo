@@ -1,15 +1,17 @@
 // Place field edit matrix — documents who may write each place profile field.
 //
 // Source of truth for this table is shipped code, not a DB ACL:
-//   Native    → Google Places seed + Enricher pipeline writes to public.places
+//   Native    → the Google Places seed at create time (createMinimalPlace
+//               persists the GoogleBasics identity spine)
+//   Enricher  → the cron pipeline (supabase-cron-enrich-place-*) — discovery,
+//               synthesis, and the contents-stage persist
 //   Admin     → Manage Single Unit Place UI (admin → business-web-update-project)
 //   Business  → business Place editor + business-web-update-project whitelist/rejects
-//   Consumer  → consumer app (place profiles are not consumer-writable today)
 //
 // Read-only in Atlas Config. Changing a cell here does not change permissions —
 // update the Place UIs / EF / Enricher, then mirror the matrix.
 
-export type FieldEditRole = "native" | "admin" | "business" | "consumer";
+export type FieldEditRole = "native" | "enricher" | "admin" | "business";
 
 export type PlaceFieldPermission = {
   /** Stable key (matches places column or logical field). */
@@ -21,9 +23,9 @@ export type PlaceFieldPermission = {
   /** Short note when a Yes/No needs context. */
   note?: string;
   native: boolean;
+  enricher: boolean;
   admin: boolean;
   business: boolean;
-  consumer: boolean;
 };
 
 export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
@@ -32,41 +34,41 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     key: "name",
     label: "Name",
     group: "Basics",
-    note: "Business locks to Google; admin may correct. Native seeds from Google.",
+    note: "Business locks to Google; admin may correct. Seeded from Google, refreshed on enrich.",
     native: true,
+    enricher: true,
     admin: true,
     business: false,
-    consumer: false,
   },
   {
     key: "category",
     label: "Category",
     group: "Basics",
-    note: "Admin Place UI is read-only; business picker + Native ADEA write the slug.",
-    native: true,
+    note: "Seed lands 'undefined'; the Enricher infers the slug, business picker may correct. Admin Place UI is read-only.",
+    native: false,
+    enricher: true,
     admin: false,
     business: true,
-    consumer: false,
   },
   {
     key: "tags",
     label: "Tags",
     group: "Basics",
-    note: "Atlas catalog, max 20 per place.",
-    native: true,
+    note: "Atlas catalog, max 20 per place. Inferred by the Enricher.",
+    native: false,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "description",
     label: "Description",
     group: "Basics",
-    note: "About / description on the place profile.",
-    native: true,
+    note: "About / description — synthesized by the Enricher, editable by admin/business.",
+    native: false,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "price_level",
@@ -74,9 +76,9 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     group: "Basics",
     note: "Google Places only — EF rejects manual writes.",
     native: true,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
 
   // ── Location ────────────────────────────────────────────────────────────
@@ -84,11 +86,11 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     key: "address",
     label: "Address",
     group: "Location",
-    note: "Native — Google Places seed + Enricher synthesis; EF rejects manual writes.",
+    note: "Google Places seed + Enricher refresh; EF rejects manual writes.",
     native: true,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
   {
     key: "lat_lng",
@@ -96,19 +98,19 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     group: "Location",
     note: "Not on the business-web-update-project whitelist.",
     native: true,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
   {
     key: "zone_city",
     label: "Zone / City",
     group: "Location",
-    note: "Filled by Native synthesis.",
+    note: "City from the Google seed; zone filled by Enricher synthesis.",
     native: true,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
 
   // ── Time ────────────────────────────────────────────────────────────────
@@ -117,19 +119,19 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     label: "Hours",
     group: "Time",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "timezone",
     label: "Timezone",
     group: "Time",
-    note: "Shown read-only beside hours; Native/Google sourced.",
+    note: "Shown read-only beside hours; Google sourced.",
     native: true,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
 
   // ── Channels ────────────────────────────────────────────────────────────
@@ -137,169 +139,156 @@ export const PLACE_FIELD_PERMISSIONS: PlaceFieldPermission[] = [
     key: "phone",
     label: "Phone",
     group: "Channels",
-    note: "Native research may seed; contents stage never overwrites contacts.",
+    note: "Enricher research stage may seed from Google; contents stage never overwrites contacts.",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "email",
     label: "Email",
     group: "Channels",
+    note: "Never written by the Enricher.",
     native: false,
+    enricher: false,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "website_url",
     label: "Website",
     group: "Channels",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "instagram_url",
     label: "Instagram",
     group: "Channels",
+    note: "Enricher discovery + identity judge (lenient fallback).",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "facebook_url",
     label: "Facebook",
     group: "Channels",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "tiktok_url",
     label: "TikTok",
     group: "Channels",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "whatsapp_url",
     label: "WhatsApp",
     group: "Channels",
-    native: true,
+    note: "Not in the Enricher discovery set — Mesita input only.",
+    native: false,
+    enricher: false,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "google_maps_url",
     label: "Google Maps",
     group: "Channels",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "opentable_url",
     label: "OpenTable",
     group: "Channels",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "uber_eats_url",
     label: "Uber Eats",
     group: "Channels",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
   {
     key: "menu_pdf_url",
     label: "Menu URL",
     group: "Channels",
     native: false,
+    enricher: false,
     admin: true,
     business: true,
-    consumer: false,
   },
-  {
-    key: "whatsapp_pr_urls",
-    label: "PR WhatsApp",
-    group: "Channels",
-    native: false,
-    admin: true,
-    business: true,
-    consumer: false,
-  },
-  {
-    key: "instagram_pr_urls",
-    label: "PR Instagram",
-    group: "Channels",
-    native: false,
-    admin: true,
-    business: true,
-    consumer: false,
-  },
-
   // ── Media ───────────────────────────────────────────────────────────────
   {
     key: "photos",
     label: "Photos",
     group: "Media",
+    note: "Google seed at create; Enricher vision funnel re-ranks and re-selects.",
     native: true,
+    enricher: true,
     admin: true,
     business: true,
-    consumer: false,
   },
 
-  // ── Signals (native-only) ───────────────────────────────────────────────
+  // ── Signals (machine-only) ──────────────────────────────────────────────
   {
     key: "google_stars_overall",
     label: "Google rating",
     group: "Signals",
-    note: "Native-only signal columns — never business/admin/consumer profile writes.",
+    note: "Machine-only signal columns — never admin/business profile writes.",
     native: true,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
   {
     key: "google_review_count",
     label: "Google review count",
     group: "Signals",
     native: true,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
   {
     key: "instagram_followers_count",
     label: "Instagram followers",
     group: "Signals",
-    native: true,
+    note: "Apify scrape — Enricher only.",
+    native: false,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
   {
     key: "facebook_followers",
     label: "Facebook followers",
     group: "Signals",
-    native: true,
+    note: "Apify scrape — Enricher only.",
+    native: false,
+    enricher: true,
     admin: false,
     business: false,
-    consumer: false,
   },
 ];
 
@@ -314,14 +303,14 @@ export const PLACE_FIELD_PERMISSION_GROUPS = [
 
 export const PLACE_FIELD_EDIT_ROLES = [
   "native",
+  "enricher",
   "admin",
   "business",
-  "consumer",
 ] as const satisfies readonly FieldEditRole[];
 
 export const PLACE_FIELD_EDIT_ROLE_LABELS: Record<FieldEditRole, string> = {
   native: "Native",
+  enricher: "Enricher",
   admin: "Admin",
   business: "Business",
-  consumer: "Consumer",
 };

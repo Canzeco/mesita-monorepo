@@ -42,7 +42,7 @@ import {
   type ReservationTarget,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
-import { GroupLabel, SaveBar, SectionCard, TextArea, TextField } from "../ui";
+import { GroupLabel, PhoneField, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 import { unitSectionHref } from "../nav";
 import {
   REWARD_ROWS,
@@ -599,11 +599,11 @@ export function PlaceSection({
           />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <ReadField label="Price level" auto>
+          <ReadField label="Price level" auto boxed>
             <PriceDisplay level={place.price_level} />
           </ReadField>
           {/* Friendly label (e.g. "🪩 Nightclub"), never the snakecase slug. */}
-          <ReadField label="Category" auto>
+          <ReadField label="Category" auto boxed>
             {place.category_label ?? place.category ?? "—"}
           </ReadField>
         </div>
@@ -617,7 +617,7 @@ export function PlaceSection({
             }
             value={form.description}
             onChange={(x) => set("description", x.slice(0, limits.descriptionMax))}
-            rows={4}
+            rows={9}
             maxLength={limits.descriptionMax}
             disabled={anyPending}
           />
@@ -736,7 +736,20 @@ export function PlaceSection({
                   aria-checked={!h.closed}
                   aria-label={`${d} ${h.closed ? "closed" : "open"}`}
                   disabled={anyPending}
-                  onClick={() => setDay(d, { closed: !h.closed })}
+                  // Re-enabling a day must never surface empty --:-- inputs:
+                  // seed the 9-to-9 default when no range was kept around.
+                  onClick={() =>
+                    setDay(
+                      d,
+                      h.closed
+                        ? {
+                            closed: false,
+                            open: h.open || "09:00",
+                            close: h.close || "21:00",
+                          }
+                        : { closed: true },
+                    )
+                  }
                   className={
                     "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
                     (h.closed ? "bg-border" : "bg-pink-gradient")
@@ -768,7 +781,9 @@ export function PlaceSection({
         title="Channels"
         subtitle="Official links + contact. Leave blank to clear."
       >
-        <div className="mt-5 grid gap-3.5 sm:grid-cols-2">
+        {/* One column, one list — links and contacts are all just channels;
+            no sub-grouping. */}
+        <div className="mt-5 grid gap-3.5">
           {CHANNELS.map((c) => {
             const val = form.channels[c.key as string] ?? "";
             return (
@@ -784,18 +799,14 @@ export function PlaceSection({
               />
             );
           })}
-        </div>
-        <div className="mt-6 mb-2">
-          <GroupLabel>Contact</GroupLabel>
-        </div>
-        <div className="grid gap-3.5 sm:grid-cols-2">
-          {/* Country code is mandatory — the update EF rejects phones without +CC. */}
-          <TextField
+          {/* Country code is mandatory (the update EF rejects phones without
+              +CC) — the flag picker bakes it in, so the field only asks for
+              the local number. */}
+          <PhoneField
             label="Phone"
-            leading={<Phone className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
             value={form.phone}
             onChange={(x) => set("phone", x)}
-            placeholder="+52 81 8378 2164"
+            placeholder="81 8378 2164"
             disabled={anyPending}
           />
           <TextField
@@ -881,21 +892,33 @@ export function PlaceSection({
                   ))}
                 </select>
               </label>
-              <TextField
-                label={selected ? selected.label : "Value"}
-                leading={
-                  selected ? (
-                    <ChannelLabelIcon logo={selected.logo} Icon={selected.Icon} />
-                  ) : undefined
-                }
-                labelRight={
-                  isUrl && value.trim() ? <OpenLink href={value} /> : undefined
-                }
-                value={value}
-                onChange={setReservationValue}
-                placeholder={selected?.placeholder ?? "Pick a channel first"}
-                disabled={anyPending || !form.reservation.channel}
-              />
+              {selected?.kind === "phone" ? (
+                // Same flag picker as the Channels phone — the reservationist
+                // dials this, so the +CC matters even more here.
+                <PhoneField
+                  label={selected.label}
+                  value={value}
+                  onChange={setReservationValue}
+                  placeholder="81 8378 2164"
+                  disabled={anyPending}
+                />
+              ) : (
+                <TextField
+                  label={selected ? selected.label : "Value"}
+                  leading={
+                    selected ? (
+                      <ChannelLabelIcon logo={selected.logo} Icon={selected.Icon} />
+                    ) : undefined
+                  }
+                  labelRight={
+                    isUrl && value.trim() ? <OpenLink href={value} /> : undefined
+                  }
+                  value={value}
+                  onChange={setReservationValue}
+                  placeholder={selected?.placeholder ?? "Pick a channel first"}
+                  disabled={anyPending || !form.reservation.channel}
+                />
+              )}
             </div>
           );
         })()}
@@ -930,15 +953,25 @@ export function PlaceSection({
 function ReadField({
   label,
   auto,
+  boxed,
   children,
 }: {
   label: string;
   auto?: boolean;
+  /** Render label + value like a (disabled) filled input, so the field sits
+   *  flush with the editable TextFields around it instead of as bare text. */
+  boxed?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-muted-foreground flex min-h-4 items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase">
+      <span
+        className={
+          boxed
+            ? "text-foreground/80 flex min-h-4 items-center gap-1.5 text-[13px] font-medium"
+            : "text-muted-foreground flex min-h-4 items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
+        }
+      >
         {label}
         {auto ? (
           <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 text-[10px] font-normal tracking-normal normal-case">
@@ -947,7 +980,15 @@ function ReadField({
           </span>
         ) : null}
       </span>
-      <div className="flex min-h-9 items-center text-sm">{children}</div>
+      <div
+        className={
+          boxed
+            ? "bg-muted/50 flex min-h-10 items-center rounded-xl px-3.5 text-sm"
+            : "flex min-h-9 items-center text-sm"
+        }
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -1207,7 +1248,16 @@ function OwnershipCard({
       icon={<ShieldCheck className="h-4 w-4" />}
       tint="emerald"
       title="Ownership"
-      subtitle="Partner verification & owner accounts."
+      subtitle="Partner verification & owner accounts — manage on the Team tab."
+      action={
+        <Link
+          href={unitSectionHref(place.id, "team")}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
+        >
+          Edit
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      }
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <ReadField label="Verified">

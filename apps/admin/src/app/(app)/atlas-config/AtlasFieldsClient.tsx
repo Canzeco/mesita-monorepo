@@ -52,7 +52,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Place profile fields — who may write each one today. Read-only matrix
-          from shipped native / admin / business / consumer contracts (not a
+          from shipped native / enricher / admin / business contracts (not a
           live ACL toggle).
         </p>
         <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
@@ -271,8 +271,6 @@ function humanizeKey(key: string): string {
   if (key === "tagCatalogSize") return "Tag catalog";
   if (key === "photos") return "Photos";
   if (key === "googleReviews") return "Google reviews";
-  if (key === "prWhatsappNumbers") return "PR WhatsApp numbers";
-  if (key === "prInstagramAccounts") return "PR Instagram accounts";
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (c) => c.toUpperCase())
@@ -285,14 +283,9 @@ function formatLimit(key: string, max: number): string {
     "tagCatalogSize",
     "photos",
     "googleReviews",
-    "prWhatsappNumbers",
-    "prInstagramAccounts",
   ]);
   if (key === "tagsPerPlace") return `Up to ${max.toLocaleString()}`;
   if (key === "photos" || key === "googleReviews") {
-    return `Up to ${max.toLocaleString()}`;
-  }
-  if (key === "prWhatsappNumbers" || key === "prInstagramAccounts") {
     return `Up to ${max.toLocaleString()}`;
   }
   if (countKeys.has(key)) return max.toLocaleString();

@@ -1,6 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
+import {
+  COUNTRIES,
+  COUNTRY_BY_CODE,
+  combinePhoneE164,
+  splitStoredPhone,
+} from "@/lib/phone-countries";
 
 // Shared primitives for the single-unit console sections. Light-themed admin
 // surface — semantic tokens, calm and high-density, with a premium finish:
@@ -143,6 +150,98 @@ export function TextField({
           readOnly={!onChange}
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
           className={INPUT_BASE + " h-10 " + (leading ? "pr-3.5 pl-9" : "px-3.5")}
+        />
+      </span>
+    </label>
+  );
+}
+
+// Phone input with a dial-code + flag picker, ported from the consumer app's
+// PhoneInputWithCountry and restyled to the admin filled-input language. The
+// left chip is a styled "button" with a transparent native <select> overlaid,
+// so desktop gets click-to-open and any touch device its proper picker.
+//
+// `value` is the FULL stored phone ("+527221234567" or legacy "+1 703-858-1102");
+// onChange always emits strict E.164 (+<dial><digits>) — the update EF rejects
+// phones without a country code, and the picker makes the +CC unforgettable.
+export function PhoneField({
+  label,
+  value,
+  onChange,
+  placeholder = "55 1234 5678",
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  // Draft = the country + local text as last typed/picked, kept only while it
+  // still matches the stored value's digits. Typing keeps the user's spacing
+  // and an empty local keeps the picked flag; an EXTERNAL value change (form
+  // reset, place switch) mismatches and the derived split takes over. Pure
+  // derivation — no sync effects.
+  const [draft, setDraft] = useState<{
+    code: string;
+    local: string;
+    digits: string;
+  } | null>(null);
+  const storedDigits = value.replace(/\D/g, "");
+  const derived = splitStoredPhone(value);
+  const active = draft && draft.digits === storedDigits ? draft : null;
+  const code = active ? active.code : derived.countryCode;
+  const local = active ? active.local : derived.local;
+  const country = COUNTRY_BY_CODE[code] ?? COUNTRY_BY_CODE.MX;
+
+  const update = (nextCode: string, nextLocal: string) => {
+    const full = combinePhoneE164(nextCode, nextLocal);
+    setDraft({ code: nextCode, local: nextLocal, digits: full.replace(/\D/g, "") });
+    onChange(full);
+  };
+
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-foreground/80 flex min-h-4 items-center text-[13px] font-medium">
+        {label}
+      </span>
+      <span
+        className={
+          "bg-muted/50 border-transparent focus-within:border-ring/60 focus-within:bg-card " +
+          "focus-within:ring-ring/10 relative flex h-10 w-full items-stretch overflow-hidden " +
+          "rounded-xl border transition focus-within:ring-4" +
+          (disabled ? " opacity-50" : "")
+        }
+      >
+        <span className="border-border/60 flex shrink-0 items-center gap-1.5 border-r pr-2.5 pl-3">
+          <span className="text-base leading-none" aria-hidden>
+            {country.flag}
+          </span>
+          <span className="text-sm font-medium tabular-nums">+{country.dial}</span>
+          <ChevronDown className="text-muted-foreground h-3 w-3" aria-hidden />
+        </span>
+        <select
+          value={code}
+          disabled={disabled}
+          onChange={(e) => update(e.target.value, local)}
+          aria-label="Country dial code"
+          className="absolute inset-y-0 left-0 w-[5.5rem] cursor-pointer appearance-none bg-transparent text-transparent opacity-0 disabled:cursor-default"
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.flag} +{c.dial} {c.name}
+            </option>
+          ))}
+        </select>
+        <input
+          type="tel"
+          inputMode="tel"
+          value={local}
+          disabled={disabled}
+          onChange={(e) => update(code, e.target.value)}
+          placeholder={placeholder}
+          autoComplete="tel-national"
+          className="placeholder:text-muted-foreground/50 h-full flex-1 bg-transparent px-3 text-sm outline-none"
         />
       </span>
     </label>
