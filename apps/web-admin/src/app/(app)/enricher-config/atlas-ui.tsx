@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import type { SynthesisQuality } from "./actions";
 
 // Local presentational primitives for the Atlas / Enricher config surface.
@@ -209,14 +209,7 @@ export function SaveRow({
   );
 }
 
-export function ErrorNote({ message }: { message: string }) {
-  return (
-    <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-2 rounded-xl border p-3 text-xs">
-      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <p className="font-medium">{message}</p>
-    </div>
-  );
-}
+export { ErrorNote } from "@/components/ErrorNote";
 
 // Shared economy/standard/high segmented picker used by the calculator and the
 // inline cost card.

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
+import { ErrorNote } from "@/components/ErrorNote";
 import {
   COUNTRIES,
   COUNTRY_BY_CODE,
@@ -383,14 +384,7 @@ export function SaveBar({
   );
 }
 
-export function ErrorNote({ message }: { message: string }) {
-  return (
-    <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-2 rounded-xl border p-3 text-xs">
-      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <p className="font-medium">{message}</p>
-    </div>
-  );
-}
+export { ErrorNote };
 
 export function Spinner({ label }: { label?: string }) {
   return (
