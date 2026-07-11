@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { displayConsumerCode } from "@/lib/consumer-code";
 import { formatCurrency } from "@/lib/api/profile";
 import { useConsumerClass } from "@/lib/class-context";
-import { cn } from "@/lib/utils";
+import { formatCompactCount, cn } from "@/lib/utils";
 import type { RewardStats } from "@/lib/hooks/useConsumerPayTickets";
 
 // The Rewards passport — a branded coral card that carries the QR, the member
@@ -29,11 +29,6 @@ function initialsOf(name: string): string {
   return (first + last).toUpperCase() || "M";
 }
 
-function formatFollowers(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return String(n);
-}
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -168,7 +163,7 @@ export function MyQrCard({
           {followers > 0 ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/17 px-2.5 py-1.5 text-[11.5px] font-semibold">
               <Users className="size-3.5" />
-              {formatFollowers(followers)} followers
+              {formatCompactCount(followers)} followers
             </span>
           ) : null}
         </div>
