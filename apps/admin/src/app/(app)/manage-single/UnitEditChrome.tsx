@@ -11,7 +11,13 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
-import { enrichPlace, type AdminPlace, type ReenrichMode } from "./actions";
+import {
+  enrichPlace,
+  getPlaceEnrichment,
+  type AdminPlace,
+  type PlaceEnrichmentStatus,
+  type ReenrichMode,
+} from "./actions";
 import { UNIT_SECTIONS, unitSectionHref } from "./nav";
 
 export function currentUnitSection(pathname: string) {
@@ -21,6 +27,16 @@ export function currentUnitSection(pathname: string) {
     }
   }
   return "place" as const;
+}
+
+/** True while the Enricher pipeline is actively rewriting this place. */
+function isEnriching(s: PlaceEnrichmentStatus | null): boolean {
+  const stage = s?.stage ?? null;
+  if (stage === "research" || stage === "analysis" || stage === "contents") {
+    return true;
+  }
+  const cs = s?.content_status ?? null;
+  return cs === "generating" || cs === "queued";
 }
 
 export function UnitEditChrome({
@@ -35,6 +51,29 @@ export function UnitEditChrome({
   const statusLabel = place.status?.trim()
     ? place.status.charAt(0).toUpperCase() + place.status.slice(1)
     : null;
+  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
+    null,
+  );
+  const enriching = isEnriching(enrichStatus);
+
+  // decision: Pato (MESITA-451) — Enriching badge lives next to the place
+  // name in this chrome (not in the Meta card). Poll while open so the
+  // spinner clears when the pipeline finishes.
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      getPlaceEnrichment(projectId).then((r) => {
+        if (!alive) return;
+        setEnrichStatus(r.ok ? r.data.status : null);
+      });
+    };
+    load();
+    const id = window.setInterval(load, 8_000);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [projectId]);
 
   return (
     // Light sticky chrome — content area stays light; only the lateral menu is dark.
@@ -45,10 +84,19 @@ export function UnitEditChrome({
 
         <div className="min-w-0 flex-1">
           <p
-            className="font-display truncate text-base font-semibold tracking-tight sm:text-lg"
-            title={place.name}
+            className="font-display flex min-w-0 items-center gap-1.5 text-base font-semibold tracking-tight sm:text-lg"
+            title={enriching ? `${place.name} (Enriching)` : place.name}
           >
-            {place.name}
+            <span className="truncate">{place.name}</span>
+            {enriching ? (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-blue-600"
+                aria-live="polite"
+              >
+                <span className="whitespace-nowrap">(Enriching)</span>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              </span>
+            ) : null}
           </p>
           <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             {statusLabel ? (
@@ -88,7 +136,22 @@ export function UnitEditChrome({
             <ArrowLeftRight className="h-4 w-4" />
             <span className="hidden sm:inline">Switch unit</span>
           </Link>
-          <ReEnrichButton projectId={projectId} />
+          <ReEnrichButton
+            projectId={projectId}
+            onQueued={() =>
+              setEnrichStatus((prev) => ({
+                content_status: "generating",
+                stage:
+                  prev?.stage && prev.stage !== "done" && prev.stage !== "failed"
+                    ? prev.stage
+                    : "research",
+                stage_status: "queued",
+                error: null,
+                last_enriched_at: prev?.last_enriched_at ?? null,
+                updated_at: new Date().toISOString(),
+              }))
+            }
+          />
         </div>
       </div>
 
@@ -181,9 +244,16 @@ const REENRICH_MODES: {
 
 // Manual re-enrich trigger. Re-queues the place through the Enricher pipeline at a
 // chosen depth (full / analysis+contents / contents-only); it runs async, so the
-// control just confirms the job was queued — progress shows in the Place tab's
-// enrichment status. The lighter modes need a prior full run (EF rejects otherwise).
-function ReEnrichButton({ projectId }: { projectId: string }) {
+// control just confirms the job was queued — progress shows next to the place
+// name in this chrome (MESITA-451). The lighter modes need a prior full run
+// (EF rejects otherwise).
+function ReEnrichButton({
+  projectId,
+  onQueued,
+}: {
+  projectId: string;
+  onQueued?: () => void;
+}) {
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState<"idle" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -217,6 +287,7 @@ function ReEnrichButton({ projectId }: { projectId: string }) {
       const r = await enrichPlace(projectId, mode);
       if (r.ok) {
         setState("done");
+        onQueued?.();
       } else {
         setState("error");
         setError(r.error);
