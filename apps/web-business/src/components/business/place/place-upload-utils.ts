@@ -1,6 +1,10 @@
 export const MAX_PHOTOS = 10;
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
+// Gallery photos live in place-images; menus / catalog files go to their own
+// bucket (see supabase migration 20260711182000_menu_images_bucket).
+export const MENU_IMAGES_BUCKET = "menu-images";
+
 export const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
