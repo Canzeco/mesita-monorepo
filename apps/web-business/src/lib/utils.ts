@@ -40,3 +40,11 @@ export function formatPriceLevelSymbols(
   const level = Math.min(4, Math.max(1, Math.round(priceLevel)));
   return "$".repeat(level);
 }
+
+
+/** Star rating rounded to one decimal, or null when absent. */
+export function formatRating(
+  rating: number | null | undefined,
+): string | null {
+  return rating != null ? rating.toFixed(1) : null;
+}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import type { MyPlace } from "@/lib/api/places";
-import { cn, formatCompactCount, formatPriceLevelSymbols, initialLetter } from "@/lib/utils";
+import { cn, formatCompactCount, formatPriceLevelSymbols, formatRating, initialLetter } from "@/lib/utils";
 import { formatPlaceCategoryName } from "@/lib/place-category";
 import { PlaceModule } from "../PlaceModule";
 import { PlaceProfileProgressModule } from "./PlaceProfileProgressModule";
@@ -39,10 +39,7 @@ function previewMeta(place: MyPlace, v: PlaceFormState) {
     placeCategoryName(place) ||
     null;
   const price = formatPriceLevelSymbols(place.price_level);
-  const googleRating =
-    place.google_stars_overall != null
-      ? place.google_stars_overall.toFixed(1)
-      : null;
+  const googleRating = formatRating(place.google_stars_overall);
   const googleCount =
     place.google_review_count != null
       ? formatCompactCount(place.google_review_count)
