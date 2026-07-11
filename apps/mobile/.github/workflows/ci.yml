@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      # Node 22+ required: pnpm 11 needs node:sqlite (workspace-wide gotcha).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      # Full Metro + NativeWind compile — catches resolver/config breaks
+      # that tsc and eslint can't see (e.g. css-interop hoisting).
+      - run: npx expo export --platform web
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://yjalywfzdelacdzccpgb.supabase.co
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd
