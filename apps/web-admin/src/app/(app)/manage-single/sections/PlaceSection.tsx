@@ -7,7 +7,9 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
+  Check,
   Clock,
+  Copy,
   ExternalLink,
   Fingerprint,
   Globe,
@@ -30,6 +32,7 @@ import {
   listTeam,
   updatePlace,
   type AdminPlace,
+  type PlaceEnrichmentStatus,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
   type ReservationChannel,
@@ -464,8 +467,11 @@ export function PlaceSection({
 
   // Admin-only: per-place Enricher inspector data — per-photo metadata (source
   // + vision analysis) for the ⓘ dialog, keyed by image URL, plus the place's
-  // enrichment status. Lazy-loaded once per place.
+  // enrichment status. Media loads once; status polls so Meta stays live.
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
+  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
+    null,
+  );
   const [metaFor, setMetaFor] = useState<string | null>(null);
   // Owner emails (project_members role=owner) — null while loading.
   const [owners, setOwners] = useState<string[] | null>(null);
@@ -484,10 +490,22 @@ export function PlaceSection({
         photos: f.photos.slice(0, r.data.fieldLimits.photosMax),
       }));
     });
-    getPlaceEnrichment(place.id).then((r) => {
-      if (!alive) return;
-      setMedia(r.ok ? r.data.media : {});
-    });
+    const loadEnrichment = (includeMedia: boolean) => {
+      getPlaceEnrichment(place.id).then((r) => {
+        if (!alive) return;
+        if (!r.ok) {
+          if (includeMedia) setMedia({});
+          setEnrichStatus(null);
+          return;
+        }
+        if (includeMedia) setMedia(r.data.media);
+        setEnrichStatus(r.data.status);
+      });
+    };
+    loadEnrichment(true);
+    // decision: Pato (MESITA-466) — Meta shows live enriching status; poll
+    // while the Place tab is open (same cadence as UnitEditChrome).
+    const pollId = window.setInterval(() => loadEnrichment(false), 8_000);
     listTeam(place.id).then((r) => {
       if (!alive) return;
       if (!r.ok) {
@@ -502,6 +520,7 @@ export function PlaceSection({
     });
     return () => {
       alive = false;
+      window.clearInterval(pollId);
     };
   }, [place.id]);
 
@@ -550,8 +569,8 @@ export function PlaceSection({
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
       {/* Box order (MESITA-399): Meta · Ownership · Promos · Basics, then
-          the editing boxes. Status stays in the sticky chrome up top. */}
-      <MetaCard place={place} />
+          the editing boxes. Place status stays in the sticky chrome up top. */}
+      <MetaCard place={place} enrichStatus={enrichStatus} />
 
       <OwnershipCard place={place} owners={owners} />
 
@@ -1034,24 +1053,94 @@ function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
   return updated - enriched <= 90_000 ? "ai" : "human";
 }
 
-// Meta — audit trail only (MESITA-451): Created at + Updated at.
+function CopyIdButton({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(id);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1200);
+        } catch {
+          /* clipboard unavailable — ignore */
+        }
+      }}
+      className="hover:text-foreground inline-flex items-center gap-1 transition"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3.5 w-3.5 text-green-600" /> Copied
+        </>
+      ) : (
+        <>
+          <Copy className="h-3.5 w-3.5" /> Copy
+        </>
+      )}
+    </button>
+  );
+}
+
+// place_research stage; falls back to the project's content_status when the
+// place has no research row yet (created but never enriched).
+function enrichmentBadge(
+  s: PlaceEnrichmentStatus | null,
+): { text: string; cls: string; spinning: boolean } {
+  const stage = s?.stage ?? null;
+  if (stage === "done")
+    return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
+  if (stage === "failed")
+    return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
+  if (stage === "research" || stage === "analysis" || stage === "contents") {
+    return {
+      text: `Enriching… (${stage})`,
+      cls: "bg-blue-500/10 text-blue-600",
+      spinning: true,
+    };
+  }
+  switch (s?.content_status) {
+    case "ready":
+      return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
+    case "generating":
+    case "queued":
+      return { text: "Enriching…", cls: "bg-blue-500/10 text-blue-600", spinning: true };
+    case "failed":
+      return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
+    default:
+      return { text: "Not enriched", cls: "bg-muted text-muted-foreground", spinning: false };
+  }
+}
+
+// Meta — UID + audit trail + enriching status (MESITA-466). Place status
+// stays in the sticky chrome; the header Enriching badge stays too.
 function MetaCard({
   place,
+  enrichStatus,
 }: {
   place: AdminPlace;
+  enrichStatus: PlaceEnrichmentStatus | null;
 }) {
   const by = lastUpdatedBy(place);
+  const badge = enrichmentBadge(enrichStatus);
   return (
     <SectionCard
       icon={<Fingerprint className="h-4 w-4" />}
       tint="slate"
       title="Meta"
-      subtitle="Audit trail."
+      subtitle="Row identity & audit trail."
     >
-      {/* decision: Pato (MESITA-451) — Meta keeps only Created at + Updated at.
-          Status already lives in the sticky chrome; UID is noise here;
-          Enriching status moved next to the place name in UnitEditChrome. */}
       <div className="mt-5 flex flex-col gap-4">
+        <ReadField label="UID" boxed>
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <code className="min-w-0 truncate font-mono text-[11px]">
+              {place.id}
+            </code>
+            <span className="text-muted-foreground shrink-0 text-xs">
+              <CopyIdButton id={place.id} />
+            </span>
+          </span>
+        </ReadField>
         <ReadField label="Created at" boxed>
           {place.created_at ? formatAbsoluteUtc(place.created_at) : "—"}
         </ReadField>
@@ -1072,6 +1161,24 @@ function MetaCard({
             )}
           </span>
         </ReadField>
+        <ReadField label="Enriching status" boxed>
+          <span
+            className={
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold " +
+              badge.cls
+            }
+          >
+            {badge.spinning && (
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
+            )}
+            {badge.text}
+          </span>
+        </ReadField>
+        {enrichStatus?.stage === "failed" && enrichStatus?.error ? (
+          <p className="text-xs leading-snug text-red-600">
+            Last enrichment failed: {enrichStatus.error}
+          </p>
+        ) : null}
       </div>
     </SectionCard>
   );
