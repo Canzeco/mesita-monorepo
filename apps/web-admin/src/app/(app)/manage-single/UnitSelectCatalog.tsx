@@ -56,7 +56,7 @@ const STATUS_BADGE: Record<
 
 export function UnitSelectCatalog() {
   const router = useRouter();
-  const { q, setQ, hits, pending, error, metaLabel, searchedQuery, clear } =
+  const { q, setQ, debouncedQuery, hits, pending, error, metaLabel, searchedQuery, clear } =
     useUnitCatalogSearch();
 
   const sessionTokenRef = useRef(newSessionToken());
@@ -87,14 +87,22 @@ export function UnitSelectCatalog() {
     hits.length === 0 &&
     trimmed.length >= 2;
 
-  const googleActive = catalogSettledEmpty && !placeIdMode;
+  // Show Google lane when Mesita has nothing for this query — including while
+  // Mesita is still in flight (optimistic empty) so both spinners are visible.
+  // Hide once Mesita returns hits (create-from-Google path not needed).
+  const showGoogleSection =
+    !placeIdMode &&
+    trimmed.length >= 2 &&
+    hits.length === 0 &&
+    (pending || catalogSettledEmpty);
 
-  // When Mesita catalog search settles empty, fetch Google Places suggestions
-  // so the operator can create from an external match. Catalog already debounced.
+  // decision: Pato (MESITA-467) — fire Google suggest on the same debounced
+  // query as Mesita, not after Mesita settles empty. Sequential fetch left a
+  // ~2s dead gap (Mesita spinner clears → silence → Google appears).
   useEffect(() => {
-    if (!googleActive) return;
+    const query = debouncedQuery;
+    if (query.length < 2 || looksLikePlaceId(query)) return;
 
-    const query = trimmed;
     const id = ++googleRequestIdRef.current;
     void (async () => {
       const r = await suggestPlaces(query, sessionTokenRef.current);
@@ -106,14 +114,27 @@ export function UnitSelectCatalog() {
       setGoogleRemoteError(null);
       setGoogleRemote({ query, predictions: r.data });
     })();
-  }, [googleActive, trimmed]);
+  }, [debouncedQuery]);
 
   const googleReady = googleRemote !== null && googleRemote.query === trimmed;
-  const googleFailed = googleRemoteError !== null && googleRemoteError.query === trimmed;
-  const googleSearching = googleActive && !googleReady && !googleFailed;
+  const googleFailed =
+    googleRemoteError !== null && googleRemoteError.query === trimmed;
+  // In-flight for the settled query (prefetch or display) — independent of Mesita.
+  const googleFetching =
+    debouncedQuery.length >= 2 &&
+    debouncedQuery === trimmed &&
+    !placeIdMode &&
+    !googleReady &&
+    !googleFailed;
+  // Section spinner: Google still loading, OR Mesita still searching (Google
+  // section is already open on optimistic-empty) while we wait for settle.
+  const googleSearching =
+    showGoogleSection && (googleFetching || (pending && !googleReady && !googleFailed));
   const googlePredictions = googleReady ? googleRemote.predictions : [];
-  const googleError = googleFailed && googleRemoteError ? googleRemoteError.message : null;
-  const showGoogleSection = googleActive;
+  const googleError =
+    googleFailed && googleRemoteError ? googleRemoteError.message : null;
+  // Search-bar spinner covers either pipeline so it never blanks mid-flight.
+  const anySearching = pending || googleFetching || createPending;
 
   const pickUnit = (projectId: string) => {
     router.push(unitSectionHref(projectId, "place"));
@@ -172,7 +193,7 @@ export function UnitSelectCatalog() {
     }
 
     const creatable = googlePredictions.filter((p) => p.status === "not_in_mesita");
-    if (googleActive && creatable.length === 1) {
+    if (showGoogleSection && creatable.length === 1) {
       onPickGoogle(creatable[0]);
     }
   };
@@ -210,10 +231,10 @@ export function UnitSelectCatalog() {
               spellCheck={false}
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
             />
-            {(pending || googleSearching || createPending) && trimmed.length >= 2 && (
+            {(anySearching) && trimmed.length >= 2 && (
               <Loader2 className="text-primary h-5 w-5 shrink-0 animate-spin sm:h-6 sm:w-6" />
             )}
-            {!pending && !googleSearching && !createPending && q.length > 0 && (
+            {!anySearching && q.length > 0 && (
               <button
                 type="button"
                 onClick={onClear}
@@ -242,7 +263,7 @@ export function UnitSelectCatalog() {
           {pending && (
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
           )}
-          Manage Single Unit · {metaLabel}
+          Manage Single Unit results · {metaLabel}
         </p>
 
         {error && <ErrorNote message={error} />}
@@ -301,7 +322,15 @@ export function UnitSelectCatalog() {
 
         {showGoogleSection && (
           <div className="mt-8">
-            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <p
+              className={
+                "flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors " +
+                (googleSearching ? "text-primary" : "text-muted-foreground")
+              }
+            >
+              {googleSearching && (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+              )}
               Not on Mesita · Google results
               {googleSearching
                 ? " · Searching…"
@@ -313,6 +342,13 @@ export function UnitSelectCatalog() {
             {googleError && <ErrorNote message={googleError} />}
 
             <div className="mt-4 flex flex-col gap-2">
+              {googleSearching && (
+                <div className="border-border bg-card text-muted-foreground flex items-center gap-2 rounded-xl border px-4 py-6 text-sm">
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                  Looking up Google Places…
+                </div>
+              )}
+
               {googlePredictions.map((p) => {
                 const badge = STATUS_BADGE[p.status];
                 const canCreate = p.status === "not_in_mesita";
@@ -367,7 +403,11 @@ export function UnitSelectCatalog() {
                 );
               })}
 
-              {!googleSearching && !googleError && googleReady && googlePredictions.length === 0 && (
+              {!googleSearching &&
+                !googleError &&
+                googleReady &&
+                googlePredictions.length === 0 &&
+                catalogSettledEmpty && (
                 <div className="border-border bg-card rounded-2xl border px-4 py-12 text-center">
                   <p className="text-muted-foreground text-sm">
                     {`No Mesita units or Google matches for “${trimmed}”. Try another spelling or paste a Place ID.`}
