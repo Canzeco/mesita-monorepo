@@ -3,35 +3,30 @@ import type { LucideIcon } from 'lucide-react-native';
 import {
   AtSign,
   Bot,
-  ChevronRight,
-  Crown,
   MessageCircle,
   Settings as SettingsIcon,
   Share2,
   UserRound,
 } from 'lucide-react-native';
 import { useState } from 'react';
+import { Alert, Linking, ScrollView, View } from 'react-native';
 import {
-  Alert,
-  Linking,
+  Appbar,
+  Button,
+  Chip,
+  HelperText,
+  List,
   Modal,
-  Pressable,
-  ScrollView,
+  Portal,
   Switch,
   Text,
   TextInput,
-  View,
-} from 'react-native';
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientButton } from '@/components/ui/gradient-button';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
-import {
-  PREF_KEYS,
-  useStoredFlag,
-  useStoredString,
-} from '@/lib/local-store';
+import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
 import {
   ageFromBirthday,
   errMsg,
@@ -77,17 +72,26 @@ export default function MeScreen() {
     .join(' · ');
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }} edges={['top']}>
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-10 gap-3"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text className="mb-1 font-display text-3xl text-foreground">Me</Text>
+        <Text variant="headlineMedium" style={{ marginBottom: 4 }}>
+          Me
+        </Text>
 
         <View
-          className="overflow-hidden rounded-3xl border border-border p-4"
-          style={SHADOW_ELEV}
+          style={{
+            overflow: 'hidden',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: '#ebd9db',
+            padding: 16,
+            backgroundColor: '#ffffff',
+            ...SHADOW_ELEV,
+          }}
         >
           <LinearGradient
             colors={
@@ -105,75 +109,67 @@ export default function MeScreen() {
               left: 0,
             }}
           />
-          <View className="flex-row items-center gap-4">
-            <View
-              className="rounded-full p-[2.5px]"
-              style={{ overflow: 'hidden' }}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <LinearGradient
+              colors={isPremium ? [...GRADIENTS.premium] : [...GRADIENTS.pink]}
+              start={GRADIENT_DIAGONAL.start}
+              end={GRADIENT_DIAGONAL.end}
+              style={{ borderRadius: 999, padding: 2.5 }}
             >
-              <LinearGradient
-                colors={
-                  isPremium
-                    ? [...GRADIENTS.premium]
-                    : [...GRADIENTS.pink]
-                }
-                start={GRADIENT_DIAGONAL.start}
-                end={GRADIENT_DIAGONAL.end}
-                style={{ borderRadius: 999, padding: 2.5 }}
+              <View
+                style={{
+                  width: 66,
+                  height: 66,
+                  borderRadius: 999,
+                  backgroundColor: '#ffffff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <View className="size-[66px] items-center justify-center rounded-full bg-card">
-                  <Text className="font-display text-2xl font-bold text-foreground/70">
-                    {firstInitials(name)}
-                  </Text>
-                </View>
-              </LinearGradient>
-            </View>
-            <View className="min-w-0 flex-1">
-              <Text
-                className="font-display text-[20px] font-bold text-foreground"
-                numberOfLines={1}
-              >
+                <Text variant="headlineSmall" style={{ color: 'rgba(38,4,9,0.7)' }}>
+                  {firstInitials(name)}
+                </Text>
+              </View>
+            </LinearGradient>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text variant="titleLarge" numberOfLines={1}>
                 {name}
               </Text>
-              <Text className="mt-1 text-sm font-medium text-muted-foreground">
+              <Text variant="bodyMedium" style={{ marginTop: 4, color: '#775254' }}>
                 {phone || 'No phone added'}
               </Text>
               {meta ? (
-                <Text className="mt-0.5 text-[13px] text-muted-foreground/70">
+                <Text
+                  variant="bodySmall"
+                  style={{ marginTop: 2, color: 'rgba(119,82,84,0.7)' }}
+                >
                   {meta}
                 </Text>
               ) : null}
             </View>
           </View>
 
-          <View className="mt-4 flex-row items-center gap-2.5 border-t border-border/60 pt-3.5">
-            <View
-              className={`size-7 items-center justify-center rounded-lg ${
-                isPremium ? '' : 'bg-amber-400/20'
-              }`}
+          <View
+            style={{
+              marginTop: 16,
+              paddingTop: 14,
+              borderTopWidth: 1,
+              borderTopColor: 'rgba(235,217,219,0.6)',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <Chip
+              icon={isPremium ? 'crown' : 'crown-outline'}
+              compact
+              style={{
+                backgroundColor: isPremium ? '#eee8ff' : '#fef3c7',
+              }}
             >
-              {isPremium ? (
-                <LinearGradient
-                  colors={[...GRADIENTS.premium]}
-                  start={GRADIENT_DIAGONAL.start}
-                  end={GRADIENT_DIAGONAL.end}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Crown color="#fff" size={15} />
-                </LinearGradient>
-              ) : (
-                <Crown color="#b45309" size={15} />
-              )}
-            </View>
-            <Text className="text-[13px] font-semibold text-foreground">
               {isPremium ? 'Premium' : 'Free'}
-            </Text>
-            <Text className="text-[12px] text-muted-foreground">
+            </Chip>
+            <Text variant="bodySmall" style={{ color: '#775254', flex: 1 }}>
               {isPremium
                 ? 'Status on this account'
                 : 'Manage Premium on the web'}
@@ -181,55 +177,75 @@ export default function MeScreen() {
           </View>
         </View>
 
-        <BoxRow
-          Icon={UserRound}
-          tint="sky"
-          title="Personal details"
-          summary="Name, phone, birthday"
-          onPress={() => setSheet('personal')}
-        />
-        <BoxRow
-          Icon={SettingsIcon}
-          tint="muted"
-          title="Settings"
-          summary="Notifications, permissions, language"
-          onPress={() => setSheet('settings')}
-        />
-        <BoxRow
-          Icon={MessageCircle}
-          tint="emerald"
-          title="Contact"
-          summary="Email, help, Instagram"
-          onPress={() => setSheet('contact')}
-        />
+        <List.Section style={{ marginVertical: 0 }}>
+          <List.Item
+            title="Personal details"
+            description="Name, phone, birthday"
+            left={(props) => (
+              <List.Icon {...props} icon={() => <UserRound color="#0284c7" size={22} />} />
+            )}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => setSheet('personal')}
+            style={rowStyle}
+          />
+          <List.Item
+            title="Settings"
+            description="Notifications, permissions, language"
+            left={(props) => (
+              <List.Icon
+                {...props}
+                icon={() => <SettingsIcon color="#775254" size={22} />}
+              />
+            )}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => setSheet('settings')}
+            style={rowStyle}
+          />
+          <List.Item
+            title="Contact"
+            description="Email, help, Instagram"
+            left={(props) => (
+              <List.Icon
+                {...props}
+                icon={() => <MessageCircle color="#059669" size={22} />}
+              />
+            )}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => setSheet('contact')}
+            style={rowStyle}
+          />
+          <SoonRow
+            Icon={AtSign}
+            tint="#fb2b7b"
+            title="Instagram"
+            summary="Connect Instagram to upgrade your class"
+          />
+          <SoonRow
+            Icon={Share2}
+            tint="#fb2b7b"
+            title="Share"
+            summary="Invite friends to Mesita"
+          />
+          <SoonRow
+            Icon={Bot}
+            tint="#7c3aed"
+            title="AI"
+            summary="Connect your Mesita profile to an AI · Premium"
+          />
+        </List.Section>
 
-        {/* Parked conversion / secondary boxes — visible Soon stubs (web parity). */}
-        <BoxRow
-          Icon={AtSign}
-          tint="pink"
-          title="Instagram"
-          summary="Connect Instagram to upgrade your class"
-          soon
-        />
-        <BoxRow
-          Icon={Share2}
-          tint="pink"
-          title="Share"
-          summary="Invite friends to Mesita"
-          soon
-        />
-        <BoxRow
-          Icon={Bot}
-          tint="violet"
-          title="AI"
-          summary="Connect your Mesita profile to an AI · Premium"
-          soon
-        />
-
-        <View className="mt-2">
-          <GradientButton label="Sign out" onPress={() => void signOut()} />
-        </View>
-        <Text className="text-center text-[11px] text-muted-foreground">
+        <Button
+          mode="contained"
+          onPress={() => void signOut()}
+          style={{ marginTop: 8 }}
+          contentStyle={{ paddingVertical: 4 }}
+        >
+          Sign out
+        </Button>
+        <Text
+          variant="labelSmall"
+          style={{ textAlign: 'center', color: '#775254' }}
+        >
           Mesita · mobile
         </Text>
       </ScrollView>
@@ -250,70 +266,40 @@ export default function MeScreen() {
   );
 }
 
-function BoxRow({
+const rowStyle = {
+  backgroundColor: '#ffffff',
+  borderRadius: 14,
+  marginBottom: 8,
+  borderWidth: 1,
+  borderColor: '#ebd9db',
+} as const;
+
+function SoonRow({
   Icon,
   tint,
   title,
   summary,
-  onPress,
-  soon,
 }: {
   Icon: LucideIcon;
-  tint: 'sky' | 'muted' | 'emerald' | 'amber' | 'pink' | 'violet';
+  tint: string;
   title: string;
   summary: string;
-  onPress?: () => void;
-  soon?: boolean;
 }) {
-  const tintBg: Record<string, string> = {
-    sky: 'bg-sky-500/10',
-    muted: 'bg-muted',
-    emerald: 'bg-emerald-500/10',
-    amber: 'bg-amber-500/10',
-    pink: 'bg-primary/10',
-    violet: 'bg-violet-500/10',
-  };
-  const tintFg: Record<string, string> = {
-    sky: '#0284c7',
-    muted: '#775254',
-    emerald: '#059669',
-    amber: '#d97706',
-    pink: '#fb2b7b',
-    violet: '#7c3aed',
-  };
-
   return (
-    <Pressable
-      onPress={
-        soon
-          ? () => Alert.alert(title, 'Coming soon.')
-          : onPress
-      }
-      disabled={!soon && !onPress}
-      className="flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 active:bg-muted/50"
-      style={SHADOW_ELEV}
-    >
-      <View
-        className={`size-10 items-center justify-center rounded-full ${tintBg[tint]}`}
-      >
-        <Icon color={tintFg[tint]} size={18} />
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-semibold text-foreground">{title}</Text>
-        <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-          {summary}
-        </Text>
-      </View>
-      {soon ? (
-        <View className="rounded-full bg-muted px-2 py-0.5">
-          <Text className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
-            Soon
-          </Text>
-        </View>
-      ) : (
-        <ChevronRight color="#77525466" size={18} />
+    <List.Item
+      title={title}
+      description={summary}
+      left={(props) => (
+        <List.Icon {...props} icon={() => <Icon color={tint} size={22} />} />
       )}
-    </Pressable>
+      right={() => (
+        <Chip compact style={{ alignSelf: 'center', backgroundColor: '#faeff0' }}>
+          Soon
+        </Chip>
+      )}
+      onPress={() => Alert.alert(title, 'Coming soon.')}
+      style={rowStyle}
+    />
   );
 }
 
@@ -329,38 +315,31 @@ function SheetShell({
   children: React.ReactNode;
 }) {
   return (
-    <Modal
-      visible
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-          <View className="min-w-0 flex-1">
-            <Text className="font-display text-xl font-semibold text-foreground">
-              {title}
-            </Text>
-            {subtitle ? (
-              <Text className="text-xs text-muted-foreground">{subtitle}</Text>
-            ) : null}
-          </View>
-          <Pressable
-            onPress={onClose}
-            className="rounded-full bg-muted px-3 py-1.5"
+    <Portal>
+      <Modal
+        visible
+        onDismiss={onClose}
+        contentContainerStyle={{
+          flex: 1,
+          backgroundColor: '#fff7f8',
+          margin: 0,
+        }}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <Appbar.Header style={{ backgroundColor: '#fff7f8' }} elevated>
+            <Appbar.Content title={title} subtitle={subtitle} />
+            <Appbar.Action icon="check" onPress={onClose} />
+          </Appbar.Header>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16, gap: 16 }}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text className="text-sm font-semibold text-foreground">Done</Text>
-          </Pressable>
-        </View>
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-4 py-5 gap-4"
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+            {children}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+    </Portal>
   );
 }
 
@@ -403,42 +382,44 @@ function PersonalDetailsSheet({
       title="Personal details"
       subtitle="How you appear across Mesita"
     >
-      <Field label="First name">
+      <TextInput
+        mode="outlined"
+        label="First name"
+        value={firstName}
+        onChangeText={setFirstName}
+        autoCapitalize="words"
+        style={{ backgroundColor: '#ffffff' }}
+      />
+      <View>
         <TextInput
-          value={firstName}
-          onChangeText={setFirstName}
-          placeholder="Your name"
-          className="rounded-xl border border-border bg-card px-3 py-3 text-sm text-foreground"
-          placeholderTextColor="#77525466"
-          autoCapitalize="words"
+          mode="outlined"
+          label="Phone"
+          value={profile?.phone ?? session?.user.phone ?? '—'}
+          editable={false}
+          style={{ backgroundColor: '#faeff0' }}
         />
-      </Field>
-      <Field label="Phone">
-        <View className="rounded-xl border border-border bg-muted/50 px-3 py-3">
-          <Text className="text-sm text-muted-foreground">
-            {profile?.phone ?? session?.user.phone ?? '—'}
-          </Text>
-        </View>
-        <Text className="mt-1 text-[11px] text-muted-foreground">
+        <HelperText type="info" visible>
           Phone is your sign-in identity and can’t be edited here.
-        </Text>
-      </Field>
-      <Field label="Birthday (YYYY-MM-DD)">
-        <TextInput
-          value={birthday}
-          onChangeText={setBirthday}
-          placeholder="1990-01-15"
-          className="rounded-xl border border-border bg-card px-3 py-3 text-sm text-foreground"
-          placeholderTextColor="#77525466"
-          autoCapitalize="none"
-        />
-      </Field>
-      <GradientButton
-        label={saving ? 'Saving…' : 'Save'}
+        </HelperText>
+      </View>
+      <TextInput
+        mode="outlined"
+        label="Birthday (YYYY-MM-DD)"
+        value={birthday}
+        onChangeText={setBirthday}
+        placeholder="1990-01-15"
+        autoCapitalize="none"
+        style={{ backgroundColor: '#ffffff' }}
+      />
+      <Button
+        mode="contained"
         onPress={() => void save()}
         loading={saving}
         disabled={saving}
-      />
+        contentStyle={{ paddingVertical: 4 }}
+      >
+        Save
+      </Button>
     </SheetShell>
   );
 }
@@ -456,29 +437,34 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
       title="Settings"
       subtitle="Preferences on this device"
     >
-      <Section title="Notifications">
-        <ToggleRow
-          label="Push notifications"
-          sub="Offers and reservation updates"
-          value={push}
-          onChange={setPush}
+      <List.Section>
+        <List.Subheader>Notifications</List.Subheader>
+        <List.Item
+          title="Push notifications"
+          description="Offers and reservation updates"
+          right={() => (
+            <Switch value={push} onValueChange={(v) => setPush(v)} />
+          )}
+          style={rowStyle}
         />
-      </Section>
-      <Section title="Permissions">
-        <ToggleRow
-          label="Location"
-          sub="Better nearby recommendations"
-          value={location}
-          onChange={setLocation}
+        <List.Subheader>Permissions</List.Subheader>
+        <List.Item
+          title="Location"
+          description="Better nearby recommendations"
+          right={() => (
+            <Switch value={location} onValueChange={(v) => setLocation(v)} />
+          )}
+          style={rowStyle}
         />
-        <ToggleRow
-          label="Contacts"
-          sub="Find friends on Mesita"
-          value={contacts}
-          onChange={setContacts}
+        <List.Item
+          title="Contacts"
+          description="Find friends on Mesita"
+          right={() => (
+            <Switch value={contacts} onValueChange={(v) => setContacts(v)} />
+          )}
+          style={rowStyle}
         />
-      </Section>
-      <Section title="Preferences">
+        <List.Subheader>Preferences</List.Subheader>
         <SelectRow
           label="Language"
           value={language}
@@ -491,11 +477,20 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
           options={CITY_OPTIONS}
           onChange={setCity}
         />
-      </Section>
-      <Section title="Legal">
-        <LinkRow label="Terms of service" url={TERMS_URL} />
-        <LinkRow label="Privacy policy" url={PRIVACY_URL} />
-      </Section>
+        <List.Subheader>Legal</List.Subheader>
+        <List.Item
+          title="Terms of service"
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => void Linking.openURL(TERMS_URL)}
+          style={rowStyle}
+        />
+        <List.Item
+          title="Privacy policy"
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => void Linking.openURL(PRIVACY_URL)}
+          style={rowStyle}
+        />
+      </List.Section>
     </SheetShell>
   );
 }
@@ -507,21 +502,27 @@ function ContactSheet({ onClose }: { onClose: () => void }) {
       title="Contact us"
       subtitle="We usually reply within a day"
     >
-      <Pressable
+      <List.Item
+        title="Email us"
+        description={SUPPORT_EMAIL}
+        left={(props) => (
+          <List.Icon
+            {...props}
+            icon={() => <MessageCircle color="#059669" size={22} />}
+          />
+        )}
         onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
-        className="flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5"
-      >
-        <View className="size-10 items-center justify-center rounded-full bg-emerald-500/10">
-          <MessageCircle color="#059669" size={18} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-sm font-semibold text-foreground">Email us</Text>
-          <Text className="text-[11px] text-muted-foreground">
-            {SUPPORT_EMAIL}
-          </Text>
-        </View>
-      </Pressable>
-      <Pressable
+        style={rowStyle}
+      />
+      <List.Item
+        title="Get help"
+        description="Report a problem or ask a question"
+        left={(props) => (
+          <List.Icon
+            {...props}
+            icon={() => <SettingsIcon color="#d97706" size={22} />}
+          />
+        )}
         onPress={() =>
           void Linking.openURL(
             `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
@@ -529,96 +530,21 @@ function ContactSheet({ onClose }: { onClose: () => void }) {
             )}`,
           )
         }
-        className="flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5"
-      >
-        <View className="size-10 items-center justify-center rounded-full bg-amber-500/10">
-          <SettingsIcon color="#d97706" size={18} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-sm font-semibold text-foreground">Get help</Text>
-          <Text className="text-[11px] text-muted-foreground">
-            Report a problem or ask a question
-          </Text>
-        </View>
-      </Pressable>
-      <Pressable
-        onPress={() => void Linking.openURL(INSTAGRAM_URL)}
-        className="flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5"
-      >
-        <View className="size-10 items-center justify-center rounded-full bg-primary/10">
-          <Share2 color="#fb2b7b" size={18} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-sm font-semibold text-foreground">
-            Instagram
-          </Text>
-          <Text className="text-[11px] text-muted-foreground">@mesita.ai</Text>
-        </View>
-      </Pressable>
-    </SheetShell>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View>
-      <Text className="mb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {label}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View className="gap-2">
-      <Text className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {title}
-      </Text>
-      <View className="overflow-hidden rounded-2xl border border-border bg-card">
-        {children}
-      </View>
-    </View>
-  );
-}
-
-function ToggleRow({
-  label,
-  sub,
-  value,
-  onChange,
-}: {
-  label: string;
-  sub: string;
-  value: boolean;
-  onChange: (next?: boolean) => void;
-}) {
-  return (
-    <View className="flex-row items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0">
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-semibold text-foreground">{label}</Text>
-        <Text className="text-[11px] text-muted-foreground">{sub}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={(v) => onChange(v)}
-        trackColor={{ false: '#e8dfe0', true: '#fb2b7b99' }}
-        thumbColor={value ? '#fb2b7b' : '#f4f3f4'}
+        style={rowStyle}
       />
-    </View>
+      <List.Item
+        title="Instagram"
+        description="@mesita.ai"
+        left={(props) => (
+          <List.Icon
+            {...props}
+            icon={() => <Share2 color="#fb2b7b" size={22} />}
+          />
+        )}
+        onPress={() => void Linking.openURL(INSTAGRAM_URL)}
+        style={rowStyle}
+      />
+    </SheetShell>
   );
 }
 
@@ -635,7 +561,10 @@ function SelectRow({
 }) {
   const current = options.find((o) => o.value === value)?.label ?? value;
   return (
-    <Pressable
+    <List.Item
+      title={label}
+      description={current}
+      right={(props) => <List.Icon {...props} icon="chevron-right" />}
       onPress={() => {
         Alert.alert(label, undefined, [
           ...options.map((o) => ({
@@ -645,27 +574,7 @@ function SelectRow({
           { text: 'Cancel', style: 'cancel' as const },
         ]);
       }}
-      className="flex-row items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0"
-    >
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-semibold text-foreground">{label}</Text>
-        <Text className="text-[11px] text-muted-foreground">{current}</Text>
-      </View>
-      <ChevronRight color="#77525466" size={18} />
-    </Pressable>
-  );
-}
-
-function LinkRow({ label, url }: { label: string; url: string }) {
-  return (
-    <Pressable
-      onPress={() => void Linking.openURL(url)}
-      className="flex-row items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0"
-    >
-      <Text className="min-w-0 flex-1 text-sm font-semibold text-foreground">
-        {label}
-      </Text>
-      <ChevronRight color="#77525466" size={18} />
-    </Pressable>
+      style={rowStyle}
+    />
   );
 }

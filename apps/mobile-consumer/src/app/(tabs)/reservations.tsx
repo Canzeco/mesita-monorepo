@@ -1,19 +1,54 @@
 import { CalendarCheck } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Card, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Parked on the web too (BottomNav soon=true, MESITA-383) — same copy.
+// Parked on the web too (BottomNav soon=true, MESITA-383).
 export default function ReservationsScreen() {
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="size-12 items-center justify-center rounded-xl bg-primary/10">
-          <CalendarCheck color="#fb2b7b" size={22} />
-        </View>
-        <Text className="mt-4 font-display text-2xl text-foreground">Reservations coming soon</Text>
-        <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-          Your bookings will live here. For now, reach places from Contact on a place.
-        </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 32,
+        }}
+      >
+        <Card
+          mode="elevated"
+          style={{ width: '100%', maxWidth: 360, borderRadius: 16 }}
+        >
+          <Card.Content style={{ alignItems: 'center', paddingVertical: 28 }}>
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 16,
+                backgroundColor: '#ffe4ef',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}
+            >
+              <CalendarCheck color="#fb2b7b" size={28} />
+            </View>
+            <Text variant="headlineSmall" style={{ textAlign: 'center' }}>
+              Reservations coming soon
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{
+                marginTop: 8,
+                textAlign: 'center',
+                color: '#775254',
+              }}
+            >
+              Your bookings will live here. For now, reach places from Contact on
+              a place.
+            </Text>
+          </Card.Content>
+        </Card>
       </View>
     </SafeAreaView>
   );

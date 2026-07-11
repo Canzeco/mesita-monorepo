@@ -1,11 +1,11 @@
 import { BadgeCheck, SearchX } from 'lucide-react-native';
+import { ScrollView, View } from 'react-native';
 import {
   ActivityIndicator,
-  Pressable,
-  ScrollView,
+  Chip,
+  List,
   Text,
-  View,
-} from 'react-native';
+} from 'react-native-paper';
 
 import type { AddState } from '@/components/memo/types';
 import type { PlacePrediction } from '@/lib/api/places';
@@ -33,41 +33,72 @@ export function SearchResultsPanel({
 
   return (
     <ScrollView
-      className="max-h-full"
-      contentContainerClassName="p-3 gap-3"
+      style={{ maxHeight: '100%' }}
+      contentContainerStyle={{ padding: 12, gap: 8 }}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
     >
       {query.trim().length < 2 ? (
-        <Text className="px-1 py-6 text-center text-xs text-muted-foreground">
+        <Text
+          variant="bodySmall"
+          style={{ paddingVertical: 24, textAlign: 'center', color: '#775254' }}
+        >
           Keep typing — at least two letters to search.
         </Text>
       ) : null}
 
       {searching && predictions.length === 0 ? (
-        <View className="flex-row items-center justify-center gap-2 py-8">
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 32,
+          }}
+        >
           <ActivityIndicator color="#fb2b7b" size="small" />
-          <Text className="text-xs text-muted-foreground">
+          <Text variant="bodySmall" style={{ color: '#775254' }}>
             Searching Mesita and Google…
           </Text>
         </View>
       ) : null}
 
       {searchError ? (
-        <View className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-          <Text className="text-xs text-rose-700">{searchError}</Text>
-        </View>
+        <Text
+          variant="bodySmall"
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            backgroundColor: '#ffe8e6',
+            color: '#e6000c',
+          }}
+        >
+          {searchError}
+        </Text>
       ) : null}
 
       {settled && !searchError && predictions.length === 0 ? (
-        <View className="items-center py-8">
-          <View className="size-12 items-center justify-center rounded-2xl bg-muted">
+        <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              backgroundColor: '#faeff0',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <SearchX color="#775254" size={20} />
           </View>
-          <Text className="mt-3 text-sm font-semibold text-foreground">
+          <Text variant="titleSmall" style={{ marginTop: 12 }}>
             No matches found
           </Text>
-          <Text className="mt-1 text-center text-xs text-muted-foreground">
+          <Text
+            variant="bodySmall"
+            style={{ marginTop: 4, textAlign: 'center', color: '#775254' }}
+          >
             Try the place’s full name, or ask the AI concierge.
           </Text>
         </View>
@@ -75,45 +106,50 @@ export function SearchResultsPanel({
 
       {onMesita.length > 0 ? (
         <View>
-          <Text className="px-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            On Mesita
+          <Text
+            variant="labelSmall"
+            style={{ paddingHorizontal: 4, color: '#775254', letterSpacing: 1 }}
+          >
+            ON MESITA
           </Text>
-          <View className="mt-1">
-            {onMesita.map((p) => (
-              <SuggestionLine
-                key={p.placeId}
-                prediction={p}
-                source="mesita"
-                addState={addStates[p.placeId]}
-                onPick={onPickMesita}
-              />
-            ))}
-          </View>
+          {onMesita.map((p) => (
+            <SuggestionLine
+              key={p.placeId}
+              prediction={p}
+              source="mesita"
+              addState={addStates[p.placeId]}
+              onPick={onPickMesita}
+            />
+          ))}
         </View>
       ) : null}
 
       {fromGoogle.length > 0 ? (
         <View>
-          <Text className="px-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            From Google
+          <Text
+            variant="labelSmall"
+            style={{ paddingHorizontal: 4, color: '#775254', letterSpacing: 1 }}
+          >
+            FROM GOOGLE
           </Text>
           {onMesita.length === 0 && settled ? (
-            <Text className="px-1 pt-1 text-[11px] text-muted-foreground">
+            <Text
+              variant="bodySmall"
+              style={{ paddingHorizontal: 4, paddingTop: 4, color: '#775254' }}
+            >
               Not on Mesita yet? Tap a place and we’ll build its profile for
               everyone.
             </Text>
           ) : null}
-          <View className="mt-1">
-            {fromGoogle.map((p) => (
-              <SuggestionLine
-                key={p.placeId}
-                prediction={p}
-                source="google"
-                addState={addStates[p.placeId]}
-                onPick={onPickGoogle}
-              />
-            ))}
-          </View>
+          {fromGoogle.map((p) => (
+            <SuggestionLine
+              key={p.placeId}
+              prediction={p}
+              source="google"
+              addState={addStates[p.placeId]}
+              onPick={onPickGoogle}
+            />
+          ))}
         </View>
       ) : null}
     </ScrollView>
@@ -136,34 +172,41 @@ function SuggestionLine({
     prediction.status === 'verified_partner_self';
 
   return (
-    <Pressable
+    <List.Item
+      title={prediction.mainText}
+      description={prediction.secondaryText || undefined}
       onPress={() => onPick(prediction)}
-      className="flex-row items-center gap-2.5 border-b border-border/60 py-3 active:opacity-70"
-    >
-      <View
-        className={`size-2 rounded-full ${
-          source === 'mesita' ? 'bg-primary' : 'bg-sky-500'
-        }`}
-      />
-      <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
-        <Text
-          className="shrink font-semibold text-foreground"
-          numberOfLines={1}
+      left={() => (
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            marginTop: 18,
+            marginLeft: 8,
+            backgroundColor: source === 'mesita' ? '#fb2b7b' : '#0ea5e9',
+          }}
+        />
+      )}
+      right={() => (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            alignSelf: 'center',
+          }}
         >
-          {prediction.mainText}
-        </Text>
-        {prediction.secondaryText ? (
-          <Text className="min-w-0 flex-1 text-xs text-muted-foreground" numberOfLines={1}>
-            {prediction.secondaryText}
-          </Text>
-        ) : null}
-      </View>
-      {verified ? <BadgeCheck color="#fb2b7b" size={16} /> : null}
-      {addState === 'added' ? (
-        <View className="rounded-full bg-primary/10 px-2 py-0.5">
-          <Text className="text-[10px] font-bold text-primary">Enriching</Text>
+          {verified ? <BadgeCheck color="#fb2b7b" size={16} /> : null}
+          {addState === 'added' ? (
+            <Chip compact style={{ backgroundColor: '#ffe4ef' }}>
+              Enriching
+            </Chip>
+          ) : null}
         </View>
-      ) : null}
-    </Pressable>
+      )}
+      style={{ paddingLeft: 0 }}
+      titleStyle={{ fontWeight: '600' }}
+    />
   );
 }
