@@ -1,23 +1,23 @@
-name: mobile CI
+name: mobile-consumer CI
 
 on:
   push:
     branches: [main]
     paths:
-      - "apps/mobile/**"
-      - ".github/workflows/mobile.yml"
+      - "apps/mobile-consumer/**"
+      - ".github/workflows/mobile-consumer.yml"
   pull_request:
     paths:
-      - "apps/mobile/**"
-      - ".github/workflows/mobile.yml"
+      - "apps/mobile-consumer/**"
+      - ".github/workflows/mobile-consumer.yml"
 
 concurrency:
-  group: mobile-ci-${{ github.ref }}
+  group: mobile-consumer-ci-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
   run:
-    working-directory: apps/mobile
+    working-directory: apps/mobile-consumer
 
 jobs:
   check:
@@ -26,8 +26,8 @@ jobs:
       - uses: actions/checkout@v4
 
       # Version pinned here: the monorepo root has no package.json, so the
-      # action can't read apps/mobile's `packageManager` field. Keep in sync
-      # with apps/mobile/package.json (pnpm@11.1.2).
+      # action can't read apps/mobile-consumer's `packageManager` field. Keep in sync
+      # with apps/mobile-consumer/package.json (pnpm@11.1.2).
       - uses: pnpm/action-setup@v4
         with:
           version: 11.1.2
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: apps/mobile/pnpm-lock.yaml
+          cache-dependency-path: apps/mobile-consumer/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 

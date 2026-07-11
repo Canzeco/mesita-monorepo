@@ -1,6 +1,6 @@
 {
   "setup-worktree-unix": [
-    "for f in apps/admin/.env.local apps/business/.env.local apps/consumer/.env.local apps/landing/.env.local apps/mobile/.env supabase/.env supabase/.env.twilio.local; do test -f \"$ROOT_WORKTREE_PATH/$f\" && cp \"$ROOT_WORKTREE_PATH/$f\" \"$f\" || true; done",
+    "for f in apps/web-admin/.env.local apps/web-business/.env.local apps/web-consumer/.env.local apps/web-landing/.env.local apps/mobile-consumer/.env supabase/.env supabase/.env.twilio.local; do test -f \"$ROOT_WORKTREE_PATH/$f\" && cp \"$ROOT_WORKTREE_PATH/$f\" \"$f\" || true; done",
     "test -d \"$ROOT_WORKTREE_PATH/supabase/supabase/.temp\" && cp -R \"$ROOT_WORKTREE_PATH/supabase/supabase/.temp\" supabase/supabase/.temp || true"
   ],
   "setup-worktree-windows": [

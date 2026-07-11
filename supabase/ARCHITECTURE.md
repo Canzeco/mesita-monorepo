@@ -29,11 +29,11 @@ history imported from the six former standalone repos (MESITA-455).
 | Package | Role | Stack | Deploy |
 |------|------|-------|--------|
 | `supabase/` | **Source of truth**: DB schema, RLS, ~93 Edge Functions, migrations | Deno / SQL | Supabase cloud |
-| `apps/consumer` | Consumer app | Next.js (Node 22+) | Vercel |
-| `apps/business` | Business console | Next.js (Node 22+) | Vercel |
-| `apps/admin` | Admin console | Next.js (Node 22+) | Vercel |
-| `apps/landing` | Marketing site | Next.js | Vercel |
-| `apps/mobile` | Native consumer app | Expo SDK 57 / React Native | EAS (human-gated); agents verify via web export |
+| `apps/web-consumer` | Consumer app | Next.js (Node 22+) | Vercel |
+| `apps/web-business` | Business console | Next.js (Node 22+) | Vercel |
+| `apps/web-admin` | Admin console | Next.js (Node 22+) | Vercel |
+| `apps/web-landing` | Marketing site | Next.js | Vercel |
+| `apps/mobile-consumer` | Native consumer app | Expo SDK 57 / React Native | EAS (human-gated); agents verify via web export |
 
 The six former standalone repos (`mesita-supabase`,
 `mesita-web-{admin,business,consumer,landing}`, `mesita-mobile-consumer`) are

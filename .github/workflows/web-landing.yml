@@ -1,23 +1,23 @@
-name: landing CI
+name: web-landing CI
 
 on:
   push:
     branches: [main]
     paths:
-      - "apps/landing/**"
-      - ".github/workflows/landing.yml"
+      - "apps/web-landing/**"
+      - ".github/workflows/web-landing.yml"
   pull_request:
     paths:
-      - "apps/landing/**"
-      - ".github/workflows/landing.yml"
+      - "apps/web-landing/**"
+      - ".github/workflows/web-landing.yml"
 
 concurrency:
-  group: landing-ci-${{ github.ref }}
+  group: web-landing-ci-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
   run:
-    working-directory: apps/landing
+    working-directory: apps/web-landing
 
 jobs:
   check:
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: apps/landing/pnpm-lock.yaml
+          cache-dependency-path: apps/web-landing/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
