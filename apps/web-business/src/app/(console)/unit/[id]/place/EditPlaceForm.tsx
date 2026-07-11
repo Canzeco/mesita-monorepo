@@ -13,7 +13,7 @@ import {
   type PlaceHours,
 } from "@/lib/api/places";
 import {
-  PLACE_DESCRIPTION_MAX,
+  PLACE_PLACE_DESCRIPTION_MAX,
   PLACE_HOUR_DAYS,
   PLACE_PLACE_NAME_MAX,
   PlaceBasicsModule,
@@ -38,7 +38,6 @@ const DAYS = PLACE_HOUR_DAYS;
 const MAX_SHIFTS_PER_DAY = 1;
 const SAVED_TOAST_MS = 2200;
 const PLACE_NAME_MAX = PLACE_PLACE_NAME_MAX;
-const DESCRIPTION_MAX = PLACE_DESCRIPTION_MAX;
 const TAG_MAX = 40;
 const TAG_MAX_COUNT = 20;
 
@@ -232,7 +231,7 @@ export function EditPlaceForm({
       description:
         v.description.trim() === ""
           ? null
-          : v.description.trim().slice(0, DESCRIPTION_MAX),
+          : v.description.trim().slice(0, PLACE_DESCRIPTION_MAX),
       hours: formHoursToPlace(v.hours),
       menu_pdf_url: nullableUrl(firstMenu.url),
       menu_pdf_name: nullable(firstMenu.name),
