@@ -58,7 +58,7 @@ import {
 import { formatPlacePriceChip } from "@/lib/place-price";
 import type { Place } from "@/lib/api/places";
 
-import { cn, firstInitial } from "@/lib/utils";
+import { formatCompactCount, cn, firstInitial } from "@/lib/utils";
 import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 import { buildUberDropoffUrl } from "@/lib/uber-link";
 
@@ -235,8 +235,8 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
   // decision: Pato — name in header; photo · Google · IG · reward; then
   // swipe-style tags: verification · category · price · zone · distance · hours.
   const googleRating = place.google.rating.toFixed(1);
-  const googleCount = formatCount(place.google.count, false);
-  const igFollowers = formatCount(place.instagram.followers, false);
+  const googleCount = formatCompactCount(place.google.count, false);
+  const igFollowers = formatCompactCount(place.instagram.followers, false);
   const priceLabel =
     formatPlacePriceChip({
       priceRange: place.price_range,
@@ -639,18 +639,18 @@ function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
           logo={<GoogleLogo />}
           icon="star"
           value={place.google.rating.toFixed(1)}
-          meta={`${formatCount(place.google.count, true)} reviews`}
+          meta={`${formatCompactCount(place.google.count, true)} reviews`}
         />
         <ExternalCard
           logo={<InstagramLogo />}
           icon="users"
-          value={formatCount(place.instagram.followers, false)}
+          value={formatCompactCount(place.instagram.followers, false)}
           meta="followers"
         />
         <ExternalCard
           logo={<FacebookLogo />}
           icon="users"
-          value={formatCount(place.facebook.followers, false)}
+          value={formatCompactCount(place.facebook.followers, false)}
           meta="followers"
         />
       </div>
@@ -793,7 +793,7 @@ function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
       title="Google reviews"
       icon={Star}
       iconColor="text-amber-400"
-      right={`${formatCount(place.google.count, true)} total`}
+      right={`${formatCompactCount(place.google.count, true)} total`}
     >
       <ReviewSortChips
         sort={sort}
@@ -1907,11 +1907,3 @@ function LinksBox({ place }: { place: PlaceDetail }) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-function formatCount(n: number, exact: boolean): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  // `exact` keeps counts that matter (e.g. review counts) as "1,891" rather
-  // than collapsing to "1.9K".
-  if (exact && n >= 1000) return n.toLocaleString("en-US");
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
