@@ -22,7 +22,7 @@ export {
 export { PlaceProfileCompletionBar } from "./PlaceProfileCompletionBar";
 export {
   PLACE_DESCRIPTION_MAX,
-  PLACE_PLACE_NAME_MAX,
+  PLACE_NAME_MAX,
   humanizePlaceToken,
   resolvePlaceVerification,
   resolvePlaceTierLabel,
