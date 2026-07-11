@@ -1,9 +1,16 @@
 export const MAX_PHOTOS = 10;
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-// Gallery photos live in place-images; menus / catalog files go to their own
-// bucket (see supabase migration 20260711182000_menu_images_bucket).
+// Gallery photos live in place-images; menu uploads go to their own buckets,
+// split by kind — images to menu-images, PDFs to menu-pdfs (see supabase
+// migrations 20260711182000_menu_images_bucket + 20260711190000_menu_pdfs_bucket).
 export const MENU_IMAGES_BUCKET = "menu-images";
+export const MENU_PDFS_BUCKET = "menu-pdfs";
+
+/** Menu uploads split by kind: PDFs to menu-pdfs, images to menu-images. */
+export function bucketForMenuFile(file: File): string {
+  return file.type === "application/pdf" ? MENU_PDFS_BUCKET : MENU_IMAGES_BUCKET;
+}
 
 export const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",

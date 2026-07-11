@@ -20,9 +20,16 @@ export const ALLOWED_MENU_ACCEPT = Array.from(ALLOWED_MENU_MIME_TYPES).join(",")
 
 export const PLACE_IMAGES_BUCKET = "place-images";
 
-// Menus / catalog files go to their own bucket, separate from gallery photos
-// (see supabase migration 20260711182000_menu_images_bucket).
+// Menu uploads go to their own buckets, separate from gallery photos and split
+// by kind — images to menu-images, PDFs to menu-pdfs (see supabase migrations
+// 20260711182000_menu_images_bucket + 20260711190000_menu_pdfs_bucket).
 export const MENU_IMAGES_BUCKET = "menu-images";
+export const MENU_PDFS_BUCKET = "menu-pdfs";
+
+/** Menu uploads split by kind: PDFs to menu-pdfs, images to menu-images. */
+export function bucketForMenuFile(file: File): string {
+  return file.type === "application/pdf" ? MENU_PDFS_BUCKET : MENU_IMAGES_BUCKET;
+}
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
