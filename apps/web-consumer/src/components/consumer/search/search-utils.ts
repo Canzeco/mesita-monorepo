@@ -48,10 +48,6 @@ export function matchPredictionToPlace(
   return null;
 }
 
-/** "1.4 km" under 10, "12 km" beyond. */
-export function formatKm(km: number): string {
-  return `${km < 10 ? km.toFixed(1) : Math.round(km).toString()} km`;
-}
 
 /**
  * Fill distance_km from the consumer's live location. Real data only —

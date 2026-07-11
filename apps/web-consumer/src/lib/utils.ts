@@ -78,3 +78,9 @@ export function haversineKm(
 function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
+
+/** "1.4 km" under 10, "12 km" beyond — pairs with haversineKm for distance chips. */
+export function formatKm(km: number): string {
+  return `${km < 10 ? km.toFixed(1) : Math.round(km).toString()} km`;
+}
+

@@ -42,7 +42,7 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { cn, errMsg, firstInitial, formatRating } from "@/lib/utils";
+import { cn, errMsg, firstInitial, formatKm, formatRating } from "@/lib/utils";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { FiltersComingSoon } from "@/components/consumer/FiltersComingSoon";
@@ -55,7 +55,6 @@ import type { AddState } from "./PredictionRow";
 // map/rail pipeline is untouched and un-parking is a localized restore.
 import { applyChipFilters } from "./search-filters";
 import {
-  formatKm,
   matchPredictionToPlace,
   newSessionToken,
   withDistances,

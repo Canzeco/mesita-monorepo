@@ -25,9 +25,9 @@ import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { cn, firstInitial, formatRating } from "@/lib/utils";
+import { cn, firstInitial, formatKm, formatRating } from "@/lib/utils";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
-import { formatKm } from "./search-utils";
+
 
 export type AddState = "adding" | "added";
 
