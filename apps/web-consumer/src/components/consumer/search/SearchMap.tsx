@@ -28,18 +28,14 @@ import {
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
   MAP_CIRCLE_PATH,
+  MAP_WEB_PIN_COLOR,
+  MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
-
-// Every place shows as a neutral gray dot; the one currently held in the
-// rail (selected) turns red. No partner/web colour split here — selection
-// is the only thing the pin colour encodes on this page.
-const DOT_COLOR = "#9ca3af"; // Gray — default resting state
-const SELECTED_COLOR = "#EF4444"; // Red — the picked/held place
 
 function placeIcon(isSelected: boolean) {
   return {
     path: MAP_CIRCLE_PATH,
-    fillColor: isSelected ? SELECTED_COLOR : DOT_COLOR,
+    fillColor: isSelected ? MAP_SELECTED_PIN_COLOR : MAP_WEB_PIN_COLOR,
     fillOpacity: 1,
     strokeColor: "#ffffff",
     strokeWeight: isSelected ? 3.5 : 2.5,
