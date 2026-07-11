@@ -26,7 +26,7 @@ import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { MockControls } from "@/components/consumer/me/MockControls";
 import { CLASSES } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { cn, errMsg, firstInitials } from "@/lib/utils";
+import { ageFromBirthday, cn, errMsg, firstInitials, formatSex } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -233,25 +233,6 @@ export function ProfileClient({
 }
 
 // ─── Profile summary (static, not clickable) ──────────────────────────────
-
-// Whole years since `birthday` (YYYY-MM-DD). Returns null for a missing or
-// unparseable value so the meta line simply omits it.
-function ageFromBirthday(birthday: string | null | undefined): number | null {
-  if (!birthday) return null;
-  const dob = new Date(birthday);
-  if (Number.isNaN(dob.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - dob.getFullYear();
-  const m = now.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1;
-  return age >= 0 && age < 130 ? age : null;
-}
-
-// Title-case the stored sex enum (male/female/other) for display; null-safe.
-function formatSex(sex: string | null | undefined): string | null {
-  if (!sex) return null;
-  return sex.charAt(0).toUpperCase() + sex.slice(1);
-}
 
 function ProfileSummaryCard({
   profile,
