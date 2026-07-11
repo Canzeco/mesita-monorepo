@@ -16,7 +16,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PaperProvider } from 'react-native-paper';
 
+import { mesitaPaperTheme } from '@/constants/paper-theme';
 import { Sentry } from '@/lib/sentry';
 import { AuthProvider } from '@/providers/auth';
 
@@ -52,17 +54,19 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: '#fff7f8' },
-            }}
-          />
-        </AuthProvider>
-      </QueryClientProvider>
+      <PaperProvider theme={mesitaPaperTheme}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <StatusBar style="dark" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: '#fff7f8' },
+              }}
+            />
+          </AuthProvider>
+        </QueryClientProvider>
+      </PaperProvider>
     </GestureHandlerRootView>
   );
 }

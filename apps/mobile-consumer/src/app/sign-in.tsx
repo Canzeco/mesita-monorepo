@@ -1,24 +1,21 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
+  Button,
+  HelperText,
+  Surface,
   Text,
   TextInput,
-  View,
-} from 'react-native';
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientButton } from '@/components/ui/gradient-button';
 import { GRADIENTS } from '@/constants/brand';
 import { apiConsumerSigninPhone } from '@/lib/api/auth';
 import { supabase } from '@/lib/supabase';
 
-// Port of the web PhoneOtpForm: signInWithOtp → verifyOtp(type "sms"),
-// then the consumer-web-signin-phone EF (the web /auth/post-signin hop).
-// Default country MX (+52), same as the web's COUNTRY_BY_CODE default.
+// Phone OTP: signInWithOtp → verifyOtp → consumer-web-signin-phone.
 const DIAL_PREFIX = '+52';
 
 export default function SignIn() {
@@ -30,6 +27,8 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
 
   const e164 = `${DIAL_PREFIX}${localNumber.replace(/\D/g, '')}`;
+  const phoneOk = localNumber.replace(/\D/g, '').length >= 10;
+  const codeOk = token.trim().length === 6;
 
   const sendCode = async () => {
     setError(null);
@@ -57,98 +56,137 @@ export default function SignIn() {
       return;
     }
     try {
-      // Stamps role + lazy-creates the consumers row; the entry gate at "/"
-      // then routes to onboard or tabs off the refreshed profile.
       await apiConsumerSigninPhone();
     } catch {
-      // Non-fatal: the gate's profile fetch covers routing either way.
+      // Gate profile fetch covers routing.
     }
     setBusy(false);
     router.replace('/');
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <View style={{ flex: 1, backgroundColor: '#fff7f8' }}>
       <LinearGradient
         colors={[...GRADIENTS.hero]}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 380 }}
       />
-      <SafeAreaView className="flex-1">
+      <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1 justify-center px-6"
+          style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
         >
-          <View className="mb-10 items-center">
-            <Text className="font-display text-5xl text-foreground">Mesita</Text>
-            <Text className="mt-3 text-center text-sm text-muted-foreground">
+          <View style={{ marginBottom: 40, alignItems: 'center' }}>
+            <Text variant="displaySmall" style={{ color: '#260409' }}>
+              Mesita
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{ marginTop: 12, textAlign: 'center', color: '#775254' }}
+            >
               Tu mesa favorita te está esperando
             </Text>
           </View>
 
-          <View className="rounded-3xl border border-border bg-card p-6">
+          <Surface
+            elevation={2}
+            style={{
+              borderRadius: 16,
+              padding: 24,
+              backgroundColor: '#ffffff',
+            }}
+          >
             {step === 'phone' ? (
               <>
-                <Text className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                  Phone number
+                <Text
+                  variant="labelSmall"
+                  style={{ marginBottom: 8, color: '#775254', letterSpacing: 1.2 }}
+                >
+                  PHONE NUMBER
                 </Text>
-                <View className="flex-row items-center gap-2">
-                  <View className="rounded-lg bg-muted px-3 py-3">
-                    <Text className="text-sm font-semibold text-foreground">{DIAL_PREFIX}</Text>
-                  </View>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  <Surface
+                    elevation={0}
+                    style={{
+                      backgroundColor: '#faeff0',
+                      borderRadius: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 14,
+                    }}
+                  >
+                    <Text variant="titleSmall">{DIAL_PREFIX}</Text>
+                  </Surface>
                   <TextInput
-                    className="flex-1 rounded-lg border border-input bg-card px-3 py-3 text-base text-foreground"
+                    mode="outlined"
+                    style={{ flex: 1, backgroundColor: '#ffffff' }}
                     keyboardType="phone-pad"
                     autoComplete="tel"
                     placeholder="55 1234 5678"
-                    placeholderTextColor="#775254"
                     value={localNumber}
                     onChangeText={setLocalNumber}
+                    dense
                   />
                 </View>
-                <View className="mt-4">
-                  <GradientButton
-                    label="Send code"
-                    onPress={() => void sendCode()}
-                    loading={busy}
-                    disabled={localNumber.replace(/\D/g, '').length < 10}
-                  />
-                </View>
+                <Button
+                  mode="contained"
+                  onPress={() => void sendCode()}
+                  loading={busy}
+                  disabled={!phoneOk || busy}
+                  style={{ marginTop: 16 }}
+                  contentStyle={{ paddingVertical: 6 }}
+                >
+                  Send code
+                </Button>
               </>
             ) : (
               <>
-                <Text className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                  Code sent to {e164}
+                <Text
+                  variant="labelSmall"
+                  style={{ marginBottom: 8, color: '#775254', letterSpacing: 1.2 }}
+                >
+                  CODE SENT TO {e164}
                 </Text>
                 <TextInput
-                  className="rounded-lg border border-input bg-card px-3 py-3 text-center text-2xl tracking-[8px] text-foreground"
+                  mode="outlined"
+                  style={{
+                    backgroundColor: '#ffffff',
+                    textAlign: 'center',
+                    letterSpacing: 8,
+                    fontSize: 24,
+                  }}
                   keyboardType="number-pad"
                   textContentType="oneTimeCode"
                   autoComplete="sms-otp"
                   maxLength={6}
                   placeholder="••••••"
-                  placeholderTextColor="#775254"
                   value={token}
                   onChangeText={setToken}
                 />
-                <View className="mt-4">
-                  <GradientButton
-                    label="Verify"
-                    onPress={() => void verifyCode()}
-                    loading={busy}
-                    disabled={token.trim().length !== 6}
-                  />
-                </View>
-                <Pressable onPress={() => setStep('phone')} className="mt-3 items-center">
-                  <Text className="text-xs text-muted-foreground">Change number</Text>
-                </Pressable>
+                <Button
+                  mode="contained"
+                  onPress={() => void verifyCode()}
+                  loading={busy}
+                  disabled={!codeOk || busy}
+                  style={{ marginTop: 16 }}
+                  contentStyle={{ paddingVertical: 6 }}
+                >
+                  Verify
+                </Button>
+                <Button
+                  mode="text"
+                  onPress={() => setStep('phone')}
+                  style={{ marginTop: 4 }}
+                  compact
+                >
+                  Change number
+                </Button>
               </>
             )}
             {error ? (
-              <View className="mt-4 rounded-lg bg-destructive/10 px-3 py-2">
-                <Text className="text-xs text-destructive">{error}</Text>
-              </View>
+              <HelperText type="error" visible style={{ marginTop: 8 }}>
+                {error}
+              </HelperText>
             ) : null}
-          </View>
+          </Surface>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

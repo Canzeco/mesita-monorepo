@@ -1,16 +1,16 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
+  Button,
+  HelperText,
+  SegmentedButtons,
+  Surface,
   Text,
   TextInput,
-  View,
-} from 'react-native';
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientButton } from '@/components/ui/gradient-button';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { useAuth } from '@/providers/auth';
 
@@ -20,13 +20,13 @@ const SEX_OPTIONS = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-// Port of the web OnboardForm: {first_name, sex, birthday} →
-// consumer-web-update-profile, then into the app.
 export default function Onboard() {
   const router = useRouter();
   const { refreshProfile, signOut, session, onboarded } = useAuth();
   const [firstName, setFirstName] = useState('');
-  const [sex, setSex] = useState<(typeof SEX_OPTIONS)[number]['value'] | null>(null);
+  const [sex, setSex] = useState<(typeof SEX_OPTIONS)[number]['value'] | null>(
+    null,
+  );
   const [birthday, setBirthday] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,12 +34,6 @@ export default function Onboard() {
   const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim());
   const canSubmit = firstName.trim().length > 0 && sex !== null && validBirthday;
 
-  // Already-onboarded users can land here transiently: after sign-in the
-  // entry gate reads a still-loading (null) profile as "not onboarded" and
-  // routes to /onboard, and after submit refreshProfile flips this true.
-  // Bounce into the app as soon as the profile shows a complete row instead
-  // of stranding a returning user on the form. Mirrors the web
-  // (shell)/layout onboarded guard.
   if (onboarded) {
     return <Redirect href="/(tabs)/home" />;
   }
@@ -64,92 +58,87 @@ export default function Onboard() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 justify-center px-6"
+        style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
       >
-        <Text className="font-display text-3xl text-foreground">Welcome to Mesita</Text>
-        <Text className="mt-2 text-sm text-muted-foreground">
+        <Text variant="headlineMedium" style={{ color: '#260409' }}>
+          Welcome to Mesita
+        </Text>
+        <Text
+          variant="bodyMedium"
+          style={{ marginTop: 8, color: '#775254' }}
+        >
           A few details and your table is ready.
         </Text>
 
-        <View className="mt-8 rounded-3xl border border-border bg-card p-6">
-          <Text className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            First name
-          </Text>
+        <Surface
+          elevation={2}
+          style={{
+            marginTop: 32,
+            borderRadius: 16,
+            padding: 24,
+            backgroundColor: '#ffffff',
+          }}
+        >
           <TextInput
-            className="rounded-lg border border-input bg-card px-3 py-3 text-base text-foreground"
+            mode="outlined"
+            label="First name"
             autoComplete="given-name"
-            placeholder="Your name"
-            placeholderTextColor="#775254"
             value={firstName}
             onChangeText={setFirstName}
+            style={{ backgroundColor: '#ffffff' }}
           />
 
-          <Text className="mb-2 mt-5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Sex
+          <Text
+            variant="labelSmall"
+            style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
+          >
+            SEX
           </Text>
-          <View className="flex-row gap-2">
-            {SEX_OPTIONS.map((opt) => {
-              const active = sex === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setSex(opt.value)}
-                  className={
-                    active
-                      ? 'flex-1 items-center rounded-lg bg-primary px-3 py-2.5'
-                      : 'flex-1 items-center rounded-lg bg-muted px-3 py-2.5'
-                  }
-                >
-                  <Text
-                    className={
-                      active
-                        ? 'text-sm font-semibold text-primary-foreground'
-                        : 'text-sm text-muted-foreground'
-                    }
-                  >
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SegmentedButtons
+            value={sex ?? ''}
+            onValueChange={(v) =>
+              setSex(v as (typeof SEX_OPTIONS)[number]['value'])
+            }
+            buttons={SEX_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+            }))}
+          />
 
-          <Text className="mb-2 mt-5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Birthday (YYYY-MM-DD)
-          </Text>
           <TextInput
-            className="rounded-lg border border-input bg-card px-3 py-3 text-base text-foreground"
+            mode="outlined"
+            label="Birthday (YYYY-MM-DD)"
             keyboardType="numbers-and-punctuation"
             placeholder="1995-06-15"
-            placeholderTextColor="#775254"
             value={birthday}
             onChangeText={setBirthday}
+            style={{ marginTop: 20, backgroundColor: '#ffffff' }}
           />
 
-          <View className="mt-6">
-            <GradientButton
-              label="Let's go"
-              onPress={() => void submit()}
-              loading={busy}
-              disabled={!canSubmit}
-            />
-          </View>
+          <Button
+            mode="contained"
+            onPress={() => void submit()}
+            loading={busy}
+            disabled={!canSubmit || busy}
+            style={{ marginTop: 24 }}
+            contentStyle={{ paddingVertical: 6 }}
+          >
+            Let&apos;s go
+          </Button>
 
           {error ? (
-            <View className="mt-4 rounded-lg bg-destructive/10 px-3 py-2">
-              <Text className="text-xs text-destructive">{error}</Text>
-            </View>
+            <HelperText type="error" visible style={{ marginTop: 8 }}>
+              {error}
+            </HelperText>
           ) : null}
-        </View>
+        </Surface>
 
-        <Pressable onPress={() => void signOut()} className="mt-6 items-center">
-          <Text className="text-xs text-muted-foreground">
-            {session?.user.phone ? `Not ${session.user.phone}? ` : ''}Sign out
-          </Text>
-        </Pressable>
+        <Button mode="text" onPress={() => void signOut()} style={{ marginTop: 24 }}>
+          {session?.user.phone ? `Not ${session.user.phone}? Sign out` : 'Sign out'}
+        </Button>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
