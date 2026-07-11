@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "sync-rules": "deno run --allow-read --allow-write scripts/sync-rules.ts",
+    "sync-rules:check": "deno run --allow-read scripts/sync-rules.ts --check"
+  }
+}

@@ -1,31 +1,10 @@
-<!-- RULES-QUICKSTART:START (generated — do not hand-edit; run: deno run -A mesita-supabase/scripts/sync-rules.ts) -->
-# Mesita — agent quickstart (you're ~90% correct after this)
+# apps/business — business console (business.mesita.ai)
 
-Stable mirror of the top of the Notion **Rules** page (the master — Notion wins on any conflict). Full page + appendix: https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8
+> Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
 
-Same rules, one Linear ledger, on every platform — only your **platform protocol** (isolation, branch naming, connectors) differs. Find yours: **Development Rules §K**. What Mesita IS (product, schema, design): **Product Rules** (Pato owns it; mirror shipped architecture changes there same session).
-
-| You're reading | You are |
-| --- | --- |
-| `CLAUDE.md` | Claude Code (local · cloud · subagent) or Claude Cowork |
-| `AGENTS.md` | Cursor, Codex, or any open-standard agent — generated from `CLAUDE.md`; hand edits go there |
-
-- **Alone + small fix?** → branch off fresh main, work, PR, merge it yourself, create the one-line issue at merge time (Ops & maintenance). That's the whole loop.
-- **Other agents live on the repo?** → full SWARM: pick → claim (`claimed: <platform>:<session-slug> · branch:<actual-branch>`) → isolated checkout → merge.
-- **One issue can span repos:** use the SAME branch name `agent/<ISSUE-ID>-<slug>` in every repo it touches, one squash PR per repo (each says `Closes <ID>` or `Part of <ID>`); the issue closes when the last PR merges. No child-issue ceremony for small cross-repo changes.
-- **One agent = one isolated checkout = one branch.** Platform-native isolation counts (Desktop/Cursor worktrees, cloud clones). Canonical branch `agent/<ISSUE-ID>-<slug>`; if your platform forces another name (e.g. `cursor/*`), declare it in your claim.
-- **Cowork never opens a live repo checkout** — `cowork`-label issues (docs/research/analysis) in non-repo folders only.
-- **ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` · mirror every Supabase cloud change into `mesita-supabase` same session · set terminal status same session · no local dev servers (verify via Vercel) · comply with admin-console configs (Atlas / Enricher / Sourcing / Memo bind every EF, app & agent — unenforced config = bug).
-- **NEVER ask.** Reversible → decide, log a `decision:` comment, ship. Only two `needs-human` cases: a secret you can't enter, or one irreversible money/publish trigger.
-- **When in doubt**, hierarchy wins: Pato's live instruction > the Linear issue > Notion > memory.
-
-Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion** = knowledge · **GitHub Canzeco** = code.
-<!-- RULES-QUICKSTART:END -->
-
-## This repo — mesita-web-business (business console · business.mesita.ai)
-
-- **This is the ACTIVE repo — NOT `mesita-web-business-legacy`** (frozen decoy). The Vercel project must stay connected here; a wrong connection = silent no-deploy.
+- **Deploys via the Vercel `mesita-web-business` project**, which must point at `Canzeco/mesita-monorepo` with Root Directory `apps/business` once the cutover lands. The frozen standalone repos — especially `mesita-web-business-legacy` — are decoys; a wrong connection = silent no-deploy.
 - Light theme + semantic tokens. Business surfaces stay **calm and high-density** — don't ornament them.
 - **Layout convention:** page container `mx-auto max-w-6xl` + section cards `grid grid-cols-1 gap-4 md:grid-cols-2`; constrain the Topbar to the same `max-w-6xl` so the title shares the cards' left edge; wide sections span the full row; global save = a small floating chip bottom-right. Reference implementation: the Place page (`EditVenueForm.tsx`).
 - Nomenclature: businesses subscribe to a **plan** (`free`/`pro`/`ultra`, labels Free/Pro/Ultra — "Promote" retired). Per-project member roles: `owner`/`editor`/`viewer`.
-- Clients never call the DB — everything via `business-web-*` Edge Functions. CI: `lint · typecheck · build` (Node 22+).
+- Clients never call the DB — everything via `business-web-*` Edge Functions.
+- CI: `business.yml` — typecheck · build blocking, lint non-blocking (known-red baseline) (Node 22+), path-filtered to `apps/business/**`.

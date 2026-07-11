@@ -1,7 +1,5 @@
 {
   "tasks": {
-    "test": "deno test --allow-env --allow-net --allow-read supabase/functions/",
-    "sync-rules": "deno run --allow-read --allow-write scripts/sync-rules.ts",
-    "sync-rules:check": "deno run --allow-read scripts/sync-rules.ts --check"
+    "test": "deno test --allow-env --allow-net --allow-read supabase/functions/"
   }
 }

@@ -1,9 +1,9 @@
 # Mesita — system architecture
 
-> Cross-repo map of how Mesita fits together. Lives in `mesita-supabase` (the
-> backend source of truth) because the workspace root is a pseudo-repo with no
-> git remote. **Notion "Rules" wins on any conflict** — this is a stable mirror,
-> not the master. Per-repo specifics live in each repo's `CLAUDE.md`.
+> System map of how Mesita fits together. Lives in the `supabase/` package (the
+> backend source of truth) of `Canzeco/mesita-monorepo`. **Notion "Rules" wins
+> on any conflict** — this is a stable mirror, not the master. Package
+> specifics live in each package's `CLAUDE.md`.
 
 ## What Mesita is
 
@@ -23,19 +23,23 @@ via subscriptions (Stripe).
 
 ## Repo topology (GitHub org: Canzeco)
 
-| Repo | Role | Stack | Deploy |
-|------|------|-------|--------|
-| `mesita-supabase` | **Source of truth**: DB schema, RLS, 84 Edge Functions, migrations | Deno / SQL | Supabase cloud |
-| `mesita-web-consumer` | Consumer app | Next.js (Node 22+) | Vercel |
-| `mesita-web-business` | Business console | Next.js (Node 22+) | Vercel |
-| `mesita-web-admin` | Admin console | Next.js (Node 22+) | Vercel |
-| `mesita-web-landing` | Marketing site | Next.js | Vercel |
-| `mesita-n8n` | **RETIRED** (historical reference only) | — | — |
+**One repo since 2026-07-11: `Canzeco/mesita-monorepo`** — one `.git`, full
+history imported from the six former standalone repos (MESITA-455).
 
-The workspace root (`~/Desktop/Canzeco/Mesita`) is a convenience checkout of all
-repos side by side; it is **not** a committable monorepo (0 commits, no remote).
-Consolidating into a real pnpm/Turborepo monorepo is a tracked, **not-yet-decided**
-plan (MESITA-141).
+| Package | Role | Stack | Deploy |
+|------|------|-------|--------|
+| `supabase/` | **Source of truth**: DB schema, RLS, ~93 Edge Functions, migrations | Deno / SQL | Supabase cloud |
+| `apps/consumer` | Consumer app | Next.js (Node 22+) | Vercel |
+| `apps/business` | Business console | Next.js (Node 22+) | Vercel |
+| `apps/admin` | Admin console | Next.js (Node 22+) | Vercel |
+| `apps/landing` | Marketing site | Next.js | Vercel |
+| `apps/mobile` | Native consumer app | Expo SDK 57 / React Native | EAS (human-gated); agents verify via web export |
+
+The six former standalone repos (`mesita-supabase`,
+`mesita-web-{admin,business,consumer,landing}`, `mesita-mobile-consumer`) are
+frozen read-only history; `mesita-n8n` was retired earlier. Each app package is
+an **independent pnpm install root** (deliberately no root workspace — the
+mobile app needs the hoisted linker); CI is path-filtered per package.
 
 Coordination lives in **Linear** (team Mesita, `MESITA-`) = work state · **Notion**
 = knowledge · **GitHub** = code.
@@ -59,7 +63,7 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
   plus vendor webhooks like `stripe-webhook-*` and `twilio-*`.
 - Natural callers may invoke artificial ones, never the reverse.
 
-Roughly 84 EFs today: business 34 · consumer 24 · admin 18 · plus staff / stripe /
+Roughly 93 EFs today: business 34 · consumer 24 · admin 18 · plus staff / stripe /
 twilio / supabase-cron. `_shared/` holds internal helpers (free-form naming).
 
 ## Data layer (Postgres)
@@ -116,9 +120,10 @@ Stripe subscriptions only (no money held). Business `pro` / `ultra`, consumer
 ## Working conventions (see the Rules quickstart in every CLAUDE.md)
 
 - **Reply in English.** Branch off fresh `main`; never push to `main`; squash-PR.
-- **Mirror every Supabase cloud change into `mesita-supabase` the same session**;
-  after any EF deploy verify cloud == repo (a smoke-test stub once clobbered prod).
-- Run all `supabase` commands from inside `mesita-supabase` (single migration
+- **Mirror every Supabase cloud change into the `supabase/` package the same
+  session**; after any EF deploy verify cloud == repo (a smoke-test stub once
+  clobbered prod).
+- Run all `supabase` commands from inside `supabase/` (single migration
   ledger). Prod EF deploys + sensitive DDL are gated.
 - **No local dev servers** — verify web apps via their Vercel deploy.
 - Light theme + semantic tokens across every web app.

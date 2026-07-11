@@ -42,11 +42,9 @@ jobs:
       - name: Test
         run: deno test --allow-all
 
-  # NOTE (monorepo import, 2026-07-11): the standalone repo also ran a
-  # `rules-sync` job (scripts/sync-rules.ts --check). It is intentionally NOT
-  # carried over: sync-rules.ts still assumes the sibling-standalone-repo
-  # layout. It gets retargeted to the monorepo in the SWARM-rewrite step and
-  # re-enabled then.
+  # The instruction-file sync check (scripts/sync-rules.ts --check) lives in
+  # the root `rules` workflow (.github/workflows/rules.yml) since SWARM v5
+  # (MESITA-456) — one checkout now covers the whole monorepo.
 
   # Full type-check of every edge function against its remote (jsr/npm/https)
   # imports. Non-blocking: it depends on live registries being reachable, so a
