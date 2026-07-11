@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiDeleteConsumerAccount } from "@/lib/api/profile";
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
 // Destructive confirm sheet for Settings → Privacy & data → Delete account.
 // Type-to-confirm ("DELETE") gates the real consumer-web-delete-account call;
@@ -48,7 +48,7 @@ export function DeleteAccountSheet({
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Delete account">
-      <div className="scrollbar-hide min-h-0 overflow-y-auto p-5 pt-3">
+      <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
         <div className="flex items-start gap-3">
           <span className="bg-destructive/10 text-destructive flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
             <Trash2 className="h-5 w-5" />
