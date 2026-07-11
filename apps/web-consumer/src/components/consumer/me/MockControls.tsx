@@ -7,6 +7,7 @@ import {
   setMockClass,
 } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
+import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 // Demo-only emulation controls, surfaced as their own Me sections while the
 // real Instagram + Class cards are parked (soon). Each writes the client-only
@@ -50,7 +51,7 @@ export function MockControls() {
         icon={
           <Instagram className="h-[18px] w-[18px] text-white" strokeWidth={2} />
         }
-        iconClass="bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]"
+        iconClass={INSTAGRAM_ICON_GRADIENT_CLASS}
         title="Emulate Instagram"
         summary="Preview the Instagram-connected profile"
         on={igOn}
