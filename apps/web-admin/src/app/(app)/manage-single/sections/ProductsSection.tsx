@@ -15,6 +15,8 @@ import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ALLOWED_MENU_ACCEPT,
   bucketForMenuFile,
+  detectMenuFileKind,
+  drivePreviewUrl,
   isDriveMenuUrl,
   placeMenuObjectPath,
   validateMenuUploadFile,
@@ -557,6 +559,7 @@ function MenuItemCard({
               </p>
             )}
           </div>
+          {hasFile ? <MenuFilePreview url={item.url} /> : null}
         </div>
       ) : item.source === "drive" ? (
         <div className="border-border bg-muted/20 mt-3 rounded-xl border border-dashed p-4">
@@ -568,14 +571,17 @@ function MenuItemCard({
             disabled={pending || uploading}
           />
           {hasDrive && /^https:\/\//i.test(normalizeHttpsUrl(item.url)) ? (
-            <a
-              href={normalizeHttpsUrl(item.url)}
-              target="_blank"
-              rel="noreferrer"
-              className="text-secondary mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium hover:underline"
-            >
-              Open link <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+            <>
+              <a
+                href={normalizeHttpsUrl(item.url)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-secondary mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium hover:underline"
+              >
+                Open link <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+              <MenuFilePreview url={normalizeHttpsUrl(item.url)} />
+            </>
           ) : (
             <p className="text-muted-foreground mt-2 text-xs">
               Google Drive or Docs share link only
@@ -583,6 +589,56 @@ function MenuItemCard({
           )}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Compact thumbnail / embed for the uploaded or shared menu file. */
+function MenuFilePreview({ url }: { url: string }) {
+  const kind = detectMenuFileKind(url);
+  const src = normalizeHttpsUrl(url);
+
+  if (kind === "image") {
+    return (
+      <div className="border-border/60 bg-background mt-3 overflow-hidden rounded-lg border">
+        {/* eslint-disable-next-line @next/next/no-img-element -- remote Storage URL; sizes unknown */}
+        <img
+          src={src}
+          alt="Menu preview"
+          className="mx-auto max-h-48 w-full object-contain p-2"
+        />
+      </div>
+    );
+  }
+
+  if (kind === "drive") {
+    const preview = drivePreviewUrl(src);
+    if (!preview) {
+      return (
+        <p className="text-muted-foreground mt-3 text-xs">
+          Preview unavailable for this Drive link — open it to view.
+        </p>
+      );
+    }
+    return (
+      <div className="border-border/60 bg-background mt-3 overflow-hidden rounded-lg border">
+        <iframe
+          title="Drive menu preview"
+          src={preview}
+          className="bg-background h-52 w-full border-0"
+          allow="autoplay"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-border/60 bg-background mt-3 overflow-hidden rounded-lg border">
+      <iframe
+        title="PDF menu preview"
+        src={src}
+        className="h-52 w-full border-0 bg-white"
+      />
     </div>
   );
 }
