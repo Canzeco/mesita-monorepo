@@ -9,7 +9,7 @@ import { Spinner } from "@/components/shared/Spinner";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
 // Premium. 1,000+ followers (and a story per visit) unlocks Premium. Extracted
@@ -90,7 +90,7 @@ export function VerifySocialSheet({
   const { Icon } = cfg;
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel={cfg.title}>
-      <div className="scrollbar-hide min-h-0 overflow-y-auto p-5 pt-3">
+      <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
         <div className="flex items-start gap-3">
           <span
             className={cn(
