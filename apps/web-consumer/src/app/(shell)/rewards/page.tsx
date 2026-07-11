@@ -2,7 +2,8 @@ import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
-import { errMsg } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { cn, errMsg } from "@/lib/utils";
 import { CONSUMER_ROUTE_PREFIX } from "@/lib/consumer-route-contract";
 import { PayTabLoading } from "./PayTabLoading";
 
@@ -31,7 +32,7 @@ export default async function RewardsPage() {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col">
         <div className="px-4 py-6">
-          <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-sm">
+          <p className={cn(ERROR_BOX_CLASS, "rounded-xl text-sm")}>
             {errMsg(err, "Couldn't load your profile.")}
           </p>
         </div>
