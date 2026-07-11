@@ -27,10 +27,3 @@ export const MULTIPLE_SUBROUTES = [
   label: string;
   Icon: LucideIcon;
 }>;
-
-export function isManageMultipleRoute(pathname: string): boolean {
-  return (
-    pathname === MULTIPLE_PARENT.href ||
-    pathname.startsWith(`${MULTIPLE_PARENT.href}/`)
-  );
-}

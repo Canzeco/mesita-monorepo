@@ -19,10 +19,3 @@ export const ENRICHER_SUBROUTES = [
   label: string;
   Icon: LucideIcon;
 }>;
-
-export function isEnricherRoute(pathname: string): boolean {
-  return (
-    pathname === ENRICHER_PARENT.href ||
-    pathname.startsWith(`${ENRICHER_PARENT.href}/`)
-  );
-}
