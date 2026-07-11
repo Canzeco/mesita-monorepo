@@ -1,10 +1,9 @@
 import { Tabs } from 'expo-router';
-import { CalendarCheck, Home, QrCode, Search, User } from 'lucide-react-native';
+import { CalendarCheck, QrCode, Search, User } from 'lucide-react-native';
 
-// Mirrors the web BottomNav (src/components/consumer/BottomNav.tsx):
-// Home / Search / Rewards / Reservations / Me, lucide glyphs, primary-pink
-// active tint. Web's Home uses the MesitaMark brand SVG — porting that mark
-// is a screen-port follow-up; lucide Home stands in until then.
+import { MesitaMark } from '@/components/brand/MesitaMark';
+
+// Mirrors the web BottomNav: Home uses MesitaMark; other tabs use lucide.
 export default function TabsLayout() {
   return (
     <Tabs
@@ -27,7 +26,9 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <MesitaMark color={String(color)} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -48,7 +49,9 @@ export default function TabsLayout() {
         name="reservations"
         options={{
           title: 'Reservations',
-          tabBarIcon: ({ color, size }) => <CalendarCheck color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <CalendarCheck color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
