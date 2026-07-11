@@ -1354,12 +1354,21 @@ function PhotosEditor({
             key={`${src}-${idx}`}
             className="group relative overflow-hidden rounded-xl ring-1 ring-black/5"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt={`Photo ${idx + 1}`}
-              className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-            />
+            {/* The whole tile opens the metadata modal; the move/remove
+                controls below sit above this button and stop propagation. */}
+            <button
+              type="button"
+              onClick={() => onInfo(src)}
+              className="block w-full cursor-pointer"
+              aria-label={`Photo ${idx + 1} details`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={`Photo ${idx + 1}`}
+                className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+              />
+            </button>
             {idx === 0 && (
               <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-sm">
                 Hero
@@ -1387,15 +1396,6 @@ function PhotosEditor({
                 </button>
               </div>
               <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => onInfo(src)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/30"
-                  aria-label="Photo metadata"
-                  title="Image metadata"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                </button>
                 <button
                   type="button"
                   disabled={busy}
