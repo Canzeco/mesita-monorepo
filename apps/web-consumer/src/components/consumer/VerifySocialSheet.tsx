@@ -9,7 +9,11 @@ import { Spinner } from "@/components/shared/Spinner";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import {
+  INSTAGRAM_ICON_GRADIENT_CLASS,
+  SHEET_TITLE_CLASS,
+  SHEET_BODY_CLASS,
+} from "@/lib/ui-classes";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
@@ -69,8 +73,7 @@ export function VerifySocialSheet({
 
   const cfg = {
     Icon: Instagram,
-    iconBg:
-      "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]",
+    iconBg: INSTAGRAM_ICON_GRADIENT_CLASS,
     title: "Verify Instagram",
     handle: "@mesita.bot",
     platformLabel: "Instagram",
