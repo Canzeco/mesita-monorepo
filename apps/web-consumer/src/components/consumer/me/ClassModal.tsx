@@ -7,8 +7,7 @@ import { BadgeCheck, Check, Crown, Instagram, Smile } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { CLASSES, classBadgeClass } from "@/lib/consumer-data";
-import {
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
   useConsumerClass,
   useMockClass,
   setMockClass,
@@ -34,7 +33,7 @@ export function ClassModal({
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Your class">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
+      <div className={SHEET_BODY_CLASS}>
         <div className="mb-4 flex items-center gap-3">
           <span className="bg-pink-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white">
             <Crown className="h-5 w-5" />

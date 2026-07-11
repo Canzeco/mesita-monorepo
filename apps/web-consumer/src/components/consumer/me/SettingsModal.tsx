@@ -1,7 +1,6 @@
 "use client";
 
-import {
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
   Bell,
   Contact,
   Download,
@@ -79,7 +78,7 @@ export function SettingsModal({
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Settings">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
+      <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="bg-foreground/[0.06] text-foreground/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
             <SettingsIcon className="h-5 w-5" />

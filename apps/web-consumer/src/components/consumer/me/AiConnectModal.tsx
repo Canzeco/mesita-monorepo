@@ -13,6 +13,7 @@ import { errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useConsumerClass } from "@/lib/class-context";
 import {
+import { SHEET_BODY_CLASS } from "@/lib/ui-classes";
   apiCreateMcpToken,
   apiListMcpTokens,
   apiRevokeMcpToken,
@@ -121,7 +122,7 @@ export function AiConnectModal({
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Connect Mesita to AI">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5">
+      <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-violet-600">
             <Bot className="h-5 w-5" />
