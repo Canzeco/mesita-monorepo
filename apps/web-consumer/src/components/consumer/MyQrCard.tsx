@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { displayConsumerCode } from "@/lib/consumer-code";
 import { formatCurrency } from "@/lib/api/profile";
 import { useConsumerClass } from "@/lib/class-context";
-import { formatCompactCount, cn } from "@/lib/utils";
+import { cn, firstInitial, formatCompactCount } from "@/lib/utils";
 import type { RewardStats } from "@/lib/hooks/useConsumerPayTickets";
 
 // The Rewards passport — a branded coral card that carries the QR, the member
@@ -24,9 +24,10 @@ const ORIGIN_LABEL: Record<string, string> = {
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "M";
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  return (first + last).toUpperCase() || "M";
+  const first = firstInitial(parts[0] ?? "", "");
+  const last =
+    parts.length > 1 ? firstInitial(parts[parts.length - 1] ?? "", "") : "";
+  return (first + last) || "M";
 }
 
 
