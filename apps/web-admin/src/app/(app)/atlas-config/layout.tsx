@@ -1,4 +1,4 @@
-import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
 // Atlas Config — the profile spec: the controlled vocabulary (categories, tags,
 // facets) and field limits the Enricher and operators write place profiles with.
@@ -10,12 +10,11 @@ export default function AtlasConfigLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PageContainer>
-      <PageHeader
-        title="Atlas Config"
-        description="Atlas Params — who can edit each place field, the controlled vocabulary, and field limits the Enricher and operators write place profiles with."
-      />
-      <div className="mt-6 sm:mt-8">{children}</div>
-    </PageContainer>
+    <ConfigPageLayout
+      title="Atlas Config"
+      description="Atlas Params — who can edit each place field, the controlled vocabulary, and field limits the Enricher and operators write place profiles with."
+    >
+      {children}
+    </ConfigPageLayout>
   );
 }
