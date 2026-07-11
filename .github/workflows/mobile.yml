@@ -1,9 +1,23 @@
-name: CI
+name: mobile CI
 
 on:
-  pull_request:
   push:
     branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile.yml"
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile.yml"
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/mobile
 
 jobs:
   check:
@@ -11,13 +25,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version pinned here: the monorepo root has no package.json, so the
+      # action can't read apps/mobile's `packageManager` field. Keep in sync
+      # with apps/mobile/package.json (pnpm@11.1.2).
       - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
 
       # Node 22+ required: pnpm 11 needs node:sqlite (workspace-wide gotcha).
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: apps/mobile/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 

@@ -1,17 +1,23 @@
-name: CI
+name: supabase CI
 
 on:
   push:
     branches: [main]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase.yml"
   pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase.yml"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: supabase-ci-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
   run:
-    working-directory: supabase/functions
+    working-directory: supabase/supabase/functions
 
 jobs:
   check:
@@ -36,27 +42,11 @@ jobs:
       - name: Test
         run: deno test --allow-all
 
-  # The agent-instruction files (CLAUDE.md + generated AGENTS.md) must match the
-  # canonical scripts/rules-quickstart.md. Self-scoped: a single-repo CI checkout
-  # has no sibling repos, so only this repo's own pair is verified here —
-  # cross-repo enforcement stays manual until the monorepo cutover (MESITA-341).
-  rules-sync:
-    name: rules quickstart in sync
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.9.1
-
-      - name: Check
-        run: deno run --allow-read scripts/sync-rules.ts --check --only mesita-supabase
+  # NOTE (monorepo import, 2026-07-11): the standalone repo also ran a
+  # `rules-sync` job (scripts/sync-rules.ts --check). It is intentionally NOT
+  # carried over: sync-rules.ts still assumes the sibling-standalone-repo
+  # layout. It gets retargeted to the monorepo in the SWARM-rewrite step and
+  # re-enabled then.
 
   # Full type-check of every edge function against its remote (jsr/npm/https)
   # imports. Non-blocking: it depends on live registries being reachable, so a

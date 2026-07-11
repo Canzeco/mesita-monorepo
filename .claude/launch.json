@@ -1,0 +1,40 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd apps/admin && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 127.0.0.1 -p 3001"],
+      "port": 3001,
+      "autoPort": true
+    },
+    {
+      "name": "business",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd apps/business && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev --webpack -H 127.0.0.1 -p 3002"],
+      "port": 3002,
+      "autoPort": true
+    },
+    {
+      "name": "consumer",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd apps/consumer && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 127.0.0.1 -p 3003"],
+      "port": 3003,
+      "autoPort": true
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd apps/landing && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 127.0.0.1 -p 3004"],
+      "port": 3004,
+      "autoPort": true
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd apps/mobile && exec npx expo start --web --port 8081"],
+      "port": 8081,
+      "autoPort": true
+    }
+  ]
+}

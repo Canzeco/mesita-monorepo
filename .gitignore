@@ -1,0 +1,12 @@
+# OS / editor junk
+.DS_Store
+
+# safety nets — each package's own .gitignore is the real authority
+node_modules/
+.pnpm-store/
+
+# local-only agent config
+.claude/settings.local.json
+
+# agent worktrees parked inside the repo
+.worktrees/

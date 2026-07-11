@@ -1,13 +1,23 @@
-name: CI
+name: consumer CI
 
 on:
   push:
     branches: [main]
+    paths:
+      - "apps/consumer/**"
+      - ".github/workflows/consumer.yml"
   pull_request:
+    paths:
+      - "apps/consumer/**"
+      - ".github/workflows/consumer.yml"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: consumer-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/consumer
 
 jobs:
   check:
@@ -27,6 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: apps/consumer/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -39,12 +50,12 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
 
-  # Lint runs but does not block merge: the business app currently has a
-  # known-red eslint baseline (react-hooks/set-state-in-effect) in
-  # UnitDock.tsx and PlaceCategorySelect.tsx. Once fixed, fold this job's
-  # `run` back into the `check` job above as a blocking step.
+  # Lint runs but does not block merge: the consumer app currently has a
+  # known-red eslint baseline (react-hooks/set-state-in-effect), tracked
+  # separately as MESITA-145. Once that is fixed, fold this job's `run` back
+  # into the `check` job above as a blocking step.
   lint:
-    name: lint (non-blocking)
+    name: lint (non-blocking — MESITA-145)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -61,6 +72,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: apps/consumer/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
