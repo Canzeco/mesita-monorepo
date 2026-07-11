@@ -21,7 +21,6 @@ import {
   Mail,
   MapPin,
   Percent,
-  Phone,
   ShieldCheck,
   Store,
   X,
@@ -100,88 +99,59 @@ const CHANNELS: {
 const RESERVATION_CHANNELS: {
   key: ReservationChannel;
   label: string;
+  /** Primary-channel profile field the reservationist contacts. */
   profileKey: keyof AdminPlace;
-  kind: "url" | "phone";
-  logo?: string;
-  Icon?: LucideIcon;
-  placeholder: string;
 }[] = [
-  {
-    key: "instagram",
-    label: "Instagram",
-    profileKey: "instagram_url",
-    kind: "url",
-    logo: "/channels/instagram.svg",
-    placeholder: "https://instagram.com/…",
-  },
-  {
-    key: "whatsapp",
-    label: "WhatsApp",
-    profileKey: "whatsapp_url",
-    kind: "url",
-    logo: "/channels/whatsapp.svg",
-    placeholder: "https://wa.me/52…",
-  },
-  {
-    key: "phone",
-    label: "Phone",
-    profileKey: "phone",
-    kind: "phone",
-    Icon: Phone,
-    placeholder: "+52 55 0000 0000",
-  },
+  { key: "instagram", label: "Instagram", profileKey: "instagram_url" },
+  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url" },
+  { key: "phone", label: "Phone", profileKey: "phone" },
 ];
 
-type ReservationForm = {
-  channel: ReservationChannel | "";
-  value: string;
-};
+type ReservationForm = ReservationChannel | "";
 
 function profileValueFor(place: AdminPlace, channel: ReservationChannel): string {
   const meta = RESERVATION_CHANNELS.find((c) => c.key === channel);
   return meta ? str(place[meta.profileKey]) : "";
 }
 
-/** Read the single contact target; tolerate the old per-channel routes shape. */
+/** Read the selected contact channel; tolerate the old per-channel routes shape.
+ *  Only the CHANNEL matters — reservations go to the primary channel, so the
+ *  stored value is a snapshot resolved at save time, never hand-entered. */
 function readReservationTarget(v: AdminPlace): ReservationForm {
   const raw = v.products?.reservations as unknown;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
     if (
-      (obj.channel === "instagram" || obj.channel === "whatsapp" || obj.channel === "phone") &&
-      typeof obj.channel === "string"
+      obj.channel === "instagram" || obj.channel === "whatsapp" || obj.channel === "phone"
     ) {
-      return {
-        channel: obj.channel,
-        value: typeof obj.value === "string" ? obj.value : "",
-      };
+      return obj.channel;
     }
-    // Legacy MESITA-378 routes: prefer an explicit "different" value, else a
-    // profile channel that already has a value (phone → whatsapp → instagram).
+    // Legacy MESITA-378 routes: first channel that had a route or a profile value.
     for (const key of ["phone", "whatsapp", "instagram"] as const) {
       const c = obj[key];
       const route = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
-      if (route?.mode === "different" && typeof route.value === "string" && route.value.trim()) {
-        return { channel: key, value: route.value };
-      }
-    }
-    for (const key of ["phone", "whatsapp", "instagram"] as const) {
-      const c = obj[key];
-      const route = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
-      if (!route || route.mode === "different") continue;
-      const profile = profileValueFor(v, key);
-      if (profile) return { channel: key, value: profile };
+      if (route && (route.mode === "different" || profileValueFor(v, key))) return key;
     }
   }
-  return { channel: "", value: "" };
+  return "";
 }
 
 function serializeReservationTarget(
-  target: ReservationForm,
+  channel: ReservationForm,
+  resolvedValue: string,
 ): ReservationTarget | null {
-  if (!target.channel) return null;
-  const value = target.value.trim();
-  return { channel: target.channel, value: value || null };
+  if (!channel) return null;
+  // Same convention as the Enricher's Selected Reservation Endpoint: value is
+  // a snapshot of the primary-channel contact at save time.
+  return { channel, value: resolvedValue.trim() || null };
+}
+
+/** The primary-channel contact as currently held in the editor form. */
+function formContactFor(f: Form, channel: ReservationForm): string {
+  if (channel === "phone") return f.phone;
+  if (channel === "whatsapp") return f.channels.whatsapp_url ?? "";
+  if (channel === "instagram") return f.channels.instagram_url ?? "";
+  return "";
 }
 
 function ChannelLabelIcon({
@@ -321,7 +291,10 @@ function boxToPatch(
       reservation_contacts: [],
       products: {
         ...(existingProducts ?? {}),
-        reservations: serializeReservationTarget(f.reservation),
+        reservations: serializeReservationTarget(
+          f.reservation,
+          formContactFor(f, f.reservation),
+        ),
       },
     };
   }
@@ -399,10 +372,7 @@ export function PlaceSection({
       ),
     [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
   );
-  const dirtyReservations = useMemo(
-    () => !sliceEqual(form.reservation, saved.reservation),
-    [form.reservation, saved.reservation],
-  );
+  const dirtyReservations = form.reservation !== saved.reservation;
   const dirtyPhotos = useMemo(
     () => !sliceEqual(form.photos, saved.photos),
     [form.photos, saved.photos],
@@ -414,19 +384,8 @@ export function PlaceSection({
     setForm((f) => ({ ...f, [k]: val }));
   const setChannel = (key: string, val: string) =>
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
-  const setReservationChannel = (channel: ReservationChannel | "") => {
-    setForm((f) => {
-      if (!channel) return { ...f, reservation: { channel: "", value: "" } };
-      const profile = profileValueFor(place, channel);
-      const keepValue =
-        f.reservation.channel === channel && f.reservation.value.trim()
-          ? f.reservation.value
-          : profile;
-      return { ...f, reservation: { channel, value: keepValue } };
-    });
-  };
-  const setReservationValue = (value: string) =>
-    setForm((f) => ({ ...f, reservation: { ...f.reservation, value } }));
+  const setReservationChannel = (channel: ReservationChannel | "") =>
+    setForm((f) => ({ ...f, reservation: channel }));
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
@@ -788,6 +747,28 @@ export function PlaceSection({
         <div className="mt-5 grid gap-3.5">
           {CHANNELS.map((c) => {
             const val = form.channels[c.key as string] ?? "";
+            if (c.key === "whatsapp_url") {
+              // WhatsApp is a PHONE, not a link — same flag + dial-code picker
+              // as Phone. Storage stays a wa.me URL (the update EF validates it
+              // as a URL and consumers open it), so we convert on the edge:
+              // PhoneField parses the digits out of the stored wa.me URL and we
+              // re-wrap its E.164 output. Empty number clears the channel.
+              return (
+                <PhoneField
+                  key={c.key as string}
+                  label={c.label}
+                  value={val}
+                  onChange={(full) =>
+                    setChannel(
+                      c.key as string,
+                      full ? `https://wa.me/${full.replace(/\D/g, "")}` : "",
+                    )
+                  }
+                  placeholder="81 8378 2164"
+                  disabled={anyPending}
+                />
+              );
+            }
             return (
               <TextField
                 key={c.key as string}
@@ -837,17 +818,15 @@ export function PlaceSection({
         subtitle="What should we contact for reservations — Instagram, WhatsApp, or phone."
       >
         {(() => {
-          const selected = RESERVATION_CHANNELS.find((c) => c.key === form.reservation.channel);
-          const value = form.reservation.value;
-          const isUrl = selected?.kind === "url";
+          const resolved = formContactFor(form, form.reservation);
           return (
-            <div className="mt-5 grid gap-3.5 sm:grid-cols-[minmax(0,11rem)_1fr]">
+            <div className="mt-5 grid gap-3.5">
               <label className="flex flex-col gap-1.5">
                 <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
                   Contact via
                 </span>
                 <select
-                  value={form.reservation.channel}
+                  value={form.reservation}
                   disabled={anyPending}
                   onChange={(e) =>
                     setReservationChannel(e.target.value as ReservationChannel | "")
@@ -863,33 +842,20 @@ export function PlaceSection({
                   ))}
                 </select>
               </label>
-              {selected?.kind === "phone" ? (
-                // Same flag picker as the Channels phone — the reservationist
-                // dials this, so the +CC matters even more here.
-                <PhoneField
-                  label={selected.label}
-                  value={value}
-                  onChange={setReservationValue}
-                  placeholder="81 8378 2164"
-                  disabled={anyPending}
-                />
-              ) : (
-                <TextField
-                  label={selected ? selected.label : "Value"}
-                  leading={
-                    selected ? (
-                      <ChannelLabelIcon logo={selected.logo} Icon={selected.Icon} />
-                    ) : undefined
-                  }
-                  labelRight={
-                    isUrl && value.trim() ? <OpenLink href={value} /> : undefined
-                  }
-                  value={value}
-                  onChange={setReservationValue}
-                  placeholder={selected?.placeholder ?? "Pick a channel first"}
-                  disabled={anyPending || !form.reservation.channel}
-                />
-              )}
+              {/* No second input — reservations always go to the PRIMARY
+                  channel; the contact itself lives in the Channels box. */}
+              {form.reservation ? (
+                resolved.trim() ? (
+                  <p className="text-muted-foreground text-xs">
+                    Uses the profile&apos;s {form.reservation === "phone" ? "phone" : form.reservation === "whatsapp" ? "WhatsApp" : "Instagram"}:{" "}
+                    <span className="text-foreground/90 font-medium break-all">{resolved}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs font-medium text-amber-700">
+                    No {form.reservation === "phone" ? "phone" : form.reservation === "whatsapp" ? "WhatsApp" : "Instagram"} on the profile yet — add it in Channels first.
+                  </p>
+                )
+              ) : null}
             </div>
           );
         })()}
