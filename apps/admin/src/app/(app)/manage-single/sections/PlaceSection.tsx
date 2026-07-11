@@ -369,7 +369,7 @@ export function PlaceSection({
 }: {
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
-  /** Extra Place-page boxes (Products, Reviews) — same two-column grid. */
+  /** Extra Place-page boxes (Products, Reviews) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
@@ -566,16 +566,20 @@ export function PlaceSection({
   };
 
   return (
-    // Every Place box shares one two-column grid — no full-width mono heroes.
+    // Masonry, not a grid: CSS columns pack the cards top-down, so a short
+    // card never strands empty space beside a tall neighbour — columns don't
+    // row-align by design (MESITA-399). Every card roots as a <section>
+    // (SectionCard) and gets the gutter margin + break-inside-avoid via
+    // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
-    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
-      {/* Spec order (MESITA-398): Meta · Promos · Ownership · Basics, then
+    <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
+      {/* Box order (MESITA-399): Meta · Ownership · Promos · Basics, then
           the editing boxes. Status stays in the sticky chrome up top. */}
       <MetaCard place={place} enrichStatus={enrichStatus} />
 
-      <PromosCard place={place} />
-
       <OwnershipCard place={place} owners={owners} verification={verification} />
+
+      <PromosCard place={place} />
 
       {/* Basics — editable identity. Price + category are Enricher/Google-
           derived and stay read-only inside the same box. */}
