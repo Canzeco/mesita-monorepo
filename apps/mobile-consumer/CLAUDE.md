@@ -30,3 +30,4 @@ Native consumer app (Expo SDK 57 · React Native · Expo Router · NativeWind) �
 - `src/lib/` — `supabase.ts` (client) · `storage.ts` · `ef.ts` · `api/` (EF helpers, mirror `apps/web-consumer/src/lib/api/*`).
 - `src/providers/auth.tsx` — session + profile + `onboarded` predicate (`full_name && birthday && sex`, same as the web shell layout).
 - Home hub modes: **Swipe** · **Ask AI** · **Social** · **Favorites** are live (MESITA-431/432/433). Social feed is mock (web parity) until a social EF lands.
+- Place detail: `src/app/place/[id].tsx` via `consumer-web-get-place` (MESITA-435). Me tab = modular boxes + device prefs in AsyncStorage; Premium = **status only** (no subscribe/payment UI).

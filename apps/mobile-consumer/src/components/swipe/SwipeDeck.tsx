@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import {
   CalendarCheck,
   Compass,
@@ -220,6 +221,7 @@ function DeckBody({
   showTutorial: boolean;
   dismissTutorial: () => void;
 }) {
+  const router = useRouter();
   const v = places[idx]!;
   const next = idx + 1 < places.length ? places[idx + 1]! : null;
   const [stamp, setStamp] = useState<null | 'left' | 'right'>(null);
@@ -487,8 +489,7 @@ function DeckBody({
         <ActionBtn
           label="Info"
           Icon={Store}
-          onPress={() => undefined}
-          disabled
+          onPress={() => router.push(`/place/${v.id}`)}
         />
         <ActionBtn
           label={saved ? 'Saved' : 'Save'}
@@ -497,7 +498,12 @@ function DeckBody({
           primary={saved}
           filled={saved}
         />
-        <ActionBtn label="Reserve" Icon={CalendarCheck} disabled />
+        <ActionBtn
+          label="Reserve"
+          Icon={CalendarCheck}
+          onPress={() => undefined}
+          disabled
+        />
       </View>
     </View>
   );
