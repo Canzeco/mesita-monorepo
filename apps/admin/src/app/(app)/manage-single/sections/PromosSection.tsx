@@ -1,7 +1,17 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import { Crown, Eye, Loader2, Percent, Users, Zap } from "lucide-react";
+import {
+  Crown,
+  Eye,
+  Loader2,
+  Percent,
+  Repeat2,
+  Sparkles,
+  User,
+  Users,
+  Zap,
+} from "lucide-react";
 import {
   REWARD_ROWS,
   SUBSCRIPTIONS,
@@ -169,33 +179,62 @@ export function PromosSection({
 
 // ── Rewards explainer ─────────────────────────────────────────────────────
 // Teaching box under the rate matrix: the four rewards are the cross of
-// visit type (Welcome / Returning) × guest class (Free / Premium). Two mock
-// guests make the mapping concrete and echo the place's live configured
-// rates (optimistic state, so they track clicks instantly) — names and
-// handles are illustrative only, not real accounts.
+// visit type (Welcome / Returning) × guest class (Free / Premium). Each
+// concept tile carries a tinted icon chip, and a horizontally scrolling
+// strip of mock Mesita users (Free + Premium mixed) makes the mapping
+// concrete, echoing the place's live configured rates (optimistic state,
+// so they track clicks instantly) — names, handles, avatars and spend are
+// illustrative only, not real accounts.
 
-const EXPLAINER_TILES: { label: string; text: string }[] = [
+const EXPLAINER_TILES: {
+  label: string;
+  text: string;
+  icon: typeof Sparkles;
+  chip: string;
+}[] = [
   {
     label: "Welcome",
+    icon: Sparkles,
+    chip: TINT_CHIP.amber,
     text: "A guest’s first-ever visit at this place. The acquisition lever — a strong Welcome rate is what pulls new people in.",
   },
   {
     label: "Returning",
+    icon: Repeat2,
+    chip: TINT_CHIP.emerald,
     text: "Every visit after the first. What keeps regulars choosing this place again.",
   },
   {
     label: "Free user",
+    icon: User,
+    chip: TINT_CHIP.sky,
     text: "A guest on the standard Mesita account, no subscription — most guests start here.",
   },
   {
     label: "Premium user",
+    icon: Crown,
+    chip: "bg-pink-gradient text-white shadow-sm",
     text: "A guest paying the monthly Mesita membership — they expect the stronger Premium rates.",
   },
 ];
 
-const MOCK_GUESTS: { name: string; handle: string; premium: boolean }[] = [
-  { name: "Sofía Ramírez", handle: "sofia.descubre", premium: false },
-  { name: "Diego Torres", handle: "diego.antojos", premium: true },
+// Mock Mesita users for the scroll strip. Pravatar portraits keep the strip
+// visual without shipping real guest data; spend figures are invented.
+const MOCK_USERS: {
+  name: string;
+  handle: string | null;
+  premium: boolean;
+  spend: string;
+  avatar: number;
+}[] = [
+  { name: "Diego Torres", handle: "diego.antojos", premium: true, spend: "MX$21,400", avatar: 12 },
+  { name: "Sofía Ramírez", handle: "sofia.descubre", premium: false, spend: "MX$12,500", avatar: 47 },
+  { name: "Valentina Cruz", handle: "vale.gourmet", premium: true, spend: "MX$18,900", avatar: 31 },
+  { name: "Andrés Peña", handle: null, premium: false, spend: "MX$9,300", avatar: 59 },
+  { name: "Fernanda Ríos", handle: "fernnightlife", premium: true, spend: "MX$23,700", avatar: 45 },
+  { name: "Luis Ortega", handle: null, premium: false, spend: "MX$14,100", avatar: 68 },
+  { name: "María Ibarra", handle: "maricuisine", premium: true, spend: "MX$17,200", avatar: 23 },
+  { name: "Regina Salas", handle: "reginaout", premium: false, spend: "MX$11,800", avatar: 5 },
 ];
 
 function RewardsExplainer({ place }: { place: AdminPlace }) {
@@ -210,26 +249,36 @@ function RewardsExplainer({ place }: { place: AdminPlace }) {
         {EXPLAINER_TILES.map((t) => (
           <div
             key={t.label}
-            className="border-border/60 bg-muted/30 rounded-xl border px-4 py-3"
+            className="border-border/60 bg-muted/30 flex items-start gap-3 rounded-xl border px-4 py-3"
           >
-            <p className="text-sm font-semibold">{t.label}</p>
-            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-              {t.text}
-            </p>
+            <span
+              className={
+                "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg " +
+                t.chip
+              }
+            >
+              <t.icon className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{t.label}</p>
+              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                {t.text}
+              </p>
+            </div>
           </div>
         ))}
       </div>
 
       <div className="mt-6 mb-2">
-        <GroupLabel>Example guests · mock data</GroupLabel>
+        <GroupLabel>Example Mesita users · mock data</GroupLabel>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {MOCK_GUESTS.map((g) => (
-          <MockGuestCard
-            key={g.handle}
-            {...g}
-            welcomeRate={g.premium ? place.welcome_premium_rate : place.welcome_free_rate}
-            returningRate={g.premium ? place.premium_rate : place.free_rate}
+      <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {MOCK_USERS.map((u) => (
+          <MockUserCard
+            key={u.name}
+            {...u}
+            welcomeRate={u.premium ? place.welcome_premium_rate : place.welcome_free_rate}
+            returningRate={u.premium ? place.premium_rate : place.free_rate}
           />
         ))}
       </div>
@@ -237,74 +286,96 @@ function RewardsExplainer({ place }: { place: AdminPlace }) {
   );
 }
 
-function MockGuestCard({
+function MockUserCard({
   name,
   handle,
   premium,
+  spend,
+  avatar,
   welcomeRate,
   returningRate,
 }: {
   name: string;
-  handle: string;
+  handle: string | null;
   premium: boolean;
+  spend: string;
+  avatar: number;
   welcomeRate: number | null;
   returningRate: number | null;
 }) {
   const tier = premium ? "Premium" : "Free";
-  const initials = name
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("");
   return (
-    <div className="border-border/60 bg-muted/30 rounded-xl border p-4">
+    <article className="border-border/60 bg-muted/30 w-56 shrink-0 snap-start rounded-xl border p-4">
       <div className="flex items-center gap-3">
         <span
           className={
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
-            (premium ? "bg-pink-gradient text-white shadow-sm" : TINT_CHIP.sky)
+            "shrink-0 rounded-full " +
+            (premium ? "bg-pink-gradient p-0.5 shadow-sm" : "bg-border p-px")
           }
           aria-hidden
         >
-          {initials}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://i.pravatar.cc/80?img=${avatar}`}
+            alt=""
+            loading="lazy"
+            className="border-card block h-10 w-10 rounded-full border-2 object-cover"
+          />
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{name}</p>
-          <a
-            href={`https://instagram.com/${handle}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground inline-flex max-w-full items-center gap-1 text-xs transition"
+          <span
+            className={
+              "mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase " +
+              (premium
+                ? "bg-pink-gradient text-white shadow-sm"
+                : "bg-muted text-muted-foreground")
+            }
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/channels/instagram.svg"
-              alt=""
-              aria-hidden
-              className="h-3 w-3 shrink-0"
-            />
-            <span className="truncate">@{handle}</span>
-          </a>
+            {premium && <Crown className="h-2.5 w-2.5" aria-hidden />}
+            {tier}
+          </span>
         </div>
-        <span
-          className={
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase " +
-            (premium
-              ? "bg-pink-gradient text-white shadow-sm"
-              : "bg-muted text-muted-foreground")
-          }
-        >
-          {tier}
-        </span>
       </div>
-      <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-        First visit here gets{" "}
-        <span className="text-foreground font-medium">Welcome · {tier}</span>{" "}
-        <RateNow rate={welcomeRate} />; every visit after gets{" "}
+      {handle ? (
+        <a
+          href={`https://instagram.com/${handle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground mt-3 inline-flex max-w-full items-center gap-1 text-xs transition"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/channels/instagram.svg"
+            alt=""
+            aria-hidden
+            className="h-3 w-3 shrink-0"
+          />
+          <span className="truncate">@{handle}</span>
+        </a>
+      ) : (
+        <p className="text-muted-foreground/70 mt-3 inline-flex items-center gap-1 text-xs">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/channels/instagram.svg"
+            alt=""
+            aria-hidden
+            className="h-3 w-3 shrink-0 opacity-50"
+          />
+          Instagram not linked
+        </p>
+      )}
+      <p className="text-muted-foreground mt-2 text-xs">
+        Spend on Mesita{" "}
+        <span className="text-foreground font-semibold tabular-nums">{spend}</span>
+      </p>
+      <p className="text-muted-foreground mt-2 border-t border-dashed pt-2 text-[11px] leading-relaxed">
+        First visit <span className="text-foreground font-medium">Welcome · {tier}</span>{" "}
+        <RateNow rate={welcomeRate} />, then{" "}
         <span className="text-foreground font-medium">Returning · {tier}</span>{" "}
         <RateNow rate={returningRate} />.
       </p>
-    </div>
+    </article>
   );
 }
 
