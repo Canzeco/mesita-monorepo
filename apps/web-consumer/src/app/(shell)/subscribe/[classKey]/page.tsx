@@ -11,6 +11,8 @@ import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
 import { MOCK_PREMIUM_KEY } from "@/lib/class-context";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
 // Premium subscribe page — the paid "door" into Mesita Premium ($100 MXN/mo).
 // The other two doors (Instagram, invitation) are surfaced here too so the
@@ -93,7 +95,12 @@ export default function SubscribePage() {
           </h3>
           <ul className="mt-3 flex flex-col gap-3 text-sm">
             <li className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white">
+              <span
+                className={cn(
+                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white",
+                  INSTAGRAM_ICON_GRADIENT_CLASS,
+                )}
+              >
                 <Instagram className="h-3.5 w-3.5" />
               </span>
               <span>
