@@ -11,35 +11,25 @@ import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 // Buzz — the place's score in the recommendation engines (Swipe · Map ·
 // Memo). Admin-only: the whole console sits behind the super-admin gate.
 //
-// DRAFT MODEL v3, frontend only. A great visit = a place worth going to ×
-// a moment that fits ÷ a distance you'll actually cross:
+// DRAFT MODEL v4, frontend only — TWO LANES, each a single product
+// (MESITA-598):
 //
-//   score(d) = worth × fit ÷ decay(d)                 decay(d) = 1 + d/d₀
+//   Merit Lane = Merit Score × Match Score      earned / organic
+//   Promo Lane = Promo Score × Match Score      bought / paid
 //
-//   WORTH — what the place brings (cached, recomputed on Enricher writes):
-//     promotional visibility  0–10  bought — the live Promos score.
-//     earned reputation       0–10  proven — Google stars × review volume
-//                                   + social proof.
-//     magnetism               0–10  desired — would it stop a thumb mid-
-//                                   swipe? AI-judged from photos, vibe and
-//                                   IG presence (draft heuristic here).
-//     momentum             ×0.8–1.2 trending — review/follower velocity
-//                                   between snapshots (needs history).
-//     worth = (PV + reputation + magnetism) / 3 × momentum
+//   Merit Score  0–10  earned quality — reputation + magnetism (the non-paid
+//                      signals) × momentum. What the place is worth on its
+//                      own merits.
+//   Promo Score  0–10  bought placement — the live Promos score, i.e. the
+//                      membership posture's Low·Mid·High·Max.
+//   Match Score  0–1   ALWAYS semantic (RAG/LLM), never binary tags. Zero
+//                      relevance zeroes both lanes.
 //
-//   FIT — what this exact moment wants (per query, multiplied):
-//     match      0–1  ALWAYS semantic (RAG/LLM), never binary tags. Memo's
-//                     query is the question; Swipe/Map's is the consumer's
-//                     taste embedding. Zero relevance zeroes the score.
-//     right-now  0–1  timing — open now + daypart, from the place's own
-//                     hours in its own timezone (computed live below).
-//     novelty    0–1  per consumer — seen/rejected decays, never-shown gets
-//                     an exploration floor (not simulable per place; see
-//                     Buzz Config).
+// A place competes twice — on merit and on promo — each gated by how well it
+// matches the query. No distance / right-now here; those return later.
 // ════════════════════════════════════════════════════════════════════════
 
 const SCORE_MAX = 10;
-const BASE_D0 = 1.5; // km at which the score halves for the headline number
 
 /** Earned reputation, 1–10: stars ≤6 pts, review volume ≤3 (log), social ≤1. */
 function reputationScore(place: AdminPlace): number {
@@ -71,80 +61,6 @@ function magnetismScore(place: AdminPlace): number {
   return Math.max(1, Math.min(10, photoPts + pullPts + storyPts));
 }
 
-type RightNow = { factor: number; label: string };
-
-const DAY_ORDER = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-] as const;
-
-/**
- * Right-now fit from the place's own hours in its own timezone: open ×1.0,
- * closed ×0.15 (engines demote, not hide), unknown hours ×0.7.
- */
-function rightNowFit(place: AdminPlace): RightNow {
-  const hours = place.hours;
-  if (!hours || Object.keys(hours).length === 0) {
-    return { factor: 0.7, label: "no hours yet" };
-  }
-
-  let weekday: string;
-  let minutes: number;
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: place.timezone || "America/Monterrey",
-      weekday: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(new Date());
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-    weekday = get("weekday").toLowerCase();
-    minutes = Number(get("hour")) * 60 + Number(get("minute"));
-  } catch {
-    return { factor: 0.7, label: "unknown timezone" };
-  }
-
-  const toMin = (s: string) => {
-    const [h, m] = s.split(":").map(Number);
-    return (h ?? 0) * 60 + (m ?? 0);
-  };
-  // A range with close ≤ open runs past midnight (20:00–02:00): today owns
-  // the evening side, yesterday's entry owns the small hours.
-  const openToday = (hours[weekday] ?? []).some((r) => {
-    const o = toMin(r.open);
-    const c = toMin(r.close);
-    return c > o ? minutes >= o && minutes < c : minutes >= o;
-  });
-  const dayIdx = DAY_ORDER.indexOf(weekday as (typeof DAY_ORDER)[number]);
-  const yesterday = DAY_ORDER[(dayIdx + 6) % 7];
-  const spillFromYesterday = (hours[yesterday] ?? []).some((r) => {
-    const o = toMin(r.open);
-    const c = toMin(r.close);
-    return c <= o && minutes < c;
-  });
-
-  return openToday || spillFromYesterday
-    ? { factor: 1, label: "open now" }
-    : { factor: 0.15, label: "closed now" };
-}
-
-/** Per-engine distance sensitivity — d₀ in km at which the score halves. */
-const ENGINES = [
-  { id: "swipe", label: "Swipe", d0: 1.5 },
-  { id: "map", label: "Map", d0: 3 },
-  { id: "memo", label: "Memo", d0: 5 },
-] as const;
-
-function decay(km: number, d0: number): number {
-  return 1 + km / d0;
-}
-
 /** Deterministic pseudo-vector from the place id — stand-in until real embeddings exist. */
 function mockVector(seed: string, dims: number): number[] {
   const out: number[] = [];
@@ -162,24 +78,25 @@ function fmt(n: number, digits = 1): string {
 }
 
 export function BuzzSection({ place }: { place: AdminPlace }) {
-  const [km, setKm] = useState(1);
   // Simulated semantic match (0–1) — in production RAG computes this per
   // query (Memo's question, or the consumer's taste embedding on Swipe/Map).
   const [match, setMatch] = useState(1);
 
-  const pv = visibilityScore(place);
+  const promoScore = visibilityScore(place); // bought placement, 0–10
   const reputation = reputationScore(place);
   const magnetism = magnetismScore(place);
   const momentum = 1; // needs snapshot history — ships with the backend
-  const rightNow = rightNowFit(place);
+  const meritScore = Math.max(
+    0,
+    Math.min(10, ((reputation + magnetism) / 2) * momentum),
+  );
 
-  const worth = ((pv + reputation + magnetism) / 3) * momentum;
-  const fit = match * rightNow.factor;
-  const scoreAt = (d: number, d0: number = BASE_D0) =>
-    (worth * fit) / decay(d, d0);
-  const score = scoreAt(km);
+  const meritLane = meritScore * match;
+  const promoLane = promoScore * match;
 
   const vector = useMemo(() => mockVector(place.id, 48), [place.id]);
+
+  const matchPct = `${Math.round(match * 100)}%`;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
@@ -200,102 +117,87 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
         </div>
       </div>
 
-      {/* ── Buzz — score, sliders, params, engines ──────────────────── */}
+      {/* ── Buzz — two lanes, each Score × Match ─────────────────────── */}
       <SectionCard
         icon={<Megaphone className="h-4.5 w-4.5" />}
         tint="pink"
         title="Buzz"
-        subtitle="Score in the recommendation engines — Swipe, the Map and Memo. Admins only."
+        subtitle="Two lanes — Merit (earned) and Promo (bought). Each is its score × how well the place matches the query. Admins only."
         action={<Pill>Draft model</Pill>}
       >
-        <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        {/* Lane results */}
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <Lane
+            label="Merit Lane"
+            sub="earned quality × match"
+            score={meritLane}
+            accent="sky"
+          />
+          <Lane
+            label="Promo Lane"
+            sub="bought placement × match"
+            score={promoLane}
+            accent="pink"
+          />
+        </div>
+
+        {/* Match — the shared gate on both lanes */}
+        <div className="mt-5 max-w-sm">
+          <div className="flex items-baseline justify-between">
+            <GroupLabel>Match Score</GroupLabel>
+            <span className="text-sm font-semibold">{matchPct}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={match}
+            onChange={(e) => setMatch(Number(e.target.value))}
+            className="accent-primary mt-2 w-full"
+            aria-label="Semantic match percentage"
+          />
+          <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+            Semantic relevance to the query (RAG) — zero match zeroes both lanes.
+          </p>
+        </div>
+
+        {/* Equation strips — each lane, shown being built */}
+        <div className="mt-6 flex flex-col gap-4">
           <div>
-            <div className="flex items-end gap-3">
-              <p className="font-display text-5xl font-semibold tracking-tight">
-                {fmt(score)}
-              </p>
-              <p className="text-muted-foreground pb-1.5 text-sm">/ {SCORE_MAX}</p>
+            <GroupLabel>Merit Lane</GroupLabel>
+            <div className="mt-2 flex items-stretch gap-1.5 sm:gap-2">
+              <EqTerm label="Merit Score" sub="earned quality" value={fmt(meritScore)} />
+              <EqOp>×</EqOp>
+              <EqTerm label="Match" sub="query relevance" value={matchPct} />
+              <EqOp>=</EqOp>
+              <EqTerm label="Merit Lane" sub="organic rank" value={fmt(meritLane)} highlight />
             </div>
-            <Meter value={score / SCORE_MAX} className="mt-3 w-56" />
           </div>
-
-          <div className="flex w-full max-w-sm flex-col gap-3">
-            <div>
-              <div className="flex items-baseline justify-between">
-                <GroupLabel>Semantic match</GroupLabel>
-                <span className="text-sm font-semibold">
-                  {Math.round(match * 100)}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={match}
-                onChange={(e) => setMatch(Number(e.target.value))}
-                className="accent-primary mt-2 w-full"
-                aria-label="Semantic match percentage"
-              />
-            </div>
-            <div>
-              <div className="flex items-baseline justify-between">
-                <GroupLabel>Consumer distance</GroupLabel>
-                <span className="text-sm font-semibold">{fmt(km)} km</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={8}
-                step={0.1}
-                value={km}
-                onChange={(e) => setKm(Number(e.target.value))}
-                className="accent-primary mt-2 w-full"
-                aria-label="Consumer distance in km"
-              />
+          <div>
+            <GroupLabel>Promo Lane</GroupLabel>
+            <div className="mt-2 flex items-stretch gap-1.5 sm:gap-2">
+              <EqTerm label="Promo Score" sub="bought placement" value={fmt(promoScore)} />
+              <EqOp>×</EqOp>
+              <EqTerm label="Match" sub="query relevance" value={matchPct} />
+              <EqOp>=</EqOp>
+              <EqTerm label="Promo Lane" sub="paid rank" value={fmt(promoLane)} highlight />
             </div>
           </div>
         </div>
 
-        {/* Plain-language equation — the hero number, shown being built from
-            its three drivers so an operator reads it without decoding mono. */}
-        <div className="mt-6 flex items-stretch gap-1.5 sm:gap-2">
-          <EqTerm label="Worth" sub="how good it is" value={fmt(worth)} />
-          <EqOp>×</EqOp>
-          <EqTerm label="Fit" sub="fits the moment" value={fmt(fit, 2)} />
-          <EqOp>÷</EqOp>
-          <EqTerm
-            label="Distance"
-            sub={`${fmt(km)} km away`}
-            value={`${fmt(decay(km, BASE_D0), 2)}×`}
-          />
-          <EqOp>=</EqOp>
-          <EqTerm
-            label="Buzz"
-            sub="what wins the spot"
-            value={fmt(score)}
-            highlight
-          />
-        </div>
-
+        {/* Merit Score breakdown — earned */}
         <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
-            <GroupLabel>Worth · the place</GroupLabel>
+            <GroupLabel>Merit Score · earned</GroupLabel>
             <p className="text-muted-foreground font-mono text-[11px]">
-              (PV + reputation + magnetism) / 3 × momentum = {fmt(worth)}
+              (reputation + magnetism) / 2 × momentum = {fmt(meritScore)}
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            How good the place is on its own — before the moment or the
-            distance. Higher is better.
+            What the place is worth on its own merits — no money involved.
           </p>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-            <Tile
-              label="Promotional Visibility"
-              value={`${fmt(pv, 0)}/10`}
-              hint="bought · Promos"
-              kind="live"
-            />
+          <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
             <Tile
               label="Earned Reputation"
               value={`${fmt(reputation)}/10`}
@@ -317,60 +219,26 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
           </div>
         </div>
 
+        {/* Promo Score breakdown — bought */}
         <div className="mt-5">
           <div className="flex items-baseline justify-between gap-3">
-            <GroupLabel>Fit · the moment</GroupLabel>
+            <GroupLabel>Promo Score · bought</GroupLabel>
             <p className="text-muted-foreground font-mono text-[11px]">
-              match × right-now = {fmt(fit, 2)}
+              live Promos placement = {fmt(promoScore)}
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            How well the place fits this guest right now — the query it matches
-            and whether it&apos;s open. Zero on either kills the score.
+            The membership posture&apos;s placement — Low · Mid · High · Max —
+            set on the Promos tab.
           </p>
           <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
             <Tile
-              label="Match"
-              value={`×${fmt(match, 2)}`}
-              hint="RAG · per query"
-              kind="mock"
-            />
-            <Tile
-              label="Right-now"
-              value={`×${fmt(rightNow.factor, 2)}`}
-              hint={rightNow.label}
+              label="Promotional Visibility"
+              value={`${fmt(promoScore, 0)}/10`}
+              hint="bought · Promos"
               kind="live"
             />
-            <Tile
-              label="Decay"
-              value={`÷${fmt(decay(km, BASE_D0), 2)}`}
-              hint={`at ${fmt(km)} km`}
-              kind="mock"
-            />
           </div>
-        </div>
-
-        <div className="mt-6">
-          <GroupLabel>Engines</GroupLabel>
-          <div className="mt-3 flex flex-col gap-3">
-            {ENGINES.map((e) => {
-              const s = scoreAt(km, e.d0);
-              return (
-                <div key={e.id} className="flex items-center gap-3">
-                  <p className="w-14 shrink-0 text-sm font-semibold">{e.label}</p>
-                  <Meter value={s / SCORE_MAX} className="flex-1" />
-                  <p className="text-muted-foreground w-10 shrink-0 text-right text-xs">
-                    {fmt(s)}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-            Same score, three appetites for distance — Swipe is the most local,
-            Memo cares the least. Novelty (per consumer) is the one factor a
-            place page can&apos;t simulate.
-          </p>
         </div>
       </SectionCard>
 
@@ -442,7 +310,46 @@ function Pill({ children }: { children: React.ReactNode }) {
   );
 }
 
-// One term in the plain-language Buzz equation — value big, human sublabel.
+// A lane's result — big score + meter, tinted to the lane (Merit = sky,
+// Promo = pink) so the two rank paths read apart at a glance.
+function Lane({
+  label,
+  sub,
+  score,
+  accent,
+}: {
+  label: string;
+  sub: string;
+  score: number;
+  accent: "sky" | "pink";
+}) {
+  const tint =
+    accent === "sky"
+      ? "border-sky-500/30 bg-sky-500/[0.04]"
+      : "border-pink-500/30 bg-pink-500/[0.04]";
+  const labelText = accent === "sky" ? "text-sky-700" : "text-pink-700";
+  return (
+    <div className={"flex flex-col gap-2 rounded-2xl border p-4 " + tint}>
+      <p
+        className={
+          "text-[10px] font-bold tracking-[0.14em] uppercase " + labelText
+        }
+      >
+        {label}
+      </p>
+      <div className="flex items-end gap-2">
+        <p className="font-display text-4xl leading-none font-semibold tracking-tight tabular-nums">
+          {fmt(score)}
+        </p>
+        <p className="text-muted-foreground pb-0.5 text-xs">/ {SCORE_MAX}</p>
+      </div>
+      <Meter value={score / SCORE_MAX} />
+      <p className="text-muted-foreground text-[11px] leading-snug">{sub}</p>
+    </div>
+  );
+}
+
+// One term in the plain-language lane equation — value big, human sublabel.
 function EqTerm({
   label,
   sub,
