@@ -15,20 +15,19 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // body action row (Save · Contact · Reserve · Share). The header is just
 // back + centered name now, so a w-9 spacer balances the back button.
 //
-// decision: Pato (MESITA-451) — when enriching, "(Enriching)" + spinner
-// sits to the right of the name in this header (not the bottom Meta box).
+// decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
+// a chip in the profile summary (PlaceDetailBody), not to the right of the
+// name in this header.
 
 export function PlaceDetailPageHeader({
   placeId: _placeId,
   placeName,
   listingType: _listingType,
-  isEnriching = false,
   backHref = CONSUMER_ROUTES.home,
 }: {
   placeId: string;
   placeName: string;
   listingType: "partner" | "web";
-  isEnriching?: boolean;
   backHref?: string;
 }) {
   return (
@@ -40,7 +39,7 @@ export function PlaceDetailPageHeader({
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
-      <PlaceDetailTitle placeName={placeName} isEnriching={isEnriching} />
+      <PlaceDetailTitle placeName={placeName} />
       <div className="h-9 w-9 shrink-0" aria-hidden />
     </header>
   );

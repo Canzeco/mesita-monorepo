@@ -27,7 +27,6 @@ export default async function SavedPlaceModalPage({
       placeId={place.id}
       placeName={place.name}
       listingType={place.listing_type}
-      isEnriching={place.is_enriching}
     >
       <PlaceDetailBody place={place} />
     </PlaceDetailModalShell>

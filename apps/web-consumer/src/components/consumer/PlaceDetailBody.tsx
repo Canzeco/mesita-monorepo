@@ -34,6 +34,7 @@ import {
   Share2,
   SquareArrowOutUpRight,
 } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
@@ -290,9 +291,24 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
       </div>
 
-      {/* decision: Pato — verification first, then category · price · zone ·
-          distance · hours (swipe-style tags on light surface) */}
+      {/* decision: Pato — when the Enricher is still building the profile an
+          "Enriching" chip leads the row; then verification · category ·
+          price · zone · distance · hours (swipe-style tags on light
+          surface). MESITA-451: moved here off the header title. */}
       <div className="flex flex-wrap items-center gap-1.5">
+        {place.is_enriching && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-semibold whitespace-nowrap text-emerald-900"
+            aria-live="polite"
+          >
+            <Spinner
+              size="sm"
+              label="Enriching"
+              className="h-3 w-3 border-emerald-300 border-t-emerald-600"
+            />
+            Enriching
+          </span>
+        )}
         <ProfileMetaChip>
           {isPartner ? (
             <>
