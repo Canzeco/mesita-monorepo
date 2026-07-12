@@ -9,6 +9,7 @@ import {
   useConsumerPayTickets,
 } from '@/lib/hooks/useConsumerPayTickets';
 
+// Rewards scroll: top cards → coral passport → tickets (web PayClient).
 export function PayClient({
   userId,
   code,
@@ -28,7 +29,7 @@ export function PayClient({
 
   return (
     <ScrollView
-      style={{ flex: 1 }}
+      className="flex-1"
       contentContainerStyle={{
         paddingHorizontal: 16,
         paddingTop: 16,
@@ -44,7 +45,7 @@ export function PayClient({
         instagramHandle={instagramHandle}
         stats={stats}
       />
-      <View style={{ minHeight: 200 }}>
+      <View className="min-h-[200px]">
         <PayTickets {...tickets} />
       </View>
     </ScrollView>

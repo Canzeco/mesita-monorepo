@@ -65,7 +65,7 @@ function UpcomingBody() {
       icon={CalendarCheck}
       eyebrow="Coming soon"
       title="No upcoming reservations"
-      body="Booking a table straight from Mesita is on the way. We will let you know the moment reservations go live."
+      body="Booking a table straight from Mesita is on the way. We'll let you know the moment reservations go live."
     />
   );
 }
@@ -75,7 +75,7 @@ function HistoryBody() {
     <ReservationsEmptyState
       icon={Clock}
       title="No past reservations"
-      body="Your dining history will show up here once you have booked and visited a place through Mesita."
+      body="Your dining history will show up here once you've booked and visited a place through Mesita."
     />
   );
 }

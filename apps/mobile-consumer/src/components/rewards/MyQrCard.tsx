@@ -1,16 +1,15 @@
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
+  AtSign,
   Check,
   Copy,
   Crown,
   Flame,
-  AtSign,
   Users,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Pressable, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { formatCurrency } from '@/lib/api/pay';
@@ -19,36 +18,44 @@ import type { RewardStats } from '@/lib/hooks/useConsumerPayTickets';
 import { firstInitials, formatCompactCount } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
+// Coral Mesita Card passport — web MyQrCard.tsx port (MESITA-580).
+// Free: #ff7a45→#ff2d78 · Premium: →#a13cf0. QR plate ink #2b1233.
+// White-on-coral is the one intentional white-on-color surface here.
+
 const ORIGIN_LABEL: Record<string, string> = {
   instagram: 'Instagram',
   subscription: 'Subscription',
   invitation: 'Invite',
-  default: 'Mesita',
 };
+
+const PASSPORT_SHADOW = {
+  shadowColor: '#ff4d6d',
+  shadowOpacity: 0.55,
+  shadowRadius: 22,
+  shadowOffset: { width: 0, height: 12 },
+  elevation: 10,
+} as const;
+
+const QR_PLATE_SHADOW = {
+  shadowColor: '#781428',
+  shadowOpacity: 0.45,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 6,
+} as const;
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+    <View className="relative min-w-0 flex-1 items-center px-1">
       <Text
-        style={{
-          color: '#fff',
-          fontSize: 18,
-          fontWeight: '800',
-          letterSpacing: -0.3,
-          fontVariant: ['tabular-nums'],
-        }}
+        className="font-extrabold tracking-tight text-white"
+        style={{ fontSize: 18, fontVariant: ['tabular-nums'] }}
       >
         {value}
       </Text>
       <Text
-        style={{
-          marginTop: 4,
-          color: 'rgba(255,255,255,0.8)',
-          fontSize: 8.5,
-          fontWeight: '700',
-          letterSpacing: 0.5,
-          textTransform: 'uppercase',
-        }}
+        className="mt-1 font-bold uppercase text-white/80"
+        style={{ fontSize: 8.5, letterSpacing: 0.5 }}
       >
         {label}
       </Text>
@@ -95,87 +102,45 @@ export function MyQrCard({
   return (
     <LinearGradient
       colors={[...gradientColors]}
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
-      style={{
-        borderRadius: 28,
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 20,
-        overflow: 'hidden',
-        shadowColor: '#ff4d6d',
-        shadowOpacity: 0.35,
-        shadowRadius: 22,
-        shadowOffset: { width: 0, height: 12 },
-        elevation: 10,
-      }}
+      start={{ x: 0.15, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      style={[
+        {
+          borderRadius: 28,
+          paddingHorizontal: 20,
+          paddingTop: 20,
+          paddingBottom: 20,
+          overflow: 'hidden',
+        },
+        PASSPORT_SHADOW,
+      ]}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 9,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+      {/* Header — brand + class chip */}
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="flex-row items-center gap-2">
+          <View className="h-7 w-7 items-center justify-center rounded-[9px] bg-white/20">
             <Flame color="#fff" size={16} fill="#fff" />
           </View>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>
+          <Text className="text-sm font-extrabold tracking-tight text-white">
             Mesita Card
           </Text>
         </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            borderRadius: 999,
-            backgroundColor: 'rgba(255,255,255,0.22)',
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-          }}
-        >
+        <View className="shrink-0 flex-row items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1">
           {isPremium ? <Crown color="#fff" size={12} fill="#fff" /> : null}
           <Text
-            style={{
-              color: '#fff',
-              fontSize: 10,
-              fontWeight: '800',
-              letterSpacing: 1.2,
-              textTransform: 'uppercase',
-            }}
+            className="font-extrabold uppercase text-white"
+            style={{ fontSize: 10, letterSpacing: 1.2 }}
           >
             {isPremium ? 'Premium' : 'Free'}
           </Text>
         </View>
       </View>
 
-      <View style={{ alignItems: 'center', marginTop: 16, width: '100%' }}>
+      {/* QR — dark-on-white plate so it always scans */}
+      <View className="mt-4 w-full items-center self-center" style={{ maxWidth: 212 }}>
         <View
-          style={{
-            width: '100%',
-            maxWidth: 212,
-            borderRadius: 22,
-            backgroundColor: '#fff',
-            padding: 16,
-            shadowColor: '#781428',
-            shadowOpacity: 0.35,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 8 },
-            elevation: 6,
-            alignItems: 'center',
-          }}
+          className="w-full items-center rounded-[22px] bg-white p-4"
+          style={QR_PLATE_SHADOW}
         >
           <QRCode
             value={`mesita:${displayCode}`}
@@ -192,18 +157,13 @@ export function MyQrCard({
         </View>
         <Pressable
           onPress={() => void onCopy()}
+          accessibilityRole="button"
           accessibilityLabel={copied ? 'Code copied' : 'Copy code'}
-          style={{
-            marginTop: 12,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
+          className="mt-3 w-full flex-row items-center justify-center gap-2 active:opacity-90"
         >
           <Text
+            className="font-semibold text-white"
             style={{
-              color: '#fff',
               fontFamily: 'Inter_600SemiBold',
               fontSize: 18,
               letterSpacing: 4,
@@ -220,57 +180,34 @@ export function MyQrCard({
         </Pressable>
       </View>
 
-      <View
-        style={{
-          marginTop: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.22)',
-          paddingTop: 16,
-        }}
-      >
+      {/* Identity strip */}
+      <View className="mt-4 flex-row items-center gap-3 border-t border-white/20 pt-4">
         <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 999,
-            backgroundColor: 'rgba(255,255,255,0.18)',
-            borderWidth: 2,
-            borderColor: 'rgba(255,255,255,0.3)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20"
+          style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' }}
         >
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>
+          <Text className="text-sm font-extrabold text-white">
             {firstInitials(displayName)}
           </Text>
         </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
+        <View className="min-w-0 flex-1">
           <Text
             numberOfLines={1}
-            style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}
+            className="font-extrabold tracking-tight text-white"
+            style={{ fontSize: 15 }}
           >
             {displayName}
           </Text>
-          <View
-            style={{
-              marginTop: 2,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
+          <View className="mt-0.5 flex-row items-center gap-1.5">
             {isPremium ? (
               <>
                 <Crown color="#fff" size={12} fill="#fff" />
-                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11 }}>
+                <Text className="text-white/90" style={{ fontSize: 11 }}>
                   Premium · via {ORIGIN_LABEL[origin] ?? 'Mesita'}
                 </Text>
               </>
             ) : (
-              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11 }}>
+              <Text className="text-white/90" style={{ fontSize: 11 }}>
                 Free member
               </Text>
             )}
@@ -279,46 +216,19 @@ export function MyQrCard({
       </View>
 
       {igConnected ? (
-        <View
-          style={{
-            marginTop: 12,
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 8,
-          }}
-        >
+        <View className="mt-3 flex-row flex-wrap gap-2">
           {instagramHandle ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                borderRadius: 999,
-                backgroundColor: 'rgba(255,255,255,0.17)',
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-              }}
-            >
+            <View className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1.5">
               <AtSign color="#fff" size={14} />
-              <Text style={{ color: '#fff', fontSize: 11.5, fontWeight: '600' }}>
+              <Text className="font-semibold text-white" style={{ fontSize: 11.5 }}>
                 @{instagramHandle.replace(/^@/, '')}
               </Text>
             </View>
           ) : null}
           {followerCount > 0 ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                borderRadius: 999,
-                backgroundColor: 'rgba(255,255,255,0.17)',
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-              }}
-            >
+            <View className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1.5">
               <Users color="#fff" size={14} />
-              <Text style={{ color: '#fff', fontSize: 11.5, fontWeight: '600' }}>
+              <Text className="font-semibold text-white" style={{ fontSize: 11.5 }}>
                 {formatCompactCount(followerCount)} followers
               </Text>
             </View>
@@ -326,15 +236,8 @@ export function MyQrCard({
         </View>
       ) : null}
 
-      <View
-        style={{
-          marginTop: 16,
-          flexDirection: 'row',
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.22)',
-          paddingTop: 16,
-        }}
-      >
+      {/* Member scorecard */}
+      <View className="mt-4 flex-row border-t border-white/20 pt-4">
         <Stat value={String(s.visits)} label="Visits" />
         <Stat
           value={s.savedCents > 0 ? formatCurrency(s.savedCents) : '—'}
