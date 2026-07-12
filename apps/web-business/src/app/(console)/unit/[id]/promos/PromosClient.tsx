@@ -1,16 +1,17 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   AlertTriangle,
   Check,
+  Crown,
   Loader2,
-  Lock,
   MessageCircle,
-  Percent,
   ShieldCheck,
   Ticket,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Section } from "@/components/shared";
@@ -29,58 +30,103 @@ import {
   type StrategyVisibility,
 } from "@/lib/business/strategies";
 
-// Promos — Buzz v4. Two boxes, top to bottom:
-//   1. Strategy   — pick ONE of four presets (Zero → Dominant). Each writes the
-//                   four per-tier rate columns + the universal cap in one save.
-//   2. Membership — the MX$1,000/year Verified signing fee that unlocks the paid
-//                   strategies + the promo lane, with the strikes rules.
+// Promos — Buzz v4.1, pricing-card selector (mirrors admin MESITA-576).
+//   1. Subscription — FOUR pricing cards with generated art bands. Three
+//      products cost the SAME MX$1,000/year (Zero is free): the product is
+//      the discount schedule you commit to giving, and the visibility the
+//      algorithm gives back. Switching products is a NEW subscription — the
+//      lock-in. The old membership box is retired.
+//   2. The subscription — what the fee is (a commitment filter), how
+//      activation works (WhatsApp ping + first honored ticket), the strikes.
+//   3. Premium example — what the current rates feel like at the bill.
 //
-// The old model (Free/Pro/Ultra monthly subscriptions, four independent rate
-// pickers, Instagram + Guests subtabs) is retired: important venues now rank
-// free in the organic lane, so rank is never for sale and there's nothing to
-// tune cell-by-cell — you choose a posture, not sixteen knobs.
+// Plan is billing-locked from this console: a place NOT yet subscribed gets a
+// "Request activation" flow on paid cards (no write — Mesita follows up on
+// the staff WhatsApp); a subscribed place switches rates directly (the write
+// is rates + cap only, never plan).
 
-// One-time yearly signing fee. Presented here; the annual-billing flow itself
-// is a human-gated follow-up (live money), so this box is status + model, not a
-// self-serve charge.
-const MEMBERSHIP_FEE_MXN = 1000;
+const PRODUCT_PRICE_MXN = 1000;
 
-// "MX$1,000" for MXN places; falls back to a generic "$" prefix elsewhere.
+// Sample ticket for the worked example — above the universal cap on purpose,
+// so the "first MX$500" rule is visible in the math.
+const EXAMPLE_BILL_MXN = 700;
+
+// Per-strategy visual identity. Art = generated 1:1 abstract waves (no text
+// in pixels — copy stays HTML); the gradient paints behind the image so a
+// slow or missing asset still renders a branded band.
+const CARD_ART: Record<
+  StrategyId,
+  { src: string; fallback: string; cta: string; meter: string }
+> = {
+  zero: {
+    src: "/promos/strategy-zero.jpg",
+    fallback: "from-slate-800 to-slate-500",
+    cta: "",
+    meter: "bg-slate-400",
+  },
+  conservative: {
+    src: "/promos/strategy-conservative.jpg",
+    fallback: "from-emerald-900 to-teal-500",
+    cta: "from-emerald-600 to-teal-500",
+    meter: "bg-emerald-500",
+  },
+  aggressive: {
+    src: "/promos/strategy-aggressive.jpg",
+    fallback: "from-red-800 to-orange-500",
+    cta: "from-red-600 to-orange-500",
+    meter: "bg-orange-500",
+  },
+  dominant: {
+    src: "/promos/strategy-dominant.jpg",
+    fallback: "from-purple-950 to-amber-500",
+    cta: "from-purple-700 via-fuchsia-600 to-amber-500",
+    meter: "bg-purple-500",
+  },
+};
+
 function formatMoney(amount: number, currency: string): string {
   const prefix = currency === "MXN" ? "MX$" : "$";
   return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
-// Membership status is derived from the existing plan column: a place still on
-// `free` is not Verified (Zero only); any paid plan is treated as a member.
-// The self-serve annual-membership billing rewire is a separate, human-gated
-// change — this page reads status, it doesn't move money.
-function isVerifiedMember(place: MyPlace): boolean {
+// A place on any product carries a subscription (plan != free).
+function isSubscribed(place: MyPlace): boolean {
   return place.plan !== "free";
 }
 
-// ─── Client ───────────────────────────────────────────────────────────────
+// ─── Client ──────────────────────────────────────────────────────────────
 
 export function PromosClient({ place }: { place: MyPlace }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
-  const isMember = isVerifiedMember(place);
+  const subscribed = isSubscribed(place);
 
-  // The strategy the stored rates currently reflect (null = custom/legacy).
+  // The product the stored rates currently reflect (null = custom/legacy).
   const storedStrategy = strategyForPlace(place);
   const [selectedId, setSelectedId] = useState<StrategyId | null>(storedStrategy);
   const [pendingId, setPendingId] = useState<StrategyId | null>(null);
+  const [confirmId, setConfirmId] = useState<StrategyId | null>(null);
+  // Paid product tapped by a not-yet-subscribed place → request flow.
+  const [activationFor, setActivationFor] = useState<StrategyId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Selecting a strategy writes all four rate columns + the cap atomically.
-  // Optimistic: the card lights up immediately and reverts on failure.
-  const applyStrategy = (target: StrategyId) => {
-    if (pendingId) return;
-    if (target === selectedId) return;
-    // Paid strategies require Verified membership; Zero is always available.
-    if (target !== "zero" && !isMember) return;
+  const requestStrategy = (target: StrategyId) => {
+    if (pendingId || target === selectedId) return;
+    if (target !== "zero" && !subscribed) {
+      // No self-serve charge here — billing is handled with Mesita directly.
+      setActivationFor(target);
+      return;
+    }
+    setConfirmId(target);
+  };
 
+  // Writes the four rate columns + the cap atomically (never plan — that is
+  // billing). Optimistic: the card flips immediately and reverts on failure.
+  const commitStrategy = () => {
+    const target = confirmId;
+    setConfirmId(null);
+    if (target == null) return;
     const strat = STRATEGY_BY_ID[target];
     const previous = selectedId;
     setSelectedId(target);
@@ -97,14 +143,18 @@ export function PromosClient({ place }: { place: MyPlace }) {
       .then(() => router.refresh())
       .catch((err) => {
         setSelectedId(previous);
-        setError(errMsg(err, "Couldn't save the strategy."));
+        setError(errMsg(err, "Couldn't save the product."));
       })
       .finally(() => setPendingId(null));
   };
 
-  // Numbers to preview in the matrix + rail: the selection, falling back to
-  // Zero when the place carries custom legacy rates.
-  const activeStrategy = STRATEGY_BY_ID[selectedId ?? "zero"];
+  const confirmStrategy = confirmId ? STRATEGY_BY_ID[confirmId] : null;
+  const dialog = confirmStrategy
+    ? dialogCopy(confirmStrategy, place.currency)
+    : null;
+  const activationStrategy = activationFor
+    ? STRATEGY_BY_ID[activationFor]
+    : null;
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-5 pb-10">
@@ -113,360 +163,337 @@ export function PromosClient({ place }: { place: MyPlace }) {
           Promos
         </h2>
         <p className="text-muted-foreground text-[13px] leading-snug">
-          Big discounts to win them, fair discounts to keep them — and Premium
-          guests always get more.
+          Three products, one price — what changes is the discounts you give,
+          and the visibility the algorithm gives back.
         </p>
       </header>
 
-      <StrategyBox
-        selectedId={selectedId}
-        pendingId={pendingId}
-        isMember={isMember}
-        isCustom={storedStrategy === null}
-        currency={place.currency}
-        activeStrategy={activeStrategy}
-        error={error}
-        onSelect={applyStrategy}
-      />
-
-      <MembershipBox isMember={isMember} currency={place.currency} />
-    </div>
-  );
-}
-
-// ─── Box 1 · Strategy ───────────────────────────────────────────────────────
-
-function StrategyBox({
-  selectedId,
-  pendingId,
-  isMember,
-  isCustom,
-  currency,
-  activeStrategy,
-  error,
-  onSelect,
-}: {
-  selectedId: StrategyId | null;
-  pendingId: StrategyId | null;
-  isMember: boolean;
-  isCustom: boolean;
-  currency: string;
-  activeStrategy: Strategy;
-  error: string | null;
-  onSelect: (id: StrategyId) => void;
-}) {
-  return (
-    <Section
-      title="Discount strategy"
-      description="Pick one posture. A stronger discount reads as a stronger card and shows to more guests."
-      className="bg-gradient-to-b from-white to-fuchsia-50/[0.25]"
-    >
-      <CapBanner currency={currency} />
-
-      {!isMember && (
-        <div className="border-border bg-muted/30 text-foreground/75 flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px]">
-          <Lock className="h-3.5 w-3.5 shrink-0" />
-          <span>
-            Only <span className="font-semibold">Zero</span> is available until
-            you activate Verified membership — see below.
-          </span>
+      {/* ── Box 1 · Subscription (four pricing cards) ─────────────────── */}
+      <Section
+        title="Subscription"
+        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid three. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
+        right={<StatusPill subscribed={subscribed} />}
+      >
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
+          {STRATEGIES.map((s) => (
+            <PricingCard
+              key={s.id}
+              strategy={s}
+              currency={place.currency}
+              selected={s.id === selectedId}
+              pending={pendingId === s.id}
+              anyPending={pendingId != null}
+              subscribed={subscribed}
+              onSelect={() => requestStrategy(s.id)}
+            />
+          ))}
         </div>
-      )}
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {STRATEGIES.map((s) => (
-          <StrategyCard
-            key={s.id}
-            strategy={s}
-            selected={s.id === selectedId}
-            pending={s.id === pendingId}
-            locked={s.id !== "zero" && !isMember}
-            onSelect={() => onSelect(s.id)}
-          />
-        ))}
-      </div>
+        {activationStrategy && (
+          <p className="rounded-xl bg-emerald-50 p-3 text-[12px] leading-snug text-emerald-800">
+            Noted — Mesita will reach out on your staff WhatsApp to run the
+            test ping and activate{" "}
+            <span className="font-semibold">
+              {activationStrategy.emoji} {activationStrategy.name}
+            </span>{" "}
+            ({formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year). Nothing is
+            charged until then.
+          </p>
+        )}
 
-      {isCustom && (
-        <p className="text-muted-foreground text-[11px]">
-          Your current rates don&apos;t match a preset — pick a strategy to
-          standardize them.
+        {selectedId === null && (
+          <p className="text-muted-foreground text-[11px]">
+            Your current rates don&apos;t match a product — pick one to
+            standardize them.
+          </p>
+        )}
+
+        <p className="text-muted-foreground text-[11px] leading-snug">
+          Same price on every product keeps rank off the market — you buy a
+          commitment to give, not placement. Switching products later is a new{" "}
+          {formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year subscription.
         </p>
+
+        {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
+      </Section>
+
+      {/* ── Box 2 · The subscription (fee, activation, strikes) ──────── */}
+      <SubscriptionBox currency={place.currency} />
+
+      {/* ── Box 3 · Premium guest example ─────────────────────────────── */}
+      <PremiumExampleBox place={place} storedStrategy={storedStrategy} />
+
+      {dialog && (
+        <ConfirmDialog
+          title={dialog.title}
+          body={dialog.body}
+          confirmLabel={dialog.confirmLabel}
+          onConfirm={commitStrategy}
+          onCancel={() => setConfirmId(null)}
+        />
       )}
-
-      <SelectedMatrix strategy={activeStrategy} currency={currency} />
-      <VisibilityRail visibility={activeStrategy.visibility} />
-
-      {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
-    </Section>
-  );
-}
-
-// Universal cap — always displayed. The discount only ever applies to the
-// first MX$500 of the bill, so a headline percentage stays a bounded cost.
-function CapBanner({ currency }: { currency: string }) {
-  return (
-    <div className="border-border bg-muted/30 flex items-center gap-2 rounded-xl border px-3 py-2">
-      <Percent className="text-primary h-4 w-4 shrink-0" />
-      <p className="text-foreground/80 text-[11px] leading-snug">
-        Every discount applies to the first{" "}
-        <span className="text-foreground font-semibold">
-          {formatMoney(UNIVERSAL_CAP_MXN, currency)}
-        </span>{" "}
-        of the bill — a platform-wide cap, always shown to guests.
-      </p>
     </div>
   );
 }
 
-function StrategyCard({
+// Confirm copy — switching products (the lock-in moment) or dropping to Zero.
+// Subscribing from scratch never reaches here (it goes to the request flow).
+function dialogCopy(
+  target: Strategy,
+  currency: string,
+): { title: string; body: string; confirmLabel: string } {
+  if (target.id === "zero") {
+    return {
+      title: "Drop to Zero?",
+      body: "Paid promos stop and your rates are cleared. Your place stays in the catalog and the free organic lane.",
+      confirmLabel: "Drop to Zero",
+    };
+  }
+  return {
+    title: `Switch to ${target.name}?`,
+    body: `Switching products is a new ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year subscription — that is the commitment. Your rates change now; Mesita follows up on the billing.`,
+    confirmLabel: `Switch to ${target.name}`,
+  };
+}
+
+// ─── Pricing card ────────────────────────────────────────────────────────
+
+function PricingCard({
   strategy,
+  currency,
   selected,
   pending,
-  locked,
+  anyPending,
+  subscribed,
   onSelect,
 }: {
   strategy: Strategy;
+  currency: string;
   selected: boolean;
   pending: boolean;
-  locked: boolean;
+  anyPending: boolean;
+  subscribed: boolean;
   onSelect: () => void;
 }) {
-  // Best-case headline = the Premium welcome rate (always the top cell).
+  const art = CARD_ART[strategy.id];
+  const paid = strategy.id !== "zero";
   const top = strategy.rates.welcome_premium_rate;
+  const r = strategy.rates;
+
   return (
-    <button
-      type="button"
-      onClick={locked ? undefined : onSelect}
-      disabled={pending || locked}
-      aria-pressed={selected}
+    <div
       className={cn(
-        "relative flex flex-col gap-2 rounded-2xl border p-3.5 text-left transition",
+        "bg-card relative flex flex-col overflow-hidden rounded-2xl border transition",
         selected
-          ? "border-foreground shadow-elev ring-foreground/10 bg-white ring-1"
-          : "border-border bg-card",
-        !selected &&
-          !locked &&
-          "hover:border-foreground/30 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-24px_rgba(236,72,153,0.5)]",
-        locked && "cursor-not-allowed opacity-65",
+          ? "border-foreground/70 ring-foreground/70 ring-2"
+          : "border-border motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(236,72,153,0.35)]",
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5">
-          <span className="text-lg leading-none">{strategy.emoji}</span>
-          <span className="font-display text-sm font-semibold tracking-tight">
-            {strategy.name}
-          </span>
-        </span>
-        {selected ? (
-          <span className="bg-foreground text-background inline-flex h-5 w-5 items-center justify-center rounded-full">
+      {/* Art band — gradient behind the image is the loading/404 fallback;
+          the scrim keeps the white name/price legible. */}
+      <div className={cn("relative h-28 shrink-0 bg-gradient-to-br", art.fallback)}>
+        <Image
+          src={art.src}
+          alt=""
+          fill
+          sizes="(min-width:480px) 50vw, 100vw"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        {selected && (
+          <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
             <Check className="h-3 w-3" />
+            Current
           </span>
-        ) : locked ? (
-          <Lock className="text-muted-foreground h-3.5 w-3.5" />
-        ) : null}
+        )}
+        <div className="absolute inset-x-3.5 bottom-2.5">
+          <p className="font-display truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-sm">
+            <span className="mr-1" aria-hidden>
+              {strategy.emoji}
+            </span>
+            {strategy.name}
+          </p>
+          <p className="text-[11px] font-semibold text-white/90 drop-shadow-sm">
+            {paid ? (
+              <>
+                {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
+                <span className="font-normal text-white/70">/ year</span>
+              </>
+            ) : (
+              "Free"
+            )}
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-baseline gap-1">
+      {/* Body — the differentiator leads: identical prices can't be the hero. */}
+      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
         {top == null ? (
-          <span className="text-muted-foreground text-sm font-semibold">
+          <p className="text-muted-foreground text-sm leading-none font-semibold">
             No promos
-          </span>
+          </p>
         ) : (
-          <>
+          <div className="flex items-baseline gap-1">
             <span className="text-muted-foreground text-[11px]">up to</span>
-            <span className="font-display text-primary text-2xl leading-none font-bold tabular-nums">
+            <span className="font-display text-2xl leading-none font-bold tabular-nums">
               {top}
               <span className="text-base">%</span>
             </span>
             <span className="text-muted-foreground text-[11px]">off</span>
-          </>
+          </div>
         )}
-      </div>
 
-      <p className="text-muted-foreground text-[11px] leading-snug">
-        {strategy.tagline}
-      </p>
+        <div className="flex flex-col gap-1.5">
+          <SegmentRow
+            rate={r.welcome_premium_rate}
+            label="Premium · first visit"
+            premium
+          />
+          <SegmentRow
+            rate={r.premium_rate}
+            label="Premium · returning"
+            premium
+          />
+          <SegmentRow rate={r.welcome_free_rate} label="Free · first visit" />
+          <SegmentRow rate={r.free_rate} label="Free · returning" />
+        </div>
 
-      <span className="bg-muted/70 text-foreground/70 mt-auto inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
-        {strategy.visibility} visibility
-      </span>
+        <div className="mt-auto flex flex-col gap-2.5">
+          <VisibilityMeter visibility={strategy.visibility} accent={art.meter} />
 
-      {pending && (
-        <Loader2 className="text-muted-foreground absolute top-3 right-3 h-4 w-4 animate-spin" />
-      )}
-    </button>
-  );
-}
+          <p className="text-muted-foreground text-[10px] leading-snug">
+            {paid
+              ? `Off the first ${formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of the bill.`
+              : "Catalog and free organic lane only."}
+          </p>
 
-// The exact discount the selected strategy offers, as a Welcome/Returning ×
-// Free/Premium grid. Premium column is tinted so "Premium always gets more"
-// reads at a glance.
-function SelectedMatrix({
-  strategy,
-  currency,
-}: {
-  strategy: Strategy;
-  currency: string;
-}) {
-  if (strategy.id === "zero") {
-    return (
-      <div className="border-border bg-muted/20 rounded-xl border border-dashed px-3 py-3 text-center">
-        <p className="text-muted-foreground text-[12px] leading-snug">
-          No discounts on Zero — your place still appears in the catalog and the
-          free organic lane.
-        </p>
-      </div>
-    );
-  }
-  const r = strategy.rates;
-  return (
-    <div className="border-border overflow-hidden rounded-xl border bg-white">
-      <div className="grid grid-cols-[1.1fr_1fr_1fr]">
-        <MatrixHead>
-          {strategy.emoji} {strategy.name}
-        </MatrixHead>
-        <MatrixHead center>Free</MatrixHead>
-        <MatrixHead center premium>
-          Premium
-        </MatrixHead>
-
-        <MatrixRowLabel>First visit</MatrixRowLabel>
-        <MatrixValue value={r.welcome_free_rate} />
-        <MatrixValue value={r.welcome_premium_rate} premium />
-
-        <MatrixRowLabel last>Returning</MatrixRowLabel>
-        <MatrixValue value={r.free_rate} last />
-        <MatrixValue value={r.premium_rate} premium last />
-      </div>
-      <div className="border-border text-muted-foreground border-t px-3 py-1.5 text-[10px]">
-        Off the first {formatMoney(UNIVERSAL_CAP_MXN, currency)} of the bill.
-      </div>
-    </div>
-  );
-}
-
-function MatrixHead({
-  children,
-  center,
-  premium,
-}: {
-  children: React.ReactNode;
-  center?: boolean;
-  premium?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "border-border border-b px-3 py-2 text-[10px] font-bold tracking-wide uppercase",
-        center && "text-center",
-        premium
-          ? "text-tier-premium bg-tier-premium/10"
-          : "text-muted-foreground",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function MatrixRowLabel({
-  children,
-  last,
-}: {
-  children: React.ReactNode;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "text-foreground/70 px-3 py-2.5 text-[11px] font-semibold",
-        !last && "border-border border-b",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function MatrixValue({
-  value,
-  premium,
-  last,
-}: {
-  value: number | null;
-  premium?: boolean;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-center px-3 py-2.5 tabular-nums",
-        !last && "border-border border-b",
-        premium && "bg-tier-premium/[0.06]",
-      )}
-    >
-      {value == null ? (
-        <span className="text-muted-foreground text-sm">—</span>
-      ) : (
-        <span
-          className={cn(
-            "font-display text-lg leading-none font-bold",
-            premium ? "text-tier-premium" : "text-foreground/80",
-          )}
-        >
-          {value}
-          <span className="text-[11px] font-semibold">%</span>
-        </span>
-      )}
-    </div>
-  );
-}
-
-// Where the selected strategy lands on the four-step visibility ladder.
-function VisibilityRail({ visibility }: { visibility: StrategyVisibility }) {
-  const currentIdx = STRATEGY_VISIBILITY_LADDER.indexOf(visibility);
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          Visibility
-        </span>
-        <span className="text-foreground text-[11px] font-semibold">
-          {visibility}
-        </span>
-      </div>
-      <div className="flex items-center">
-        {STRATEGY_VISIBILITY_LADDER.map((level, i) => {
-          const isCurrent = i === currentIdx;
-          return (
-            <Fragment key={level}>
-              {i > 0 && (
-                <div
-                  className={cn(
-                    "h-1.5 flex-1 rounded-full",
-                    i <= currentIdx ? "bg-pink-gradient" : "bg-muted/80",
-                  )}
-                />
+          {selected ? (
+            <button
+              type="button"
+              disabled
+              aria-pressed="true"
+              className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Current
+            </button>
+          ) : paid ? (
+            <button
+              type="button"
+              onClick={onSelect}
+              disabled={anyPending}
+              aria-pressed="false"
+              className={cn(
+                "inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r text-[12px] font-bold text-white transition",
+                "hover:brightness-105 active:scale-[0.99] disabled:opacity-60",
+                art.cta,
               )}
-              <div
-                className={cn(
-                  "shrink-0 rounded-full transition",
-                  isCurrent
-                    ? "bg-pink-gradient shadow-glow h-4 w-4 ring-4 ring-pink-500/25"
-                    : i < currentIdx
-                      ? "bg-pink-gradient h-3 w-3"
-                      : "bg-muted/80 h-3 w-3",
-                )}
-              />
-            </Fragment>
-          );
-        })}
+            >
+              {pending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : subscribed ? (
+                "Switch"
+              ) : (
+                "Request activation"
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSelect}
+              disabled={anyPending}
+              aria-pressed="false"
+              className="border-border text-foreground/75 hover:border-foreground/40 hover:text-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold transition disabled:opacity-60"
+            >
+              {pending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Drop to Zero"
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Box 2 · Membership ─────────────────────────────────────────────────────
+// One discount segment: ✓ + rate when the product grants it, ✗ + em-dash when
+// it doesn't (Zero) — rates live in HTML text, never in the artwork.
+function SegmentRow({
+  rate,
+  label,
+  premium,
+}: {
+  rate: number | null;
+  label: string;
+  premium?: boolean;
+}) {
+  const on = rate != null;
+  return (
+    <div className="flex items-center gap-2 text-[11px]">
+      {on ? (
+        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+      ) : (
+        <X className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
+      )}
+      <span
+        className={cn(
+          "w-9 shrink-0 font-bold tabular-nums",
+          !on
+            ? "text-muted-foreground/50"
+            : premium
+              ? "text-tier-premium"
+              : "text-foreground/80",
+        )}
+      >
+        {on ? `${rate}%` : "—"}
+      </span>
+      <span
+        className={cn(
+          "truncate",
+          on ? "text-foreground/75" : "text-muted-foreground/60",
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// What the algorithm gives back for the generosity above.
+function VisibilityMeter({
+  visibility,
+  accent,
+}: {
+  visibility: StrategyVisibility;
+  accent: string;
+}) {
+  const idx = STRATEGY_VISIBILITY_LADDER.indexOf(visibility);
+  return (
+    <div className="border-border flex flex-col gap-1.5 border-t pt-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-[9px] font-bold tracking-[0.14em] uppercase">
+          In exchange · visibility
+        </span>
+        <span className="text-[11px] leading-none font-bold">{visibility}</span>
+      </div>
+      <div className="flex gap-1" aria-hidden>
+        {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
+          <span
+            key={lvl}
+            className={cn(
+              "h-1.5 flex-1 rounded-full",
+              i <= idx ? accent : "bg-muted",
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Box 2 · The subscription (fee, activation, strikes) ────────────────────
 
 const STRIKES: { n: string; consequence: string }[] = [
   { n: "1", consequence: "Warning, and we re-run the activation test." },
@@ -474,49 +501,32 @@ const STRIKES: { n: string; consequence: string }[] = [
   {
     n: "3",
     consequence:
-      "Removed from Verified and the fee is forfeited — the place stays in the catalog.",
+      "Removed from the paid products and the fee is forfeited — the place stays in the catalog.",
   },
 ];
 
-function MembershipBox({
-  isMember,
-  currency,
-}: {
-  isMember: boolean;
-  currency: string;
-}) {
-  const [notice, setNotice] = useState(false);
+function SubscriptionBox({ currency }: { currency: string }) {
   return (
     <Section
-      title="Verified membership"
-      description="The commitment that turns on paid promos."
-      right={<StatusPill active={isMember} />}
+      title="The subscription"
+      description="What the fee is, how activation works, and what a strike costs."
     >
       <div className="border-border bg-muted/25 flex items-start gap-3 rounded-xl border p-3">
         <ShieldCheck className="text-primary mt-0.5 h-5 w-5 shrink-0" />
         <div className="flex flex-col gap-0.5">
           <p className="text-sm font-semibold">
-            {formatMoney(MEMBERSHIP_FEE_MXN, currency)}{" "}
+            {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
             <span className="text-muted-foreground text-[11px] font-normal">
-              / year
+              / year · per product
             </span>
           </p>
           <p className="text-muted-foreground text-[11px] leading-snug">
-            A yearly signing fee — a security deposit against dead coupons, not a
-            subscription. It buys commitment, not placement: important venues
-            rank free in the organic lane, and rank is never for sale.
+            A commitment filter, not a feature tier — it keeps half-hearted
+            restaurants out of the rewards program and guests away from dead
+            coupons. It buys commitment, never placement: rank is not for
+            sale.
           </p>
         </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <FeatureRow>
-          Run a paid strategy — Conservative through Dominant.
-        </FeatureRow>
-        <FeatureRow>Eligible for the promo lane in the Swipe deck.</FeatureRow>
-        <FeatureRow muted>
-          Your catalog listing and the free organic lane never go away.
-        </FeatureRow>
       </div>
 
       <SubHeading icon={Ticket}>Activation</SubHeading>
@@ -556,36 +566,151 @@ function MembershipBox({
         ))}
       </div>
       <p className="text-muted-foreground text-[11px] leading-snug">
-        A refused or ignored QR is a strike. Strikes decay after 6 months clean,
-        and a guest who&apos;s turned away is compensated instantly.
+        A refused or ignored QR is a strike. Strikes decay after 6 months
+        clean, and a guest who&apos;s turned away is compensated instantly.
       </p>
-
-      {!isMember &&
-        (notice ? (
-          <p className="rounded-lg bg-emerald-50 p-3 text-[11px] leading-snug text-emerald-800">
-            Noted — Mesita will reach out on your staff WhatsApp to run the test
-            ping and switch Verified on.
-          </p>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setNotice(true)}
-            className="bg-foreground text-background inline-flex w-fit items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition hover:opacity-90"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Request activation
-          </button>
-        ))}
     </Section>
   );
 }
 
-function StatusPill({ active }: { active: boolean }) {
+// ─── Box 3 · Premium guest example ──────────────────────────────────────────
+
+// Worked from the place's LIVE rate columns (not the preset), so custom or
+// legacy rates preview exactly what the bill EF would apply today.
+function PremiumExampleBox({
+  place,
+  storedStrategy,
+}: {
+  place: MyPlace;
+  storedStrategy: StrategyId | null;
+}) {
+  const hasPromo =
+    place.welcome_premium_rate != null || place.premium_rate != null;
+  const strategy = storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
+  const cap = place.monthly_promo_cap ?? UNIVERSAL_CAP_MXN;
+
+  return (
+    <Section
+      title="What a Premium guest gets"
+      description={`The current rates worked on a sample ${formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket.`}
+      right={
+        hasPromo ? (
+          <span className="bg-muted text-foreground/70 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+            {strategy && strategy.id !== "zero"
+              ? `${strategy.emoji} ${strategy.name}`
+              : "Custom rates"}
+          </span>
+        ) : undefined
+      }
+    >
+      {hasPromo ? (
+        <>
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
+            <ExampleCard
+              visit="First visit"
+              premiumRate={place.welcome_premium_rate}
+              freeRate={place.welcome_free_rate}
+              cap={cap}
+              currency={place.currency}
+            />
+            <ExampleCard
+              visit="Returning"
+              premiumRate={place.premium_rate}
+              freeRate={place.free_rate}
+              cap={cap}
+              currency={place.currency}
+            />
+          </div>
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            Premium ≥ Free in every product — Premium guests always get the
+            better deal. They are what the subscription buys.
+          </p>
+        </>
+      ) : (
+        <div className="border-border bg-muted/20 rounded-xl border border-dashed px-4 py-5 text-center">
+          <p className="text-muted-foreground text-[12px] leading-snug">
+            No promos right now — Premium guests see your place in the catalog
+            with no discount card. Activate a product above to preview the
+            deal.
+          </p>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function ExampleCard({
+  visit,
+  premiumRate,
+  freeRate,
+  cap,
+  currency,
+}: {
+  visit: string;
+  premiumRate: number | null;
+  freeRate: number | null;
+  cap: number;
+  currency: string;
+}) {
+  // The discount only touches the first `cap` of the ticket.
+  const base = Math.min(EXAMPLE_BILL_MXN, cap);
+  const saves = premiumRate == null ? 0 : Math.round((base * premiumRate) / 100);
+  const pays = EXAMPLE_BILL_MXN - saves;
+  const freeSaves = freeRate == null ? 0 : Math.round((base * freeRate) / 100);
+
+  return (
+    <div className="border-border bg-tier-premium/[0.04] rounded-xl border p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+          {visit}
+        </span>
+        <span className="bg-tier-premium/10 text-tier-premium inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold">
+          <Crown className="h-3 w-3" />
+          Premium
+        </span>
+      </div>
+
+      {premiumRate == null ? (
+        <p className="text-muted-foreground mt-3 text-[12px]">
+          No discount for this visit type.
+        </p>
+      ) : (
+        <>
+          <div className="mt-2.5 flex items-baseline gap-1.5">
+            <span className="text-tier-premium text-2xl leading-none font-bold tabular-nums">
+              {premiumRate}%
+            </span>
+            <span className="text-muted-foreground text-[11px]">
+              off the first {formatMoney(cap, currency)}
+            </span>
+          </div>
+          <p className="text-foreground/80 mt-2 text-[12px]">
+            {formatMoney(EXAMPLE_BILL_MXN, currency)} bill → pays{" "}
+            <span className="font-bold">{formatMoney(pays, currency)}</span>
+            <span className="text-muted-foreground">
+              {" "}
+              · saves {formatMoney(saves, currency)}
+            </span>
+          </p>
+          <p className="text-muted-foreground mt-1 text-[11px]">
+            {freeRate == null
+              ? "A Free guest gets no discount on this visit."
+              : `A Free guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared bits ────────────────────────────────────────────────────────────
+
+function StatusPill({ subscribed }: { subscribed: boolean }) {
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase",
-        active
+        subscribed
           ? "bg-emerald-500/12 text-emerald-700"
           : "bg-muted text-muted-foreground",
       )}
@@ -593,38 +718,11 @@ function StatusPill({ active }: { active: boolean }) {
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full",
-          active ? "bg-emerald-500" : "bg-muted-foreground/50",
+          subscribed ? "bg-emerald-500" : "bg-muted-foreground/50",
         )}
       />
-      {active ? "Active" : "Not active"}
+      {subscribed ? "Subscribed" : "Free"}
     </span>
-  );
-}
-
-function FeatureRow({
-  children,
-  muted,
-}: {
-  children: React.ReactNode;
-  muted?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-2">
-      <Check
-        className={cn(
-          "mt-0.5 h-3.5 w-3.5 shrink-0",
-          muted ? "text-muted-foreground" : "text-primary",
-        )}
-      />
-      <span
-        className={cn(
-          "text-[12px] leading-snug",
-          muted ? "text-muted-foreground" : "text-foreground/85",
-        )}
-      >
-        {children}
-      </span>
-    </div>
   );
 }
 
@@ -660,6 +758,57 @@ function ActivationStep({
       <span className="text-foreground/80 text-[12px] leading-snug">
         {children}
       </span>
+    </div>
+  );
+}
+
+// Local confirm modal — matches the TeamClient dialog pattern.
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+    >
+      <div
+        className="border-border bg-card w-full max-w-sm rounded-2xl border p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-display text-lg font-semibold tracking-tight">
+          {title}
+        </h2>
+        <p className="text-muted-foreground mt-1.5 text-sm">{body}</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center rounded-full border px-4 text-[13px] font-semibold transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            autoFocus
+            onClick={onConfirm}
+            className="bg-pink-gradient inline-flex h-10 items-center rounded-full px-5 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
