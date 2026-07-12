@@ -7,17 +7,13 @@ import {
   Modal,
   Platform,
   Pressable,
-  View,
-} from 'react-native';
-import {
-  Button,
-  HelperText,
-  Surface,
   Text,
   TextInput,
-} from 'react-native-paper';
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/ui/Button';
 import { HeroBackdrop } from '@/components/ui/HeroBackdrop';
 import { apiConsumerSigninPhone } from '@/lib/api/auth';
 import {
@@ -92,31 +88,34 @@ export default function SignIn() {
         >
           <View style={{ marginBottom: 40, alignItems: 'center' }}>
             <Text
-              variant="displaySmall"
-              style={{ color: '#260409', letterSpacing: -0.4 }}
+              className="font-display text-foreground"
+              style={{ fontSize: 36, letterSpacing: -0.54 }}
             >
               Mesita
             </Text>
             <Text
-              variant="bodyMedium"
+              className="text-muted-foreground"
               style={{ marginTop: 12, textAlign: 'center', color: '#775254' }}
             >
               Tu mesa favorita te está esperando
             </Text>
           </View>
 
-          <Surface
-            elevation={2}
+          <View
+            className="rounded-2xl border border-border bg-card"
             style={{
-              borderRadius: 16,
               padding: 24,
-              backgroundColor: '#ffffff',
+              shadowColor: '#260409',
+              shadowOpacity: 0.08,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 2,
             }}
           >
             {step === 'phone' ? (
               <>
                 <Text
-                  variant="labelSmall"
+                  className="font-semibold text-muted-foreground"
                   style={{
                     marginBottom: 8,
                     color: '#775254',
@@ -149,37 +148,41 @@ export default function SignIn() {
                     }}
                   >
                     <Text style={{ fontSize: 16 }}>{country.flag}</Text>
-                    <Text variant="titleSmall">+{country.dial}</Text>
+                    <Text className="font-semibold text-foreground">
+                      +{country.dial}
+                    </Text>
                     <ChevronDown color="#775254" size={12} />
                   </Pressable>
                   <TextInput
-                    mode="flat"
-                    style={{ flex: 1, backgroundColor: '#ffffff' }}
-                    underlineColor="transparent"
-                    activeUnderlineColor="transparent"
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#ffffff',
+                      color: '#260409',
+                      paddingHorizontal: 12,
+                      fontSize: 15,
+                    }}
+                    placeholderTextColor="#77525499"
                     keyboardType="phone-pad"
                     autoComplete="tel"
                     placeholder="55 1234 5678"
                     value={localNumber}
                     onChangeText={setLocalNumber}
-                    dense
                   />
                 </View>
-                <Button
-                  mode="contained"
-                  onPress={() => void sendCode()}
-                  loading={busy}
-                  disabled={!phoneOk || busy}
-                  style={{ marginTop: 16 }}
-                  contentStyle={{ paddingVertical: 6 }}
-                >
-                  Send code
-                </Button>
+                <View style={{ marginTop: 16 }}>
+                  <Button
+                    onPress={() => void sendCode()}
+                    loading={busy}
+                    disabled={!phoneOk || busy}
+                  >
+                    Send code
+                  </Button>
+                </View>
               </>
             ) : (
               <>
                 <Text
-                  variant="labelSmall"
+                  className="font-semibold text-muted-foreground"
                   style={{
                     marginBottom: 8,
                     color: '#775254',
@@ -189,13 +192,13 @@ export default function SignIn() {
                   CODE SENT TO {e164}
                 </Text>
                 <TextInput
-                  mode="outlined"
+                  className="rounded-2xl border border-border bg-card px-3.5 py-3.5 text-foreground"
                   style={{
-                    backgroundColor: '#ffffff',
                     textAlign: 'center',
                     letterSpacing: 8,
                     fontSize: 24,
                   }}
+                  placeholderTextColor="#77525499"
                   keyboardType="number-pad"
                   textContentType="oneTimeCode"
                   autoComplete="sms-otp"
@@ -204,32 +207,26 @@ export default function SignIn() {
                   value={token}
                   onChangeText={setToken}
                 />
-                <Button
-                  mode="contained"
-                  onPress={() => void verifyCode()}
-                  loading={busy}
-                  disabled={!codeOk || busy}
-                  style={{ marginTop: 16 }}
-                  contentStyle={{ paddingVertical: 6 }}
-                >
-                  Verify
-                </Button>
-                <Button
-                  mode="text"
-                  onPress={() => setStep('phone')}
-                  style={{ marginTop: 4 }}
-                  compact
-                >
+                <View style={{ marginTop: 16 }}>
+                  <Button
+                    onPress={() => void verifyCode()}
+                    loading={busy}
+                    disabled={!codeOk || busy}
+                  >
+                    Verify
+                  </Button>
+                </View>
+                <Button variant="ghost" onPress={() => setStep('phone')}>
                   Change number
                 </Button>
               </>
             )}
             {error ? (
-              <HelperText type="error" visible style={{ marginTop: 8 }}>
+              <Text className="mt-2 text-destructive" style={{ fontSize: 12 }}>
                 {error}
-              </HelperText>
+              </Text>
             ) : null}
-          </Surface>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
 
@@ -258,7 +255,7 @@ export default function SignIn() {
             }}
           >
             <Text
-              variant="titleMedium"
+              className="font-display font-semibold text-foreground"
               style={{
                 paddingHorizontal: 20,
                 paddingTop: 20,
@@ -287,10 +284,12 @@ export default function SignIn() {
                   }}
                 >
                   <Text style={{ fontSize: 20 }}>{item.flag}</Text>
-                  <Text variant="bodyLarge" style={{ flex: 1 }}>
+                  <Text className="text-foreground" style={{ flex: 1, fontSize: 16 }}>
                     {item.name}
                   </Text>
-                  <Text variant="titleSmall">+{item.dial}</Text>
+                  <Text className="font-semibold text-foreground">
+                    +{item.dial}
+                  </Text>
                 </Pressable>
               )}
             />

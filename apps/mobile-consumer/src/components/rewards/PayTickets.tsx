@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
 import { Ticket } from 'lucide-react-native';
-import { ActivityIndicator, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { RewardsTicketCard } from '@/components/rewards/RewardsTicketCard';
+import { Button } from '@/components/ui/Button';
 import {
   bundleToCardView,
   type PayTicketsState,
@@ -39,12 +39,8 @@ export function PayTickets({
           paddingHorizontal: 2,
         }}
       >
-        <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-          Tickets
-        </Text>
-        <Text variant="labelSmall" style={{ color: '#775254' }}>
-          Most recent first
-        </Text>
+        <Text style={{ fontWeight: '600', fontSize: 15 }}>Tickets</Text>
+        <Text style={{ color: '#775254', fontSize: 12 }}>Most recent first</Text>
       </View>
 
       {status === 'loading' ? (
@@ -66,25 +62,31 @@ export function PayTickets({
           }}
         >
           <Text
-            variant="titleSmall"
-            style={{ color: '#dc2626', fontWeight: '600', textAlign: 'center' }}
+            style={{
+              color: '#dc2626',
+              fontWeight: '600',
+              textAlign: 'center',
+              fontSize: 15,
+            }}
           >
             Couldn’t load your tickets.
           </Text>
           <Text
-            variant="bodySmall"
             style={{
               marginTop: 4,
               color: '#775254',
               textAlign: 'center',
               lineHeight: 18,
+              fontSize: 13,
             }}
           >
             Check your connection and try again.
           </Text>
-          <Button mode="outlined" onPress={retry} style={{ marginTop: 16 }}>
-            Retry
-          </Button>
+          <View style={{ marginTop: 16, alignSelf: 'stretch' }}>
+            <Button variant="outline" onPress={retry} accessibilityLabel="Retry">
+              Retry
+            </Button>
+          </View>
         </View>
       ) : bundles.length === 0 ? (
         <View
@@ -113,16 +115,14 @@ export function PayTickets({
           >
             <Ticket color="#fb2b7b" size={28} />
           </View>
-          <Text variant="titleMedium" style={{ fontWeight: '600' }}>
-            No tickets yet
-          </Text>
+          <Text style={{ fontWeight: '600', fontSize: 17 }}>No tickets yet</Text>
           <Text
-            variant="bodySmall"
             style={{
               color: '#775254',
               textAlign: 'center',
               maxWidth: 300,
               lineHeight: 18,
+              fontSize: 13,
             }}
           >
             When staff opens your ticket at the table, it appears here with the

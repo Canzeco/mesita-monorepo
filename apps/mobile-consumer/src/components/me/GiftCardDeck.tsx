@@ -11,8 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Linking, Pressable, Share, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Linking, Pressable, Share, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
 import { copyText } from '@/lib/clipboard';
@@ -165,7 +164,6 @@ function GiftCardTile({ card }: { card: GiftCard }) {
         }}
       >
         <Text
-          variant="labelSmall"
           style={{
             color: 'rgba(255,255,255,0.8)',
             fontWeight: '800',
@@ -211,13 +209,11 @@ function GiftCardTile({ card }: { card: GiftCard }) {
 
       <View style={{ marginTop: 'auto', paddingTop: 24 }}>
         <Text
-          variant="headlineSmall"
           style={{ color: '#fff', fontWeight: '700' }}
         >
           {card.audience}
         </Text>
         <Text
-          variant="bodyMedium"
           style={{ color: 'rgba(255,255,255,0.85)', marginTop: 6 }}
         >
           {card.line}
@@ -251,7 +247,6 @@ function PillButton({
     >
       {icon}
       <Text
-        variant="labelMedium"
         style={{ color: '#fff', fontWeight: '700' }}
       >
         {label}

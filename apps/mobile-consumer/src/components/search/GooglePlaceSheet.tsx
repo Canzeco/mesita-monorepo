@@ -1,19 +1,19 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { ExternalLink, MapPinPlus, Wand2 } from 'lucide-react-native';
+import { ExternalLink, MapPinPlus, Wand2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Image, Linking, View } from 'react-native';
 import {
   ActivityIndicator,
-  Appbar,
-  Button,
-  Card,
+  Image,
+  Linking,
   Modal,
-  Portal,
+  Pressable,
   Text,
-} from 'react-native-paper';
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AddState } from '@/components/memo/types';
+import { Button } from '@/components/ui/Button';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { PlacePrediction } from '@/lib/api/places';
 
@@ -100,102 +100,132 @@ export function GooglePlaceSheet({
     )}&query_place_id=${encodeURIComponent(prediction.placeId)}`;
 
   return (
-    <Portal>
-      <Modal
-        visible={open}
-        onDismiss={onClose}
-        contentContainerStyle={{
-          flex: 1,
-          backgroundColor: '#fff7f8',
-          margin: 0,
-        }}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <Appbar.Header style={{ backgroundColor: '#fff7f8' }} elevated>
-            <Appbar.Content title="Add to Mesita" />
-            <Appbar.Action icon="close" onPress={onClose} />
-          </Appbar.Header>
+    <Modal
+      visible={open}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+        <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
+          <Text
+            className="font-display font-bold text-foreground"
+            style={{ fontSize: 20 }}
+          >
+            Add to Mesita
+          </Text>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={12}
+            className="h-11 w-11 items-center justify-center rounded-2xl bg-muted"
+          >
+            <X color="#260409" size={20} />
+          </Pressable>
+        </View>
 
-          <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8 }}>
-            <Card mode="elevated" style={{ borderRadius: 16, overflow: 'hidden' }}>
-              {profile?.photoUrl ? (
-                <Image
-                  source={{ uri: profile.photoUrl }}
-                  style={{ width: '100%', height: 180 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <LinearGradient
-                  colors={[...GRADIENTS.pink]}
-                  start={GRADIENT_DIAGONAL.start}
-                  end={GRADIENT_DIAGONAL.end}
-                  style={{
-                    height: 140,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MapPinPlus color="#fff" size={36} />
-                </LinearGradient>
-              )}
-              <Card.Content style={{ paddingTop: 16, gap: 4 }}>
-                <Text variant="titleLarge">{prediction.mainText}</Text>
-                {address ? (
-                  <Text variant="bodyMedium" style={{ color: '#775254' }}>
-                    {address}
-                  </Text>
-                ) : null}
-                <Button
-                  mode="text"
-                  icon={() => <ExternalLink color="#fb2b7b" size={14} />}
-                  onPress={() => void Linking.openURL(mapsUrl)}
-                  compact
-                  style={{ alignSelf: 'flex-start', marginLeft: -8 }}
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8 }}>
+          <View
+            className="overflow-hidden rounded-2xl border border-border bg-card"
+            style={{
+              shadowColor: '#260409',
+              shadowOpacity: 0.08,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 2,
+            }}
+          >
+            {profile?.photoUrl ? (
+              <Image
+                source={{ uri: profile.photoUrl }}
+                style={{ width: '100%', height: 180 }}
+                resizeMode="cover"
+                accessibilityLabel={`${prediction.mainText} photo`}
+              />
+            ) : (
+              <LinearGradient
+                colors={[...GRADIENTS.pink]}
+                start={GRADIENT_DIAGONAL.start}
+                end={GRADIENT_DIAGONAL.end}
+                style={{
+                  height: 140,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MapPinPlus color="#fff" size={36} />
+              </LinearGradient>
+            )}
+            <View style={{ padding: 16, gap: 4 }}>
+              <Text
+                className="font-bold text-foreground"
+                style={{ fontSize: 20 }}
+              >
+                {prediction.mainText}
+              </Text>
+              {address ? (
+                <Text className="text-muted-foreground" style={{ fontSize: 14 }}>
+                  {address}
+                </Text>
+              ) : null}
+              <Pressable
+                onPress={() => void Linking.openURL(mapsUrl)}
+                accessibilityRole="link"
+                accessibilityLabel="Open in Google Maps"
+                className="min-h-[44px] flex-row items-center gap-1.5 self-start py-2"
+              >
+                <ExternalLink color="#fb2b7b" size={14} />
+                <Text
+                  className="font-semibold text-primary"
+                  style={{ fontSize: 13 }}
                 >
                   Open in Google Maps
-                </Button>
-              </Card.Content>
-            </Card>
-
-            <Card mode="outlined" style={{ marginTop: 16, borderRadius: 16 }}>
-              <Card.Content>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Wand2 color="#fb2b7b" size={18} />
-                  <Text variant="titleSmall">We’ll build its profile</Text>
-                </View>
-                <Text
-                  variant="bodyMedium"
-                  style={{ marginTop: 8, color: '#775254', lineHeight: 20 }}
-                >
-                  Adding creates a Mesita listing right away. Our AI enriches the
-                  profile in about five minutes.
                 </Text>
-              </Card.Content>
-            </Card>
-
-            <View style={{ marginTop: 24 }}>
-              {added ? (
-                <Button mode="contained-tonal" disabled>
-                  Added — enriching…
-                </Button>
-              ) : (
-                <Button
-                  mode="contained"
-                  onPress={() => onAdd(prediction)}
-                  loading={adding}
-                  disabled={adding}
-                  contentStyle={{ paddingVertical: 6 }}
-                >
-                  Add to Mesita
-                </Button>
-              )}
-              {adding ? (
-                <ActivityIndicator style={{ marginTop: 12 }} color="#fb2b7b" />
-              ) : null}
+              </Pressable>
             </View>
           </View>
-        </SafeAreaView>
-      </Modal>
-    </Portal>
+
+          <View className="mt-4 rounded-2xl border border-border bg-card p-4">
+            <View className="flex-row items-center gap-2">
+              <Wand2 color="#fb2b7b" size={18} />
+              <Text
+                className="font-semibold text-foreground"
+                style={{ fontSize: 15 }}
+              >
+                We’ll build its profile
+              </Text>
+            </View>
+            <Text
+              className="mt-2 text-muted-foreground"
+              style={{ fontSize: 14, lineHeight: 20 }}
+            >
+              Adding creates a Mesita listing right away. Our AI enriches the
+              profile in about five minutes.
+            </Text>
+          </View>
+
+          <View style={{ marginTop: 24 }}>
+            {added ? (
+              <Button variant="outline" disabled>
+                Added — enriching…
+              </Button>
+            ) : (
+              <Button
+                onPress={() => onAdd(prediction)}
+                loading={adding}
+                disabled={adding}
+                accessibilityLabel="Add to Mesita"
+              >
+                Add to Mesita
+              </Button>
+            )}
+            {adding ? (
+              <ActivityIndicator style={{ marginTop: 12 }} color="#fb2b7b" />
+            ) : null}
+          </View>
+        </View>
+      </SafeAreaView>
+    </Modal>
   );
 }

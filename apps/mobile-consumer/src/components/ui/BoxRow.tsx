@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 
 export type BoxTint =
   | 'pink'
@@ -97,6 +98,7 @@ export function BoxShell({
   soon?: boolean;
 }) {
   // Parked (soon) rows are BLOCKED, not removed — web parity. No Alert.
+  const reduceMotion = useReduceMotion();
   const inert = Boolean(disabled || soon);
   return (
     <Pressable
@@ -104,14 +106,18 @@ export function BoxShell({
       disabled={inert}
       accessibilityRole="button"
       accessibilityState={{ disabled: inert }}
-      accessibilityLabel={soon ? `${title}, coming soon` : title}
+      accessibilityLabel={soon ? `${title}, coming soon` : `${title}. ${summary}`}
       style={({ pressed }) => [
         {
-          opacity: inert ? 0.6 : pressed ? 0.92 : 1,
-          transform: [{ scale: pressed && !inert ? 0.99 : 1 }],
+          opacity: inert ? 0.6 : pressed && !reduceMotion ? 0.92 : 1,
+          transform: [
+            {
+              scale: pressed && !inert && !reduceMotion ? 0.99 : 1,
+            },
+          ],
         },
       ]}
-      className="mb-2 flex-row items-center gap-3.5 rounded-2xl border border-border bg-card p-4"
+      className="mb-2 min-h-[56px] flex-row items-center gap-3.5 rounded-2xl border border-border bg-card p-4"
     >
       <TintedIconTile tint={iconTint}>{icon}</TintedIconTile>
       <View className="min-w-0 flex-1">

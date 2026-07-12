@@ -4,6 +4,7 @@ export function TextField({
   label,
   helper,
   error,
+  accessibilityLabel,
   ...props
 }: TextInputProps & {
   label?: string;
@@ -19,7 +20,9 @@ export function TextField({
       ) : null}
       <TextInput
         placeholderTextColor="#77525499"
-        className="rounded-2xl border border-border bg-card px-3.5 py-3.5 text-[15px] text-foreground"
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityState={{ disabled: props.editable === false }}
+        className="min-h-[48px] rounded-2xl border border-border bg-card px-3.5 py-3.5 text-[15px] text-foreground"
         style={[
           props.editable === false ? { backgroundColor: '#faeff0' } : null,
           props.style,
@@ -27,7 +30,11 @@ export function TextField({
         {...props}
       />
       {error ? (
-        <Text className="text-destructive" style={{ fontSize: 12 }}>
+        <Text
+          accessibilityRole="alert"
+          className="text-destructive"
+          style={{ fontSize: 12 }}
+        >
           {error}
         </Text>
       ) : helper ? (

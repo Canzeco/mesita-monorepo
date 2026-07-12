@@ -13,9 +13,9 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  Text,
   View,
 } from 'react-native';
-import { Button, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TicketBillReceipt } from '@/components/rewards/TicketBillReceipt';
@@ -24,6 +24,7 @@ import {
   TicketReviewForm,
   type TicketReviewDraft,
 } from '@/components/rewards/TicketReviewForm';
+import { Button } from '@/components/ui/Button';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import {
   fetchPayTicketBundle,
@@ -718,17 +719,31 @@ function ActionCard({
         ) : null}
 
         {step.id === 'scan' && !isLocked ? (
-          <Button
-            mode="contained"
-            icon={() => <QrCode color="#fff" size={20} />}
-            onPress={onShowQr}
-            buttonColor="#fb2b7b"
-            textColor="#fff"
-            contentStyle={{ paddingVertical: 6 }}
-            style={{ opacity: isActive ? 1 : 0.75 }}
-          >
-            Show my QR code
-          </Button>
+          <View style={{ opacity: isActive ? 1 : 0.75 }}>
+            <Button
+              onPress={onShowQr}
+              accessibilityLabel="Show my QR code"
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <QrCode color="#fff" size={20} />
+                <Text
+                  style={{
+                    color: '#fffafb',
+                    fontWeight: '600',
+                    fontSize: 14,
+                  }}
+                >
+                  Show my QR code
+                </Text>
+              </View>
+            </Button>
+          </View>
         ) : null}
 
         {children}
@@ -856,13 +871,13 @@ function renderStepActions({
   if (step.id === 'story' && showMockStoryButton && onMockStoryDetect) {
     return (
       <Button
-        mode="outlined"
+        variant="outline"
         onPress={onMockStoryDetect}
         disabled={busy}
-        textColor="#059669"
-        style={{ borderColor: 'rgba(16,185,129,0.5)', borderStyle: 'dashed' }}
+        loading={busy}
+        accessibilityLabel="Mock: story posted and detected"
       >
-        {busy ? 'Simulating…' : 'Mock: story posted & detected'}
+        Mock: story posted & detected
       </Button>
     );
   }

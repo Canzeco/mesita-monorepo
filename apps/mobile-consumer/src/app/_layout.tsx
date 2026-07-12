@@ -20,9 +20,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { PortalHost } from '@rn-primitives/portal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { PaperProvider } from 'react-native-paper';
 
-import { mesitaPaperTheme } from '@/constants/paper-theme';
 import { Toaster } from '@/components/ui/Toaster';
 import { Sentry } from '@/lib/sentry';
 import { AuthProvider } from '@/providers/auth';
@@ -62,22 +60,20 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PaperProvider theme={mesitaPaperTheme}>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <StatusBar style="dark" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: '#fff7f8' },
-              }}
-            />
-            <Toaster />
-            {/* PortalHost for @rn-primitives (MESITA-583); sheets use RN Modal. */}
-            <PortalHost />
-          </AuthProvider>
-        </QueryClientProvider>
-      </PaperProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: '#fff7f8' },
+            }}
+          />
+          <Toaster />
+          {/* PortalHost for @rn-primitives; sheets use RN Modal. */}
+          <PortalHost />
+        </AuthProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }

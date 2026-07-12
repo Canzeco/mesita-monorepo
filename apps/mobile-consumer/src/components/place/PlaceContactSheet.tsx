@@ -5,8 +5,7 @@ import {
   Phone,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { Linking, Pressable, View } from 'react-native';
-import { Modal, Portal, Text } from 'react-native-paper';
+import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
@@ -91,69 +90,88 @@ export function PlaceContactSheet({
   const rows = buildContactRows(place);
 
   return (
-    <Portal>
-      <Modal
-        visible={open}
-        onDismiss={onClose}
-        contentContainerStyle={{
-          marginHorizontal: 16,
-          borderRadius: 20,
-          backgroundColor: '#ffffff',
-          paddingVertical: 8,
-          paddingHorizontal: 8,
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss contact sheet"
+        onPress={onClose}
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(38,4,9,0.4)',
+          justifyContent: 'center',
+          paddingHorizontal: 16,
         }}
       >
-        <Text
-          variant="titleMedium"
-          style={{
-            fontWeight: '700',
-            paddingHorizontal: 12,
-            paddingTop: 12,
-            paddingBottom: 8,
-          }}
-        >
-          Contact
-        </Text>
-        {rows.length === 0 ? (
-          <Text variant="bodyMedium" style={{ color: '#775254', padding: 16 }}>
-            No contact links available yet.
-          </Text>
-        ) : (
-          rows.map((row) => (
-            <Pressable
-              key={row.key}
-              onPress={() => {
-                void Linking.openURL(row.href);
-                onClose();
-              }}
-              className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
-            >
-              <View
-                className="size-10 items-center justify-center rounded-full"
-                style={{ backgroundColor: row.tint }}
-              >
-                <row.Icon color={row.iconColor} size={18} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                  {row.label}
-                </Text>
-                <Text variant="bodySmall" style={{ color: '#775254' }}>
-                  {row.sub}
-                </Text>
-              </View>
-            </Pressable>
-          ))
-        )}
         <Pressable
-          onPress={onClose}
-          className="mx-2 mb-2 mt-1 items-center rounded-xl bg-muted py-3 active:opacity-80"
+          accessibilityRole="none"
+          onPress={(e) => e.stopPropagation()}
+          className="rounded-[20px] border border-border bg-card py-2"
         >
-          <Text variant="labelLarge" style={{ fontWeight: '600' }}>
-            Cancel
+          <Text
+            className="px-4 pb-2 pt-3 font-bold text-foreground"
+            style={{ fontSize: 17 }}
+          >
+            Contact
           </Text>
+          {rows.length === 0 ? (
+            <Text
+              className="px-4 py-4 text-muted-foreground"
+              style={{ fontSize: 14 }}
+            >
+              No contact links available yet.
+            </Text>
+          ) : (
+            rows.map((row) => (
+              <Pressable
+                key={row.key}
+                onPress={() => {
+                  void Linking.openURL(row.href);
+                  onClose();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`${row.label}: ${row.sub}`}
+                className="min-h-[48px] flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
+              >
+                <View
+                  className="size-10 items-center justify-center rounded-full"
+                  style={{ backgroundColor: row.tint }}
+                >
+                  <row.Icon color={row.iconColor} size={18} />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text
+                    className="font-semibold text-foreground"
+                    style={{ fontSize: 15 }}
+                  >
+                    {row.label}
+                  </Text>
+                  <Text
+                    className="text-muted-foreground"
+                    style={{ fontSize: 13 }}
+                  >
+                    {row.sub}
+                  </Text>
+                </View>
+              </Pressable>
+            ))
+          )}
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+            className="mx-2 mb-2 mt-1 min-h-[48px] items-center justify-center rounded-xl bg-muted active:opacity-80"
+          >
+            <Text className="font-semibold text-foreground" style={{ fontSize: 14 }}>
+              Cancel
+            </Text>
+          </Pressable>
         </Pressable>
-      </Modal>
-    </Portal>
+      </Pressable>
+    </Modal>
   );
 }

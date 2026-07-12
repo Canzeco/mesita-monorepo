@@ -1,5 +1,4 @@
-import { View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, View } from 'react-native';
 
 import type { TicketBillPayload } from '@/lib/api/pay';
 import {

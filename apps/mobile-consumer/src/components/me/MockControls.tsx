@@ -1,8 +1,8 @@
 import { AtSign, Crown } from 'lucide-react-native';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Switch, Text } from 'react-native-paper';
 
+import { Switch } from '@/components/ui/Switch';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import {
   useEffectiveClass,
@@ -36,7 +36,6 @@ export function MockControls() {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Text
-          variant="labelSmall"
           style={{
             backgroundColor: 'rgba(245,158,11,0.15)',
             color: '#d97706',
@@ -46,28 +45,34 @@ export function MockControls() {
             overflow: 'hidden',
             fontWeight: '800',
             letterSpacing: 1.2,
+            fontSize: 11,
           }}
         >
           DEMO
         </Text>
         <Text
-          variant="labelSmall"
-          style={{ color: '#775254', flex: 1, fontWeight: '600' }}
+          style={{ color: '#775254', flex: 1, fontWeight: '600', fontSize: 12 }}
         >
           Emulate account states
         </Text>
         {override ? (
-          <Text
-            variant="labelSmall"
-            style={{
-              color: '#775254',
-              fontWeight: '700',
-              textDecorationLine: 'underline',
-            }}
+          <Pressable
             onPress={() => setMockClass(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Reset mock class"
+            hitSlop={8}
           >
-            Reset
-          </Text>
+            <Text
+              style={{
+                color: '#775254',
+                fontWeight: '700',
+                textDecorationLine: 'underline',
+                fontSize: 12,
+              }}
+            >
+              Reset
+            </Text>
+          </Pressable>
         ) : null}
       </View>
 
@@ -146,14 +151,21 @@ function EmulateRow({
         </LinearGradient>
       )}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text variant="titleSmall" style={{ fontWeight: '700' }}>
+        <Text style={{ fontWeight: '700', fontSize: 15, color: '#260409' }}>
           {title}
         </Text>
-        <Text variant="labelSmall" style={{ color: '#775254' }} numberOfLines={1}>
+        <Text
+          style={{ color: '#775254', fontSize: 12 }}
+          numberOfLines={1}
+        >
           {summary}
         </Text>
       </View>
-      <Switch value={on} onValueChange={onToggle} />
+      <Switch
+        value={on}
+        onValueChange={onToggle}
+        accessibilityLabel={title}
+      />
     </View>
   );
 }

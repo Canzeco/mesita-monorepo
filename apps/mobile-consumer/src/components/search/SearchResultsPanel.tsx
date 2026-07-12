@@ -1,11 +1,11 @@
 import { BadgeCheck, SearchX } from 'lucide-react-native';
-import { ScrollView, View } from 'react-native';
 import {
   ActivityIndicator,
-  Chip,
-  List,
+  Pressable,
+  ScrollView,
   Text,
-} from 'react-native-paper';
+  View,
+} from 'react-native';
 
 import type { AddState } from '@/components/memo/types';
 import type { PlacePrediction } from '@/lib/api/places';
@@ -37,11 +37,12 @@ export function SearchResultsPanel({
       contentContainerStyle={{ padding: 12, gap: 8 }}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
+      accessibilityRole="list"
     >
       {query.trim().length < 2 ? (
         <Text
-          variant="bodySmall"
-          style={{ paddingVertical: 24, textAlign: 'center', color: '#775254' }}
+          className="py-6 text-center text-muted-foreground"
+          style={{ fontSize: 13 }}
         >
           Keep typing — at least two letters to search.
         </Text>
@@ -49,6 +50,8 @@ export function SearchResultsPanel({
 
       {searching && predictions.length === 0 ? (
         <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Searching Mesita and Google"
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -58,7 +61,7 @@ export function SearchResultsPanel({
           }}
         >
           <ActivityIndicator color="#fb2b7b" size="small" />
-          <Text variant="bodySmall" style={{ color: '#775254' }}>
+          <Text className="text-muted-foreground" style={{ fontSize: 13 }}>
             Searching Mesita and Google…
           </Text>
         </View>
@@ -66,13 +69,9 @@ export function SearchResultsPanel({
 
       {searchError ? (
         <Text
-          variant="bodySmall"
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            backgroundColor: '#ffe8e6',
-            color: '#e6000c',
-          }}
+          accessibilityRole="alert"
+          className="rounded-2xl bg-destructive/10 px-3 py-3 text-destructive"
+          style={{ fontSize: 13 }}
         >
           {searchError}
         </Text>
@@ -92,12 +91,15 @@ export function SearchResultsPanel({
           >
             <SearchX color="#775254" size={20} />
           </View>
-          <Text variant="titleSmall" style={{ marginTop: 12 }}>
+          <Text
+            className="mt-3 font-semibold text-foreground"
+            style={{ fontSize: 15 }}
+          >
             No matches found
           </Text>
           <Text
-            variant="bodySmall"
-            style={{ marginTop: 4, textAlign: 'center', color: '#775254' }}
+            className="mt-1 text-center text-muted-foreground"
+            style={{ fontSize: 13 }}
           >
             Try the place’s full name, or ask the AI concierge.
           </Text>
@@ -107,10 +109,10 @@ export function SearchResultsPanel({
       {onMesita.length > 0 ? (
         <View>
           <Text
-            variant="labelSmall"
-            style={{ paddingHorizontal: 4, color: '#775254', letterSpacing: 1 }}
+            className="px-1 font-semibold uppercase text-muted-foreground"
+            style={{ fontSize: 11, letterSpacing: 1 }}
           >
-            ON MESITA
+            On Mesita
           </Text>
           {onMesita.map((p) => (
             <SuggestionLine
@@ -127,15 +129,15 @@ export function SearchResultsPanel({
       {fromGoogle.length > 0 ? (
         <View>
           <Text
-            variant="labelSmall"
-            style={{ paddingHorizontal: 4, color: '#775254', letterSpacing: 1 }}
+            className="px-1 font-semibold uppercase text-muted-foreground"
+            style={{ fontSize: 11, letterSpacing: 1 }}
           >
-            FROM GOOGLE
+            From Google
           </Text>
           {onMesita.length === 0 && settled ? (
             <Text
-              variant="bodySmall"
-              style={{ paddingHorizontal: 4, paddingTop: 4, color: '#775254' }}
+              className="px-1 pt-1 text-muted-foreground"
+              style={{ fontSize: 13 }}
             >
               Not on Mesita yet? Tap a place and we’ll build its profile for
               everyone.
@@ -170,43 +172,63 @@ function SuggestionLine({
   const verified =
     prediction.status === 'verified_partner_other' ||
     prediction.status === 'verified_partner_self';
+  const label = [
+    prediction.mainText,
+    prediction.secondaryText,
+    source === 'mesita' ? 'On Mesita' : 'From Google',
+    verified ? 'Verified partner' : null,
+    addState === 'added' ? 'Enriching' : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
-    <List.Item
-      title={prediction.mainText}
-      description={prediction.secondaryText || undefined}
+    <Pressable
       onPress={() => onPick(prediction)}
-      left={() => (
-        <View
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            marginTop: 18,
-            marginLeft: 8,
-            backgroundColor: source === 'mesita' ? '#fb2b7b' : '#0ea5e9',
-          }}
-        />
-      )}
-      right={() => (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            alignSelf: 'center',
-          }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className="min-h-[48px] flex-row items-center gap-3 rounded-xl px-1 py-2.5 active:bg-muted"
+    >
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          marginLeft: 8,
+          backgroundColor: source === 'mesita' ? '#fb2b7b' : '#0ea5e9',
+        }}
+      />
+      <View className="min-w-0 flex-1">
+        <Text
+          className="font-semibold text-foreground"
+          style={{ fontSize: 15 }}
+          numberOfLines={1}
         >
-          {verified ? <BadgeCheck color="#fb2b7b" size={16} /> : null}
-          {addState === 'added' ? (
-            <Chip compact style={{ backgroundColor: '#ffe4ef' }}>
+          {prediction.mainText}
+        </Text>
+        {prediction.secondaryText ? (
+          <Text
+            className="text-muted-foreground"
+            style={{ fontSize: 12 }}
+            numberOfLines={1}
+          >
+            {prediction.secondaryText}
+          </Text>
+        ) : null}
+      </View>
+      <View className="flex-row items-center gap-1.5">
+        {verified ? <BadgeCheck color="#fb2b7b" size={16} /> : null}
+        {addState === 'added' ? (
+          <View className="rounded-full bg-primary/15 px-2 py-1">
+            <Text
+              className="font-semibold text-primary"
+              style={{ fontSize: 11 }}
+            >
               Enriching
-            </Chip>
-          ) : null}
-        </View>
-      )}
-      style={{ paddingLeft: 0 }}
-      titleStyle={{ fontWeight: '600' }}
-    />
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
