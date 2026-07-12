@@ -22,6 +22,7 @@ import {
   Mail,
   MapPin,
   Percent,
+  Phone,
   ShieldCheck,
   Store,
   X,
@@ -44,11 +45,11 @@ import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { GroupLabel, PhoneField, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 import { unitSectionHref } from "../nav";
 import {
-  REWARD_ROWS,
-  SUBSCRIPTIONS,
-  computeVisibility,
-  subscriptionForPlan,
-} from "@/lib/business/plans";
+  STRATEGY_BY_ID,
+  STRATEGY_VISIBILITY_LADDER,
+  UNIVERSAL_CAP_MXN,
+  strategyForPlace,
+} from "@/lib/business/strategies";
 import { useUnitPlace } from "../UnitPlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
@@ -107,10 +108,13 @@ const RESERVATION_CHANNELS: {
   label: string;
   /** Primary-channel profile field the reservationist contacts. */
   profileKey: keyof AdminPlace;
+  /** Graphical mark for the segmented picker: brand SVG or a lucide icon. */
+  logo?: string;
+  Icon?: LucideIcon;
 }[] = [
-  { key: "instagram", label: "Instagram", profileKey: "instagram_url" },
-  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url" },
-  { key: "phone", label: "Phone", profileKey: "phone" },
+  { key: "instagram", label: "Instagram", profileKey: "instagram_url", logo: "/channels/instagram.svg" },
+  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url", logo: "/channels/whatsapp.svg" },
+  { key: "phone", label: "Phone", profileKey: "phone", Icon: Phone },
 ];
 
 /** Reservation channel — single-choice now: a 0-or-1-element list. Kept as an
@@ -194,6 +198,33 @@ function ChannelLabelIcon({
   return null;
 }
 
+// Larger channel mark for the reservation segmented picker. Brand SVGs keep
+// their own colour; a lucide fallback (Phone) takes the active/idle tint.
+function ReservationChannelIcon({
+  logo,
+  Icon,
+  active,
+}: {
+  logo?: string;
+  Icon?: LucideIcon;
+  active: boolean;
+}) {
+  if (logo) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={logo} alt="" aria-hidden className="h-6 w-6 shrink-0" />;
+  }
+  if (Icon) {
+    return (
+      <Icon
+        className={
+          "h-6 w-6 shrink-0 " + (active ? "text-primary" : "text-muted-foreground")
+        }
+      />
+    );
+  }
+  return null;
+}
+
 const PRICE_NAMES = ["", "Budget", "Casual", "Upscale", "Fine dining"] as const;
 
 // Price is Google-Places inferred — read-only. Filled $ + dimmed remainder.
@@ -235,12 +266,11 @@ const FALLBACK_LIMITS: PlaceFieldLimits = {
   photosMax: 10,
 };
 
-function planLabel(plan: string | null): string {
-  if (!plan) return "—";
-  if (plan === "free") return "Free";
-  if (plan === "informal_pro" || plan === "formal_pro" || plan === "pro") return "Pro";
-  if (plan === "informal_ultra" || plan === "formal_ultra" || plan === "ultra") return "Ultra";
-  return plan.replace(/_/g, " ");
+// Membership fee, mirrored from the Promos tab. MXN-first money format.
+const MEMBERSHIP_PRICE_MXN = 1000;
+function mxn(amount: number, currency: string | null): string {
+  const prefix = !currency || currency === "MXN" ? "MX$" : "$";
+  return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
 function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS): Form {
@@ -893,32 +923,44 @@ export function PlaceSection({
           the profile value for that channel — set it under Channels.
         </p>
         <div className="mt-3.5 grid gap-3.5">
-          <label className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
             <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
               Channel
             </span>
-            <select
-              value={reservationChannel}
-              disabled={anyPending}
-              onChange={(e) =>
-                setReservationChannel(e.target.value as ReservationChannel | "")
-              }
+            {/* Segmented icon picker — single-choice; a channel IS the value
+                (no free-text). The agent always contacts the PROFILE value for
+                the channel; the contact itself lives in Channels. */}
+            <div
+              role="group"
               aria-label="Reservation channel"
-              required
-              className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-10 w-full rounded-xl border px-3 text-sm outline-none transition focus:ring-4 disabled:opacity-50"
+              className="grid grid-cols-3 gap-2"
             >
-              {/* Select… is display-only — never a choosable / saveable value. */}
-              <option value="" disabled>
-                Select…
-              </option>
-              {RESERVATION_CHANNELS.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            {/* No free-text input — the agent always contacts the PROFILE value
-                for the channel; the contact itself lives in Channels. */}
+              {RESERVATION_CHANNELS.map((c) => {
+                const active = reservationChannel === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setReservationChannel(c.key)}
+                    disabled={anyPending}
+                    aria-pressed={active}
+                    className={
+                      "flex h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-xl border text-[12px] font-semibold transition disabled:opacity-50 " +
+                      (active
+                        ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
+                        : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
+                    }
+                  >
+                    <ReservationChannelIcon
+                      logo={c.logo}
+                      Icon={c.Icon}
+                      active={active}
+                    />
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
             {reservationChannel ? (
               reservationResolved.trim() ? (
                 <span className="text-muted-foreground text-xs">
@@ -934,7 +976,7 @@ export function PlaceSection({
                 </span>
               )
             ) : null}
-          </label>
+          </div>
         </div>
         <SaveBar
           pending={pendingBox === "reservations"}
@@ -1183,8 +1225,8 @@ function enrichmentBadge(
   }
 }
 
-// Metadata — UID + audit trail + enriching status. Collapsed by default so
-// edit-first Place IA leads with Basics (MESITA-547); opens on enrich failure.
+// Metadata — UID + audit trail + enriching status. Open by default
+// (MESITA-588) but still collapsible; stays a <details> so it can be tucked.
 function MetaCard({
   place,
   enrichStatus,
@@ -1198,7 +1240,7 @@ function MetaCard({
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
-      open={failed || undefined}
+      open
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
         <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
@@ -1209,7 +1251,7 @@ function MetaCard({
             Metadata
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            UID, audit trail & enriching status — collapsed by default.
+            UID, audit trail & enriching status.
           </p>
         </div>
         <ChevronDown
@@ -1271,23 +1313,32 @@ function MetaCard({
   );
 }
 
-// Promos — read-only summary; named visibility ladder matches Promos tab (MESITA-547).
+// Promos — read-only summary of the Mesita Membership posture (MESITA-588);
+// mirrors the Promos tab's four-strategy model. Editing happens there.
 function PromosCard({ place }: { place: AdminPlace }) {
-  const sub = SUBSCRIPTIONS.find((s) => s.id === subscriptionForPlan(place.plan));
-  const visibility = computeVisibility({
-    plan: place.plan,
-    welcome_free_rate: place.welcome_free_rate,
-    welcome_premium_rate: place.welcome_premium_rate,
-    free_rate: place.free_rate,
-    premium_rate: place.premium_rate,
-    monthly_promo_cap: place.monthly_promo_cap,
-  });
+  const strategyId = strategyForPlace(place);
+  const strategy = strategyId ? STRATEGY_BY_ID[strategyId] : null;
+  const paid = strategy != null && strategy.id !== "zero";
+  const member = !!place.plan && place.plan !== "free";
+  const cap = place.monthly_promo_cap ?? UNIVERSAL_CAP_MXN;
+  const visIdx = strategy
+    ? STRATEGY_VISIBILITY_LADDER.indexOf(strategy.visibility)
+    : -1;
+
+  // Premium-first, matching the membership cards on the Promos tab.
+  const rows: { label: string; rate: number | null }[] = [
+    { label: "Premium · first visit", rate: place.welcome_premium_rate },
+    { label: "Premium · returning", rate: place.premium_rate },
+    { label: "Free · first visit", rate: place.welcome_free_rate },
+    { label: "Free · returning", rate: place.free_rate },
+  ];
+
   return (
     <SectionCard
       icon={<Percent className="h-4 w-4" />}
       tint="pink"
-      title="Promos"
-      subtitle="Plan, rewards & visibility — edit on the Promos tab."
+      title="Mesita Membership"
+      subtitle="Posture, discounts & visibility — edit on the Promos tab."
       action={
         <Link
           href={unitSectionHref(place.id, "promos")}
@@ -1301,53 +1352,77 @@ function PromosCard({ place }: { place: AdminPlace }) {
       {/* One boxed field per row — same filled-input language as the
           editable cards. */}
       <div className="mt-5 grid gap-4">
-        <ReadField label="Plan" boxed>
-          <span className="flex flex-wrap items-baseline gap-1.5">
-            <span className="font-semibold">{planLabel(place.plan)}</span>
-            {sub != null && (
-              <span className="text-muted-foreground text-xs">
-                {sub.price} {sub.cadence}
-              </span>
+        <ReadField label="Membership" boxed>
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
+            {strategy ? (
+              <>
+                <span className="font-semibold">
+                  {strategy.emoji} {strategy.name}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {paid ? `${mxn(MEMBERSHIP_PRICE_MXN, place.currency)} / year` : "Free"}
+                </span>
+              </>
+            ) : (
+              <span className="font-semibold">Custom rates</span>
             )}
-            {place.fiscal_type ? (
-              <span className="text-muted-foreground text-xs capitalize">
-                · {place.fiscal_type}
-              </span>
-            ) : null}
+            <span
+              className={
+                "ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase " +
+                (member
+                  ? "bg-emerald-500/12 text-emerald-700"
+                  : "bg-muted text-muted-foreground")
+              }
+            >
+              {member ? "Member" : "Free"}
+            </span>
           </span>
         </ReadField>
         <ReadField label="Visibility on Mesita" boxed>
-          <span className="font-display text-pink-gradient text-base font-semibold tracking-tight">
-            {visibility}
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+            <span className="font-display text-pink-gradient text-base font-semibold tracking-tight">
+              {strategy ? strategy.visibility : "—"}
+            </span>
+            <span className="flex shrink-0 gap-1" aria-hidden>
+              {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
+                <span
+                  key={lvl}
+                  className={
+                    "h-1.5 w-5 rounded-full " +
+                    (i <= visIdx ? "bg-pink-gradient" : "bg-muted")
+                  }
+                />
+              ))}
+            </span>
           </span>
         </ReadField>
       </div>
       <div className="mt-5 mb-2">
-        <GroupLabel>Rewards</GroupLabel>
+        <GroupLabel>Discounts</GroupLabel>
       </div>
       <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-xl border">
-        {REWARD_ROWS.map((row) => {
-          const rate = place[row.col];
-          return (
-            <div
-              key={row.col}
-              className="flex items-center justify-between gap-3 px-3.5 py-2.5"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{row.label}</p>
-                <p className="text-muted-foreground truncate text-xs">{row.hint}</p>
-              </div>
-              {typeof rate === "number" ? (
-                <span className="text-foreground shrink-0 text-sm font-semibold tabular-nums">
-                  {rate}%
-                </span>
-              ) : (
-                <span className="text-muted-foreground shrink-0 text-xs italic">Off</span>
-              )}
-            </div>
-          );
-        })}
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between gap-3 px-3.5 py-2.5"
+          >
+            <p className="truncate text-sm font-medium">{row.label}</p>
+            {typeof row.rate === "number" ? (
+              <span className="text-foreground shrink-0 text-sm font-semibold tabular-nums">
+                {row.rate}%
+              </span>
+            ) : (
+              <span className="text-muted-foreground shrink-0 text-xs italic">Off</span>
+            )}
+          </div>
+        ))}
       </div>
+      {paid && (
+        <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
+          Every discount applies to the first {mxn(cap, place.currency)} of the
+          bill.
+        </p>
+      )}
     </SectionCard>
   );
 }
