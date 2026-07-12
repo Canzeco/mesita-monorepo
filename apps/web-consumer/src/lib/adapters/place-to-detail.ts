@@ -10,6 +10,7 @@
 // so this adapter never bakes in a current_class.
 
 import type { PlaceDetail } from "@/lib/mock/place";
+import { detectMenuKind } from "@/lib/menu-url";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { relativeLabel } from "@/lib/utils";
 import {
@@ -368,11 +369,49 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
         const menuItems = arr<Record<string, unknown>>(obj(row.products).menu);
         const legacyMenus = arr<Record<string, unknown>>(row.menus);
         const source = menuItems.length > 0 ? menuItems : legacyMenus;
-        return source.map((m) => ({
-          name: str(m.name) ?? "Product catalog",
-          pages: arr(m.items).length,
-          updated_label: "",
-        }));
+        const fromJson = source
+          .map((m) => {
+            const url =
+              str(m.url) ??
+              str(m.pdf_url) ??
+              str(m.source_url) ??
+              "";
+            if (!url) return null;
+            const kind = detectMenuKind(url);
+            const itemPages = arr(m.items).length;
+            const pages =
+              typeof m.pages === "number" && Number.isFinite(m.pages)
+                ? Math.max(0, Math.round(m.pages))
+                : kind === "image"
+                  ? Math.max(1, itemPages || 1)
+                  : itemPages > 0
+                    ? itemPages
+                    : null;
+            return {
+              name: str(m.name) ?? "Menu",
+              url,
+              kind,
+              pages,
+              updated_label: str(m.updated_label) ?? "",
+            };
+          })
+          .filter((m): m is NonNullable<typeof m> => m != null);
+
+        if (fromJson.length > 0) return fromJson;
+
+        // Legacy single-slot columns (pre-products.menu).
+        const legacyUrl = str(row.menu_pdf_url);
+        if (!legacyUrl) return [];
+        const kind = detectMenuKind(legacyUrl);
+        return [
+          {
+            name: str(row.menu_pdf_name) ?? "Menu",
+            url: legacyUrl,
+            kind,
+            pages: kind === "image" ? 1 : null,
+            updated_label: "",
+          },
+        ];
       })(),
     },
 

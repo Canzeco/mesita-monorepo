@@ -1,4 +1,5 @@
-import type { PlaceDetail, PlaceDetailTag } from '@/lib/types/place-detail';
+import type { PlaceDetail, PlaceDetailTag, PlaceMenuItem } from '@/lib/types/place-detail';
+import { detectMenuKind } from '@/lib/menu-url';
 
 type Row = Record<string, unknown>;
 
@@ -20,6 +21,11 @@ function num(v: unknown): number | null {
 function arr(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];
 }
+function obj(v: unknown): Record<string, unknown> {
+  return v && typeof v === 'object' && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : {};
+}
 
 function currencyPrefix(code: string): string {
   if (code === 'MXN') return 'MX$';
@@ -38,6 +44,52 @@ function fallbackPriceRange(level: number, currency: string): string | null {
   };
   const [min, max] = ranges[Math.round(level)]!;
   return `${currencyPrefix(currency)}${min}–${max}`;
+}
+
+function menusFromRow(row: Row): PlaceMenuItem[] {
+  const menuItems = arr(obj(row.products).menu);
+  const legacyMenus = arr(row.menus);
+  const source = menuItems.length > 0 ? menuItems : legacyMenus;
+  const fromJson = source
+    .map((raw): PlaceMenuItem | null => {
+      if (!raw || typeof raw !== 'object') return null;
+      const m = raw as Record<string, unknown>;
+      const url = str(m.url) ?? str(m.pdf_url) ?? str(m.source_url) ?? '';
+      if (!url) return null;
+      const kind = detectMenuKind(url);
+      const itemPages = arr(m.items).length;
+      const pages =
+        typeof m.pages === 'number' && Number.isFinite(m.pages)
+          ? Math.max(0, Math.round(m.pages))
+          : kind === 'image'
+            ? Math.max(1, itemPages || 1)
+            : itemPages > 0
+              ? itemPages
+              : null;
+      return {
+        name: str(m.name) ?? 'Menu',
+        url,
+        kind,
+        pages,
+        updated_label: str(m.updated_label) ?? '',
+      };
+    })
+    .filter((m): m is PlaceMenuItem => m != null);
+
+  if (fromJson.length > 0) return fromJson;
+
+  const legacyUrl = str(row.menu_pdf_url);
+  if (!legacyUrl) return [];
+  const kind = detectMenuKind(legacyUrl);
+  return [
+    {
+      name: str(row.menu_pdf_name) ?? 'Menu',
+      url: legacyUrl,
+      kind,
+      pages: kind === 'image' ? 1 : null,
+      updated_label: '',
+    },
+  ];
 }
 
 /** Map consumer-web-get-place row (+ tags) → lean mobile PlaceDetail. */
@@ -99,6 +151,7 @@ export function placeRowToDetail(
     google_count: num(row.google_count),
     instagram_followers: num(row.instagram_followers_count),
     tags: mappedTags,
+    menus: menusFromRow(row),
     welcome_free_rate: num(row.welcome_free_rate),
     welcome_premium_rate: num(row.welcome_premium_rate),
     free_rate: num(row.free_rate),

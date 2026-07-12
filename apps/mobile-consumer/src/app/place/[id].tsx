@@ -29,6 +29,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
+import { ProductsTab } from '@/components/place/ProductsTab';
 import { apiFetchPlaceDetail } from '@/lib/api/places';
 import { formatPlacePriceChip } from '@/lib/place-price';
 import { getOpeningStatusLabel } from '@/lib/place-status';
@@ -46,7 +47,7 @@ import {
   formatRating,
 } from '@/lib/utils';
 
-type Tab = 'place' | 'rewards';
+type Tab = 'place' | 'products' | 'rewards';
 
 export default function PlaceDetailScreen() {
   const router = useRouter();
@@ -185,6 +186,7 @@ export default function PlaceDetailScreen() {
             {(
               [
                 { key: 'place', label: 'Place' },
+                { key: 'products', label: 'Products' },
                 { key: 'rewards', label: 'Rewards' },
               ] as const
             ).map((t) => {
@@ -210,7 +212,13 @@ export default function PlaceDetailScreen() {
           </View>
 
           <View className="gap-3 px-4 pt-4">
-            {tab === 'place' ? <PlaceTab place={place} /> : <RewardsTab place={place} />}
+            {tab === 'place' ? (
+              <PlaceTab place={place} />
+            ) : tab === 'products' ? (
+              <ProductsTab menus={place.menus} />
+            ) : (
+              <RewardsTab place={place} />
+            )}
           </View>
         </ScrollView>
       )}

@@ -137,9 +137,32 @@ function placeToFormState(place: MyPlace): PlaceFormState {
     category: place.category ?? "",
     description: place.description ?? "",
     hours: placeHoursToForm(place.hours),
-    menu_links: place.menu_pdf_url
-      ? [{ name: place.menu_pdf_name ?? "", url: place.menu_pdf_url }]
-      : [{ name: "", url: "" }],
+    menu_links: (() => {
+      // Prefer products.menu (canonical); fall back to legacy menu_pdf_*.
+      const raw = place.products?.menu;
+      const fromProducts = Array.isArray(raw)
+        ? raw
+            .map((m) => {
+              if (!m || typeof m !== "object") return null;
+              const row = m as { name?: unknown; url?: unknown; pdf_url?: unknown };
+              const url =
+                typeof row.url === "string"
+                  ? row.url.trim()
+                  : typeof row.pdf_url === "string"
+                    ? row.pdf_url.trim()
+                    : "";
+              const name = typeof row.name === "string" ? row.name : "";
+              if (!url && !name) return null;
+              return { name, url };
+            })
+            .filter((m): m is { name: string; url: string } => m != null)
+        : [];
+      if (fromProducts.length > 0) return fromProducts;
+      if (place.menu_pdf_url) {
+        return [{ name: place.menu_pdf_name ?? "", url: place.menu_pdf_url }];
+      }
+      return [{ name: "", url: "" }];
+    })(),
     photos: (place.photos ?? []).slice(0, MAX_PHOTOS),
     tags: place.tags ?? [],
     phone: place.phone ?? "",
@@ -220,8 +243,19 @@ export function EditPlaceForm({
       return;
     }
 
-    const firstMenu = v.menu_links.find((m) => m.url.trim() !== "") ??
-      v.menu_links[0] ?? { name: "", url: "" };
+    const menuEntries = v.menu_links
+      .map((m) => ({
+        name: m.name.trim() ? m.name.trim().slice(0, 80) : null,
+        url: nullableUrl(m.url),
+      }))
+      .filter((m): m is { name: string | null; url: string } => !!m.url);
+    const firstMenu = menuEntries[0] ?? null;
+
+    // Preserve sibling products keys (e.g. reservations) while rewriting menu.
+    const existingProducts =
+      place.products && typeof place.products === "object" && !Array.isArray(place.products)
+        ? { ...place.products }
+        : {};
 
     const payload: UpdatePlaceInput = {
       id: place.id,
@@ -232,8 +266,9 @@ export function EditPlaceForm({
           ? null
           : v.description.trim().slice(0, PLACE_DESCRIPTION_MAX),
       hours: formHoursToPlace(v.hours),
-      menu_pdf_url: nullableUrl(firstMenu.url),
-      menu_pdf_name: nullable(firstMenu.name),
+      menu_pdf_url: firstMenu?.url ?? null,
+      menu_pdf_name: firstMenu?.name ?? null,
+      products: { ...existingProducts, menu: menuEntries },
       photos: v.photos.slice(0, MAX_PHOTOS),
       tags: v.tags
         .map((t) => t.trim().toLowerCase().slice(0, TAG_MAX))

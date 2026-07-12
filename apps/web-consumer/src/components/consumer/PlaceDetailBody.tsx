@@ -41,6 +41,7 @@ import { ReviewCard } from "@/components/consumer/ReviewCard";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import { PromoChip } from "@/components/consumer/PromoChip";
+import { MenuViewer } from "@/components/consumer/MenuViewer";
 import {
   FacebookLogo,
   GoogleLogo,
@@ -58,6 +59,7 @@ import {
   resolvePromoRateFromPlaceRow,
 } from "@/lib/promo-rates";
 import { formatPlacePriceChip } from "@/lib/place-price";
+import { menuSubtitle } from "@/lib/menu-url";
 import type { Place } from "@/lib/api/places";
 
 import { cn, firstInitial, formatCompactCount, formatRating } from "@/lib/utils";
@@ -916,6 +918,10 @@ function ProductsBox({ place }: { place: PlaceDetail }) {
   // empty catalog renders an explicit "no menu" state instead of a
   // blank tab.
   const menus = place.products.menu;
+  const [active, setActive] = useState<
+    PlaceDetail["products"]["menu"][number] | null
+  >(null);
+
   if (menus.length === 0) {
     return (
       <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
@@ -936,34 +942,41 @@ function ProductsBox({ place }: { place: PlaceDetail }) {
     );
   }
   return (
-    <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
-      <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
-        <Info
-          className="h-3.5 w-3.5 shrink-0 text-amber-600"
-          strokeWidth={2.25}
-        />
-        <p className="text-[11px] leading-snug font-medium text-amber-900">
-          Reference only — current product prices may differ at the place.
-        </p>
-      </div>
-      {menus.map((m) => (
-        <ProductRow key={m.name} product={m} />
-      ))}
-    </Box>
+    <>
+      <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
+        <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
+          <Info
+            className="h-3.5 w-3.5 shrink-0 text-amber-600"
+            strokeWidth={2.25}
+          />
+          <p className="text-[11px] leading-snug font-medium text-amber-900">
+            Reference only — current product prices may differ at the place.
+          </p>
+        </div>
+        {menus.map((m) => (
+          <ProductRow
+            key={`${m.name}-${m.url}`}
+            product={m}
+            onView={() => setActive(m)}
+          />
+        ))}
+      </Box>
+      <MenuViewer
+        open={active != null}
+        onClose={() => setActive(null)}
+        menu={active}
+      />
+    </>
   );
 }
 
 function ProductRow({
   product,
+  onView,
 }: {
   product: PlaceDetail["products"]["menu"][number];
+  onView: () => void;
 }) {
-  function onView() {
-    // Once product_catalog_url is wired through PlaceDetail this becomes a
-    // direct <a target="_blank" /> link. For now there's nothing to open
-    // so we surface that explicitly instead of silently doing nothing.
-    toast(`${product.name} viewer ships once the place uploads a catalog`);
-  }
   return (
     <div className="bg-background flex items-center gap-3 rounded-xl p-3">
       <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
@@ -974,7 +987,11 @@ function ProductRow({
           {product.name}
         </p>
         <p className="text-muted-foreground truncate text-xs">
-          {product.pages} pages · {product.updated_label}
+          {menuSubtitle({
+            kind: product.kind,
+            pages: product.pages,
+            updated_label: product.updated_label,
+          })}
         </p>
       </div>
       <button
