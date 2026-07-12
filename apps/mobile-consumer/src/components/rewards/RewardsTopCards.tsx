@@ -2,8 +2,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Crown, Info, Percent, Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
-import { Modal, Pressable, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
@@ -13,9 +12,9 @@ const ORIGIN_LABEL: Record<string, string> = {
   instagram: 'Instagram',
   subscription: 'Subscription',
   invitation: 'Invite',
-  default: 'Mesita',
 };
 
+// Two top cards above the passport — web RewardsTopCards port (MESITA-580).
 // decision: Unlock Premium routes to Me (status only) — no Stripe in iOS binary.
 export function RewardsTopCards() {
   const { consumerClass } = useAuth();
@@ -27,21 +26,11 @@ export function RewardsTopCards() {
 
   return (
     <>
-      <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 10 }}>
+      <View className="flex-row items-stretch gap-2.5">
         <Pressable
           onPress={() => router.push('/(tabs)/me')}
-          style={({ pressed }) => ({
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: '#ebd9db',
-            backgroundColor: '#ffffff',
-            padding: 12,
-            opacity: pressed ? 0.96 : 1,
-          })}
+          accessibilityRole="button"
+          className="flex-1 flex-row items-center gap-2.5 rounded-2xl border border-border bg-card p-3 active:opacity-95"
         >
           <LinearGradient
             colors={[...GRADIENTS.premium]}
@@ -61,38 +50,30 @@ export function RewardsTopCards() {
               <Sparkles color="#fff" size={18} />
             )}
           </LinearGradient>
-          <View style={{ flex: 1, minWidth: 0 }}>
+          <View className="min-w-0 flex-1">
             <Text
               numberOfLines={1}
-              style={{ fontSize: 13, fontWeight: '700', color: '#260409' }}
+              className="font-bold text-foreground"
+              style={{ fontSize: 13 }}
             >
               {isPremium ? 'Premium active' : 'Unlock Premium'}
             </Text>
             <Text
               numberOfLines={1}
-              style={{ fontSize: 11, color: '#775254', marginTop: 1 }}
+              className="text-muted-foreground"
+              style={{ fontSize: 11 }}
             >
               {isPremium
                 ? `via ${ORIGIN_LABEL[origin] ?? 'Mesita'}`
-                : 'Manage on the web · Me'}
+                : 'Bigger discounts · Me'}
             </Text>
           </View>
         </Pressable>
 
         <Pressable
           onPress={() => setHowOpen(true)}
-          style={({ pressed }) => ({
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: '#ebd9db',
-            backgroundColor: '#ffffff',
-            padding: 12,
-            opacity: pressed ? 0.96 : 1,
-          })}
+          accessibilityRole="button"
+          className="flex-1 flex-row items-center gap-2.5 rounded-2xl border border-border bg-card p-3 active:opacity-95"
         >
           <LinearGradient
             colors={['#ff7a45', '#ff2d78']}
@@ -108,16 +89,18 @@ export function RewardsTopCards() {
           >
             <Percent color="#fff" size={18} strokeWidth={2.5} />
           </LinearGradient>
-          <View style={{ flex: 1, minWidth: 0 }}>
+          <View className="min-w-0 flex-1">
             <Text
               numberOfLines={1}
-              style={{ fontSize: 13, fontWeight: '700', color: '#260409' }}
+              className="font-bold text-foreground"
+              style={{ fontSize: 13 }}
             >
               How it works
             </Text>
             <Text
               numberOfLines={1}
-              style={{ fontSize: 11, color: '#775254', marginTop: 1 }}
+              className="text-muted-foreground"
+              style={{ fontSize: 11 }}
             >
               Instant off the bill
             </Text>
@@ -132,56 +115,36 @@ export function RewardsTopCards() {
         onRequestClose={() => setHowOpen(false)}
       >
         <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(38,4,9,0.4)' }}
+          className="flex-1 bg-foreground/40"
           onPress={() => setHowOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
         />
         <View
-          style={{
-            backgroundColor: '#fff7f8',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: Math.max(insets.bottom, 24) + 8,
-            gap: 16,
-          }}
+          className="gap-4 rounded-t-3xl bg-background px-5 pt-4"
+          style={{ paddingBottom: Math.max(insets.bottom, 24) + 8 }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                backgroundColor: 'rgba(251,43,123,0.1)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
+          <View className="flex-row items-center gap-2.5">
+            <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
               <Info color="#fb2b7b" size={18} />
             </View>
-            <Text variant="titleLarge" style={{ fontWeight: '700' }}>
+            <Text
+              className="font-bold tracking-tight text-foreground"
+              style={{ fontSize: 18 }}
+            >
               How rewards work
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                backgroundColor: 'rgba(16,185,129,0.12)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Percent color="#059669" size={18} strokeWidth={2.25} />
+          <View className="flex-row items-start gap-3">
+            <View className="h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10">
+              <Percent color="#cf0360" size={18} strokeWidth={2.25} />
             </View>
             <Text
-              variant="bodyMedium"
-              style={{ flex: 1, color: '#775254', lineHeight: 20 }}
+              className="flex-1 text-muted-foreground"
+              style={{ fontSize: 13, lineHeight: 20 }}
             >
-              <Text style={{ fontWeight: '600', color: '#260409' }}>
+              <Text className="font-semibold text-foreground">
                 Instant discounts.{' '}
               </Text>
               Show your QR or code at the check — it comes straight off the
@@ -189,7 +152,7 @@ export function RewardsTopCards() {
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <View className="flex-row items-start gap-3">
             <LinearGradient
               colors={[...GRADIENTS.premium]}
               start={GRADIENT_DIAGONAL.start}
@@ -205,10 +168,10 @@ export function RewardsTopCards() {
               <Crown color="#fff" size={18} fill="#fff" />
             </LinearGradient>
             <Text
-              variant="bodyMedium"
-              style={{ flex: 1, color: '#775254', lineHeight: 20 }}
+              className="flex-1 text-muted-foreground"
+              style={{ fontSize: 13, lineHeight: 20 }}
             >
-              <Text style={{ fontWeight: '600', color: '#260409' }}>
+              <Text className="font-semibold text-foreground">
                 Premium boosts them.{' '}
               </Text>
               Free gets the base discount; Premium unlocks bigger ones — free
