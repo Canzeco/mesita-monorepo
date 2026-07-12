@@ -18,6 +18,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { PortalHost } from '@rn-primitives/portal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 
@@ -72,6 +73,8 @@ function RootLayout() {
               }}
             />
             <Toaster />
+            {/* PortalHost for @rn-primitives (MESITA-583); sheets use RN Modal. */}
+            <PortalHost />
           </AuthProvider>
         </QueryClientProvider>
       </PaperProvider>
