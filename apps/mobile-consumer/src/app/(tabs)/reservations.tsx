@@ -1,55 +1,34 @@
 import { CalendarCheck } from 'lucide-react-native';
-import { View } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Parked on the web too (BottomNav soon=true, MESITA-383).
+import { ShellWash } from '@/components/ui/HeroBackdrop';
+
+// Deep-link / fallback surface. Tab taps open ComingSoonModal via
+// ConsumerTabBar (web BottomNav parity) and never land here in normal use.
 export default function ReservationsScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 32,
-        }}
-      >
-        <Card
-          mode="elevated"
-          style={{ width: '100%', maxWidth: 360, borderRadius: 16 }}
-        >
-          <Card.Content style={{ alignItems: 'center', paddingVertical: 28 }}>
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 16,
-                backgroundColor: '#ffe4ef',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <CalendarCheck color="#fb2b7b" size={28} />
-            </View>
-            <Text variant="headlineSmall" style={{ textAlign: 'center' }}>
-              Reservations coming soon
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{
-                marginTop: 8,
-                textAlign: 'center',
-                color: '#775254',
-              }}
-            >
-              Your bookings will live here. For now, reach places from Contact on
-              a place.
-            </Text>
-          </Card.Content>
-        </Card>
-      </View>
-    </SafeAreaView>
+    <ShellWash>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View className="flex-1 items-center justify-center px-8">
+          <View className="h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+            <CalendarCheck color="#775254" size={24} strokeWidth={1.75} />
+          </View>
+          <Text
+            className="mt-4 text-center font-semibold text-foreground"
+            style={{ fontSize: 16 }}
+          >
+            Reservations coming soon
+          </Text>
+          <Text
+            className="mt-1.5 max-w-[280px] text-center text-muted-foreground"
+            style={{ fontSize: 14, lineHeight: 20 }}
+          >
+            Your bookings will live here. For now, reach places from Contact on
+            a place.
+          </Text>
+        </View>
+      </SafeAreaView>
+    </ShellWash>
   );
 }

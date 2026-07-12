@@ -1,7 +1,10 @@
 import '@/global.css';
 
 import {
+  Fraunces_400Regular,
+  Fraunces_500Medium,
   Fraunces_600SemiBold,
+  Fraunces_700Bold,
 } from '@expo-google-fonts/fraunces';
 import {
   Inter_400Regular,
@@ -39,7 +42,10 @@ function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Fraunces_400Regular,
+    Fraunces_500Medium,
     Fraunces_600SemiBold,
+    Fraunces_700Bold,
   });
 
   useEffect(() => {

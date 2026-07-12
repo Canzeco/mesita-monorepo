@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -11,7 +10,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GRADIENTS } from '@/constants/brand';
+import { HeroBackdrop } from '@/components/ui/HeroBackdrop';
 import { apiConsumerSigninPhone } from '@/lib/api/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -66,17 +65,17 @@ export default function SignIn() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff7f8' }}>
-      <LinearGradient
-        colors={[...GRADIENTS.hero]}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 380 }}
-      />
+      <HeroBackdrop />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
         >
           <View style={{ marginBottom: 40, alignItems: 'center' }}>
-            <Text variant="displaySmall" style={{ color: '#260409' }}>
+            <Text
+              variant="displaySmall"
+              style={{ color: '#260409', letterSpacing: -0.4 }}
+            >
               Mesita
             </Text>
             <Text

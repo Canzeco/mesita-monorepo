@@ -47,7 +47,16 @@ module.exports = {
         medium: ['Inter_500Medium'],
         semibold: ['Inter_600SemiBold'],
         bold: ['Inter_700Bold'],
+        // Web display stack: Fraunces with -0.015em tracking (applied via
+        // `tracking-display` utility below). Variable weights loaded in root.
         display: ['Fraunces_600SemiBold'],
+        'display-regular': ['Fraunces_400Regular'],
+        'display-medium': ['Fraunces_500Medium'],
+        'display-bold': ['Fraunces_700Bold'],
+      },
+      letterSpacing: {
+        // Web `h1–h3, .font-display { letter-spacing: -0.015em }`
+        display: '-0.015em',
       },
     },
   },

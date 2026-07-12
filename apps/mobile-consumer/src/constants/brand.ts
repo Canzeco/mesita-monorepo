@@ -7,8 +7,11 @@ export const GRADIENTS = {
   pink: ['#ff5aab', '#ec006c'] as const,
   // --gradient-premium (web class bg-tier-premium)
   premium: ['#8b6ce8', '#8cccff'] as const,
-  // --gradient-hero base wash (radial pink blobs approximated per-surface)
-  hero: ['#fff9fa', '#ffedf0'] as const,
+  // --gradient-hero vertical wash; use <HeroBackdrop /> for the full
+  // radial-blob approximation (two soft pink blobs + this wash).
+  hero: ['#fff9fa', '#f5e6e8'] as const,
+  // Soft shell wash (web `from-background to-muted/30`)
+  shell: ['#fff7f8', '#faeff0'] as const,
   peacock: ['#ff3a84', '#ed1c80', '#ed4096'] as const,
   gold: ['#f5cc58', '#eb881f'] as const,
   silver: ['#ced9e5', '#9ba6b1'] as const,
