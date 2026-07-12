@@ -78,7 +78,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
   const insets = useSafeAreaInsets();
   const { consumerClass } = useAuth();
   const classLabel =
-    consumerClass?.class === 'premium' ? 'Premium' : 'Free';
+    consumerClass?.key === 'premium' ? 'Premium' : 'Free';
   const [soonKey, setSoonKey] = useState<string | null>(null);
   const soon = soonKey ? SOON[soonKey] : null;
 

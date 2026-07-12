@@ -37,16 +37,30 @@ export type ConsumerProfile = {
   instagram_handle?: string | null;
   /** @deprecated legacy alias — prefer instagram_handle */
   instagram?: string | null;
+  avatar_url?: string | null;
 };
 
+// Matches consumer-web-get-profile `class` payload (EF uses `key`).
+// AuthProvider.normalizeClass fills both `key` and `class` for call-site compat.
 export type ConsumerClass = {
-  /** Mobile historically used `class`; web uses `key`. Accept both. */
-  class?: 'free' | 'premium';
   key?: 'free' | 'premium';
-  origin?: string | null;
+  /** Normalized alias of `key` — existing screens still read `.class`. */
+  class?: 'free' | 'premium';
+  origin?: 'default' | 'instagram' | 'subscription' | 'invitation' | string | null;
+  label?: string;
   followers?: number | null;
-  subscription?: Record<string, unknown> | null;
-  usage?: Record<string, unknown> | null;
+  expires_at?: string | null;
+  subscription?: {
+    status: string;
+    price_cents: number;
+    currency: string;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean;
+  } | Record<string, unknown> | null;
+  usage?: {
+    reservations_used: number;
+    reservations_limit: number | null;
+  } | Record<string, unknown> | null;
 };
 
 export type ProfileResult = {
@@ -64,6 +78,29 @@ export function apiUpdateConsumerProfile(patch: {
   birthday?: string; // YYYY-MM-DD
 }): Promise<ProfileResult> {
   return invokeEF<ProfileResult>(supabase, 'consumer-web-update-profile', patch);
+}
+
+// consumer-web-claim-instagram — social door into Premium (1,000+ followers).
+export type InstagramClaimResult = {
+  tier: 'free' | 'premium';
+  followers: number;
+  handle: string | null;
+};
+
+export function apiClaimInstagram(input: {
+  followers: number;
+  handle: string;
+}): Promise<InstagramClaimResult> {
+  return invokeEF<InstagramClaimResult>(
+    supabase,
+    'consumer-web-claim-instagram',
+    input,
+  );
+}
+
+// consumer-web-delete-account — irreversible. Caller must local sign-out after.
+export async function apiDeleteConsumerAccount(): Promise<void> {
+  await invokeEF<{ id: string }>(supabase, 'consumer-web-delete-account', {});
 }
 
 // Same predicate as the web (shell)/layout.tsx guard.
