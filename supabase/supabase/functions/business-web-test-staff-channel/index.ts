@@ -1,9 +1,9 @@
 // Supabase Edge Function — business-web-test-staff-channel
 //
-// Mocked "send test ping" button on the Team page. Once Twilio is
-// wired up this will actually fire a WhatsApp / SMS via the chosen
-// channel; until then it returns ok with a flag so the UI can render
-// a "(mock — Twilio coming soon)" caption.
+// "Send test ping" on the Team page / membership activation. Fires a WhatsApp
+// (or mocked SMS) via Twilio staff sender. A successful WhatsApp send stamps
+// projects.staff_channel_pinged_at and may flip membership live when the first
+// ticket has already been honored (MESITA-542).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
@@ -13,6 +13,7 @@ import {
   readEFEnv,
   requireMembership,
 } from "../_shared/auth.ts";
+import { recordStaffChannelPing } from "../_shared/membership-enforcement.ts";
 import { readTwilioEnv, sendWhatsAppText } from "../_shared/twilio.ts";
 
 type Body = {
@@ -55,9 +56,13 @@ Deno.serve(async (req) => {
         env: twilio.env,
         from: twilio.env.whatsappFromStaff,
         to: phone,
-        body: "Mesita test — your WhatsApp channel is connected.",
+        body:
+          "Mesita — test ping ✓\n" +
+          "Tu canal de WhatsApp del staff está conectado.\n" +
+          "Cuando llegue un comensal, manda su código (0000-0000).",
       });
       if (send.ok) {
+        const ping = await recordStaffChannelPing(admin, projectId);
         return json({
           ok: true,
           channel,
@@ -65,6 +70,9 @@ Deno.serve(async (req) => {
           sent: true,
           mock: false,
           messageSid: send.sid,
+          membership: ping.ok
+            ? { pingRecorded: true, membershipLive: ping.membershipLive }
+            : { pingRecorded: false, error: ping.error },
         });
       }
       return json(
@@ -74,12 +82,18 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Mock path (Twilio missing, or SMS): still stamp the ping so activation
+  // can proceed in non-Twilio envs / local mocks.
+  const ping = await recordStaffChannelPing(admin, projectId);
   return json({
     ok: true,
     channel,
     to: phone,
     sent: false,
     mock: true,
-    note: "Twilio not wired yet — message was not actually sent.",
+    note: "Twilio not wired yet — message was not actually sent; ping stamped for activation.",
+    membership: ping.ok
+      ? { pingRecorded: true, membershipLive: ping.membershipLive }
+      : { pingRecorded: false, error: ping.error },
   });
 });

@@ -121,6 +121,15 @@ const COLUMNS: readonly string[] = [
   "segmentation_advanced_enabled",
   "email",
   "created_at",
+  // Buzz v4 membership / strikes (MESITA-542) — projects columns exposed via
+  // projects_view. Readers that hit `places` directly simply won't see them.
+  "staff_channel_pinged_at",
+  "first_ticket_honored_at",
+  "membership_live_at",
+  "strike_count",
+  "last_strike_at",
+  "promo_paused_until",
+  "membership_forfeited_at",
 ];
 
 // Consumer reads — used by every public/consumer-facing EF. No `updated_at`

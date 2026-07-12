@@ -1,9 +1,8 @@
 // Supabase Edge Function — business-web-cancel-ticket
 //
-// Authenticated. Validator cancels a pending_pay ticket they opened by
-// mistake (wrong total, consumer left without paying, etc.). Only the
-// place's members can cancel. Paid tickets cannot be cancelled — those
-// need an explicit refund flow (out of scope for now).
+// Authenticated. Cancels a pending ticket. When cancel_reason is refused_qr
+// or ignored_qr, records a Buzz v4 membership strike and compensates the guest
+// (MESITA-542).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
@@ -13,6 +12,10 @@ import {
   readEFEnv,
   requireMembership,
 } from "../_shared/auth.ts";
+import {
+  isStrikeReason,
+  recordMembershipStrike,
+} from "../_shared/membership-enforcement.ts";
 
 type Body = { ticketId?: string; reason?: string };
 
@@ -36,7 +39,7 @@ Deno.serve(async (req) => {
 
   const ticket = await admin
     .from("tickets")
-    .select("id, project_id, status")
+    .select("id, project_id, status, consumer_id")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticket.error) {
@@ -70,5 +73,25 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `ticket_update: ${update.error.message}` }, 500);
   }
 
-  return json({ ok: true, ticket: update.data });
+  let strike: unknown = null;
+  if (isStrikeReason(reason)) {
+    const result = await recordMembershipStrike(admin, {
+      projectId: ticket.data.project_id,
+      reason,
+      consumerId: ticket.data.consumer_id,
+      ticketId,
+      notes: reason,
+    });
+    if (result.ok) {
+      strike = {
+        strikeNumber: result.strikeNumber,
+        consequence: result.consequence,
+        compensationCouponId: result.compensationCouponId,
+      };
+    } else {
+      console.error("[business-web-cancel-ticket] strike:", result.error);
+    }
+  }
+
+  return json({ ok: true, ticket: update.data, strike });
 });

@@ -76,18 +76,35 @@ Deno.serve(async (req) => {
     ];
   } else {
     // Pull every place the caller is a member of, with the role on each row.
+    // Read via projects_view so Buzz v4 membership columns (MESITA-542) and
+    // project rate/plan fields round-trip with the place profile.
     const memberRows = await admin
       .from("project_members")
-      .select(`role, place:places(${PLACE_COLUMNS})`)
+      .select(`role, project_id`)
       .eq("business_id", userId)
       .order("created_at", { ascending: false });
     if (memberRows.error) {
       return json({ ok: false, error: memberRows.error.message }, 500);
     }
-    type MemberRow = { role: string; place: Record<string, unknown> | null };
-    places = ((memberRows.data ?? []) as unknown as MemberRow[])
-      .filter((r) => r.place != null)
-      .map((r) => ({ ...r.place!, my_role: r.role }) as unknown as PlaceRow);
+    type MemberRow = { role: string; project_id: string };
+    const members = (memberRows.data ?? []) as MemberRow[];
+    const ids = members.map((m) => m.project_id);
+    const roleById = new Map(members.map((m) => [m.project_id, m.role]));
+    if (ids.length === 0) {
+      places = [];
+    } else {
+      const placeRows = await admin
+        .from("projects_view")
+        .select(PLACE_COLUMNS)
+        .in("id", ids);
+      if (placeRows.error) {
+        return json({ ok: false, error: placeRows.error.message }, 500);
+      }
+      places = ((placeRows.data ?? []) as unknown as PlaceRow[]).map((p) => ({
+        ...p,
+        my_role: roleById.get(p.id) ?? "viewer",
+      }));
+    }
   }
 
   // Pick the active unit. Honour the requested id when it matches a
