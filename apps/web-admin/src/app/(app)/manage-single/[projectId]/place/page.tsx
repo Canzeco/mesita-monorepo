@@ -2,6 +2,7 @@
 
 import { PlaceSection } from "../../sections/PlaceSection";
 import { ProductsSection } from "../../sections/ProductsSection";
+import { ProfileCompleteness } from "../../sections/ProfileCompleteness";
 import { ReviewsSection } from "../../sections/ReviewsSection";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
@@ -10,6 +11,8 @@ export default function UnitPlacePage() {
 
   return (
     <div className="mx-auto max-w-7xl">
+      {/* Full-width banner above the masonry — client-computed, no backend. */}
+      <ProfileCompleteness place={place} />
       <PlaceSection place={place} onSaved={setPlace}>
         <ProductsSection key={place.id} place={place} onSaved={setPlace} />
         <ReviewsSection place={place} />
