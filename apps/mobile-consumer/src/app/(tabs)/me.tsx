@@ -1,7 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
 import {
   AtSign,
+  Bell,
   Bot,
   MessageCircle,
   Settings as SettingsIcon,
@@ -58,6 +60,7 @@ const CITY_OPTIONS = [
 type Sheet = 'personal' | 'settings' | 'contact' | null;
 
 export default function MeScreen() {
+  const router = useRouter();
   const { profile, consumerClass, session, refreshProfile, signOut } =
     useAuth();
   const isPremium = consumerClass?.class === 'premium';
@@ -178,6 +181,19 @@ export default function MeScreen() {
         </View>
 
         <List.Section style={{ marginVertical: 0 }}>
+          <List.Item
+            title="Inbox"
+            description="Notifications and activity"
+            left={(props) => (
+              <List.Icon
+                {...props}
+                icon={() => <Bell color="#fb2b7b" size={22} />}
+              />
+            )}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/inbox/mine')}
+            style={rowStyle}
+          />
           <List.Item
             title="Personal details"
             description="Name, phone, birthday"
