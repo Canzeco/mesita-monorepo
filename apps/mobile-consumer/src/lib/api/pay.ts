@@ -1,18 +1,21 @@
-// Slim pay helpers needed by notifications (inbox). Full ticket/pay surface
-// lives under Rewards (MESITA-566). Mirror of web pay.ts subset — EF only.
+// Pay / ticket helpers — ported from apps/web-consumer/src/lib/api/pay.ts
+// Shared by Rewards (MESITA-566) and inbox notifications (MESITA-567).
+// Clients call Edge Functions only (never the DB).
+
+import { invokeEF } from '@/lib/ef';
+import { supabase } from '@/lib/supabase';
 
 export type PayNotificationRow = {
   id: string;
-  consumer_id: string;
+  consumer_id?: string;
   ticket_id: string;
   kind: string;
   status: string;
   payload: Record<string, unknown> | null;
   created_at: string;
-  resolved_at: string | null;
+  resolved_at?: string | null;
 };
 
-/** Stored on consumer_pay_notifications.payload for Pay → Tickets. */
 export type TicketBillPayload = {
   project_id?: string;
   place_slug?: string | null;
@@ -33,6 +36,216 @@ export type TicketBillPayload = {
   currency?: string;
 };
 
+const MESITA_IG_HANDLE = '@mesita';
+
+export function formatCurrency(
+  cents: number | null | undefined,
+  currency = 'MXN',
+): string {
+  if (cents == null) return '—';
+  const value = cents / 100;
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(value);
+  } catch {
+    return `${currency === 'MXN' ? 'MX$' : '$'}${value.toFixed(0)}`;
+  }
+}
+
+export function formatInstagramHandle(
+  raw: string | null | undefined,
+): string | null {
+  const h = raw?.replace(/^@/, '').trim();
+  return h ? `@${h}` : null;
+}
+
+export function instagramHandleFromUrl(
+  url: string | null | undefined,
+): string | null {
+  if (!url) return null;
+  const m = /instagram\.com\/([^/?#]+)/i.exec(url);
+  if (!m) return null;
+  const handle = m[1].replace(/^@/, '').trim();
+  if (!handle) return null;
+  const reserved = new Set(['p', 'reel', 'reels', 'explore', 'stories', 'tv']);
+  if (reserved.has(handle.toLowerCase())) return null;
+  return handle;
+}
+
+export function resolvePlaceInstagramHandle(
+  payload: TicketBillPayload,
+  fallbackUrl?: string | null,
+): string | null {
+  const fromPayload = payload.place_instagram_handle?.replace(/^@/, '').trim();
+  if (fromPayload) return fromPayload;
+  return instagramHandleFromUrl(fallbackUrl);
+}
+
+export function storyTagInstruction(
+  placeInstagramHandle: string | null | undefined,
+): string {
+  const place = formatInstagramHandle(placeInstagramHandle);
+  if (place) {
+    return `Tag ${MESITA_IG_HANDLE} and ${place} on your story.`;
+  }
+  return `Tag ${MESITA_IG_HANDLE} and the restaurant on your story.`;
+}
+
+function formatBillScopeSuffix(
+  capMxn: number | null | undefined,
+  currency = 'MXN',
+): string {
+  if (capMxn != null && capMxn > 0) {
+    const prefix = currency === 'MXN' ? 'MX$' : '$';
+    return `on the first ${prefix}${capMxn.toLocaleString('en-US')}`;
+  }
+  return 'on the full bill';
+}
+
+export function formatTicketRewardLabel(
+  p: TicketBillPayload,
+  opts?: { capMxn?: number | null },
+): string {
+  const capMxn =
+    opts?.capMxn ?? p.reward_cap_mxn ?? p.monthly_promo_cap ?? null;
+  const billPart = formatBillScopeSuffix(capMxn, p.currency);
+
+  if (p.discount_percent != null && p.discount_percent > 0) {
+    return `${p.discount_percent}% Discount ${billPart}`;
+  }
+
+  const rewardCents =
+    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+  if (rewardCents > 0) {
+    return `${formatPayMx(rewardCents, p.currency)} ${billPart}`;
+  }
+
+  return `Pending ${billPart}`;
+}
+
+export function formatTicketVisitDate(
+  iso: string | null | undefined,
+): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+export type TicketBillPromoExplanation = {
+  ratePercent: number | null;
+  promoCents: number;
+  computedPromoCents: number;
+  redeemCents: number;
+  subtotalCents: number;
+  tipCents: number;
+  totalCents: number;
+  eligibleSubtotalCents: number;
+  amountDueCents: number | null;
+  capMxn: number | null;
+};
+
+export function explainTicketBillPromo(
+  p: TicketBillPayload,
+  _ticketKind?: string | null,
+  opts?: { capMxn?: number | null },
+): TicketBillPromoExplanation | null {
+  const subtotal = p.check_subtotal_cents ?? p.total_cents ?? 0;
+  if (subtotal <= 0) return null;
+
+  const capMxn =
+    opts?.capMxn ?? p.reward_cap_mxn ?? p.monthly_promo_cap ?? null;
+  const capCents = capMxn != null && capMxn > 0 ? capMxn * 100 : null;
+  const eligibleSubtotalCents =
+    capCents != null ? Math.min(subtotal, capCents) : subtotal;
+
+  const ratePercent = p.discount_percent ?? null;
+  const promoCents = p.discount_cents ?? 0;
+  const computedPromoCents =
+    ratePercent != null && ratePercent > 0
+      ? Math.min(
+          Math.floor((eligibleSubtotalCents * ratePercent) / 100),
+          subtotal,
+        )
+      : promoCents;
+  const displayPromoCents =
+    ratePercent != null && ratePercent > 0 ? computedPromoCents : promoCents;
+
+  const redeemCents = p.redeem_cents ?? 0;
+  const tip = p.tip_cents ?? 0;
+  const total = p.total_cents ?? subtotal + tip;
+  const amountDueCents =
+    p.amount_due_cents ??
+    Math.max(0, subtotal - displayPromoCents - redeemCents);
+
+  return {
+    ratePercent,
+    promoCents: displayPromoCents,
+    computedPromoCents: displayPromoCents,
+    redeemCents,
+    subtotalCents: subtotal,
+    tipCents: tip,
+    totalCents: total,
+    eligibleSubtotalCents,
+    amountDueCents,
+    capMxn,
+  };
+}
+
+export type TicketTransactionSummary = {
+  promoPercent: number | null;
+  paymentCents: number | null;
+  rewardCents: number;
+  currency: string;
+};
+
+export function buildTicketTransactionSummary(
+  p: TicketBillPayload,
+  _ticketKind?: string | null,
+): TicketTransactionSummary | null {
+  const total = p.total_cents ?? 0;
+  if (total <= 0) return null;
+
+  const promoPercent = p.discount_percent ?? null;
+  const rewardCents =
+    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+  const subtotal = p.check_subtotal_cents ?? total;
+  const paymentCents =
+    p.amount_due_cents ??
+    Math.max(0, subtotal - (p.discount_cents ?? 0) - (p.redeem_cents ?? 0));
+  const derivedPromoPercent =
+    promoPercent ??
+    (p.discount_cents && subtotal > 0
+      ? Math.round((p.discount_cents / subtotal) * 100)
+      : null);
+
+  return {
+    promoPercent: derivedPromoPercent,
+    paymentCents,
+    rewardCents,
+    currency: p.currency ?? 'MXN',
+  };
+}
+
+export function formatTicketTransactionSummaryLine(
+  summary: TicketTransactionSummary,
+): string {
+  const parts: string[] = [];
+  if (summary.promoPercent != null && summary.promoPercent > 0) {
+    parts.push(`${summary.promoPercent}% off subtotal`);
+  }
+  if (summary.paymentCents != null) {
+    parts.push(`${formatPayMx(summary.paymentCents, summary.currency)} paid`);
+  }
+  return parts.length > 0 ? parts.join(' · ') : 'Complete';
+}
+
 export function formatPayMx(
   cents: number | undefined | null,
   currency = 'MXN',
@@ -46,4 +259,32 @@ export function payloadFromNotification(
 ): TicketBillPayload {
   if (!payload || typeof payload !== 'object') return {};
   return payload as TicketBillPayload;
+}
+
+export const MOCK_STORY_DETECT_ENABLED = __DEV__;
+
+export function mockStoryDetect(ticketId: string) {
+  return invokeEF<Record<string, unknown>>(
+    supabase,
+    'consumer-web-mock-story-detect',
+    { ticketId },
+    'Could not simulate story detection.',
+  );
+}
+
+export function submitTicketReview(input: {
+  ticketId: string;
+  food: number;
+  service: number;
+  ambiance: number;
+  value: number;
+  overall: number;
+  comments?: string;
+}) {
+  return invokeEF<Record<string, unknown>>(
+    supabase,
+    'consumer-web-submit-ticket-review',
+    { ...input },
+    'Could not submit review',
+  );
 }

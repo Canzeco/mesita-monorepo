@@ -30,7 +30,7 @@ Native consumer app (Expo SDK 57 · React Native · Expo Router · NativeWind) �
 - Sentry: `@sentry/react-native` — init only when `EXPO_PUBLIC_SENTRY_DSN` is set (`src/lib/sentry.ts`).
 
 ## Structure
-- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,reservations,me}` (mirrors web BottomNav; Rewards + Reservations are parked "coming soon", same as web MESITA-383).
+- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,reservations,me}` (mirrors web BottomNav). Rewards is live (QR passport + tickets + ticket detail, MESITA-566; no Stripe subscribe UI). Reservations stays parked "coming soon" (web MESITA-383).
 - `src/lib/` — `supabase.ts` (client) · `storage.ts` · `ef.ts` · `api/` (EF helpers, mirror `apps/web-consumer/src/lib/api/*`).
 - `src/providers/auth.tsx` — session + profile + `onboarded` predicate (`full_name && birthday && sex`, same as the web shell layout).
 - Home hub modes: **Swipe** · **Favorites** live; **Memo** · **Social** parked with Soon pills (web HomeModeNav parity, MESITA-383/565). Ask AI + Social code remains in tree for one-flag unpark.

@@ -29,15 +29,22 @@ export type ConsumerProfile = {
   code: string;
   full_name: string | null;
   first_name?: string | null;
+  last_name?: string | null;
   phone: string | null;
   birthday: string | null;
   sex: string | null;
+  /** Claimed Instagram username — normalized, no leading @. */
+  instagram_handle?: string | null;
+  /** @deprecated legacy alias — prefer instagram_handle */
   instagram?: string | null;
 };
 
 export type ConsumerClass = {
-  class: 'free' | 'premium';
+  /** Mobile historically used `class`; web uses `key`. Accept both. */
+  class?: 'free' | 'premium';
+  key?: 'free' | 'premium';
   origin?: string | null;
+  followers?: number | null;
   subscription?: Record<string, unknown> | null;
   usage?: Record<string, unknown> | null;
 };
