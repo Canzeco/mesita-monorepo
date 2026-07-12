@@ -356,6 +356,9 @@ verify_jwt = true
 [functions.business-web-test-staff-channel]
 verify_jwt = true
 
+[functions.business-web-record-membership-strike]
+verify_jwt = true
+
 # --- Admin (Supabase Auth + super_admins allowlist) ---
 #
 # Operators sign in as themselves (Google OAuth via the admin web).

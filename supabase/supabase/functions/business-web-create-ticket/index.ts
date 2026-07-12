@@ -31,6 +31,10 @@ import {
   toDbTicketKind,
 } from "../_shared/ticket-kinds.ts";
 import { isConsumerFirstVisit, selectprojectRate } from "../_shared/membership.ts";
+import {
+  assessPromoLane,
+  loadMembershipRow,
+} from "../_shared/membership-enforcement.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
 import { toCents } from "../_shared/money.ts";
@@ -107,6 +111,22 @@ Deno.serve(async (req) => {
   const place = placeRow.data;
   if (place.status === "archived") {
     return json({ ok: false, error: "Place is archived" }, 409);
+  }
+
+  // Buzz v4 promo-lane gate (MESITA-542).
+  const membershipRow = await loadMembershipRow(admin, projectId);
+  if (membershipRow) {
+    const lane = assessPromoLane(membershipRow);
+    if (!lane.open) {
+      return json(
+        {
+          ok: false,
+          error: lane.staffMessage,
+          code: lane.code,
+        },
+        409,
+      );
+    }
   }
 
   // ── Consumer lookup ─────────────────────────────────────────────────

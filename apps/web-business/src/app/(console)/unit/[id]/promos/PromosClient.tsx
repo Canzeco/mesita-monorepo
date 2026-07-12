@@ -226,7 +226,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
       </Section>
 
       {/* ── Box 2 · The subscription (fee, activation, strikes) ──────── */}
-      <SubscriptionBox currency={place.currency} />
+      <SubscriptionBox currency={place.currency} place={place} />
 
       {/* ── Box 3 · Premium guest example ─────────────────────────────── */}
       <PremiumExampleBox place={place} storedStrategy={storedStrategy} />
@@ -758,12 +758,34 @@ const STRIKES: { n: string; consequence: string }[] = [
   },
 ];
 
-function SubscriptionBox({ currency }: { currency: string }) {
+function SubscriptionBox({
+  currency,
+  place,
+}: {
+  currency: string;
+  place: MyPlace;
+}) {
+  const membershipStatus = describeMembershipStatus(place);
   return (
     <Section
       title="The membership"
       description="What the fee is, how activation works, and what a strike costs."
     >
+      {membershipStatus && (
+        <p
+          className={cn(
+            "rounded-xl p-3 text-[12px] leading-snug",
+            membershipStatus.tone === "live" &&
+              "bg-emerald-50 text-emerald-800",
+            membershipStatus.tone === "warn" &&
+              "bg-amber-50 text-amber-900",
+            membershipStatus.tone === "blocked" &&
+              "bg-destructive/10 text-destructive",
+          )}
+        >
+          {membershipStatus.label}
+        </p>
+      )}
       <div className="border-border bg-muted/25 flex items-start gap-3 rounded-xl border p-3">
         <ShieldCheck className="text-primary mt-0.5 h-5 w-5 shrink-0" />
         <div className="flex flex-col gap-0.5">
@@ -824,6 +846,60 @@ function SubscriptionBox({ currency }: { currency: string }) {
       </p>
     </Section>
   );
+}
+
+function describeMembershipStatus(
+  place: MyPlace,
+): { label: string; tone: "live" | "warn" | "blocked" } | null {
+  if (place.plan === "free") {
+    if (place.membership_forfeited_at) {
+      return {
+        label:
+          "Membership forfeited after 3 strikes — place stays listed, promos are off.",
+        tone: "blocked",
+      };
+    }
+    return null;
+  }
+  if (place.membership_forfeited_at) {
+    return {
+      label: "Membership forfeited after 3 strikes — promos are off.",
+      tone: "blocked",
+    };
+  }
+  if (
+    place.promo_paused_until &&
+    new Date(place.promo_paused_until).getTime() > Date.now()
+  ) {
+    return {
+      label: `Promo lane paused until ${place.promo_paused_until.slice(0, 10)} (strike 2).`,
+      tone: "blocked",
+    };
+  }
+  if (place.membership_live_at) {
+    const strikes = place.strike_count ?? 0;
+    if (!place.staff_channel_pinged_at) {
+      return {
+        label: `Live — re-run the staff WhatsApp test ping (strike ${strikes}).`,
+        tone: "warn",
+      };
+    }
+    return {
+      label:
+        strikes > 0
+          ? `Membership live · ${strikes} active strike${strikes === 1 ? "" : "s"}.`
+          : "Membership live — promo lane open.",
+      tone: strikes > 0 ? "warn" : "live",
+    };
+  }
+  const ping = place.staff_channel_pinged_at ? "ping ✓" : "ping pending";
+  const honor = place.first_ticket_honored_at
+    ? "first ticket ✓"
+    : "first ticket pending";
+  return {
+    label: `Activating — ${ping} · ${honor}. Promo lane opens when both pass.`,
+    tone: "warn",
+  };
 }
 
 // ─── Box 3 · Premium guest example ──────────────────────────────────────────

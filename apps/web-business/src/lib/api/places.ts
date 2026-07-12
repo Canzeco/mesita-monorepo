@@ -80,6 +80,14 @@ type Place = {
   // Place-level monthly promo spend cap (DB migration 0038), in `currency`.
   // One of 200 / 500 / 1000 / 2000 or null (no cap).
   monthly_promo_cap: number | null;
+  // Buzz v4 membership / strikes (MESITA-542).
+  staff_channel_pinged_at?: string | null;
+  first_ticket_honored_at?: string | null;
+  membership_live_at?: string | null;
+  strike_count?: number | null;
+  last_strike_at?: string | null;
+  promo_paused_until?: string | null;
+  membership_forfeited_at?: string | null;
   photos: string[];
   menu_pdf_url: string | null;
   // Display name paired with menu_pdf_url (e.g. "Dinner menu"). Null

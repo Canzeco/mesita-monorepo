@@ -3,12 +3,23 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isConsumerFirstVisit, type PlaceRates } from "./membership.ts";
+import {
+  assessPromoLane,
+  type MembershipRow,
+} from "./membership-enforcement.ts";
 import type { PlaceRateRow } from "./ticket-informal.ts";
 import { placeHasVerifiedOwner } from "./place-ownership.ts";
 
 export type PlaceOpsRow = PlaceRateRow & {
   plan: string | null;
   instagram_url?: string | null;
+  staff_channel_pinged_at?: string | null;
+  first_ticket_honored_at?: string | null;
+  membership_live_at?: string | null;
+  strike_count?: number | null;
+  last_strike_at?: string | null;
+  promo_paused_until?: string | null;
+  membership_forfeited_at?: string | null;
 };
 
 // Paid place plans (public.membership enum). fiscal_type is checked
@@ -22,7 +33,10 @@ export type DiscountOpsBlock = {
     | "formal_place"
     | "free_plan"
     | "wrong_plan"
-    | "no_rates_configured";
+    | "no_rates_configured"
+    | "membership_forfeited"
+    | "membership_not_activated"
+    | "promo_paused";
   staffMessage: string;
 };
 
@@ -123,6 +137,29 @@ export function assessDiscountTicketOps(
     };
   }
 
+  // Buzz v4 membership gate (MESITA-542): activation + strikes.
+  const membership: MembershipRow = {
+    id: place.id,
+    plan: place.plan,
+    staff_channel_pinged_at: place.staff_channel_pinged_at ?? null,
+    first_ticket_honored_at: place.first_ticket_honored_at ?? null,
+    membership_live_at: place.membership_live_at ?? null,
+    strike_count: place.strike_count ?? 0,
+    last_strike_at: place.last_strike_at ?? null,
+    promo_paused_until: place.promo_paused_until ?? null,
+    membership_forfeited_at: place.membership_forfeited_at ?? null,
+  };
+  const lane = assessPromoLane(membership);
+  if (!lane.open) {
+    const code =
+      lane.code === "forfeited"
+        ? "membership_forfeited"
+        : lane.code === "paused"
+        ? "promo_paused"
+        : "membership_not_activated";
+    return { ok: false, code, staffMessage: lane.staffMessage };
+  }
+
   return { ok: true };
 }
 
@@ -173,7 +210,7 @@ export async function loadPlaceOpsRow(
   const res = await admin
     .from("projects_view")
     .select(
-      "id, name, slug, photos, instagram_url, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, monthly_promo_cap, listing_type, status, fiscal_type, plan",
+      "id, name, slug, photos, instagram_url, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, monthly_promo_cap, listing_type, status, fiscal_type, plan, staff_channel_pinged_at, first_ticket_honored_at, membership_live_at, strike_count, last_strike_at, promo_paused_until, membership_forfeited_at",
     )
     .eq("id", projectId)
     .maybeSingle();

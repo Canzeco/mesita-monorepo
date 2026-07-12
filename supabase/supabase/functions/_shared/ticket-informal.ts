@@ -5,6 +5,7 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { instagramHandleFromUrl } from "./apify.ts";
 import { isConsumerFirstVisit, selectprojectRate } from "./membership.ts";
+import { recordFirstTicketHonored } from "./membership-enforcement.ts";
 
 export type PlaceRateRow = {
   id: string;
@@ -138,7 +139,7 @@ export async function finalizeInformalTicket(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ticket = await admin
     .from("tickets")
-    .select("id, status")
+    .select("id, status, project_id, discount_cents, discount_percent")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticket.error || !ticket.data) {
@@ -156,6 +157,16 @@ export async function finalizeInformalTicket(
     })
     .eq("id", ticketId);
   if (update.error) return { ok: false, error: update.error.message };
+
+  // Honoring a discount ticket completes the Buzz v4 activation gate
+  // (MESITA-542). Zero-discount tickets don't count.
+  const discount =
+    (ticket.data.discount_cents as number | null) ??
+    (ticket.data.discount_percent as number | null) ??
+    0;
+  if (discount > 0 && ticket.data.project_id) {
+    await recordFirstTicketHonored(admin, ticket.data.project_id as string);
+  }
 
   return { ok: true };
 }
