@@ -9,14 +9,15 @@ export type SegmentItem = {
   key: string;
   title: string;
   Icon?: ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
-  // Parked tab: visible + Soon pill, non-pressable (web HomeModeNav parity).
+  // Parked tab: visible + tappable; parent opens a coming-soon modal.
   soon?: boolean;
 };
 
 // Pink-pill segment nav — RN port of web-consumer's HomeModeNav /
 // `.segment-tab-active`: rounded-full pills, active = brand pink gradient +
 // shadow-glow with white label/icon, idle = muted. `soon` tabs stay visible
-// but blocked (MESITA-383 / MESITA-565). Replaces react-native-paper
+// and open a parent-owned coming-soon modal (MESITA-383 / MESITA-565 / 601).
+// Replaces react-native-paper
 // `SegmentedButtons`, whose MD3 look breaks web parity. (MESITA-579)
 export function SegmentNav({
   items,
@@ -36,12 +37,19 @@ export function SegmentNav({
       {items.map(({ key, title, Icon, soon }) => {
         if (soon) {
           return (
-            <View
+            <Pressable
               key={key}
+              onPress={() => onChange(key)}
               accessibilityRole="tab"
-              accessibilityState={{ disabled: true }}
               accessibilityLabel={`${title}, coming soon`}
-              className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1 px-1 py-2.5 opacity-40"
+              className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 px-2 py-2.5"
+              style={({ pressed }) => [
+                {
+                  transform: [
+                    { scale: pressed && !reduceMotion ? 0.97 : 1 },
+                  ],
+                },
+              ]}
             >
               {Icon ? (
                 <Icon color="#775254" size={15} strokeWidth={2.2} />
@@ -53,15 +61,7 @@ export function SegmentNav({
               >
                 {title}
               </Text>
-              <View className="rounded-full border border-border/70 px-1 py-0.5">
-                <Text
-                  className="font-semibold uppercase text-muted-foreground/70"
-                  style={{ fontSize: 8, letterSpacing: 0.8 }}
-                >
-                  Soon
-                </Text>
-              </View>
-            </View>
+            </Pressable>
           );
         }
 

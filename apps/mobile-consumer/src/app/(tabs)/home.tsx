@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FavoritesTab } from '@/components/home/FavoritesTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
+import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
 
-// Mirrors web HomeModeNav: Swipe + Favorites live; Memo + Social parked
-// (soon: true) — visible but blocked until web un-parks (MESITA-383 / MESITA-565).
+// Mirrors web HomeModeNav: Swipe + Favorites live; Memo + Social parked.
+// Parked modes stay tappable and open a coming-soon modal (MESITA-601).
 // AskAiTab / SocialTab stay in tree for a one-flag unpark.
 type Mode = 'swipe' | 'favorites';
 
@@ -24,8 +25,28 @@ const MODES: (SegmentItem & {
   { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
 
+type SoonMode = 'ai' | 'social';
+
+const SOON_META = {
+  ai: {
+    title: 'Memo',
+    body: "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
+    Icon: Sparkles,
+  },
+  social: {
+    title: 'Social',
+    body: 'See where your friends are going and share the places you love. Landing here soon.',
+    Icon: Users,
+  },
+} satisfies Record<
+  SoonMode,
+  { title: string; body: string; Icon: typeof Sparkles }
+>;
+
 export default function HomeScreen() {
   const [mode, setMode] = useState<Mode>('swipe');
+  const [soonMode, setSoonMode] = useState<SoonMode | null>(null);
+  const soon = soonMode ? SOON_META[soonMode] : null;
 
   return (
     <ShellWash>
@@ -38,7 +59,11 @@ export default function HomeScreen() {
             items={MODES}
             value={mode}
             onChange={(v) => {
-              if (v === 'swipe' || v === 'favorites') setMode(v);
+              if (v === 'swipe' || v === 'favorites') {
+                setMode(v);
+                return;
+              }
+              if (v === 'ai' || v === 'social') setSoonMode(v);
             }}
           />
         </View>
@@ -46,6 +71,14 @@ export default function HomeScreen() {
         <View style={{ flex: 1, minHeight: 0 }}>
           {mode === 'swipe' ? <SwipeDeck /> : <FavoritesTab />}
         </View>
+
+        <ComingSoonModal
+          open={soon != null}
+          onClose={() => setSoonMode(null)}
+          title={soon?.title ?? 'Coming soon'}
+          body={soon?.body}
+          icon={soon?.Icon}
+        />
       </SafeAreaView>
     </ShellWash>
   );
