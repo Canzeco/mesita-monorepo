@@ -62,9 +62,9 @@ type UpdateBody = {
   phone?: string | null;
   pitch?: string | null;
   story?: string | null;
-  // Four per-tier promo rates (migration 0032). Welcome variants fire on a
-  // guest's first visit at the place; the unprefixed variants apply on every
-  // visit afterwards. DB constraint enforces the legal set {10, 20, 50, 70}.
+  // Four per-tier promo rates (migration 0032; tightened MESITA-543). Welcome
+  // variants fire on a guest's first visit at the place; the unprefixed
+  // variants apply on every visit afterwards. Legal set: {10, 20, 30, 40, 50}.
   welcome_free_rate?: number | null;
   welcome_premium_rate?: number | null;
   free_rate?: number | null;
@@ -321,19 +321,16 @@ Deno.serve(async (req) => {
   if ("pitch" in body) update.pitch = optString(body.pitch, 200);
   if ("story" in body) update.story = optString(body.story, 1500);
   // Four per-tier promo rates. Each is nullable (null clears the offer). The
-  // Buzz v4 Promos page sends only the tens grid {10, 20, 30, 40, 50} via its
-  // four preset strategies (30/40 added, 50 the ceiling). We keep the retired
-  // 70 legal too — the union {10,20,30,40,50,70} — so the previous Promos UI
-  // still on production (until the Buzz v4 frontend merges) doesn't regress on
-  // a 70 write. The coupon snapshot CHECK admits the same union. Tighten to
-  // {10..50} once the old UI is gone.
+  // Buzz v4 Promos page sends the tens grid {10, 20, 30, 40, 50} via its four
+  // preset strategies (50 is the ceiling; legacy 70 retired — MESITA-543).
+  // Coupons + projects CHECKs mirror this set.
   const PROMO_RATE_FIELDS = [
     "welcome_free_rate",
     "welcome_premium_rate",
     "free_rate",
     "premium_rate",
   ] as const;
-  const LEGAL_PROMO_RATES = new Set([10, 20, 30, 40, 50, 70]);
+  const LEGAL_PROMO_RATES = new Set([10, 20, 30, 40, 50]);
   for (const field of PROMO_RATE_FIELDS) {
     if (!(field in body)) continue;
     const raw = body[field];
@@ -346,7 +343,7 @@ Deno.serve(async (req) => {
       return json(
         {
           ok: false,
-          error: `${field} must be null or one of 10, 20, 30, 40, 50, 70`,
+          error: `${field} must be null or one of 10, 20, 30, 40, 50`,
         },
         400,
       );
