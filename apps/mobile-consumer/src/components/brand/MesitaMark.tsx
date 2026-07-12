@@ -1,8 +1,21 @@
+import { Platform } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 // Mesita poppy mark — RN port of web MesitaMark.tsx. `color` tints via
 // fill (web uses currentColor). strokeWidth accepted+ignored for lucide
 // call-site uniformity in the tab bar.
+
+// Decorative mark — hide it from the a11y tree. Native uses RN's a11y props;
+// on web react-native-svg forwards those to the DOM and React warns, so use
+// aria-hidden there instead. (MESITA-571)
+const hiddenFromA11y = Platform.select({
+  web: { 'aria-hidden': true },
+  default: {
+    accessibilityElementsHidden: true,
+    importantForAccessibility: 'no-hide-descendants',
+  },
+});
+
 export function MesitaMark({
   color = '#fb2b7b',
   size = 24,
@@ -17,8 +30,7 @@ export function MesitaMark({
       width={size}
       height={size}
       viewBox="0 0 100 100"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
+      {...(hiddenFromA11y as object)}
     >
       <Path
         fill={color}
