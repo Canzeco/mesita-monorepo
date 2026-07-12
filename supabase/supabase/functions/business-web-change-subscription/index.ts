@@ -2,7 +2,7 @@
 //
 // Authenticated, owner-only. The paid door into a place's plan:
 //   Free  — no membership
-//   Pro   — Buzz v4 Verified membership (MX$1,000/year) — the only sold SKU
+//   Pro   — Promos v4 Verified membership (MX$1,000/year) — the only sold SKU
 //
 // Legacy `ultra` is still accepted for already-subscribed places (no-op /
 // switch-to-Verified) but is no longer a purchasable product (MESITA-541).

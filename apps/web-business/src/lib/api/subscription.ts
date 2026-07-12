@@ -1,4 +1,4 @@
-// Frontend API surface for place-plan billing (Buzz v4 Verified membership).
+// Frontend API surface for place-plan billing (Promos v4 Verified membership).
 //
 // Architectural constraints honoured:
 // - Clients NEVER query the database directly. Every read or write goes

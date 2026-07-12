@@ -20,7 +20,7 @@ type PlaceStatus =
 
 export type FiscalType = "formal" | "informal";
 // Place plan keys (public.membership enum): Free + Verified (`pro`,
-// MX$1,000/year Buzz v4 membership) + legacy `ultra`. Billing goes through
+// MX$1,000/year Promos v4 membership) + legacy `ultra`. Billing goes through
 // business-web-change-subscription — see lib/business/plans.ts and
 // lib/api/subscription.ts.
 export type PlacePlan = "free" | "pro" | "ultra";
@@ -77,7 +77,7 @@ type Place = {
   // Place-level monthly promo spend cap (DB migration 0038), in `currency`.
   // One of 200 / 500 / 1000 / 2000 or null (no cap).
   monthly_promo_cap: number | null;
-  // Buzz v4 membership / strikes (MESITA-542).
+  // Promos v4 membership / strikes (MESITA-542).
   staff_channel_pinged_at?: string | null;
   first_ticket_honored_at?: string | null;
   membership_live_at?: string | null;

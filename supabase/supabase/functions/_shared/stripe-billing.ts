@@ -4,7 +4,7 @@
 //   consumer_premium   — Mesita Premium · $100 MXN/mo · classes.premium
 //   business_verified  — Mesita Verified · $1,000 MXN/yr · business_plans.pro
 //
-// Buzz v4 (MESITA-541) retired business Pro/Ultra monthly SKUs. Verified is
+// Promos v4 (MESITA-541) retired business Pro/Ultra monthly SKUs. Verified is
 // the only business product sold; `ultra` remains a legacy plan key for
 // existing places but is not self-provisioned here.
 //

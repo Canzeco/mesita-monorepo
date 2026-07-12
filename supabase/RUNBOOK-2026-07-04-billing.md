@@ -1,6 +1,6 @@
 # Billing rollout — 2026-07-04
 
-Business Verified membership (`pro`, MX$1,000/year — Buzz v4 / MESITA-541)
+Business Verified membership (`pro`, MX$1,000/year — Promos v4 / MESITA-541)
 and consumer Premium ($100 MXN/mo) are the sold Stripe products. Legacy
 Pro/Ultra monthly SKUs are retired from the self-provisioning catalog.
 The go-live flip below is still blocked by MESITA-37.

@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
   if ("pitch" in body) update.pitch = optString(body.pitch, 200);
   if ("story" in body) update.story = optString(body.story, 1500);
   // Four per-tier promo rates. Each is nullable (null clears the offer). The
-  // Buzz v4 Promos page sends the tens grid {10, 20, 30, 40, 50} via its four
+  // The Promos page sends the tens grid {10, 20, 30, 40, 50} via its four
   // preset strategies (50 is the ceiling; legacy 70 retired — MESITA-543).
   // Coupons + projects CHECKs mirror this set.
   const PROMO_RATE_FIELDS = [

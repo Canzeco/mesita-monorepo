@@ -1,4 +1,4 @@
-// Buzz v4 membership enforcement (MESITA-542).
+// Promos v4 membership enforcement (MESITA-542).
 //
 // Activation gate: staff WhatsApp test ping + first honored guest ticket → live.
 // Strikes (refused/ignored QR): 1 warning+re-test · 2 pause promo 30d ·
@@ -14,7 +14,7 @@ export type StrikeReason = (typeof STRIKE_REASONS)[number];
 export const STRIKE_DECAY_MS = 183 * 24 * 60 * 60 * 1000; // ~6 months
 export const PROMO_PAUSE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-/** Dominant-like compensation rates for a burned guest (same Buzz v4 grid). */
+/** Dominant-like compensation rates for a burned guest (same Promos v4 grid). */
 export const COMPENSATION_RATES = {
   welcome_free_rate: 40,
   welcome_premium_rate: 50,

@@ -31,7 +31,7 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 
-// Promos — Buzz v4.1 pricing cards + product modal (mirrors admin MESITA-584).
+// Promos — v4.1 pricing cards + product modal (mirrors admin MESITA-584).
 //   1. Subscription — FOUR pricing cards with generated art bands. The whole
 //      card is the click target: it opens a product modal with the full
 //      detail (what you give / what you get back / the commitment) and the

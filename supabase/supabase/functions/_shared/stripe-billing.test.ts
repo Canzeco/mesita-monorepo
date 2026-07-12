@@ -1,5 +1,5 @@
 // Unit tests for the shared Stripe billing catalog + price resolver
-// (MESITA-142, Buzz v4 cutover MESITA-541). Stripe and Supabase are fully
+// (MESITA-142, Promos v4 cutover MESITA-541). Stripe and Supabase are fully
 // MOCKED — no network, no live Stripe account is ever touched.
 //   deno test supabase/functions/_shared/stripe-billing.test.ts
 //

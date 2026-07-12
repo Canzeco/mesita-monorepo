@@ -1,4 +1,4 @@
-// Unit tests for Buzz v4 membership enforcement (MESITA-542).
+// Unit tests for Promos v4 membership enforcement (MESITA-542).
 //   deno test supabase/functions/_shared/membership-enforcement.test.ts
 
 import { assertEquals } from "jsr:@std/assert@1";
