@@ -1,29 +1,22 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import type { LucideIcon } from 'lucide-react-native';
 import {
   AtSign,
   Bot,
+  Crown,
   MessageCircle,
   Settings as SettingsIcon,
   Share2,
   UserRound,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, View } from 'react-native';
-import {
-  Appbar,
-  Button,
-  Chip,
-  HelperText,
-  List,
-  Modal,
-  Portal,
-  Switch,
-  Text,
-  TextInput,
-} from 'react-native-paper';
+import { Alert, Linking, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BoxRow } from '@/components/ui/BoxRow';
+import { Button } from '@/components/ui/Button';
+import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
+import { Switch } from '@/components/ui/Switch';
+import { TextField } from '@/components/ui/TextField';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
@@ -57,6 +50,8 @@ const CITY_OPTIONS = [
 
 type Sheet = 'personal' | 'settings' | 'contact' | null;
 
+// Me screen — web ProfileClient port (MESITA-583). Order: identity → Instagram
+// → Class → Personal → Settings → Share → AI → Contact → Sign out. No Paper.
 export default function MeScreen() {
   const { profile, consumerClass, session, refreshProfile, signOut } =
     useAuth();
@@ -70,28 +65,25 @@ export default function MeScreen() {
   const meta = [sexLabel, age != null ? `${age}` : null]
     .filter(Boolean)
     .join(' · ');
+  const handle = profile?.instagram ?? null;
+  const igConnected = Boolean(handle);
+  const classLabel = isPremium ? 'Premium' : 'Free';
+  const classVia =
+    isPremium && consumerClass?.origin && consumerClass.origin !== 'default'
+      ? consumerClass.origin
+      : null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }} edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text variant="headlineMedium" style={{ marginBottom: 4 }}>
-          Me
-        </Text>
-
+        {/* Identity hero — web ProfileSummaryCard DNA (no "Me" H1, no Chip). */}
         <View
-          style={{
-            overflow: 'hidden',
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: '#ebd9db',
-            padding: 16,
-            backgroundColor: '#ffffff',
-            ...SHADOW_ELEV,
-          }}
+          className="overflow-hidden rounded-3xl border border-border p-4"
+          style={SHADOW_ELEV}
         >
           <LinearGradient
             colors={
@@ -109,39 +101,46 @@ export default function MeScreen() {
               left: 0,
             }}
           />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <View className="flex-row items-center gap-4">
             <LinearGradient
               colors={isPremium ? [...GRADIENTS.premium] : [...GRADIENTS.pink]}
               start={GRADIENT_DIAGONAL.start}
               end={GRADIENT_DIAGONAL.end}
               style={{ borderRadius: 999, padding: 2.5 }}
             >
-              <View
-                style={{
-                  width: 66,
-                  height: 66,
-                  borderRadius: 999,
-                  backgroundColor: '#ffffff',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text variant="headlineSmall" style={{ color: 'rgba(38,4,9,0.7)' }}>
+              <View className="h-[66px] w-[66px] items-center justify-center rounded-full bg-card">
+                <Text
+                  className="font-display font-bold text-foreground/70"
+                  style={{ fontSize: 24 }}
+                >
                   {firstInitials(name)}
                 </Text>
               </View>
             </LinearGradient>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text variant="titleLarge" numberOfLines={1}>
+            <View className="min-w-0 flex-1">
+              <Text
+                className="font-display font-bold text-foreground"
+                style={{ fontSize: 20 }}
+                numberOfLines={1}
+              >
                 {name}
               </Text>
-              <Text variant="bodyMedium" style={{ marginTop: 4, color: '#775254' }}>
+              <Text
+                className={
+                  phone
+                    ? 'mt-1 font-medium text-muted-foreground'
+                    : 'mt-1 text-muted-foreground/70'
+                }
+                style={{ fontSize: 14 }}
+                numberOfLines={1}
+              >
                 {phone || 'No phone added'}
               </Text>
               {meta ? (
                 <Text
-                  variant="bodySmall"
-                  style={{ marginTop: 2, color: 'rgba(119,82,84,0.7)' }}
+                  className="mt-0.5 text-muted-foreground/70"
+                  style={{ fontSize: 13 }}
+                  numberOfLines={1}
                 >
                   {meta}
                 </Text>
@@ -149,204 +148,168 @@ export default function MeScreen() {
             </View>
           </View>
 
-          <View
-            style={{
-              marginTop: 16,
-              paddingTop: 14,
-              borderTopWidth: 1,
-              borderTopColor: 'rgba(235,217,219,0.6)',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <Chip
-              icon={isPremium ? 'crown' : 'crown-outline'}
-              compact
-              style={{
-                backgroundColor: isPremium ? '#eee8ff' : '#fef3c7',
-              }}
-            >
-              {isPremium ? 'Premium' : 'Free'}
-            </Chip>
-            <Text variant="bodySmall" style={{ color: '#775254', flex: 1 }}>
-              {isPremium
-                ? 'Status on this account'
-                : 'Manage Premium on the web'}
-            </Text>
+          <View className="mt-4 gap-2.5 border-t border-border/60 pt-3.5">
+            <View className="flex-row items-center gap-2.5">
+              <LinearGradient
+                colors={[...GRADIENTS.pink]}
+                start={GRADIENT_DIAGONAL.start}
+                end={GRADIENT_DIAGONAL.end}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AtSign color="#ffffff" size={15} />
+              </LinearGradient>
+              {igConnected ? (
+                <Text
+                  className="font-semibold text-foreground"
+                  style={{ fontSize: 13 }}
+                  numberOfLines={1}
+                >
+                  @{handle}
+                </Text>
+              ) : (
+                <Text
+                  className="text-muted-foreground/80"
+                  style={{ fontSize: 13 }}
+                >
+                  Not connected
+                </Text>
+              )}
+            </View>
+            <View className="flex-row items-center gap-2.5">
+              {isPremium ? (
+                <LinearGradient
+                  colors={[...GRADIENTS.premium]}
+                  start={GRADIENT_DIAGONAL.start}
+                  end={GRADIENT_DIAGONAL.end}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Crown color="#ffffff" size={15} />
+                </LinearGradient>
+              ) : (
+                <View className="h-7 w-7 items-center justify-center rounded-lg bg-amber-400/20">
+                  <Crown color="#b45309" size={15} />
+                </View>
+              )}
+              <Text
+                className="font-semibold text-foreground"
+                style={{ fontSize: 13 }}
+              >
+                Mesita {classLabel}
+              </Text>
+              {classVia ? (
+                <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+                  via {classVia}
+                </Text>
+              ) : null}
+            </View>
           </View>
         </View>
 
-        <List.Section style={{ marginVertical: 0 }}>
-          <List.Item
-            title="Personal details"
-            description="Name, phone, birthday"
-            left={(props) => (
-              <List.Icon {...props} icon={() => <UserRound color="#0284c7" size={22} />} />
-            )}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => setSheet('personal')}
-            style={rowStyle}
-          />
-          <List.Item
-            title="Settings"
-            description="Notifications, permissions, language"
-            left={(props) => (
-              <List.Icon
-                {...props}
-                icon={() => <SettingsIcon color="#775254" size={22} />}
-              />
-            )}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => setSheet('settings')}
-            style={rowStyle}
-          />
-          <List.Item
-            title="Contact"
-            description="Email, help, Instagram"
-            left={(props) => (
-              <List.Icon
-                {...props}
-                icon={() => <MessageCircle color="#059669" size={22} />}
-              />
-            )}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => setSheet('contact')}
-            style={rowStyle}
-          />
-          <SoonRow
-            Icon={AtSign}
-            tint="#fb2b7b"
-            title="Instagram"
-            summary="Connect Instagram to upgrade your class"
-          />
-          <SoonRow
-            Icon={Share2}
-            tint="#fb2b7b"
-            title="Share"
-            summary="Invite friends to Mesita"
-          />
-          <SoonRow
-            Icon={Bot}
-            tint="#7c3aed"
-            title="AI"
-            summary="Connect your Mesita profile to an AI · Premium"
-          />
-        </List.Section>
+        <BoxRow
+          Icon={AtSign}
+          tint="pink"
+          title="Instagram"
+          summary="Connect Instagram to upgrade your class"
+          onPress={() => undefined}
+          soon
+        />
+        <BoxRow
+          Icon={Crown}
+          tint="amber"
+          title="Class"
+          summary="Upgrade your class for better rewards"
+          onPress={() => undefined}
+          soon
+        />
 
-        <Button
-          mode="contained"
-          onPress={() => void signOut()}
-          style={{ marginTop: 8 }}
-          contentStyle={{ paddingVertical: 4 }}
-        >
-          Sign out
-        </Button>
+        <BoxRow
+          Icon={UserRound}
+          tint="sky"
+          title="Personal details"
+          summary="Name, phone, birthday, photo"
+          onPress={() => setSheet('personal')}
+          disabled={!profile}
+        />
+        <BoxRow
+          Icon={SettingsIcon}
+          tint="muted"
+          title="Settings"
+          summary="Notifications, permissions, language"
+          onPress={() => setSheet('settings')}
+        />
+
+        <BoxRow
+          Icon={Share2}
+          tint="pink"
+          title="Share"
+          summary="Invite friends to Mesita"
+          onPress={() => undefined}
+          soon
+        />
+        <BoxRow
+          Icon={Bot}
+          tint="violet"
+          title="AI"
+          summary="Connect your Mesita profile to an AI · Premium"
+          onPress={() => undefined}
+          soon
+        />
+        <BoxRow
+          Icon={MessageCircle}
+          tint="emerald"
+          title="Contact"
+          summary="Email, help, Instagram"
+          onPress={() => setSheet('contact')}
+        />
+
+        <View className="mt-2">
+          <Button variant="outline" onPress={() => void signOut()}>
+            Sign out
+          </Button>
+        </View>
         <Text
-          variant="labelSmall"
-          style={{ textAlign: 'center', color: '#775254' }}
+          className="text-center text-muted-foreground"
+          style={{ fontSize: 11 }}
         >
           Mesita · mobile
         </Text>
       </ScrollView>
 
-      {sheet === 'personal' ? (
-        <PersonalDetailsSheet
-          onClose={() => setSheet(null)}
-          onSaved={() => void refreshProfile()}
-        />
-      ) : null}
-      {sheet === 'settings' ? (
-        <SettingsSheet onClose={() => setSheet(null)} />
-      ) : null}
-      {sheet === 'contact' ? (
-        <ContactSheet onClose={() => setSheet(null)} />
-      ) : null}
+      <PersonalDetailsSheet
+        visible={sheet === 'personal'}
+        onClose={() => setSheet(null)}
+        onSaved={() => void refreshProfile()}
+      />
+      <SettingsSheet
+        visible={sheet === 'settings'}
+        onClose={() => setSheet(null)}
+      />
+      <ContactSheet
+        visible={sheet === 'contact'}
+        onClose={() => setSheet(null)}
+      />
     </SafeAreaView>
   );
 }
 
-const rowStyle = {
-  backgroundColor: '#ffffff',
-  borderRadius: 14,
-  marginBottom: 8,
-  borderWidth: 1,
-  borderColor: '#ebd9db',
-} as const;
-
-function SoonRow({
-  Icon,
-  tint,
-  title,
-  summary,
-}: {
-  Icon: LucideIcon;
-  tint: string;
-  title: string;
-  summary: string;
-}) {
-  return (
-    <List.Item
-      title={title}
-      description={summary}
-      left={(props) => (
-        <List.Icon {...props} icon={() => <Icon color={tint} size={22} />} />
-      )}
-      right={() => (
-        <Chip compact style={{ alignSelf: 'center', backgroundColor: '#faeff0' }}>
-          Soon
-        </Chip>
-      )}
-      onPress={() => Alert.alert(title, 'Coming soon.')}
-      style={rowStyle}
-    />
-  );
-}
-
-function SheetShell({
-  onClose,
-  title,
-  subtitle,
-  children,
-}: {
-  onClose: () => void;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Portal>
-      <Modal
-        visible
-        onDismiss={onClose}
-        contentContainerStyle={{
-          flex: 1,
-          backgroundColor: '#fff7f8',
-          margin: 0,
-        }}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <Appbar.Header style={{ backgroundColor: '#fff7f8' }} elevated>
-            <Appbar.Content title={title} subtitle={subtitle} />
-            <Appbar.Action icon="check" onPress={onClose} />
-          </Appbar.Header>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16, gap: 16 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {children}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </Portal>
-  );
-}
-
 function PersonalDetailsSheet({
+  visible,
   onClose,
   onSaved,
 }: {
+  visible: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -354,13 +317,15 @@ function PersonalDetailsSheet({
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const save = async () => {
     if (!firstName.trim()) {
-      Alert.alert('First name required');
+      setError('First name required');
       return;
     }
     setSaving(true);
+    setError(null);
     try {
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
@@ -370,61 +335,58 @@ function PersonalDetailsSheet({
       onSaved();
       onClose();
     } catch (e) {
-      Alert.alert("Couldn't save", errMsg(e, "Couldn't save your profile."));
+      setError(errMsg(e, "Couldn't save your profile."));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <SheetShell
+    <FullScreenSheet
+      visible={visible}
       onClose={onClose}
       title="Personal details"
       subtitle="How you appear across Mesita"
     >
-      <TextInput
-        mode="outlined"
+      <TextField
         label="First name"
         value={firstName}
         onChangeText={setFirstName}
         autoCapitalize="words"
-        style={{ backgroundColor: '#ffffff' }}
+        error={error && !firstName.trim() ? error : undefined}
       />
-      <View>
-        <TextInput
-          mode="outlined"
-          label="Phone"
-          value={profile?.phone ?? session?.user.phone ?? '—'}
-          editable={false}
-          style={{ backgroundColor: '#faeff0' }}
-        />
-        <HelperText type="info" visible>
-          Phone is your sign-in identity and can’t be edited here.
-        </HelperText>
-      </View>
-      <TextInput
-        mode="outlined"
+      <TextField
+        label="Phone"
+        value={profile?.phone ?? session?.user.phone ?? '—'}
+        editable={false}
+        helper="Phone is your sign-in identity and can’t be edited here."
+      />
+      <TextField
         label="Birthday (YYYY-MM-DD)"
         value={birthday}
         onChangeText={setBirthday}
         placeholder="1990-01-15"
         autoCapitalize="none"
-        style={{ backgroundColor: '#ffffff' }}
       />
-      <Button
-        mode="contained"
-        onPress={() => void save()}
-        loading={saving}
-        disabled={saving}
-        contentStyle={{ paddingVertical: 4 }}
-      >
+      {error && firstName.trim() ? (
+        <Text className="text-destructive" style={{ fontSize: 13 }}>
+          {error}
+        </Text>
+      ) : null}
+      <Button loading={saving} disabled={saving} onPress={() => void save()}>
         Save
       </Button>
-    </SheetShell>
+    </FullScreenSheet>
   );
 }
 
-function SettingsSheet({ onClose }: { onClose: () => void }) {
+function SettingsSheet({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
   const [push, setPush] = useStoredFlag(PREF_KEYS.push, true);
   const [location, setLocation] = useStoredFlag(PREF_KEYS.location, true);
   const [contacts, setContacts] = useStoredFlag(PREF_KEYS.contacts, false);
@@ -432,97 +394,84 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [city, setCity] = useStoredString(PREF_KEYS.defaultCity, 'cdmx');
 
   return (
-    <SheetShell
+    <FullScreenSheet
+      visible={visible}
       onClose={onClose}
       title="Settings"
       subtitle="Preferences on this device"
     >
-      <List.Section>
-        <List.Subheader>Notifications</List.Subheader>
-        <List.Item
-          title="Push notifications"
-          description="Offers and reservation updates"
-          right={() => (
-            <Switch value={push} onValueChange={(v) => setPush(v)} />
-          )}
-          style={rowStyle}
-        />
-        <List.Subheader>Permissions</List.Subheader>
-        <List.Item
-          title="Location"
-          description="Better nearby recommendations"
-          right={() => (
-            <Switch value={location} onValueChange={(v) => setLocation(v)} />
-          )}
-          style={rowStyle}
-        />
-        <List.Item
-          title="Contacts"
-          description="Find friends on Mesita"
-          right={() => (
-            <Switch value={contacts} onValueChange={(v) => setContacts(v)} />
-          )}
-          style={rowStyle}
-        />
-        <List.Subheader>Preferences</List.Subheader>
-        <SelectRow
-          label="Language"
-          value={language}
-          options={LANGUAGE_OPTIONS}
-          onChange={setLanguage}
-        />
-        <SelectRow
-          label="Default city"
-          value={city}
-          options={CITY_OPTIONS}
-          onChange={setCity}
-        />
-        <List.Subheader>Legal</List.Subheader>
-        <List.Item
-          title="Terms of service"
-          right={(props) => <List.Icon {...props} icon="chevron-right" />}
-          onPress={() => void Linking.openURL(TERMS_URL)}
-          style={rowStyle}
-        />
-        <List.Item
-          title="Privacy policy"
-          right={(props) => <List.Icon {...props} icon="chevron-right" />}
-          onPress={() => void Linking.openURL(PRIVACY_URL)}
-          style={rowStyle}
-        />
-      </List.Section>
-    </SheetShell>
+      <SectionLabel>Notifications</SectionLabel>
+      <PrefRow
+        title="Push notifications"
+        summary="Offers and reservation updates"
+        value={push}
+        onValueChange={setPush}
+      />
+      <SectionLabel>Permissions</SectionLabel>
+      <PrefRow
+        title="Location"
+        summary="Better nearby recommendations"
+        value={location}
+        onValueChange={setLocation}
+      />
+      <PrefRow
+        title="Contacts"
+        summary="Find friends on Mesita"
+        value={contacts}
+        onValueChange={setContacts}
+      />
+      <SectionLabel>Preferences</SectionLabel>
+      <SelectRow
+        label="Language"
+        value={language}
+        options={LANGUAGE_OPTIONS}
+        onChange={setLanguage}
+      />
+      <SelectRow
+        label="Default city"
+        value={city}
+        options={CITY_OPTIONS}
+        onChange={setCity}
+      />
+      <SectionLabel>Legal</SectionLabel>
+      <LinkRow
+        title="Terms of service"
+        onPress={() => void Linking.openURL(TERMS_URL)}
+      />
+      <LinkRow
+        title="Privacy policy"
+        onPress={() => void Linking.openURL(PRIVACY_URL)}
+      />
+    </FullScreenSheet>
   );
 }
 
-function ContactSheet({ onClose }: { onClose: () => void }) {
+function ContactSheet({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
   return (
-    <SheetShell
+    <FullScreenSheet
+      visible={visible}
       onClose={onClose}
       title="Contact us"
       subtitle="We usually reply within a day"
     >
-      <List.Item
+      <BoxRow
+        Icon={MessageCircle}
+        tint="emerald"
         title="Email us"
-        description={SUPPORT_EMAIL}
-        left={(props) => (
-          <List.Icon
-            {...props}
-            icon={() => <MessageCircle color="#059669" size={22} />}
-          />
-        )}
+        summary={SUPPORT_EMAIL}
         onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
-        style={rowStyle}
       />
-      <List.Item
+      <BoxRow
+        Icon={SettingsIcon}
+        tint="amber"
         title="Get help"
-        description="Report a problem or ask a question"
-        left={(props) => (
-          <List.Icon
-            {...props}
-            icon={() => <SettingsIcon color="#d97706" size={22} />}
-          />
-        )}
+        summary="Report a problem or ask a question"
         onPress={() =>
           void Linking.openURL(
             `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
@@ -530,21 +479,56 @@ function ContactSheet({ onClose }: { onClose: () => void }) {
             )}`,
           )
         }
-        style={rowStyle}
       />
-      <List.Item
+      <BoxRow
+        Icon={Share2}
+        tint="pink"
         title="Instagram"
-        description="@mesita.ai"
-        left={(props) => (
-          <List.Icon
-            {...props}
-            icon={() => <Share2 color="#fb2b7b" size={22} />}
-          />
-        )}
+        summary="@mesita.ai"
         onPress={() => void Linking.openURL(INSTAGRAM_URL)}
-        style={rowStyle}
       />
-    </SheetShell>
+    </FullScreenSheet>
+  );
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text
+      className="mt-1 font-semibold uppercase text-muted-foreground"
+      style={{ fontSize: 11, letterSpacing: 0.8 }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function PrefRow({
+  title,
+  summary,
+  value,
+  onValueChange,
+}: {
+  title: string;
+  summary: string;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+}) {
+  return (
+    <View className="mb-2 flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4">
+      <View className="min-w-0 flex-1">
+        <Text className="font-bold text-foreground" style={{ fontSize: 15 }}>
+          {title}
+        </Text>
+        <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+          {summary}
+        </Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        accessibilityLabel={title}
+      />
+    </View>
   );
 }
 
@@ -561,10 +545,11 @@ function SelectRow({
 }) {
   const current = options.find((o) => o.value === value)?.label ?? value;
   return (
-    <List.Item
+    <BoxRow
+      Icon={SettingsIcon}
+      tint="muted"
       title={label}
-      description={current}
-      right={(props) => <List.Icon {...props} icon="chevron-right" />}
+      summary={current}
       onPress={() => {
         Alert.alert(label, undefined, [
           ...options.map((o) => ({
@@ -574,7 +559,18 @@ function SelectRow({
           { text: 'Cancel', style: 'cancel' as const },
         ]);
       }}
-      style={rowStyle}
+    />
+  );
+}
+
+function LinkRow({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <BoxRow
+      Icon={Share2}
+      tint="muted"
+      title={title}
+      summary="Opens in browser"
+      onPress={onPress}
     />
   );
 }

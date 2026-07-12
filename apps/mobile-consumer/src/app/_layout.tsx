@@ -15,6 +15,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { PortalHost } from '@rn-primitives/portal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 
@@ -54,6 +55,7 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* PaperProvider kept until MESITA-582 migrates Auth/Search off Paper. */}
       <PaperProvider theme={mesitaPaperTheme}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
@@ -64,6 +66,8 @@ function RootLayout() {
                 contentStyle: { backgroundColor: '#fff7f8' },
               }}
             />
+            {/* PortalHost for @rn-primitives (MESITA-583); sheets use RN Modal. */}
+            <PortalHost />
           </AuthProvider>
         </QueryClientProvider>
       </PaperProvider>
