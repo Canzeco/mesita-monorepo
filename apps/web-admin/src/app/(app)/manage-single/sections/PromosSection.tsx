@@ -1,40 +1,72 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Crown, Loader2, Percent } from "lucide-react";
+import Image from "next/image";
+import { Check, Crown, Loader2, Percent, X } from "lucide-react";
 import {
   STRATEGIES,
   STRATEGY_BY_ID,
+  STRATEGY_VISIBILITY_LADDER,
   UNIVERSAL_CAP_MXN,
   strategyForPlace,
   type Strategy,
   type StrategyId,
+  type StrategyVisibility,
 } from "@/lib/business/strategies";
 import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
 import { SectionCard, ErrorNote, ConfirmDialog } from "../ui";
 
-// Admin Promos — Buzz v4.1: three subscription products, one price.
-//   1. Subscription — Conservative / Aggressive / Dominant, each
-//      MX$1,000/year. Same price on purpose: the product IS the discount
-//      schedule the place commits to giving (and the visibility that earns) —
-//      deeper generosity, not a higher bill. Switching products is a NEW
-//      subscription — that per-product purchase is the lock-in. Zero is not a
-//      product: it is the opt-out row below the trio (catalog + organic lane
-//      stay free forever). One confirm-gated tap writes the four per-tier rate
-//      columns + the universal cap + the paying plan flags atomically; the
-//      rates live on the cards themselves — there is no matrix to tune.
+// Admin Promos — Buzz v4.1, pricing-card selector (MESITA-576, design-reviewed).
+//   1. Subscription — FOUR pricing cards (Zero is a peer card again): generated
+//      art band with name + price, then the differentiator (identical prices
+//      can't be the hero, the discount schedule is): "up to N%", four ✓/✗
+//      segment rows, the visibility the algorithm gives in exchange, and a CTA.
+//      Three paid products cost the SAME MX$1,000/year — you buy commitment,
+//      not placement; switching products is a NEW subscription (the lock-in).
+//      One confirm-gated tap writes rates + cap + paying plan flags atomically.
 //   2. Premium example — what the current rates feel like at the bill for a
 //      Premium guest, worked on a sample ticket.
 
 const PRODUCT_PRICE_MXN = 1000;
 
-// The three sellable products — Zero is deliberately not one of them.
-const PRODUCTS = STRATEGIES.filter((s) => s.id !== "zero");
-
 // Sample ticket for the worked example — deliberately above the universal cap
 // so the "first MX$500" rule is visible in the math.
 const EXAMPLE_BILL_MXN = 700;
+
+// Per-strategy visual identity. Art = generated 1:1 abstract waves (no text in
+// pixels — copy stays HTML); the gradient paints behind the image so a slow or
+// missing asset still renders a branded band. Dominant is plum+GOLD on purpose
+// (not default-AI blue-purple).
+const CARD_ART: Record<
+  StrategyId,
+  { src: string; fallback: string; cta: string; meter: string }
+> = {
+  zero: {
+    src: "/promos/strategy-zero.jpg",
+    fallback: "from-slate-800 to-slate-500",
+    cta: "",
+    meter: "bg-slate-400",
+  },
+  conservative: {
+    src: "/promos/strategy-conservative.jpg",
+    fallback: "from-emerald-900 to-teal-500",
+    cta: "from-emerald-600 to-teal-500",
+    meter: "bg-emerald-500",
+  },
+  aggressive: {
+    src: "/promos/strategy-aggressive.jpg",
+    fallback: "from-red-800 to-orange-500",
+    cta: "from-red-600 to-orange-500",
+    meter: "bg-orange-500",
+  },
+  dominant: {
+    src: "/promos/strategy-dominant.jpg",
+    fallback: "from-purple-950 to-amber-500",
+    cta: "from-purple-700 via-fuchsia-600 to-amber-500",
+    meter: "bg-purple-500",
+  },
+};
 
 const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
@@ -42,10 +74,6 @@ const cx = (...c: (string | false | null | undefined)[]) =>
 function formatMoney(amount: number, currency: string | null): string {
   const prefix = !currency || currency === "MXN" ? "MX$" : "$";
   return `${prefix}${amount.toLocaleString("en-US")}`;
-}
-
-function formatPct(value: number | null): string {
-  return value == null ? "—" : `${value}%`;
 }
 
 // A place on any product carries a subscription (plan != free).
@@ -116,12 +144,12 @@ export function PromosSection({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Box 1 · Subscription (three products, one price) ────────────── */}
+      {/* ── Box 1 · Subscription (four pricing cards) ────────────────────── */}
       <SectionCard
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
         title="Subscription"
-        subtitle={`Three products, one price — ${formatMoney(PRODUCT_PRICE_MXN, v.currency)}/year each. What changes is the discounts you give, and the visibility they earn. Always off the first ${formatMoney(UNIVERSAL_CAP_MXN, v.currency)} of the bill.`}
+        subtitle={`Four postures, one price for the paid three — ${formatMoney(PRODUCT_PRICE_MXN, v.currency)}/year each. The discounts you give buy the visibility the algorithm gives back.`}
         action={
           <span className="flex items-center gap-2">
             {pending && (
@@ -131,27 +159,22 @@ export function PromosSection({
           </span>
         }
       >
-        <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-3">
-          {PRODUCTS.map((s) => (
-            <ProductCard
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {STRATEGIES.map((s) => (
+            <PricingCard
               key={s.id}
               strategy={s}
               currency={v.currency}
               selected={s.id === storedStrategy}
-              pending={pending && s.id === storedStrategy}
+              subscribed={subscribed}
+              pending={pending}
               onSelect={() => requestStrategy(s.id)}
             />
           ))}
         </div>
 
-        <ZeroRow
-          selected={storedStrategy === "zero"}
-          pending={pending && storedStrategy === "zero"}
-          onSelect={() => requestStrategy("zero")}
-        />
-
         {storedStrategy === null && (
-          <p className="text-muted-foreground mt-2 text-[11px]">
+          <p className="text-muted-foreground mt-2.5 text-[11px]">
             Current rates don&apos;t match a product — pick one to standardize.
           </p>
         )}
@@ -220,158 +243,238 @@ function dialogCopy(
   };
 }
 
-// ─── Product cards — the FR/PR/FW/PW table, worn as chips ──────────────────
+// ─── Pricing card ───────────────────────────────────────────────────────────
 
-function ProductCard({
+function PricingCard({
   strategy,
   currency,
   selected,
+  subscribed,
   pending,
   onSelect,
 }: {
   strategy: Strategy;
   currency: string | null;
   selected: boolean;
+  subscribed: boolean;
   pending: boolean;
   onSelect: () => void;
 }) {
+  const art = CARD_ART[strategy.id];
+  const paid = strategy.id !== "zero";
   const top = strategy.rates.welcome_premium_rate;
+  const r = strategy.rates;
+
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={pending}
-      aria-pressed={selected}
+    <div
       className={cx(
-        "flex flex-col gap-2 rounded-xl border p-3.5 text-left transition",
+        "relative flex flex-col overflow-hidden rounded-2xl border transition",
         selected
-          ? "border-foreground ring-foreground/10 bg-muted/40 ring-1"
-          : "border-border/60 bg-card hover:border-foreground/30 hover:bg-muted/20",
+          ? "border-foreground/70 ring-foreground/70 ring-2"
+          : "border-border/60 motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(0,0,0,0.35)]",
+        "bg-card",
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="text-base leading-none">{strategy.emoji}</span>
-          <span className="truncate text-sm font-semibold tracking-tight">
-            {strategy.name}
-          </span>
-        </span>
-        {selected &&
-          (pending ? (
-            <Loader2 className="text-muted-foreground h-3.5 w-3.5 shrink-0 animate-spin" />
-          ) : (
-            <span className="bg-foreground text-background inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
-              <Check className="h-3 w-3" />
-            </span>
-          ))}
-      </div>
-
-      <span className="text-[11px] leading-none">
-        <span className="text-foreground/80 font-semibold">
-          {formatMoney(PRODUCT_PRICE_MXN, currency)}
-        </span>{" "}
-        <span className="text-muted-foreground">/ year</span>
-      </span>
-
-      {top != null && (
-        <div className="flex items-baseline gap-1">
-          <span className="text-muted-foreground text-[11px]">up to</span>
-          <span className="text-xl leading-none font-bold tabular-nums">
-            {top}
-            <span className="text-sm">%</span>
-          </span>
-          <span className="text-muted-foreground text-[11px]">off</span>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1">
-        <RateLine
-          label="First visit"
-          free={strategy.rates.welcome_free_rate}
-          premium={strategy.rates.welcome_premium_rate}
+      {/* Art band — gradient paints behind the image as the loading/404
+          fallback; scrim keeps the white name/price ≥4.5:1. */}
+      <div
+        className={cx(
+          "relative h-28 shrink-0 bg-gradient-to-br",
+          art.fallback,
+        )}
+      >
+        <Image
+          src={art.src}
+          alt=""
+          fill
+          sizes="(min-width:1280px) 25vw, (min-width:640px) 50vw, 100vw"
+          className="object-cover"
         />
-        <RateLine
-          label="Returning"
-          free={strategy.rates.free_rate}
-          premium={strategy.rates.premium_rate}
-        />
-      </div>
-
-      <span className="bg-muted/70 text-foreground/70 mt-auto inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
-        {strategy.visibility} visibility
-      </span>
-    </button>
-  );
-}
-
-// Zero — the opt-out, deliberately not rendered as a product card.
-function ZeroRow({
-  selected,
-  pending,
-  onSelect,
-}: {
-  selected: boolean;
-  pending: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={pending}
-      aria-pressed={selected}
-      className={cx(
-        "mt-2.5 flex w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition",
-        selected
-          ? "border-foreground/40 bg-muted/40"
-          : "border-border/60 border-dashed bg-card hover:border-foreground/30 hover:bg-muted/20",
-      )}
-    >
-      <span className="text-base leading-none">
-        {STRATEGY_BY_ID.zero.emoji}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-sm font-semibold tracking-tight">Zero</span>{" "}
-        <span className="text-muted-foreground text-[11px]">
-          — no subscription. Catalog and free organic lane only, no discount
-          card in the deck.
-        </span>
-      </span>
-      <span className="text-muted-foreground shrink-0 text-[11px] font-semibold">
-        Free
-      </span>
-      {selected &&
-        (pending ? (
-          <Loader2 className="text-muted-foreground h-3.5 w-3.5 shrink-0 animate-spin" />
-        ) : (
-          <span className="bg-foreground text-background inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        {selected && (
+          <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
             <Check className="h-3 w-3" />
+            Current
           </span>
-        ))}
-    </button>
+        )}
+        <div className="absolute inset-x-3.5 bottom-2.5">
+          <p className="font-display truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-sm">
+            <span className="mr-1" aria-hidden>
+              {strategy.emoji}
+            </span>
+            {strategy.name}
+          </p>
+          <p className="text-[11px] font-semibold text-white/90 drop-shadow-sm">
+            {paid ? (
+              <>
+                {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
+                <span className="font-normal text-white/70">/ year</span>
+              </>
+            ) : (
+              "Free"
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Body — differentiator first: identical prices can't be the hero. */}
+      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+        {top == null ? (
+          <p className="text-muted-foreground text-sm leading-none font-semibold">
+            No promos
+          </p>
+        ) : (
+          <div className="flex items-baseline gap-1">
+            <span className="text-muted-foreground text-[11px]">up to</span>
+            <span className="font-display text-2xl leading-none font-bold tabular-nums">
+              {top}
+              <span className="text-base">%</span>
+            </span>
+            <span className="text-muted-foreground text-[11px]">off</span>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          <SegmentRow
+            rate={r.welcome_premium_rate}
+            label="Premium · first visit"
+            premium
+          />
+          <SegmentRow
+            rate={r.premium_rate}
+            label="Premium · returning"
+            premium
+          />
+          <SegmentRow rate={r.welcome_free_rate} label="Free · first visit" />
+          <SegmentRow rate={r.free_rate} label="Free · returning" />
+        </div>
+
+        <div className="mt-auto flex flex-col gap-2.5">
+          <VisibilityMeter
+            visibility={strategy.visibility}
+            accent={art.meter}
+          />
+
+          <p className="text-muted-foreground text-[10px] leading-snug">
+            {paid
+              ? `Off the first ${formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of the bill.`
+              : "Catalog and free organic lane only."}
+          </p>
+
+          {selected ? (
+            <button
+              type="button"
+              disabled
+              aria-pressed="true"
+              className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Current
+            </button>
+          ) : paid ? (
+            <button
+              type="button"
+              onClick={onSelect}
+              disabled={pending}
+              aria-pressed="false"
+              className={cx(
+                "inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r text-[12px] font-bold text-white transition",
+                "hover:brightness-105 active:scale-[0.99] disabled:opacity-60",
+                art.cta,
+              )}
+            >
+              {subscribed ? "Switch" : "Subscribe"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSelect}
+              disabled={pending}
+              aria-pressed="false"
+              className="border-border text-foreground/75 hover:border-foreground/40 hover:text-foreground inline-flex h-11 w-full items-center justify-center rounded-full border text-[12px] font-bold transition disabled:opacity-60"
+            >
+              Drop to Zero
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
-function RateLine({
+// One discount segment: ✓ + rate when the product grants it, ✗ + em-dash when
+// it doesn't (Zero) — the rates live in HTML text, never in the artwork.
+function SegmentRow({
+  rate,
   label,
-  free,
   premium,
 }: {
+  rate: number | null;
   label: string;
-  free: number | null;
-  premium: number | null;
+  premium?: boolean;
 }) {
+  const on = rate != null;
   return (
-    <div className="flex items-center justify-between gap-2 text-[11px]">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="flex items-center gap-2 tabular-nums">
-        <span className="text-foreground/75">
-          Free <span className="font-bold">{formatPct(free)}</span>
-        </span>
-        <span className="text-violet-600">
-          Premium <span className="font-bold">{formatPct(premium)}</span>
-        </span>
+    <div className="flex items-center gap-2 text-[11px]">
+      {on ? (
+        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+      ) : (
+        <X className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
+      )}
+      <span
+        className={cx(
+          "w-9 shrink-0 font-bold tabular-nums",
+          !on
+            ? "text-muted-foreground/50"
+            : premium
+              ? "text-violet-600"
+              : "text-foreground/80",
+        )}
+      >
+        {on ? `${rate}%` : "—"}
       </span>
+      <span
+        className={cx(
+          "truncate",
+          on ? "text-foreground/75" : "text-muted-foreground/60",
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// What the algorithm gives back for the generosity above.
+function VisibilityMeter({
+  visibility,
+  accent,
+}: {
+  visibility: StrategyVisibility;
+  accent: string;
+}) {
+  const idx = STRATEGY_VISIBILITY_LADDER.indexOf(visibility);
+  return (
+    <div className="border-border/60 flex flex-col gap-1.5 border-t pt-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-[9px] font-bold tracking-[0.14em] uppercase">
+          In exchange · visibility
+        </span>
+        <span className="text-[11px] leading-none font-bold">
+          {visibility}
+        </span>
+      </div>
+      <div className="flex gap-1" aria-hidden>
+        {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
+          <span
+            key={lvl}
+            className={cx(
+              "h-1.5 flex-1 rounded-full",
+              i <= idx ? accent : "bg-muted",
+            )}
+          />
+        ))}
+      </div>
     </div>
   );
 }
