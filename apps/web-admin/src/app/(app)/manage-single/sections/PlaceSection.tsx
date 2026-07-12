@@ -111,10 +111,12 @@ const RESERVATION_CHANNELS: {
   /** Graphical mark for the segmented picker: brand SVG or a lucide icon. */
   logo?: string;
   Icon?: LucideIcon;
+  // Default priority order — phone > whatsapp > instagram (MESITA-596). The
+  // Enricher fills the channel following the same order; admin can override.
 }[] = [
-  { key: "instagram", label: "Instagram", profileKey: "instagram_url", logo: "/channels/instagram.svg" },
-  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url", logo: "/channels/whatsapp.svg" },
   { key: "phone", label: "Phone", profileKey: "phone", Icon: Phone },
+  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url", logo: "/channels/whatsapp.svg" },
+  { key: "instagram", label: "Instagram", profileKey: "instagram_url", logo: "/channels/instagram.svg" },
 ];
 
 /** Reservation channel — single-choice now: a 0-or-1-element list. Kept as an
@@ -919,8 +921,9 @@ export function PlaceSection({
         subtitle="Mesita's AI agent makes the reservation by contacting the place — via phone, WhatsApp, or Instagram."
       >
         <p className="text-muted-foreground mt-5 text-xs">
-          Pick the channel the agent uses to reach the place. It always contacts
-          the profile value for that channel — set it under Channels.
+          Pick the channel the agent uses to reach the place — only channels
+          with a saved contact are selectable. Add the contact under Channels
+          first. Default priority: phone, then WhatsApp, then Instagram.
         </p>
         <div className="mt-3.5 grid gap-3.5">
           <div className="flex flex-col gap-1.5">
@@ -937,15 +940,27 @@ export function PlaceSection({
             >
               {RESERVATION_CHANNELS.map((c) => {
                 const active = reservationChannel === c.key;
+                // A channel is only selectable once the place actually has
+                // that contact on the profile (MESITA-596) — you can't point
+                // the agent at a WhatsApp that doesn't exist. The stored
+                // channel stays interactive so a legacy empty one can be
+                // switched away from.
+                const hasValue = formContactFor(form, c.key).trim() !== "";
+                const unavailable = !active && !hasValue;
                 return (
                   <button
                     key={c.key}
                     type="button"
                     onClick={() => setReservationChannel(c.key)}
-                    disabled={anyPending}
+                    disabled={anyPending || unavailable}
                     aria-pressed={active}
+                    title={
+                      unavailable
+                        ? `Add a ${c.label} contact under Channels to use it`
+                        : undefined
+                    }
                     className={
-                      "flex h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-xl border text-[12px] font-semibold transition disabled:opacity-50 " +
+                      "flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 " +
                       (active
                         ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
                         : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
@@ -957,6 +972,11 @@ export function PlaceSection({
                       active={active}
                     />
                     {c.label}
+                    {unavailable && (
+                      <span className="text-muted-foreground/70 text-[9px] font-medium">
+                        not set
+                      </span>
+                    )}
                   </button>
                 );
               })}
