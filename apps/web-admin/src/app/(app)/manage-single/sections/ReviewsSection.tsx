@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MessageCircle, Star, Users } from "lucide-react";
+import { MessageCircle, Star } from "lucide-react";
 import type { AdminPlace } from "../actions";
 import { SectionCard } from "../ui";
 
@@ -199,28 +199,33 @@ function Stars({ rating }: { rating: number }) {
 
 function ExternalCard({
   label,
-  icon,
+  logo,
+  star,
   value,
   meta,
 }: {
   label: string;
-  icon: "star" | "users";
+  /** Brand SVG in /public/channels — the card's identity mark. */
+  logo: string;
+  /** Show the amber rating star before the value (Google rating only). */
+  star?: boolean;
   value: string;
   meta: string;
 }) {
   return (
     <div className="border-border/60 bg-muted/30 flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3">
-      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.12em] uppercase">
+        {/* Static brand mark — next/image adds nothing at 14px. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logo} alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />
         {label}
       </p>
       <div className="flex items-center gap-1 text-sm font-semibold tabular-nums">
-        {icon === "star" ? (
+        {star && (
           <Star
             className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
             strokeWidth={0}
           />
-        ) : (
-          <Users className="text-muted-foreground h-3.5 w-3.5" />
         )}
         {value}
       </div>
@@ -465,7 +470,8 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
           <div className="grid grid-cols-3 gap-2">
             <ExternalCard
               label="Google"
-              icon="star"
+              logo="/channels/google.svg"
+              star
               value={googleStars == null ? "—" : googleStars.toFixed(1)}
               meta={
                 googleCount > 0
@@ -475,13 +481,13 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
             />
             <ExternalCard
               label="Instagram"
-              icon="users"
+              logo="/channels/instagram.svg"
               value={igFollowers == null ? "—" : formatCount(igFollowers)}
               meta="followers"
             />
             <ExternalCard
               label="Facebook"
-              icon="users"
+              logo="/channels/facebook.svg"
               value={fbFollowers == null ? "—" : formatCount(fbFollowers)}
               meta="followers"
             />
