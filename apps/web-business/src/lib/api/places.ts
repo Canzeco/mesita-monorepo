@@ -19,13 +19,10 @@ type PlaceStatus =
   | "pending_verification";
 
 export type FiscalType = "formal" | "informal";
-// Three-plan place catalog (public.membership enum): Free (default) +
-// Pro ('pro', $100 MXN/mo) + Ultra ('ultra', $5,000 MXN/mo). Every
-// Verified place runs an instant discount applied at the bill; Pro and
-// Ultra differ only in price and visibility. Paid plans are monthly Stripe
-// subscriptions managed through business-web-change-subscription — see
-// lib/business/plans.ts for the picker catalog and lib/api/subscription.ts
-// for the billing call.
+// Place plan keys (public.membership enum): Free + Verified (`pro`,
+// MX$1,000/year Buzz v4 membership) + legacy `ultra`. Billing goes through
+// business-web-change-subscription — see lib/business/plans.ts and
+// lib/api/subscription.ts.
 export type PlacePlan = "free" | "pro" | "ultra";
 
 // Weekly opening hours — JSONB column on places. Lowercase English day keys,
