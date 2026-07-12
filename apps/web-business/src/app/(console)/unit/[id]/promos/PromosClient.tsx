@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -30,20 +30,21 @@ import {
   type StrategyVisibility,
 } from "@/lib/business/strategies";
 
-// Promos — Buzz v4.1, pricing-card selector (mirrors admin MESITA-576).
-//   1. Subscription — FOUR pricing cards with generated art bands. Three
-//      products cost the SAME MX$1,000/year (Zero is free): the product is
-//      the discount schedule you commit to giving, and the visibility the
-//      algorithm gives back. Switching products is a NEW subscription — the
-//      lock-in. The old membership box is retired.
-//   2. The subscription — what the fee is (a commitment filter), how
-//      activation works (WhatsApp ping + first honored ticket), the strikes.
+// Promos — Buzz v4.1 pricing cards + product modal (mirrors admin MESITA-584).
+//   1. Subscription — FOUR pricing cards with generated art bands. The whole
+//      card is the click target: it opens a product modal with the full
+//      detail (what you give / what you get back / the commitment) and the
+//      action footer — the modal IS the confirm-and-pay step. Three products
+//      cost the SAME MX$1,000/year; switching products is a NEW subscription
+//      (the lock-in).
+//   2. The subscription — fee framing, activation steps, strikes ladder.
 //   3. Premium example — what the current rates feel like at the bill.
 //
-// Plan is billing-locked from this console: a place NOT yet subscribed gets a
-// "Request activation" flow on paid cards (no write — Mesita follows up on
-// the staff WhatsApp); a subscribed place switches rates directly (the write
-// is rates + cap only, never plan).
+// Plan is billing-locked from this console: a place NOT yet subscribed gets
+// the subscribe-and-pay journey inside the modal, which completes as an
+// activation request (Mesita pings the staff WhatsApp; payment is settled
+// with the account manager — nothing is charged in-app). A subscribed place
+// switches rates directly (the write is rates + cap only, never plan).
 
 const PRODUCT_PRICE_MXN = 1000;
 
@@ -106,27 +107,16 @@ export function PromosClient({ place }: { place: MyPlace }) {
   const storedStrategy = strategyForPlace(place);
   const [selectedId, setSelectedId] = useState<StrategyId | null>(storedStrategy);
   const [pendingId, setPendingId] = useState<StrategyId | null>(null);
-  const [confirmId, setConfirmId] = useState<StrategyId | null>(null);
-  // Paid product tapped by a not-yet-subscribed place → request flow.
+  const [modalId, setModalId] = useState<StrategyId | null>(null);
+  // Paid product requested by a not-yet-subscribed place → persistent notice.
   const [activationFor, setActivationFor] = useState<StrategyId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const requestStrategy = (target: StrategyId) => {
-    if (pendingId || target === selectedId) return;
-    if (target !== "zero" && !subscribed) {
-      // No self-serve charge here — billing is handled with Mesita directly.
-      setActivationFor(target);
-      return;
-    }
-    setConfirmId(target);
-  };
-
   // Writes the four rate columns + the cap atomically (never plan — that is
   // billing). Optimistic: the card flips immediately and reverts on failure.
-  const commitStrategy = () => {
-    const target = confirmId;
-    setConfirmId(null);
-    if (target == null) return;
+  const commitStrategy = (target: StrategyId) => {
+    setModalId(null);
+    if (pendingId || target === selectedId) return;
     const strat = STRATEGY_BY_ID[target];
     const previous = selectedId;
     setSelectedId(target);
@@ -148,10 +138,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
       .finally(() => setPendingId(null));
   };
 
-  const confirmStrategy = confirmId ? STRATEGY_BY_ID[confirmId] : null;
-  const dialog = confirmStrategy
-    ? dialogCopy(confirmStrategy, place.currency)
-    : null;
+  const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
   const activationStrategy = activationFor
     ? STRATEGY_BY_ID[activationFor]
     : null;
@@ -171,7 +158,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
       {/* ── Box 1 · Subscription (four pricing cards) ─────────────────── */}
       <Section
         title="Subscription"
-        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid three. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
+        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid three — tap a card for the full detail. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
         right={<StatusPill subscribed={subscribed} />}
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
@@ -182,9 +169,8 @@ export function PromosClient({ place }: { place: MyPlace }) {
               currency={place.currency}
               selected={s.id === selectedId}
               pending={pendingId === s.id}
-              anyPending={pendingId != null}
               subscribed={subscribed}
-              onSelect={() => requestStrategy(s.id)}
+              onOpen={() => setModalId(s.id)}
             />
           ))}
         </div>
@@ -223,57 +209,37 @@ export function PromosClient({ place }: { place: MyPlace }) {
       {/* ── Box 3 · Premium guest example ─────────────────────────────── */}
       <PremiumExampleBox place={place} storedStrategy={storedStrategy} />
 
-      {dialog && (
-        <ConfirmDialog
-          title={dialog.title}
-          body={dialog.body}
-          confirmLabel={dialog.confirmLabel}
-          onConfirm={commitStrategy}
-          onCancel={() => setConfirmId(null)}
+      {modalStrategy && (
+        <ProductModal
+          strategy={modalStrategy}
+          currency={place.currency}
+          isCurrent={modalStrategy.id === selectedId}
+          subscribed={subscribed}
+          onCommit={() => commitStrategy(modalStrategy.id)}
+          onRequestActivation={() => setActivationFor(modalStrategy.id)}
+          onClose={() => setModalId(null)}
         />
       )}
     </div>
   );
 }
 
-// Confirm copy — switching products (the lock-in moment) or dropping to Zero.
-// Subscribing from scratch never reaches here (it goes to the request flow).
-function dialogCopy(
-  target: Strategy,
-  currency: string,
-): { title: string; body: string; confirmLabel: string } {
-  if (target.id === "zero") {
-    return {
-      title: "Drop to Zero?",
-      body: "Paid promos stop and your rates are cleared. Your place stays in the catalog and the free organic lane.",
-      confirmLabel: "Drop to Zero",
-    };
-  }
-  return {
-    title: `Switch to ${target.name}?`,
-    body: `Switching products is a new ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year subscription — that is the commitment. Your rates change now; Mesita follows up on the billing.`,
-    confirmLabel: `Switch to ${target.name}`,
-  };
-}
-
-// ─── Pricing card ────────────────────────────────────────────────────────
+// ─── Pricing card (whole card opens the product modal) ──────────────────
 
 function PricingCard({
   strategy,
   currency,
   selected,
   pending,
-  anyPending,
   subscribed,
-  onSelect,
+  onOpen,
 }: {
   strategy: Strategy;
   currency: string;
   selected: boolean;
   pending: boolean;
-  anyPending: boolean;
   subscribed: boolean;
-  onSelect: () => void;
+  onOpen: () => void;
 }) {
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
@@ -281,9 +247,13 @@ function PricingCard({
   const r = strategy.rates;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      aria-label={`${strategy.name} — details${selected ? " (current product)" : ""}`}
       className={cn(
-        "bg-card relative flex flex-col overflow-hidden rounded-2xl border transition",
+        "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(236,72,153,0.35)]",
@@ -291,7 +261,7 @@ function PricingCard({
     >
       {/* Art band — gradient behind the image is the loading/404 fallback;
           the scrim keeps the white name/price legible. */}
-      <div className={cn("relative h-28 shrink-0 bg-gradient-to-br", art.fallback)}>
+      <div className={cn("relative h-28 w-full shrink-0 bg-gradient-to-br", art.fallback)}>
         <Image
           src={art.src}
           alt=""
@@ -299,10 +269,14 @@ function PricingCard({
           sizes="(min-width:480px) 50vw, 100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
         {selected && (
           <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
-            <Check className="h-3 w-3" />
+            {pending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Check className="h-3 w-3" />
+            )}
             Current
           </span>
         )}
@@ -317,7 +291,7 @@ function PricingCard({
             {paid ? (
               <>
                 {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
-                <span className="font-normal text-white/70">/ year</span>
+                <span className="font-normal text-white/80">/ year</span>
               </>
             ) : (
               "Free"
@@ -327,7 +301,7 @@ function PricingCard({
       </div>
 
       {/* Body — the differentiator leads: identical prices can't be the hero. */}
-      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+      <div className="flex w-full flex-1 flex-col gap-2.5 p-3.5">
         {top == null ? (
           <p className="text-muted-foreground text-sm leading-none font-semibold">
             No promos
@@ -367,53 +341,318 @@ function PricingCard({
               : "Catalog and free organic lane only."}
           </p>
 
+          {/* Presentational CTA — the whole card is the button; the modal
+              carries the real action. */}
           {selected ? (
-            <button
-              type="button"
-              disabled
-              aria-pressed="true"
-              className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold"
-            >
+            <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold">
               <Check className="h-3.5 w-3.5" />
               Current
-            </button>
+            </span>
           ) : paid ? (
-            <button
-              type="button"
-              onClick={onSelect}
-              disabled={anyPending}
-              aria-pressed="false"
+            <span
               className={cn(
-                "inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r text-[12px] font-bold text-white transition",
-                "hover:brightness-105 active:scale-[0.99] disabled:opacity-60",
+                "inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r text-[12px] font-bold text-white",
                 art.cta,
               )}
             >
-              {pending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : subscribed ? (
-                "Switch"
-              ) : (
-                "Request activation"
-              )}
-            </button>
+              {subscribed ? "Switch" : "Subscribe"}
+            </span>
           ) : (
-            <button
-              type="button"
-              onClick={onSelect}
-              disabled={anyPending}
-              aria-pressed="false"
-              className="border-border text-foreground/75 hover:border-foreground/40 hover:text-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold transition disabled:opacity-60"
-            >
-              {pending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                "Drop to Zero"
-              )}
-            </button>
+            <span className="border-border text-foreground/75 inline-flex h-11 w-full items-center justify-center rounded-full border text-[12px] font-bold">
+              Drop to Zero
+            </span>
           )}
         </div>
       </div>
+    </button>
+  );
+}
+
+// ─── Product modal — full detail + the subscribe/pay step ───────────────────
+
+function ProductModal({
+  strategy,
+  currency,
+  isCurrent,
+  subscribed,
+  onCommit,
+  onRequestActivation,
+  onClose,
+}: {
+  strategy: Strategy;
+  currency: string;
+  isCurrent: boolean;
+  subscribed: boolean;
+  onCommit: () => void;
+  onRequestActivation: () => void;
+  onClose: () => void;
+}) {
+  // Subscribe-and-pay for a not-yet-subscribed place completes in-modal as an
+  // activation request (billing is settled with the account manager).
+  const [requested, setRequested] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const art = CARD_ART[strategy.id];
+  const paid = strategy.id !== "zero";
+  const r = strategy.rates;
+  const needsActivation = paid && !subscribed;
+
+  const primaryLabel = isCurrent
+    ? "Current product"
+    : paid
+      ? subscribed
+        ? `Switch to ${strategy.name}`
+        : `Subscribe — ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year`
+      : "Drop to Zero";
+
+  const onPrimary = () => {
+    if (isCurrent) return;
+    if (needsActivation) {
+      onRequestActivation();
+      setRequested(true);
+      return;
+    }
+    onCommit();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+      <button
+        type="button"
+        aria-label="Dismiss"
+        className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-modal-title"
+        className="border-border bg-card relative z-10 flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
+      >
+        {/* Art header */}
+        <div className={cn("relative h-32 shrink-0 bg-gradient-to-br", art.fallback)}>
+          <Image src={art.src} alt="" fill sizes="28rem" className="object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-2.5 right-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          {isCurrent && (
+            <span className="text-foreground absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
+              <Check className="h-3 w-3" />
+              Current
+            </span>
+          )}
+          <div className="absolute inset-x-4 bottom-3">
+            <p
+              id="product-modal-title"
+              className="font-display text-lg font-bold tracking-wide text-white uppercase drop-shadow-sm"
+            >
+              <span className="mr-1.5" aria-hidden>
+                {strategy.emoji}
+              </span>
+              {strategy.name}
+            </p>
+            <p className="text-[12px] font-semibold text-white/90 drop-shadow-sm">
+              {paid ? (
+                <>
+                  {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
+                  <span className="font-normal text-white/80">/ year</span>
+                </>
+              ) : (
+                "Free"
+              )}
+            </p>
+          </div>
+        </div>
+
+        {requested ? (
+          /* Subscribe-and-pay confirmation state */
+          <div className="flex flex-col gap-4 p-5">
+            <div className="flex flex-col items-center gap-3 rounded-xl bg-emerald-50 px-4 py-6 text-center">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15">
+                <Check className="h-5 w-5 text-emerald-600" />
+              </span>
+              <p className="text-[13px] leading-snug font-semibold text-emerald-900">
+                {strategy.emoji} {strategy.name} requested
+              </p>
+              <p className="text-[12px] leading-snug text-emerald-800">
+                Mesita will reach out on your staff WhatsApp to run the test
+                ping and activate the subscription. Payment (
+                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year) is settled
+                with your account manager — nothing is charged in-app.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-foreground text-background inline-flex h-11 w-full items-center justify-center rounded-full text-[13px] font-bold transition hover:opacity-90"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Detail */}
+            <div className="flex flex-col gap-4 overflow-y-auto p-5">
+              <p className="text-muted-foreground text-[13px] leading-snug">
+                {strategy.tagline}
+              </p>
+
+              <div className="flex flex-col gap-2">
+                <ModalLabel>What you give</ModalLabel>
+                <div className="flex flex-col gap-1.5">
+                  <SegmentRow
+                    rate={r.welcome_premium_rate}
+                    label="Premium · first visit"
+                    premium
+                  />
+                  <SegmentRow
+                    rate={r.premium_rate}
+                    label="Premium · returning"
+                    premium
+                  />
+                  <SegmentRow
+                    rate={r.welcome_free_rate}
+                    label="Free · first visit"
+                  />
+                  <SegmentRow rate={r.free_rate} label="Free · returning" />
+                </div>
+                {paid && (
+                  <p className="text-muted-foreground text-[11px] leading-snug">
+                    Every discount applies to the first{" "}
+                    {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)}{" "}
+                    of the bill — a platform-wide cap, always shown to guests.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <ModalLabel>What you get back</ModalLabel>
+                <VisibilityMeter
+                  visibility={strategy.visibility}
+                  accent={art.meter}
+                />
+                <p className="text-muted-foreground text-[11px] leading-snug">
+                  {paid
+                    ? `The ranking algorithm reads a stronger discount as a stronger card — ${strategy.visibility} visibility in the Swipe deck, plus promo-lane eligibility.`
+                    : "The catalog listing and the free organic lane — always on, subscribed or not."}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <ModalLabel>The commitment</ModalLabel>
+                {paid ? (
+                  <div className="flex flex-col gap-1.5">
+                    <CommitmentRow icon={ShieldCheck}>
+                      {formatMoney(PRODUCT_PRICE_MXN, currency)}/year, per
+                      product — switching later is a NEW subscription. Same
+                      price on every product: rank is never for sale.
+                    </CommitmentRow>
+                    <CommitmentRow icon={MessageCircle}>
+                      Activation: your staff WhatsApp passes a test ping and
+                      the first guest ticket is honored at the bill.
+                    </CommitmentRow>
+                    <CommitmentRow icon={AlertTriangle}>
+                      Strikes for turning a guest away: 1 warning · 2 promo
+                      lane paused 30 days · 3 removed and the fee is
+                      forfeited. Strikes decay after 6 months clean.
+                    </CommitmentRow>
+                  </div>
+                ) : (
+                  <CommitmentRow icon={ShieldCheck}>
+                    No fee, no commitment — dropping to Zero clears your rates
+                    and paid promos stop. You can subscribe again any time.
+                  </CommitmentRow>
+                )}
+              </div>
+            </div>
+
+            {/* Action footer */}
+            <div className="border-border flex flex-col gap-2 border-t p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-bold">
+                  {paid ? (
+                    <>
+                      {formatMoney(PRODUCT_PRICE_MXN, currency)}
+                      <span className="text-muted-foreground text-[11px] font-normal">
+                        {" "}
+                        / year
+                      </span>
+                    </>
+                  ) : (
+                    "Free"
+                  )}
+                </span>
+                <button
+                  type="button"
+                  disabled={isCurrent}
+                  onClick={onPrimary}
+                  className={cn(
+                    "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
+                    isCurrent
+                      ? "border-border text-muted-foreground border"
+                      : paid
+                        ? cn(
+                            "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
+                            art.cta,
+                          )
+                        : "border-border text-foreground hover:bg-muted border",
+                  )}
+                >
+                  {isCurrent && <Check className="mr-1.5 h-3.5 w-3.5" />}
+                  {primaryLabel}
+                </button>
+              </div>
+              <p className="text-muted-foreground text-[10px] leading-snug">
+                {needsActivation
+                  ? "Payment is settled with your Mesita account manager — nothing is charged in-app."
+                  : subscribed && paid && !isCurrent
+                    ? "Rates change now — Mesita follows up on the billing."
+                    : ""}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ModalLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+      {children}
+    </span>
+  );
+}
+
+function CommitmentRow({
+  icon: Icon,
+  children,
+}: {
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="bg-muted/70 text-foreground/70 mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="text-foreground/80 text-[12px] leading-snug">
+        {children}
+      </span>
     </div>
   );
 }
@@ -758,57 +997,6 @@ function ActivationStep({
       <span className="text-foreground/80 text-[12px] leading-snug">
         {children}
       </span>
-    </div>
-  );
-}
-
-// Local confirm modal — matches the TeamClient dialog pattern.
-function ConfirmDialog({
-  title,
-  body,
-  confirmLabel,
-  onConfirm,
-  onCancel,
-}: {
-  title: string;
-  body: string;
-  confirmLabel: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      onClick={onCancel}
-    >
-      <div
-        className="border-border bg-card w-full max-w-sm rounded-2xl border p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          {title}
-        </h2>
-        <p className="text-muted-foreground mt-1.5 text-sm">{body}</p>
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center rounded-full border px-4 text-[13px] font-semibold transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            autoFocus
-            onClick={onConfirm}
-            className="bg-pink-gradient inline-flex h-10 items-center rounded-full px-5 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

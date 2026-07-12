@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
-import { Check, Crown, Loader2, Percent, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Crown,
+  Loader2,
+  MessageCircle,
+  Percent,
+  ShieldCheck,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import {
   STRATEGIES,
   STRATEGY_BY_ID,
@@ -15,16 +25,16 @@ import {
 } from "@/lib/business/strategies";
 import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
-import { SectionCard, ErrorNote, ConfirmDialog } from "../ui";
+import { SectionCard, ErrorNote } from "../ui";
 
-// Admin Promos — Buzz v4.1, pricing-card selector (MESITA-576, design-reviewed).
-//   1. Subscription — FOUR pricing cards (Zero is a peer card again): generated
-//      art band with name + price, then the differentiator (identical prices
-//      can't be the hero, the discount schedule is): "up to N%", four ✓/✗
-//      segment rows, the visibility the algorithm gives in exchange, and a CTA.
-//      Three paid products cost the SAME MX$1,000/year — you buy commitment,
-//      not placement; switching products is a NEW subscription (the lock-in).
-//      One confirm-gated tap writes rates + cap + paying plan flags atomically.
+// Admin Promos — Buzz v4.1 pricing cards + product modal (MESITA-584).
+//   1. Subscription — FOUR pricing cards with generated art bands. The whole
+//      card is the click target: it opens a product modal with the full
+//      detail (what you give / what you get back / the commitment) and the
+//      action footer — the modal IS the confirm step now. Three paid
+//      products cost the SAME MX$1,000/year; switching products is a NEW
+//      subscription (the lock-in). One tap in the modal writes rates + cap +
+//      paying plan flags atomically.
 //   2. Premium example — what the current rates feel like at the bill for a
 //      Premium guest, worked on a sample ticket.
 
@@ -34,10 +44,9 @@ const PRODUCT_PRICE_MXN = 1000;
 // so the "first MX$500" rule is visible in the math.
 const EXAMPLE_BILL_MXN = 700;
 
-// Per-strategy visual identity. Art = generated 1:1 abstract waves (no text in
-// pixels — copy stays HTML); the gradient paints behind the image so a slow or
-// missing asset still renders a branded band. Dominant is plum+GOLD on purpose
-// (not default-AI blue-purple).
+// Per-strategy visual identity. Art = generated 1:1 abstract waves (no text
+// in pixels — copy stays HTML); the gradient paints behind the image so a
+// slow or missing asset still renders a branded band.
 const CARD_ART: Record<
   StrategyId,
   { src: string; fallback: string; cta: string; meter: string }
@@ -91,7 +100,7 @@ export function PromosSection({
   const [v, setV] = useState(place);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<StrategyId | null>(null);
+  const [modalId, setModalId] = useState<StrategyId | null>(null);
 
   const persist = (patch: Record<string, unknown>) => {
     const prev = v;
@@ -115,16 +124,10 @@ export function PromosSection({
   const subscribed = isSubscribed(v);
   const storedStrategy = strategyForPlace(v);
 
-  // Every product change is contract-level (a purchase, a re-purchase, or a
-  // cancellation), so each one goes through the confirm guard.
-  const requestStrategy = (target: StrategyId) => {
+  // The modal is the confirm step: its footer action commits the product.
+  const commitStrategy = (target: StrategyId) => {
+    setModalId(null);
     if (pending || target === storedStrategy) return;
-    setConfirmId(target);
-  };
-  const commitStrategy = () => {
-    const target = confirmId;
-    setConfirmId(null);
-    if (target == null) return;
     const s = STRATEGY_BY_ID[target];
     // Rates + cap + paying flags in ONE write: the subscription IS the rates.
     persist({
@@ -137,10 +140,7 @@ export function PromosSection({
     });
   };
 
-  const confirmStrategy = confirmId ? STRATEGY_BY_ID[confirmId] : null;
-  const dialog = confirmStrategy
-    ? dialogCopy(confirmStrategy, subscribed, v.currency)
-    : null;
+  const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -149,7 +149,7 @@ export function PromosSection({
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
         title="Subscription"
-        subtitle={`Four postures, one price for the paid three — ${formatMoney(PRODUCT_PRICE_MXN, v.currency)}/year each. The discounts you give buy the visibility the algorithm gives back.`}
+        subtitle={`Four postures, one price for the paid three — ${formatMoney(PRODUCT_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail. Discounts always apply to the first ${formatMoney(UNIVERSAL_CAP_MXN, v.currency)} of the bill.`}
         action={
           <span className="flex items-center gap-2">
             {pending && (
@@ -167,8 +167,8 @@ export function PromosSection({
               currency={v.currency}
               selected={s.id === storedStrategy}
               subscribed={subscribed}
-              pending={pending}
-              onSelect={() => requestStrategy(s.id)}
+              pending={pending && s.id === storedStrategy}
+              onOpen={() => setModalId(s.id)}
             />
           ))}
         </div>
@@ -201,49 +201,21 @@ export function PromosSection({
       {/* ── Box 2 · Premium guest example ───────────────────────────────── */}
       <PremiumExampleBox place={v} storedStrategy={storedStrategy} />
 
-      <ConfirmDialog
-        open={dialog != null}
-        title={dialog?.title ?? ""}
-        body={<p>{dialog?.body}</p>}
-        confirmLabel={dialog?.confirmLabel ?? "Confirm"}
-        busy={pending}
-        onConfirm={commitStrategy}
-        onCancel={() => setConfirmId(null)}
-      />
+      {modalStrategy && (
+        <ProductModal
+          strategy={modalStrategy}
+          currency={v.currency}
+          isCurrent={modalStrategy.id === storedStrategy}
+          subscribed={subscribed}
+          onConfirm={() => commitStrategy(modalStrategy.id)}
+          onClose={() => setModalId(null)}
+        />
+      )}
     </div>
   );
 }
 
-// Confirm copy per transition — subscribing, switching products (the lock-in
-// moment), or cancelling to Zero.
-function dialogCopy(
-  target: Strategy,
-  subscribed: boolean,
-  currency: string | null,
-): { title: string; body: string; confirmLabel: string } {
-  const price = formatMoney(PRODUCT_PRICE_MXN, currency);
-  if (target.id === "zero") {
-    return {
-      title: "Drop to Zero?",
-      body: "Cancels the subscription and clears the rates — paid promos stop. The catalog listing and the free organic lane stay.",
-      confirmLabel: "Drop to Zero",
-    };
-  }
-  if (!subscribed) {
-    return {
-      title: `Subscribe to ${target.name}?`,
-      body: `${price}/year — same price as every product; this one commits the place to the ${target.name} discount schedule. Writes the rates, the cap and the paying flags — admin write only, no Stripe charge.`,
-      confirmLabel: `Subscribe to ${target.name}`,
-    };
-  }
-  return {
-    title: `Switch to ${target.name}?`,
-    body: `Switching products is a NEW ${price}/year subscription (that is the lock-in). Admin write only, no charge from here.`,
-    confirmLabel: `Switch to ${target.name}`,
-  };
-}
-
-// ─── Pricing card ───────────────────────────────────────────────────────────
+// ─── Pricing card (whole card opens the product modal) ─────────────────────
 
 function PricingCard({
   strategy,
@@ -251,14 +223,14 @@ function PricingCard({
   selected,
   subscribed,
   pending,
-  onSelect,
+  onOpen,
 }: {
   strategy: Strategy;
   currency: string | null;
   selected: boolean;
   subscribed: boolean;
   pending: boolean;
-  onSelect: () => void;
+  onOpen: () => void;
 }) {
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
@@ -266,20 +238,23 @@ function PricingCard({
   const r = strategy.rates;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      aria-label={`${strategy.name} — details${selected ? " (current product)" : ""}`}
       className={cx(
-        "relative flex flex-col overflow-hidden rounded-2xl border transition",
+        "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border/60 motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(0,0,0,0.35)]",
-        "bg-card",
       )}
     >
-      {/* Art band — gradient paints behind the image as the loading/404
-          fallback; scrim keeps the white name/price ≥4.5:1. */}
+      {/* Art band — gradient behind the image is the loading/404 fallback;
+          the scrim keeps the white name/price legible. */}
       <div
         className={cx(
-          "relative h-28 shrink-0 bg-gradient-to-br",
+          "relative h-28 w-full shrink-0 bg-gradient-to-br",
           art.fallback,
         )}
       >
@@ -290,10 +265,14 @@ function PricingCard({
           sizes="(min-width:1280px) 25vw, (min-width:640px) 50vw, 100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
         {selected && (
           <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
-            <Check className="h-3 w-3" />
+            {pending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Check className="h-3 w-3" />
+            )}
             Current
           </span>
         )}
@@ -308,7 +287,7 @@ function PricingCard({
             {paid ? (
               <>
                 {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
-                <span className="font-normal text-white/70">/ year</span>
+                <span className="font-normal text-white/80">/ year</span>
               </>
             ) : (
               "Free"
@@ -317,8 +296,8 @@ function PricingCard({
         </div>
       </div>
 
-      {/* Body — differentiator first: identical prices can't be the hero. */}
-      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+      {/* Body — the differentiator leads: identical prices can't be the hero. */}
+      <div className="flex w-full flex-1 flex-col gap-2.5 p-3.5">
         {top == null ? (
           <p className="text-muted-foreground text-sm leading-none font-semibold">
             No promos
@@ -350,10 +329,7 @@ function PricingCard({
         </div>
 
         <div className="mt-auto flex flex-col gap-2.5">
-          <VisibilityMeter
-            visibility={strategy.visibility}
-            accent={art.meter}
-          />
+          <VisibilityMeter visibility={strategy.visibility} accent={art.meter} />
 
           <p className="text-muted-foreground text-[10px] leading-snug">
             {paid
@@ -361,49 +337,280 @@ function PricingCard({
               : "Catalog and free organic lane only."}
           </p>
 
+          {/* Presentational CTA — the whole card is the button; the modal
+              carries the real action. */}
           {selected ? (
-            <button
-              type="button"
-              disabled
-              aria-pressed="true"
-              className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold"
-            >
+            <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold">
               <Check className="h-3.5 w-3.5" />
               Current
-            </button>
+            </span>
           ) : paid ? (
-            <button
-              type="button"
-              onClick={onSelect}
-              disabled={pending}
-              aria-pressed="false"
+            <span
               className={cx(
-                "inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r text-[12px] font-bold text-white transition",
-                "hover:brightness-105 active:scale-[0.99] disabled:opacity-60",
+                "inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r text-[12px] font-bold text-white",
                 art.cta,
               )}
             >
               {subscribed ? "Switch" : "Subscribe"}
-            </button>
+            </span>
           ) : (
+            <span className="border-border text-foreground/75 inline-flex h-11 w-full items-center justify-center rounded-full border text-[12px] font-bold">
+              Drop to Zero
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── Product modal — full detail + the action ───────────────────────────────
+
+function ProductModal({
+  strategy,
+  currency,
+  isCurrent,
+  subscribed,
+  onConfirm,
+  onClose,
+}: {
+  strategy: Strategy;
+  currency: string | null;
+  isCurrent: boolean;
+  subscribed: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const art = CARD_ART[strategy.id];
+  const paid = strategy.id !== "zero";
+  const r = strategy.rates;
+
+  const primaryLabel = isCurrent
+    ? "Current product"
+    : paid
+      ? subscribed
+        ? `Switch to ${strategy.name}`
+        : `Subscribe — ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year`
+      : "Drop to Zero";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+      <button
+        type="button"
+        aria-label="Dismiss"
+        className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-modal-title"
+        className="border-border bg-card relative z-10 flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
+      >
+        {/* Art header */}
+        <div
+          className={cx(
+            "relative h-32 shrink-0 bg-gradient-to-br",
+            art.fallback,
+          )}
+        >
+          <Image src={art.src} alt="" fill sizes="28rem" className="object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-2.5 right-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          {isCurrent && (
+            <span className="text-foreground absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
+              <Check className="h-3 w-3" />
+              Current
+            </span>
+          )}
+          <div className="absolute inset-x-4 bottom-3">
+            <p
+              id="product-modal-title"
+              className="font-display text-lg font-bold tracking-wide text-white uppercase drop-shadow-sm"
+            >
+              <span className="mr-1.5" aria-hidden>
+                {strategy.emoji}
+              </span>
+              {strategy.name}
+            </p>
+            <p className="text-[12px] font-semibold text-white/90 drop-shadow-sm">
+              {paid ? (
+                <>
+                  {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
+                  <span className="font-normal text-white/80">/ year</span>
+                </>
+              ) : (
+                "Free"
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Detail */}
+        <div className="flex flex-col gap-4 overflow-y-auto p-5">
+          <p className="text-muted-foreground text-[13px] leading-snug">
+            {strategy.tagline}
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <ModalLabel>What you give</ModalLabel>
+            <div className="flex flex-col gap-1.5">
+              <SegmentRow
+                rate={r.welcome_premium_rate}
+                label="Premium · first visit"
+                premium
+              />
+              <SegmentRow
+                rate={r.premium_rate}
+                label="Premium · returning"
+                premium
+              />
+              <SegmentRow
+                rate={r.welcome_free_rate}
+                label="Free · first visit"
+              />
+              <SegmentRow rate={r.free_rate} label="Free · returning" />
+            </div>
+            {paid && (
+              <p className="text-muted-foreground text-[11px] leading-snug">
+                Every discount applies to the first{" "}
+                {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of
+                the bill — a platform-wide cap, always shown to guests.
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <ModalLabel>What you get back</ModalLabel>
+            <VisibilityMeter
+              visibility={strategy.visibility}
+              accent={art.meter}
+            />
+            <p className="text-muted-foreground text-[11px] leading-snug">
+              {paid
+                ? `The ranking algorithm reads a stronger discount as a stronger card — ${strategy.visibility} visibility in the Swipe deck, plus promo-lane eligibility.`
+                : "The catalog listing and the free organic lane — always on, member or not."}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <ModalLabel>The commitment</ModalLabel>
+            {paid ? (
+              <div className="flex flex-col gap-1.5">
+                <CommitmentRow icon={ShieldCheck}>
+                  {formatMoney(PRODUCT_PRICE_MXN, currency)}/year, per product
+                  — switching later is a NEW subscription. Same price on every
+                  product: rank is never for sale.
+                </CommitmentRow>
+                <CommitmentRow icon={MessageCircle}>
+                  Activation: your staff WhatsApp passes a test ping and the
+                  first guest ticket is honored at the bill.
+                </CommitmentRow>
+                <CommitmentRow icon={AlertTriangle}>
+                  Strikes for turning a guest away: 1 warning · 2 promo lane
+                  paused 30 days · 3 removed and the fee is forfeited. Strikes
+                  decay after 6 months clean.
+                </CommitmentRow>
+              </div>
+            ) : (
+              <CommitmentRow icon={ShieldCheck}>
+                No fee, no commitment — dropping to Zero clears the rates and
+                the paying flags. You can subscribe again any time.
+              </CommitmentRow>
+            )}
+          </div>
+        </div>
+
+        {/* Action footer */}
+        <div className="border-border flex flex-col gap-2 border-t p-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-bold">
+              {paid ? (
+                <>
+                  {formatMoney(PRODUCT_PRICE_MXN, currency)}
+                  <span className="text-muted-foreground text-[11px] font-normal">
+                    {" "}
+                    / year
+                  </span>
+                </>
+              ) : (
+                "Free"
+              )}
+            </span>
             <button
               type="button"
-              onClick={onSelect}
-              disabled={pending}
-              aria-pressed="false"
-              className="border-border text-foreground/75 hover:border-foreground/40 hover:text-foreground inline-flex h-11 w-full items-center justify-center rounded-full border text-[12px] font-bold transition disabled:opacity-60"
+              disabled={isCurrent}
+              onClick={onConfirm}
+              className={cx(
+                "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
+                isCurrent
+                  ? "border-border text-muted-foreground border"
+                  : paid
+                    ? cx(
+                        "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
+                        art.cta,
+                      )
+                    : "border-border text-foreground hover:bg-muted border",
+              )}
             >
-              Drop to Zero
+              {isCurrent && <Check className="mr-1.5 h-3.5 w-3.5" />}
+              {primaryLabel}
             </button>
-          )}
+          </div>
+          <p className="text-muted-foreground text-[10px] leading-snug">
+            Admin write — sets plan + rates directly, no Stripe charge from
+            here.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
+function ModalLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+      {children}
+    </span>
+  );
+}
+
+function CommitmentRow({
+  icon: Icon,
+  children,
+}: {
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="bg-muted/70 text-foreground/70 mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="text-foreground/80 text-[12px] leading-snug">
+        {children}
+      </span>
+    </div>
+  );
+}
+
 // One discount segment: ✓ + rate when the product grants it, ✗ + em-dash when
-// it doesn't (Zero) — the rates live in HTML text, never in the artwork.
+// it doesn't (Zero) — rates live in HTML text, never in the artwork.
 function SegmentRow({
   rate,
   label,
@@ -460,9 +667,7 @@ function VisibilityMeter({
         <span className="text-muted-foreground text-[9px] font-bold tracking-[0.14em] uppercase">
           In exchange · visibility
         </span>
-        <span className="text-[11px] leading-none font-bold">
-          {visibility}
-        </span>
+        <span className="text-[11px] leading-none font-bold">{visibility}</span>
       </div>
       <div className="flex gap-1" aria-hidden>
         {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
