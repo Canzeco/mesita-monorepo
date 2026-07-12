@@ -1,14 +1,14 @@
 "use client";
 
-import { BuzzSection } from "../../sections/BuzzSection";
+import { ScoresSection } from "../../sections/ScoresSection";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
-export default function UnitBuzzPage() {
+export default function UnitScoresPage() {
   const { place } = useUnitPlace();
 
   return (
     <div className="mx-auto max-w-6xl">
-      <BuzzSection place={place} />
+      <ScoresSection place={place} />
     </div>
   );
 }
