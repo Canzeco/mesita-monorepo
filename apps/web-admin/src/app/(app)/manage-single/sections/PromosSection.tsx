@@ -14,19 +14,23 @@ import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
 import { SectionCard, ErrorNote, ConfirmDialog } from "../ui";
 
-// Admin Promos — Buzz v4.1: the fee is PER STRATEGY, not a membership.
-//   1. Strategy — pick ONE of four postures (Zero → Dominant). Each paid
-//      strategy is its own MX$1,000/year signing: selecting IS the commitment,
-//      and switching postures is a NEW signing — that per-strategy fee is the
-//      lock-in. Zero is free. One confirm-gated tap writes the four per-tier
-//      rate columns + the universal cap + the paying plan flags atomically;
-//      the rates live on the cards themselves — there is no matrix to tune.
+// Admin Promos — Buzz v4.1: three subscription products, one price.
+//   1. Subscription — Conservative / Aggressive / Dominant, each
+//      MX$1,000/year. Same price on purpose: the product IS the discount
+//      schedule the place commits to giving (and the visibility that earns) —
+//      deeper generosity, not a higher bill. Switching products is a NEW
+//      subscription — that per-product purchase is the lock-in. Zero is not a
+//      product: it is the opt-out row below the trio (catalog + organic lane
+//      stay free forever). One confirm-gated tap writes the four per-tier rate
+//      columns + the universal cap + the paying plan flags atomically; the
+//      rates live on the cards themselves — there is no matrix to tune.
 //   2. Premium example — what the current rates feel like at the bill for a
 //      Premium guest, worked on a sample ticket.
-// The old separate Verified-membership box (one fee unlocking all strategies)
-// is retired — the signing rides the strategy now.
 
-const STRATEGY_FEE_MXN = 1000;
+const PRODUCT_PRICE_MXN = 1000;
+
+// The three sellable products — Zero is deliberately not one of them.
+const PRODUCTS = STRATEGIES.filter((s) => s.id !== "zero");
 
 // Sample ticket for the worked example — deliberately above the universal cap
 // so the "first MX$500" rule is visible in the math.
@@ -44,8 +48,8 @@ function formatPct(value: number | null): string {
   return value == null ? "—" : `${value}%`;
 }
 
-// A place on any paid strategy carries a signing (plan != free).
-function isSigned(place: AdminPlace): boolean {
+// A place on any product carries a subscription (plan != free).
+function isSubscribed(place: AdminPlace): boolean {
   return !!place.plan && place.plan !== "free";
 }
 
@@ -80,11 +84,11 @@ export function PromosSection({
     });
   };
 
-  const signed = isSigned(v);
+  const subscribed = isSubscribed(v);
   const storedStrategy = strategyForPlace(v);
 
-  // Every strategy change is contract-level now (a signing, a re-signing, or
-  // a forfeit), so each one goes through the confirm guard.
+  // Every product change is contract-level (a purchase, a re-purchase, or a
+  // cancellation), so each one goes through the confirm guard.
   const requestStrategy = (target: StrategyId) => {
     if (pending || target === storedStrategy) return;
     setConfirmId(target);
@@ -94,7 +98,7 @@ export function PromosSection({
     setConfirmId(null);
     if (target == null) return;
     const s = STRATEGY_BY_ID[target];
-    // Rates + cap + paying flags in ONE write: the signing IS the strategy.
+    // Rates + cap + paying flags in ONE write: the subscription IS the rates.
     persist({
       ...dbStateForSubscription(target === "zero" ? "free" : "pro_discount"),
       welcome_free_rate: s.rates.welcome_free_rate,
@@ -107,29 +111,29 @@ export function PromosSection({
 
   const confirmStrategy = confirmId ? STRATEGY_BY_ID[confirmId] : null;
   const dialog = confirmStrategy
-    ? dialogCopy(confirmStrategy, signed, v.currency)
+    ? dialogCopy(confirmStrategy, subscribed, v.currency)
     : null;
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Box 1 · Strategy (the signing rides the selection) ──────────── */}
+      {/* ── Box 1 · Subscription (three products, one price) ────────────── */}
       <SectionCard
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
-        title="Discount strategy"
-        subtitle={`One choice of four — each paid strategy is its own ${formatMoney(STRATEGY_FEE_MXN, v.currency)}/year signing. Discounts always apply to the first ${formatMoney(UNIVERSAL_CAP_MXN, v.currency)} of the bill.`}
+        title="Subscription"
+        subtitle={`Three products, one price — ${formatMoney(PRODUCT_PRICE_MXN, v.currency)}/year each. What changes is the discounts you give, and the visibility they earn. Always off the first ${formatMoney(UNIVERSAL_CAP_MXN, v.currency)} of the bill.`}
         action={
           <span className="flex items-center gap-2">
             {pending && (
               <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
             )}
-            <StatusPill signed={signed} />
+            <StatusPill subscribed={subscribed} />
           </span>
         }
       >
-        <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          {STRATEGIES.map((s) => (
-            <StrategyCard
+        <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-3">
+          {PRODUCTS.map((s) => (
+            <ProductCard
               key={s.id}
               strategy={s}
               currency={v.currency}
@@ -140,18 +144,24 @@ export function PromosSection({
           ))}
         </div>
 
+        <ZeroRow
+          selected={storedStrategy === "zero"}
+          pending={pending && storedStrategy === "zero"}
+          onSelect={() => requestStrategy("zero")}
+        />
+
         {storedStrategy === null && (
           <p className="text-muted-foreground mt-2 text-[11px]">
-            Current rates don&apos;t match a preset — pick one to standardize.
+            Current rates don&apos;t match a product — pick one to standardize.
           </p>
         )}
 
         <div className="mt-3 flex flex-col gap-1">
           <p className="text-muted-foreground text-[11px] leading-snug">
-            The fee is per strategy — switching postures is a new signing, so
-            places commit to one. It also filters: a place that won&apos;t sign{" "}
-            {formatMoney(STRATEGY_FEE_MXN, v.currency)} won&apos;t honor a
-            coupon either. Rank is never for sale.
+            Same price on every product keeps rank off the market — you buy a
+            commitment to give, not placement. Switching products is a new{" "}
+            {formatMoney(PRODUCT_PRICE_MXN, v.currency)} subscription, so
+            places pick a posture and live it.
           </p>
           <p className="text-muted-foreground text-[11px] leading-snug">
             Admin writes plan + rates directly — no Stripe charge from here.
@@ -181,38 +191,38 @@ export function PromosSection({
   );
 }
 
-// Confirm copy per transition — signing, re-signing (the lock-in moment), or
-// dropping to Zero.
+// Confirm copy per transition — subscribing, switching products (the lock-in
+// moment), or cancelling to Zero.
 function dialogCopy(
   target: Strategy,
-  signed: boolean,
+  subscribed: boolean,
   currency: string | null,
 ): { title: string; body: string; confirmLabel: string } {
-  const fee = formatMoney(STRATEGY_FEE_MXN, currency);
+  const price = formatMoney(PRODUCT_PRICE_MXN, currency);
   if (target.id === "zero") {
     return {
       title: "Drop to Zero?",
-      body: "Clears the rates and the paying flags — paid promos stop and the current signing is forfeited. The catalog listing and the free organic lane stay.",
+      body: "Cancels the subscription and clears the rates — paid promos stop. The catalog listing and the free organic lane stay.",
       confirmLabel: "Drop to Zero",
     };
   }
-  if (!signed) {
+  if (!subscribed) {
     return {
-      title: `Sign ${target.name}?`,
-      body: `Represents the ${fee}/year signing fee for this strategy. Writes the four rates, the cap and the paying flags — admin write only, no Stripe charge.`,
-      confirmLabel: `Sign ${target.name}`,
+      title: `Subscribe to ${target.name}?`,
+      body: `${price}/year — same price as every product; this one commits the place to the ${target.name} discount schedule. Writes the rates, the cap and the paying flags — admin write only, no Stripe charge.`,
+      confirmLabel: `Subscribe to ${target.name}`,
     };
   }
   return {
     title: `Switch to ${target.name}?`,
-    body: `The fee is per strategy — in the product a switch is a NEW ${fee}/year signing (that is the lock-in). Admin write only, no charge from here.`,
+    body: `Switching products is a NEW ${price}/year subscription (that is the lock-in). Admin write only, no charge from here.`,
     confirmLabel: `Switch to ${target.name}`,
   };
 }
 
-// ─── Strategy cards — the FR/PR/FW/PW table, worn as chips ─────────────────
+// ─── Product cards — the FR/PR/FW/PW table, worn as chips ──────────────────
 
-function StrategyCard({
+function ProductCard({
   strategy,
   currency,
   selected,
@@ -226,7 +236,6 @@ function StrategyCard({
   onSelect: () => void;
 }) {
   const top = strategy.rates.welcome_premium_rate;
-  const paid = strategy.id !== "zero";
   return (
     <button
       type="button"
@@ -258,25 +267,13 @@ function StrategyCard({
       </div>
 
       <span className="text-[11px] leading-none">
-        {paid ? (
-          <>
-            <span className="text-foreground/80 font-semibold">
-              {formatMoney(STRATEGY_FEE_MXN, currency)}
-            </span>{" "}
-            <span className="text-muted-foreground">/ year signing</span>
-          </>
-        ) : (
-          <span className="text-muted-foreground font-semibold">
-            Free — no signing
-          </span>
-        )}
+        <span className="text-foreground/80 font-semibold">
+          {formatMoney(PRODUCT_PRICE_MXN, currency)}
+        </span>{" "}
+        <span className="text-muted-foreground">/ year</span>
       </span>
 
-      {top == null ? (
-        <span className="text-muted-foreground text-sm font-semibold">
-          No promos
-        </span>
-      ) : (
+      {top != null && (
         <div className="flex items-baseline gap-1">
           <span className="text-muted-foreground text-[11px]">up to</span>
           <span className="text-xl leading-none font-bold tabular-nums">
@@ -287,28 +284,70 @@ function StrategyCard({
         </div>
       )}
 
-      {strategy.id === "zero" ? (
-        <p className="text-muted-foreground text-[11px] leading-snug">
-          Catalog and free organic lane only — no discount card in the deck.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-1">
-          <RateLine
-            label="First visit"
-            free={strategy.rates.welcome_free_rate}
-            premium={strategy.rates.welcome_premium_rate}
-          />
-          <RateLine
-            label="Returning"
-            free={strategy.rates.free_rate}
-            premium={strategy.rates.premium_rate}
-          />
-        </div>
-      )}
+      <div className="flex flex-col gap-1">
+        <RateLine
+          label="First visit"
+          free={strategy.rates.welcome_free_rate}
+          premium={strategy.rates.welcome_premium_rate}
+        />
+        <RateLine
+          label="Returning"
+          free={strategy.rates.free_rate}
+          premium={strategy.rates.premium_rate}
+        />
+      </div>
 
       <span className="bg-muted/70 text-foreground/70 mt-auto inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
         {strategy.visibility} visibility
       </span>
+    </button>
+  );
+}
+
+// Zero — the opt-out, deliberately not rendered as a product card.
+function ZeroRow({
+  selected,
+  pending,
+  onSelect,
+}: {
+  selected: boolean;
+  pending: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={pending}
+      aria-pressed={selected}
+      className={cx(
+        "mt-2.5 flex w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition",
+        selected
+          ? "border-foreground/40 bg-muted/40"
+          : "border-border/60 border-dashed bg-card hover:border-foreground/30 hover:bg-muted/20",
+      )}
+    >
+      <span className="text-base leading-none">
+        {STRATEGY_BY_ID.zero.emoji}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-sm font-semibold tracking-tight">Zero</span>{" "}
+        <span className="text-muted-foreground text-[11px]">
+          — no subscription. Catalog and free organic lane only, no discount
+          card in the deck.
+        </span>
+      </span>
+      <span className="text-muted-foreground shrink-0 text-[11px] font-semibold">
+        Free
+      </span>
+      {selected &&
+        (pending ? (
+          <Loader2 className="text-muted-foreground h-3.5 w-3.5 shrink-0 animate-spin" />
+        ) : (
+          <span className="bg-foreground text-background inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+            <Check className="h-3 w-3" />
+          </span>
+        ))}
     </button>
   );
 }
@@ -388,15 +427,15 @@ function PremiumExampleBox({
             />
           </div>
           <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
-            Premium ≥ Free in every preset — Premium guests always get the
-            better deal. They are what the signing buys.
+            Premium ≥ Free in every product — Premium guests always get the
+            better deal. They are what the subscription buys.
           </p>
         </>
       ) : (
         <div className="border-border/60 bg-muted/20 mt-4 rounded-xl border border-dashed px-4 py-5 text-center">
           <p className="text-muted-foreground text-[12px] leading-snug">
             No promos right now — Premium guests see this place in the catalog
-            with no discount card. Sign a paid strategy above to preview the
+            with no discount card. Subscribe to a product above to preview the
             deal.
           </p>
         </div>
@@ -471,12 +510,12 @@ function ExampleCard({
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
-function StatusPill({ signed }: { signed: boolean }) {
+function StatusPill({ subscribed }: { subscribed: boolean }) {
   return (
     <span
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
-        signed
+        subscribed
           ? "bg-emerald-500/12 text-emerald-700"
           : "bg-muted text-muted-foreground",
       )}
@@ -484,10 +523,10 @@ function StatusPill({ signed }: { signed: boolean }) {
       <span
         className={cx(
           "h-1.5 w-1.5 rounded-full",
-          signed ? "bg-emerald-500" : "bg-muted-foreground/50",
+          subscribed ? "bg-emerald-500" : "bg-muted-foreground/50",
         )}
       />
-      {signed ? "Signed" : "Free"}
+      {subscribed ? "Subscribed" : "Free"}
     </span>
   );
 }
