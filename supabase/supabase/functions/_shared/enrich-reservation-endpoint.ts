@@ -1,15 +1,10 @@
-// Selected Reservation Endpoint — Notion Enricher Enrich-Analysis S4.
+// Selected Reservation Endpoint — Notion Enricher Enrich-Analysis S4 / Product Rules §G.
 //
-// Picks the single best contact channel for the Reservationist among
-// Phone / WhatsApp / Instagram (admin Place → Reservations box shape:
-// products.reservations = { channel, value }). Strongly prefers phone when
-// available; WhatsApp / Instagram only when they are clearly better or the
-// only option. Runs in the contents stage alongside category + tags.
-
-import { safeParseJson } from "./parse-utils.ts";
-
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const SELECTOR_MODEL = "gpt-4o-mini";
+// Seeds products.reservations = { channel, value } for the Reservationist.
+// Deterministic priority among available profile contacts:
+//   phone > whatsapp > instagram
+// Never writes fallbacks. Contents stage skips entirely when admin already set
+// a channel (hasReservationTarget). No LLM — the order is the product rule.
 
 export type ReservationChannel = "phone" | "whatsapp" | "instagram";
 
@@ -24,7 +19,12 @@ export type ReservationCandidates = {
   instagram_url?: string | null;
 };
 
-const CHANNELS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
+/** Fixed Enricher seeding order (Product Rules §G / MESITA-597). */
+export const RESERVATION_CHANNEL_PRIORITY: readonly ReservationChannel[] = [
+  "phone",
+  "whatsapp",
+  "instagram",
+] as const;
 
 function trimOrNull(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -32,24 +32,24 @@ function trimOrNull(v: unknown): string | null {
   return t ? t : null;
 }
 
-/** Non-empty contact values the selector may choose from. */
+/** Non-empty contact values the selector may choose from (priority order). */
 export function availableReservationChannels(
   candidates: ReservationCandidates,
 ): ReservationChannel[] {
   const out: ReservationChannel[] = [];
-  if (trimOrNull(candidates.phone)) out.push("phone");
-  if (trimOrNull(candidates.whatsapp_url)) out.push("whatsapp");
-  if (trimOrNull(candidates.instagram_url)) out.push("instagram");
+  for (const channel of RESERVATION_CHANNEL_PRIORITY) {
+    if (valueForReservationChannel(candidates, channel)) out.push(channel);
+  }
   return out;
 }
 
-/** Deterministic phone-first fallback (≈80% phone bias when phone exists). */
+/** Deterministic phone > whatsapp > instagram among available channels. */
 export function preferReservationChannel(
   available: ReservationChannel[],
 ): ReservationChannel | null {
-  if (available.includes("phone")) return "phone";
-  if (available.includes("whatsapp")) return "whatsapp";
-  if (available.includes("instagram")) return "instagram";
+  for (const channel of RESERVATION_CHANNEL_PRIORITY) {
+    if (available.includes(channel)) return channel;
+  }
   return null;
 }
 
@@ -95,105 +95,33 @@ export function mergeProductsReservations(
   return base;
 }
 
-function parseChannel(raw: unknown, available: ReservationChannel[]): ReservationChannel | null {
-  if (typeof raw !== "string") return null;
-  const channel = raw.trim().toLowerCase() as ReservationChannel;
-  if (!CHANNELS.includes(channel)) return null;
-  return available.includes(channel) ? channel : null;
-}
-
 /**
- * Select the best reservation contact channel for a place.
- * - 0 candidates → null
- * - 1 candidate → that channel (no LLM)
- * - 2+ → OpenAI pick with strong phone preference; deterministic fallback on error
+ * Select the reservation contact channel for Enricher seeding.
+ * Exact priority: phone > whatsapp > instagram among non-empty candidates.
+ * Sync + deterministic (no LLM). Admin override is handled by the caller via
+ * hasReservationTarget before invoking this.
  */
-export async function selectReservationEndpoint(input: {
-  openaiKey: string;
+export function selectReservationEndpoint(input: {
   candidates: ReservationCandidates;
+  /** @deprecated Ignored — seeding is deterministic (MESITA-597). */
+  openaiKey?: string;
   name?: string | null;
   about?: string | null;
-}): Promise<{ target: ReservationTarget | null; diag: Record<string, unknown> }> {
+}): { target: ReservationTarget | null; diag: Record<string, unknown> } {
   const available = availableReservationChannels(input.candidates);
   if (available.length === 0) {
     return { target: null, diag: { ok: false, reason: "no_candidates" } };
   }
-  if (available.length === 1) {
-    const channel = available[0];
-    const target = buildReservationTarget(channel, input.candidates);
-    return {
-      target,
-      diag: { ok: !!target, channel, via: "sole_candidate" },
-    };
+
+  const channel = preferReservationChannel(available);
+  if (!channel) {
+    return { target: null, diag: { ok: false, reason: "fallback_empty" } };
   }
 
-  const preferred = preferReservationChannel(available);
-  const candidateLines = available.map((channel) => {
-    const value = valueForReservationChannel(input.candidates, channel);
-    return `- ${channel}: ${value}`;
-  }).join("\n");
-
-  const systemContent =
-    "You pick the single best reservation contact method for an AI booking agent. " +
-    "Options are only the channels listed by the user (phone, whatsapp, instagram). " +
-    "Strongly prefer phone whenever it is available — roughly 80% of selections should " +
-    "be phone. Choose whatsapp or instagram ONLY when they are clearly the better or " +
-    "only workable option (e.g. phone missing/unusable, or sources say reservations " +
-    "are taken exclusively via DM/WhatsApp). " +
-    'Respond with a single JSON object {"channel":"phone"|"whatsapp"|"instagram"}.';
-
-  const userPrompt =
-    (input.name ? `Place: ${input.name}\n` : "") +
-    (input.about ? `About (context only):\n${input.about.slice(0, 800)}\n\n` : "") +
-    `Available reservation channels:\n${candidateLines}\n\n` +
-    `Return {"channel":"<one of: ${available.join("|")}>"}. Prefer phone when listed.`;
-
-  try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${input.openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: SELECTOR_MODEL,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
-    if (r.ok) {
-      const data = (await r.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      const parsed = safeParseJson(data.choices?.[0]?.message?.content ?? "") as
-        | { channel?: unknown }
-        | null;
-      const channel = parseChannel(parsed?.channel, available) ?? preferred;
-      if (channel) {
-        const target = buildReservationTarget(channel, input.candidates);
-        return {
-          target,
-          diag: {
-            ok: !!target,
-            channel,
-            via: parseChannel(parsed?.channel, available) ? "openai" : "fallback_prefer",
-            model: SELECTOR_MODEL,
-          },
-        };
-      }
-    }
-  } catch {
-    // fall through to deterministic preference
-  }
-
-  if (!preferred) return { target: null, diag: { ok: false, reason: "fallback_empty" } };
-  const target = buildReservationTarget(preferred, input.candidates);
+  const target = buildReservationTarget(channel, input.candidates);
+  const via = available.length === 1 ? "sole_candidate" : "priority_phone_whatsapp_instagram";
   return {
     target,
-    diag: { ok: !!target, channel: preferred, via: "fallback_prefer", model: SELECTOR_MODEL },
+    diag: { ok: !!target, channel, via, available },
   };
 }
