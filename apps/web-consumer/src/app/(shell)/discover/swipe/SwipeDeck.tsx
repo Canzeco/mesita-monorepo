@@ -620,8 +620,10 @@ function Deck({ places }: { places: Place[] }) {
             onClick={save}
             className={cn(
               "flex h-12 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-semibold whitespace-nowrap transition active:scale-[0.97]",
+              // Saved reads RED like the place-detail button (MESITA-591) —
+              // the universal "hearted" hue, consistent across surfaces.
               saved
-                ? "bg-pink-gradient shadow-glow border border-transparent text-white"
+                ? "border border-red-500/50 bg-red-500/12 text-red-600 hover:bg-red-500/18"
                 : "border-border bg-card text-secondary hover:bg-muted border",
             )}
           >
