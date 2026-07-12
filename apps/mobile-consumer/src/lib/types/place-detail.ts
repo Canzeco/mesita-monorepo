@@ -1,10 +1,20 @@
+import type { MenuKind } from '@/lib/menu-url';
+
 // Lean PlaceDetail for mobile — subset of web PlaceDetail focused on
-// summary + Place/Rewards tabs. Full adapter can grow when Reviews/Products land.
+// summary + Place/Products/Rewards tabs.
 
 export type PlaceDetailTag = {
   slug: string;
   label: string;
   facet: string;
+};
+
+export type PlaceMenuItem = {
+  name: string;
+  url: string;
+  kind: MenuKind;
+  pages: number | null;
+  updated_label: string;
 };
 
 export type PlaceDetail = {
@@ -36,6 +46,7 @@ export type PlaceDetail = {
   google_count: number | null;
   instagram_followers: number | null;
   tags: PlaceDetailTag[];
+  menus: PlaceMenuItem[];
   welcome_free_rate: number | null;
   welcome_premium_rate: number | null;
   free_rate: number | null;

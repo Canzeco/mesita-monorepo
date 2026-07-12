@@ -112,11 +112,14 @@ export type PlaceDetail = {
   }>;
 
   // 6. Products — generic commercial catalog. For restaurants, menu lives
-  // under products.menu.
+  // under products.menu. `url` is the Storage public URL or Drive share link;
+  // `kind` drives the in-app viewer (image / PDF / Drive preview).
   products: {
     menu: Array<{
       name: string;
-      pages: number;
+      url: string;
+      kind: "image" | "pdf" | "drive";
+      pages: number | null;
       updated_label: string;
     }>;
   };
@@ -392,17 +395,23 @@ export const mockPlace: PlaceDetail = {
     menu: [
       {
         name: "Dinner menu",
-        pages: 6,
+        url: "https://example.com/menus/dinner.pdf",
+        kind: "pdf",
+        pages: null,
         updated_label: "updated last week",
       },
       {
         name: "Wine list",
-        pages: 12,
+        url: "https://example.com/menus/wine.pdf",
+        kind: "pdf",
+        pages: null,
         updated_label: "updated 2 weeks ago",
       },
       {
         name: "Cocktail list",
-        pages: 4,
+        url: "https://example.com/menus/cocktails.jpg",
+        kind: "image",
+        pages: 1,
         updated_label: "updated last week",
       },
     ],
