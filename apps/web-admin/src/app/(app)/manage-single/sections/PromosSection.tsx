@@ -493,8 +493,8 @@ function ProductModal({
             />
             <p className="text-muted-foreground text-[11px] leading-snug">
               {paid
-                ? `The ranking algorithm reads a stronger discount as a stronger card — ${strategy.visibility} visibility in the Swipe deck, plus promo-lane eligibility.`
-                : "The catalog listing and the free organic lane — always on, member or not."}
+                ? `A stronger discount earns more visibility on Mesita — this posture reads as ${strategy.visibility}.`
+                : "You stay listed on Mesita. Without discounts, visibility stays Low."}
             </p>
           </div>
 
@@ -512,7 +512,7 @@ function ProductModal({
                   first guest ticket is honored at the bill.
                 </CommitmentRow>
                 <CommitmentRow icon={AlertTriangle}>
-                  Strikes for turning a guest away: 1 warning · 2 promo lane
+                  Strikes for turning a guest away: 1 warning · 2 discounts
                   paused 30 days · 3 removed and the fee is forfeited. Strikes
                   decay after 6 months clean.
                 </CommitmentRow>
@@ -714,9 +714,8 @@ function FaqsBox({
             It is a commitment filter, not a feature tier — it keeps
             half-hearted restaurants out of the rewards program and guests
             away from dead coupons. Being a member unlocks the paid postures
-            and makes the place eligible for the promo lane in the Swipe deck.
-            The catalog listing and the free organic lane never cost anything,
-            member or not.
+            and turns on your discounts. Being listed on Mesita never costs
+            anything, member or not.
           </p>
         </Faq>
 
@@ -754,16 +753,16 @@ function FaqsBox({
             Switching postures is a NEW {price}/year membership — that is the
             lock-in: places pick a posture and live it. Dropping to Zero is
             free and instant; it clears the rates and paid promos stop, but
-            the catalog listing and the organic lane stay.
+            the place stays listed on Mesita.
           </p>
         </Faq>
 
         <Faq q="What happens if a guest is turned away?">
           <p>
             A refused or ignored QR is a strike: 1 — warning and the
-            activation test re-runs · 2 — the promo lane pauses for 30 days ·
+            activation test re-runs · 2 — your discounts pause for 30 days ·
             3 — removed from the paid postures and the fee is forfeited (the
-            place stays in the catalog). Strikes decay after 6 months clean,
+            place stays listed on Mesita). Strikes decay after 6 months clean,
             and the turned-away guest is compensated instantly.
           </p>
         </Faq>

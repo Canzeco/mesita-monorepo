@@ -69,7 +69,7 @@ export const STRATEGIES: readonly Strategy[] = [
     name: "Zero",
     nameEs: "Cero",
     emoji: "⭕",
-    tagline: "Listed in the catalog and the free organic lane — no paid promos.",
+    tagline: "Listed on Mesita — no discounts.",
     visibility: "Low",
     rates: {
       welcome_free_rate: null,

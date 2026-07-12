@@ -338,7 +338,7 @@ function PricingCard({
           <p className="text-muted-foreground text-[10px] leading-snug">
             {paid
               ? `Off the first ${formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of the bill.`
-              : "Catalog and free organic lane only."}
+              : "Listed on Mesita — no discounts."}
           </p>
 
           {/* Presentational CTA — the whole card is the button; the modal
@@ -546,8 +546,8 @@ function ProductModal({
                 />
                 <p className="text-muted-foreground text-[11px] leading-snug">
                   {paid
-                    ? `The ranking algorithm reads a stronger discount as a stronger card — ${strategy.visibility} visibility in the Swipe deck, plus promo-lane eligibility.`
-                    : "The catalog listing and the free organic lane — always on, subscribed or not."}
+                    ? `A stronger discount earns more visibility on Mesita — this posture reads as ${strategy.visibility}.`
+                    : "You stay listed on Mesita. Without discounts, visibility stays Low."}
                 </p>
               </div>
 
@@ -736,7 +736,7 @@ function VisibilityMeter({
 
 const STRIKES: { n: string; consequence: string }[] = [
   { n: "1", consequence: "Warning, and we re-run the activation test." },
-  { n: "2", consequence: "Your promo lane is paused for 30 days." },
+  { n: "2", consequence: "Your discounts are paused for 30 days." },
   {
     n: "3",
     consequence:
