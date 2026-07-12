@@ -29,13 +29,14 @@ import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
 import { SectionCard, ErrorNote } from "../ui";
 
-// Admin Promos — Mesita Membership (MESITA-585).
-//   1. Mesita Membership — FOUR simplified pricing cards (art band, up-to-N%
-//      hero, four segment rows, CTA — the meter and cap microcopy moved off
-//      the card face). The whole card opens the product modal (full detail +
-//      the action). Three paid postures cost the SAME MX$1,000/year;
-//      switching is a NEW membership (the lock-in). One tap in the modal
-//      writes rates + cap + paying plan flags atomically.
+// Admin Promos — Mesita Membership (MESITA-585, card shape MESITA-590).
+//   1. Mesita Membership — FOUR pricing cards, each a plain give/receive
+//      pitch: YOU GIVE the MX$1,000/year membership + the discounts as a 2×2
+//      matrix (Welcome/Returning × Free/Premium, capped per bill) → YOU
+//      RECEIVE {Low/Mid/High/Max} algorithm placement → Join. The whole card
+//      opens the product modal (full detail + the action); switching is a
+//      NEW membership (the lock-in). One tap in the modal writes rates +
+//      cap + paying plan flags atomically.
 //   2. FAQs — how the membership works, with real numbers: the Premium-guest
 //      worked examples live in the first (default-open) item.
 
@@ -227,7 +228,6 @@ function PricingCard({
 }) {
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
-  const top = strategy.rates.welcome_premium_rate;
   const r = strategy.rates;
 
   return (
@@ -289,41 +289,35 @@ function PricingCard({
         </div>
       </div>
 
-      {/* Simplified body: hero + the four segment rows + CTA. */}
-      <div className="flex w-full flex-1 flex-col gap-2.5 p-3.5">
-        <div className="flex items-center justify-between gap-2">
-          {top == null ? (
-            <p className="text-muted-foreground text-sm leading-none font-semibold">
-              No promos
-            </p>
+      {/* Give → receive → join (MESITA-590). No hero — the matrix IS the
+          pitch, Welcome-first, capped, super simple. */}
+      <div className="flex w-full flex-1 flex-col gap-3 p-3.5">
+        <div className="flex flex-col gap-1.5">
+          <ModalLabel>You give</ModalLabel>
+          {paid ? (
+            <>
+              <p className="text-foreground/85 text-[12px] leading-snug font-semibold">
+                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)} / year membership
+              </p>
+              <p className="text-muted-foreground text-[11px] leading-snug">
+                These discounts — capped at{" "}
+                {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} per
+                bill:
+              </p>
+              <RateMatrix rates={r} />
+            </>
           ) : (
-            <div className="flex items-baseline gap-1">
-              <span className="text-muted-foreground text-[11px]">up to</span>
-              <span className="font-display text-2xl leading-none font-bold tabular-nums">
-                {top}
-                <span className="text-base">%</span>
-              </span>
-              <span className="text-muted-foreground text-[11px]">off</span>
-            </div>
+            <p className="text-muted-foreground text-[12px] leading-snug">
+              Nothing — Zero is free. No discounts.
+            </p>
           )}
-          <span className="bg-muted/70 text-foreground/70 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
-            {strategy.visibility} visibility
-          </span>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <SegmentRow
-            rate={r.welcome_premium_rate}
-            label="Premium · first visit"
-            premium
-          />
-          <SegmentRow
-            rate={r.premium_rate}
-            label="Premium · returning"
-            premium
-          />
-          <SegmentRow rate={r.welcome_free_rate} label="Free · first visit" />
-          <SegmentRow rate={r.free_rate} label="Free · returning" />
+          <ModalLabel>You receive</ModalLabel>
+          <p className="text-foreground/85 text-[12px] leading-snug font-semibold">
+            {strategy.visibility} algorithm placement
+          </p>
         </div>
 
         {/* Presentational CTA — the whole card is the button; the modal
@@ -459,28 +453,22 @@ function ProductModal({
 
           <div className="flex flex-col gap-2">
             <ModalLabel>What you give</ModalLabel>
-            <div className="flex flex-col gap-1.5">
-              <SegmentRow
-                rate={r.welcome_premium_rate}
-                label="Premium · first visit"
-                premium
-              />
-              <SegmentRow
-                rate={r.premium_rate}
-                label="Premium · returning"
-                premium
-              />
-              <SegmentRow
-                rate={r.welcome_free_rate}
-                label="Free · first visit"
-              />
-              <SegmentRow rate={r.free_rate} label="Free · returning" />
-            </div>
-            {paid && (
-              <p className="text-muted-foreground text-[11px] leading-snug">
-                Every discount applies to the first{" "}
-                {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of
-                the bill — a platform-wide cap, always shown to guests.
+            {paid ? (
+              <>
+                <p className="text-foreground/85 text-[12px] font-semibold">
+                  {formatMoney(MEMBERSHIP_PRICE_MXN, currency)} / year
+                  membership
+                </p>
+                <RateMatrix rates={r} />
+                <p className="text-muted-foreground text-[11px] leading-snug">
+                  Every discount applies to the first{" "}
+                  {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of
+                  the bill — a platform-wide cap, always shown to guests.
+                </p>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-[12px] leading-snug">
+                Nothing — Zero is free. No discounts.
               </p>
             )}
           </div>
@@ -493,8 +481,8 @@ function ProductModal({
             />
             <p className="text-muted-foreground text-[11px] leading-snug">
               {paid
-                ? `A stronger discount earns more visibility on Mesita — this posture reads as ${strategy.visibility}.`
-                : "You stay listed on Mesita. Without discounts, visibility stays Low."}
+                ? `A stronger discount earns a higher algorithm placement — this posture reads as ${strategy.visibility}.`
+                : "You stay listed on Mesita. Without discounts, placement stays Low."}
             </p>
           </div>
 
@@ -599,44 +587,38 @@ function CommitmentRow({
   );
 }
 
-// One discount segment: ✓ + rate when the posture grants it, ✗ + em-dash when
-// it doesn't (Zero) — rates live in HTML text, never in the artwork.
-function SegmentRow({
-  rate,
-  label,
-  premium,
-}: {
-  rate: number | null;
-  label: string;
-  premium?: boolean;
-}) {
-  const on = rate != null;
+// The 2×2 discount matrix — Welcome/Returning × Free/Premium. Pato-sanctioned
+// per-card matrix (MESITA-590); rates live in HTML text, never in the artwork.
+function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
+  const cell = (v: number | null) => (v == null ? "—" : `${v}%`);
   return (
-    <div className="flex items-center gap-2 text-[11px]">
-      {on ? (
-        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-      ) : (
-        <X className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
-      )}
-      <span
-        className={cx(
-          "w-9 shrink-0 font-bold tabular-nums",
-          !on
-            ? "text-muted-foreground/50"
-            : premium
-              ? "text-violet-600"
-              : "text-foreground/80",
-        )}
-      >
-        {on ? `${rate}%` : "—"}
+    <div className="border-border/60 grid grid-cols-[auto_1fr_1fr] overflow-hidden rounded-lg border text-[11px]">
+      <span className="bg-muted/40 px-2.5 py-1.5" aria-hidden />
+      <span className="text-muted-foreground bg-muted/40 px-2.5 py-1.5 text-center font-semibold">
+        Free
       </span>
-      <span
-        className={cx(
-          "truncate",
-          on ? "text-foreground/75" : "text-muted-foreground/60",
-        )}
-      >
-        {label}
+      <span className="bg-violet-500/10 px-2.5 py-1.5 text-center font-semibold text-violet-600">
+        Premium
+      </span>
+
+      <span className="text-muted-foreground border-border/60 border-t px-2.5 py-1.5 font-medium">
+        Welcome
+      </span>
+      <span className="text-foreground/80 border-border/60 border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
+        {cell(rates.welcome_free_rate)}
+      </span>
+      <span className="border-border/60 border-t bg-violet-500/[0.06] px-2.5 py-1.5 text-center font-bold tabular-nums text-violet-600">
+        {cell(rates.welcome_premium_rate)}
+      </span>
+
+      <span className="text-muted-foreground border-border/60 border-t px-2.5 py-1.5 font-medium">
+        Returning
+      </span>
+      <span className="text-foreground/80 border-border/60 border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
+        {cell(rates.free_rate)}
+      </span>
+      <span className="border-border/60 border-t bg-violet-500/[0.06] px-2.5 py-1.5 text-center font-bold tabular-nums text-violet-600">
+        {cell(rates.premium_rate)}
       </span>
     </div>
   );
@@ -838,7 +820,7 @@ function PremiumExamples({
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <ExampleCard
-          visit="First visit"
+          visit="Welcome"
           premiumRate={place.welcome_premium_rate}
           freeRate={place.welcome_free_rate}
           cap={cap}
