@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  Check,
-  Crown,
-  Loader2,
-  Lock,
-  Percent,
-  ShieldCheck,
-} from "lucide-react";
+import { Check, Crown, Loader2, Percent } from "lucide-react";
 import {
   STRATEGIES,
   STRATEGY_BY_ID,
@@ -19,21 +12,21 @@ import {
 } from "@/lib/business/strategies";
 import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
-import { SectionCard, GroupLabel, ErrorNote, ConfirmDialog } from "../ui";
+import { SectionCard, ErrorNote, ConfirmDialog } from "../ui";
 
-// Admin Promos — Buzz v4, three boxes top to bottom in the order the product
-// gates them:
-//   1. Membership — the MX$1,000/year Verified signing fee. Not a feature
-//      tier: a commitment filter that keeps half-hearted restaurants out of
-//      the rewards program (and guests away from dead coupons). Must be on
-//      before any paid strategy.
-//   2. Strategy   — members pick ONE of four postures (Zero → Dominant). One
-//      tap writes the four per-tier rate columns + the universal cap; the
-//      rates live on the cards themselves — there is no matrix to tune.
-//   3. Premium example — what the current rates feel like at the bill for a
+// Admin Promos — Buzz v4.1: the fee is PER STRATEGY, not a membership.
+//   1. Strategy — pick ONE of four postures (Zero → Dominant). Each paid
+//      strategy is its own MX$1,000/year signing: selecting IS the commitment,
+//      and switching postures is a NEW signing — that per-strategy fee is the
+//      lock-in. Zero is free. One confirm-gated tap writes the four per-tier
+//      rate columns + the universal cap + the paying plan flags atomically;
+//      the rates live on the cards themselves — there is no matrix to tune.
+//   2. Premium example — what the current rates feel like at the bill for a
 //      Premium guest, worked on a sample ticket.
+// The old separate Verified-membership box (one fee unlocking all strategies)
+// is retired — the signing rides the strategy now.
 
-const MEMBERSHIP_FEE_MXN = 1000;
+const STRATEGY_FEE_MXN = 1000;
 
 // Sample ticket for the worked example — deliberately above the universal cap
 // so the "first MX$500" rule is visible in the math.
@@ -51,11 +44,10 @@ function formatPct(value: number | null): string {
   return value == null ? "—" : `${value}%`;
 }
 
-function isVerifiedMember(place: AdminPlace): boolean {
+// A place on any paid strategy carries a signing (plan != free).
+function isSigned(place: AdminPlace): boolean {
   return !!place.plan && place.plan !== "free";
 }
-
-type SaveError = { source: "membership" | "strategy"; message: string } | null;
 
 export function PromosSection({
   place,
@@ -66,13 +58,10 @@ export function PromosSection({
 }) {
   const [v, setV] = useState(place);
   const [pending, start] = useTransition();
-  const [error, setError] = useState<SaveError>(null);
-  const [memberConfirm, setMemberConfirm] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<StrategyId | null>(null);
 
-  const persist = (
-    patch: Record<string, unknown>,
-    source: "membership" | "strategy",
-  ) => {
+  const persist = (patch: Record<string, unknown>) => {
     const prev = v;
     const next = { ...v, ...patch } as AdminPlace;
     setV(next);
@@ -83,7 +72,7 @@ export function PromosSection({
       if (!r.ok) {
         setV(prev);
         onSaved(prev);
-        setError({ source, message: r.error });
+        setError(r.error);
         return;
       }
       setV(r.data);
@@ -91,154 +80,62 @@ export function PromosSection({
     });
   };
 
-  const isMember = isVerifiedMember(v);
+  const signed = isSigned(v);
   const storedStrategy = strategyForPlace(v);
 
-  const applyStrategy = (target: StrategyId) => {
+  // Every strategy change is contract-level now (a signing, a re-signing, or
+  // a forfeit), so each one goes through the confirm guard.
+  const requestStrategy = (target: StrategyId) => {
     if (pending || target === storedStrategy) return;
-    if (target !== "zero" && !isMember) return;
+    setConfirmId(target);
+  };
+  const commitStrategy = () => {
+    const target = confirmId;
+    setConfirmId(null);
+    if (target == null) return;
     const s = STRATEGY_BY_ID[target];
-    persist(
-      {
-        welcome_free_rate: s.rates.welcome_free_rate,
-        welcome_premium_rate: s.rates.welcome_premium_rate,
-        free_rate: s.rates.free_rate,
-        premium_rate: s.rates.premium_rate,
-        monthly_promo_cap: s.cap,
-      },
-      "strategy",
-    );
+    // Rates + cap + paying flags in ONE write: the signing IS the strategy.
+    persist({
+      ...dbStateForSubscription(target === "zero" ? "free" : "pro_discount"),
+      welcome_free_rate: s.rates.welcome_free_rate,
+      welcome_premium_rate: s.rates.welcome_premium_rate,
+      free_rate: s.rates.free_rate,
+      premium_rate: s.rates.premium_rate,
+      monthly_promo_cap: s.cap,
+    });
   };
 
-  const requestMembership = (member: boolean) => {
-    if (pending || member === isMember) return;
-    setMemberConfirm(member);
-  };
-  const commitMembership = () => {
-    const member = memberConfirm;
-    setMemberConfirm(null);
-    if (member == null) return;
-    if (member) {
-      persist(dbStateForSubscription("pro_discount"), "membership");
-      return;
-    }
-    // Dropping membership locks the place to Zero — clear the rates in the
-    // same write so the stored columns can never keep paying out a strategy
-    // the place is no longer entitled to.
-    const zero = STRATEGY_BY_ID.zero;
-    persist(
-      {
-        ...dbStateForSubscription("free"),
-        welcome_free_rate: zero.rates.welcome_free_rate,
-        welcome_premium_rate: zero.rates.welcome_premium_rate,
-        free_rate: zero.rates.free_rate,
-        premium_rate: zero.rates.premium_rate,
-        monthly_promo_cap: zero.cap,
-      },
-      "membership",
-    );
-  };
+  const confirmStrategy = confirmId ? STRATEGY_BY_ID[confirmId] : null;
+  const dialog = confirmStrategy
+    ? dialogCopy(confirmStrategy, signed, v.currency)
+    : null;
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Box 1 · Membership ──────────────────────────────────────────── */}
-      <SectionCard
-        icon={<ShieldCheck className="h-4 w-4" />}
-        tint="emerald"
-        title="Verified membership"
-        subtitle={`${formatMoney(MEMBERSHIP_FEE_MXN, v.currency)}/year signing fee — the commitment gate for paid promos.`}
-        action={<StatusPill active={isMember} />}
-      >
-        <div className="border-border/60 bg-muted/40 mt-4 flex items-start gap-3 rounded-xl border p-3.5">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">
-              {formatMoney(MEMBERSHIP_FEE_MXN, v.currency)}{" "}
-              <span className="text-muted-foreground text-[11px] font-normal">
-                / year
-              </span>
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-              A filter, not a feature tier — the fee screens out half-hearted
-              restaurants before a guest ever hits a dead coupon. It buys
-              commitment, never placement: rank is not for sale.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-3 flex flex-col gap-1.5">
-          <FeatureRow>
-            Unlocks the paid strategies — Conservative to Dominant.
-          </FeatureRow>
-          <FeatureRow>
-            Makes the place eligible for the promo lane in the Swipe deck.
-          </FeatureRow>
-          <FeatureRow muted>
-            Member or not, the catalog listing and the free organic lane never
-            go away.
-          </FeatureRow>
-        </div>
-
-        <div className="mt-4">
-          <GroupLabel>Set membership</GroupLabel>
-          <p className="text-muted-foreground mt-1 text-[11px]">
-            Admin writes plan flags directly — no Stripe charge from here.
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <ToggleButton
-              active={isMember}
-              disabled={pending}
-              onClick={() => requestMembership(true)}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Verified member
-            </ToggleButton>
-            <ToggleButton
-              active={!isMember}
-              disabled={pending}
-              onClick={() => requestMembership(false)}
-            >
-              Not a member
-            </ToggleButton>
-          </div>
-        </div>
-
-        {error?.source === "membership" && (
-          <div className="mt-3">
-            <ErrorNote message={error.message} />
-          </div>
-        )}
-      </SectionCard>
-
-      {/* ── Box 2 · Strategy ────────────────────────────────────────────── */}
+      {/* ── Box 1 · Strategy (the signing rides the selection) ──────────── */}
       <SectionCard
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
         title="Discount strategy"
-        subtitle={`Pick one of four postures — one tap writes every rate. Discounts always apply to the first ${formatMoney(UNIVERSAL_CAP_MXN, v.currency)} of the bill.`}
+        subtitle={`One choice of four — each paid strategy is its own ${formatMoney(STRATEGY_FEE_MXN, v.currency)}/year signing. Discounts always apply to the first ${formatMoney(UNIVERSAL_CAP_MXN, v.currency)} of the bill.`}
         action={
-          pending ? (
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-          ) : null
+          <span className="flex items-center gap-2">
+            {pending && (
+              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+            )}
+            <StatusPill signed={signed} />
+          </span>
         }
       >
-        {!isMember && (
-          <p className="text-muted-foreground mt-3 flex items-center gap-1.5 text-[11px]">
-            <Lock className="h-3 w-3 shrink-0" />
-            Only Zero is available — activate Verified membership above to
-            unlock Conservative → Dominant.
-          </p>
-        )}
-
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {STRATEGIES.map((s) => (
             <StrategyCard
               key={s.id}
               strategy={s}
+              currency={v.currency}
               selected={s.id === storedStrategy}
               pending={pending && s.id === storedStrategy}
-              locked={s.id !== "zero" && !isMember}
-              onSelect={() => applyStrategy(s.id)}
+              onSelect={() => requestStrategy(s.id)}
             />
           ))}
         </div>
@@ -249,71 +146,98 @@ export function PromosSection({
           </p>
         )}
 
-        {error?.source === "strategy" && (
+        <div className="mt-3 flex flex-col gap-1">
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            The fee is per strategy — switching postures is a new signing, so
+            places commit to one. It also filters: a place that won&apos;t sign{" "}
+            {formatMoney(STRATEGY_FEE_MXN, v.currency)} won&apos;t honor a
+            coupon either. Rank is never for sale.
+          </p>
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            Admin writes plan + rates directly — no Stripe charge from here.
+          </p>
+        </div>
+
+        {error && (
           <div className="mt-3">
-            <ErrorNote message={error.message} />
+            <ErrorNote message={error} />
           </div>
         )}
       </SectionCard>
 
-      {/* ── Box 3 · Premium guest example ───────────────────────────────── */}
+      {/* ── Box 2 · Premium guest example ───────────────────────────────── */}
       <PremiumExampleBox place={v} storedStrategy={storedStrategy} />
 
       <ConfirmDialog
-        open={memberConfirm != null}
-        title={
-          memberConfirm
-            ? "Set this place Verified?"
-            : "Remove Verified membership?"
-        }
-        body={
-          memberConfirm ? (
-            <p>Unlocks Conservative → Dominant. Does not charge Stripe.</p>
-          ) : (
-            <p>
-              Locks the place to Zero and clears its rates — paid promos stop
-              until it is Verified again.
-            </p>
-          )
-        }
-        confirmLabel={memberConfirm ? "Set Verified" : "Remove membership"}
+        open={dialog != null}
+        title={dialog?.title ?? ""}
+        body={<p>{dialog?.body}</p>}
+        confirmLabel={dialog?.confirmLabel ?? "Confirm"}
         busy={pending}
-        onConfirm={commitMembership}
-        onCancel={() => setMemberConfirm(null)}
+        onConfirm={commitStrategy}
+        onCancel={() => setConfirmId(null)}
       />
     </div>
   );
+}
+
+// Confirm copy per transition — signing, re-signing (the lock-in moment), or
+// dropping to Zero.
+function dialogCopy(
+  target: Strategy,
+  signed: boolean,
+  currency: string | null,
+): { title: string; body: string; confirmLabel: string } {
+  const fee = formatMoney(STRATEGY_FEE_MXN, currency);
+  if (target.id === "zero") {
+    return {
+      title: "Drop to Zero?",
+      body: "Clears the rates and the paying flags — paid promos stop and the current signing is forfeited. The catalog listing and the free organic lane stay.",
+      confirmLabel: "Drop to Zero",
+    };
+  }
+  if (!signed) {
+    return {
+      title: `Sign ${target.name}?`,
+      body: `Represents the ${fee}/year signing fee for this strategy. Writes the four rates, the cap and the paying flags — admin write only, no Stripe charge.`,
+      confirmLabel: `Sign ${target.name}`,
+    };
+  }
+  return {
+    title: `Switch to ${target.name}?`,
+    body: `The fee is per strategy — in the product a switch is a NEW ${fee}/year signing (that is the lock-in). Admin write only, no charge from here.`,
+    confirmLabel: `Switch to ${target.name}`,
+  };
 }
 
 // ─── Strategy cards — the FR/PR/FW/PW table, worn as chips ─────────────────
 
 function StrategyCard({
   strategy,
+  currency,
   selected,
   pending,
-  locked,
   onSelect,
 }: {
   strategy: Strategy;
+  currency: string | null;
   selected: boolean;
   pending: boolean;
-  locked: boolean;
   onSelect: () => void;
 }) {
   const top = strategy.rates.welcome_premium_rate;
+  const paid = strategy.id !== "zero";
   return (
     <button
       type="button"
-      onClick={locked ? undefined : onSelect}
-      disabled={pending || locked}
+      onClick={onSelect}
+      disabled={pending}
       aria-pressed={selected}
       className={cx(
         "flex flex-col gap-2 rounded-xl border p-3.5 text-left transition",
         selected
           ? "border-foreground ring-foreground/10 bg-muted/40 ring-1"
-          : "border-border/60 bg-card",
-        !selected && !locked && "hover:border-foreground/30 hover:bg-muted/20",
-        locked && "cursor-not-allowed opacity-55",
+          : "border-border/60 bg-card hover:border-foreground/30 hover:bg-muted/20",
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -323,18 +247,30 @@ function StrategyCard({
             {strategy.name}
           </span>
         </span>
-        {selected ? (
-          pending ? (
+        {selected &&
+          (pending ? (
             <Loader2 className="text-muted-foreground h-3.5 w-3.5 shrink-0 animate-spin" />
           ) : (
             <span className="bg-foreground text-background inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
               <Check className="h-3 w-3" />
             </span>
-          )
-        ) : locked ? (
-          <Lock className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-        ) : null}
+          ))}
       </div>
+
+      <span className="text-[11px] leading-none">
+        {paid ? (
+          <>
+            <span className="text-foreground/80 font-semibold">
+              {formatMoney(STRATEGY_FEE_MXN, currency)}
+            </span>{" "}
+            <span className="text-muted-foreground">/ year signing</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground font-semibold">
+            Free — no signing
+          </span>
+        )}
+      </span>
 
       {top == null ? (
         <span className="text-muted-foreground text-sm font-semibold">
@@ -401,7 +337,7 @@ function RateLine({
   );
 }
 
-// ─── Box 3 · Premium guest example ──────────────────────────────────────────
+// ─── Box 2 · Premium guest example ──────────────────────────────────────────
 
 // Worked from the place's LIVE rate columns (not the preset), so custom or
 // legacy rates preview exactly what the bill EF would apply today.
@@ -453,14 +389,14 @@ function PremiumExampleBox({
           </div>
           <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
             Premium ≥ Free in every preset — Premium guests always get the
-            better deal. They are what the fee and the strategies are buying.
+            better deal. They are what the signing buys.
           </p>
         </>
       ) : (
         <div className="border-border/60 bg-muted/20 mt-4 rounded-xl border border-dashed px-4 py-5 text-center">
           <p className="text-muted-foreground text-[12px] leading-snug">
             No promos right now — Premium guests see this place in the catalog
-            with no discount card. Pick a paid strategy above to preview the
+            with no discount card. Sign a paid strategy above to preview the
             deal.
           </p>
         </div>
@@ -535,40 +471,12 @@ function ExampleCard({
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
-function ToggleButton({
-  active,
-  disabled,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled || active}
-      onClick={onClick}
-      className={cx(
-        "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition disabled:cursor-default",
-        active
-          ? "border-transparent bg-foreground text-background"
-          : "border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground disabled:opacity-40",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function StatusPill({ active }: { active: boolean }) {
+function StatusPill({ signed }: { signed: boolean }) {
   return (
     <span
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
-        active
+        signed
           ? "bg-emerald-500/12 text-emerald-700"
           : "bg-muted text-muted-foreground",
       )}
@@ -576,37 +484,10 @@ function StatusPill({ active }: { active: boolean }) {
       <span
         className={cx(
           "h-1.5 w-1.5 rounded-full",
-          active ? "bg-emerald-500" : "bg-muted-foreground/50",
+          signed ? "bg-emerald-500" : "bg-muted-foreground/50",
         )}
       />
-      {active ? "Verified" : "Not verified"}
+      {signed ? "Signed" : "Free"}
     </span>
-  );
-}
-
-function FeatureRow({
-  children,
-  muted,
-}: {
-  children: React.ReactNode;
-  muted?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-2">
-      <Check
-        className={cx(
-          "mt-0.5 h-3.5 w-3.5 shrink-0",
-          muted ? "text-muted-foreground" : "text-emerald-600",
-        )}
-      />
-      <span
-        className={cx(
-          "text-[12px] leading-snug",
-          muted ? "text-muted-foreground" : "text-foreground/85",
-        )}
-      >
-        {children}
-      </span>
-    </div>
   );
 }
