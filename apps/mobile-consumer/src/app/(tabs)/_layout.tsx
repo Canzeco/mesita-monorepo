@@ -1,66 +1,32 @@
 import { Tabs } from 'expo-router';
-import { CalendarCheck, QrCode, Search, User } from 'lucide-react-native';
 
-import { MesitaMark } from '@/components/brand/MesitaMark';
+import { ConsumerTabBar } from '@/components/ui/ConsumerTabBar';
 
-// Mirrors the web BottomNav: Home uses MesitaMark; other tabs use lucide.
+// Custom tab bar ports web BottomNav (MESITA-581). Rewards / Reservations
+// stay registered so deep links work, but the tab bar opens ComingSoonModal
+// instead of navigating (web MESITA-383 parity).
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={(props) => (
+        // Expo Router's navigation helpers are wider than our minimal prop
+        // surface; the cast keeps ConsumerTabBar free of a hard
+        // `@react-navigation/bottom-tabs` import (pnpm hoisting).
+        <ConsumerTabBar
+          state={props.state}
+          navigation={props.navigation as never}
+        />
+      )}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#fb2b7b',
-        tabBarInactiveTintColor: '#775254',
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#ebd9db',
-        },
-        tabBarLabelStyle: {
-          fontFamily: 'Inter_500Medium',
-          fontSize: 10,
-        },
         sceneStyle: { backgroundColor: '#fff7f8' },
       }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <MesitaMark color={String(color)} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: 'Search',
-          tabBarIcon: ({ color, size }) => <Search color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="rewards"
-        options={{
-          title: 'Rewards',
-          tabBarIcon: ({ color, size }) => <QrCode color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="reservations"
-        options={{
-          title: 'Reservations',
-          tabBarIcon: ({ color, size }) => (
-            <CalendarCheck color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="me"
-        options={{
-          title: 'Me',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
-        }}
-      />
+      <Tabs.Screen name="home" options={{ title: 'Home' }} />
+      <Tabs.Screen name="search" options={{ title: 'Search' }} />
+      <Tabs.Screen name="rewards" options={{ title: 'Rewards' }} />
+      <Tabs.Screen name="reservations" options={{ title: 'Reservations' }} />
+      <Tabs.Screen name="me" options={{ title: 'Me' }} />
     </Tabs>
   );
 }

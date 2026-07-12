@@ -26,6 +26,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
@@ -75,13 +76,17 @@ export default function MeScreen() {
     .join(' · ');
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }} edges={['top']}>
+    <ShellWash>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text variant="headlineMedium" style={{ marginBottom: 4 }}>
+        <Text
+          variant="headlineMedium"
+          style={{ marginBottom: 4, letterSpacing: -0.24 }}
+        >
           Me
         </Text>
 
@@ -279,6 +284,7 @@ export default function MeScreen() {
         <ContactSheet onClose={() => setSheet(null)} />
       ) : null}
     </SafeAreaView>
+    </ShellWash>
   );
 }
 

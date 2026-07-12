@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FavoritesTab } from '@/components/home/FavoritesTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
+import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
 
 // Mirrors web HomeModeNav: Swipe + Favorites live; Memo + Social parked
@@ -27,7 +28,7 @@ export default function HomeScreen() {
   const [mode, setMode] = useState<Mode>('swipe');
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+    <ShellWash>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <View
           className="border-b border-border bg-background/90"
@@ -46,6 +47,6 @@ export default function HomeScreen() {
           {mode === 'swipe' ? <SwipeDeck /> : <FavoritesTab />}
         </View>
       </SafeAreaView>
-    </View>
+    </ShellWash>
   );
 }
