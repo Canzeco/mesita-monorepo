@@ -18,6 +18,7 @@ import {
 import { Section } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdatePlace, type MyPlace } from "@/lib/api/places";
+import { apiChangeSubscription } from "@/lib/api/subscription";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
@@ -35,16 +36,17 @@ import {
 //      card is the click target: it opens a product modal with the full
 //      detail (what you give / what you get back / the commitment) and the
 //      action footer — the modal IS the confirm-and-pay step. Three products
-//      cost the SAME MX$1,000/year; switching postures is a NEW subscription
-//      (the lock-in).
+//      cost the SAME MX$1,000/year Verified membership; switching postures
+//      later is a NEW membership (the lock-in).
 //   2. The subscription — fee framing, activation steps, strikes ladder.
 //   3. Premium example — what the current rates feel like at the bill.
 //
-// Plan is billing-locked from this console: a place NOT yet subscribed gets
-// the subscribe-and-pay journey inside the modal, which completes as an
-// activation request (Mesita pings the staff WhatsApp; payment is settled
-// with the account manager — nothing is charged in-app). A subscribed place
-// switches rates directly (the write is rates + cap only, never plan).
+// Plan is billing-locked: Join calls business-web-change-subscription
+// (Verified = plan=pro, MX$1,000/yr). Mock mode grants instantly; real mode
+// redirects to Stripe Checkout (MOCK_SUBSCRIPTION flip = MESITA-37). After
+// pay, staff WhatsApp activation still applies (MESITA-542). A subscribed
+// place switches rates directly (rates + cap only, never plan). Drop to Zero
+// downgrades membership via the same billing EF.
 
 const PRODUCT_PRICE_MXN = 1000;
 
@@ -130,9 +132,13 @@ export function PromosClient({ place }: { place: MyPlace }) {
   const [selectedId, setSelectedId] = useState<StrategyId | null>(storedStrategy);
   const [pendingId, setPendingId] = useState<StrategyId | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
-  // Paid product requested by a not-yet-subscribed place → persistent notice.
+  // Paid product joined by a not-yet-subscribed place → WhatsApp activation notice.
   const [activationFor, setActivationFor] = useState<StrategyId | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const promosOrigin =
+    typeof window !== "undefined" ? window.location.origin : "";
 
   // Writes the four rate columns + the cap atomically (never plan — that is
   // billing). Optimistic: the card flips immediately and reverts on failure.
@@ -158,6 +164,72 @@ export function PromosClient({ place }: { place: MyPlace }) {
         setError(errMsg(err, "Couldn't save the posture."));
       })
       .finally(() => setPendingId(null));
+  };
+
+  // Join Verified (or drop to Free) via billing EF, then write rates.
+  const runBillingThenRates = async (
+    target: StrategyId,
+    plan: "pro" | "free",
+  ) => {
+    if (billingBusy || pendingId) return;
+    setBillingBusy(true);
+    setError(null);
+    try {
+      const result = await apiChangeSubscription(supabase, {
+        projectId: place.id,
+        plan,
+        successUrl: `${promosOrigin}/unit/${place.id}/promos?subscription=success`,
+        cancelUrl: `${promosOrigin}/unit/${place.id}/promos?subscription=cancelled`,
+      });
+      // Real Stripe Checkout — leave the page; rates land after webhook + return.
+      if (
+        result.checkout_url &&
+        !result.mock &&
+        !result.already_subscribed &&
+        !result.plan_switched &&
+        !result.scheduled_downgrade &&
+        plan === "pro"
+      ) {
+        window.location.href = result.checkout_url;
+        return;
+      }
+      if (plan === "pro") setActivationFor(target);
+      setModalId(null);
+      // Force rate write even when selectedId already matches (first Join).
+      const strat = STRATEGY_BY_ID[target];
+      const previous = selectedId;
+      setSelectedId(target);
+      setPendingId(target);
+      await apiUpdatePlace(supabase, {
+        id: place.id,
+        welcome_free_rate: strat.rates.welcome_free_rate,
+        welcome_premium_rate: strat.rates.welcome_premium_rate,
+        free_rate: strat.rates.free_rate,
+        premium_rate: strat.rates.premium_rate,
+        monthly_promo_cap: strat.cap,
+      });
+      router.refresh();
+      setPendingId(null);
+      void previous;
+    } catch (err) {
+      setError(errMsg(err, "Couldn't update the membership."));
+      setPendingId(null);
+    } finally {
+      setBillingBusy(false);
+    }
+  };
+
+  const onJoinOrSwitch = (target: StrategyId) => {
+    const paid = target !== "zero";
+    if (paid && !subscribed) {
+      void runBillingThenRates(target, "pro");
+      return;
+    }
+    if (!paid && subscribed) {
+      void runBillingThenRates(target, "free");
+      return;
+    }
+    commitStrategy(target);
   };
 
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
@@ -199,13 +271,13 @@ export function PromosClient({ place }: { place: MyPlace }) {
 
         {activationStrategy && (
           <p className="rounded-xl bg-emerald-50 p-3 text-[12px] leading-snug text-emerald-800">
-            Noted — Mesita will reach out on your staff WhatsApp to run the
-            test ping and activate{" "}
+            Verified membership started for{" "}
             <span className="font-semibold">
               {activationStrategy.emoji} {activationStrategy.name}
             </span>{" "}
-            ({formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year). Nothing is
-            charged until then.
+            ({formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year). Mesita will
+            reach out on your staff WhatsApp to run the test ping — guests
+            redeem after activation.
           </p>
         )}
 
@@ -237,8 +309,8 @@ export function PromosClient({ place }: { place: MyPlace }) {
           currency={place.currency}
           isCurrent={modalStrategy.id === selectedId}
           subscribed={subscribed}
-          onCommit={() => commitStrategy(modalStrategy.id)}
-          onRequestActivation={() => setActivationFor(modalStrategy.id)}
+          billingBusy={billingBusy || pendingId === modalStrategy.id}
+          onCommit={() => onJoinOrSwitch(modalStrategy.id)}
           onClose={() => setModalId(null)}
         />
       )}
@@ -382,22 +454,18 @@ function ProductModal({
   currency,
   isCurrent,
   subscribed,
+  billingBusy,
   onCommit,
-  onRequestActivation,
   onClose,
 }: {
   strategy: Strategy;
   currency: string;
   isCurrent: boolean;
   subscribed: boolean;
+  billingBusy: boolean;
   onCommit: () => void;
-  onRequestActivation: () => void;
   onClose: () => void;
 }) {
-  // Subscribe-and-pay for a not-yet-subscribed place completes in-modal as an
-  // activation request (billing is settled with the account manager).
-  const [requested, setRequested] = useState(false);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -409,7 +477,7 @@ function ProductModal({
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
   const r = strategy.rates;
-  const needsActivation = paid && !subscribed;
+  const needsJoin = paid && !subscribed;
 
   const primaryLabel = isCurrent
     ? "Current posture"
@@ -420,12 +488,7 @@ function ProductModal({
       : "Drop to Zero";
 
   const onPrimary = () => {
-    if (isCurrent) return;
-    if (needsActivation) {
-      onRequestActivation();
-      setRequested(true);
-      return;
-    }
+    if (isCurrent || billingBusy) return;
     onCommit();
   };
 
@@ -484,143 +547,122 @@ function ProductModal({
           </div>
         </div>
 
-        {requested ? (
-          /* Subscribe-and-pay confirmation state */
-          <div className="flex flex-col gap-4 p-5">
-            <div className="flex flex-col items-center gap-3 rounded-xl bg-emerald-50 px-4 py-6 text-center">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15">
-                <Check className="h-5 w-5 text-emerald-600" />
-              </span>
-              <p className="text-[13px] leading-snug font-semibold text-emerald-900">
-                {strategy.emoji} {strategy.name} requested
+        {/* Detail */}
+        <div className="flex flex-col gap-4 overflow-y-auto p-5">
+          <p className="text-muted-foreground text-[13px] leading-snug">
+            {strategy.tagline}
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <ModalLabel>You give</ModalLabel>
+            {paid ? (
+              <>
+                <RateMatrix rates={r} />
+                <p className="text-muted-foreground text-[11px] leading-snug">
+                  Every discount applies to the first{" "}
+                  {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of
+                  the bill — a platform-wide cap, always shown to guests.
+                </p>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-[12px] leading-snug">
+                Nothing — Zero is free. No discounts.
               </p>
-              <p className="text-[12px] leading-snug text-emerald-800">
-                Mesita will reach out on your staff WhatsApp to run the test
-                ping and activate the membership. Payment (
-                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year) is settled
-                with your account manager — nothing is charged in-app.
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <ModalLabel>You receive</ModalLabel>
+            <PlacementReward strategy={strategy} art={art} />
+          </div>
+
+          {paid ? (
+            <div className="flex flex-col gap-3">
+              <ModalLabel>How it works</ModalLabel>
+              <Step n={1} title="Pay the membership">
+                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year Verified
+                membership — one posture at a time; switching later is a new
+                membership.
+              </Step>
+              <Step n={2} title="Set up your staff on WhatsApp">
+                We send a test ping so your team can receive guest tickets.
+              </Step>
+              <Step n={3} title="Redeem your first guest reward">
+                Honor the first ticket at the bill and you&apos;re live.
+              </Step>
+              <p className="text-muted-foreground text-[10px] leading-snug">
+                Turn a guest away and it&apos;s a strike — 1 warning · 2
+                discounts paused 30 days · 3 removed. Strikes decay after 6
+                months clean.
               </p>
             </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <ModalLabel>How it works</ModalLabel>
+              <p className="text-muted-foreground text-[12px] leading-snug">
+                No membership, nothing to set up — Zero is free and you stay
+                listed on Mesita. Join a posture any time.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Action footer */}
+        <div className="border-border flex flex-col gap-2 border-t p-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-bold">
+              {paid ? (
+                <>
+                  {formatMoney(PRODUCT_PRICE_MXN, currency)}
+                  <span className="text-muted-foreground text-[11px] font-normal">
+                    {" "}
+                    / year
+                  </span>
+                </>
+              ) : (
+                "Free"
+              )}
+            </span>
             <button
               type="button"
-              onClick={onClose}
-              className="bg-foreground text-background inline-flex h-11 w-full items-center justify-center rounded-full text-[13px] font-bold transition hover:opacity-90"
+              disabled={isCurrent || billingBusy}
+              onClick={onPrimary}
+              className={cn(
+                "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
+                isCurrent
+                  ? "border-border text-muted-foreground border"
+                  : paid
+                    ? cn(
+                        "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
+                        art.cta,
+                      )
+                    : "border-border text-foreground hover:bg-muted border",
+                billingBusy && "opacity-70",
+              )}
             >
-              Done
+              {billingBusy ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : isCurrent ? (
+                <Check className="mr-1.5 h-3.5 w-3.5" />
+              ) : null}
+              {billingBusy ? "Working…" : primaryLabel}
             </button>
           </div>
-        ) : (
-          <>
-            {/* Detail */}
-            <div className="flex flex-col gap-4 overflow-y-auto p-5">
-              <p className="text-muted-foreground text-[13px] leading-snug">
-                {strategy.tagline}
-              </p>
-
-              <div className="flex flex-col gap-2">
-                <ModalLabel>You give</ModalLabel>
-                {paid ? (
-                  <>
-                    <RateMatrix rates={r} />
-                    <p className="text-muted-foreground text-[11px] leading-snug">
-                      Every discount applies to the first{" "}
-                      {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)}{" "}
-                      of the bill — a platform-wide cap, always shown to
-                      guests.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground text-[12px] leading-snug">
-                    Nothing — Zero is free. No discounts.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <ModalLabel>You receive</ModalLabel>
-                <PlacementReward strategy={strategy} art={art} />
-              </div>
-
-              {paid ? (
-                <div className="flex flex-col gap-3">
-                  <ModalLabel>How it works</ModalLabel>
-                  <Step n={1} title="Pay the membership">
-                    {formatMoney(PRODUCT_PRICE_MXN, currency)}/year — one
-                    posture at a time; switching later is a new membership.
-                  </Step>
-                  <Step n={2} title="Set up your staff on WhatsApp">
-                    We send a test ping so your team can receive guest tickets.
-                  </Step>
-                  <Step n={3} title="Redeem your first guest reward">
-                    Honor the first ticket at the bill and you&apos;re live.
-                  </Step>
-                  <p className="text-muted-foreground text-[10px] leading-snug">
-                    Turn a guest away and it&apos;s a strike — 1 warning · 2
-                    discounts paused 30 days · 3 removed. Strikes decay after 6
-                    months clean.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <ModalLabel>How it works</ModalLabel>
-                  <p className="text-muted-foreground text-[12px] leading-snug">
-                    No membership, nothing to set up — Zero is free and you
-                    stay listed on Mesita. Join a posture any time.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Action footer */}
-            <div className="border-border flex flex-col gap-2 border-t p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-bold">
-                  {paid ? (
-                    <>
-                      {formatMoney(PRODUCT_PRICE_MXN, currency)}
-                      <span className="text-muted-foreground text-[11px] font-normal">
-                        {" "}
-                        / year
-                      </span>
-                    </>
-                  ) : (
-                    "Free"
-                  )}
-                </span>
-                <button
-                  type="button"
-                  disabled={isCurrent}
-                  onClick={onPrimary}
-                  className={cn(
-                    "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
-                    isCurrent
-                      ? "border-border text-muted-foreground border"
-                      : paid
-                        ? cn(
-                            "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
-                            art.cta,
-                          )
-                        : "border-border text-foreground hover:bg-muted border",
-                  )}
-                >
-                  {isCurrent && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                  {primaryLabel}
-                </button>
-              </div>
-              <p className="text-muted-foreground text-[10px] leading-snug">
-                {needsActivation
-                  ? "Payment is settled with your Mesita account manager — nothing is charged in-app."
-                  : subscribed && paid && !isCurrent
-                    ? "Rates change now — Mesita follows up on the billing."
-                    : ""}
-              </p>
-            </div>
-          </>
-        )}
+          <p className="text-muted-foreground text-[10px] leading-snug">
+            {needsJoin
+              ? "Starts Verified membership billing, then Mesita activates staff WhatsApp."
+              : subscribed && paid && !isCurrent
+                ? "Rates change now — Mesita follows up on the billing."
+                : subscribed && !paid
+                  ? "Cancels Verified membership (keeps listing on Mesita)."
+                  : ""}
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+
 
 function ModalLabel({ children }: { children: React.ReactNode }) {
   return (

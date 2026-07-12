@@ -1,27 +1,17 @@
 import type { PlacePlan } from "@/lib/api/places";
 
-// Subscription catalog used by Promos (picker + label lookup).
+// Subscription catalog used by place summaries (label lookup).
 //
-// Three subscriptions, ordered ascending so the business reads the picker
-// left-to-right as a visibility ladder:
-//   - "Free without promos" (plan=free)  · Low    · $0
-//   - "Pro"                 (plan=pro)   · Medium · $100/mo
-//   - "Ultra"               (plan=ultra) · Max    · $5,000/mo
-//
-// Paid plans are monthly Stripe subscriptions: picking a card goes through
-// business-web-change-subscription (Stripe Checkout), never a direct plan write.
-//
-// Mesita is discounts-only: every Verified place runs the same instant
-// discount applied directly at the bill, with no money flowing through
-// Mesita. Pro vs Ultra only changes price and visibility tier; the promo
-// workflow is identical. Cashback / Mesita-in-the-loop "reward" tiers are
-// deliberately deferred (see Notion → Main → Future Expansions) and are not
-// offered in the console.
+// Buzz v4 (MESITA-541): a place is either Free or Verified (MX$1,000/year).
+// Strategy postures (Zero / Conservative / Aggressive / Dominant) live on
+// the Promos page and are NOT separate Stripe products — paid postures all
+// grant the same Verified membership (`plan=pro`). Legacy `ultra` folds onto
+// Verified for display.
 
 export type PlanVisibility = "Low" | "Medium" | "Max";
 
-// Picker id — one per card.
-export type SubscriptionId = "free" | "pro_discount" | "ultra_discount";
+/** Catalog id — Free or the single Verified membership. */
+export type SubscriptionId = "free" | "verified";
 
 type SubscriptionRow = {
   id: SubscriptionId;
@@ -30,9 +20,6 @@ type SubscriptionRow = {
   cadence: string;
   tagline: string;
   visibility: PlanVisibility;
-  // Rough setup time the business should expect. Discount is just a coupon
-  // workflow (no integration); the formal Reward flow requires connecting a
-  // business so Mesita can settle the payment.
   setup?: string;
   featured?: boolean;
 };
@@ -42,46 +29,36 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     id: "free",
     label: "Free without promos",
     price: "MX$0",
-    cadence: "/ month",
+    cadence: "/ year",
     tagline: "Listed on Mesita.",
     visibility: "Low",
   },
   {
-    id: "pro_discount",
-    label: "Pro",
-    price: "MX$100",
-    cadence: "/ month",
-    tagline: "Consumer shows the coupon, you discount the bill.",
-    visibility: "Medium",
-    setup: "1 min",
-  },
-  {
-    id: "ultra_discount",
-    label: "Ultra",
-    price: "MX$5,000",
-    cadence: "/ month",
-    tagline: "Same coupon flow, maximum visibility.",
+    id: "verified",
+    label: "Verified",
+    price: "MX$1,000",
+    cadence: "/ year",
+    tagline: "Membership — discounts at the bill, algorithm placement.",
     visibility: "Max",
-    setup: "1 min",
+    setup: "WhatsApp ping + first ticket",
     featured: true,
   },
 ];
 
+/** True when the place holds Verified membership (any paid plan key). */
+export function isVerifiedMember(p: PlacePlan): boolean {
+  return p !== "free";
+}
+
 export function visibilityForPlan(p: PlacePlan): PlanVisibility {
-  if (p === "free") return "Low";
-  if (p === "pro") return "Medium";
-  return "Max"; // ultra
+  return isVerifiedMember(p) ? "Max" : "Low";
 }
 
 export function subscriptionForPlace(p: PlacePlan): SubscriptionId {
-  if (p === "free") return "free";
-  if (p === "pro") return "pro_discount";
-  return "ultra_discount"; // ultra
+  return isVerifiedMember(p) ? "verified" : "free";
 }
 
-// Plan key the billing EF expects for a picker card.
+/** Plan key the billing EF expects for a catalog card. */
 export function planForSubscription(sub: SubscriptionId): PlacePlan {
-  if (sub === "free") return "free";
-  if (sub === "pro_discount") return "pro";
-  return "ultra"; // ultra_discount
+  return sub === "verified" ? "pro" : "free";
 }

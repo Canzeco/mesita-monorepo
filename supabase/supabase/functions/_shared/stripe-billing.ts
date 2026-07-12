@@ -1,9 +1,12 @@
 // Shared Stripe billing helpers — the single place the Mesita subscription
-// catalog (three products, all monthly MXN) is defined and provisioned.
+// catalog is defined and provisioned.
 //
-//   consumer_premium — Mesita Premium  · $100 MXN/mo · classes.premium
-//   business_pro     — Mesita Pro  · $100 MXN/mo · business_plans.pro
-//   business_ultra   — Mesita Ultra    · $5,000 MXN/mo · business_plans.ultra
+//   consumer_premium   — Mesita Premium · $100 MXN/mo · classes.premium
+//   business_verified  — Mesita Verified · $1,000 MXN/yr · business_plans.pro
+//
+// Buzz v4 (MESITA-541) retired business Pro/Ultra monthly SKUs. Verified is
+// the only business product sold; `ultra` remains a legacy plan key for
+// existing places but is not self-provisioned here.
 //
 // resolvePlanPrice() is self-provisioning: the first real checkout after a
 // deploy materializes the product + price in whatever Stripe account
@@ -24,7 +27,7 @@ export const STRIPE_API_VERSION =
 
 export type PlanCatalogEntry = {
   // Stable Mesita-wide id, stored in Stripe metadata.mesita_plan.
-  id: "consumer_premium" | "business_pro" | "business_ultra";
+  id: "consumer_premium" | "business_verified";
   // Lookup row backing this price.
   table: "classes" | "business_plans";
   rowKey: string;
@@ -32,6 +35,8 @@ export type PlanCatalogEntry = {
   lookupKey: string;
   productName: string;
   productDescription: string;
+  // Recurring interval matching business_plans / classes price semantics.
+  interval: "month" | "year";
 };
 
 export const STRIPE_CATALOG: PlanCatalogEntry[] = [
@@ -43,24 +48,17 @@ export const STRIPE_CATALOG: PlanCatalogEntry[] = [
     productName: "Mesita Premium",
     productDescription:
       "Mesita consumer Premium plan — monthly subscription.",
+    interval: "month",
   },
   {
-    id: "business_pro",
+    id: "business_verified",
     table: "business_plans",
     rowKey: "pro",
-    lookupKey: "business_pro_monthly",
-    productName: "Mesita Pro",
+    lookupKey: "business_verified_yearly",
+    productName: "Mesita Verified",
     productDescription:
-      "Mesita business Pro plan — medium visibility. Monthly subscription.",
-  },
-  {
-    id: "business_ultra",
-    table: "business_plans",
-    rowKey: "ultra",
-    lookupKey: "business_ultra_monthly",
-    productName: "Mesita Ultra",
-    productDescription:
-      "Mesita business Ultra plan — max visibility. Monthly subscription.",
+      "Mesita business Verified membership — annual subscription.",
+    interval: "year",
   },
 ];
 
@@ -76,13 +74,17 @@ type PlanRow = {
   stripe_price_id: string | null;
 };
 
-// True when `price` is exactly the live monthly price the row asks for.
-function priceMatchesRow(price: Stripe.Price, row: PlanRow): boolean {
+// True when `price` is exactly the live recurring price the row asks for.
+function priceMatchesRow(
+  price: Stripe.Price,
+  row: PlanRow,
+  interval: PlanCatalogEntry["interval"],
+): boolean {
   return (
     price.active &&
     price.unit_amount === row.price_cents &&
     price.currency.toLowerCase() === row.currency.toLowerCase() &&
-    price.recurring?.interval === "month"
+    price.recurring?.interval === interval
   );
 }
 
@@ -110,7 +112,7 @@ export async function resolvePlanPrice(
   if (planRow.stripe_price_id) {
     try {
       const cached = await stripe.prices.retrieve(planRow.stripe_price_id);
-      if (priceMatchesRow(cached, planRow)) {
+      if (priceMatchesRow(cached, planRow, entry.interval)) {
         return {
           priceId: cached.id,
           priceCents: planRow.price_cents,
@@ -132,7 +134,7 @@ export async function resolvePlanPrice(
       limit: 1,
     });
     const found = byLookup.data[0] ?? null;
-    if (found && priceMatchesRow(found, planRow)) {
+    if (found && priceMatchesRow(found, planRow, entry.interval)) {
       await cachePriceId(admin, entry, found.id);
       return {
         priceId: found.id,
@@ -178,7 +180,7 @@ export async function resolvePlanPrice(
     product: productId,
     unit_amount: planRow.price_cents,
     currency: planRow.currency.toLowerCase(),
-    recurring: { interval: "month" },
+    recurring: { interval: entry.interval },
     lookup_key: entry.lookupKey,
     transfer_lookup_key: true,
     metadata: { mesita_plan: entry.id },
@@ -220,7 +222,7 @@ async function cachePriceId(
 
 // Ensures the WHOLE catalog exists in Stripe, not just the plan being bought.
 // Called fire-and-forget from checkout EFs so a single first checkout
-// materializes all three products for review in the dashboard. Errors are
+// materializes all products for review in the dashboard. Errors are
 // swallowed — the purchase path only depends on its own resolvePlanPrice.
 export async function ensureWholeCatalog(
   admin: SupabaseClient,

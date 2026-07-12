@@ -1,12 +1,12 @@
 // Unit tests for the shared Stripe billing catalog + price resolver
-// (MESITA-142). Stripe and Supabase are fully MOCKED — no network, no live
-// Stripe account is ever touched.
+// (MESITA-142, Buzz v4 cutover MESITA-541). Stripe and Supabase are fully
+// MOCKED — no network, no live Stripe account is ever touched.
 //   deno test supabase/functions/_shared/stripe-billing.test.ts
 //
 // resolvePlanPrice() is the self-provisioning price resolver. The contract we
 // lock here:
-//   • the catalog is the source of truth for the three-plan mapping
-//     (consumer premium / business pro / business ultra), amounts read from DB;
+//   • the catalog is the source of truth for the two-plan mapping
+//     (consumer premium monthly / business Verified yearly), amounts from DB;
 //   • a cached stripe_price_id that still matches the DB row is a fast-path
 //     hit — no product/price is created (idempotent);
 //   • a missing lookup row yields null (no accidental provisioning);
@@ -20,21 +20,19 @@ import { resolvePlanPrice, STRIPE_CATALOG } from "./stripe-billing.ts";
 
 // ─── Catalog contract ────────────────────────────────────────────────────
 
-Deno.test("STRIPE_CATALOG: the three Mesita plans map to their DB rows", () => {
+Deno.test("STRIPE_CATALOG: Premium monthly + Verified yearly map to DB rows", () => {
   const byId = Object.fromEntries(STRIPE_CATALOG.map((e) => [e.id, e]));
-  assertEquals(STRIPE_CATALOG.length, 3);
+  assertEquals(STRIPE_CATALOG.length, 2);
 
   assertEquals(byId["consumer_premium"].table, "classes");
   assertEquals(byId["consumer_premium"].rowKey, "premium");
   assertEquals(byId["consumer_premium"].lookupKey, "consumer_premium_monthly");
+  assertEquals(byId["consumer_premium"].interval, "month");
 
-  assertEquals(byId["business_pro"].table, "business_plans");
-  assertEquals(byId["business_pro"].rowKey, "pro");
-  assertEquals(byId["business_pro"].lookupKey, "business_pro_monthly");
-
-  assertEquals(byId["business_ultra"].table, "business_plans");
-  assertEquals(byId["business_ultra"].rowKey, "ultra");
-  assertEquals(byId["business_ultra"].lookupKey, "business_ultra_monthly");
+  assertEquals(byId["business_verified"].table, "business_plans");
+  assertEquals(byId["business_verified"].rowKey, "pro");
+  assertEquals(byId["business_verified"].lookupKey, "business_verified_yearly");
+  assertEquals(byId["business_verified"].interval, "year");
 });
 
 Deno.test("STRIPE_CATALOG: lookup keys are unique (idempotency anchors)", () => {
@@ -224,4 +222,43 @@ Deno.test("resolvePlanPrice: a stale cached id that mismatches the row re-provis
   assertEquals(res.priceCents, 5000);
   assertEquals(priceCreates, 1);
   assertEquals(cached.value, "price_fresh");
+});
+
+Deno.test("resolvePlanPrice: Verified yearly provisions with year interval", async () => {
+  const { admin, cached } = fakeAdmin({
+    price_cents: 100000,
+    currency: "MXN",
+    stripe_price_id: null,
+  });
+  let createdInterval: string | null = null;
+  const stripe = {
+    prices: {
+      retrieve: () => Promise.reject(new Error("no cached id")),
+      list: () => Promise.resolve({ data: [] }),
+      create: (args: { recurring: { interval: string } }) => {
+        createdInterval = args.recurring.interval;
+        return Promise.resolve(
+          makePrice({
+            id: "price_verified",
+            unit_amount: 100000,
+            lookup_key: "business_verified_yearly",
+            recurring: { interval: "year" } as Stripe.Price.Recurring,
+          }),
+        );
+      },
+      update: () => Promise.resolve({}),
+    },
+    products: {
+      search: () => Promise.resolve({ data: [] }),
+      create: () => Promise.resolve({ id: "prod_verified" }),
+      update: () => Promise.resolve({}),
+    },
+  } as unknown as Stripe;
+
+  const res = await resolvePlanPrice(admin, stripe, "business_verified");
+  assert(res);
+  assertEquals(res.priceId, "price_verified");
+  assertEquals(res.priceCents, 100000);
+  assertEquals(createdInterval, "year");
+  assertEquals(cached.value, "price_verified");
 });

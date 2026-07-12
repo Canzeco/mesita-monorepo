@@ -1,4 +1,4 @@
-// Frontend API surface for place-plan billing.
+// Frontend API surface for place-plan billing (Buzz v4 Verified membership).
 //
 // Architectural constraints honoured:
 // - Clients NEVER query the database directly. Every read or write goes
@@ -7,6 +7,8 @@
 //   mock mode) and the Stripe webhook is the only writer that flips
 //   projects.plan on the paid door. Direct plan writes via apiUpdatePlace
 //   are rejected server-side.
+// - Sold SKU is Verified only (`plan=pro`, MX$1,000/year). Legacy `ultra` is
+//   accepted by the EF but maps onto Verified (MESITA-541).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlacePlan } from "./places";
@@ -19,9 +21,9 @@ export type ChangeSubscriptionResult = {
   checkout_url?: string;
   // Mock mode: the plan was granted instantly, no money moved.
   mock?: boolean;
-  // The project already holds a live subscription on this plan.
+  // The project already holds a live Verified (or legacy ultra) subscription.
   already_subscribed?: boolean;
-  // pro↔ultra switched in place on the live subscription (prorated).
+  // Legacy ultra → Verified switched in place on the live subscription.
   plan_switched?: boolean;
   // Downgrade to free is scheduled for period end (real subscriptions keep
   // what was paid for).
@@ -33,6 +35,7 @@ export async function apiChangeSubscription(
   client: SupabaseClient,
   input: {
     projectId: string;
+    /** `pro` = Verified membership; `free` = cancel; `ultra` accepted as legacy alias for Verified. */
     plan: PlacePlan;
     successUrl?: string;
     cancelUrl?: string;

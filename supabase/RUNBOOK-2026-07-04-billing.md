@@ -1,9 +1,9 @@
 # Billing rollout — 2026-07-04
 
-Business place plans (Promote `pro` $100 MXN/mo, Ultra `ultra` $5,000 MXN/mo)
-become real monthly Stripe subscriptions, and consumer Premium drops to
-$100 MXN/mo. The repo side is on this branch; the cloud steps below are
-blocked by the auto-mode guard and need a human run.
+Business Verified membership (`pro`, MX$1,000/year — Buzz v4 / MESITA-541)
+and consumer Premium ($100 MXN/mo) are the sold Stripe products. Legacy
+Pro/Ultra monthly SKUs are retired from the self-provisioning catalog.
+The go-live flip below is still blocked by MESITA-37.
 
 > **STATUS 2026-07-04 (MESITA-33): steps 1–2 EXECUTED and verified.** Step 3
 > (`MOCK_SUBSCRIPTION=false`) is NOT run — it is Pato's go-live trigger
@@ -62,13 +62,13 @@ supabase secrets set MOCK_SUBSCRIPTION=false
 run `supabase secrets set`; this step goes live only when Pato triggers
 MESITA-37.
 
-With mock off, the FIRST real checkout self-provisions the whole Stripe
-catalog in whatever account `STRIPE_SECRET_KEY` points at — three products
-with monthly MXN prices under lookup keys `consumer_premium_monthly`,
-`business_pro_monthly`, `business_ultra_monthly` — and caches the price ids
-into `plans.stripe_price_id` / `business_plans.stripe_price_id`. A stale
-cached price (e.g. the old $200 Premium) is detected by amount mismatch,
-replaced, and deactivated automatically. No Stripe dashboard step.
+With mock off, the FIRST real checkout self-provisions the Stripe catalog
+in whatever account `STRIPE_SECRET_KEY` points at — consumer Premium
+(`consumer_premium_monthly`) plus business Verified
+(`business_verified_yearly`, MX$1,000/yr on `business_plans.pro`) — and
+caches the price ids onto the lookup rows. A stale cached price is detected
+by amount/interval mismatch, replaced, and deactivated automatically. No
+Stripe dashboard step.
 
 Note: the webhook endpoint + `STRIPE_WEBHOOK_SECRET` must belong to the same
 Stripe account as `STRIPE_SECRET_KEY` (already true for the live consumer

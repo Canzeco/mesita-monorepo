@@ -1,7 +1,11 @@
 // Supabase Edge Function — business-web-change-subscription (natural caller)
 //
-// Authenticated, owner-only. The paid "door" into a place's plan: Free,
-// Pro ('pro', $100 MXN/mo) or Ultra ('ultra', $5,000 MXN/mo).
+// Authenticated, owner-only. The paid door into a place's plan:
+//   Free  — no membership
+//   Pro   — Buzz v4 Verified membership (MX$1,000/year) — the only sold SKU
+//
+// Legacy `ultra` is still accepted for already-subscribed places (no-op /
+// switch-to-Verified) but is no longer a purchasable product (MESITA-541).
 //
 // A Stripe subscription is billing, not entitlement: projects.plan is the
 // single source of truth and can be granted through other doors (admin,
@@ -15,8 +19,8 @@
 //     STRIPE_SECRET_KEY is absent so a project with no Stripe secret still
 //     works out of the box.
 //
-//   • REAL — creates a Stripe Checkout Session (or switches / cancels the
-//     live subscription in place) and lets stripe-webhook-handle-event flip
+//   • REAL — creates a Stripe Checkout Session (or cancels the live
+//     subscription in place) and lets stripe-webhook-handle-event flip
 //     projects.plan once Stripe confirms.
 //
 // Body: { projectId: string, plan: "free" | "pro" | "ultra",
@@ -24,7 +28,7 @@
 // Response (one of):
 //   { ok: true, checkout_url: string, mock?: true }   — go pay (or mock-paid)
 //   { ok: true, plan, already_subscribed: true }      — no-op
-//   { ok: true, plan, plan_switched: true }           — pro↔ultra in place
+//   { ok: true, plan, plan_switched: true }           — legacy ultra → pro
 //   { ok: true, plan: "free", scheduled_downgrade: true, current_period_end }
 //   { ok: true, plan: "free" }                        — downgraded now
 
@@ -47,12 +51,15 @@ type Body = {
   cancelUrl?: string;
 };
 
+// New purchases only sell Verified (`pro`). `ultra` stays for legacy no-ops /
+// switches onto Verified.
 const PAID_PLANS = new Set(["pro", "ultra"]);
-const MOCK_PERIOD_DAYS = 30;
+const VERIFIED_PLAN = "pro";
+const MOCK_PERIOD_DAYS = 365; // annual membership
 
 // ⚠️ DEMO MOCK — same single on/off switch as consumer-web-create-subscription.
 // Set the MOCK_SUBSCRIPTION env to "false" and redeploy to require real
-// Stripe Checkout payments.
+// Stripe Checkout payments. Agents must never flip this (MESITA-37).
 const MOCK_SUBSCRIPTION =
   (Deno.env.get("MOCK_SUBSCRIPTION") ?? "true").toLowerCase() !== "false";
 
@@ -70,11 +77,15 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const projectId = readPlaceIdAlias(bodyRes.body);
-  const plan = (bodyRes.body.plan ?? "").toString().trim();
+  const requestedPlan = (bodyRes.body.plan ?? "").toString().trim();
   if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
-  if (plan !== "free" && !PAID_PLANS.has(plan)) {
+  if (requestedPlan !== "free" && !PAID_PLANS.has(requestedPlan)) {
     return json({ ok: false, error: "plan must be one of free | pro | ultra" }, 400);
   }
+
+  // New paid purchases always land on Verified (`pro`). Requesting `ultra`
+  // is treated as Verified so legacy callers don't 400.
+  const plan = requestedPlan === "ultra" ? VERIFIED_PLAN : requestedPlan;
 
   const admin = adminClient(envRes.env);
 
@@ -90,10 +101,10 @@ Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
   const successUrl =
     bodyRes.body.successUrl ??
-    `${origin}/unit/${projectId}/promos/plan?subscription=success`;
+    `${origin}/unit/${projectId}/promos?subscription=success`;
   const cancelUrl =
     bodyRes.body.cancelUrl ??
-    `${origin}/unit/${projectId}/promos/plan?subscription=cancelled`;
+    `${origin}/unit/${projectId}/promos?subscription=cancelled`;
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   const mockMode = MOCK_SUBSCRIPTION || !stripeKey;
@@ -147,22 +158,25 @@ Deno.serve(async (req) => {
     return json({ ok: true, plan: "free" });
   }
 
-  // ── Paid plans ────────────────────────────────────────────────────────────
+  // ── Paid Verified membership ──────────────────────────────────────────────
   const { data: planRow } = await admin
     .from("business_plans")
     .select("key, label, price_cents, currency")
-    .eq("key", plan)
+    .eq("key", VERIFIED_PLAN)
     .maybeSingle();
   if (!planRow) {
-    return json({ ok: false, error: `Plan '${plan}' is not configured` }, 500);
+    return json({ ok: false, error: `Plan '${VERIFIED_PLAN}' is not configured` }, 500);
   }
 
-  // Already on this plan? No-op — UNLESS we're in real mode and the live row
-  // is only a leftover mock grant (from when MOCK_SUBSCRIPTION was on). In
-  // that case fall through so the owner gets real Stripe billing; the webhook
-  // retires the mock row when the real subscription lands.
-  if (liveSub?.plan_key === plan && (mockMode || !liveIsMock)) {
-    return json({ ok: true, plan, already_subscribed: true });
+  // Already on Verified (or legacy ultra)? No-op — UNLESS we're in real mode
+  // and the live row is only a leftover mock grant. In that case fall through
+  // so the owner gets real Stripe billing; the webhook retires the mock row
+  // when the real subscription lands.
+  const livePlan = (liveSub?.plan_key ?? "") as string;
+  const alreadyVerified =
+    livePlan === VERIFIED_PLAN || livePlan === "ultra";
+  if (alreadyVerified && (mockMode || !liveIsMock)) {
+    return json({ ok: true, plan: VERIFIED_PLAN, already_subscribed: true });
   }
 
   // ── MOCK mode ─────────────────────────────────────────────────────────────
@@ -179,7 +193,7 @@ Deno.serve(async (req) => {
       .upsert(
         {
           project_id: projectId,
-          plan_key: plan,
+          plan_key: VERIFIED_PLAN,
           stripe_subscription_id: mockSubId,
           stripe_customer_id: `mock_cus_${projectId}`,
           status: "active",
@@ -196,29 +210,27 @@ Deno.serve(async (req) => {
 
     const grant = await admin
       .from("projects")
-      .update({ plan })
+      .update({ plan: VERIFIED_PLAN })
       .eq("id", projectId);
     if (grant.error) {
       return json({ ok: false, error: `mock_grant: ${grant.error.message}` }, 500);
     }
 
-    return json({ ok: true, plan, checkout_url: successUrl, mock: true });
+    return json({ ok: true, plan: VERIFIED_PLAN, checkout_url: successUrl, mock: true });
   }
 
   // ── REAL Stripe mode ──────────────────────────────────────────────────────
   const stripe = new Stripe(stripeKey!, { apiVersion: STRIPE_API_VERSION });
 
-  const resolved = await resolvePlanPrice(admin, stripe, `business_${plan}` as
-    | "business_pro"
-    | "business_ultra");
+  const resolved = await resolvePlanPrice(admin, stripe, "business_verified");
   if (!resolved) {
-    return json({ ok: false, error: `Plan '${plan}' price not configured` }, 500);
+    return json({ ok: false, error: `Plan '${VERIFIED_PLAN}' price not configured` }, 500);
   }
   // Materialize the rest of the catalog in the background (best effort).
   void ensureWholeCatalog(admin, stripe);
 
-  // Live real subscription on the other paid plan → switch the price in
-  // place (prorated); the webhook reconciles the mirror + projects.plan.
+  // Live real subscription on a legacy ultra price → switch onto Verified
+  // (prorated); the webhook reconciles the mirror + projects.plan.
   if (liveSub && !liveIsMock) {
     const current = await stripe.subscriptions.retrieve(liveSubId);
     const itemId = current.items.data[0]?.id;
@@ -229,21 +241,25 @@ Deno.serve(async (req) => {
       items: [{ id: itemId, price: resolved.priceId }],
       proration_behavior: "create_prorations",
       cancel_at_period_end: false,
-      metadata: { project_id: projectId, plan_key: plan, mesita_kind: "business" },
+      metadata: {
+        project_id: projectId,
+        plan_key: VERIFIED_PLAN,
+        mesita_kind: "business",
+      },
     });
     // Optimistic flip — the subsequent customer.subscription.updated webhook
     // writes the same values idempotently.
     await admin
       .from("project_subscriptions")
       .update({
-        plan_key: plan,
+        plan_key: VERIFIED_PLAN,
         price_cents: resolved.priceCents,
         currency: resolved.currency,
         cancel_at_period_end: false,
       })
       .eq("stripe_subscription_id", liveSubId);
-    await admin.from("projects").update({ plan }).eq("id", projectId);
-    return json({ ok: true, plan, plan_switched: true });
+    await admin.from("projects").update({ plan: VERIFIED_PLAN }).eq("id", projectId);
+    return json({ ok: true, plan: VERIFIED_PLAN, plan_switched: true });
   }
 
   // Fresh checkout. Reuse an existing real Stripe customer if this project
@@ -270,9 +286,17 @@ Deno.serve(async (req) => {
     customer: customerId,
     client_reference_id: projectId,
     line_items: [{ price: resolved.priceId, quantity: 1 }],
-    metadata: { project_id: projectId, plan_key: plan, mesita_kind: "business" },
+    metadata: {
+      project_id: projectId,
+      plan_key: VERIFIED_PLAN,
+      mesita_kind: "business",
+    },
     subscription_data: {
-      metadata: { project_id: projectId, plan_key: plan, mesita_kind: "business" },
+      metadata: {
+        project_id: projectId,
+        plan_key: VERIFIED_PLAN,
+        mesita_kind: "business",
+      },
     },
     success_url: successUrl,
     cancel_url: cancelUrl,
@@ -281,7 +305,7 @@ Deno.serve(async (req) => {
   await admin.from("project_subscriptions").upsert(
     {
       project_id: projectId,
-      plan_key: plan,
+      plan_key: VERIFIED_PLAN,
       stripe_customer_id: customerId,
       status: "incomplete",
       price_cents: resolved.priceCents,
@@ -290,5 +314,5 @@ Deno.serve(async (req) => {
     { onConflict: "stripe_subscription_id", ignoreDuplicates: true },
   );
 
-  return json({ ok: true, plan, checkout_url: session.url });
+  return json({ ok: true, plan: VERIFIED_PLAN, checkout_url: session.url });
 });
