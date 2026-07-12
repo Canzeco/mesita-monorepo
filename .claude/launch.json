@@ -18,7 +18,7 @@
     {
       "name": "web-consumer",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "cd apps/web-consumer && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 127.0.0.1 -p 3003"],
+      "runtimeArgs": ["-c", "cd apps/web-consumer && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 0.0.0.0 -p 3003"],
       "port": 3003,
       "autoPort": true
     },
@@ -32,7 +32,7 @@
     {
       "name": "mobile-consumer",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "cd apps/mobile-consumer && exec npx expo start --web --port 8081"],
+      "runtimeArgs": ["-c", "cd apps/mobile-consumer && exec npx expo start --web --port 8081 --host lan"],
       "port": 8081,
       "autoPort": true
     },
