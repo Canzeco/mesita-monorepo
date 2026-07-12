@@ -71,8 +71,10 @@ twilio / supabase-cron. `_shared/` holds internal helpers (free-form naming).
 Base tables were renamed in the 2026 "R2" pass — the current canonical names:
 
 - **`accounts`** (was businesses) → **`projects`** (was units) → **`places`** (was
-  venues). `projects_view` is the consumer-facing browse view and is intentionally
-  `SECURITY DEFINER` (accepted advisor exception — do not flip to invoker).
+  venues). `projects_view` is the consumer-facing browse view and is
+  `SECURITY INVOKER` (MESITA-599): consumer browse reads it with the anon key
+  and relies on RLS (`projects_select_public_visible`), so any create-or-replace
+  MUST keep `with (security_invoker = true)`.
 - **Consumers** carry a **class** (`classes` table + `consumers.class_*`);
   **accounts** carry a **plan**. Enum type `membership` is retained.
 - Per-place member roles: `owner` / `editor` / `viewer` (enum `member_role`).
