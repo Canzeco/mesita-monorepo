@@ -28,7 +28,6 @@ import {
   strategyForPlace,
   type Strategy,
   type StrategyId,
-  type StrategyVisibility,
 } from "@/lib/business/strategies";
 
 // Promos — Buzz v4.1 pricing cards + product modal (mirrors admin MESITA-584).
@@ -329,11 +328,8 @@ function PricingCard({
           <ModalLabel>You give</ModalLabel>
           {paid ? (
             <>
-              <p className="text-foreground/85 text-[12px] leading-snug font-semibold">
-                {formatMoney(PRODUCT_PRICE_MXN, currency)} / year membership
-              </p>
               <p className="text-muted-foreground text-[11px] leading-snug">
-                These discounts — capped at{" "}
+                These discounts, capped at{" "}
                 {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} per
                 bill:
               </p>
@@ -522,13 +518,9 @@ function ProductModal({
               </p>
 
               <div className="flex flex-col gap-2">
-                <ModalLabel>What you give</ModalLabel>
+                <ModalLabel>You give</ModalLabel>
                 {paid ? (
                   <>
-                    <p className="text-foreground/85 text-[12px] font-semibold">
-                      {formatMoney(PRODUCT_PRICE_MXN, currency)} / year
-                      membership
-                    </p>
                     <RateMatrix rates={r} />
                     <p className="text-muted-foreground text-[11px] leading-snug">
                       Every discount applies to the first{" "}
@@ -545,44 +537,38 @@ function ProductModal({
               </div>
 
               <div className="flex flex-col gap-2">
-                <ModalLabel>What you get back</ModalLabel>
-                <VisibilityMeter
-                  visibility={strategy.visibility}
-                  accent={art.meter}
-                />
-                <p className="text-muted-foreground text-[11px] leading-snug">
-                  {paid
-                    ? `A stronger discount earns a higher algorithm placement — this posture reads as ${strategy.visibility}.`
-                    : "You stay listed on Mesita. Without discounts, placement stays Low."}
-                </p>
+                <ModalLabel>You receive</ModalLabel>
+                <PlacementReward strategy={strategy} art={art} />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <ModalLabel>The commitment</ModalLabel>
-                {paid ? (
-                  <div className="flex flex-col gap-1.5">
-                    <CommitmentRow icon={ShieldCheck}>
-                      {formatMoney(PRODUCT_PRICE_MXN, currency)}/year, per
-                      posture — switching later is a NEW membership. Same
-                      price on every posture: rank is never for sale.
-                    </CommitmentRow>
-                    <CommitmentRow icon={MessageCircle}>
-                      Activation: your staff WhatsApp passes a test ping and
-                      the first guest ticket is honored at the bill.
-                    </CommitmentRow>
-                    <CommitmentRow icon={AlertTriangle}>
-                      Strikes for turning a guest away: 1 warning · 2 promo
-                      lane paused 30 days · 3 removed and the fee is
-                      forfeited. Strikes decay after 6 months clean.
-                    </CommitmentRow>
-                  </div>
-                ) : (
-                  <CommitmentRow icon={ShieldCheck}>
-                    No fee, no commitment — dropping to Zero clears your rates
-                    and paid promos stop. You can subscribe again any time.
-                  </CommitmentRow>
-                )}
-              </div>
+              {paid ? (
+                <div className="flex flex-col gap-3">
+                  <ModalLabel>How it works</ModalLabel>
+                  <Step n={1} title="Pay the membership">
+                    {formatMoney(PRODUCT_PRICE_MXN, currency)}/year — one
+                    posture at a time; switching later is a new membership.
+                  </Step>
+                  <Step n={2} title="Set up your staff on WhatsApp">
+                    We send a test ping so your team can receive guest tickets.
+                  </Step>
+                  <Step n={3} title="Redeem your first guest reward">
+                    Honor the first ticket at the bill and you&apos;re live.
+                  </Step>
+                  <p className="text-muted-foreground text-[10px] leading-snug">
+                    Turn a guest away and it&apos;s a strike — 1 warning · 2
+                    discounts paused 30 days · 3 removed. Strikes decay after 6
+                    months clean.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <ModalLabel>How it works</ModalLabel>
+                  <p className="text-muted-foreground text-[12px] leading-snug">
+                    No membership, nothing to set up — Zero is free and you
+                    stay listed on Mesita. Join a posture any time.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Action footer */}
@@ -644,21 +630,31 @@ function ModalLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CommitmentRow({
-  icon: Icon,
+// One numbered step in the modal's "How it works" flow.
+function Step({
+  n,
+  title,
   children,
 }: {
-  icon: LucideIcon;
-  children: React.ReactNode;
+  n: number;
+  title: string;
+  children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <span className="bg-muted/70 text-foreground/70 mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="flex items-start gap-3">
+      <span className="bg-foreground text-background mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums">
+        {n}
       </span>
-      <span className="text-foreground/80 text-[12px] leading-snug">
-        {children}
-      </span>
+      <div className="flex flex-col">
+        <p className="text-foreground/90 text-[13px] leading-snug font-semibold">
+          {title}
+        </p>
+        {children && (
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            {children}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -742,38 +738,6 @@ function PlacementReward({
             className={cn(
               "h-1.5 flex-1 rounded-full",
               i <= idx ? art.meter : "bg-muted",
-            )}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// What the algorithm gives back for the generosity above.
-function VisibilityMeter({
-  visibility,
-  accent,
-}: {
-  visibility: StrategyVisibility;
-  accent: string;
-}) {
-  const idx = STRATEGY_VISIBILITY_LADDER.indexOf(visibility);
-  return (
-    <div className="border-border flex flex-col gap-1.5 border-t pt-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground text-[9px] font-bold tracking-[0.14em] uppercase">
-          In exchange · visibility
-        </span>
-        <span className="text-[11px] leading-none font-bold">{visibility}</span>
-      </div>
-      <div className="flex gap-1" aria-hidden>
-        {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
-          <span
-            key={lvl}
-            className={cn(
-              "h-1.5 flex-1 rounded-full",
-              i <= idx ? accent : "bg-muted",
             )}
           />
         ))}
