@@ -8,6 +8,7 @@ import {
   Hand,
   Heart,
   RotateCcw,
+  SlidersHorizontal,
   Store,
   X,
 } from 'lucide-react-native';
@@ -35,6 +36,7 @@ import Animated, {
 /* eslint-disable react-hooks/immutability */
 
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
+import { FiltersComingSoonSheet } from '@/components/ui/FiltersComingSoon';
 import { GRADIENTS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
 import {
   apiFetchPublicPlaces,
@@ -225,6 +227,7 @@ function DeckBody({
   const v = places[idx]!;
   const next = idx + 1 < places.length ? places[idx + 1]! : null;
   const [stamp, setStamp] = useState<null | 'left' | 'right'>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const translateX = useSharedValue(0);
   const exiting = useSharedValue(0); // 0 idle, -1 left, 1 right
@@ -485,6 +488,11 @@ function DeckBody({
       </View>
 
       <View className="mt-3 flex-row items-center gap-1.5">
+        <ActionBtn
+          label="Filter"
+          Icon={SlidersHorizontal}
+          onPress={() => setFiltersOpen(true)}
+        />
         <ActionBtn label="Skip" Icon={X} onPress={() => beginExit('left')} />
         <ActionBtn
           label="Info"
@@ -505,6 +513,11 @@ function DeckBody({
           disabled
         />
       </View>
+
+      <FiltersComingSoonSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+      />
     </View>
   );
 }

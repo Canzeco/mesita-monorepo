@@ -40,7 +40,7 @@ import {
 
 import { MesitaMark } from '@/components/brand/MesitaMark';
 import { AboutBox } from '@/components/place/AboutBox';
-import { ComingSoonModal } from '@/components/place/ComingSoonModal';
+import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { ImageCarousel } from '@/components/place/ImageCarousel';
 import { PlaceContactSheet } from '@/components/place/PlaceContactSheet';
 import { ProductsTab } from '@/components/place/ProductsTab';

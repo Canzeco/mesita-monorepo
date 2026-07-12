@@ -1,6 +1,14 @@
+import { ChevronDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  View,
+} from 'react-native';
 import {
   Button,
   HelperText,
@@ -12,21 +20,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HeroBackdrop } from '@/components/ui/HeroBackdrop';
 import { apiConsumerSigninPhone } from '@/lib/api/auth';
+import {
+  combinePhoneE164,
+  COUNTRIES,
+  COUNTRY_BY_CODE,
+  type Country,
+} from '@/lib/countries';
 import { supabase } from '@/lib/supabase';
 
-// Phone OTP: signInWithOtp → verifyOtp → consumer-web-signin-phone.
-const DIAL_PREFIX = '+52';
+// Phone OTP with country dial picker — web PhoneInputWithCountry parity.
 
 export default function SignIn() {
   const router = useRouter();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
+  const [countryCode, setCountryCode] = useState('MX');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [localNumber, setLocalNumber] = useState('');
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const e164 = `${DIAL_PREFIX}${localNumber.replace(/\D/g, '')}`;
-  const phoneOk = localNumber.replace(/\D/g, '').length >= 10;
+  const country: Country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
+  const e164 = useMemo(
+    () => combinePhoneE164(countryCode, localNumber),
+    [countryCode, localNumber],
+  );
+  const phoneOk = localNumber.replace(/\D/g, '').length >= 8;
   const codeOk = token.trim().length === 6;
 
   const sendCode = async () => {
@@ -98,25 +117,46 @@ export default function SignIn() {
               <>
                 <Text
                   variant="labelSmall"
-                  style={{ marginBottom: 8, color: '#775254', letterSpacing: 1.2 }}
+                  style={{
+                    marginBottom: 8,
+                    color: '#775254',
+                    letterSpacing: 1.2,
+                  }}
                 >
                   PHONE NUMBER
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                  <Surface
-                    elevation={0}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'stretch',
+                    borderWidth: 1,
+                    borderColor: '#ebd9db',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    backgroundColor: '#ffffff',
+                  }}
+                >
+                  <Pressable
+                    onPress={() => setPickerOpen(true)}
+                    accessibilityLabel="Country dial code"
                     style={{
-                      backgroundColor: '#faeff0',
-                      borderRadius: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
                       paddingHorizontal: 12,
-                      paddingVertical: 14,
+                      borderRightWidth: 1,
+                      borderRightColor: '#ebd9db',
                     }}
                   >
-                    <Text variant="titleSmall">{DIAL_PREFIX}</Text>
-                  </Surface>
+                    <Text style={{ fontSize: 16 }}>{country.flag}</Text>
+                    <Text variant="titleSmall">+{country.dial}</Text>
+                    <ChevronDown color="#775254" size={12} />
+                  </Pressable>
                   <TextInput
-                    mode="outlined"
+                    mode="flat"
                     style={{ flex: 1, backgroundColor: '#ffffff' }}
+                    underlineColor="transparent"
+                    activeUnderlineColor="transparent"
                     keyboardType="phone-pad"
                     autoComplete="tel"
                     placeholder="55 1234 5678"
@@ -140,7 +180,11 @@ export default function SignIn() {
               <>
                 <Text
                   variant="labelSmall"
-                  style={{ marginBottom: 8, color: '#775254', letterSpacing: 1.2 }}
+                  style={{
+                    marginBottom: 8,
+                    color: '#775254',
+                    letterSpacing: 1.2,
+                  }}
                 >
                   CODE SENT TO {e164}
                 </Text>
@@ -188,6 +232,71 @@ export default function SignIn() {
           </Surface>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <Modal
+        visible={pickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            justifyContent: 'flex-end',
+          }}
+          onPress={() => setPickerOpen(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              maxHeight: '70%',
+              backgroundColor: '#ffffff',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingBottom: 24,
+            }}
+          >
+            <Text
+              variant="titleMedium"
+              style={{
+                paddingHorizontal: 20,
+                paddingTop: 20,
+                paddingBottom: 12,
+              }}
+            >
+              Country code
+            </Text>
+            <FlatList
+              data={COUNTRIES}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => {
+                    setCountryCode(item.code);
+                    setPickerOpen(false);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingHorizontal: 20,
+                    paddingVertical: 12,
+                    backgroundColor:
+                      item.code === countryCode ? '#ffe4ef' : 'transparent',
+                  }}
+                >
+                  <Text style={{ fontSize: 20 }}>{item.flag}</Text>
+                  <Text variant="bodyLarge" style={{ flex: 1 }}>
+                    {item.name}
+                  </Text>
+                  <Text variant="titleSmall">+{item.dial}</Text>
+                </Pressable>
+              )}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

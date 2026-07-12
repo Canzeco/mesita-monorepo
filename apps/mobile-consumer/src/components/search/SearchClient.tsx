@@ -23,6 +23,7 @@ import { GooglePlaceSheet } from '@/components/search/GooglePlaceSheet';
 import { SearchMap } from '@/components/search/SearchMap';
 import { SearchResultsPanel } from '@/components/search/SearchResultsPanel';
 import type { AddState } from '@/components/memo/types';
+import { FiltersComingSoonSheet } from '@/components/ui/FiltersComingSoon';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import {
   apiCreateProject,
@@ -67,6 +68,7 @@ export function SearchClient() {
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
@@ -268,11 +270,11 @@ export function SearchClient() {
             </Pressable>
           ) : (
             <Pressable
-              onPress={() => undefined}
+              onPress={() => setFiltersOpen(true)}
               hitSlop={8}
-              accessibilityLabel="Filters coming soon"
+              accessibilityLabel="Filters"
             >
-              <SlidersHorizontal color="#77525466" size={18} />
+              <SlidersHorizontal color="#775254" size={18} />
             </Pressable>
           )}
         </View>
@@ -408,6 +410,10 @@ export function SearchClient() {
         apiKey={GMP_KEY}
         onAdd={handleAdd}
         onClose={() => setPreviewOpen(false)}
+      />
+      <FiltersComingSoonSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
       />
     </View>
   );
