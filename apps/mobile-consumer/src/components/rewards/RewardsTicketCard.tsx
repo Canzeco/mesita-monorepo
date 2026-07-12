@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { MapPin } from 'lucide-react-native';
-import { Pressable, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Pressable, Text, View } from 'react-native';
 
 import { TicketFlowStepper } from '@/components/rewards/TicketFlowStepper';
 import { SHADOW_ELEV } from '@/constants/brand';
@@ -17,6 +16,8 @@ export function RewardsTicketCard({
   return (
     <Pressable
       onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={`Ticket at ${view.placeName}, ${view.timeLabel}`}
       style={({ pressed }) => ({
         borderRadius: 16,
         padding: 12,
@@ -55,14 +56,12 @@ export function RewardsTicketCard({
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
-            variant="titleMedium"
             numberOfLines={1}
             style={{ fontWeight: '700' }}
           >
             {view.placeName}
           </Text>
           <Text
-            variant="bodySmall"
             style={{ marginTop: 2, color: '#775254', fontVariant: ['tabular-nums'] }}
           >
             {view.timeLabel}

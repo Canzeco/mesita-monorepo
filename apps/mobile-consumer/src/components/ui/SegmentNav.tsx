@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 
 export type SegmentItem = {
   key: string;
@@ -26,8 +27,12 @@ export function SegmentNav({
   value: string;
   onChange: (key: string) => void;
 }) {
+  const reduceMotion = useReduceMotion();
   return (
-    <View className="flex-row items-center gap-1.5">
+    <View
+      accessibilityRole="tablist"
+      className="flex-row items-center gap-1.5"
+    >
       {items.map(({ key, title, Icon, soon }) => {
         if (soon) {
           return (
@@ -36,7 +41,7 @@ export function SegmentNav({
               accessibilityRole="tab"
               accessibilityState={{ disabled: true }}
               accessibilityLabel={`${title}, coming soon`}
-              className="flex-1 flex-row items-center justify-center gap-1 px-1 py-2.5 opacity-40"
+              className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1 px-1 py-2.5 opacity-40"
             >
               {Icon ? (
                 <Icon color="#775254" size={15} strokeWidth={2.2} />
@@ -63,7 +68,7 @@ export function SegmentNav({
         const active = key === value;
         const tint = active ? '#ffffff' : '#775254';
         const inner = (
-          <View className="flex-row items-center justify-center gap-1.5 px-2 py-2.5">
+          <View className="min-h-[44px] flex-row items-center justify-center gap-1.5 px-2 py-2.5">
             {Icon ? <Icon color={tint} size={15} strokeWidth={2.2} /> : null}
             <Text
               numberOfLines={1}
@@ -86,7 +91,12 @@ export function SegmentNav({
             accessibilityState={{ selected: active }}
             accessibilityLabel={title}
             style={({ pressed }) => [
-              { flex: 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
+              {
+                flex: 1,
+                transform: [
+                  { scale: pressed && !reduceMotion ? 0.97 : 1 },
+                ],
+              },
               active ? SHADOW_GLOW : null,
             ]}
           >

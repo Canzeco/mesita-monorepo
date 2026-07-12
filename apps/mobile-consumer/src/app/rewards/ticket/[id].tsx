@@ -1,6 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, View } from 'react-native';
 
 import { TicketDetailsClient } from '@/components/rewards/TicketDetailsClient';
 

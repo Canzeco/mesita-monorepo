@@ -9,6 +9,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 
 type Variant = 'primary' | 'outline' | 'ghost';
 
@@ -27,6 +28,7 @@ export function Button({
   loading?: boolean;
   accessibilityLabel?: string;
 }) {
+  const reduceMotion = useReduceMotion();
   const inert = Boolean(disabled || loading);
   const label =
     typeof children === 'string' ? (
@@ -61,10 +63,20 @@ export function Button({
       onPress={onPress}
       disabled={inert}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={
+        accessibilityLabel ??
+        (typeof children === 'string' ? children : undefined)
+      }
       accessibilityState={{ disabled: inert, busy: Boolean(loading) }}
       style={({ pressed }) => [
-        { opacity: inert ? 0.5 : pressed ? 0.92 : 1 },
+        {
+          opacity: inert ? 0.5 : pressed && !reduceMotion ? 0.92 : 1,
+          transform: [
+            {
+              scale: pressed && !inert && !reduceMotion ? 0.98 : 1,
+            },
+          ],
+        },
         variant === 'primary' ? SHADOW_GLOW : null,
       ]}
     >

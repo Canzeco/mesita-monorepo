@@ -1,16 +1,16 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform } from 'react-native';
 import {
-  Button,
-  HelperText,
-  SegmentedButtons,
-  Surface,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
   Text,
-  TextInput,
-} from 'react-native-paper';
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/ui/Button';
+import { TextField } from '@/components/ui/TextField';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { useAuth } from '@/providers/auth';
 
@@ -63,82 +63,108 @@ export default function Onboard() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
       >
-        <Text variant="headlineMedium" style={{ color: '#260409' }}>
+        <Text
+          className="font-display font-semibold text-foreground"
+          style={{ fontSize: 28, letterSpacing: -0.42 }}
+        >
           Welcome to Mesita
         </Text>
         <Text
-          variant="bodyMedium"
-          style={{ marginTop: 8, color: '#775254' }}
+          className="mt-2 text-muted-foreground"
+          style={{ fontSize: 14 }}
         >
           A few details and your table is ready.
         </Text>
 
-        <Surface
-          elevation={2}
+        <View
+          className="rounded-2xl border border-border bg-card"
           style={{
             marginTop: 32,
-            borderRadius: 16,
             padding: 24,
-            backgroundColor: '#ffffff',
+            shadowColor: '#260409',
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 2,
           }}
         >
-          <TextInput
-            mode="outlined"
+          <TextField
             label="First name"
             autoComplete="given-name"
             value={firstName}
             onChangeText={setFirstName}
-            style={{ backgroundColor: '#ffffff' }}
           />
 
           <Text
-            variant="labelSmall"
+            className="font-semibold text-muted-foreground"
             style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
           >
             SEX
           </Text>
-          <SegmentedButtons
-            value={sex ?? ''}
-            onValueChange={(v) =>
-              setSex(v as (typeof SEX_OPTIONS)[number]['value'])
-            }
-            buttons={SEX_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-            }))}
-          />
+          <View className="flex-row rounded-2xl border border-border bg-muted p-1">
+            {SEX_OPTIONS.map((option) => {
+              const active = sex === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setSex(option.value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  className={
+                    active
+                      ? 'flex-1 items-center rounded-xl bg-card px-3 py-3'
+                      : 'flex-1 items-center rounded-xl px-3 py-3'
+                  }
+                >
+                  <Text
+                    className={
+                      active
+                        ? 'font-semibold text-foreground'
+                        : 'font-semibold text-muted-foreground'
+                    }
+                    style={{ fontSize: 13 }}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
-          <TextInput
-            mode="outlined"
+          <View style={{ marginTop: 20 }}>
+            <TextField
             label="Birthday (YYYY-MM-DD)"
             keyboardType="numbers-and-punctuation"
             placeholder="1995-06-15"
             value={birthday}
             onChangeText={setBirthday}
-            style={{ marginTop: 20, backgroundColor: '#ffffff' }}
-          />
+            />
+          </View>
 
-          <Button
-            mode="contained"
-            onPress={() => void submit()}
-            loading={busy}
-            disabled={!canSubmit || busy}
-            style={{ marginTop: 24 }}
-            contentStyle={{ paddingVertical: 6 }}
-          >
-            Let&apos;s go
-          </Button>
+          <View style={{ marginTop: 24 }}>
+            <Button
+              onPress={() => void submit()}
+              loading={busy}
+              disabled={!canSubmit || busy}
+            >
+              Let&apos;s go
+            </Button>
+          </View>
 
           {error ? (
-            <HelperText type="error" visible style={{ marginTop: 8 }}>
+            <Text className="mt-2 text-destructive" style={{ fontSize: 12 }}>
               {error}
-            </HelperText>
+            </Text>
           ) : null}
-        </Surface>
+        </View>
 
-        <Button mode="text" onPress={() => void signOut()} style={{ marginTop: 24 }}>
-          {session?.user.phone ? `Not ${session.user.phone}? Sign out` : 'Sign out'}
-        </Button>
+        <View style={{ marginTop: 24 }}>
+          <Button variant="ghost" onPress={() => void signOut()}>
+            {session?.user.phone
+              ? `Not ${session.user.phone}? Sign out`
+              : 'Sign out'}
+          </Button>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

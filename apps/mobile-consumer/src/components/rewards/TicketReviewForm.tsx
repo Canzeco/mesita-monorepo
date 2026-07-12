@@ -1,6 +1,7 @@
 import { Star } from 'lucide-react-native';
-import { Pressable, TextInput, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { Pressable, Text, TextInput, View } from 'react-native';
+
+import { Button } from '@/components/ui/Button';
 
 const NOTE_MIN = 50;
 
@@ -214,13 +215,12 @@ export function TicketReviewForm({
       ) : null}
 
       <Button
-        mode="contained"
         onPress={onSubmit}
+        loading={busy}
         disabled={busy || !canSubmit}
-        buttonColor="#fb2b7b"
-        textColor="#fff"
+        accessibilityLabel="Send review"
       >
-        {busy ? 'Sending…' : 'Send review'}
+        Send review
       </Button>
     </View>
   );
