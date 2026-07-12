@@ -501,8 +501,10 @@ function ProfileActions({
           aria-label={saved ? "Remove from saved" : "Save place"}
           className={cn(
             outlineBtn,
+            // Saved reads RED, not brand pink — the universal "hearted" hue
+            // (MESITA-587), unmistakable at a glance next to its siblings.
             saved &&
-              "border-primary/35 bg-primary/8 text-primary hover:bg-primary/12",
+              "border-red-500/50 bg-red-500/12 text-red-600 hover:bg-red-500/18",
           )}
         >
           <Heart
