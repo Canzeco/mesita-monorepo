@@ -1,17 +1,10 @@
-import { Bot, Copy, Crown, KeyRound, Trash2 } from 'lucide-react-native';
+import { Bot, Crown, KeyRound, Trash2 } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
-import {
-  Appbar,
-  Button,
-  IconButton,
-  List,
-  Modal,
-  Portal,
-  Text,
-} from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Pressable, Text, View } from 'react-native';
+
+import { Button } from '@/components/ui/Button';
+import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 
 import {
   apiCreateMcpToken,
@@ -106,283 +99,262 @@ export function AiConnectModal({ visible, onClose }: Props) {
   }
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onClose}
-        contentContainerStyle={{
-          flex: 1,
-          backgroundColor: '#fff7f8',
-          margin: 0,
+    <FullScreenSheet
+      visible={visible}
+      onClose={onClose}
+      title="AI"
+      subtitle="Connect your Mesita profile to an AI"
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 999,
+            backgroundColor: 'rgba(124,58,237,0.1)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Bot color="#7c3aed" size={22} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontWeight: '700', fontSize: 20, color: '#260409' }}>
+              AI
+            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                borderWidth: 1,
+                borderColor: '#ebd9db',
+                borderRadius: 999,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+              }}
+            >
+              <Crown color="#d97706" size={10} />
+              <Text
+                style={{
+                  color: '#775254',
+                  fontWeight: '700',
+                  letterSpacing: 1,
+                  fontSize: 11,
+                }}
+              >
+                PREMIUM
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <Text style={{ color: '#775254', lineHeight: 20, fontSize: 14 }}>
+        Generate a personal access token, then add Mesita as an MCP server in
+        Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
+        book tables, and check rewards — as you. Available for Premium members
+        only — not on Free.
+      </Text>
+
+      {!isPremium ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: 12,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: 'rgba(245,158,11,0.25)',
+            backgroundColor: 'rgba(245,158,11,0.1)',
+            padding: 14,
+          }}
+        >
+          <Crown color="#b45309" size={16} style={{ marginTop: 2 }} />
+          <Text style={{ flex: 1, color: '#78350f', lineHeight: 18, fontSize: 13 }}>
+            You’re on Free. Upgrade to Mesita Premium to create an MCP token and
+            let an AI control your profile.
+          </Text>
+        </View>
+      ) : null}
+
+      <Button
+        onPress={() => void mint()}
+        disabled={minting || !isPremium}
+        loading={minting}
+        accessibilityLabel="Create MCP token"
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <KeyRound color="#fff" size={18} />
+          <Text style={{ color: '#fffafb', fontWeight: '600', fontSize: 14 }}>
+            {isPremium ? 'Create MCP token' : 'Premium required'}
+          </Text>
+        </View>
+      </Button>
+
+      {fresh ? (
+        <View
+          style={{
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: '#ebd9db',
+            backgroundColor: '#ffffff',
+            overflow: 'hidden',
+          }}
+        >
+          <View
+            style={{
+              borderBottomWidth: 1,
+              borderBottomColor: 'rgba(235,217,219,0.6)',
+              padding: 14,
+            }}
+          >
+            <Text style={{ fontWeight: '700', fontSize: 15, color: '#260409' }}>
+              New token
+            </Text>
+            <Text style={{ color: '#775254', fontSize: 12 }}>
+              Copy now — Mesita won’t show the full token again
+            </Text>
+          </View>
+          <View style={{ padding: 14, gap: 10 }}>
+            <Text
+              selectable
+              style={{
+                backgroundColor: '#faeff0',
+                padding: 12,
+                borderRadius: 10,
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: '#260409',
+              }}
+            >
+              {fresh.token}
+            </Text>
+            <Button
+              variant="ghost"
+              onPress={() =>
+                void copy(
+                  fresh.token,
+                  'Token copied — paste into your AI client',
+                )
+              }
+              accessibilityLabel="Copy token"
+            >
+              Copy token
+            </Button>
+            <Text
+              style={{
+                color: '#775254',
+                fontWeight: '700',
+                letterSpacing: 1,
+                fontSize: 11,
+              }}
+            >
+              MCP URL
+            </Text>
+            <Text
+              selectable
+              style={{
+                backgroundColor: '#faeff0',
+                padding: 12,
+                borderRadius: 10,
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: '#260409',
+              }}
+            >
+              {fresh.mcp_url}
+            </Text>
+            <Button
+              variant="ghost"
+              onPress={() =>
+                void copy(
+                  cursorSnippet(fresh.mcp_url, fresh.token),
+                  'Cursor / Claude config copied',
+                )
+              }
+              accessibilityLabel="Copy Cursor Claude config"
+            >
+              Copy Cursor / Claude config
+            </Button>
+          </View>
+        </View>
+      ) : null}
+
+      <Text
+        style={{
+          color: 'rgba(38,4,9,0.55)',
+          letterSpacing: 1.6,
+          textTransform: 'uppercase',
+          fontWeight: '700',
+          fontSize: 11,
         }}
       >
-        <SafeAreaView style={{ flex: 1 }}>
-          <Appbar.Header style={{ backgroundColor: '#fff7f8' }} elevated>
-            <Appbar.Content
-              title="AI"
-              subtitle="Connect your Mesita profile to an AI"
-            />
-            <Appbar.Action icon="close" onPress={onClose} />
-          </Appbar.Header>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}
-          >
+        Active tokens
+      </Text>
+      <View
+        style={{
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: '#ebd9db',
+          backgroundColor: '#ffffff',
+          overflow: 'hidden',
+        }}
+      >
+        {loading && tokens.length === 0 ? (
+          <Text style={{ color: '#775254', padding: 14, fontSize: 13 }}>
+            Loading…
+          </Text>
+        ) : tokens.length === 0 ? (
+          <Text style={{ color: '#775254', padding: 14, fontSize: 13 }}>
+            No active tokens yet.
+          </Text>
+        ) : (
+          tokens.map((t) => (
             <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              key={t.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(235,217,219,0.5)',
+              }}
             >
-              <View
+              <KeyRound color="#775254" size={18} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontWeight: '600', fontSize: 15, color: '#260409' }}>
+                  {t.label}
+                </Text>
+                <Text style={{ color: '#775254', fontSize: 12 }}>
+                  {t.token_prefix}…
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => void revoke(t.id)}
+                accessibilityRole="button"
+                accessibilityLabel="Revoke token"
+                hitSlop={8}
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 999,
-                  backgroundColor: 'rgba(124,58,237,0.1)',
+                  minHeight: 44,
+                  minWidth: 44,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Bot color="#7c3aed" size={22} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                >
-                  <Text variant="titleLarge" style={{ fontWeight: '700' }}>
-                    AI
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      borderWidth: 1,
-                      borderColor: '#ebd9db',
-                      borderRadius: 999,
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                    }}
-                  >
-                    <Crown color="#d97706" size={10} />
-                    <Text
-                      variant="labelSmall"
-                      style={{
-                        color: '#775254',
-                        fontWeight: '700',
-                        letterSpacing: 1,
-                      }}
-                    >
-                      PREMIUM
-                    </Text>
-                  </View>
-                </View>
-              </View>
+                <Trash2 color="#dc2626" size={18} />
+              </Pressable>
             </View>
+          ))
+        )}
+      </View>
 
-            <Text
-              variant="bodyMedium"
-              style={{ color: '#775254', lineHeight: 20 }}
-            >
-              Generate a personal access token, then add Mesita as an MCP server
-              in Claude, Cursor, or ChatGPT. Your AI can then find places, save
-              them, book tables, and check rewards — as you. Available for
-              Premium members only — not on Free.
-            </Text>
-
-            {!isPremium ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: 12,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: 'rgba(245,158,11,0.25)',
-                  backgroundColor: 'rgba(245,158,11,0.1)',
-                  padding: 14,
-                }}
-              >
-                <Crown color="#b45309" size={16} style={{ marginTop: 2 }} />
-                <Text
-                  variant="bodySmall"
-                  style={{ flex: 1, color: '#78350f', lineHeight: 18 }}
-                >
-                  You’re on Free. Upgrade to Mesita Premium to create an MCP
-                  token and let an AI control your profile.
-                </Text>
-              </View>
-            ) : null}
-
-            <Button
-              mode="contained"
-              onPress={() => void mint()}
-              disabled={minting || !isPremium}
-              loading={minting}
-              icon={() => <KeyRound color="#fff" size={18} />}
-              buttonColor="#7c3aed"
-              contentStyle={{ paddingVertical: 4 }}
-            >
-              {minting
-                ? 'Creating token…'
-                : isPremium
-                  ? 'Create MCP token'
-                  : 'Premium required'}
-            </Button>
-
-            {fresh ? (
-              <View
-                style={{
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: '#ebd9db',
-                  backgroundColor: '#ffffff',
-                  overflow: 'hidden',
-                }}
-              >
-                <View
-                  style={{
-                    borderBottomWidth: 1,
-                    borderBottomColor: 'rgba(235,217,219,0.6)',
-                    padding: 14,
-                  }}
-                >
-                  <Text variant="titleSmall" style={{ fontWeight: '700' }}>
-                    New token
-                  </Text>
-                  <Text variant="labelSmall" style={{ color: '#775254' }}>
-                    Copy now — Mesita won’t show the full token again
-                  </Text>
-                </View>
-                <View style={{ padding: 14, gap: 10 }}>
-                  <Text
-                    selectable
-                    variant="labelSmall"
-                    style={{
-                      backgroundColor: '#faeff0',
-                      padding: 12,
-                      borderRadius: 10,
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    {fresh.token}
-                  </Text>
-                  <Button
-                    mode="text"
-                    icon={() => <Copy color="#7c3aed" size={16} />}
-                    onPress={() =>
-                      void copy(
-                        fresh.token,
-                        'Token copied — paste into your AI client',
-                      )
-                    }
-                  >
-                    Copy token
-                  </Button>
-                  <Text
-                    variant="labelSmall"
-                    style={{
-                      color: '#775254',
-                      fontWeight: '700',
-                      letterSpacing: 1,
-                    }}
-                  >
-                    MCP URL
-                  </Text>
-                  <Text
-                    selectable
-                    variant="labelSmall"
-                    style={{
-                      backgroundColor: '#faeff0',
-                      padding: 12,
-                      borderRadius: 10,
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    {fresh.mcp_url}
-                  </Text>
-                  <Button
-                    mode="text"
-                    icon={() => <Copy color="#7c3aed" size={16} />}
-                    onPress={() =>
-                      void copy(
-                        cursorSnippet(fresh.mcp_url, fresh.token),
-                        'Cursor / Claude config copied',
-                      )
-                    }
-                  >
-                    Copy Cursor / Claude config
-                  </Button>
-                </View>
-              </View>
-            ) : null}
-
-            <Text
-              variant="labelSmall"
-              style={{
-                color: 'rgba(38,4,9,0.55)',
-                letterSpacing: 1.6,
-                textTransform: 'uppercase',
-                fontWeight: '700',
-              }}
-            >
-              Active tokens
-            </Text>
-            <View
-              style={{
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: '#ebd9db',
-                backgroundColor: '#ffffff',
-                overflow: 'hidden',
-              }}
-            >
-              {loading && tokens.length === 0 ? (
-                <Text
-                  variant="bodySmall"
-                  style={{ color: '#775254', padding: 14 }}
-                >
-                  Loading…
-                </Text>
-              ) : tokens.length === 0 ? (
-                <Text
-                  variant="bodySmall"
-                  style={{ color: '#775254', padding: 14 }}
-                >
-                  No active tokens yet.
-                </Text>
-              ) : (
-                tokens.map((t) => (
-                  <List.Item
-                    key={t.id}
-                    title={t.label}
-                    description={`${t.token_prefix}…`}
-                    left={(props) => (
-                      <List.Icon
-                        {...props}
-                        icon={() => <KeyRound color="#775254" size={18} />}
-                      />
-                    )}
-                    right={() => (
-                      <IconButton
-                        icon={() => <Trash2 color="#dc2626" size={18} />}
-                        onPress={() => void revoke(t.id)}
-                        accessibilityLabel="Revoke token"
-                      />
-                    )}
-                  />
-                ))
-              )}
-            </View>
-
-            <Text
-              variant="labelSmall"
-              style={{ color: '#775254', lineHeight: 16 }}
-            >
-              Tools: get profile, suggest/get places, save places, list/create
-              reservations, list rewards. Revoke anytime if a client is
-              compromised.
-            </Text>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </Portal>
+      <Text style={{ color: '#775254', lineHeight: 16, fontSize: 12 }}>
+        Tools: get profile, suggest/get places, save places, list/create
+        reservations, list rewards. Revoke anytime if a client is compromised.
+      </Text>
+    </FullScreenSheet>
   );
 }

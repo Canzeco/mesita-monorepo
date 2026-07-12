@@ -8,17 +8,10 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { Fragment, type ReactNode } from 'react';
-import { Linking, ScrollView, View } from 'react-native';
-import {
-  Appbar,
-  Button,
-  Modal,
-  Portal,
-  SegmentedButtons,
-  Text,
-} from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, Pressable, Text, View } from 'react-native';
 
+import { Button } from '@/components/ui/Button';
+import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import {
   CLASSES,
@@ -49,46 +42,26 @@ export function ClassModal({
   onConnectInstagram,
 }: Props) {
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onClose}
-        contentContainerStyle={{
-          flex: 1,
-          backgroundColor: '#fff7f8',
-          margin: 0,
-        }}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <Appbar.Header style={{ backgroundColor: '#fff7f8' }} elevated>
-            <Appbar.Content
-              title="Your class"
-              subtitle="Free or Premium — and how to climb"
-            />
-            <Appbar.Action icon="close" onPress={onClose} />
-          </Appbar.Header>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 40 }}
-          >
-            <ClassPreviewToggle />
-            <SectionEyebrow>Current class</SectionEyebrow>
-            <CurrentClassCard />
-            <SectionEyebrow>Comparison</SectionEyebrow>
-            <FreeVsPremium />
-            <SectionEyebrow>Classes</SectionEyebrow>
-            <WaysToClimb onConnectInstagram={onConnectInstagram} />
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </Portal>
+    <FullScreenSheet
+      visible={visible}
+      onClose={onClose}
+      title="Your class"
+      subtitle="Free or Premium — and how to climb"
+    >
+      <ClassPreviewToggle />
+      <SectionEyebrow>Current class</SectionEyebrow>
+      <CurrentClassCard />
+      <SectionEyebrow>Comparison</SectionEyebrow>
+      <FreeVsPremium />
+      <SectionEyebrow>Classes</SectionEyebrow>
+      <WaysToClimb onConnectInstagram={onConnectInstagram} />
+    </FullScreenSheet>
   );
 }
 
 function SectionEyebrow({ children }: { children: ReactNode }) {
   return (
     <Text
-      variant="labelSmall"
       style={{
         color: 'rgba(38,4,9,0.55)',
         letterSpacing: 1.6,
@@ -129,7 +102,6 @@ function ClassPreviewToggle() {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Text
-          variant="labelSmall"
           style={{
             backgroundColor: 'rgba(245,158,11,0.15)',
             color: '#d97706',
@@ -143,19 +115,56 @@ function ClassPreviewToggle() {
         >
           DEMO
         </Text>
-        <Text variant="labelSmall" style={{ color: '#775254' }}>
+        <Text style={{ color: '#775254' }}>
           Preview class state
         </Text>
       </View>
-      <SegmentedButtons
-        value={selected}
-        onValueChange={(v) => setOverride(v as MockClass)}
-        buttons={[
-          { value: 'free', label: 'Free' },
-          { value: 'subscription', label: 'Sub' },
-          { value: 'instagram', label: 'IG' },
-        ]}
-      />
+      <View
+        style={{
+          flexDirection: 'row',
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: '#ebd9db',
+          backgroundColor: '#faeff0',
+          padding: 4,
+          gap: 4,
+        }}
+      >
+        {(
+          [
+            { value: 'free', label: 'Free' },
+            { value: 'subscription', label: 'Sub' },
+            { value: 'instagram', label: 'IG' },
+          ] as const
+        ).map((opt) => {
+          const active = selected === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => setOverride(opt.value)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                borderRadius: 10,
+                paddingVertical: 10,
+                backgroundColor: active ? '#ffffff' : 'transparent',
+              }}
+            >
+              <Text
+                style={{
+                  fontWeight: '600',
+                  fontSize: 13,
+                  color: active ? '#260409' : '#775254',
+                }}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -210,7 +219,6 @@ function CurrentClassCard() {
       </View>
       <View style={{ flex: 1 }}>
         <Text
-          variant="headlineSmall"
           style={{
             color: isPremium ? '#fff' : '#260409',
             fontWeight: '700',
@@ -220,7 +228,6 @@ function CurrentClassCard() {
         </Text>
         {via ? (
           <Text
-            variant="labelSmall"
             style={{ color: isPremium ? 'rgba(255,255,255,0.9)' : '#775254' }}
           >
             {via}
@@ -253,7 +260,6 @@ function FreeVsPremium() {
       >
         <View style={{ flex: 1.3 }} />
         <Text
-          variant="labelMedium"
           style={{ flex: 0.8, textAlign: 'center', fontWeight: '700' }}
         >
           Free
@@ -268,7 +274,6 @@ function FreeVsPremium() {
           }}
         >
           <Text
-            variant="labelMedium"
             style={{
               textAlign: 'center',
               fontWeight: '700',
@@ -293,19 +298,16 @@ function FreeVsPremium() {
           }}
         >
           <Text
-            variant="bodySmall"
             style={{ flex: 1.3, color: 'rgba(38,4,9,0.8)', fontWeight: '500' }}
           >
             {row.label}
           </Text>
           <Text
-            variant="bodySmall"
             style={{ flex: 0.8, textAlign: 'center', fontWeight: '600' }}
           >
             {row.free}
           </Text>
           <Text
-            variant="bodySmall"
             style={{
               flex: 1,
               textAlign: 'center',
@@ -442,18 +444,17 @@ function InstagramConnectedSummary({ followers }: { followers: number }) {
       </LinearGradient>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text variant="titleSmall" style={{ fontWeight: '700' }}>
+          <Text style={{ fontWeight: '700' }}>
             Profile connected
           </Text>
           <BadgeCheck color="#059669" size={16} />
         </View>
-        <Text variant="bodySmall" style={{ color: '#775254', marginTop: 4 }}>
+        <Text style={{ color: '#775254', marginTop: 4 }}>
           {followers > 0
             ? `${followers.toLocaleString('en-US')} followers · Premium active`
             : 'Premium active'}
         </Text>
         <Text
-          variant="labelSmall"
           style={{ color: 'rgba(119,82,84,0.8)', marginTop: 2 }}
         >
           Post a story each visit to keep Premium.
@@ -481,7 +482,6 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
       >
         <Check color="#047857" size={14} strokeWidth={3} />
         <Text
-          variant="labelMedium"
           style={{ color: '#047857', fontWeight: '700' }}
         >
           {data.reachedLabel}
@@ -490,13 +490,7 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
     );
   } else if (data.action) {
     footer = (
-      <Button
-        mode="contained"
-        onPress={data.action.onPress}
-        buttonColor="#ec006c"
-        textColor="#fff"
-        contentStyle={{ paddingVertical: 2 }}
-      >
+      <Button onPress={data.action.onPress} accessibilityLabel={data.action.label}>
         {data.action.label}
       </Button>
     );
@@ -512,7 +506,7 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
           alignItems: 'center',
         }}
       >
-        <Text variant="labelMedium" style={{ color: '#775254' }}>
+        <Text style={{ color: '#775254' }}>
           {data.note}
         </Text>
       </View>
@@ -580,7 +574,6 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
               <Crown color="#6d4fd8" size={16} fill="#6d4fd8" />
             ) : null}
             <Text
-              variant="titleMedium"
               style={{
                 fontWeight: '700',
                 color: data.accent ? '#6d4fd8' : '#260409',
@@ -589,20 +582,18 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
               {data.title}
             </Text>
             {data.via ? (
-              <Text variant="bodyMedium" style={{ color: '#775254' }}>
+              <Text style={{ color: '#775254' }}>
                 via {data.via}
               </Text>
             ) : null}
           </View>
           <Text
-            variant="headlineSmall"
             style={{ fontWeight: '700', marginTop: 8 }}
           >
             {data.price}
           </Text>
           {data.priceNote ? (
             <Text
-              variant="labelSmall"
               style={{ color: '#775254', marginTop: 2 }}
             >
               {data.priceNote}
@@ -611,7 +602,6 @@ function ClimbCard({ data }: { data: ClimbCardData }) {
         </View>
       </View>
       <Text
-        variant="bodySmall"
         style={{ color: '#775254', marginTop: 16, lineHeight: 18 }}
       >
         {data.desc}
