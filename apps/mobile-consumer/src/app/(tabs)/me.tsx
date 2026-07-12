@@ -2,18 +2,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
   AtSign,
+  BadgeCheck,
   Bell,
   Bot,
   Crown,
+  Download,
   MessageCircle,
   Settings as SettingsIcon,
   Share2,
+  Trash2,
   UserRound,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, Linking, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiConnectModal } from '@/components/me/AiConnectModal';
+import { ClassModal } from '@/components/me/ClassModal';
+import { DeleteAccountSheet } from '@/components/me/DeleteAccountSheet';
+import { MockControls } from '@/components/me/MockControls';
+import { ShareModal } from '@/components/me/ShareModal';
+import { VerifySocialSheet } from '@/components/me/VerifySocialSheet';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
@@ -22,7 +31,9 @@ import { Switch } from '@/components/ui/Switch';
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
+import { CLASSES } from '@/lib/consumer-classes';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
+import { useEffectiveClass } from '@/lib/mock-class';
 import {
   ageFromBirthday,
   errMsg,
@@ -35,6 +46,7 @@ const SUPPORT_EMAIL = 'support@mesita.ai';
 const INSTAGRAM_URL = 'https://instagram.com/mesita.ai';
 const TERMS_URL = 'https://www.mesita.ai/terms';
 const PRIVACY_URL = 'https://www.mesita.ai/privacy';
+const PRIVACY_EMAIL = 'privacy@mesita.ai';
 
 const LANGUAGE_OPTIONS = [
   { value: 'es', label: 'Español' },
@@ -51,15 +63,28 @@ const CITY_OPTIONS = [
   { value: 'tij', label: 'Tijuana' },
 ];
 
-type Sheet = 'personal' | 'settings' | 'contact' | null;
+type Sheet =
+  | 'personal'
+  | 'settings'
+  | 'contact'
+  | 'class'
+  | 'verify'
+  | 'share'
+  | 'ai'
+  | 'delete'
+  | null;
 
-// Me screen — web ProfileClient port (MESITA-583). Order: identity → Instagram
-// → Class → Personal → Settings → Share → AI → Contact → Sign out. No Paper.
+// Me screen — 583 chrome (NativeWind BoxRow) + 568 conversion modals.
+// Order: identity → Instagram → Class → Inbox → Personal → Settings → Share → AI → Contact.
 export default function MeScreen() {
   const router = useRouter();
   const { profile, consumerClass, session, refreshProfile, signOut } =
     useAuth();
-  const isPremium = consumerClass?.class === 'premium';
+  const effective = useEffectiveClass(
+    consumerClass,
+    profile?.instagram_handle ?? profile?.instagram ?? null,
+  );
+  const isPremium = effective.key === 'premium';
   const [sheet, setSheet] = useState<Sheet>(null);
 
   const name = profile?.full_name ?? 'Mesita guest';
@@ -69,13 +94,17 @@ export default function MeScreen() {
   const meta = [sexLabel, age != null ? `${age}` : null]
     .filter(Boolean)
     .join(' · ');
-  const handle = profile?.instagram ?? null;
-  const igConnected = Boolean(handle);
-  const classLabel = isPremium ? 'Premium' : 'Free';
+
+  const classLabel =
+    CLASSES.find((c) => c.id === effective.key)?.label ?? 'Free';
   const classVia =
-    isPremium && consumerClass?.origin && consumerClass.origin !== 'default'
-      ? consumerClass.origin
-      : null;
+    isPremium && effective.origin !== 'default' ? effective.origin : null;
+  const handle = profile?.instagram_handle ?? profile?.instagram ?? effective.handle;
+  const igConnected = effective.origin === 'instagram' || Boolean(handle);
+
+  function openVerify() {
+    setSheet('verify');
+  }
 
   return (
     <ShellWash>
@@ -170,13 +199,28 @@ export default function MeScreen() {
                 <AtSign color="#ffffff" size={15} />
               </LinearGradient>
               {igConnected ? (
-                <Text
-                  className="font-semibold text-foreground"
-                  style={{ fontSize: 13 }}
-                  numberOfLines={1}
-                >
-                  @{handle}
-                </Text>
+                <>
+                  <Text
+                    className="font-semibold text-foreground"
+                    style={{ fontSize: 13 }}
+                    numberOfLines={1}
+                  >
+                    {handle ? `@${handle}` : 'Connected'}
+                  </Text>
+                  {effective.followers > 0 ? (
+                    <Text
+                      className="text-muted-foreground"
+                      style={{ fontSize: 12 }}
+                    >
+                      {effective.followers.toLocaleString('en-US')} followers
+                    </Text>
+                  ) : null}
+                  <BadgeCheck
+                    color="rgba(38,4,9,0.6)"
+                    size={18}
+                    style={{ marginLeft: 'auto' }}
+                  />
+                </>
               ) : (
                 <Text
                   className="text-muted-foreground/80"
@@ -222,25 +266,24 @@ export default function MeScreen() {
           </View>
         </View>
 
-        {/* lucide-react-native has no Instagram glyph — AtSign matches prior mobile Me. */}
+        <MockControls />
+
+        {/* decision: conversion rows LIVE so ported modals are reachable (no Stripe). */}
         <BoxRow
           Icon={AtSign}
           tint="pink"
           title="Instagram"
           summary="Connect Instagram to upgrade your class"
-          onPress={() => undefined}
-          soon
+          onPress={() => setSheet('verify')}
         />
         <BoxRow
           Icon={Crown}
           tint="amber"
           title="Class"
           summary="Upgrade your class for better rewards"
-          onPress={() => undefined}
-          soon
+          onPress={() => setSheet('class')}
         />
 
-        {/* Inbox entry from MESITA-570 — kept while migrating Me off Paper. */}
         <BoxRow
           Icon={Bell}
           tint="pink"
@@ -270,16 +313,14 @@ export default function MeScreen() {
           tint="pink"
           title="Share"
           summary="Invite friends to Mesita"
-          onPress={() => undefined}
-          soon
+          onPress={() => setSheet('share')}
         />
         <BoxRow
           Icon={Bot}
           tint="violet"
           title="AI"
           summary="Connect your Mesita profile to an AI · Premium"
-          onPress={() => undefined}
-          soon
+          onPress={() => setSheet('ai')}
         />
         <BoxRow
           Icon={MessageCircle}
@@ -310,9 +351,32 @@ export default function MeScreen() {
       <SettingsSheet
         visible={sheet === 'settings'}
         onClose={() => setSheet(null)}
+        onDeleteAccount={() => setSheet('delete')}
       />
       <ContactSheet
         visible={sheet === 'contact'}
+        onClose={() => setSheet(null)}
+      />
+
+      <ClassModal
+        visible={sheet === 'class'}
+        onClose={() => setSheet(null)}
+        onConnectInstagram={openVerify}
+      />
+      <VerifySocialSheet
+        visible={sheet === 'verify'}
+        onClose={() => setSheet(null)}
+      />
+      <ShareModal
+        visible={sheet === 'share'}
+        onClose={() => setSheet(null)}
+      />
+      <AiConnectModal
+        visible={sheet === 'ai'}
+        onClose={() => setSheet(null)}
+      />
+      <DeleteAccountSheet
+        visible={sheet === 'delete'}
         onClose={() => setSheet(null)}
       />
     </SafeAreaView>
@@ -399,9 +463,11 @@ function PersonalDetailsSheet({
 function SettingsSheet({
   visible,
   onClose,
+  onDeleteAccount,
 }: {
   visible: boolean;
   onClose: () => void;
+  onDeleteAccount: () => void;
 }) {
   const [push, setPush] = useStoredFlag(PREF_KEYS.push, true);
   const [location, setLocation] = useStoredFlag(PREF_KEYS.location, true);
@@ -457,6 +523,31 @@ function SettingsSheet({
       <LinkRow
         title="Privacy policy"
         onPress={() => void Linking.openURL(PRIVACY_URL)}
+      />
+      <SectionLabel>Privacy & data</SectionLabel>
+      <BoxRow
+        Icon={Download}
+        tint="emerald"
+        title="Export my data"
+        summary={PRIVACY_EMAIL}
+        onPress={() =>
+          void Linking.openURL(
+            `mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent(
+              'Export my Mesita data',
+            )}`,
+          )
+        }
+      />
+      <BoxRow
+        Icon={Trash2}
+        tint="muted"
+        title="Delete account"
+        summary="Permanently delete your account"
+        onPress={() => {
+          onClose();
+          // Defer so Settings sheet unmounts before Delete mounts.
+          setTimeout(onDeleteAccount, 50);
+        }}
       />
     </FullScreenSheet>
   );
