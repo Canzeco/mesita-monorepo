@@ -9,6 +9,19 @@ import {
 } from '@/lib/api/auth';
 import { supabase } from '@/lib/supabase';
 
+function normalizeClass(raw: ConsumerClass | null): ConsumerClass | null {
+  if (!raw) return null;
+  const tier = raw.class ?? raw.key ?? 'free';
+  return {
+    ...raw,
+    class: tier === 'premium' ? 'premium' : 'free',
+    key: tier === 'premium' ? 'premium' : 'free',
+    origin: raw.origin ?? 'default',
+    followers: raw.followers ?? 0,
+  };
+}
+
+
 // RN replacement for the web's middleware + (shell)/layout.tsx guards:
 // one context that tracks the Supabase session and the consumer profile,
 // and exposes the same onboarded predicate. Navigation gating happens in
@@ -39,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const result = await apiFetchConsumerProfile();
         if (!active) return;
         setProfile(result.consumer);
-        setConsumerClass(result.class);
+        setConsumerClass(normalizeClass(result.class));
       } catch {
         // Same behavior as the web onboard page: EF failure falls through to
         // the onboard form rather than crashing the gate.
@@ -80,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = async () => {
     const result = await apiFetchConsumerProfile();
     setProfile(result.consumer);
-    setConsumerClass(result.class);
+    setConsumerClass(normalizeClass(result.class));
   };
 
   const signOut = async () => {
