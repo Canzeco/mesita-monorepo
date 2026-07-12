@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Percent,
   ShieldCheck,
+  TrendingUp,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -49,33 +50,55 @@ const EXAMPLE_BILL_MXN = 700;
 // Per-strategy visual identity. Art = generated 1:1 abstract waves (no text
 // in pixels — copy stays HTML); the gradient paints behind the image so a
 // slow or missing asset still renders a branded band.
+// `meter`/`recvText`/`recvBg`/`recvBorder` also drive the "You receive" reward
+// panel — the payoff, colored in the strategy's own accent (MESITA-592).
 const CARD_ART: Record<
   StrategyId,
-  { src: string; fallback: string; cta: string; meter: string }
+  {
+    src: string;
+    fallback: string;
+    cta: string;
+    meter: string;
+    recvText: string;
+    recvBg: string;
+    recvBorder: string;
+  }
 > = {
   zero: {
     src: "/promos/strategy-zero.jpg",
     fallback: "from-slate-800 to-slate-500",
     cta: "",
     meter: "bg-slate-400",
+    recvText: "text-slate-500",
+    recvBg: "bg-muted/40",
+    recvBorder: "border-border/60",
   },
   conservative: {
     src: "/promos/strategy-conservative.jpg",
     fallback: "from-emerald-900 to-teal-500",
     cta: "from-emerald-600 to-teal-500",
     meter: "bg-emerald-500",
+    recvText: "text-emerald-600",
+    recvBg: "bg-emerald-500/[0.07]",
+    recvBorder: "border-emerald-500/25",
   },
   aggressive: {
     src: "/promos/strategy-aggressive.jpg",
     fallback: "from-red-800 to-orange-500",
     cta: "from-red-600 to-orange-500",
     meter: "bg-orange-500",
+    recvText: "text-orange-600",
+    recvBg: "bg-orange-500/[0.07]",
+    recvBorder: "border-orange-500/25",
   },
   dominant: {
     src: "/promos/strategy-dominant.jpg",
     fallback: "from-purple-950 to-amber-500",
     cta: "from-purple-700 via-fuchsia-600 to-amber-500",
     meter: "bg-purple-500",
+    recvText: "text-purple-600",
+    recvBg: "bg-purple-500/[0.07]",
+    recvBorder: "border-purple-500/25",
   },
 };
 
@@ -315,9 +338,7 @@ function PricingCard({
 
         <div className="flex flex-col gap-1.5">
           <ModalLabel>You receive</ModalLabel>
-          <p className="text-foreground/85 text-[12px] leading-snug font-semibold">
-            {strategy.visibility} algorithm placement
-          </p>
+          <PlacementReward strategy={strategy} art={art} />
         </div>
 
         {/* Presentational CTA — the whole card is the button; the modal
@@ -620,6 +641,56 @@ function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
       <span className="border-border/60 border-t bg-violet-500/[0.06] px-2.5 py-1.5 text-center font-bold tabular-nums text-violet-600">
         {cell(rates.premium_rate)}
       </span>
+    </div>
+  );
+}
+
+// The "You receive" reward — the payoff, made the card's second visual anchor
+// (MESITA-592): the placement level big in the strategy's own accent + a
+// filled ladder, so what the membership BUYS reads louder than the mechanics.
+function PlacementReward({
+  strategy,
+  art,
+}: {
+  strategy: Strategy;
+  art: (typeof CARD_ART)[StrategyId];
+}) {
+  const idx = STRATEGY_VISIBILITY_LADDER.indexOf(strategy.visibility);
+  return (
+    <div
+      className={cx(
+        "flex flex-col gap-2 rounded-xl border p-3",
+        art.recvBg,
+        art.recvBorder,
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <TrendingUp className={cx("h-4 w-4 shrink-0", art.recvText)} />
+        <span
+          className={cx(
+            "font-display text-xl leading-none font-bold tracking-tight",
+            art.recvText,
+          )}
+        >
+          {strategy.visibility}
+        </span>
+        <span className="text-muted-foreground text-[11px] leading-tight">
+          algorithm
+          <br />
+          placement
+        </span>
+      </div>
+      <div className="flex gap-1" aria-hidden>
+        {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
+          <span
+            key={lvl}
+            className={cx(
+              "h-1.5 flex-1 rounded-full",
+              i <= idx ? art.meter : "bg-muted",
+            )}
+          />
+        ))}
+      </div>
     </div>
   );
 }
