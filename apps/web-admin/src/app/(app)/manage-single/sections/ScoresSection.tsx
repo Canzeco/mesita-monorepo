@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Braces, Megaphone } from "lucide-react";
+import { AlertTriangle, Braces, Gauge } from "lucide-react";
 import { visibilityScore } from "@/lib/business/plans";
 import type { AdminPlace } from "../actions";
 import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 
 // ════════════════════════════════════════════════════════════════════════
-// Buzz — the place's score in the recommendation engines (Swipe · Map ·
+// Scores — the place's score in the recommendation engines (Swipe · Map ·
 // Memo). Admin-only: the whole console sits behind the super-admin gate.
 //
 // DRAFT MODEL v4, frontend only — TWO LANES, each a single product
@@ -77,7 +77,7 @@ function fmt(n: number, digits = 1): string {
   return n.toFixed(digits);
 }
 
-export function BuzzSection({ place }: { place: AdminPlace }) {
+export function ScoresSection({ place }: { place: AdminPlace }) {
   // Simulated semantic match (0–1) — in production RAG computes this per
   // query (Memo's question, or the consumer's taste embedding on Swipe/Map).
   const [match, setMatch] = useState(1);
@@ -109,19 +109,19 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
           <p className="font-semibold">Draft simulator — does not affect Swipe, Map, or Memo.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
             Scores below are frontend heuristics for operators. Global knobs live in{" "}
-            <Link href="/buzz-config" className="font-semibold underline-offset-2 hover:underline">
-              Buzz Config
+            <Link href="/scoring-config" className="font-semibold underline-offset-2 hover:underline">
+              Scoring Config
             </Link>
             .
           </p>
         </div>
       </div>
 
-      {/* ── Buzz — two lanes, each Score × Match ─────────────────────── */}
+      {/* ── Scores — two lanes, each Score × Match ───────────────────── */}
       <SectionCard
-        icon={<Megaphone className="h-4.5 w-4.5" />}
+        icon={<Gauge className="h-4.5 w-4.5" />}
         tint="pink"
-        title="Buzz"
+        title="Scores"
         subtitle="Two lanes — Merit (earned) and Promo (bought). Each is its score × how well the place matches the query. Admins only."
         action={<Pill>Draft model</Pill>}
       >
@@ -242,7 +242,7 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
         </div>
       </SectionCard>
 
-      {/* ── Semantic — meaning retrieves, buzz ranks ────────────────── */}
+      {/* ── Semantic — meaning retrieves, scoring ranks ─────────────── */}
       <SectionCard
         icon={<Braces className="h-4.5 w-4.5" />}
         tint="indigo"

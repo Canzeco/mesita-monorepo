@@ -3,7 +3,7 @@ import { Braces, Megaphone } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 // ════════════════════════════════════════════════════════════════════════
-// Buzz Config — the GLOBAL side of Buzz, read-only draft. Two cards:
+// Scoring Config — the GLOBAL side of scoring, read-only draft. Two cards:
 //
 //   Model     score = worth × fit ÷ decay(d). A great visit = a place worth
 //             going to × a moment that fits ÷ a distance you'll cross.
@@ -75,7 +75,7 @@ const ENGINE_RECIPES = [
   },
 ];
 
-export default function BuzzConfigPage() {
+export default function ScoringConfigPage() {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       {/* ── Model ────────────────────────────────────────────────────── */}

@@ -9,9 +9,9 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
-import { BUZZ_PARENT } from "@/app/(app)/buzz-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
+import { SCORING_PARENT } from "@/app/(app)/scoring-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
   parseUnitId,
@@ -63,9 +63,9 @@ const SIDEBAR_NAV = [
     Icon: MEMO_PARENT.Icon,
   },
   {
-    href: BUZZ_PARENT.href,
-    label: BUZZ_PARENT.label,
-    Icon: BUZZ_PARENT.Icon,
+    href: SCORING_PARENT.href,
+    label: SCORING_PARENT.label,
+    Icon: SCORING_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
