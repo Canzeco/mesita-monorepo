@@ -40,6 +40,7 @@ import { AboutBox } from "@/components/consumer/AboutBox";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
+import { PromoChip } from "@/components/consumer/PromoChip";
 import {
   FacebookLogo,
   GoogleLogo,
@@ -234,7 +235,8 @@ function BoxHScroll({ children }: { children: React.ReactNode }) {
 
 function ProfileSummary({ place }: { place: PlaceDetail }) {
   // decision: Pato — name in header; photo · Google · IG · reward; then
-  // swipe-style tags: verification · category · price · zone · distance · hours.
+  // swipe-style tags: verification · category · price · zone · distance ·
+  // hours · reward (MESITA-561).
   const googleRating = formatRating(place.google.rating)!;
   const googleCount = formatCompactCount(place.google.count, false);
   const igFollowers = formatCompactCount(place.instagram.followers, false);
@@ -293,8 +295,9 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
 
       {/* decision: Pato — when the Enricher is still building the profile an
           "Enriching" chip leads the row; then verification · category ·
-          price · zone · distance · hours (swipe-style tags on light
-          surface). MESITA-451: moved here off the header title. */}
+          price · zone · distance · hours · reward (swipe-style tags on
+          light surface). MESITA-451: moved here off the header title.
+          MESITA-561: reward chip mirrors swipe PromoChip (showWhenEmpty). */}
       <div className="flex flex-wrap items-center gap-1.5">
         {place.is_enriching && (
           <span
@@ -363,6 +366,12 @@ function ProfileSummary({ place }: { place: PlaceDetail }) {
             {statusValue}
           </span>
         </ProfileMetaChip>
+        <PromoChip
+          place={promoPlace}
+          size="md"
+          showWhenEmpty
+          tone="light"
+        />
       </div>
 
       <ProfileActions className="mt-5" place={place} />
