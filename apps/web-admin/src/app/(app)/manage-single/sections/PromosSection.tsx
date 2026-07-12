@@ -5,6 +5,8 @@ import Image from "next/image";
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
+  CircleHelp,
   Crown,
   Loader2,
   MessageCircle,
@@ -27,18 +29,17 @@ import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
 import { SectionCard, ErrorNote } from "../ui";
 
-// Admin Promos — Buzz v4.1 pricing cards + product modal (MESITA-584).
-//   1. Subscription — FOUR pricing cards with generated art bands. The whole
-//      card is the click target: it opens a product modal with the full
-//      detail (what you give / what you get back / the commitment) and the
-//      action footer — the modal IS the confirm step now. Three paid
-//      products cost the SAME MX$1,000/year; switching products is a NEW
-//      subscription (the lock-in). One tap in the modal writes rates + cap +
-//      paying plan flags atomically.
-//   2. Premium example — what the current rates feel like at the bill for a
-//      Premium guest, worked on a sample ticket.
+// Admin Promos — Mesita Membership (MESITA-585).
+//   1. Mesita Membership — FOUR simplified pricing cards (art band, up-to-N%
+//      hero, four segment rows, CTA — the meter and cap microcopy moved off
+//      the card face). The whole card opens the product modal (full detail +
+//      the action). Three paid postures cost the SAME MX$1,000/year;
+//      switching is a NEW membership (the lock-in). One tap in the modal
+//      writes rates + cap + paying plan flags atomically.
+//   2. FAQs — how the membership works, with real numbers: the Premium-guest
+//      worked examples live in the first (default-open) item.
 
-const PRODUCT_PRICE_MXN = 1000;
+const MEMBERSHIP_PRICE_MXN = 1000;
 
 // Sample ticket for the worked example — deliberately above the universal cap
 // so the "first MX$500" rule is visible in the math.
@@ -85,8 +86,8 @@ function formatMoney(amount: number, currency: string | null): string {
   return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
-// A place on any product carries a subscription (plan != free).
-function isSubscribed(place: AdminPlace): boolean {
+// A place on any paid posture carries a membership (plan != free).
+function isMember(place: AdminPlace): boolean {
   return !!place.plan && place.plan !== "free";
 }
 
@@ -121,15 +122,15 @@ export function PromosSection({
     });
   };
 
-  const subscribed = isSubscribed(v);
+  const member = isMember(v);
   const storedStrategy = strategyForPlace(v);
 
-  // The modal is the confirm step: its footer action commits the product.
+  // The modal is the confirm step: its footer action commits the posture.
   const commitStrategy = (target: StrategyId) => {
     setModalId(null);
     if (pending || target === storedStrategy) return;
     const s = STRATEGY_BY_ID[target];
-    // Rates + cap + paying flags in ONE write: the subscription IS the rates.
+    // Rates + cap + paying flags in ONE write: the membership IS the rates.
     persist({
       ...dbStateForSubscription(target === "zero" ? "free" : "pro_discount"),
       welcome_free_rate: s.rates.welcome_free_rate,
@@ -144,18 +145,18 @@ export function PromosSection({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Box 1 · Subscription (four pricing cards) ────────────────────── */}
+      {/* ── Box 1 · Mesita Membership (four cards) ───────────────────────── */}
       <SectionCard
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
-        title="Subscription"
-        subtitle={`Four postures, one price for the paid three — ${formatMoney(PRODUCT_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail. Discounts always apply to the first ${formatMoney(UNIVERSAL_CAP_MXN, v.currency)} of the bill.`}
+        title="Mesita Membership"
+        subtitle={`Four postures, one price for the paid three — ${formatMoney(MEMBERSHIP_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail.`}
         action={
           <span className="flex items-center gap-2">
             {pending && (
               <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
             )}
-            <StatusPill subscribed={subscribed} />
+            <StatusPill member={member} />
           </span>
         }
       >
@@ -166,7 +167,7 @@ export function PromosSection({
               strategy={s}
               currency={v.currency}
               selected={s.id === storedStrategy}
-              subscribed={subscribed}
+              member={member}
               pending={pending && s.id === storedStrategy}
               onOpen={() => setModalId(s.id)}
             />
@@ -175,21 +176,13 @@ export function PromosSection({
 
         {storedStrategy === null && (
           <p className="text-muted-foreground mt-2.5 text-[11px]">
-            Current rates don&apos;t match a product — pick one to standardize.
+            Current rates don&apos;t match a posture — pick one to standardize.
           </p>
         )}
 
-        <div className="mt-3 flex flex-col gap-1">
-          <p className="text-muted-foreground text-[11px] leading-snug">
-            Same price on every product keeps rank off the market — you buy a
-            commitment to give, not placement. Switching products is a new{" "}
-            {formatMoney(PRODUCT_PRICE_MXN, v.currency)} subscription, so
-            places pick a posture and live it.
-          </p>
-          <p className="text-muted-foreground text-[11px] leading-snug">
-            Admin writes plan + rates directly — no Stripe charge from here.
-          </p>
-        </div>
+        <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
+          Admin writes plan + rates directly — no Stripe charge from here.
+        </p>
 
         {error && (
           <div className="mt-3">
@@ -198,15 +191,15 @@ export function PromosSection({
         )}
       </SectionCard>
 
-      {/* ── Box 2 · Premium guest example ───────────────────────────────── */}
-      <PremiumExampleBox place={v} storedStrategy={storedStrategy} />
+      {/* ── Box 2 · FAQs ─────────────────────────────────────────────────── */}
+      <FaqsBox place={v} storedStrategy={storedStrategy} />
 
       {modalStrategy && (
         <ProductModal
           strategy={modalStrategy}
           currency={v.currency}
           isCurrent={modalStrategy.id === storedStrategy}
-          subscribed={subscribed}
+          member={member}
           onConfirm={() => commitStrategy(modalStrategy.id)}
           onClose={() => setModalId(null)}
         />
@@ -215,20 +208,20 @@ export function PromosSection({
   );
 }
 
-// ─── Pricing card (whole card opens the product modal) ─────────────────────
+// ─── Pricing card — simplified face; the modal carries the detail ──────────
 
 function PricingCard({
   strategy,
   currency,
   selected,
-  subscribed,
+  member,
   pending,
   onOpen,
 }: {
   strategy: Strategy;
   currency: string | null;
   selected: boolean;
-  subscribed: boolean;
+  member: boolean;
   pending: boolean;
   onOpen: () => void;
 }) {
@@ -242,7 +235,7 @@ function PricingCard({
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      aria-label={`${strategy.name} — details${selected ? " (current product)" : ""}`}
+      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}`}
       className={cx(
         "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
@@ -286,7 +279,7 @@ function PricingCard({
           <p className="text-[11px] font-semibold text-white/90 drop-shadow-sm">
             {paid ? (
               <>
-                {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
+                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}{" "}
                 <span className="font-normal text-white/80">/ year</span>
               </>
             ) : (
@@ -296,22 +289,27 @@ function PricingCard({
         </div>
       </div>
 
-      {/* Body — the differentiator leads: identical prices can't be the hero. */}
+      {/* Simplified body: hero + the four segment rows + CTA. */}
       <div className="flex w-full flex-1 flex-col gap-2.5 p-3.5">
-        {top == null ? (
-          <p className="text-muted-foreground text-sm leading-none font-semibold">
-            No promos
-          </p>
-        ) : (
-          <div className="flex items-baseline gap-1">
-            <span className="text-muted-foreground text-[11px]">up to</span>
-            <span className="font-display text-2xl leading-none font-bold tabular-nums">
-              {top}
-              <span className="text-base">%</span>
-            </span>
-            <span className="text-muted-foreground text-[11px]">off</span>
-          </div>
-        )}
+        <div className="flex items-center justify-between gap-2">
+          {top == null ? (
+            <p className="text-muted-foreground text-sm leading-none font-semibold">
+              No promos
+            </p>
+          ) : (
+            <div className="flex items-baseline gap-1">
+              <span className="text-muted-foreground text-[11px]">up to</span>
+              <span className="font-display text-2xl leading-none font-bold tabular-nums">
+                {top}
+                <span className="text-base">%</span>
+              </span>
+              <span className="text-muted-foreground text-[11px]">off</span>
+            </div>
+          )}
+          <span className="bg-muted/70 text-foreground/70 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide">
+            {strategy.visibility} visibility
+          </span>
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <SegmentRow
@@ -328,17 +326,9 @@ function PricingCard({
           <SegmentRow rate={r.free_rate} label="Free · returning" />
         </div>
 
-        <div className="mt-auto flex flex-col gap-2.5">
-          <VisibilityMeter visibility={strategy.visibility} accent={art.meter} />
-
-          <p className="text-muted-foreground text-[10px] leading-snug">
-            {paid
-              ? `Off the first ${formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of the bill.`
-              : "Catalog and free organic lane only."}
-          </p>
-
-          {/* Presentational CTA — the whole card is the button; the modal
-              carries the real action. */}
+        {/* Presentational CTA — the whole card is the button; the modal
+            carries the real action. */}
+        <div className="mt-auto pt-1">
           {selected ? (
             <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold">
               <Check className="h-3.5 w-3.5" />
@@ -351,7 +341,7 @@ function PricingCard({
                 art.cta,
               )}
             >
-              {subscribed ? "Switch" : "Subscribe"}
+              {member ? "Switch" : "Join"}
             </span>
           ) : (
             <span className="border-border text-foreground/75 inline-flex h-11 w-full items-center justify-center rounded-full border text-[12px] font-bold">
@@ -370,14 +360,14 @@ function ProductModal({
   strategy,
   currency,
   isCurrent,
-  subscribed,
+  member,
   onConfirm,
   onClose,
 }: {
   strategy: Strategy;
   currency: string | null;
   isCurrent: boolean;
-  subscribed: boolean;
+  member: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -394,11 +384,11 @@ function ProductModal({
   const r = strategy.rates;
 
   const primaryLabel = isCurrent
-    ? "Current product"
+    ? "Current posture"
     : paid
-      ? subscribed
+      ? member
         ? `Switch to ${strategy.name}`
-        : `Subscribe — ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year`
+        : `Join — ${formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year`
       : "Drop to Zero";
 
   return (
@@ -451,7 +441,7 @@ function ProductModal({
             <p className="text-[12px] font-semibold text-white/90 drop-shadow-sm">
               {paid ? (
                 <>
-                  {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
+                  {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}{" "}
                   <span className="font-normal text-white/80">/ year</span>
                 </>
               ) : (
@@ -513,9 +503,9 @@ function ProductModal({
             {paid ? (
               <div className="flex flex-col gap-1.5">
                 <CommitmentRow icon={ShieldCheck}>
-                  {formatMoney(PRODUCT_PRICE_MXN, currency)}/year, per product
-                  — switching later is a NEW subscription. Same price on every
-                  product: rank is never for sale.
+                  {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year, per
+                  posture — switching later is a NEW membership. Same price on
+                  every posture: rank is never for sale.
                 </CommitmentRow>
                 <CommitmentRow icon={MessageCircle}>
                   Activation: your staff WhatsApp passes a test ping and the
@@ -530,7 +520,7 @@ function ProductModal({
             ) : (
               <CommitmentRow icon={ShieldCheck}>
                 No fee, no commitment — dropping to Zero clears the rates and
-                the paying flags. You can subscribe again any time.
+                the paying flags. You can join again any time.
               </CommitmentRow>
             )}
           </div>
@@ -542,7 +532,7 @@ function ProductModal({
             <span className="text-sm font-bold">
               {paid ? (
                 <>
-                  {formatMoney(PRODUCT_PRICE_MXN, currency)}
+                  {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}
                   <span className="text-muted-foreground text-[11px] font-normal">
                     {" "}
                     / year
@@ -609,7 +599,7 @@ function CommitmentRow({
   );
 }
 
-// One discount segment: ✓ + rate when the product grants it, ✗ + em-dash when
+// One discount segment: ✓ + rate when the posture grants it, ✗ + em-dash when
 // it doesn't (Zero) — rates live in HTML text, never in the artwork.
 function SegmentRow({
   rate,
@@ -652,7 +642,7 @@ function SegmentRow({
   );
 }
 
-// What the algorithm gives back for the generosity above.
+// What the algorithm gives back for the generosity above (modal only).
 function VisibilityMeter({
   visibility,
   accent,
@@ -684,11 +674,134 @@ function VisibilityMeter({
   );
 }
 
-// ─── Box 2 · Premium guest example ──────────────────────────────────────────
+// ─── Box 2 · FAQs — how the membership works, with real numbers ─────────────
 
-// Worked from the place's LIVE rate columns (not the preset), so custom or
-// legacy rates preview exactly what the bill EF would apply today.
-function PremiumExampleBox({
+function FaqsBox({
+  place,
+  storedStrategy,
+}: {
+  place: AdminPlace;
+  storedStrategy: StrategyId | null;
+}) {
+  const currency = place.currency;
+  const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
+  const cap = formatMoney(UNIVERSAL_CAP_MXN, currency);
+
+  return (
+    <SectionCard
+      icon={<CircleHelp className="h-4 w-4" />}
+      tint="sky"
+      title="FAQs"
+      subtitle="How the Mesita Membership works — with real numbers."
+    >
+      <div className="mt-4 flex flex-col gap-2">
+        <Faq q="What does a Premium guest actually get?" defaultOpen>
+          <PremiumExamples place={place} storedStrategy={storedStrategy} />
+        </Faq>
+
+        <Faq q="Why do all three memberships cost the same?">
+          <p>
+            Because rank is never for sale. The {price}/year is identical on
+            Conservative, Aggressive and Dominant — what you buy is a
+            commitment to give, not placement. The only thing that changes
+            between postures is the discount schedule you promise your guests,
+            and the visibility that generosity earns back.
+          </p>
+        </Faq>
+
+        <Faq q={`What exactly does the ${price}/year buy?`}>
+          <p>
+            It is a commitment filter, not a feature tier — it keeps
+            half-hearted restaurants out of the rewards program and guests
+            away from dead coupons. Being a member unlocks the paid postures
+            and makes the place eligible for the promo lane in the Swipe deck.
+            The catalog listing and the free organic lane never cost anything,
+            member or not.
+          </p>
+        </Faq>
+
+        <Faq q="How does visibility work?">
+          <p>
+            The ranking algorithm reads a stronger discount as a stronger
+            card: Zero sits at Low, Conservative at Mid, Aggressive at High
+            and Dominant at Max. Visibility is never a separate knob you can
+            buy — it rises with what you give.
+          </p>
+        </Faq>
+
+        <Faq q={`What is the ${cap} cap?`}>
+          <p>
+            Every discount applies only to the first {cap} of the bill — a
+            platform-wide constant, always shown to guests. Example: 50% off
+            a {formatMoney(EXAMPLE_BILL_MXN, currency)} bill touches the first{" "}
+            {cap}, so the guest saves{" "}
+            {formatMoney(UNIVERSAL_CAP_MXN * 0.5, currency)} and pays{" "}
+            {formatMoney(EXAMPLE_BILL_MXN - UNIVERSAL_CAP_MXN * 0.5, currency)}
+            . The headline stays big; the cost stays bounded.
+          </p>
+        </Faq>
+
+        <Faq q="How does a place activate?">
+          <p>
+            Two steps: the staff WhatsApp channel passes a test ping, and the
+            first guest ticket is honored at the bill. Mesita runs both — no
+            self-serve switch.
+          </p>
+        </Faq>
+
+        <Faq q="Can a place switch postures or cancel?">
+          <p>
+            Switching postures is a NEW {price}/year membership — that is the
+            lock-in: places pick a posture and live it. Dropping to Zero is
+            free and instant; it clears the rates and paid promos stop, but
+            the catalog listing and the organic lane stay.
+          </p>
+        </Faq>
+
+        <Faq q="What happens if a guest is turned away?">
+          <p>
+            A refused or ignored QR is a strike: 1 — warning and the
+            activation test re-runs · 2 — the promo lane pauses for 30 days ·
+            3 — removed from the paid postures and the fee is forfeited (the
+            place stays in the catalog). Strikes decay after 6 months clean,
+            and the turned-away guest is compensated instantly.
+          </p>
+        </Faq>
+      </div>
+    </SectionCard>
+  );
+}
+
+// Native details/summary accordion item — no state, keyboard-accessible.
+function Faq({
+  q,
+  defaultOpen,
+  children,
+}: {
+  q: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="border-border/60 group rounded-xl border"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden">
+        {q}
+        <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
+      </summary>
+      <div className="text-muted-foreground flex flex-col gap-2.5 px-3.5 pb-3.5 text-[12px] leading-relaxed">
+        {children}
+      </div>
+    </details>
+  );
+}
+
+// The Premium-guest worked examples (FAQ #1) — computed from the place's LIVE
+// rate columns, so custom or legacy rates preview exactly what the bill EF
+// would apply today.
+function PremiumExamples({
   place,
   storedStrategy,
 }: {
@@ -700,55 +813,51 @@ function PremiumExampleBox({
   const strategy = storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
   const cap = place.monthly_promo_cap ?? UNIVERSAL_CAP_MXN;
 
+  if (!hasPromo) {
+    return (
+      <div className="border-border/60 bg-muted/20 rounded-xl border border-dashed px-4 py-4 text-center">
+        <p className="text-muted-foreground text-[12px] leading-snug">
+          No promos right now — Premium guests see this place in the catalog
+          with no discount card. Join a posture above to preview the deal.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <SectionCard
-      icon={<Crown className="h-4 w-4" />}
-      tint="violet"
-      title="What a Premium guest gets"
-      subtitle={`The current rates worked on a sample ${formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket.`}
-      action={
-        hasPromo ? (
-          <span className="bg-muted text-foreground/70 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
-            {strategy && strategy.id !== "zero"
-              ? `${strategy.emoji} ${strategy.name}`
-              : "Custom rates"}
-          </span>
-        ) : null
-      }
-    >
-      {hasPromo ? (
-        <>
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ExampleCard
-              visit="First visit"
-              premiumRate={place.welcome_premium_rate}
-              freeRate={place.welcome_free_rate}
-              cap={cap}
-              currency={place.currency}
-            />
-            <ExampleCard
-              visit="Returning"
-              premiumRate={place.premium_rate}
-              freeRate={place.free_rate}
-              cap={cap}
-              currency={place.currency}
-            />
-          </div>
-          <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
-            Premium ≥ Free in every product — Premium guests always get the
-            better deal. They are what the subscription buys.
-          </p>
-        </>
-      ) : (
-        <div className="border-border/60 bg-muted/20 mt-4 rounded-xl border border-dashed px-4 py-5 text-center">
-          <p className="text-muted-foreground text-[12px] leading-snug">
-            No promos right now — Premium guests see this place in the catalog
-            with no discount card. Subscribe to a product above to preview the
-            deal.
-          </p>
-        </div>
-      )}
-    </SectionCard>
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-foreground/80">
+          The current rates worked on a sample{" "}
+          {formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket:
+        </p>
+        <span className="bg-muted text-foreground/70 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+          {strategy && strategy.id !== "zero"
+            ? `${strategy.emoji} ${strategy.name}`
+            : "Custom rates"}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <ExampleCard
+          visit="First visit"
+          premiumRate={place.welcome_premium_rate}
+          freeRate={place.welcome_free_rate}
+          cap={cap}
+          currency={place.currency}
+        />
+        <ExampleCard
+          visit="Returning"
+          premiumRate={place.premium_rate}
+          freeRate={place.free_rate}
+          cap={cap}
+          currency={place.currency}
+        />
+      </div>
+      <p>
+        Premium ≥ Free in every posture — Premium guests always get the better
+        deal. They are what the membership buys.
+      </p>
+    </>
   );
 }
 
@@ -818,12 +927,12 @@ function ExampleCard({
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
-function StatusPill({ subscribed }: { subscribed: boolean }) {
+function StatusPill({ member }: { member: boolean }) {
   return (
     <span
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
-        subscribed
+        member
           ? "bg-emerald-500/12 text-emerald-700"
           : "bg-muted text-muted-foreground",
       )}
@@ -831,10 +940,10 @@ function StatusPill({ subscribed }: { subscribed: boolean }) {
       <span
         className={cx(
           "h-1.5 w-1.5 rounded-full",
-          subscribed ? "bg-emerald-500" : "bg-muted-foreground/50",
+          member ? "bg-emerald-500" : "bg-muted-foreground/50",
         )}
       />
-      {subscribed ? "Subscribed" : "Free"}
+      {member ? "Member" : "Free"}
     </span>
   );
 }
