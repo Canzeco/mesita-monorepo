@@ -217,9 +217,6 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               <p className="text-muted-foreground pb-1.5 text-sm">/ {SCORE_MAX}</p>
             </div>
             <Meter value={score / SCORE_MAX} className="mt-3 w-56" />
-            <p className="text-muted-foreground mt-3 font-mono text-xs">
-              score = worth × fit ÷ distance decay
-            </p>
           </div>
 
           <div className="flex w-full max-w-sm flex-col gap-3">
@@ -260,6 +257,27 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
           </div>
         </div>
 
+        {/* Plain-language equation — the hero number, shown being built from
+            its three drivers so an operator reads it without decoding mono. */}
+        <div className="mt-6 flex items-stretch gap-1.5 sm:gap-2">
+          <EqTerm label="Worth" sub="how good it is" value={fmt(worth)} />
+          <EqOp>×</EqOp>
+          <EqTerm label="Fit" sub="fits the moment" value={fmt(fit, 2)} />
+          <EqOp>÷</EqOp>
+          <EqTerm
+            label="Distance"
+            sub={`${fmt(km)} km away`}
+            value={`${fmt(decay(km, BASE_D0), 2)}×`}
+          />
+          <EqOp>=</EqOp>
+          <EqTerm
+            label="Buzz"
+            sub="what wins the spot"
+            value={fmt(score)}
+            highlight
+          />
+        </div>
+
         <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
             <GroupLabel>Worth · the place</GroupLabel>
@@ -267,6 +285,10 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               (PV + reputation + magnetism) / 3 × momentum = {fmt(worth)}
             </p>
           </div>
+          <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+            How good the place is on its own — before the moment or the
+            distance. Higher is better.
+          </p>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
             <Tile
               label="Promotional Visibility"
@@ -302,6 +324,10 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
               match × right-now = {fmt(fit, 2)}
             </p>
           </div>
+          <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+            How well the place fits this guest right now — the query it matches
+            and whether it&apos;s open. Zero on either kills the score.
+          </p>
           <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
             <Tile
               label="Match"
@@ -411,6 +437,57 @@ export function BuzzSection({ place }: { place: AdminPlace }) {
 function Pill({ children }: { children: React.ReactNode }) {
   return (
     <span className="bg-muted text-muted-foreground rounded-full px-3 py-1.5 text-[11px] font-semibold">
+      {children}
+    </span>
+  );
+}
+
+// One term in the plain-language Buzz equation — value big, human sublabel.
+function EqTerm({
+  label,
+  sub,
+  value,
+  highlight,
+}: {
+  label: string;
+  sub: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border px-1.5 py-2.5 text-center " +
+        (highlight
+          ? "border-primary/40 bg-primary/[0.06]"
+          : "border-border/60 bg-muted/40")
+      }
+    >
+      <p className="text-muted-foreground text-[9px] font-bold tracking-[0.12em] uppercase">
+        {label}
+      </p>
+      <p
+        className={
+          "font-display mt-0.5 text-lg leading-none font-semibold tracking-tight tabular-nums " +
+          (highlight ? "text-primary" : "")
+        }
+      >
+        {value}
+      </p>
+      <p className="text-muted-foreground mt-1 text-[10px] leading-tight">
+        {sub}
+      </p>
+    </div>
+  );
+}
+
+// Operator glyph between equation terms.
+function EqOp({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="text-muted-foreground shrink-0 self-center text-base font-semibold"
+      aria-hidden
+    >
       {children}
     </span>
   );
