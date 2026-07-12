@@ -22,6 +22,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 
 import { mesitaPaperTheme } from '@/constants/paper-theme';
+import { Toaster } from '@/components/ui/Toaster';
 import { Sentry } from '@/lib/sentry';
 import { AuthProvider } from '@/providers/auth';
 
@@ -70,6 +71,7 @@ function RootLayout() {
                 contentStyle: { backgroundColor: '#fff7f8' },
               }}
             />
+            <Toaster />
           </AuthProvider>
         </QueryClientProvider>
       </PaperProvider>

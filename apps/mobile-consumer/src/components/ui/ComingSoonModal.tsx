@@ -3,8 +3,8 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { Sparkles } from 'lucide-react-native';
 
 // RN port of web ComingSoonModal — parked surfaces stay tappable; gate is
-// one shared dialog (MESITA-383). Used by the tab bar for Rewards /
-// Reservations instead of navigating to placeholder pages.
+// one shared dialog (MESITA-383). Used by the tab bar (Rewards), place
+// Reserve/Share, and other parked CTAs.
 
 type IconComponent = ComponentType<{
   color?: string;

@@ -2,9 +2,9 @@ import { Tabs } from 'expo-router';
 
 import { ConsumerTabBar } from '@/components/ui/ConsumerTabBar';
 
-// Custom tab bar ports web BottomNav (MESITA-581). Rewards / Reservations
-// stay registered so deep links work, but the tab bar opens ComingSoonModal
-// instead of navigating (web MESITA-383 parity).
+// Custom tab bar ports web BottomNav (MESITA-581). Rewards stays parked
+// behind ComingSoonModal; Reservations navigates to Upcoming/History empty
+// states (MESITA-569 — web parked page content).
 export default function TabsLayout() {
   return (
     <Tabs

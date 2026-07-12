@@ -45,16 +45,13 @@ type SoonMeta = {
 };
 
 // Parked tab copy — mirrors web BottomNav (MESITA-383).
+// Reservations navigates to Upcoming/History empty states (MESITA-569);
+// only Rewards stays behind ComingSoonModal on the tab bar.
 const SOON: Record<string, SoonMeta> = {
   rewards: {
     title: 'Rewards coming soon',
     body: 'Pay with QR and claim Mesita rewards from here shortly. Hang tight.',
     Icon: QrCode,
-  },
-  reservations: {
-    title: 'Reservations coming soon',
-    body: 'Your bookings will live here. For now, reach places from Contact on a place.',
-    Icon: CalendarCheck,
   },
 };
 

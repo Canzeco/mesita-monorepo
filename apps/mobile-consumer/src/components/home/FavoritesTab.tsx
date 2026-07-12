@@ -20,8 +20,10 @@ import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import {
   readSavedPlacePreviews,
   removeSavedPlacePreview,
+  upsertSavedPlacePreview,
   useSavedPlaces,
 } from '@/lib/saved-places';
+import { toast } from '@/lib/toast';
 import { firstInitial } from '@/lib/utils';
 
 export function FavoritesTab() {
@@ -65,6 +67,13 @@ export function FavoritesTab() {
     setSaved(place.id, false);
     removeSavedPlacePreview(place.id);
     setPendingRemove(null);
+    toast.action('Removed from saved', {
+      label: 'Undo',
+      onClick: () => {
+        upsertSavedPlacePreview(place);
+        setSaved(place.id, true);
+      },
+    });
   };
 
   if (deckQuery.isLoading && places.length === 0 && savedIds.size === 0) {
