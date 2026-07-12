@@ -45,7 +45,7 @@ const COLUMNS: readonly string[] = [
   "description",
   // Four per-tier promo rates (free / premium). Welcome variants fire on a
   // guest's first visit at the place; the unprefixed variants apply on every
-  // visit afterwards. Legal values: 10, 20, 50, 70 (nullable).
+  // visit afterwards. Legal values: 10, 20, 30, 40, 50 (nullable).
   "welcome_free_rate",
   "welcome_premium_rate",
   "free_rate",
