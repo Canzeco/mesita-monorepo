@@ -1325,12 +1325,13 @@ function PromosCard({ place }: { place: AdminPlace }) {
     ? STRATEGY_VISIBILITY_LADDER.indexOf(strategy.visibility)
     : -1;
 
-  // Premium-first, matching the membership cards on the Promos tab.
+  // Matrix order — Welcome then Returning, Free then Premium — matching the
+  // 2×2 matrix on the Promos-tab membership cards (MESITA-590).
   const rows: { label: string; rate: number | null }[] = [
-    { label: "Premium · first visit", rate: place.welcome_premium_rate },
-    { label: "Premium · returning", rate: place.premium_rate },
-    { label: "Free · first visit", rate: place.welcome_free_rate },
-    { label: "Free · returning", rate: place.free_rate },
+    { label: "Welcome · Free", rate: place.welcome_free_rate },
+    { label: "Welcome · Premium", rate: place.welcome_premium_rate },
+    { label: "Returning · Free", rate: place.free_rate },
+    { label: "Returning · Premium", rate: place.premium_rate },
   ];
 
   return (
