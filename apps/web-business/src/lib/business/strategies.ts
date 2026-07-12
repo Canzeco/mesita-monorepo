@@ -1,10 +1,10 @@
-// Buzz v4 — Discount strategies (business Promos page).
+// Promos v4 — Discount strategies (business Promos page).
 //
 // The Promos page no longer exposes four independent rate pickers or a
 // Free/Pro/Ultra subscription ladder. A business now picks ONE of four preset
 // strategies; each is a bundle of the four per-tier promo rates plus the one
 // universal ticket cap. The presets encode the product invariants directly
-// (design 2026-07-11 — "Buzz v4"):
+// (design 2026-07-11 — "Promos v4"):
 //
 //   - Welcome ≥ Returning inside a class — winning a guest is worth more than
 //     keeping one (retention discounts are partly deadweight).
@@ -53,7 +53,7 @@ export type Strategy = {
 };
 
 // Ordered ascending in generosity so the picker reads Zero → Dominant.
-// The rate tuples are the canonical Buzz v4 table:
+// The rate tuples are the canonical Promos v4 table:
 //
 //   Level          FR  PR  FW  PW   Cap   Visibility
 //   ⭕ Zero        off off off off   —     Low

@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Place is archived" }, 409);
   }
 
-  // Buzz v4 promo-lane gate (MESITA-542).
+  // Promos v4 promo-lane gate (MESITA-542).
   const membershipRow = await loadMembershipRow(admin, projectId);
   if (membershipRow) {
     const lane = assessPromoLane(membershipRow);

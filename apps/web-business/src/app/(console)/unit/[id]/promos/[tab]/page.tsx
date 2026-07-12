@@ -4,7 +4,7 @@ import { promosPath } from "@/lib/business-route-contract";
 export const dynamic = "force-dynamic";
 
 // Backward-compat: the old Promos page had subtabs (/promos/plan, /rates,
-// /instagram, /guests). Buzz v4 collapsed the page to a single two-box view,
+// /instagram, /guests). Promos v4 collapsed the page to a single two-box view,
 // so any old tabbed deep link now redirects to the base Promos page.
 export default async function BusinessPromosLegacyTabPage({
   params,

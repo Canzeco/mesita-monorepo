@@ -1,7 +1,7 @@
 // Supabase Edge Function — business-web-cancel-ticket
 //
 // Authenticated. Cancels a pending ticket. When cancel_reason is refused_qr
-// or ignored_qr, records a Buzz v4 membership strike and compensates the guest
+// or ignored_qr, records a Promos v4 membership strike and compensates the guest
 // (MESITA-542).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

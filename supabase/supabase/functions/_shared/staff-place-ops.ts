@@ -137,7 +137,7 @@ export function assessDiscountTicketOps(
     };
   }
 
-  // Buzz v4 membership gate (MESITA-542): activation + strikes.
+  // Promos v4 membership gate (MESITA-542): activation + strikes.
   const membership: MembershipRow = {
     id: place.id,
     plan: place.plan,

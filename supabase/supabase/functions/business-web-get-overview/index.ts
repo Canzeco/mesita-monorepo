@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     ];
   } else {
     // Pull every place the caller is a member of, with the role on each row.
-    // Read via projects_view so Buzz v4 membership columns (MESITA-542) and
+    // Read via projects_view so Promos v4 membership columns (MESITA-542) and
     // project rate/plan fields round-trip with the place profile.
     const memberRows = await admin
       .from("project_members")

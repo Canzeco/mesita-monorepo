@@ -1,6 +1,6 @@
 // Supabase Edge Function — business-web-record-membership-strike
 //
-// Records a refused/ignored-QR strike against a place's Buzz v4 membership
+// Records a refused/ignored-QR strike against a place's Promos v4 membership
 // (MESITA-542). Applies the ladder (1 warning+re-test · 2 pause 30d · 3 forfeit)
 // and compensates the burned guest with a coupon at another partner place.
 

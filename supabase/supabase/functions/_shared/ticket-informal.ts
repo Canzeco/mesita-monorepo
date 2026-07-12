@@ -158,7 +158,7 @@ export async function finalizeInformalTicket(
     .eq("id", ticketId);
   if (update.error) return { ok: false, error: update.error.message };
 
-  // Honoring a discount ticket completes the Buzz v4 activation gate
+  // Honoring a discount ticket completes the Promos v4 activation gate
   // (MESITA-542). Zero-discount tickets don't count.
   const discount =
     (ticket.data.discount_cents as number | null) ??
