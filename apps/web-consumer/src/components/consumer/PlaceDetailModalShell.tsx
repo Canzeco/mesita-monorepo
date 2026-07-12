@@ -12,8 +12,9 @@ import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
 // body action row (Save · Contact · Reserve · Share); the header is just
 // dismiss + centered name. SlideOverHeader renders a w-9 spacer for the
 // absent actions slot, so the title stays centered.
-// decision: Pato (MESITA-451) — enriching badge lives in the title row.
-//   1. SlideOverHeader (shrink-0) — dismiss + place name [(Enriching)]
+// decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
+// a chip in the profile summary (PlaceDetailBody), not the title row.
+//   1. SlideOverHeader (shrink-0) — dismiss + place name
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody
 
 export function PlaceDetailModalShell({
@@ -21,23 +22,17 @@ export function PlaceDetailModalShell({
   placeId: _placeId,
   placeName,
   listingType: _listingType,
-  isEnriching = false,
 }: {
   children: React.ReactNode;
   placeId: string;
   placeName: string;
   listingType: "partner" | "web";
-  isEnriching?: boolean;
 }) {
   return (
     <>
       <SlideOverHeader
         title={
-          <PlaceDetailTitle
-            placeName={placeName}
-            isEnriching={isEnriching}
-            className="flex-none"
-          />
+          <PlaceDetailTitle placeName={placeName} className="flex-none" />
         }
       />
       {/*

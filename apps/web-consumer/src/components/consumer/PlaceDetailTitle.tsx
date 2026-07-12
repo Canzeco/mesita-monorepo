@@ -1,20 +1,18 @@
 "use client";
 
-import { Spinner } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
-// Centered place-name title for the detail header (page + modal). When the
-// Enricher is still building the profile, append "(Enriching)" + a spinner
-// to the right of the name — decision: Pato MESITA-451 (moved off the
-// bottom Last-update box so the live state is visible without scrolling).
+// Centered place-name title for the detail header (page + modal).
+// decision: Pato (MESITA-451, revised) — the live "Enriching" state moved
+// off the title into a dedicated chip in the profile summary (before the
+// verification chip, see PlaceDetailBody), so the name stays clean in the
+// top chrome.
 
 export function PlaceDetailTitle({
   placeName,
-  isEnriching,
   className,
 }: {
   placeName: string;
-  isEnriching?: boolean;
   className?: string;
 }) {
   return (
@@ -25,19 +23,6 @@ export function PlaceDetailTitle({
       )}
     >
       <span className="truncate">{placeName}</span>
-      {isEnriching ? (
-        <span
-          className="text-emerald-600 inline-flex shrink-0 items-center gap-1"
-          aria-live="polite"
-        >
-          <span className="whitespace-nowrap">(Enriching)</span>
-          <Spinner
-            size="sm"
-            label="Enriching"
-            className="h-3.5 w-3.5 border-emerald-300 border-t-emerald-600"
-          />
-        </span>
-      ) : null}
     </div>
   );
 }
