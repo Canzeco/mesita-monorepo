@@ -8,10 +8,16 @@ import {
   hasReservationTarget,
   mergeProductsReservations,
   preferReservationChannel,
+  RESERVATION_CHANNEL_PRIORITY,
+  selectReservationEndpoint,
   valueForReservationChannel,
 } from "./enrich-reservation-endpoint.ts";
 
-Deno.test("availableReservationChannels: only non-empty values", () => {
+Deno.test("RESERVATION_CHANNEL_PRIORITY is phone > whatsapp > instagram", () => {
+  assertEquals([...RESERVATION_CHANNEL_PRIORITY], ["phone", "whatsapp", "instagram"]);
+});
+
+Deno.test("availableReservationChannels: only non-empty values in priority order", () => {
   assertEquals(
     availableReservationChannels({
       phone: "  +1 703-858-1102 ",
@@ -27,6 +33,15 @@ Deno.test("availableReservationChannels: only non-empty values", () => {
       instagram_url: "https://instagram.com/cafe",
     }),
     ["whatsapp", "instagram"],
+  );
+  // Instagram listed first in input still yields priority order in output.
+  assertEquals(
+    availableReservationChannels({
+      instagram_url: "https://instagram.com/cafe",
+      whatsapp_url: "https://wa.me/52155",
+      phone: "+52 55",
+    }),
+    ["phone", "whatsapp", "instagram"],
   );
   assertEquals(availableReservationChannels({}), []);
 });
@@ -79,4 +94,43 @@ Deno.test("mergeProductsReservations: preserves menu and other keys", () => {
     mergeProductsReservations(null, { channel: "phone", value: "+1" }),
     { reservations: { channel: "phone", value: "+1" } },
   );
+});
+
+Deno.test("selectReservationEndpoint: deterministic phone > whatsapp > instagram", () => {
+  assertEquals(
+    selectReservationEndpoint({ candidates: {} }),
+    { target: null, diag: { ok: false, reason: "no_candidates" } },
+  );
+
+  const phoneWins = selectReservationEndpoint({
+    candidates: {
+      phone: "+52 55 1111",
+      whatsapp_url: "https://wa.me/5255",
+      instagram_url: "https://instagram.com/x",
+    },
+  });
+  assertEquals(phoneWins.target, { channel: "phone", value: "+52 55 1111" });
+  assertEquals(phoneWins.diag.via, "priority_phone_whatsapp_instagram");
+  assertEquals(phoneWins.diag.channel, "phone");
+
+  const whatsappNext = selectReservationEndpoint({
+    candidates: {
+      phone: "  ",
+      whatsapp_url: "https://wa.me/5255",
+      instagram_url: "https://instagram.com/x",
+    },
+  });
+  assertEquals(whatsappNext.target, {
+    channel: "whatsapp",
+    value: "https://wa.me/5255",
+  });
+
+  const igOnly = selectReservationEndpoint({
+    candidates: { instagram_url: "https://instagram.com/solo" },
+  });
+  assertEquals(igOnly.target, {
+    channel: "instagram",
+    value: "https://instagram.com/solo",
+  });
+  assertEquals(igOnly.diag.via, "sole_candidate");
 });

@@ -7,7 +7,7 @@
 //   S7  synthesis (About/details, grounded ONLY in gathered material — Google
 //       spine + reviews + SERP blurb + IG bio; no website/menu) + category
 //       inference + tag inference (closed vocabularies) + Selected Reservation
-//       Endpoint (phone / WhatsApp / Instagram → products.reservations)
+//       Endpoint (phone > whatsapp > instagram → products.reservations)
 //   S8  persist the enriched profile onto the places row (direct UPDATE — this
 //       EF is already the DB layer; no HTTP hop) + content_status='ready'
 //   S9  store images via supabase-edgefunc-store-place-images (kept as an EF call
@@ -118,11 +118,13 @@ serveEnrichStage("contents", async (admin, env, row) => {
   sources.category = { ok: !!inferredCategory, slug: inferredCategory, candidates: realCategories.length };
   sources.tags = { ok: inferredTags.length > 0, count: inferredTags.length, vocabulary: tagVocabulary.length };
 
-  // Selected Reservation Endpoint (Notion Enrich-Analysis S4) — seed
-  // products.reservations { channel, value } for the Reservationist. Phone is
-  // stripped from gathered.place (research-only write), and whatsapp_url is not
-  // discovered by channel search, so read live contacts + products from places.
-  // Skip when an admin already picked a channel so re-enrich doesn't clobber.
+  // Selected Reservation Endpoint (Product Rules §G / MESITA-597) — seed
+  // products.reservations { channel, value } for the Reservationist.
+  // Priority among available contacts: phone > whatsapp > instagram.
+  // Phone is stripped from gathered.place (research-only write), and
+  // whatsapp_url is not discovered by channel search, so read live contacts +
+  // products from places. Skip when admin already picked a channel so
+  // re-enrich never clobbers an operator choice.
   const { data: liveContacts } = await admin
     .from("places")
     .select("phone, whatsapp_url, instagram_url, products")
@@ -145,12 +147,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
         ((place.instagram_url as string | null | undefined) ?? null) ||
         ((liveContacts?.instagram_url as string | null | undefined) ?? null),
     };
-    const { target, diag: reservationDiag } = await selectReservationEndpoint({
-      openaiKey: OPENAI_KEY,
-      candidates,
-      name,
-      about: aboutText,
-    });
+    const { target, diag: reservationDiag } = selectReservationEndpoint({ candidates });
     sources.reservation_endpoint = reservationDiag;
     if (target) {
       place.products = mergeProductsReservations(liveProducts, target);
