@@ -26,12 +26,12 @@ import { Badge } from "@/components/ui/badge";
 
 // Subdomain URLs — landing lives on mesita.ai, consumer + business are
 // separate apps. Keep absolute so links work from any environment.
-const CONSUMER_URL = "https://consumer.mesita.ai";
-// Business auth lives at the subdomain root — `?mode=signup` lands the
-// AuthTabs control on the Create account variant. Bare URL renders the
-// default Sign in mode.
-const BUSINESS_SIGNUP_URL = "https://business.mesita.ai/?mode=signup";
-const BUSINESS_SIGNIN_URL = "https://business.mesita.ai/";
+// Redirects to the live consumer/business apps are intentionally disabled
+// while this landing is shared publicly (e.g. technical hub) so visitors
+// can't reach the real apps. Restore the absolute URLs to re-enable.
+const CONSUMER_URL = "#";
+const BUSINESS_SIGNUP_URL = "#";
+const BUSINESS_SIGNIN_URL = "#";
 
 // Landing page — single-source-of-truth marketing surface.
 //
