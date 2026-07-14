@@ -7,7 +7,7 @@ import {
   MATCH_TIERS,
   TIME_BLOCK_H,
 } from "@/lib/business/scores";
-import { sampleplaces, SAMPLE_MAX } from "./actions";
+import { getScoringSample, SAMPLE_MAX } from "./actions";
 import { Simulator } from "./Simulator";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +22,9 @@ export const dynamic = "force-dynamic";
 // ════════════════════════════════════════════════════════════════════════
 
 export default async function ScoringConfigPage() {
-  const sample = await sampleplaces();
-  const places = sample.ok ? sample.places : [];
+  const res = await getScoringSample();
+  const consumers = res.ok ? res.sample.consumers : [];
+  const places = res.ok ? res.sample.places : [];
   const n = places.length;
 
   return (
@@ -50,9 +51,13 @@ export default async function ScoringConfigPage() {
 
       {/* ── Hyperparameters + playground ────────────────────────────── */}
       {n === 0 ? (
-        <EmptySample error={sample.ok ? null : sample.error} />
+        <EmptySample error={res.ok ? null : res.error} />
       ) : (
-        <Simulator key={places.map((p) => p.id).join(",")} places={places} />
+        <Simulator
+          key={[...consumers.map((c) => c.id), ...places.map((p) => p.id)].join(",")}
+          consumers={consumers}
+          places={places}
+        />
       )}
 
       {/* ── Definitions footer ──────────────────────────────────────── */}

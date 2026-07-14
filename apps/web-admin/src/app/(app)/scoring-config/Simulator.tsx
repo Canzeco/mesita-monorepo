@@ -8,11 +8,9 @@ import {
   DEFAULT_SCORES_CONFIG,
   ENGINE_POLICIES,
   fitScore,
-  laneFormula,
   laneScore,
   LANES,
   MATCH_MAX,
-  quantizeH,
   waitScore,
   whenScore,
   whereScore,
@@ -21,86 +19,56 @@ import {
   type LaneId,
   type ScoresConfig,
 } from "@/lib/business/scores";
-import { PROMO_SCORE_BY_STRATEGY, STRATEGIES, type StrategyId } from "@/lib/business/strategies";
-import type { SamplePlace } from "./actions";
+import {
+  buildConsumerProfile,
+  generateIntent,
+  haversineKm,
+  lmCip,
+  openWindow,
+  rmCip,
+  type ConsumerProfile,
+  type Intent,
+  type SampleConsumer,
+  type SamplePlace,
+} from "@/lib/business/cip";
+import { PROMO_SCORE_BY_STRATEGY, STRATEGIES, strategyForPlace, type StrategyId } from "@/lib/business/strategies";
 
-// Scoring Config = hyperparameters on top, playground below.
+// Scoring Config = hyperparameters on top, functional playground below.
 //
-// Hyperparameters, in Pato's grouping: the ENGINE LANE MIX (what share of each
-// engine's results every lane supplies — the interleave knob), then RIPD (RAG
-// intent-place data), LIPD (LLM intent-place data), WW (where · when) and P
-// (promos). Engine tier policies are FACTS of the architecture, shown but not
-// knobs — every engine screens Fast, sorts Slow.
+// The playground runs the full data flow per engine: REAL consumer (DB) +
+// SYNTHETIC intent (generator) + REAL place (DB, incl. live promo rates, geo
+// and hours) → RM-CIP / LM-CIP / WW / P → lane scores → the engine's Fast
+// screen (top shortlist-n by the fast blend) → Slow sort → ONE ranked list.
+// No decorative UI: each engine outputs just its sorted list with the total.
 //
-// The playground samples real places (server-side random sample; the page
-// keys this component by the sample so Resample remounts it), and shows: the
-// four lane boards (ghost = Fast/RIPM order, solid = Slow/LIPM order), the
-// per-engine blended top lists driven by the mix, and the bench of per-place
-// inputs.
-//
-// An admin view has no consumer and no query, so RIPM/LIPM/distance/hours are
-// operator controls, not data. Posture seeds round-robin (the sample EF
-// doesn't return rate columns). Everything numeric derives from
-// @/lib/business/scores — no knob is restated here.
+// Consumer-data and intent-data are the SAME side (merged for matching);
+// consumer is the barely-mutable half, intent the per-query half. Memo
+// generates flexible prompts; Swipe/Map have a fixed prompt structure where
+// only the data slots change. RM/LM are deterministic heuristics — stand-ins
+// until embeddings + the judge EF exist (labeled on the page).
 
-type Row = {
-  id: string;
-  name: string;
-  sub: string;
-  /** Fast match — RIPM, the RAG cosine estimate. */
-  ripm: number;
-  /** Slow match — LIPM, the LLM judge verdict. */
-  lipm: number;
-  km: number;
-  opensIn: number;
-  openFor: number;
-  posture: StrategyId;
+type EngineRun = { profile: ConsumerProfile; intent: Intent };
+
+type ScoredRow = {
+  place: SamplePlace;
+  rm: number;
+  lm: number;
+  where: number;
+  when: number;
+  km: number | null;
+  hoursUnknown: boolean;
+  promos: number;
+  fastTotal: number;
+  slowTotal: number;
 };
 
-/** Spread the sample across the input space so the boards show contrast. */
-function seedRows(places: SamplePlace[]): Row[] {
-  const KM = [1, 4, 2, 25, 8, 0.5, 12, 3, 18, 6];
-  const OPENS = [0, 0, 0, 0, 2.5, 0, 1, 0, 3.5, 0];
-  const OPEN_FOR = [6, 6, 0.5, 6, 3, 2, 6, 1, 4, 6];
-  const RIPM_SEED = [85, 80, 55, 85, 40, 70, 60, 75, 45, 65];
-  // LIPM deviates from RIPM on purpose — a rerank that never reorders shows nothing.
-  const LIPM_DELTA = [8, -14, 20, -6, 12, -16, 6, -10, 15, -4];
-  const POSTURES = STRATEGIES.map((s) => s.id);
-
-  return places.map((p, i) => {
-    const bits = [p.categoryLabel, p.googleStars != null ? `${p.googleStars}★` : null]
-      .filter(Boolean)
-      .join(" · ");
-    const ripm = RIPM_SEED[i % RIPM_SEED.length];
-    return {
-      id: p.id,
-      name: p.name,
-      sub: bits || "—",
-      ripm,
-      lipm: Math.max(0, Math.min(MATCH_MAX, ripm + LIPM_DELTA[i % LIPM_DELTA.length])),
-      km: KM[i % KM.length],
-      opensIn: OPENS[i % OPENS.length],
-      openFor: OPEN_FOR[i % OPEN_FOR.length],
-      posture: POSTURES[i % POSTURES.length],
-    };
-  });
-}
-
-const LANE_SHORT: Record<LaneId, string> = {
-  "organic-now": "ON",
-  "organic-future": "OF",
-  "inorganic-now": "IN",
-  "inorganic-future": "IF",
-};
-
-const LANE_BADGE: Record<LaneId, string> = {
-  "organic-now": "bg-sky-500/15 text-sky-700",
-  "organic-future": "bg-sky-500/[0.07] text-sky-600",
-  "inorganic-now": "bg-pink-500/15 text-pink-700",
-  "inorganic-future": "bg-pink-500/[0.07] text-pink-600",
-};
-
-export function Simulator({ places }: { places: SamplePlace[] }) {
+export function Simulator({
+  consumers,
+  places,
+}: {
+  consumers: SampleConsumer[];
+  places: SamplePlace[];
+}) {
   const router = useRouter();
 
   // ── Hyperparameter state ─────────────────────────────────────────
@@ -111,90 +79,98 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
     ...PROMO_SCORE_BY_STRATEGY,
   });
 
-  // ── Playground state ─────────────────────────────────────────────
-  const [rows, setRows] = useState<Row[]>(() => seedRows(places));
-  const [nSamples, setNSamples] = useState(places.length);
+  // ── Playground state — one generated run per engine ──────────────
+  const [runs, setRuns] = useState<Partial<Record<EngineId, EngineRun>>>({});
+  const [seed, setSeed] = useState(1);
 
   const set = <K extends keyof ScoresConfig>(k: K, v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
-  const setRow = (i: number, patch: Partial<Row>) =>
-    setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const setMixCell = (e: EngineId, l: LaneId, v: number) =>
     setMix((m) => ({ ...m, [e]: { ...m[e], [l]: Math.max(0, Math.min(100, v)) } }));
 
-  const active = useMemo(() => rows.slice(0, nSamples), [rows, nSamples]);
-
-  const computed = useMemo(
-    () =>
-      active.map((r) => ({
-        row: r,
-        where: whereScore(r.km, cfg),
-        wait: waitScore(r.opensIn, cfg),
-        fit: fitScore(r.openFor, cfg),
-        when: whenScore(r.opensIn, r.openFor, cfg),
-        promos: promoVals[r.posture] ?? 0,
-      })),
-    [active, cfg, promoVals],
-  );
-
-  // Boards meter against a ceiling that follows the editable P values.
-  const maxPromo = Math.max(1, ...Object.values(promoVals));
-  const dynMax = (lane: Lane) =>
-    lane.lane === "inorganic" ? MATCH_MAX * maxPromo : MATCH_MAX;
-
-  // Fast (RIPM) is the ghost — the screen order. Slow (LIPM) is the solid —
-  // the final order. Rows sort by Slow.
-  const ranked = useMemo(() => {
-    const out = {} as Record<LaneId, { name: string; fast: number; slow: number }[]>;
-    for (const lane of LANES) {
-      out[lane.id] = computed
-        .map((c) => {
-          const base = { where: c.where, when: c.when, promos: c.promos };
-          return {
-            name: c.row.name,
-            fast: laneScore(lane, { ...base, match: c.row.ripm }),
-            slow: laneScore(lane, { ...base, match: c.row.lipm }),
-          };
-        })
-        .sort((a, b) => b.slow - a.slow);
-    }
-    return out;
-  }, [computed]);
-
-  // ── Engine preview — the mix made real ───────────────────────────
-  // Slots per lane via largest remainder, filled from each lane's Slow
-  // ranking, deduped across lanes (a place appears once, tagged by the lane
-  // that claimed it), leftovers refilled in mix order.
-  const SLOTS = 6;
-  const enginePreview = (e: EngineId) => {
-    const m = mix[e];
-    const exact = LANES.map((l) => ({ id: l.id, x: ((m[l.id] ?? 0) * SLOTS) / 100 }));
-    const q = Object.fromEntries(exact.map((en) => [en.id, Math.floor(en.x)])) as Record<
-      LaneId,
-      number
-    >;
-    let used = exact.reduce((s, en) => s + Math.floor(en.x), 0);
-    for (const en of [...exact].sort((a, b) => (b.x % 1) - (a.x % 1))) {
-      if (used >= SLOTS) break;
-      q[en.id]++;
-      used++;
-    }
-    const laneOrder = [...LANES].sort((a, b) => (m[b.id] ?? 0) - (m[a.id] ?? 0));
-    const taken = new Set<string>();
-    const out: { name: string; lane: LaneId; v: number }[] = [];
-    const pull = (laneId: LaneId, count: number) => {
-      for (const r of ranked[laneId]) {
-        if (out.length >= SLOTS || count <= 0) return;
-        if (taken.has(r.name) || r.slow <= 0) continue;
-        taken.add(r.name);
-        out.push({ name: r.name, lane: laneId, v: r.slow });
-        count--;
-      }
-    };
-    for (const lane of laneOrder) pull(lane.id, q[lane.id]);
-    for (const lane of laneOrder) if (out.length < SLOTS) pull(lane.id, SLOTS - out.length);
-    return out;
+  // Deterministic per click — the seed counter drives consumer pick and
+  // intent generation, so a run is reproducible (and the purity lint stays
+  // happy: no Math.random in render scope).
+  const generate = (engine: EngineId) => {
+    const s = seed;
+    setSeed((x) => x + 1);
+    const offset = ENGINE_POLICIES.findIndex((e) => e.id === engine);
+    const consumer =
+      consumers.length > 0 ? consumers[(s * 7 + offset) % consumers.length] : null;
+    const profile = buildConsumerProfile(consumer);
+    const intent = generateIntent(engine, profile, places, s * 13 + offset * 5);
+    setRuns((r) => ({ ...r, [engine]: { profile, intent } }));
   };
+
+  // Boards/lists meter against ceilings that follow the editable P values.
+  const maxPromo = Math.max(1, ...Object.values(promoVals));
+  const dynMax = (lane: Lane) => (lane.lane === "inorganic" ? MATCH_MAX * maxPromo : MATCH_MAX);
+
+  // Blend a place's four lane scores by the engine's mix → 0–100.
+  const blend = (engine: EngineId, laneVals: Record<LaneId, number>) =>
+    LANES.reduce(
+      (s, lane) => s + ((mix[engine][lane.id] ?? 0) / 100) * (laneVals[lane.id] / dynMax(lane)) * 100,
+      0,
+    );
+
+  // The full pipeline for one engine run — recomputed live as knobs move.
+  const results = useMemo(() => {
+    const out: Partial<Record<EngineId, { kept: ScoredRow[]; screened: number }>> = {};
+    for (const e of ENGINE_POLICIES) {
+      const run = runs[e.id];
+      if (!run) continue;
+      const ci = [...run.profile.tasteTokens, ...run.intent.tokens];
+      const cid = run.profile.consumer?.id ?? "synthetic";
+
+      const rows: ScoredRow[] = places.map((p) => {
+        const rm = rmCip(ci, p);
+        const lm = lmCip(ci, p, cid);
+        const km =
+          run.intent.lat != null && run.intent.lng != null && p.lat != null && p.lng != null
+            ? haversineKm(run.intent.lat, run.intent.lng, Number(p.lat), Number(p.lng))
+            : null;
+        const win = openWindow(p.hours, run.intent.day, run.intent.hour);
+        const where = whereScore(km, cfg);
+        const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
+        const promos =
+          promoVals[
+            strategyForPlace({
+              welcome_free_rate: p.welcome_free_rate,
+              welcome_premium_rate: p.welcome_premium_rate,
+              free_rate: p.free_rate,
+              premium_rate: p.premium_rate,
+            }) as StrategyId
+          ] ?? 0;
+
+        const laneVals = (match: number) =>
+          Object.fromEntries(
+            LANES.map((lane) => [lane.id, laneScore(lane, { match, where, when, promos })]),
+          ) as Record<LaneId, number>;
+
+        return {
+          place: p,
+          rm,
+          lm,
+          where,
+          when,
+          km,
+          hoursUnknown: win.unknown,
+          promos,
+          fastTotal: blend(e.id, laneVals(rm)),
+          slowTotal: blend(e.id, laneVals(lm)),
+        };
+      });
+
+      // Fast screens (top shortlist-n by the fast blend) → Slow sorts.
+      const screened = [...rows].sort((a, b) => b.fastTotal - a.fastTotal);
+      const kept = screened
+        .slice(0, retrieval.shortlistN)
+        .sort((a, b) => b.slowTotal - a.slowTotal);
+      out[e.id] = { kept, screened: Math.max(0, rows.length - retrieval.shortlistN) };
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runs, places, cfg, mix, promoVals, retrieval]);
 
   const mixSum = (e: EngineId) => LANES.reduce((s, l) => s + (mix[e][l.id] ?? 0), 0);
 
@@ -259,9 +235,7 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       <span className="text-muted-foreground font-mono text-[11px]">{e.policy}</span>
-                      <span className="text-muted-foreground/70 ml-2 text-[10px]">
-                        intent: {e.intent}
-                      </span>
+                      <span className="text-muted-foreground/70 ml-2 text-[10px]">intent: {e.intent}</span>
                     </td>
                   </tr>
                 );
@@ -270,9 +244,8 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
           </table>
         </div>
         <p className="text-muted-foreground mt-1.5 text-[11px] leading-snug">
-          ON organic·now · OF organic·future · IN inorganic·now · IF
-          inorganic·future — the share of each engine&apos;s results every lane
-          supplies. Rows should sum to 100.
+          ON organic·now · OF organic·future · IN inorganic·now · IF inorganic·future — the share of
+          each engine&apos;s results every lane supplies. Rows should sum to 100.
         </p>
 
         {/* RIPD · LIPD · WW · P */}
@@ -290,7 +263,7 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
                 onChange={(v) => setRetrieval((r) => ({ ...r, recallTopK: v }))}
                 hint="places pgvector returns per query"
               />
-              <Chip label="Embedding" value="1,536 dims" hint="profile text → vector" />
+              <Chip label="RM-CIP here" value="token overlap" hint="stand-in until embeddings exist" />
             </div>
           </div>
           <div className="border-border/60 rounded-xl border p-4">
@@ -299,14 +272,14 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
               <Slider
                 label="Shortlist n"
                 value={String(retrieval.shortlistN)}
-                min={5}
+                min={1}
                 max={50}
-                step={5}
+                step={1}
                 v={retrieval.shortlistN}
                 onChange={(v) => setRetrieval((r) => ({ ...r, shortlistN: v }))}
-                hint="recalled places the judge re-scores"
+                hint="Fast keeps this many for the Slow sort"
               />
-              <Chip label="Judge" value="1 call" hint="per query, on the shortlist" />
+              <Chip label="LM-CIP here" value="RM + judgments" hint="stand-in until the judge EF exists" />
             </div>
           </div>
           <div className="border-border/60 rounded-xl border p-4">
@@ -362,10 +335,7 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
             <SubHead>P · promos</SubHead>
             <div className="mt-3 grid grid-cols-4 gap-2">
               {STRATEGIES.map((s) => (
-                <div
-                  key={s.id}
-                  className="bg-muted/60 border-border/60 rounded-xl border px-2 py-2.5 text-center"
-                >
+                <div key={s.id} className="bg-muted/60 border-border/60 rounded-xl border px-2 py-2.5 text-center">
                   <p className="text-muted-foreground text-[11px]">{s.name}</p>
                   <input
                     type="number"
@@ -386,213 +356,131 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
               ))}
             </div>
             <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
-              0 = not in the paid lane. Linear by default — the paid lane only
-              ranks against itself, so only the spread matters.
+              0 = not in the paid lane. Applied to each sampled place via its REAL rates.
             </p>
           </div>
         </div>
       </div>
 
-      {/* ══ PLAYGROUND ════════════════════════════════════════════ */}
+      {/* ══ PLAYGROUND — three engines, just the lists ════════════ */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <GroupHead>Playground · {places.length} random places from the catalog</GroupHead>
-          <div className="flex items-center gap-3">
-            <label className="text-muted-foreground flex items-center gap-2 text-[12px]">
-              samples
-              <input
-                type="range"
-                min={1}
-                max={places.length}
-                step={1}
-                value={nSamples}
-                onChange={(e) => setNSamples(Number(e.target.value))}
-                aria-label="Number of samples"
-                className="accent-primary w-28"
-              />
-              <span className="font-mono text-[12px] font-semibold tabular-nums">{nSamples}</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => router.refresh()}
-              className="border-border/70 hover:bg-muted rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]"
-            >
-              Resample
-            </button>
-          </div>
+          <GroupHead>
+            Playground · {consumers.length} real consumer{consumers.length === 1 ? "" : "s"} ·{" "}
+            {places.length} real places
+          </GroupHead>
+          <button
+            type="button"
+            onClick={() => router.refresh()}
+            className="border-border/70 hover:bg-muted rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]"
+          >
+            Resample from DB
+          </button>
         </div>
-
-        {/* The four lane boards */}
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {LANES.map((lane) => (
-            <LaneBoard key={lane.id} lane={lane} max={dynMax(lane)} rows={ranked[lane.id]} />
-          ))}
-        </div>
-        <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
-          Ghost bar = Fast (RIPM) — the screen order. Solid = Slow (LIPM) — the
-          final order; rows sort by it. The gap is what the LLM judge changed.
+        <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+          Real consumer (DB) + synthetic intent (generator) + real place (DB: rates, geo, hours) →
+          RM-CIP · LM-CIP · WW · P → Fast screens top {retrieval.shortlistN} → Slow sorts. Lists
+          recompute live as hyperparameters move.
+          {consumers.length === 0 ? " No consumers in the DB — runs use a labeled synthetic consumer." : ""}
         </p>
 
-        {/* Engines — the mix made real */}
-        <div className="mt-5">
-          <GroupHead>Engines · top {SLOTS} each, blended by the lane mix</GroupHead>
-          <div className="mt-2 grid gap-3 lg:grid-cols-3">
-            {ENGINE_POLICIES.map((e) => (
-              <div key={e.id} className="border-border/60 rounded-xl border p-3.5">
-                <p className="text-[13px] font-semibold">{e.engine}</p>
-                <p className="text-muted-foreground mb-2 font-mono text-[10px]">{e.policy}</p>
-                <div className="flex flex-col gap-1">
-                  {enginePreview(e.id).map((r, k) => (
-                    <div key={r.name} className="flex items-center gap-2">
-                      <span className="text-muted-foreground w-3 shrink-0 font-mono text-[10px] tabular-nums">
-                        {k + 1}
-                      </span>
-                      <span
-                        className={
-                          "w-7 shrink-0 rounded px-1 text-center font-mono text-[9px] font-semibold " +
-                          LANE_BADGE[r.lane]
-                        }
-                      >
-                        {LANE_SHORT[r.lane]}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-[11.5px]" title={r.name}>
-                        {r.name}
-                      </span>
-                      <span className="text-muted-foreground shrink-0 font-mono text-[10px] tabular-nums">
-                        {Math.round(r.v)}
-                      </span>
-                    </div>
-                  ))}
+        <div className="mt-3 grid gap-3 xl:grid-cols-3">
+          {ENGINE_POLICIES.map((e) => {
+            const run = runs[e.id];
+            const res = results[e.id];
+            return (
+              <div key={e.id} className="border-border/60 rounded-xl border p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[13px] font-semibold">{e.engine}</p>
+                    <p className="text-muted-foreground font-mono text-[10px]">
+                      {e.id === "memo" ? "flexible intent · " : "fixed prompt structure · "}
+                      {e.policy}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => generate(e.id)}
+                    className="bg-pink-gradient shadow-save rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
+                  >
+                    Generate
+                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* The bench */}
-        <div className="mt-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <GroupHead>Bench · per-place inputs</GroupHead>
-            <p className="text-muted-foreground font-mono text-[11px]">
-              time resolves to 30-min blocks
-            </p>
-          </div>
-          <div className="border-border/60 mt-2 overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-[960px] border-collapse">
-              <thead>
-                <tr>
-                  {["Place", "RIPM · fast", "LIPM · slow", "Distance", "Opens in", "Open for", "Posture", "where", "when"].map(
-                    (h, i) => (
-                      <th
-                        key={h}
-                        className={
-                          "text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-[10px] font-semibold tracking-[0.1em] uppercase " +
-                          (i >= 7 ? "text-right" : "text-left")
-                        }
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {computed.map((c, i) => (
-                  <tr key={c.row.id} className="border-border/60 border-b last:border-0">
-                    <td className="max-w-[180px] px-3 py-2.5">
-                      <p className="truncate text-[13px] font-semibold">{c.row.name}</p>
-                      <p className="text-muted-foreground truncate font-mono text-[10px]">
-                        {c.row.sub}
+                {!run || !res ? (
+                  <p className="text-muted-foreground mt-4 text-[12px]">
+                    Generate to run: pick a consumer, synthesize an intent, score every place.
+                  </p>
+                ) : (
+                  <>
+                    {/* The C and the I of CIP */}
+                    <div className="bg-muted/50 border-border/60 mt-3 rounded-lg border px-3 py-2">
+                      <p className="font-mono text-[10.5px]">
+                        <span className="text-muted-foreground">C · </span>
+                        {run.profile.consumer?.label ?? "—"} · {run.profile.consumer?.class_key ?? "synthetic"}
+                        {run.profile.synthetic ? (
+                          <span className="text-amber-700"> · taste SYNTH</span>
+                        ) : null}
+                        <span className="text-muted-foreground">
+                          {" "}
+                          [{run.profile.tasteTokens.slice(0, 5).join(", ")}]
+                        </span>
                       </p>
-                    </td>
-                    <Cell>
-                      <Mini
-                        min={0}
-                        max={MATCH_MAX}
-                        step={1}
-                        v={c.row.ripm}
-                        onChange={(v) => setRow(i, { ripm: v })}
-                        label={`RIPM for ${c.row.name}`}
-                        read={String(c.row.ripm)}
-                      />
-                    </Cell>
-                    <Cell>
-                      <Mini
-                        min={0}
-                        max={MATCH_MAX}
-                        step={1}
-                        v={c.row.lipm}
-                        onChange={(v) => setRow(i, { lipm: v })}
-                        label={`LIPM for ${c.row.name}`}
-                        read={String(c.row.lipm)}
-                        warn={Math.abs(c.row.lipm - c.row.ripm) >= 15}
-                      />
-                    </Cell>
-                    <Cell>
-                      <Mini
-                        min={0}
-                        max={40}
-                        step={0.5}
-                        v={c.row.km}
-                        onChange={(v) => setRow(i, { km: v })}
-                        label={`Distance to ${c.row.name}`}
-                        read={`${c.row.km} km`}
-                      />
-                    </Cell>
-                    <Cell>
-                      <Mini
-                        min={0}
-                        max={6}
-                        step={0.5}
-                        v={c.row.opensIn}
-                        onChange={(v) => setRow(i, { opensIn: v })}
-                        label={`Opens in, for ${c.row.name}`}
-                        read={c.row.opensIn === 0 ? "open now" : `+${quantizeH(c.row.opensIn)} h`}
-                        warn={c.row.opensIn > 0}
-                      />
-                    </Cell>
-                    <Cell>
-                      <Mini
-                        min={0}
-                        max={6}
-                        step={0.5}
-                        v={c.row.openFor}
-                        onChange={(v) => setRow(i, { openFor: v })}
-                        label={`Open for, at ${c.row.name}`}
-                        read={c.row.openFor === 0 ? "closed" : `${quantizeH(c.row.openFor)} h`}
-                        warn={c.fit < 1}
-                      />
-                    </Cell>
-                    <td className="px-3 py-2.5">
-                      <select
-                        value={c.row.posture}
-                        onChange={(e) => setRow(i, { posture: e.target.value as StrategyId })}
-                        aria-label={`Posture for ${c.row.name}`}
-                        className="border-border/70 bg-card w-full rounded-lg border px-2 py-1.5 font-mono text-[11px]"
-                      >
-                        {STRATEGIES.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name} · {promoVals[s.id]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-[13px] tabular-nums">
-                      {c.where.toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-[13px] font-semibold tabular-nums">
-                      {c.when.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <p className="mt-1 font-mono text-[10.5px]">
+                        <span className="text-muted-foreground">I · </span>
+                        {run.intent.text}
+                      </p>
+                    </div>
+
+                    {/* Just the list */}
+                    <div className="mt-2.5 flex flex-col">
+                      {res.kept.map((r, k) => (
+                        <div
+                          key={r.place.id}
+                          className="border-border/40 flex items-baseline gap-2 border-b py-1.5 last:border-0"
+                        >
+                          <span className="text-muted-foreground w-4 shrink-0 font-mono text-[11px] tabular-nums">
+                            {k + 1}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium" title={r.place.name}>
+                            {r.place.name}
+                          </span>
+                          <span className="font-mono text-[13px] font-semibold tabular-nums">
+                            {r.slowTotal.toFixed(1)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-muted-foreground mt-1.5 font-mono text-[9.5px] leading-relaxed">
+                      {res.kept
+                        .map(
+                          (r, k) =>
+                            `${k + 1}· LM ${r.lm} RM ${r.rm} WW ${(r.where * r.when).toFixed(2)}${r.hoursUnknown ? "?" : ""} P ${r.promos}${r.km != null ? ` ${Math.round(r.km)}km` : ""}`,
+                        )
+                        .join("   ")}
+                    </p>
+                    {res.screened > 0 ? (
+                      <p className="text-muted-foreground mt-1 text-[10px]">
+                        Fast screened out {res.screened} below the top {retrieval.shortlistN}.
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
+
+const LANE_SHORT: Record<LaneId, string> = {
+  "organic-now": "ON",
+  "organic-future": "OF",
+  "inorganic-now": "IN",
+  "inorganic-future": "IF",
+};
 
 // ── Local bits ─────────────────────────────────────────────────────────
 
@@ -616,10 +504,6 @@ function Chip({ label, value, hint }: { label: string; value: string; hint: stri
       <p className="text-muted-foreground mt-1 font-mono text-[10px] leading-snug">{hint}</p>
     </div>
   );
-}
-
-function Cell({ children }: { children: React.ReactNode }) {
-  return <td className="w-[96px] px-3 py-2.5">{children}</td>;
 }
 
 function Slider({
@@ -658,102 +542,6 @@ function Slider({
         className="accent-primary mt-2 w-full"
       />
       <p className="text-muted-foreground mt-1 font-mono text-[10px] leading-snug">{hint}</p>
-    </div>
-  );
-}
-
-function Mini({
-  min,
-  max,
-  step,
-  v,
-  onChange,
-  label,
-  read,
-  warn,
-}: {
-  min: number;
-  max: number;
-  step: number;
-  v: number;
-  onChange: (v: number) => void;
-  label: string;
-  read: string;
-  warn?: boolean;
-}) {
-  return (
-    <>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={v}
-        onChange={(e) => onChange(Number(e.target.value))}
-        aria-label={label}
-        className="accent-primary w-full"
-      />
-      <p
-        className={
-          "mt-1 text-center font-mono text-[10px] tabular-nums " +
-          (warn ? "text-amber-700" : "text-muted-foreground")
-        }
-      >
-        {read}
-      </p>
-    </>
-  );
-}
-
-function LaneBoard({
-  lane,
-  max,
-  rows,
-}: {
-  lane: Lane;
-  max: number;
-  rows: { name: string; fast: number; slow: number }[];
-}) {
-  const organic = lane.lane === "organic";
-  const tint = organic
-    ? "border-sky-500/30 bg-sky-500/[0.04]"
-    : "border-pink-500/30 bg-pink-500/[0.04]";
-  const head = organic ? "text-sky-700" : "text-pink-700";
-  const bar = organic ? "bg-sky-400" : "bg-pink-400";
-  const pct = (v: number) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
-  return (
-    <div className={"rounded-xl border p-3.5 " + tint}>
-      <p className={"text-[10px] font-bold tracking-[0.14em] uppercase " + head}>
-        {lane.lane} · {lane.mode}
-      </p>
-      <p className="text-muted-foreground mt-0.5 mb-2.5 font-mono text-[10px]">
-        {laneFormula(lane, "RIPM")} ghost → {laneFormula(lane, "LIPM")} solid · 0–{max}
-      </p>
-      <div className="flex flex-col gap-1">
-        {rows.map((r, k) => (
-          <div key={r.name} className="flex items-center gap-2">
-            <span className="text-muted-foreground w-3 shrink-0 font-mono text-[10px] tabular-nums">
-              {k + 1}
-            </span>
-            <span className="w-[104px] shrink-0 truncate text-[11px]" title={r.name}>
-              {r.name}
-            </span>
-            <span className="bg-card relative h-1.5 flex-1 overflow-hidden rounded-full">
-              <span
-                className="bg-muted-foreground/25 absolute inset-y-0 left-0 rounded-full transition-[width]"
-                style={{ width: pct(r.fast) }}
-              />
-              <span
-                className={"absolute inset-y-0 left-0 rounded-full transition-[width] " + bar}
-                style={{ width: pct(r.slow) }}
-              />
-            </span>
-            <span className="text-muted-foreground w-8 shrink-0 text-right font-mono text-[10px] tabular-nums">
-              {r.slow < 10 ? r.slow.toFixed(1) : Math.round(r.slow)}
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

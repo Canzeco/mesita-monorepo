@@ -407,6 +407,9 @@ verify_jwt = true
 
 # Super-admin free-text place search (name / slug / id) for the admin
 # console's Manage Single Unit place picker.
+[functions.admin-web-get-scoring-sample]
+verify_jwt = true
+
 [functions.admin-web-search-places]
 verify_jwt = true
 
