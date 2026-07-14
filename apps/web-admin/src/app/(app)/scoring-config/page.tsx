@@ -7,7 +7,6 @@ import {
   MATCH_TIERS,
   TIME_BLOCK_H,
 } from "@/lib/business/scores";
-import { PROMO_SCORE_BY_STRATEGY, STRATEGIES } from "@/lib/business/strategies";
 import { sampleplaces, SAMPLE_MAX } from "./actions";
 import { Simulator } from "./Simulator";
 
@@ -49,64 +48,32 @@ export default async function ScoringConfigPage() {
         </span>
       </div>
 
-      {/* ── The four lanes ──────────────────────────────────────────── */}
-      <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-        {LANES.map((lane) => {
-          const organic = lane.lane === "organic";
-          return (
-            <div
-              key={lane.id}
-              className={
-                "rounded-xl border border-l-[3px] px-4 py-3 " +
-                (organic
-                  ? "border-border/60 border-l-sky-500 bg-sky-500/[0.03]"
-                  : "border-border/60 border-l-pink-500 bg-pink-500/[0.03]")
-              }
-            >
-              <p
-                className={
-                  "text-[10px] font-bold tracking-[0.13em] uppercase " +
-                  (organic ? "text-sky-700" : "text-pink-700")
-                }
-              >
-                {lane.lane} · {lane.mode}
-              </p>
-              <p className="mt-1.5 font-mono text-[15px] tracking-tight">
-                {laneFormula(lane, "RIPM")}
-                <span className="text-muted-foreground"> → </span>
-                {laneFormula(lane, "LIPM")}
-              </p>
-              <p className="text-muted-foreground mt-1 font-mono text-[10px]">
-                fast → slow · 0–{lane.max}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      {/* ── Hyperparameters + playground ────────────────────────────── */}
+      {n === 0 ? (
+        <EmptySample error={sample.ok ? null : sample.error} />
+      ) : (
+        <Simulator key={places.map((p) => p.id).join(",")} places={places} />
+      )}
 
-      {/* ── Definitions ─────────────────────────────────────────────── */}
-      <div className="text-muted-foreground mt-3 flex flex-col gap-1 font-mono text-[11px] leading-relaxed">
+      {/* ── Definitions footer ──────────────────────────────────────── */}
+      <div className="text-muted-foreground border-border/60 mt-6 flex flex-col gap-1 border-t pt-3 font-mono text-[11px] leading-relaxed">
+        <p>
+          lanes: {LANES.map((l) => `${l.lane} ${l.mode} = ${laneFormula(l, "RIPM")} | ${laneFormula(l, "LIPM")}`).join("  ·  ")}
+        </p>
         <p>
           {MATCH_TIERS.map((t) => `${t.term} = ${t.detail}`).join("  ·  ")}
           {"  ·  both 0–"}
           {MATCH_MAX}
         </p>
         <p>
-          WW = where × when · where = 1/(1+(km/{M.distanceHalfKm})^
-          {M.distanceExp}) · wait = 1/(1+(h/{M.waitHalfH})^{M.waitExp}) · fit =
-          min(1, h/{M.sessionH}) · {TIME_BLOCK_H * 60}-min blocks
-        </p>
-        <p>
-          P = {STRATEGIES.map((s) => `${PROMO_SCORE_BY_STRATEGY[s.id]} ${s.name}`).join(" · ")}
+          WW = where × when · where = 1/(1+(km/d₀)^{M.distanceExp}) · wait =
+          1/(1+(h/a½)^k) · fit = min(1, h/L) · {TIME_BLOCK_H * 60}-min blocks
         </p>
         <p>
           intent/place data carry where/when as TEXT only — WW is the only
           numeric where/when, and it multiplies the match, never feeds it
         </p>
       </div>
-
-      {/* ── The panel ───────────────────────────────────────────────── */}
-      {n === 0 ? <EmptySample error={sample.ok ? null : sample.error} /> : <Simulator places={places} />}
     </section>
   );
 }
