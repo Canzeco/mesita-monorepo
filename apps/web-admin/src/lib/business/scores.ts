@@ -117,10 +117,30 @@ export type ScoresConfig = {
   sessionH: number;
 };
 
+// WW defaults, argued from what Mesita IS — not from what looked right on a
+// 5-row catalog:
+//
+//   distanceHalfKm 6 — GDL and MTY are CAR cities. A normal Friday span (San
+//     Pedro → Centro ≈ 8 km) must survive scoring: at d₀=6 it keeps 0.39, a
+//     20 km cross-town destination keeps 0.13 (visible, demoted), 40 km keeps
+//     0.04 (inter-city, dead — correct). The old 3 km was a walkable-zone
+//     number; the walkable case is what the Map viewport already handles.
+//   waitHalfH 1.5 — nightlife arithmetic. Clubs open at 23:00; the consumer
+//     browsing at 21:00 is the CORE user, not an edge case. At 1.5 h a 2 h
+//     wait keeps 0.33 (alive, demoted); the old 1.0 h left it at 0.15 —
+//     hiding every club during the prime browsing window.
+//   waitExp 2.5 — the plateau-then-cliff shape: a 30 min wait is ≈ free
+//     (0.94), the cliff lands where plans actually die. 1 has no plateau; 5
+//     is a wall.
+//   sessionH 1.5 — the archetypal Mesita session is DINNER: the discount
+//     mechanic centres on a sit-down bill (first MX$500). Coffee/drink/night
+//     -out become per-category L when categories drive it.
+//   distanceExp 1.6 — the empirical human-mobility exponent; a fact more
+//     than a knob.
 export const DEFAULT_SCORES_CONFIG: ScoresConfig = {
-  distanceHalfKm: 3,
+  distanceHalfKm: 6,
   distanceExp: 1.6,
-  waitHalfH: 1,
+  waitHalfH: 1.5,
   waitExp: 2.5,
   sessionH: 1.5,
 };
@@ -230,18 +250,48 @@ export const ENGINE_POLICIES: readonly EnginePolicy[] = [
 /**
  * Engine lane mix — what share of an engine's results each lane supplies.
  * THE interleave knob (previously "TBD"). Percentages per engine sum to 100.
- * Every number is a belief, not a fitted value.
+ *
+ * Each row is the product of TWO beliefs, both derived from Mesita's value
+ * proposition rather than fitted (there is nothing to fit against):
+ *
+ * PAID SHARE — by trust-sensitivity of the surface. "Visibility follows
+ * generosity" must materialise as real slots, but "money can't buy
+ * irrelevance" caps how many:
+ *   Swipe 30% — the deck is natural promoted inventory (feed convention),
+ *     and a Mesita "ad" is consumer-positive: the promoted card carries the
+ *     BIGGER discount.
+ *   Map 20% — promoted pins are an accepted map convention, but spatial
+ *     browsing is task-driven; lighter touch.
+ *   Memo 10% — a concierge answering with paid results is the most
+ *     trust-sensitive surface on the product. 10% keeps the membership
+ *     promise honest without polluting answers.
+ *
+ * NOW SHARE — by the surface's temporal intent (the runtime mode still
+ * follows the actual query; this is the prior):
+ *   Swipe 80/20 — the deck is "tonight", with a save-for-later tail.
+ *   Map 80/20 — mostly "what's around me", some trip planning.
+ *   Memo 50/50 — questions split between "tonight" and "Saturday /
+ *     birthday / next week".
  */
 export const DEFAULT_ENGINE_MIX: Record<EngineId, Record<LaneId, number>> = {
-  swipe: { "organic-now": 50, "organic-future": 10, "inorganic-now": 30, "inorganic-future": 10 },
-  map:   { "organic-now": 55, "organic-future": 10, "inorganic-now": 25, "inorganic-future": 10 },
-  memo:  { "organic-now": 45, "organic-future": 35, "inorganic-now": 10, "inorganic-future": 10 },
+  swipe: { "organic-now": 55, "organic-future": 15, "inorganic-now": 25, "inorganic-future": 5 },
+  map:   { "organic-now": 65, "organic-future": 15, "inorganic-now": 15, "inorganic-future": 5 },
+  memo:  { "organic-now": 45, "organic-future": 45, "inorganic-now": 5,  "inorganic-future": 5 },
 };
 
 /**
  * Retrieval knobs — RIPD (RAG intent-place data) and LIPD (LLM intent-place
  * data) sides of the match. The playground doesn't retrieve, so these bind
  * only when the engines go live; they live here so the page derives them.
+ *
+ * Defaults, argued:
+ *   recallTopK 50 — recall must give the judge headroom (≥2× shortlist, the
+ *     retrieve-then-rerank rule of thumb) and cover ~10–25% of a city-scale
+ *     catalog (a launch city ≈ 200–500 places). 50 = 2.5× the shortlist.
+ *   shortlistN 20 — one LLM call must hold every candidate + profile in a
+ *     single prompt with bounded latency (~1–2 s) and per-query cost; the
+ *     deck needs ~10 cards plus headroom for the 4-lane mix and dedupe. 20
+ *     is the smallest n that never starves the mix.
  */
 export const DEFAULT_RETRIEVAL = {
   /** RIPD — how many places pgvector recall returns. */
@@ -249,6 +299,86 @@ export const DEFAULT_RETRIEVAL = {
   /** LIPD — how many recalled places the LLM judge re-scores. */
   shortlistN: 20,
 };
+
+// ── Persisted settings (app_settings.scoring_config) ────────────────────
+// The Params tab saves ONE versioned blob. NULL in the DB means "following
+// code defaults" — so default improvements propagate until someone saves an
+// override. Reset-to-defaults loads these values into the form; Save writes
+// the blob.
+
+export type ScoringSettings = {
+  v: 1;
+  mix: Record<EngineId, Record<LaneId, number>>;
+  retrieval: { recallTopK: number; shortlistN: number };
+  ww: Pick<ScoresConfig, "distanceHalfKm" | "waitHalfH" | "waitExp" | "sessionH">;
+  promos: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
+};
+
+export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
+  v: 1,
+  mix: DEFAULT_ENGINE_MIX,
+  retrieval: DEFAULT_RETRIEVAL,
+  ww: {
+    distanceHalfKm: DEFAULT_SCORES_CONFIG.distanceHalfKm,
+    waitHalfH: DEFAULT_SCORES_CONFIG.waitHalfH,
+    waitExp: DEFAULT_SCORES_CONFIG.waitExp,
+    sessionH: DEFAULT_SCORES_CONFIG.sessionH,
+  },
+  // Linear so relevance can beat money inside the paid lane; Zero = 0 because
+  // there is nothing to promote (no discount) — the membership buys listing +
+  // tools, generosity buys placement.
+  promos: { zero: 0, conservative: 1, aggressive: 2, dominant: 3 },
+};
+
+function num(v: unknown, fallback: number, lo: number, hi: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
+}
+
+/**
+ * Coerce a raw jsonb blob (or null) into a valid ScoringSettings — unknown
+ * keys dropped, missing/malformed values fall back to defaults, everything
+ * clamped to sane ranges. Null/garbage → pure defaults.
+ */
+export function coerceScoringSettings(raw: unknown): ScoringSettings {
+  const d = DEFAULT_SCORING_SETTINGS;
+  if (!raw || typeof raw !== "object") return d;
+  const r = raw as Record<string, unknown>;
+
+  const mixIn = (r.mix ?? {}) as Record<string, Record<string, unknown>>;
+  const mix = Object.fromEntries(
+    (Object.keys(d.mix) as EngineId[]).map((e) => [
+      e,
+      Object.fromEntries(
+        LANES.map((l) => [l.id, num(mixIn?.[e]?.[l.id], d.mix[e][l.id], 0, 100)]),
+      ),
+    ]),
+  ) as ScoringSettings["mix"];
+
+  const ret = (r.retrieval ?? {}) as Record<string, unknown>;
+  const ww = (r.ww ?? {}) as Record<string, unknown>;
+  const promos = (r.promos ?? {}) as Record<string, unknown>;
+
+  return {
+    v: 1,
+    mix,
+    retrieval: {
+      recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
+      shortlistN: num(ret.shortlistN, d.retrieval.shortlistN, 1, 50),
+    },
+    ww: {
+      distanceHalfKm: num(ww.distanceHalfKm, d.ww.distanceHalfKm, 1, 20),
+      waitHalfH: num(ww.waitHalfH, d.ww.waitHalfH, 0.5, 4),
+      waitExp: num(ww.waitExp, d.ww.waitExp, 1, 5),
+      sessionH: num(ww.sessionH, d.ww.sessionH, 0.5, 4),
+    },
+    promos: {
+      zero: num(promos.zero, d.promos.zero, 0, 9),
+      conservative: num(promos.conservative, d.promos.conservative, 0, 9),
+      aggressive: num(promos.aggressive, d.promos.aggressive, 0, 9),
+      dominant: num(promos.dominant, d.promos.dominant, 0, 9),
+    },
+  };
+}
 
 export type LaneInputs = {
   /** 0–100 — RIPM or LIPM, whichever tier the caller is scoring. */
