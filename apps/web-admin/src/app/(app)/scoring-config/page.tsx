@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 // Scoring Config — the GLOBAL side of scoring. Two cards:
 //
 //   Model     FOUR LANES × TWO TIERS — {organic, inorganic} × {now, future},
-//             each at Fast (RM) and Slow (LM); engines are pipeline policies.
+//             each at Fast (RIPM) and Slow (LIPM); engines are pipeline policies.
 //             Plus a live simulator over a random sample of real places.
 //   Semantic  ALL matching is semantic (RAG/LLM) — there is no binary tag
 //             search. What gets embedded, the two AI stages.
@@ -42,8 +42,8 @@ const ON_WRITE_STAGE = [
 
 const PER_QUERY_STAGE = [
   { step: "1", label: "Embed", detail: "the intent — prebuilt taste, or synthesized from the question" },
-  { step: "2", label: "Recall", detail: "pgvector cosine top-K — RM comes free with recall" },
-  { step: "3", label: "Judge", detail: `LM on the shortlist only → 0–${MATCH_MAX}` },
+  { step: "2", label: "Recall", detail: "pgvector cosine top-K — RIPM comes free with recall" },
+  { step: "3", label: "Judge", detail: `LIPM on the shortlist only → 0–${MATCH_MAX}` },
   { step: "4", label: "Rank", detail: "the lane the engine's policy asks for" },
 ];
 
@@ -87,8 +87,8 @@ export default async function ScoringConfigPage() {
                   <td className="text-muted-foreground px-3 py-2">
                     {lane.lane} {lane.mode}
                   </td>
-                  <td className="px-3 py-2">{laneFormula(lane, "RM")}</td>
-                  <td className="px-3 py-2 font-semibold">{laneFormula(lane, "LM")}</td>
+                  <td className="px-3 py-2">{laneFormula(lane, "RIPM")}</td>
+                  <td className="px-3 py-2 font-semibold">{laneFormula(lane, "LIPM")}</td>
                   <td className="text-muted-foreground px-3 py-2 text-right">0–{lane.max}</td>
                 </tr>
               ))}
@@ -102,7 +102,7 @@ export default async function ScoringConfigPage() {
           <p>P&nbsp; = {STRATEGIES.map((s) => `${PROMO_SCORE_BY_STRATEGY[s.id]} ${s.name}`).join(" · ")}</p>
         </div>
         <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-          The Slow column is the Fast column with LM swapped in for RM — nothing
+          The Slow column is the Fast column with LIPM swapped in for RIPM — nothing
           else moves, so the tiers only disagree where the estimators disagree.
           Each lane sorts only against itself; the inorganic lane <em>is</em>{" "}
           the organic lane × promos. Mode is a property of the query, not the
@@ -120,7 +120,18 @@ export default async function ScoringConfigPage() {
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
               Both 0–{MATCH_MAX}, and 0 is reachable — zero relevance zeroes
               every lane at either tier; that gate is the whole reason match
-              multiplies instead of adds. RM estimates, LM settles.
+              multiplies instead of adds. RIPM estimates, LIPM settles.
+            </p>
+            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+              <b>Text, not numbers:</b> intent-data and place-data both carry
+              where/when as <em>text</em> — an address, hours as written, a
+              question saying &quot;near Providencia tonight&quot; — so
+              RIPM/LIPM may pick up place- and time-flavor implicitly.
+              That&apos;s redundant with WW, and it&apos;s fine. What the match
+              tiers never receive is computed numbers: no distance-km, no
+              hours-until-open are precomputed into their context. WW is the
+              only function that computes where and when numerically — and it
+              multiplies RIPM or LIPM, it never feeds them.
             </p>
           </div>
           <div>
@@ -191,7 +202,9 @@ export default async function ScoringConfigPage() {
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
               The Enricher writes the description and tags; the template folds
               them into one passage per place, re-embedded whenever the profile
-              changes.
+              changes. Zone, city and hours appear here only as <em>text</em> —
+              numeric distance and hours-ahead live in WW, never in the match
+              context.
             </p>
           </div>
 
@@ -227,7 +240,7 @@ export default async function ScoringConfigPage() {
           </div>
           <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
             Expensive work lives in stage 1 and is cached as numbers; stage 2
-            makes at most one model call — the LM judge on the recalled
+            makes at most one model call — the LIPM judge on the recalled
             shortlist, and only when the engine&apos;s policy climbs that far.
             Which engines climb lives on the Model card above.
           </p>

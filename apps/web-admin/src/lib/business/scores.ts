@@ -3,26 +3,37 @@
 // ONE MATCH, TWO ESTIMATORS. Match is always the same question — how well
 // does this intent fit this place — asked at two fidelities:
 //
-//   RM  RAG-match  cosine(intent embedding, place embedding). Cheap; runs
-//                  over the whole catalog in pgvector.
-//   LM  LLM-match  a judge reads intent + place profile and scores it.
-//                  Expensive; only ever runs on a shortlist.
+//   RIPM  RAG intent-place match  cosine(intent embedding, place embedding).
+//                                 Cheap; runs over the whole catalog in
+//                                 pgvector.
+//   LIPM  LLM intent-place match  a judge reads intent + place profile and
+//                                 scores it. Expensive; shortlist only.
 //
-// FOUR LANES × TWO TIERS. The Slow column is the Fast column with LM swapped
-// in for RM — nothing else moves. That symmetry is deliberate: fast and slow
-// only disagree where the estimators disagree, which is exactly the
+// FOUR LANES × TWO TIERS. The Slow column is the Fast column with LIPM
+// swapped in for RIPM — nothing else moves. That symmetry is deliberate: fast
+// and slow only disagree where the estimators disagree, which is exactly the
 // disagreement the Swipe rerank exists to fix.
 //
-//   lane              Fast (RAG)     Slow (LLM)
-//   organic   now     RM·WW          LM·WW
-//   organic   future  RM             LM
-//   inorganic now     RM·WW·P        LM·WW·P
-//   inorganic future  RM·P           LM·P
+//   lane              Fast (RAG)      Slow (LLM)
+//   organic   now     RIPM·WW         LIPM·WW
+//   organic   future  RIPM            LIPM
+//   inorganic now     RIPM·WW·P       LIPM·WW·P
+//   inorganic future  RIPM·P          LIPM·P
 //
-//   RM, LM 0–100  0 is reachable and zeroes every lane — "money can't buy
-//                 irrelevance" is the whole reason match multiplies.
-//   WW     0–1    the moment: where(km) × when(opens_in, open_for). Now only.
-//   P      0–3    promos — the membership ladder; see ./strategies.
+//   RIPM, LIPM 0–100  0 is reachable and zeroes every lane — "money can't
+//                     buy irrelevance" is the whole reason match multiplies.
+//   WW         0–1    the moment: where(km) × when(opens_in, open_for).
+//                     Now-mode only.
+//   P          0–3    promos — the membership ladder; see ./strategies.
+//
+// ── TEXT vs NUMBERS — who actually knows about where/when ─────────────
+// Intent-data and place-data both carry where/when as TEXT — an address, hours
+// as written, a question that says "near Providencia tonight". So RIPM/LIPM
+// may pick up place- and time-flavor implicitly. That's redundant with WW,
+// and it's fine. What the match tiers NEVER receive is computed numbers: no
+// distance-km, no hours-until-open are precomputed and written into their
+// context. WW is the only function that computes where and when as numerical
+// values — and it MULTIPLIES RIPM or LIPM; it never feeds them.
 //
 // ENGINES ARE PIPELINE POLICIES, not formulas — each decides how far up the
 // fidelity ladder to climb (ENGINE_POLICIES below):
@@ -175,8 +186,8 @@ export const LANES: readonly Lane[] = [
   { id: "inorganic-future",lane: "inorganic", mode: "future", formula: "match × promos",                max: MATCH_MAX * PROMO_MAX },
 ];
 
-/** A lane's formula at one tier, in the model's shorthand — e.g. "LM·WW·P". */
-export function laneFormula(lane: Lane, term: "RM" | "LM"): string {
+/** A lane's formula at one tier, in the model's shorthand — e.g. "LIPM·WW·P". */
+export function laneFormula(lane: Lane, term: "RIPM" | "LIPM"): string {
   const parts: string[] = [term];
   if (lane.mode === "now") parts.push("WW");
   if (lane.lane === "inorganic") parts.push("P");
@@ -186,14 +197,14 @@ export function laneFormula(lane: Lane, term: "RM" | "LM"): string {
 export type MatchTier = {
   id: "fast" | "slow";
   label: string;
-  term: "RM" | "LM";
+  term: "RIPM" | "LIPM";
   detail: string;
 };
 
-/** One match, two estimators. Fast screens; Slow settles. */
+/** One match (intent × place), two estimators. Fast screens; Slow settles. */
 export const MATCH_TIERS: readonly MatchTier[] = [
-  { id: "fast", label: "Fast", term: "RM", detail: "embedding cosine · whole catalog" },
-  { id: "slow", label: "Slow", term: "LM", detail: "LLM judge · shortlist only" },
+  { id: "fast", label: "Fast", term: "RIPM", detail: "RAG intent-place match · cosine, whole catalog" },
+  { id: "slow", label: "Slow", term: "LIPM", detail: "LLM intent-place match · judge, shortlist only" },
 ];
 
 export type EnginePolicy = {
@@ -222,7 +233,7 @@ export const ENGINE_POLICIES: readonly EnginePolicy[] = [
 ];
 
 export type LaneInputs = {
-  /** 0–100 — RM or LM, whichever tier the caller is scoring. */
+  /** 0–100 — RIPM or LIPM, whichever tier the caller is scoring. */
   match: number;
   /** 0–1. */
   where: number;

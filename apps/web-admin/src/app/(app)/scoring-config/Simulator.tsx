@@ -22,14 +22,14 @@ import type { SamplePlace } from "./actions";
 // tiers, hyperparameters on top. Everything derives from @/lib/business/scores
 // — no knob is restated here.
 //
-// An admin view has no consumer and no query, so RM / LM / distance / hours
+// An admin view has no consumer and no query, so RIPM / LIPM / distance / hours
 // are operator controls, not data. Posture is too: `admin-web-search-places`
 // doesn't return the rate columns, so it seeds round-robin across the four
 // presets rather than pretending to read a real one. What IS real is the
 // roster — a random sample of the live catalog every load.
 //
-// Each lane board draws TWO bars per place: the ghost is the Fast score (RM —
-// the screen order), the solid is the Slow score (LM — the final order), rows
+// Each lane board draws TWO bars per place: the ghost is the Fast score (RIPM —
+// the screen order), the solid is the Slow score (LIPM — the final order), rows
 // sorted by Slow. The gap between ghost and solid is literally what the LLM
 // judge changed about the RAG estimate.
 
@@ -39,10 +39,10 @@ type Row = {
   id: string;
   name: string;
   sub: string;
-  /** Fast match — RAG cosine estimate. */
-  rm: number;
-  /** Slow match — LLM judge verdict. */
-  lm: number;
+  /** Fast match — RIPM, the RAG cosine estimate. */
+  ripm: number;
+  /** Slow match — LIPM, the LLM judge verdict. */
+  lipm: number;
   km: number;
   opensIn: number;
   openFor: number;
@@ -54,22 +54,22 @@ function seedRows(places: SamplePlace[]): Row[] {
   const KM = [1, 4, 2, 25, 8, 0.5, 12, 3, 18, 6];
   const OPENS = [0, 0, 0, 0, 2.5, 0, 1, 0, 3.5, 0];
   const OPEN_FOR = [6, 6, 0.5, 6, 3, 2, 6, 1, 4, 6];
-  const RM = [85, 80, 55, 85, 40, 70, 60, 75, 45, 65];
-  // LM deviates from RM on purpose — a rerank that never reorders shows nothing.
-  const LM_DELTA = [8, -14, 20, -6, 12, -16, 6, -10, 15, -4];
+  const RIPM_SEED = [85, 80, 55, 85, 40, 70, 60, 75, 45, 65];
+  // LIPM deviates from RIPM on purpose — a rerank that never reorders shows nothing.
+  const LIPM_DELTA = [8, -14, 20, -6, 12, -16, 6, -10, 15, -4];
   const POSTURES = STRATEGIES.map((s) => s.id);
 
   return places.map((p, i) => {
     const bits = [p.categoryLabel, p.googleStars != null ? `${p.googleStars}★` : null]
       .filter(Boolean)
       .join(" · ");
-    const rm = RM[i % RM.length];
+    const ripm = RIPM_SEED[i % RIPM_SEED.length];
     return {
       id: p.id,
       name: p.name,
       sub: bits || "—",
-      rm,
-      lm: Math.max(0, Math.min(MATCH_MAX, rm + LM_DELTA[i % LM_DELTA.length])),
+      ripm,
+      lipm: Math.max(0, Math.min(MATCH_MAX, ripm + LIPM_DELTA[i % LIPM_DELTA.length])),
       km: KM[i % KM.length],
       opensIn: OPENS[i % OPENS.length],
       openFor: OPEN_FOR[i % OPEN_FOR.length],
@@ -100,7 +100,7 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
     [rows, cfg],
   );
 
-  // Fast (RM) is the ghost — the screen order. Slow (LM) is the solid — the
+  // Fast (RIPM) is the ghost — the screen order. Slow (LIPM) is the solid — the
   // final order. Rows sort by Slow.
   const ranked = (lane: Lane) =>
     computed
@@ -108,8 +108,8 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
         const base = { where: c.where, when: c.when, promos: c.promos };
         return {
           name: c.row.name,
-          fast: laneScore(lane, { ...base, match: c.row.rm }),
-          slow: laneScore(lane, { ...base, match: c.row.lm }),
+          fast: laneScore(lane, { ...base, match: c.row.ripm }),
+          slow: laneScore(lane, { ...base, match: c.row.lipm }),
         };
       })
       .sort((a, b) => b.slow - a.slow);
@@ -169,7 +169,7 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
 
       {/* ── The 2×2, both tiers per board ───────────────────────── */}
       <div>
-        <GroupHead>Four lanes · ghost = Fast (RM) · solid = Slow (LM)</GroupHead>
+        <GroupHead>Four lanes · ghost = Fast (RIPM) · solid = Slow (LIPM)</GroupHead>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           {LANES.map((lane) => (
             <LaneBoard key={lane.id} lane={lane} rows={ranked(lane)} />
@@ -194,7 +194,7 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
           <table className="w-full min-w-[960px] border-collapse">
             <thead>
               <tr>
-                {["Place", "RM · fast", "LM · slow", "Distance", "Opens in", "Open for", "Posture", "where", "when"].map(
+                {["Place", "RIPM · fast", "LIPM · slow", "Distance", "Opens in", "Open for", "Posture", "where", "when"].map(
                   (h, i) => (
                     <th
                       key={h}
@@ -223,10 +223,10 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
                       min={0}
                       max={MATCH_MAX}
                       step={1}
-                      v={c.row.rm}
-                      onChange={(v) => setRow(i, { rm: v })}
-                      label={`RM for ${c.row.name}`}
-                      read={String(c.row.rm)}
+                      v={c.row.ripm}
+                      onChange={(v) => setRow(i, { ripm: v })}
+                      label={`RIPM for ${c.row.name}`}
+                      read={String(c.row.ripm)}
                     />
                   </Cell>
                   <Cell>
@@ -234,11 +234,11 @@ export function Simulator({ places }: { places: SamplePlace[] }) {
                       min={0}
                       max={MATCH_MAX}
                       step={1}
-                      v={c.row.lm}
-                      onChange={(v) => setRow(i, { lm: v })}
-                      label={`LM for ${c.row.name}`}
-                      read={String(c.row.lm)}
-                      warn={Math.abs(c.row.lm - c.row.rm) >= 15}
+                      v={c.row.lipm}
+                      onChange={(v) => setRow(i, { lipm: v })}
+                      label={`LIPM for ${c.row.name}`}
+                      read={String(c.row.lipm)}
+                      warn={Math.abs(c.row.lipm - c.row.ripm) >= 15}
                     />
                   </Cell>
                   <Cell>
@@ -421,7 +421,7 @@ function LaneBoard({
         {organic ? "Organic" : "Inorganic"} · {lane.mode}
       </p>
       <p className="text-muted-foreground mt-0.5 mb-2.5 font-mono text-[10px]">
-        {laneFormula(lane, "RM")} ghost → {laneFormula(lane, "LM")} solid · 0–{lane.max}
+        {laneFormula(lane, "RIPM")} ghost → {laneFormula(lane, "LIPM")} solid · 0–{lane.max}
       </p>
       <div className="flex flex-col gap-1">
         {rows.map((r, k) => (
