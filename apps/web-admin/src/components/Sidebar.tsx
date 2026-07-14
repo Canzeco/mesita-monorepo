@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
-import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { SCORING_PARENT } from "@/app/(app)/scoring-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
@@ -58,14 +57,10 @@ const SIDEBAR_NAV = [
     Icon: ENRICHER_PARENT.Icon,
   },
   {
+    // Memo Config folded in as a Scoring tab — Memo is one of the three engines.
     href: SCORING_PARENT.href,
     label: SCORING_PARENT.label,
     Icon: SCORING_PARENT.Icon,
-  },
-  {
-    href: MEMO_PARENT.href,
-    label: MEMO_PARENT.label,
-    Icon: MEMO_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,

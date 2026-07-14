@@ -1,4 +1,5 @@
 import { efInvoke } from "@/lib/supabase-ef";
+import { SAMPLE_MAX } from "@/lib/business/cip";
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 
 // Scoring playground sample — REAL consumers and REAL places via the
@@ -11,8 +12,7 @@ import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 // re-exported types included — failing only at BUILD time, not typecheck.
 // `efInvoke` pulls in next/headers, so a client import fails on its own.
 
-/** Max of each rendered. Beyond ~10 the lists stop being readable. */
-export const SAMPLE_MAX = 10;
+export { SAMPLE_MAX };
 
 export type ScoringSample = {
   consumers: SampleConsumer[];

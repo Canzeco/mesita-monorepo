@@ -8,7 +8,7 @@ import {
   SectionCard,
   Switch,
   TextAreaField,
-} from "../enricher-config/atlas-ui";
+} from "../../enricher-config/atlas-ui";
 import { getMemoConfig, updateMemoConfig } from "./actions";
 import {
   OPENAI_MODELS,
