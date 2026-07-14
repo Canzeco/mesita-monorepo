@@ -333,7 +333,9 @@ export function SaveBar({
   dirty,
   ok,
   onSave,
+  onCancel,
   label = "Save changes",
+  cancelLabel = "Cancel",
   dirtyLabel,
   error,
 }: {
@@ -341,7 +343,10 @@ export function SaveBar({
   dirty: boolean;
   ok: boolean;
   onSave: () => void;
+  /** Revert this box to its last-saved values. Cancel only renders when given. */
+  onCancel?: () => void;
   label?: string;
+  cancelLabel?: string;
   /** e.g. "Basics · unsaved" — replaces generic copy when dirty. */
   dirtyLabel?: string;
   error?: string | null;
@@ -363,25 +368,37 @@ export function SaveBar({
             </span>
           ) : null}
         </span>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={pending || !dirty}
-          className={
-            "inline-flex h-9 items-center gap-2 rounded-full px-5 text-sm font-semibold transition " +
-            (live
-              ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
-              : "bg-muted text-muted-foreground")
-          }
-        >
-          {pending ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
-            </>
-          ) : (
-            label
-          )}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={pending || !dirty}
+              className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+            >
+              {cancelLabel}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={pending || !dirty}
+            className={
+              "inline-flex h-9 items-center gap-2 rounded-full px-5 text-sm font-semibold transition " +
+              (live
+                ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
+                : "bg-muted text-muted-foreground")
+            }
+          >
+            {pending ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+              </>
+            ) : (
+              label
+            )}
+          </button>
+        </div>
       </div>
       {error ? <ErrorNote message={error} /> : null}
     </div>

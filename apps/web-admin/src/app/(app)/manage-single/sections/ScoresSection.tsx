@@ -3,63 +3,47 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Braces, Gauge } from "lucide-react";
-import { visibilityScore } from "@/lib/business/plans";
+import {
+  promoScoreForStrategy,
+  PROMO_SCORE_BY_STRATEGY,
+  strategyForPlace,
+  STRATEGIES,
+  STRATEGY_BY_ID,
+  type StrategyId,
+} from "@/lib/business/strategies";
+import {
+  DEFAULT_SCORES_CONFIG as CFG,
+  fitScore,
+  laneScore,
+  LANES,
+  MATCH_MAX,
+  quantizeH,
+  waitScore,
+  whenScore,
+  whereScore,
+  type Lane,
+} from "@/lib/business/scores";
 import type { AdminPlace } from "../actions";
 import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 
 // ════════════════════════════════════════════════════════════════════════
-// Scores — the place's score in the recommendation engines (Swipe · Map ·
+// Scores — this place's potency in the recommendation engines (Swipe · Map ·
 // Memo). Admin-only: the whole console sits behind the super-admin gate.
 //
-// DRAFT MODEL v4, frontend only — TWO LANES, each a single product
-// (MESITA-598):
+// This file RENDERS the model; the model, its knobs and the reasoning behind
+// every one live in @/lib/business/scores (promos in ./strategies), and the
+// global view is Scoring Config. Four lanes:
 //
-//   Merit Lane = Merit Score × Match Score      earned / organic
-//   Promo Lane = Promo Score × Match Score      bought / paid
+//   organic   now = match × where × when      organic   future = match
+//   inorganic now = match × where × when × promos   inorganic future = match × promos
 //
-//   Merit Score  0–10  earned quality — reputation + magnetism (the non-paid
-//                      signals) × momentum. What the place is worth on its
-//                      own merits.
-//   Promo Score  0–10  bought placement — the live Promos score, i.e. the
-//                      membership posture's Low·Mid·High·Max.
-//   Match Score  0–1   ALWAYS semantic (RAG/LLM), never binary tags. Zero
-//                      relevance zeroes both lanes.
-//
-// A place competes twice — on merit and on promo — each gated by how well it
-// matches the query. No distance / right-now here; those return later.
+// Only ONE input is real data here: promos, derived from the place's live
+// promo rates. There is no consumer and no query in an admin view, so match
+// and the moment are operator controls — that is the nature of the surface,
+// not a gap in it.
 // ════════════════════════════════════════════════════════════════════════
 
-const SCORE_MAX = 10;
-
-/** Earned reputation, 1–10: stars ≤6 pts, review volume ≤3 (log), social ≤1. */
-function reputationScore(place: AdminPlace): number {
-  const stars = place.google_stars_overall ?? 0;
-  const reviews = place.google_review_count ?? 0;
-  const followers = place.instagram_followers_count ?? 0;
-
-  const starPts = (Math.max(0, Math.min(5, stars)) / 5) * 6;
-  const volumePts = Math.min(3, (Math.log10(reviews + 1) / Math.log10(5000)) * 3);
-  const socialPts = Math.min(1, Math.log10(followers + 1) / 5);
-
-  return Math.max(1, Math.min(10, starPts + volumePts + socialPts));
-}
-
-/**
- * Magnetism, 1–10 — desire on sight. In production an LLM/vision judge
- * scores the photo set + description vibe against a rubric; this draft
- * heuristic stands in: photos ≤4, IG pull ≤4, story (description+tags) ≤2.
- */
-function magnetismScore(place: AdminPlace): number {
-  const photos = place.photos?.length ?? 0;
-  const followers = place.instagram_followers_count ?? 0;
-
-  const photoPts = Math.min(4, photos * 0.5);
-  const pullPts = Math.min(4, (Math.log10(followers + 1) / 5) * 4);
-  const storyPts =
-    (place.description ? 1 : 0) + ((place.tags?.length ?? 0) >= 5 ? 1 : 0);
-
-  return Math.max(1, Math.min(10, photoPts + pullPts + storyPts));
-}
+const PROMO_MAX = Math.max(...Object.values(PROMO_SCORE_BY_STRATEGY));
 
 /** Deterministic pseudo-vector from the place id — stand-in until real embeddings exist. */
 function mockVector(seed: string, dims: number): number[] {
@@ -78,25 +62,27 @@ function fmt(n: number, digits = 1): string {
 }
 
 export function ScoresSection({ place }: { place: AdminPlace }) {
-  // Simulated semantic match (0–1) — in production RAG computes this per
-  // query (Memo's question, or the consumer's taste embedding on Swipe/Map).
-  const [match, setMatch] = useState(1);
+  // The query and the consumer don't exist here, so these are controls.
+  const [match, setMatch] = useState(MATCH_MAX);
+  const [km, setKm] = useState(2);
+  const [opensIn, setOpensIn] = useState(0);
+  const [openFor, setOpenFor] = useState(6);
 
-  const promoScore = visibilityScore(place); // bought placement, 0–10
-  const reputation = reputationScore(place);
-  const magnetism = magnetismScore(place);
-  const momentum = 1; // needs snapshot history — ships with the backend
-  const meritScore = Math.max(
-    0,
-    Math.min(10, ((reputation + magnetism) / 2) * momentum),
-  );
+  const strategyId = strategyForPlace({
+    welcome_free_rate: place.welcome_free_rate,
+    welcome_premium_rate: place.welcome_premium_rate,
+    free_rate: place.free_rate,
+    premium_rate: place.premium_rate,
+  });
+  const promos = promoScoreForStrategy(strategyId); // 0 · 1 · 2 · 3 — real
+  const posture = strategyId ? STRATEGY_BY_ID[strategyId] : null;
 
-  const meritLane = meritScore * match;
-  const promoLane = promoScore * match;
+  const where = whereScore(km);
+  const wait = waitScore(opensIn);
+  const fit = fitScore(openFor);
+  const when = whenScore(opensIn, openFor);
 
   const vector = useMemo(() => mockVector(place.id, 48), [place.id]);
-
-  const matchPct = `${Math.round(match * 100)}%`;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
@@ -108,7 +94,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         <div className="min-w-0">
           <p className="font-semibold">Draft simulator — does not affect Swipe, Map, or Memo.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            Scores below are frontend heuristics for operators. Global knobs live in{" "}
+            Only Promos is real data. Global knobs and the worked example live in{" "}
             <Link href="/scoring-config" className="font-semibold underline-offset-2 hover:underline">
               Scoring Config
             </Link>
@@ -117,132 +103,132 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         </div>
       </div>
 
-      {/* ── Scores — two lanes, each Score × Match ───────────────────── */}
+      {/* ── Scores — four lanes for this place ───────────────────────── */}
       <SectionCard
         icon={<Gauge className="h-4.5 w-4.5" />}
         tint="pink"
         title="Scores"
-        subtitle="Two lanes — Merit (earned) and Promo (bought). Each is its score × how well the place matches the query. Admins only."
+        subtitle="Four lanes that never compete: {organic, inorganic} × {now, future}. Zero match zeroes every one — money can't buy irrelevance."
         action={<Pill>Draft model</Pill>}
       >
-        {/* Lane results */}
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <Lane
-            label="Merit Lane"
-            sub="earned quality × match"
-            score={meritLane}
-            accent="sky"
-          />
-          <Lane
-            label="Promo Lane"
-            sub="bought placement × match"
-            score={promoLane}
-            accent="pink"
-          />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {LANES.map((lane) => (
+            <LaneCard
+              key={lane.id}
+              lane={lane}
+              score={laneScore(lane, { match, where, when, promos })}
+              detail={
+                lane.mode === "now"
+                  ? `match ${fmt(match, 0)} × where ${fmt(where, 2)} × when ${fmt(when, 2)}${lane.lane === "inorganic" ? ` × promos ${promos}` : ""}`
+                  : `match ${fmt(match, 0)}${lane.lane === "inorganic" ? ` × promos ${promos}` : ""}`
+              }
+            />
+          ))}
         </div>
 
-        {/* Match — the shared gate on both lanes */}
-        <div className="mt-5 max-w-sm">
+        {/* Match — the gate */}
+        <div className="mt-6">
           <div className="flex items-baseline justify-between">
-            <GroupLabel>Match Score</GroupLabel>
-            <span className="text-sm font-semibold">{matchPct}</span>
+            <GroupLabel>Match · the gate on every lane</GroupLabel>
+            <span className="text-sm font-semibold tabular-nums">
+              {fmt(match, 0)}/{MATCH_MAX}
+            </span>
           </div>
           <input
             type="range"
             min={0}
-            max={1}
-            step={0.05}
+            max={MATCH_MAX}
+            step={1}
             value={match}
             onChange={(e) => setMatch(Number(e.target.value))}
             className="accent-primary mt-2 w-full"
-            aria-label="Semantic match percentage"
+            aria-label="Semantic match score"
           />
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            Semantic relevance to the query (RAG) — zero match zeroes both lanes.
+            Always semantic — cosine recall × LLM judge, per query; never binary
+            tags. Zero zeroes every lane.
           </p>
         </div>
 
-        {/* Equation strips — each lane, shown being built */}
-        <div className="mt-6 flex flex-col gap-4">
-          <div>
-            <GroupLabel>Merit Lane</GroupLabel>
-            <div className="mt-2 flex items-stretch gap-1.5 sm:gap-2">
-              <EqTerm label="Merit Score" sub="earned quality" value={fmt(meritScore)} />
-              <EqOp>×</EqOp>
-              <EqTerm label="Match" sub="query relevance" value={matchPct} />
-              <EqOp>=</EqOp>
-              <EqTerm label="Merit Lane" sub="organic rank" value={fmt(meritLane)} highlight />
-            </div>
-          </div>
-          <div>
-            <GroupLabel>Promo Lane</GroupLabel>
-            <div className="mt-2 flex items-stretch gap-1.5 sm:gap-2">
-              <EqTerm label="Promo Score" sub="bought placement" value={fmt(promoScore)} />
-              <EqOp>×</EqOp>
-              <EqTerm label="Match" sub="query relevance" value={matchPct} />
-              <EqOp>=</EqOp>
-              <EqTerm label="Promo Lane" sub="paid rank" value={fmt(promoLane)} highlight />
-            </div>
-          </div>
-        </div>
-
-        {/* Merit Score breakdown — earned */}
+        {/* The moment */}
         <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
-            <GroupLabel>Merit Score · earned</GroupLabel>
+            <GroupLabel>The moment · now-mode lanes only</GroupLabel>
             <p className="text-muted-foreground font-mono text-[11px]">
-              (reputation + magnetism) / 2 × momentum = {fmt(meritScore)}
+              where {fmt(where, 2)} × when {fmt(when, 2)}
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            What the place is worth on its own merits — no money involved.
+            Planning Saturday from the sofa, distance and hours are noise;
+            choosing where to go in the next hour, they&apos;re most of the
+            decision. Time resolves to 30-minute blocks.
           </p>
-          <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
-            <Tile
-              label="Earned Reputation"
-              value={`${fmt(reputation)}/10`}
-              hint="proven · Google"
-              kind="live"
+          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <Ctl
+              label="Where · distance"
+              read={`${km} km`}
+              factor={`×${fmt(where, 2)}`}
+              min={0}
+              max={40}
+              step={0.5}
+              v={km}
+              onChange={setKm}
+              note={`Halves every ${CFG.distanceHalfKm} km.`}
             />
-            <Tile
-              label="Magnetism"
-              value={`${fmt(magnetism)}/10`}
-              hint="desired · AI-judged"
-              kind="heuristic"
+            <Ctl
+              label="Wait · opens in"
+              read={opensIn === 0 ? "open now" : `+${quantizeH(opensIn)} h`}
+              factor={`×${fmt(wait, 2)}`}
+              min={0}
+              max={6}
+              step={0.5}
+              v={opensIn}
+              onChange={setOpensIn}
+              note={`Waiting ${CFG.waitHalfH} h halves it.`}
+              warn={opensIn > 0}
             />
-            <Tile
-              label="Momentum"
-              value={`×${fmt(momentum, 2)}`}
-              hint="trending · needs history"
-              kind="mock"
+            <Ctl
+              label="Fit · open for"
+              read={openFor === 0 ? "closed" : `${quantizeH(openFor)} h`}
+              factor={`×${fmt(fit, 2)}`}
+              min={0}
+              max={6}
+              step={0.5}
+              v={openFor}
+              onChange={setOpenFor}
+              note={`The visit needs ${CFG.sessionH} h.`}
+              warn={fit < 1}
             />
           </div>
         </div>
 
-        {/* Promo Score breakdown — bought */}
-        <div className="mt-5">
+        {/* Promos — the only real input */}
+        <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
-            <GroupLabel>Promo Score · bought</GroupLabel>
+            <GroupLabel>Promos · bought — live from this place&apos;s rates</GroupLabel>
             <p className="text-muted-foreground font-mono text-[11px]">
-              live Promos placement = {fmt(promoScore)}
+              {fmt(promos, 0)}/{PROMO_MAX}
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            The membership posture&apos;s placement — Low · Mid · High · Max —
-            set on the Promos tab.
+            Linear, so posture and relevance stay comparable — a sharply-matched
+            Conservative place can still out-rank a loosely-matched Dominant one.
+            Zero earns no paid placement: nothing to promote. Set on the Promos
+            tab.
           </p>
-          <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
-            <Tile
-              label="Promotional Visibility"
-              value={`${fmt(promoScore, 0)}/10`}
-              hint="bought · Promos"
-              kind="live"
-            />
+          <div className="mt-2">
+            <PostureLadder current={strategyId} />
           </div>
+          {posture ? null : (
+            <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
+              These rates match no preset — custom or legacy, so the place
+              isn&apos;t in the paid lane at all.
+            </p>
+          )}
         </div>
       </SectionCard>
 
-      {/* ── Semantic — meaning retrieves, scoring ranks ─────────────── */}
+      {/* ── Semantic ─────────────────────────────────────────────────── */}
       <SectionCard
         icon={<Braces className="h-4.5 w-4.5" />}
         tint="indigo"
@@ -267,10 +253,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
                 {(place.tags ?? []).slice(0, 12).map((t) => (
                   <span
                     key={t}
-                    className={
-                      "rounded-full px-2.5 py-1 text-[11px] font-medium " +
-                      TINT_CHIP.indigo
-                    }
+                    className={"rounded-full px-2.5 py-1 text-[11px] font-medium " + TINT_CHIP.indigo}
                   >
                     {t.replace(/_/g, " ")}
                   </span>
@@ -290,8 +273,8 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
               ))}
             </div>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              48 of 1,536 dims, mocked from the place id — the real vector
-              comes from embedding the text on the left.
+              48 of 1,536 dims, mocked from the place id — the real vector comes
+              from embedding the text on the left.
             </p>
           </div>
         </div>
@@ -310,131 +293,114 @@ function Pill({ children }: { children: React.ReactNode }) {
   );
 }
 
-// A lane's result — big score + meter, tinted to the lane (Merit = sky,
-// Promo = pink) so the two rank paths read apart at a glance.
-function Lane({
-  label,
-  sub,
-  score,
-  accent,
-}: {
-  label: string;
-  sub: string;
-  score: number;
-  accent: "sky" | "pink";
-}) {
-  const tint =
-    accent === "sky"
-      ? "border-sky-500/30 bg-sky-500/[0.04]"
-      : "border-pink-500/30 bg-pink-500/[0.04]";
-  const labelText = accent === "sky" ? "text-sky-700" : "text-pink-700";
+function LaneCard({ lane, score, detail }: { lane: Lane; score: number; detail: string }) {
+  const organic = lane.lane === "organic";
+  const tint = organic
+    ? "border-sky-500/30 bg-sky-500/[0.04]"
+    : "border-pink-500/30 bg-pink-500/[0.04]";
+  const head = organic ? "text-sky-700" : "text-pink-700";
   return (
     <div className={"flex flex-col gap-2 rounded-2xl border p-4 " + tint}>
-      <p
-        className={
-          "text-[10px] font-bold tracking-[0.14em] uppercase " + labelText
-        }
-      >
-        {label}
+      <p className={"text-[10px] font-bold tracking-[0.14em] uppercase " + head}>
+        {organic ? "Organic" : "Inorganic"} · {lane.mode}
       </p>
       <div className="flex items-end gap-2">
         <p className="font-display text-4xl leading-none font-semibold tracking-tight tabular-nums">
           {fmt(score)}
         </p>
-        <p className="text-muted-foreground pb-0.5 text-xs">/ {SCORE_MAX}</p>
+        <p className="text-muted-foreground pb-0.5 text-xs">/ {lane.max}</p>
       </div>
-      <Meter value={score / SCORE_MAX} />
-      <p className="text-muted-foreground text-[11px] leading-snug">{sub}</p>
+      <Meter value={score / lane.max} />
+      <p className="text-muted-foreground font-mono text-[10px] leading-snug">{detail}</p>
     </div>
   );
 }
 
-// One term in the plain-language lane equation — value big, human sublabel.
-function EqTerm({
+function Ctl({
   label,
-  sub,
-  value,
-  highlight,
+  read,
+  factor,
+  min,
+  max,
+  step,
+  v,
+  onChange,
+  note,
+  warn,
 }: {
   label: string;
-  sub: string;
-  value: string;
-  highlight?: boolean;
+  read: string;
+  factor: string;
+  min: number;
+  max: number;
+  step: number;
+  v: number;
+  onChange: (v: number) => void;
+  note: string;
+  warn?: boolean;
 }) {
   return (
-    <div
-      className={
-        "flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border px-1.5 py-2.5 text-center " +
-        (highlight
-          ? "border-primary/40 bg-primary/[0.06]"
-          : "border-border/60 bg-muted/40")
-      }
-    >
-      <p className="text-muted-foreground text-[9px] font-bold tracking-[0.12em] uppercase">
+    <div>
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
         {label}
       </p>
-      <p
-        className={
-          "font-display mt-0.5 text-lg leading-none font-semibold tracking-tight tabular-nums " +
-          (highlight ? "text-primary" : "")
-        }
-      >
-        {value}
-      </p>
-      <p className="text-muted-foreground mt-1 text-[10px] leading-tight">
-        {sub}
-      </p>
+      <div className="mt-1.5 flex items-baseline justify-between">
+        <span className={"text-sm font-semibold " + (warn ? "text-amber-700" : "")}>{read}</span>
+        <span className="text-muted-foreground font-mono text-[11px]">{factor}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={v}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={label}
+        className="accent-primary mt-1 w-full"
+      />
+      <p className="text-muted-foreground text-[10px] leading-snug">{note}</p>
     </div>
   );
 }
 
-// Operator glyph between equation terms.
-function EqOp({ children }: { children: React.ReactNode }) {
+/** The 0 · 1 · 2 · 3 posture ladder, current rung lit. */
+function PostureLadder({ current }: { current: StrategyId | null }) {
   return (
-    <span
-      className="text-muted-foreground shrink-0 self-center text-base font-semibold"
-      aria-hidden
-    >
-      {children}
-    </span>
+    <div className="grid grid-cols-4 gap-2">
+      {STRATEGIES.map((s) => {
+        const active = s.id === current;
+        return (
+          <div
+            key={s.id}
+            className={
+              "flex flex-col items-center rounded-xl border px-2 py-2.5 text-center " +
+              (active ? "border-pink-500/40 bg-pink-500/[0.07]" : "border-border/60 bg-muted/40")
+            }
+          >
+            <p
+              className={
+                "font-display text-lg font-semibold tabular-nums " +
+                (active ? "text-pink-700" : "text-muted-foreground")
+              }
+            >
+              {PROMO_SCORE_BY_STRATEGY[s.id]}
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-[10px] leading-tight">{s.name}</p>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
-function Meter({ value, className = "" }: { value: number; className?: string }) {
+function Meter({ value }: { value: number }) {
   const pct = Math.max(0, Math.min(1, value)) * 100;
   return (
-    <div className={"bg-muted h-2 overflow-hidden rounded-full " + className}>
+    <div className="bg-muted h-2 overflow-hidden rounded-full">
       <div
         className="from-primary h-full rounded-full bg-gradient-to-r to-pink-500"
         style={{ width: `${pct}%` }}
       />
-    </div>
-  );
-}
-
-function Tile({
-  label,
-  value,
-  hint,
-  kind,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  kind: "live" | "heuristic" | "mock";
-}) {
-  const kindLabel =
-    kind === "live" ? "live data" : kind === "heuristic" ? "heuristic" : "mock control";
-  return (
-    <div className="bg-muted/60 border-border/60 rounded-xl border px-3 py-2.5 text-center">
-      <p className="text-muted-foreground text-[11px]">{label}</p>
-      <p className="font-display mt-0.5 text-lg font-semibold tracking-tight">
-        {value}
-      </p>
-      <p className="text-muted-foreground text-[11px]">{hint}</p>
-      <p className="text-muted-foreground/80 mt-1 text-[9px] font-semibold tracking-wider uppercase">
-        {kindLabel}
-      </p>
     </div>
   );
 }

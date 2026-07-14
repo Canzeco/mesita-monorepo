@@ -252,6 +252,14 @@ export function ProductsSection({
     }
   };
 
+  // Cancel — drop the draft menus back to the last-saved set. Files already
+  // uploaded to the bucket stay there; they're only referenced once saved.
+  const cancel = () => {
+    setItems(saved);
+    setError(null);
+    setOk(false);
+  };
+
   const save = () => {
     if (!dirty) return;
     for (const m of items) {
@@ -362,6 +370,7 @@ export function ProductsSection({
           ok={ok}
           error={error}
           onSave={save}
+          onCancel={cancel}
         />
       ) : null}
     </SectionCard>

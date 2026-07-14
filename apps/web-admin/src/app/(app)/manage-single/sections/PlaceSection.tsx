@@ -608,6 +608,15 @@ export function PlaceSection({
     };
   }, [place.id]);
 
+  // Cancel — put this box's slice back to its last-saved values. Only this
+  // box reverts; unsaved edits in the other boxes survive (the mirror of the
+  // per-box merge on save).
+  const cancelBox = (box: PlaceBox) => {
+    setForm((prev) => mergeBoxSlice(prev, saved, box));
+    setErrors((e) => ({ ...e, [box]: undefined }));
+    setOks((o) => ({ ...o, [box]: false }));
+  };
+
   const saveBox = (box: PlaceBox) => {
     if (box === "basics" && !form.name.trim()) {
       setErrors((e) => ({ ...e, basics: "Name is required." }));
@@ -716,6 +725,7 @@ export function PlaceSection({
           ok={!!oks.basics}
           error={errors.basics}
           onSave={() => saveBox("basics")}
+          onCancel={() => cancelBox("basics")}
         />
       </SectionCard>
 
@@ -814,6 +824,7 @@ export function PlaceSection({
           ok={!!oks.time}
           error={errors.time}
           onSave={() => saveBox("time")}
+          onCancel={() => cancelBox("time")}
         />
       </SectionCard>
 
@@ -910,6 +921,7 @@ export function PlaceSection({
           ok={!!oks.channels}
           error={errors.channels}
           onSave={() => saveBox("channels")}
+          onCancel={() => cancelBox("channels")}
         />
       </SectionCard>
 
@@ -1005,6 +1017,7 @@ export function PlaceSection({
           ok={!!oks.reservations}
           error={errors.reservations}
           onSave={() => saveBox("reservations")}
+          onCancel={() => cancelBox("reservations")}
         />
       </SectionCard>
 
@@ -1037,6 +1050,7 @@ export function PlaceSection({
           ok={!!oks.photos}
           error={errors.photos}
           onSave={() => saveBox("photos")}
+          onCancel={() => cancelBox("photos")}
         />
       </SectionCard>
 
