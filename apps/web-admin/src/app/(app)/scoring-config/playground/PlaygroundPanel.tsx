@@ -8,6 +8,7 @@ import {
   laneScore,
   LANES,
   MATCH_MAX,
+  whatScore,
   whenScore,
   whereScore,
   type EngineId,
@@ -21,6 +22,7 @@ import {
   lmCip,
   openWindow,
   rmCip,
+  whatFits,
   type ConsumerProfile,
   type Intent,
   type SamplePlace,
@@ -42,6 +44,7 @@ type ScoredRow = {
   place: SamplePlace;
   rm: number;
   lm: number;
+  what: number;
   where: number;
   when: number;
   km: number | null;
@@ -95,6 +98,7 @@ export function PlaygroundPanel() {
             ? haversineKm(run.intent.lat, run.intent.lng, Number(p.lat), Number(p.lng))
             : null;
         const win = openWindow(p.hours, run.intent.day, run.intent.hour);
+        const what = whatScore(whatFits(p.category, run.intent.hour), cfg);
         const where = whereScore(km, cfg);
         const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
         const promos =
@@ -109,13 +113,14 @@ export function PlaygroundPanel() {
 
         const laneVals = (match: number) =>
           Object.fromEntries(
-            LANES.map((lane) => [lane.id, laneScore(lane, { match, where, when, promos })]),
+            LANES.map((lane) => [lane.id, laneScore(lane, { match, what, where, when, promos })]),
           ) as Record<LaneId, number>;
 
         return {
           place: p,
           rm,
           lm,
+          what,
           where,
           when,
           km,
@@ -256,7 +261,7 @@ export function PlaygroundPanel() {
                     {res.kept
                       .map(
                         (r, k) =>
-                          `${k + 1}· LM ${r.lm} RM ${r.rm} WW ${(r.where * r.when).toFixed(2)}${r.hoursUnknown ? "?" : ""} P ${r.promos}${r.km != null ? ` ${Math.round(r.km)}km` : ""}`,
+                          `${k + 1}· LM ${r.lm} RM ${r.rm} WWW ${(r.what * r.where * r.when).toFixed(2)}${r.hoursUnknown ? "?" : ""} P ${r.promos}${r.km != null ? ` ${Math.round(r.km)}km` : ""}`,
                       )
                       .join("   ")}
                   </p>

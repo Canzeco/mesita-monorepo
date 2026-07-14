@@ -303,3 +303,25 @@ export function openWindow(
   // Closed for the whole horizon.
   return best ?? { opensInH: HORIZON, openForH: 0, unknown: false };
 }
+
+// ── WHAT — daypart suitability of a category ────────────────────────────
+// The temporal half of "what": is this hour the category's natural daypart?
+// (Match handles the SEMANTIC what.) Keyword windows, hours may wrap past
+// midnight. Unknown categories fit every hour — no penalty on ignorance.
+
+const WHAT_WINDOWS: { re: RegExp; start: number; end: number }[] = [
+  { re: /club|antro|night_club|karaoke/, start: 21, end: 28 }, // 21:00–04:00
+  { re: /bar|cantina|pub|speakeasy|wine|cocktail|brewer/, start: 17, end: 26 }, // 17:00–02:00
+  { re: /brunch|breakfast|cafe|coffee|bakery|desayun|juice/, start: 7, end: 17 },
+];
+
+/** True when `hour` falls in the category's natural daypart (or none is known). */
+export function whatFits(category: string | null, hour: number): boolean {
+  if (!category) return true;
+  const w = WHAT_WINDOWS.find((x) => x.re.test(category.toLowerCase()));
+  if (!w) return true;
+  const h = ((hour % 24) + 24) % 24;
+  if (w.end <= 24) return h >= w.start && h < w.end;
+  // Wrapping window (e.g. 21–28 = 21:00–04:00).
+  return h >= w.start || h < w.end - 24;
+}

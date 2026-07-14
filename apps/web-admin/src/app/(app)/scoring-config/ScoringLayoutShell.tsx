@@ -11,7 +11,7 @@ import { SCORING_SUBROUTES } from "./nav";
 // folded in because Memo is one of the three scoring engines.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/scoring-config/params":
-    "Hyperparameters of the scoring model — engine lane mix, RIPD, LIPD, WW, P. Set here, exercised live in the Playground.",
+    "The scoring pipeline, one box per sub-function — engine lane mix, RIPM, LIPM, WWW (what · where · when), P — each with its knobs and its data-access contract.",
   "/scoring-config/playground":
     "Real consumers + real places + synthetic intents → the three engines' ranked lists. Per-place scores live in Manage Single Unit → Scores.",
   "/scoring-config/memo":
