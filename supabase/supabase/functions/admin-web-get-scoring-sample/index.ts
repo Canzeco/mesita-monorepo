@@ -93,7 +93,9 @@ Deno.serve(async (req) => {
   // ── Consumers — identity + taste from what they saved / visited ──────
   const { data: consumerRows, error: cErr } = await admin
     .from("consumers")
-    .select("id, first_name, full_name, class_key, consumer_instagram_followers_count")
+    .select(
+      "id, first_name, full_name, class_key, consumer_instagram_followers_count, sex, birthday, country",
+    )
     .limit(200);
   if (cErr) return json({ ok: false, error: `consumers_failed: ${cErr.message}` }, 500);
 
@@ -154,15 +156,29 @@ Deno.serve(async (req) => {
     fold(visits, visitedBy);
   }
 
-  const consumersOut = consumers.map((c) => ({
-    id: c.id,
-    // First name only — the playground needs an identity, not a dossier.
-    label: c.first_name ?? (c.full_name ? String(c.full_name).split(" ")[0] : null),
-    class_key: c.class_key ?? "free",
-    instagram_followers: c.consumer_instagram_followers_count ?? null,
-    saved_taste: [...new Set(savedBy.get(c.id) ?? [])].slice(0, 20),
-    visited_taste: [...new Set(visitedBy.get(c.id) ?? [])].slice(0, 20),
-  }));
+  const consumersOut = consumers.map((c) => {
+    // Age, not birthday — the playground needs demographics, not a dossier.
+    let age: number | null = null;
+    if (typeof c.birthday === "string") {
+      const b = new Date(c.birthday);
+      if (!Number.isNaN(b.getTime())) {
+        age = Math.floor((Date.now() - b.getTime()) / (365.25 * 24 * 3600 * 1000));
+        if (age < 0 || age > 120) age = null;
+      }
+    }
+    return {
+      id: c.id,
+      // First name only.
+      label: c.first_name ?? (c.full_name ? String(c.full_name).split(" ")[0] : null),
+      class_key: c.class_key ?? "free",
+      instagram_followers: c.consumer_instagram_followers_count ?? null,
+      sex: typeof c.sex === "string" ? c.sex : null,
+      age,
+      country: typeof c.country === "string" ? c.country : null,
+      saved_taste: [...new Set(savedBy.get(c.id) ?? [])].slice(0, 20),
+      visited_taste: [...new Set(visitedBy.get(c.id) ?? [])].slice(0, 20),
+    };
+  });
 
   return json({ ok: true, consumers: consumersOut, places: placesOut });
 });

@@ -16,12 +16,18 @@ import {
   type LaneId,
 } from "@/lib/business/scores";
 import {
+  buildCiDoc,
   buildConsumerProfile,
+  buildPlaceDoc,
+  cosineSim,
+  EMBED_DIMS,
+  embedText,
   generateIntent,
   haversineKm,
   lmCip,
   openWindow,
-  rmCip,
+  rmFromVectors,
+  SAMPLE_MAX,
   whatFits,
   type ConsumerProfile,
   type Intent,
@@ -30,28 +36,45 @@ import {
 import { strategyForPlace, type StrategyId } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
 import { PanelCard } from "../panel-ui";
-import { SAMPLE_MAX } from "@/lib/business/cip";
 
 // Playground — the three engines, functional, no decorative UI. Real consumer
 // (DB) + synthetic intent (generator) + real place (DB: rates, geo, hours) →
-// RM-CIP / LM-CIP / WW / P → Fast screens top shortlist-n → Slow sorts → just
-// the ranked list. Hyperparameters come live from the Params tab (shared
-// provider); lists recompute as knobs move.
+// the WIDE context documents are actually assembled (buildCiDoc /
+// buildPlaceDoc — what the real RAG embeds and the judge reads), EMBEDDED
+// into deterministic feature-hash vectors, and every sub-score is emulated:
+//
+//   RM-CIP  = cosine(CI vector, place vector) × 100 — the vectors are shown
+//   LM-CIP  = RM + the judge's structured adjustments
+//   WWW     = what(daypart) × where(km) × when(open-window) — numeric only
+//   P       = posture from the live promo rates
+//
+// Fast screens top shortlist-n by the RM blend → Slow sorts by the LM blend.
+// Hyperparameters come live from the Pipeline tab (shared provider).
 
 type EngineRun = { profile: ConsumerProfile; intent: Intent };
 
 type ScoredRow = {
   place: SamplePlace;
+  placeDoc: string;
+  placeVec: number[];
   rm: number;
   lm: number;
   what: number;
   where: number;
   when: number;
+  www: number;
   km: number | null;
   hoursUnknown: boolean;
   promos: number;
   fastTotal: number;
   slowTotal: number;
+};
+
+type EngineResult = {
+  ciDoc: string;
+  ciVec: number[];
+  kept: ScoredRow[];
+  screened: number;
 };
 
 export function PlaygroundPanel() {
@@ -72,6 +95,18 @@ export function PlaygroundPanel() {
     setRuns((r) => ({ ...r, [engine]: { profile, intent } }));
   };
 
+  // Place documents + vectors are intent-independent — build once per sample.
+  const placeIndex = useMemo(
+    () =>
+      new Map(
+        places.map((p) => {
+          const doc = buildPlaceDoc(p);
+          return [p.id, { doc, vec: embedText(doc) }];
+        }),
+      ),
+    [places],
+  );
+
   const maxPromo = Math.max(1, ...Object.values(promoVals));
   const dynMax = (lane: Lane) => (lane.lane === "inorganic" ? MATCH_MAX * maxPromo : MATCH_MAX);
 
@@ -83,16 +118,20 @@ export function PlaygroundPanel() {
     );
 
   const results = useMemo(() => {
-    const out: Partial<Record<EngineId, { kept: ScoredRow[]; screened: number }>> = {};
+    const out: Partial<Record<EngineId, EngineResult>> = {};
     for (const e of ENGINE_POLICIES) {
       const run = runs[e.id];
       if (!run) continue;
       const ci = [...run.profile.tasteTokens, ...run.intent.tokens];
       const cid = run.profile.consumer?.id ?? "synthetic";
+      const ciDoc = buildCiDoc(run.profile, run.intent);
+      const ciVec = embedText(ciDoc);
 
       const rows: ScoredRow[] = places.map((p) => {
-        const rm = rmCip(ci, p);
-        const lm = lmCip(ci, p, cid);
+        const pi =
+          placeIndex.get(p.id) ?? { doc: buildPlaceDoc(p), vec: embedText(buildPlaceDoc(p)) };
+        const rm = rmFromVectors(ciVec, pi.vec);
+        const lm = lmCip(ci, p, cid, rm);
         const km =
           run.intent.lat != null && run.intent.lng != null && p.lat != null && p.lng != null
             ? haversineKm(run.intent.lat, run.intent.lng, Number(p.lat), Number(p.lng))
@@ -118,11 +157,14 @@ export function PlaygroundPanel() {
 
         return {
           place: p,
+          placeDoc: pi.doc,
+          placeVec: pi.vec,
           rm,
           lm,
           what,
           where,
           when,
+          www: what * where * when,
           km,
           hoursUnknown: win.unknown,
           promos,
@@ -135,11 +177,11 @@ export function PlaygroundPanel() {
       const kept = screened
         .slice(0, retrieval.shortlistN)
         .sort((a, b) => b.slowTotal - a.slowTotal);
-      out[e.id] = { kept, screened: Math.max(0, rows.length - retrieval.shortlistN) };
+      out[e.id] = { ciDoc, ciVec, kept, screened: Math.max(0, rows.length - retrieval.shortlistN) };
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, places, cfg, mix, promoVals, retrieval]);
+  }, [runs, places, placeIndex, cfg, mix, promoVals, retrieval]);
 
   if (places.length === 0) {
     return (
@@ -168,14 +210,14 @@ export function PlaygroundPanel() {
   return (
     <PanelCard
       title="Playground"
-      subtitle={`${consumers.length} real consumer${consumers.length === 1 ? "" : "s"} · ${places.length} real places · synthetic intents. Fast screens top ${retrieval.shortlistN} → Slow sorts. Lists recompute live with the Params tab.`}
-      pill="RM/LM = heuristic stand-ins"
+      subtitle={`${consumers.length} real consumer${consumers.length === 1 ? "" : "s"} · ${places.length} real places · synthetic intents. Context documents are assembled and embedded (${EMBED_DIMS}d feature-hash); RM-CIP is the cosine of the two vectors. Fast screens top ${retrieval.shortlistN} → Slow sorts.`}
+      pill="emulated encoder + judge"
     >
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-[11px] leading-snug">
           {consumers.length === 0
             ? "No consumers in the DB — runs use a labeled synthetic consumer."
-            : "Generate picks a consumer, synthesizes an intent, scores every place."}
+            : "Generate picks a consumer, synthesizes an intent, builds the documents, embeds them, scores every place."}
         </p>
         <button
           type="button"
@@ -211,65 +253,86 @@ export function PlaygroundPanel() {
 
               {!run || !res ? (
                 <p className="text-muted-foreground mt-4 text-[12px]">
-                  Generate to run: pick a consumer, synthesize an intent, score every place.
+                  Generate to run: consumer → intent → documents → vectors → scores.
                 </p>
               ) : (
                 <>
-                  {/* The C and the I of CIP */}
+                  {/* CI — the merged consumer+intent document, then its vector */}
                   <div className="bg-muted/50 border-border/60 mt-3 rounded-lg border px-3 py-2">
-                    <p className="font-mono text-[10.5px]">
-                      <span className="text-muted-foreground">C · </span>
-                      {run.profile.consumer?.label ?? "—"} ·{" "}
-                      {run.profile.consumer?.class_key ?? "synthetic"}
-                      {run.profile.synthetic ? (
-                        <span className="text-amber-700"> · taste SYNTH</span>
-                      ) : null}
-                      <span className="text-muted-foreground">
-                        {" "}
-                        [{run.profile.tasteTokens.slice(0, 5).join(", ")}]
-                      </span>
+                    <p className="text-muted-foreground text-[9.5px] font-bold tracking-[0.1em] uppercase">
+                      CI document{run.profile.synthetic ? " · taste SYNTH" : ""}
                     </p>
-                    <p className="mt-1 font-mono text-[10.5px]">
-                      <span className="text-muted-foreground">I · </span>
-                      {run.intent.text}
+                    <pre className="mt-1 font-mono text-[10.5px] leading-relaxed whitespace-pre-wrap">
+                      {res.ciDoc}
+                    </pre>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-muted-foreground text-[9.5px] font-bold tracking-[0.1em] uppercase">
+                      CI embedding · {EMBED_DIMS}d
                     </p>
+                    <VectorStrip vec={res.ciVec} className="mt-1" />
                   </div>
 
-                  {/* Just the list */}
-                  <div className="mt-2.5 flex flex-col">
+                  {/* The list — every sub-score emulated per place */}
+                  <div className="mt-3 flex flex-col">
                     {res.kept.map((r, k) => (
-                      <div
-                        key={r.place.id}
-                        className="border-border/40 flex items-baseline gap-2 border-b py-1.5 last:border-0"
-                      >
-                        <span className="text-muted-foreground w-4 shrink-0 font-mono text-[11px] tabular-nums">
-                          {k + 1}
-                        </span>
-                        <span
-                          className="min-w-0 flex-1 truncate text-[12.5px] font-medium"
-                          title={r.place.name}
-                        >
-                          {r.place.name}
-                        </span>
-                        <span className="font-mono text-[13px] font-semibold tabular-nums">
-                          {r.slowTotal.toFixed(1)}
-                        </span>
+                      <div key={r.place.id} className="border-border/40 border-b py-2 last:border-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-muted-foreground w-4 shrink-0 font-mono text-[11px] tabular-nums">
+                            {k + 1}
+                          </span>
+                          <span
+                            className="min-w-0 flex-1 truncate text-[12.5px] font-medium"
+                            title={r.place.name}
+                          >
+                            {r.place.name}
+                          </span>
+                          <span className="font-mono text-[14px] font-semibold tabular-nums">
+                            {r.slowTotal.toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
+                          <ScoreChip label="RM" value={String(r.rm)} hint="cosine(CI, place) × 100" />
+                          <ScoreChip label="LM" value={String(r.lm)} hint="RM + judge adjustments" />
+                          <ScoreChip
+                            label="WWW"
+                            value={r.www.toFixed(2)}
+                            hint={`what ${r.what.toFixed(2)} × where ${r.where.toFixed(2)} × when ${r.when.toFixed(2)}${r.hoursUnknown ? " (hours?)" : ""}${r.km != null ? ` · ${Math.round(r.km)} km` : ""}`}
+                          />
+                          <ScoreChip label="P" value={String(r.promos)} hint="posture from live rates" />
+                          <span className="min-w-0 flex-1" />
+                          <VectorStrip vec={r.placeVec} mini className="w-[72px] shrink-0" />
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <p className="text-muted-foreground mt-1.5 font-mono text-[9.5px] leading-relaxed">
-                    {res.kept
-                      .map(
-                        (r, k) =>
-                          `${k + 1}· LM ${r.lm} RM ${r.rm} WWW ${(r.what * r.where * r.when).toFixed(2)}${r.hoursUnknown ? "?" : ""} P ${r.promos}${r.km != null ? ` ${Math.round(r.km)}km` : ""}`,
-                      )
-                      .join("   ")}
-                  </p>
                   {res.screened > 0 ? (
                     <p className="text-muted-foreground mt-1 text-[10px]">
                       Fast screened out {res.screened} below the top {retrieval.shortlistN}.
                     </p>
                   ) : null}
+
+                  {/* The wide contexts, verbatim */}
+                  <details className="mt-2">
+                    <summary className="text-muted-foreground cursor-pointer text-[11px] font-semibold">
+                      Context documents — what RAG embeds / the judge reads
+                    </summary>
+                    <div className="mt-2 flex flex-col gap-2">
+                      {res.kept.map((r) => (
+                        <div
+                          key={r.place.id}
+                          className="bg-muted/40 border-border/60 rounded-lg border px-3 py-2"
+                        >
+                          <p className="text-muted-foreground font-mono text-[9.5px]">
+                            place doc · cos {cosineSim(res.ciVec, r.placeVec).toFixed(3)}
+                          </p>
+                          <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
+                            {r.placeDoc}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 </>
               )}
             </div>
@@ -277,5 +340,55 @@ export function PlaygroundPanel() {
         })}
       </div>
     </PanelCard>
+  );
+}
+
+// ── Local bits ─────────────────────────────────────────────────────────
+
+function ScoreChip({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <span
+      title={hint}
+      className="border-border/60 bg-muted/50 inline-flex items-baseline gap-1 rounded-md border px-1.5 py-0.5"
+    >
+      <span className="text-muted-foreground font-mono text-[9px] font-bold">{label}</span>
+      <span className="font-mono text-[11px] font-semibold tabular-nums">{value}</span>
+    </span>
+  );
+}
+
+/** A generated vector, drawn: bar height = |value|, color = sign. */
+function VectorStrip({
+  vec,
+  mini,
+  className = "",
+}: {
+  vec: number[];
+  mini?: boolean;
+  className?: string;
+}) {
+  const bins = mini ? 16 : 64;
+  const step = Math.max(1, Math.floor(vec.length / bins));
+  const vals: number[] = [];
+  for (let i = 0; i < vec.length; i += step) vals.push(vec[i]);
+  const max = Math.max(0.0001, ...vals.map((v) => Math.abs(v)));
+  return (
+    <div
+      className={
+        "bg-muted/40 border-border/50 flex items-end gap-px overflow-hidden rounded border px-0.5 pt-0.5 " +
+        (mini ? "h-4" : "h-8") +
+        " " +
+        className
+      }
+      title={`${vec.length}d feature-hash embedding (emulated)`}
+    >
+      {vals.map((v, i) => (
+        <span
+          key={i}
+          className={"w-full rounded-t-[1px] " + (v >= 0 ? "bg-sky-500/60" : "bg-pink-500/60")}
+          style={{ height: `${Math.max(6, (Math.abs(v) / max) * 100)}%` }}
+        />
+      ))}
+    </div>
   );
 }
