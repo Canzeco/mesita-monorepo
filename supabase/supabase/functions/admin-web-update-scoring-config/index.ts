@@ -78,6 +78,33 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     promos[p] = v;
   }
 
+  // v7.6: the configurable pipeline — which TEXT fields each match tier reads
+  // (keys of web-admin's CONTEXT_FIELDS registry). Validation is STRUCTURAL
+  // only ("side.name" strings, deduped, capped) — the exact key list lives in
+  // the frontend registry and its coercer drops unknowns on read, so this EF
+  // never has to chase it. Missing/absent → omitted; the client coerces to
+  // its defaults. Empty arrays are VALID (everything off — degenerate on
+  // purpose).
+  const KEY_RE = /^(consumer|intent|place)\.[a-z_]{1,32}$/;
+  const contextIn = r.context as Record<string, unknown> | undefined;
+  let context: Record<string, string[]> | null = null;
+  if (contextIn !== undefined) {
+    if (!contextIn || typeof contextIn !== "object") {
+      return { ok: false, error: "config.context must be an object" };
+    }
+    context = {};
+    for (const tier of ["ripm", "lipm"] as const) {
+      const v = contextIn[tier];
+      if (!Array.isArray(v)) return { ok: false, error: `context.${tier} must be an array` };
+      const clean = [...new Set(v.filter((k) => typeof k === "string" && KEY_RE.test(k)))];
+      if (clean.length !== v.length) {
+        return { ok: false, error: `context.${tier} has invalid or duplicate keys` };
+      }
+      if (clean.length > 64) return { ok: false, error: `context.${tier} too large` };
+      context[tier] = (clean as string[]).sort();
+    }
+  }
+
   return {
     ok: true,
     config: {
@@ -86,6 +113,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       retrieval: { recallTopK, shortlistN },
       www: { distanceHalfKm, waitHalfH, waitExp, sessionH, whatOffFactor },
       promos,
+      ...(context ? { context } : {}),
     },
   };
 }

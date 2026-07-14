@@ -17,7 +17,16 @@ import {
 } from "@/lib/business/scores";
 import { STRATEGIES } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
-import { Chip, ContextCols, GroupHead, LANE_SHORT, PanelCard, Slider, SubHead } from "../panel-ui";
+import {
+  Chip,
+  ContextCols,
+  ContextConfigCols,
+  GroupHead,
+  LANE_SHORT,
+  PanelCard,
+  Slider,
+  SubHead,
+} from "../panel-ui";
 
 // Scoring Pipeline — divide et impera: ONE BOX PER SUB-FUNCTION, each with
 // its own knobs AND its data-access contract (which consumer / intent / place
@@ -42,6 +51,8 @@ export function HyperparamsPanel() {
     setRetrieval,
     promoVals,
     setPromoVals,
+    context,
+    toggleContext,
     dirty,
     saving,
     saveError,
@@ -50,6 +61,9 @@ export function HyperparamsPanel() {
     resetToDefaults,
     revert,
   } = useScoring();
+
+  const ripmSet = new Set(context.ripm);
+  const lipmSet = new Set(context.lipm);
 
   const set = <K extends keyof ScoresConfig>(k: K, v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
@@ -136,7 +150,8 @@ export function HyperparamsPanel() {
       {/* ══ RIPM ═════════════════════════════════════════════════════ */}
       <PanelCard
         title="RIPM · RAG match score"
-        subtitle="cosine(consumer+intent embedding, place embedding) — cheap, whole catalog. Reads TEXT only: address, hours and time appear as words, never as computed numbers."
+        subtitle="cosine(consumer+intent embedding, place embedding) — cheap, whole catalog. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Playground re-embeds and re-ranks from exactly this set."
+        pill={`${context.ripm.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-md">
           <Slider
@@ -149,15 +164,16 @@ export function HyperparamsPanel() {
             onChange={(v) => setRetrieval((r) => ({ ...r, recallTopK: v }))}
             hint="places pgvector returns per query"
           />
-          <Chip label="Today" value="token overlap" hint="stand-in until embeddings exist" />
+          <Chip label="Today" value="feature-hash cosine" hint="emulated encoder until pgvector exists" />
         </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.ripm} />
+        <ContextConfigCols enabled={ripmSet} onToggle={(k) => toggleContext("ripm", k)} />
       </PanelCard>
 
       {/* ══ LIPM ═════════════════════════════════════════════════════ */}
       <PanelCard
         title="LIPM · LLM match score"
-        subtitle="A judge reads the merged consumer+intent profile against the full place profile — expensive, shortlist only. Same question as RIPM, higher fidelity; still text-only."
+        subtitle="A judge reads the merged consumer+intent profile against the full place profile — expensive, shortlist only. Same question as RIPM, higher fidelity; still text-only. Its context is configured separately: the judge usually reads MORE than the embedding (names, proof lines, hours as text)."
+        pill={`${context.lipm.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-md">
           <Slider
@@ -172,7 +188,7 @@ export function HyperparamsPanel() {
           />
           <Chip label="Today" value="RM + judgments" hint="stand-in until the judge EF exists" />
         </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.lipm} />
+        <ContextConfigCols enabled={lipmSet} onToggle={(k) => toggleContext("lipm", k)} />
       </PanelCard>
 
       {/* ══ WWW ══════════════════════════════════════════════════════ */}

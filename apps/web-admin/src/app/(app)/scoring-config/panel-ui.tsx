@@ -1,6 +1,6 @@
 "use client";
 
-import type { LaneId } from "@/lib/business/scores";
+import { CONTEXT_FIELDS, type ContextSide, type LaneId } from "@/lib/business/scores";
 
 // Tiny presentational bits shared by the Params and Playground panels.
 
@@ -149,6 +149,64 @@ export function ContextCols({
       {col("Consumer-data", ctx.consumer)}
       {col("Intent-data", ctx.intent)}
       {col("Place-data", ctx.place)}
+    </div>
+  );
+}
+
+/**
+ * The CONFIGURABLE data-access contract of a match tier (RIPM/LIPM): every
+ * registry field as a toggle. Enabled fields go into the tier's context
+ * documents — the Playground assembles, embeds and scores from exactly this
+ * set, so a toggle here moves the numbers there.
+ */
+export function ContextConfigCols({
+  enabled,
+  onToggle,
+}: {
+  enabled: ReadonlySet<string>;
+  onToggle: (key: string) => void;
+}) {
+  const col = (label: string, side: ContextSide) => (
+    <div>
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+        {label}
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {CONTEXT_FIELDS.filter((f) => f.side === side).map((f) => {
+          const isOn = enabled.has(f.key);
+          return (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => onToggle(f.key)}
+              aria-pressed={isOn}
+              title={
+                (f.note ? `${f.note} · ` : "") +
+                (f.status === "planned" ? "planned — no data yet · " : "") +
+                (isOn ? "in the context — click to exclude" : "excluded — click to include")
+              }
+              className={
+                "rounded-md border px-2 py-0.5 font-mono text-[10.5px] transition active:scale-[0.97] " +
+                (isOn
+                  ? "border-primary/50 bg-primary/10 text-foreground"
+                  : "border-border/50 text-muted-foreground border-dashed opacity-70 hover:opacity-100")
+              }
+            >
+              {f.label}
+              {f.status === "planned" ? (
+                <span className="text-muted-foreground/80"> · planned</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+  return (
+    <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      {col("Consumer-data", "consumer")}
+      {col("Intent-data", "intent")}
+      {col("Place-data", "place")}
     </div>
   );
 }

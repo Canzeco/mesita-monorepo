@@ -55,8 +55,11 @@ type EngineRun = { profile: ConsumerProfile; intent: Intent };
 
 type ScoredRow = {
   place: SamplePlace;
-  placeDoc: string;
-  placeVec: number[];
+  /** What RIPM embeds — assembled from the RIPM context config. */
+  ragDoc: string;
+  ragVec: number[];
+  /** What the LIPM judge reads — assembled from the LIPM context config. */
+  judgeDoc: string;
   rm: number;
   lm: number;
   what: number;
@@ -71,7 +74,8 @@ type ScoredRow = {
 };
 
 type EngineResult = {
-  ciDoc: string;
+  ragCiDoc: string;
+  judgeCiDoc: string;
   ciVec: number[];
   kept: ScoredRow[];
   screened: number;
@@ -79,7 +83,7 @@ type EngineResult = {
 
 export function PlaygroundPanel() {
   const router = useRouter();
-  const { consumers, places, cfg, mix, retrieval, promoVals } = useScoring();
+  const { consumers, places, cfg, mix, retrieval, promoVals, context } = useScoring();
 
   const [runs, setRuns] = useState<Partial<Record<EngineId, EngineRun>>>({});
   const [seed, setSeed] = useState(1);
@@ -95,16 +99,21 @@ export function PlaygroundPanel() {
     setRuns((r) => ({ ...r, [engine]: { profile, intent } }));
   };
 
-  // Place documents + vectors are intent-independent — build once per sample.
+  // The configurable pipeline: which fields each tier reads (Pipeline tab).
+  const ripmSet = useMemo(() => new Set(context.ripm), [context.ripm]);
+  const lipmSet = useMemo(() => new Set(context.lipm), [context.lipm]);
+
+  // Place documents + vectors are intent-independent — build once per sample
+  // per context config: RAG doc (embedded, RIPM set) + judge doc (LIPM set).
   const placeIndex = useMemo(
     () =>
       new Map(
         places.map((p) => {
-          const doc = buildPlaceDoc(p);
-          return [p.id, { doc, vec: embedText(doc) }];
+          const ragDoc = buildPlaceDoc(p, ripmSet);
+          return [p.id, { ragDoc, ragVec: embedText(ragDoc), judgeDoc: buildPlaceDoc(p, lipmSet) }];
         }),
       ),
-    [places],
+    [places, ripmSet, lipmSet],
   );
 
   const maxPromo = Math.max(1, ...Object.values(promoVals));
@@ -122,16 +131,25 @@ export function PlaygroundPanel() {
     for (const e of ENGINE_POLICIES) {
       const run = runs[e.id];
       if (!run) continue;
-      const ci = [...run.profile.tasteTokens, ...run.intent.tokens];
+      // The judge's tokens follow ITS context: taste only if consumer.taste is
+      // in the LIPM set, intent tokens only if intent.query is.
+      const ci = [
+        ...(lipmSet.has("consumer.taste") ? run.profile.tasteTokens : []),
+        ...(lipmSet.has("intent.query") ? run.intent.tokens : []),
+      ];
       const cid = run.profile.consumer?.id ?? "synthetic";
-      const ciDoc = buildCiDoc(run.profile, run.intent);
-      const ciVec = embedText(ciDoc);
+      const ragCiDoc = buildCiDoc(run.profile, run.intent, ripmSet);
+      const judgeCiDoc = buildCiDoc(run.profile, run.intent, lipmSet);
+      const ciVec = embedText(ragCiDoc);
 
       const rows: ScoredRow[] = places.map((p) => {
-        const pi =
-          placeIndex.get(p.id) ?? { doc: buildPlaceDoc(p), vec: embedText(buildPlaceDoc(p)) };
-        const rm = rmFromVectors(ciVec, pi.vec);
-        const lm = lmCip(ci, p, cid, rm);
+        const pi = placeIndex.get(p.id) ?? {
+          ragDoc: buildPlaceDoc(p, ripmSet),
+          ragVec: embedText(buildPlaceDoc(p, ripmSet)),
+          judgeDoc: buildPlaceDoc(p, lipmSet),
+        };
+        const rm = rmFromVectors(ciVec, pi.ragVec);
+        const lm = lmCip(ci, p, cid, rm, lipmSet);
         const km =
           run.intent.lat != null && run.intent.lng != null && p.lat != null && p.lng != null
             ? haversineKm(run.intent.lat, run.intent.lng, Number(p.lat), Number(p.lng))
@@ -157,8 +175,9 @@ export function PlaygroundPanel() {
 
         return {
           place: p,
-          placeDoc: pi.doc,
-          placeVec: pi.vec,
+          ragDoc: pi.ragDoc,
+          ragVec: pi.ragVec,
+          judgeDoc: pi.judgeDoc,
           rm,
           lm,
           what,
@@ -177,11 +196,17 @@ export function PlaygroundPanel() {
       const kept = screened
         .slice(0, retrieval.shortlistN)
         .sort((a, b) => b.slowTotal - a.slowTotal);
-      out[e.id] = { ciDoc, ciVec, kept, screened: Math.max(0, rows.length - retrieval.shortlistN) };
+      out[e.id] = {
+        ragCiDoc,
+        judgeCiDoc,
+        ciVec,
+        kept,
+        screened: Math.max(0, rows.length - retrieval.shortlistN),
+      };
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, places, placeIndex, cfg, mix, promoVals, retrieval]);
+  }, [runs, places, placeIndex, cfg, mix, promoVals, retrieval, ripmSet, lipmSet]);
 
   if (places.length === 0) {
     return (
@@ -210,7 +235,7 @@ export function PlaygroundPanel() {
   return (
     <PanelCard
       title="Playground"
-      subtitle={`${consumers.length} real consumer${consumers.length === 1 ? "" : "s"} · ${places.length} real places · synthetic intents. Context documents are assembled and embedded (${EMBED_DIMS}d feature-hash); RM-CIP is the cosine of the two vectors. Fast screens top ${retrieval.shortlistN} → Slow sorts.`}
+      subtitle={`${consumers.length} real consumer${consumers.length === 1 ? "" : "s"} · ${places.length} real places · synthetic intents. Documents are assembled from the Pipeline tab's context config (RIPM ${context.ripm.length} fields → embedded ${EMBED_DIMS}d; LIPM ${context.lipm.length} fields → the judge), so a toggle there re-ranks here. Fast screens top ${retrieval.shortlistN} → Slow sorts.`}
       pill="emulated encoder + judge"
     >
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -260,10 +285,10 @@ export function PlaygroundPanel() {
                   {/* CI — the merged consumer+intent document, then its vector */}
                   <div className="bg-muted/50 border-border/60 mt-3 rounded-lg border px-3 py-2">
                     <p className="text-muted-foreground text-[9.5px] font-bold tracking-[0.1em] uppercase">
-                      CI document{run.profile.synthetic ? " · taste SYNTH" : ""}
+                      CI document · RIPM context{run.profile.synthetic ? " · taste SYNTH" : ""}
                     </p>
                     <pre className="mt-1 font-mono text-[10.5px] leading-relaxed whitespace-pre-wrap">
-                      {res.ciDoc}
+                      {res.ragCiDoc || "(every RIPM field toggled off)"}
                     </pre>
                   </div>
                   <div className="mt-2">
@@ -301,7 +326,7 @@ export function PlaygroundPanel() {
                           />
                           <ScoreChip label="P" value={String(r.promos)} hint="posture from live rates" />
                           <span className="min-w-0 flex-1" />
-                          <VectorStrip vec={r.placeVec} mini className="w-[72px] shrink-0" />
+                          <VectorStrip vec={r.ragVec} mini className="w-[72px] shrink-0" />
                         </div>
                       </div>
                     ))}
@@ -312,23 +337,43 @@ export function PlaygroundPanel() {
                     </p>
                   ) : null}
 
-                  {/* The wide contexts, verbatim */}
+                  {/* The wide contexts, verbatim — per tier when the configs differ */}
                   <details className="mt-2">
                     <summary className="text-muted-foreground cursor-pointer text-[11px] font-semibold">
                       Context documents — what RAG embeds / the judge reads
                     </summary>
                     <div className="mt-2 flex flex-col gap-2">
+                      {res.judgeCiDoc !== res.ragCiDoc ? (
+                        <div className="bg-muted/40 border-border/60 rounded-lg border px-3 py-2">
+                          <p className="text-muted-foreground font-mono text-[9.5px]">
+                            CI document · LIPM context (the judge&apos;s copy)
+                          </p>
+                          <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
+                            {res.judgeCiDoc || "(every LIPM field toggled off)"}
+                          </pre>
+                        </div>
+                      ) : null}
                       {res.kept.map((r) => (
                         <div
                           key={r.place.id}
                           className="bg-muted/40 border-border/60 rounded-lg border px-3 py-2"
                         >
                           <p className="text-muted-foreground font-mono text-[9.5px]">
-                            place doc · cos {cosineSim(res.ciVec, r.placeVec).toFixed(3)}
+                            RAG place doc · cos {cosineSim(res.ciVec, r.ragVec).toFixed(3)}
                           </p>
                           <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
-                            {r.placeDoc}
+                            {r.ragDoc || "(every RIPM field toggled off)"}
                           </pre>
+                          {r.judgeDoc !== r.ragDoc ? (
+                            <>
+                              <p className="text-muted-foreground border-border/50 mt-2 border-t pt-2 font-mono text-[9.5px]">
+                                judge place doc · LIPM context
+                              </p>
+                              <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
+                                {r.judgeDoc || "(every LIPM field toggled off)"}
+                              </pre>
+                            </>
+                          ) : null}
                         </div>
                       ))}
                     </div>
