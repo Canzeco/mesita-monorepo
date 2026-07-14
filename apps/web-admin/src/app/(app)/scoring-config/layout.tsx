@@ -1,5 +1,6 @@
 import { PageContainer } from "@/components/PageContainer";
 import { getScoringSample } from "./actions";
+import { getScoringSettings } from "./settings-actions";
 import { ScoringLayoutShell } from "./ScoringLayoutShell";
 import { ScoringProvider } from "./ScoringProvider";
 
@@ -15,13 +16,14 @@ export default async function ScoringConfigLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const res = await getScoringSample();
+  const [res, settings] = await Promise.all([getScoringSample(), getScoringSettings()]);
   const consumers = res.ok ? res.sample.consumers : [];
   const places = res.ok ? res.sample.places : [];
+  const initialConfig = settings.ok ? settings.config : null;
 
   return (
     <PageContainer>
-      <ScoringProvider consumers={consumers} places={places}>
+      <ScoringProvider consumers={consumers} places={places} initialConfig={initialConfig}>
         <ScoringLayoutShell>{children}</ScoringLayoutShell>
       </ScoringProvider>
     </PageContainer>

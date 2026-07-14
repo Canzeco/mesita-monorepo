@@ -24,8 +24,23 @@ import { Chip, GroupHead, LANE_SHORT, PanelCard, Slider, SubHead } from "../pane
 // layout). Every knob derives from @/lib/business/scores; none is restated.
 
 export function HyperparamsPanel() {
-  const { cfg, setCfg, mix, setMix, retrieval, setRetrieval, promoVals, setPromoVals } =
-    useScoring();
+  const {
+    cfg,
+    setCfg,
+    mix,
+    setMix,
+    retrieval,
+    setRetrieval,
+    promoVals,
+    setPromoVals,
+    dirty,
+    saving,
+    saveError,
+    savedOk,
+    save,
+    resetToDefaults,
+    revert,
+  } = useScoring();
 
   const set = <K extends keyof ScoresConfig>(k: K, v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
@@ -225,6 +240,63 @@ export function HyperparamsPanel() {
               Playground.
             </p>
           </div>
+        </div>
+
+        {/* Save bar — persist to app_settings.scoring_config */}
+        <div className="border-border/60 border-t pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={resetToDefaults}
+                disabled={saving}
+                className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+              >
+                Reset to defaults
+              </button>
+              <span className="text-xs" aria-live="polite">
+                {dirty && !saving ? (
+                  <span className="text-muted-foreground inline-flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
+                    Unsaved changes
+                  </span>
+                ) : savedOk && !saving ? (
+                  <span className="text-muted-foreground">Saved ✓</span>
+                ) : null}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={revert}
+                disabled={saving || !dirty}
+                className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving || !dirty}
+                className={
+                  "inline-flex h-9 items-center gap-2 rounded-full px-5 text-sm font-semibold transition " +
+                  (saving || dirty
+                    ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
+                    : "bg-muted text-muted-foreground")
+                }
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+          {saveError ? (
+            <p className="mt-2 text-xs font-medium text-red-600">{saveError}</p>
+          ) : null}
+          <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
+            Saved to <span className="font-mono">app_settings.scoring_config</span> — a saved
+            config overrides the code defaults; Reset loads the defaults into the form (save to
+            apply). The Playground follows whatever the form holds, saved or not.
+          </p>
         </div>
 
         {/* Definitions footer */}
