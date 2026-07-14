@@ -35,6 +35,9 @@ export type SampleConsumer = {
   label: string | null;
   class_key: string;
   instagram_followers: number | null;
+  sex: string | null;
+  age: number | null;
+  country: string | null;
   saved_taste: string[];
   visited_taste: string[];
 };
@@ -171,6 +174,7 @@ export function generateIntent(
   // Swipe/Map — FIXED prompt structure; only the data slots change.
   const day = DAYS[seed % DAYS.length];
   const hour = HOURS[seed % HOURS.length];
+  const party = [2, 2, 4, 6][seed % 4];
   const daypart = hour < 15 ? "lunch" : hour < 20 ? "evening" : "night";
   const taste = profile.tasteTokens.slice(0, 4);
   const base = {
@@ -183,9 +187,9 @@ export function generateIntent(
     timeLabel: `${day} ${fmtHour(hour)}`,
   };
   if (engine === "map") {
-    return { ...base, text: `map · viewport ≈2 km around ${a.near} · ${day} ${fmtHour(hour)} · taste: ${taste.join(", ")}` };
+    return { ...base, text: `map · viewport ≈2 km around ${a.near} · ${day} ${fmtHour(hour)} · party of ${party} · taste: ${taste.join(", ")}` };
   }
-  return { ...base, text: `swipe · near ${a.near} · ${day} ${fmtHour(hour)} · taste: ${taste.join(", ")}` };
+  return { ...base, text: `swipe · near ${a.near} · ${day} ${fmtHour(hour)} · party of ${party} · taste: ${taste.join(", ")}` };
 }
 
 // ── Match heuristics (RM/LM stand-ins) ──────────────────────────────────
@@ -219,9 +223,15 @@ const CLASH: Record<string, string[]> = {
   brunch: ["night_club"],
 };
 
-/** LM-CIP — RM plus the structured judgments a judge adds. Deterministic. */
-export function lmCip(ciTokens: string[], place: SamplePlace, consumerId: string): number {
-  let v = rmCip(ciTokens, place);
+/** LM-CIP — RM plus the structured judgments a judge adds. Deterministic.
+ * Pass `rmBase` to build on the vector-cosine RM instead of token overlap. */
+export function lmCip(
+  ciTokens: string[],
+  place: SamplePlace,
+  consumerId: string,
+  rmBase?: number,
+): number {
+  let v = rmBase ?? rmCip(ciTokens, place);
   const ci = new Set(ciTokens);
   const cat = place.category ? norm(place.category) : null;
   if (cat && ci.has(cat)) v += 15;
@@ -324,4 +334,105 @@ export function whatFits(category: string | null, hour: number): boolean {
   if (w.end <= 24) return h >= w.start && h < w.end;
   // Wrapping window (e.g. 21–28 = 21:00–04:00).
   return h >= w.start || h < w.end - 24;
+}
+
+// ── CONTEXT DOCUMENTS — the wide RAG/LLM contexts, assembled for real ───
+// These are the documents the real pipeline will embed (RIPM) and hand to
+// the judge (LIPM), per the PIPELINE_CONTEXT contract: everything is TEXT —
+// hours and zones appear as words; numeric distance/time live only in WWW.
+
+export function hoursToText(hours: SamplePlace["hours"]): string {
+  if (!hours || typeof hours !== "object") return "hours unknown";
+  const parts = Object.entries(hours)
+    .filter(([, v]) => Array.isArray(v) && v.length > 0)
+    .map(([day, v]) => `${day} ${v.map((r) => `${r.open}–${r.close}`).join(", ")}`);
+  return parts.length > 0 ? parts.join(" · ") : "hours unknown";
+}
+
+/** The consumer half of the CI document — barely-mutable side. */
+export function buildConsumerDoc(profile: ConsumerProfile): string {
+  const c = profile.consumer;
+  const who = [
+    c?.label ?? "Anonymous consumer",
+    c?.sex ?? null,
+    c?.age != null ? `${c.age} years old` : null,
+    c?.country ?? null,
+    `${c?.class_key ?? "free"} class`,
+    c?.instagram_followers != null ? `${c.instagram_followers} IG followers` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const taste = `Taste: ${profile.tasteTokens.join(", ")}${profile.synthetic ? " (synthesized — no history yet)" : ""}`;
+  const history = c
+    ? `History: ${c.saved_taste.length > 0 ? `saves around ${c.saved_taste.slice(0, 6).join(", ")}` : "no saves"}; ${c.visited_taste.length > 0 ? `visits around ${c.visited_taste.slice(0, 6).join(", ")}` : "no paid visits"}.`
+    : "History: none.";
+  return `${who}\n${taste}\n${history}`;
+}
+
+/** The full CI document — consumer (stable) + intent (per-query), merged. */
+export function buildCiDoc(profile: ConsumerProfile, intent: Intent): string {
+  return `${buildConsumerDoc(profile)}\nIntent: ${intent.text}`;
+}
+
+/** The place document — what the Enricher's profile embeds / the judge reads. */
+export function buildPlaceDoc(p: SamplePlace): string {
+  const head = [
+    p.name,
+    p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
+    [p.zone, p.city].filter(Boolean).join(", ") || null,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+  const tags = Array.isArray(p.tags) && p.tags.length > 0 ? `Tags: ${p.tags.join(", ")}.` : "";
+  const desc = p.description ? p.description : "";
+  const proof =
+    p.google_stars_overall != null
+      ? `Rated ${p.google_stars_overall}★ across ${p.google_review_count ?? 0} Google reviews.`
+      : "";
+  const hours = `Hours: ${hoursToText(p.hours)}.`;
+  return [head, tags, desc, proof, hours].filter(Boolean).join("\n");
+}
+
+// ── EMULATED EMBEDDINGS — feature-hashed bag-of-tokens ──────────────────
+// A deterministic stand-in for the real embedding model: tokenize the
+// document, hash every token into a signed slot of a fixed-dim vector, L2
+// normalize. Same shape as the real thing (document → vector → cosine), so
+// RM-CIP IS the cosine of two generated vectors — just from a toy encoder.
+
+export const EMBED_DIMS = 64;
+
+const STOP = new Set([
+  "the", "and", "for", "with", "near", "around", "from", "this", "that",
+  "una", "unos", "las", "los", "del", "por", "para", "con",
+]);
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9_áéíóúñü]+/)
+    .filter((t) => t.length >= 3 && !STOP.has(t));
+}
+
+/** Document → deterministic unit vector (feature hashing, signed slots). */
+export function embedText(text: string, dims = EMBED_DIMS): number[] {
+  const v = new Array<number>(dims).fill(0);
+  for (const t of tokenize(text)) {
+    const h = hash(t);
+    const idx = h % dims;
+    const sign = (h >>> 16) & 1 ? 1 : -1;
+    v[idx] += sign;
+  }
+  const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+  return norm > 0 ? v.map((x) => x / norm) : v;
+}
+
+export function cosineSim(a: number[], b: number[]): number {
+  let dot = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) dot += a[i] * b[i];
+  return dot;
+}
+
+/** RM-CIP from the two vectors — negative cosine floors at 0. */
+export function rmFromVectors(ciVec: number[], placeVec: number[]): number {
+  return Math.round(Math.max(0, cosineSim(ciVec, placeVec)) * 100);
 }
