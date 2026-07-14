@@ -58,14 +58,14 @@ const SIDEBAR_NAV = [
     Icon: ENRICHER_PARENT.Icon,
   },
   {
-    href: MEMO_PARENT.href,
-    label: MEMO_PARENT.label,
-    Icon: MEMO_PARENT.Icon,
-  },
-  {
     href: SCORING_PARENT.href,
     label: SCORING_PARENT.label,
     Icon: SCORING_PARENT.Icon,
+  },
+  {
+    href: MEMO_PARENT.href,
+    label: MEMO_PARENT.label,
+    Icon: MEMO_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,

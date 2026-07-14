@@ -207,30 +207,48 @@ export const MATCH_TIERS: readonly MatchTier[] = [
   { id: "slow", label: "Slow", term: "LIPM", detail: "LLM intent-place match · judge, shortlist only" },
 ];
 
+export type EngineId = "swipe" | "map" | "memo";
+
 export type EnginePolicy = {
+  id: EngineId;
   engine: "Swipe" | "Map" | "Memo";
+  /** The tier pipeline — a fact of the architecture, not a hyperparameter. */
   policy: string;
   intent: string;
 };
 
-/** Engines don't own formulas — they decide how far up the fidelity ladder to climb. */
+// Engines don't own formulas — every engine screens with Fast and sorts with
+// Slow (Pato 2026-07-14, superseding the earlier per-engine split where Map
+// was Fast-only and Memo Slow-only). What differs per engine is intent-data
+// and its LANE MIX (DEFAULT_ENGINE_MIX below).
 export const ENGINE_POLICIES: readonly EnginePolicy[] = [
-  {
-    engine: "Swipe",
-    policy: "screen with Fast → sort the top n with Slow",
-    intent: "prebuilt taste embedding",
-  },
-  {
-    engine: "Map",
-    policy: "Fast only — RAG order suffices at map altitude",
-    intent: "taste embedding + viewport",
-  },
-  {
-    engine: "Memo",
-    policy: "Slow sorts — Fast is recall only, its order irrelevant",
-    intent: "synthesized from the question, per query",
-  },
+  { id: "swipe", engine: "Swipe", policy: "fast screens → slow sorts", intent: "prebuilt taste embedding" },
+  { id: "map",   engine: "Map",   policy: "fast screens → slow sorts", intent: "taste embedding + viewport" },
+  { id: "memo",  engine: "Memo",  policy: "fast screens → slow sorts", intent: "synthesized from the question, per query" },
 ];
+
+/**
+ * Engine lane mix — what share of an engine's results each lane supplies.
+ * THE interleave knob (previously "TBD"). Percentages per engine sum to 100.
+ * Every number is a belief, not a fitted value.
+ */
+export const DEFAULT_ENGINE_MIX: Record<EngineId, Record<LaneId, number>> = {
+  swipe: { "organic-now": 50, "organic-future": 10, "inorganic-now": 30, "inorganic-future": 10 },
+  map:   { "organic-now": 55, "organic-future": 10, "inorganic-now": 25, "inorganic-future": 10 },
+  memo:  { "organic-now": 45, "organic-future": 35, "inorganic-now": 10, "inorganic-future": 10 },
+};
+
+/**
+ * Retrieval knobs — RIPD (RAG intent-place data) and LIPD (LLM intent-place
+ * data) sides of the match. The playground doesn't retrieve, so these bind
+ * only when the engines go live; they live here so the page derives them.
+ */
+export const DEFAULT_RETRIEVAL = {
+  /** RIPD — how many places pgvector recall returns. */
+  recallTopK: 50,
+  /** LIPD — how many recalled places the LLM judge re-scores. */
+  shortlistN: 20,
+};
 
 export type LaneInputs = {
   /** 0–100 — RIPM or LIPM, whichever tier the caller is scoring. */
