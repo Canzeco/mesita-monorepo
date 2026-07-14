@@ -15,30 +15,30 @@
 // disagreement the Swipe rerank exists to fix.
 //
 //   lane              Fast (RAG)      Slow (LLM)
-//   organic   now     RIPM·WW         LIPM·WW
+//   organic   now     RIPM·WWW         LIPM·WWW
 //   organic   future  RIPM            LIPM
-//   inorganic now     RIPM·WW·P       LIPM·WW·P
+//   inorganic now     RIPM·WWW·P       LIPM·WWW·P
 //   inorganic future  RIPM·P          LIPM·P
 //
 //   RIPM, LIPM 0–100  0 is reachable and zeroes every lane — "money can't
 //                     buy irrelevance" is the whole reason match multiplies.
-//   WW         0–1    the moment: where(km) × when(opens_in, open_for).
-//                     Now-mode only.
+//   WWW        0–1    the moment: what(daypart) × where(km) × when(opens_in,
+//                     open_for). Now-mode only.
 //   P          0–3    promos — the membership ladder; see ./strategies.
 //
 // ── TEXT vs NUMBERS — who actually knows about where/when ─────────────
 // Intent-data and place-data both carry where/when as TEXT — an address, hours
 // as written, a question that says "near Providencia tonight". So RIPM/LIPM
-// may pick up place- and time-flavor implicitly. That's redundant with WW,
+// may pick up place- and time-flavor implicitly. That's redundant with WWW,
 // and it's fine. What the match tiers NEVER receive is computed numbers: no
 // distance-km, no hours-until-open are precomputed and written into their
-// context. WW is the only function that computes where and when as numerical
+// context. WWW is the only function that computes where and when as numerical
 // values — and it MULTIPLIES RIPM or LIPM; it never feeds them.
 //
 // ENGINES ARE PIPELINE POLICIES, not formulas — each decides how far up the
 // fidelity ladder to climb (ENGINE_POLICIES below):
 //
-//   Swipe  screen with Fast (top n over the catalog — WW·P included, so no
+//   Swipe  screen with Fast (top n over the catalog — WWW·P included, so no
 //          Slow calls are wasted on closed or far places) → sort n with Slow.
 //   Map    Fast only. RAG order is good enough at map altitude, and the
 //          viewport already did half the filtering.
@@ -115,9 +115,17 @@ export type ScoresConfig = {
   waitExp: number;
   /** Hours the visit needs. Category-shaped. */
   sessionH: number;
+  /**
+   * WHAT — what a place keeps when the moment is the wrong daypart for its
+   * category (a brunch place at 23:00). Soft: the place is OPEN and a sharp
+   * Match can still surface it for an explicit ask; it just shouldn't fill
+   * now-decks. 0.3 = wrong hour costs ~2/3 — harsher than neutral, softer
+   * than closed.
+   */
+  whatOffFactor: number;
 };
 
-// WW defaults, argued from what Mesita IS — not from what looked right on a
+// WWW defaults, argued from what Mesita IS — not from what looked right on a
 // 5-row catalog:
 //
 //   distanceHalfKm 6 — GDL and MTY are CAR cities. A normal Friday span (San
@@ -143,7 +151,19 @@ export const DEFAULT_SCORES_CONFIG: ScoresConfig = {
   waitHalfH: 1.5,
   waitExp: 2.5,
   sessionH: 1.5,
+  whatOffFactor: 0.3,
 };
+
+/**
+ * WHAT — daypart suitability, 0–1. `fits` comes from the category↔daypart
+ * map (cip.whatFit resolves it); unknown categories fit everything. The
+ * moment is WWW = what × where × when — v7 briefly dropped WHAT on the
+ * theory that "Match is the what"; wrong: Match is *semantic* what, this is
+ * *temporal* what (brunch at 23:00 is semantically brunch, temporally off).
+ */
+export function whatScore(fits: boolean, cfg: ScoresConfig = DEFAULT_SCORES_CONFIG): number {
+  return fits ? 1 : Math.max(0, Math.min(1, cfg.whatOffFactor));
+}
 
 /** Snap hours to the 30-minute grid. Everything time-shaped goes through this. */
 export function quantizeH(hours: number): number {
@@ -206,10 +226,10 @@ export const LANES: readonly Lane[] = [
   { id: "inorganic-future",lane: "inorganic", mode: "future", formula: "match × promos",                max: MATCH_MAX * PROMO_MAX },
 ];
 
-/** A lane's formula at one tier, in the model's shorthand — e.g. "LIPM·WW·P". */
+/** A lane's formula at one tier, in the model's shorthand — e.g. "LIPM·WWW·P". */
 export function laneFormula(lane: Lane, term: "RIPM" | "LIPM"): string {
   const parts: string[] = [term];
-  if (lane.mode === "now") parts.push("WW");
+  if (lane.mode === "now") parts.push("WWW");
   if (lane.lane === "inorganic") parts.push("P");
   return parts.join("·");
 }
@@ -310,7 +330,7 @@ export type ScoringSettings = {
   v: 1;
   mix: Record<EngineId, Record<LaneId, number>>;
   retrieval: { recallTopK: number; shortlistN: number };
-  ww: Pick<ScoresConfig, "distanceHalfKm" | "waitHalfH" | "waitExp" | "sessionH">;
+  www: Pick<ScoresConfig, "distanceHalfKm" | "waitHalfH" | "waitExp" | "sessionH" | "whatOffFactor">;
   promos: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
 };
 
@@ -318,11 +338,12 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   v: 1,
   mix: DEFAULT_ENGINE_MIX,
   retrieval: DEFAULT_RETRIEVAL,
-  ww: {
+  www: {
     distanceHalfKm: DEFAULT_SCORES_CONFIG.distanceHalfKm,
     waitHalfH: DEFAULT_SCORES_CONFIG.waitHalfH,
     waitExp: DEFAULT_SCORES_CONFIG.waitExp,
     sessionH: DEFAULT_SCORES_CONFIG.sessionH,
+    whatOffFactor: DEFAULT_SCORES_CONFIG.whatOffFactor,
   },
   // Linear so relevance can beat money inside the paid lane; Zero = 0 because
   // there is nothing to promote (no discount) — the membership buys listing +
@@ -355,7 +376,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   ) as ScoringSettings["mix"];
 
   const ret = (r.retrieval ?? {}) as Record<string, unknown>;
-  const ww = (r.ww ?? {}) as Record<string, unknown>;
+  const www = ((r.www ?? r.ww) ?? {}) as Record<string, unknown>;
   const promos = (r.promos ?? {}) as Record<string, unknown>;
 
   return {
@@ -365,11 +386,12 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
       shortlistN: num(ret.shortlistN, d.retrieval.shortlistN, 1, 50),
     },
-    ww: {
-      distanceHalfKm: num(ww.distanceHalfKm, d.ww.distanceHalfKm, 1, 20),
-      waitHalfH: num(ww.waitHalfH, d.ww.waitHalfH, 0.5, 4),
-      waitExp: num(ww.waitExp, d.ww.waitExp, 1, 5),
-      sessionH: num(ww.sessionH, d.ww.sessionH, 0.5, 4),
+    www: {
+      distanceHalfKm: num(www.distanceHalfKm, d.www.distanceHalfKm, 1, 20),
+      waitHalfH: num(www.waitHalfH, d.www.waitHalfH, 0.5, 4),
+      waitExp: num(www.waitExp, d.www.waitExp, 1, 5),
+      sessionH: num(www.sessionH, d.www.sessionH, 0.5, 4),
+      whatOffFactor: num(www.whatOffFactor, d.www.whatOffFactor, 0, 1),
     },
     promos: {
       zero: num(promos.zero, d.promos.zero, 0, 9),
@@ -387,6 +409,8 @@ export type LaneInputs = {
   where: number;
   /** 0–1. */
   when: number;
+  /** 0–1 — daypart suitability (WHAT). Omit for 1 (no penalty). */
+  what?: number;
   /** 0–3. */
   promos: number;
 };
@@ -394,7 +418,92 @@ export type LaneInputs = {
 /** One lane's rank value. Match multiplies un-floored, so 0 relevance zeroes it. */
 export function laneScore(lane: Lane, i: LaneInputs): number {
   const m = Math.max(0, Math.min(MATCH_MAX, i.match));
-  const moment = lane.mode === "now" ? i.where * i.when : 1;
+  const moment = lane.mode === "now" ? (i.what ?? 1) * i.where * i.when : 1;
   const paid = lane.lane === "inorganic" ? i.promos : 1;
   return m * moment * paid;
 }
+
+// ── PIPELINE CONTEXT — the data-access contract per sub-function ────────
+// Which fields of consumer-data / intent-data / place-data each score reads.
+// "live" = used by today's playground heuristics; "planned" = in the contract
+// for the real RAG/LLM build but not consumed yet; "spec" = folded into the
+// embedding/judge context by design even though the current heuristic only
+// uses a token subset. This IS the boundary that keeps the model debuggable:
+// RIPM/LIPM read TEXT (address/hours/time as words); WWW alone reads NUMBERS.
+
+export type ContextField = {
+  field: string;
+  status: "live" | "planned" | "spec";
+  note?: string;
+};
+
+export type SubFunctionContext = {
+  consumer: ContextField[];
+  intent: ContextField[];
+  place: ContextField[];
+};
+
+export const PIPELINE_CONTEXT: Record<"ripm" | "lipm" | "www" | "promo", SubFunctionContext> = {
+  ripm: {
+    consumer: [
+      { field: "saved taste (categories+tags)", status: "live" },
+      { field: "visited taste (paid tickets)", status: "live" },
+      { field: "class (free/premium)", status: "planned" },
+      { field: "age band (birthday)", status: "planned" },
+      { field: "sex", status: "planned" },
+    ],
+    intent: [
+      { field: "day + time (as text)", status: "live" },
+      { field: "what / occasion tokens", status: "live" },
+      { field: "zone (as text)", status: "live" },
+      { field: "question text (Memo)", status: "live" },
+      { field: "party size", status: "planned" },
+      { field: "budget", status: "planned" },
+    ],
+    place: [
+      { field: "category", status: "live" },
+      { field: "tags", status: "live" },
+      { field: "zone · city", status: "live" },
+      { field: "name", status: "live" },
+      { field: "description", status: "spec", note: "in the embedding text; today's heuristic uses tokens" },
+    ],
+  },
+  lipm: {
+    consumer: [
+      { field: "everything RIPM reads (merged CI profile)", status: "live" },
+      { field: "IG following (magnetism context)", status: "planned" },
+    ],
+    intent: [
+      { field: "everything RIPM reads", status: "live" },
+      { field: "full question text", status: "live" },
+    ],
+    place: [
+      { field: "everything RIPM reads", status: "live" },
+      { field: "full description", status: "spec" },
+      { field: "review snippets", status: "planned" },
+      { field: "google rating + review count", status: "planned" },
+      { field: "price level", status: "planned" },
+      { field: "hours (as text)", status: "spec", note: "text only — numeric hours live in WWW" },
+    ],
+  },
+  www: {
+    consumer: [{ field: "— (location arrives via intent)", status: "live" }],
+    intent: [
+      { field: "location lat/lng (NUMERIC)", status: "live" },
+      { field: "target time (NUMERIC)", status: "live" },
+    ],
+    place: [
+      { field: "lat/lng (NUMERIC)", status: "live" },
+      { field: "hours → open windows (NUMERIC)", status: "live" },
+      { field: "category → daypart map (WHAT)", status: "live" },
+    ],
+  },
+  promo: {
+    consumer: [{ field: "— (never; rates stay blended)", status: "live" }],
+    intent: [{ field: "—", status: "live" }],
+    place: [
+      { field: "welcome/returning × free/premium rates (projects)", status: "live" },
+      { field: "→ posture → rung 0–3", status: "live" },
+    ],
+  },
+};

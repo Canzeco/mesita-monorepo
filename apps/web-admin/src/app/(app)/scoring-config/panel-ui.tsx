@@ -102,3 +102,53 @@ export function PanelCard({
     </section>
   );
 }
+
+/** The data-access contract of one sub-function — three columns of fields. */
+export function ContextCols({
+  ctx,
+}: {
+  ctx: {
+    consumer: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
+    intent: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
+    place: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
+  };
+}) {
+  const col = (
+    label: string,
+    fields: { field: string; status: "live" | "planned" | "spec"; note?: string }[],
+  ) => (
+    <div>
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+        {label}
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {fields.map((f) => (
+          <span
+            key={f.field}
+            title={f.note}
+            className={
+              "rounded-md border px-2 py-0.5 font-mono text-[10.5px] " +
+              (f.status === "live"
+                ? "border-border/70 bg-muted/50 text-foreground/80"
+                : f.status === "spec"
+                  ? "border-border/70 text-foreground/60 border-dashed"
+                  : "border-border/50 text-muted-foreground border-dashed opacity-75")
+            }
+          >
+            {f.field}
+            {f.status !== "live" ? (
+              <span className="text-muted-foreground/80"> · {f.status}</span>
+            ) : null}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      {col("Consumer-data", ctx.consumer)}
+      {col("Intent-data", ctx.intent)}
+      {col("Place-data", ctx.place)}
+    </div>
+  );
+}

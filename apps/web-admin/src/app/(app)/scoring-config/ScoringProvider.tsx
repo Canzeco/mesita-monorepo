@@ -34,7 +34,7 @@ function fromSettings(s: ScoringSettings): {
   promoVals: PromoVals;
 } {
   return {
-    cfg: { ...DEFAULT_SCORES_CONFIG, ...s.ww },
+    cfg: { ...DEFAULT_SCORES_CONFIG, ...s.www },
     mix: s.mix,
     retrieval: s.retrieval,
     promoVals: { ...s.promos },
@@ -99,11 +99,12 @@ export function ScoringProvider({
       v: 1,
       mix,
       retrieval,
-      ww: {
+      www: {
         distanceHalfKm: cfg.distanceHalfKm,
         waitHalfH: cfg.waitHalfH,
         waitExp: cfg.waitExp,
         sessionH: cfg.sessionH,
+        whatOffFactor: cfg.whatOffFactor,
       },
       promos: {
         zero: promoVals.zero,

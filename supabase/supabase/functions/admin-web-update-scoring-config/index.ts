@@ -56,13 +56,18 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     return { ok: false, error: "retrieval.recallTopK / shortlistN out of range" };
   }
 
-  const ww = r.ww as Record<string, unknown> | undefined;
-  const distanceHalfKm = num(ww?.distanceHalfKm, 1, 20);
-  const waitHalfH = num(ww?.waitHalfH, 0.5, 4);
-  const waitExp = num(ww?.waitExp, 1, 5);
-  const sessionH = num(ww?.sessionH, 0.5, 4);
-  if (distanceHalfKm == null || waitHalfH == null || waitExp == null || sessionH == null) {
-    return { ok: false, error: "ww knobs out of range" };
+  // v7.4: the moment is WWW (what · where · when). Accept legacy `ww` too.
+  const www = (r.www ?? r.ww) as Record<string, unknown> | undefined;
+  const distanceHalfKm = num(www?.distanceHalfKm, 1, 20);
+  const waitHalfH = num(www?.waitHalfH, 0.5, 4);
+  const waitExp = num(www?.waitExp, 1, 5);
+  const sessionH = num(www?.sessionH, 0.5, 4);
+  const whatOffFactor = num(www?.whatOffFactor ?? 0.3, 0, 1);
+  if (
+    distanceHalfKm == null || waitHalfH == null || waitExp == null ||
+    sessionH == null || whatOffFactor == null
+  ) {
+    return { ok: false, error: "www knobs out of range" };
   }
 
   const promosIn = r.promos as Record<string, unknown> | undefined;
@@ -79,7 +84,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       v: 1,
       mix,
       retrieval: { recallTopK, shortlistN },
-      ww: { distanceHalfKm, waitHalfH, waitExp, sessionH },
+      www: { distanceHalfKm, waitHalfH, waitExp, sessionH, whatOffFactor },
       promos,
     },
   };

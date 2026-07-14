@@ -13,7 +13,7 @@ export const SCORING_PARENT = {
 } as const;
 
 export const SCORING_SUBROUTES = [
-  { href: "/scoring-config/params", label: "Params", Icon: SlidersHorizontal },
+  { href: "/scoring-config/params", label: "Pipeline", Icon: SlidersHorizontal },
   { href: "/scoring-config/playground", label: "Playground", Icon: FlaskConical },
   { href: "/scoring-config/memo", label: "Memo", Icon: MessagesSquare },
 ] as const satisfies ReadonlyArray<{
