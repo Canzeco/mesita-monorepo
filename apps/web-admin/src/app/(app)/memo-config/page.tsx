@@ -1,7 +1,7 @@
-import { MemoConfigClient } from "./MemoConfigClient";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default function MemoConfigPage() {
-  return <MemoConfigClient />;
+// Memo Config moved into the scoring system (Memo is one of the three scoring
+// engines) — keep the old URL alive.
+export default function LegacyMemoConfigRedirect() {
+  redirect("/scoring-config/memo");
 }

@@ -25,6 +25,9 @@
 
 import type { EngineId } from "./scores";
 
+/** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
+export const SAMPLE_MAX = 10;
+
 // ── Sample types (shape of admin-web-get-scoring-sample) ───────────────
 
 export type SampleConsumer = {
