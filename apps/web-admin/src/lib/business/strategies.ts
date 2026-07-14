@@ -153,3 +153,29 @@ export function strategyForPlace(rates: StrategyRates): StrategyId | null {
   );
   return match?.id ?? null;
 }
+
+// Promo Score for the recommendation-Scores model (0–3) — the posture as a
+// number. Linear, so posture and relevance stay comparable and a sharply-
+// matched Conservative place can still out-rank a loosely-matched Dominant one
+// inside the paid lane (which only ranks against itself, so only the SPREAD
+// between rungs matters, never the absolute scale).
+//
+// Zero is 0: no discounts, no paid placement. A Zero member is listed on Mesita
+// and competes organically like anyone else — it simply doesn't enter the paid
+// lane, because there is nothing to promote. Custom/legacy rates that match no
+// preset (null) land here too, as will strike-paused members once enforcement
+// ships.
+//
+// NOTE: the `visibility` labels above still read Low/Mid/High/Max across the
+// four postures, which no longer lines up — Zero earns no placement here but is
+// labelled "Low" on the business-facing cards. One of the two needs to move.
+export const PROMO_SCORE_BY_STRATEGY: Record<StrategyId, number> = {
+  zero: 0,
+  conservative: 1,
+  aggressive: 2,
+  dominant: 3,
+};
+
+export function promoScoreForStrategy(id: StrategyId | null): number {
+  return id == null ? 0 : PROMO_SCORE_BY_STRATEGY[id];
+}
