@@ -320,6 +320,76 @@ export const DEFAULT_RETRIEVAL = {
   shortlistN: 20,
 };
 
+// ── CONTEXT FIELD REGISTRY — the configurable pipeline ──────────────────
+// Every TEXT field the match tiers could read, with a stable key. Which of
+// these RIPM and LIPM actually receive is CONFIG (ContextConfig below,
+// persisted in the blob): the admin toggles fields per sub-function and the
+// playground assembles its documents from exactly the enabled set — so a
+// toggle visibly changes the embedding, the cosine, and the ranking. WWW and
+// P are NOT field-configurable: their inputs are structural (the numeric
+// fields ARE the function), and their behavior knobs live above.
+
+export type ContextSide = "consumer" | "intent" | "place";
+
+export type ContextFieldDef = {
+  /** Stable key, "side.name" — what ContextConfig stores. */
+  key: string;
+  side: ContextSide;
+  label: string;
+  /** "live" = data exists and the doc builders consume it; "planned" = in the contract, no data yet. */
+  status: "live" | "planned";
+  note?: string;
+};
+
+export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
+  // Consumer — the barely-mutable half of the query side.
+  { key: "consumer.name",    side: "consumer", label: "name (first)",                status: "live", note: "identity flavor for the judge; noise for an embedding" },
+  { key: "consumer.sex",     side: "consumer", label: "sex",                         status: "live" },
+  { key: "consumer.age",     side: "consumer", label: "age (from birthday, server-side)", status: "live" },
+  { key: "consumer.country", side: "consumer", label: "country",                     status: "live" },
+  { key: "consumer.class",   side: "consumer", label: "class (free/premium)",        status: "live" },
+  { key: "consumer.ig",      side: "consumer", label: "IG followers (magnetism)",    status: "live" },
+  { key: "consumer.taste",   side: "consumer", label: "taste tokens (saved + visited)", status: "live" },
+  { key: "consumer.history", side: "consumer", label: "history sentence (saves · visits)", status: "live" },
+  // Intent — the per-query half. Where/when appear as TEXT here by design.
+  { key: "intent.query",     side: "intent",   label: "what / occasion (question text)", status: "live" },
+  { key: "intent.time",      side: "intent",   label: "day + time (as text)",        status: "live" },
+  { key: "intent.zone",      side: "intent",   label: "near-zone (as text)",         status: "live" },
+  { key: "intent.party",     side: "intent",   label: "party size",                  status: "live" },
+  { key: "intent.budget",    side: "intent",   label: "budget",                      status: "planned" },
+  // Place — the Enricher-built profile.
+  { key: "place.name",        side: "place",   label: "name",                        status: "live" },
+  { key: "place.category",    side: "place",   label: "category",                    status: "live" },
+  { key: "place.zone_city",   side: "place",   label: "zone · city",                 status: "live" },
+  { key: "place.tags",        side: "place",   label: "tags",                        status: "live" },
+  { key: "place.description", side: "place",   label: "description",                 status: "live" },
+  { key: "place.rating",      side: "place",   label: "google rating + review count", status: "live" },
+  { key: "place.hours_text",  side: "place",   label: "hours (as text)",             status: "live", note: "text only — numeric hours live in WWW" },
+  { key: "place.reviews",     side: "place",   label: "review snippets",             status: "planned" },
+  { key: "place.price",       side: "place",   label: "price level",                 status: "planned" },
+];
+
+export const CONTEXT_KEYS: ReadonlySet<string> = new Set(CONTEXT_FIELDS.map((f) => f.key));
+
+/** Which fields each match tier reads — the configurable half of the pipeline. */
+export type ContextConfig = Record<"ripm" | "lipm", string[]>;
+
+// Defaults follow the tiers' economics: RIPM embeds a LEAN taste+intent
+// document (names, follower counts and proof lines are noise in a cosine);
+// LIPM is the expensive judge and reads EVERYTHING that exists. Planned
+// fields default off — they can be toggled on, but contribute nothing until
+// the data exists.
+// Arrays kept SORTED — the canonical order everywhere (form state sorts too),
+// so key order can never fake an unsaved-changes diff.
+export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
+  ripm: [
+    "consumer.taste", "consumer.class", "consumer.age", "consumer.sex", "consumer.country",
+    "intent.query", "intent.time", "intent.zone", "intent.party",
+    "place.name", "place.category", "place.zone_city", "place.tags", "place.description",
+  ].sort(),
+  lipm: CONTEXT_FIELDS.filter((f) => f.status === "live").map((f) => f.key).sort(),
+};
+
 // ── Persisted settings (app_settings.scoring_config) ────────────────────
 // The Params tab saves ONE versioned blob. NULL in the DB means "following
 // code defaults" — so default improvements propagate until someone saves an
@@ -332,6 +402,7 @@ export type ScoringSettings = {
   retrieval: { recallTopK: number; shortlistN: number };
   www: Pick<ScoresConfig, "distanceHalfKm" | "waitHalfH" | "waitExp" | "sessionH" | "whatOffFactor">;
   promos: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
+  context: ContextConfig;
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
@@ -349,7 +420,17 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   // there is nothing to promote (no discount) — the membership buys listing +
   // tools, generosity buys placement.
   promos: { zero: 0, conservative: 1, aggressive: 2, dominant: 3 },
+  context: DEFAULT_CONTEXT_CONFIG,
 };
+
+// Sorted + deduped so key order can never fake a settings diff. An empty
+// array is a VALID (degenerate) config — everything off; only a non-array
+// falls back to defaults.
+function coerceContextKeys(v: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(v)) return [...fallback].sort();
+  return [...new Set(v.filter((k): k is string => typeof k === "string" && CONTEXT_KEYS.has(k)))]
+    .sort();
+}
 
 function num(v: unknown, fallback: number, lo: number, hi: number): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
@@ -378,6 +459,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const ret = (r.retrieval ?? {}) as Record<string, unknown>;
   const www = ((r.www ?? r.ww) ?? {}) as Record<string, unknown>;
   const promos = (r.promos ?? {}) as Record<string, unknown>;
+  const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
     v: 1,
@@ -398,6 +480,10 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       conservative: num(promos.conservative, d.promos.conservative, 0, 9),
       aggressive: num(promos.aggressive, d.promos.aggressive, 0, 9),
       dominant: num(promos.dominant, d.promos.dominant, 0, 9),
+    },
+    context: {
+      ripm: coerceContextKeys(ctx.ripm, d.context.ripm),
+      lipm: coerceContextKeys(ctx.lipm, d.context.lipm),
     },
   };
 }
@@ -423,13 +509,12 @@ export function laneScore(lane: Lane, i: LaneInputs): number {
   return m * moment * paid;
 }
 
-// ── PIPELINE CONTEXT — the data-access contract per sub-function ────────
-// Which fields of consumer-data / intent-data / place-data each score reads.
-// "live" = used by today's playground heuristics; "planned" = in the contract
-// for the real RAG/LLM build but not consumed yet; "spec" = folded into the
-// embedding/judge context by design even though the current heuristic only
-// uses a token subset. This IS the boundary that keeps the model debuggable:
-// RIPM/LIPM read TEXT (address/hours/time as words); WWW alone reads NUMBERS.
+// ── PIPELINE CONTEXT — the FIXED data-access contracts ──────────────────
+// RIPM/LIPM contracts are CONFIG now (CONTEXT_FIELDS + ContextConfig above —
+// the admin toggles what each tier reads and the playground honors it). WWW
+// and P stay fixed contracts: their inputs are structural — WWW alone reads
+// NUMBERS (that boundary is the model's debuggability), and P reads only the
+// live rates. Their behavior is tuned by the knobs, not by field selection.
 
 export type ContextField = {
   field: string;
@@ -443,49 +528,7 @@ export type SubFunctionContext = {
   place: ContextField[];
 };
 
-export const PIPELINE_CONTEXT: Record<"ripm" | "lipm" | "www" | "promo", SubFunctionContext> = {
-  ripm: {
-    consumer: [
-      { field: "saved taste (categories+tags)", status: "live" },
-      { field: "visited taste (paid tickets)", status: "live" },
-      { field: "class (free/premium)", status: "planned" },
-      { field: "age band (birthday)", status: "planned" },
-      { field: "sex", status: "planned" },
-    ],
-    intent: [
-      { field: "day + time (as text)", status: "live" },
-      { field: "what / occasion tokens", status: "live" },
-      { field: "zone (as text)", status: "live" },
-      { field: "question text (Memo)", status: "live" },
-      { field: "party size", status: "planned" },
-      { field: "budget", status: "planned" },
-    ],
-    place: [
-      { field: "category", status: "live" },
-      { field: "tags", status: "live" },
-      { field: "zone · city", status: "live" },
-      { field: "name", status: "live" },
-      { field: "description", status: "spec", note: "in the embedding text; today's heuristic uses tokens" },
-    ],
-  },
-  lipm: {
-    consumer: [
-      { field: "everything RIPM reads (merged CI profile)", status: "live" },
-      { field: "IG following (magnetism context)", status: "planned" },
-    ],
-    intent: [
-      { field: "everything RIPM reads", status: "live" },
-      { field: "full question text", status: "live" },
-    ],
-    place: [
-      { field: "everything RIPM reads", status: "live" },
-      { field: "full description", status: "spec" },
-      { field: "review snippets", status: "planned" },
-      { field: "google rating + review count", status: "planned" },
-      { field: "price level", status: "planned" },
-      { field: "hours (as text)", status: "spec", note: "text only — numeric hours live in WWW" },
-    ],
-  },
+export const PIPELINE_CONTEXT: Record<"www" | "promo", SubFunctionContext> = {
   www: {
     consumer: [{ field: "— (location arrives via intent)", status: "live" }],
     intent: [

@@ -5,6 +5,7 @@ import {
   coerceScoringSettings,
   DEFAULT_SCORES_CONFIG,
   DEFAULT_SCORING_SETTINGS,
+  type ContextConfig,
   type EngineId,
   type LaneId,
   type ScoresConfig,
@@ -32,12 +33,14 @@ function fromSettings(s: ScoringSettings): {
   mix: EngineMix;
   retrieval: Retrieval;
   promoVals: PromoVals;
+  context: ContextConfig;
 } {
   return {
     cfg: { ...DEFAULT_SCORES_CONFIG, ...s.www },
     mix: s.mix,
     retrieval: s.retrieval,
     promoVals: { ...s.promos },
+    context: { ripm: [...s.context.ripm], lipm: [...s.context.lipm] },
   };
 }
 
@@ -52,6 +55,10 @@ type ScoringCtx = {
   setRetrieval: React.Dispatch<React.SetStateAction<Retrieval>>;
   promoVals: PromoVals;
   setPromoVals: React.Dispatch<React.SetStateAction<PromoVals>>;
+  /** Which fields each match tier reads — the configurable pipeline. */
+  context: ContextConfig;
+  /** Toggle one registry field in one tier's context. */
+  toggleContext: (tier: keyof ContextConfig, key: string) => void;
   /** Current form as a settings blob. */
   current: ScoringSettings;
   dirty: boolean;
@@ -89,6 +96,13 @@ export function ScoringProvider({
   const [mix, setMix] = useState<EngineMix>(seed.mix);
   const [retrieval, setRetrieval] = useState<Retrieval>(seed.retrieval);
   const [promoVals, setPromoVals] = useState<PromoVals>(seed.promoVals);
+  const [context, setContext] = useState<ContextConfig>(seed.context);
+
+  const toggleContext = (tier: keyof ContextConfig, key: string) =>
+    setContext((c) => ({
+      ...c,
+      [tier]: c[tier].includes(key) ? c[tier].filter((k) => k !== key) : [...c[tier], key],
+    }));
 
   const [saving, startSave] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -112,8 +126,10 @@ export function ScoringProvider({
         aggressive: promoVals.aggressive,
         dominant: promoVals.dominant,
       },
+      // Sorted so toggle order never fakes a diff against the saved blob.
+      context: { ripm: [...context.ripm].sort(), lipm: [...context.lipm].sort() },
     }),
-    [mix, retrieval, cfg, promoVals],
+    [mix, retrieval, cfg, promoVals, context],
   );
 
   const dirty = useMemo(
@@ -127,6 +143,7 @@ export function ScoringProvider({
     setMix(f.mix);
     setRetrieval(f.retrieval);
     setPromoVals(f.promoVals);
+    setContext(f.context);
   };
 
   const save = () => {
@@ -159,6 +176,8 @@ export function ScoringProvider({
         setRetrieval,
         promoVals,
         setPromoVals,
+        context,
+        toggleContext,
         current,
         dirty,
         saving,

@@ -108,6 +108,11 @@ export type Intent = {
   engine: EngineId;
   /** The rendered prompt. Fixed structure for swipe/map; flexible for memo. */
   text: string;
+  /**
+   * The prompt decomposed by context key, so the configurable pipeline can
+   * include/exclude each piece (intent.query / .zone / .time / .party).
+   */
+  parts: { query: string; zone: string | null; time: string; party: string | null };
   /** The mutable query-side tokens (merged with taste for matching). */
   tokens: string[];
   lat: number | null;
@@ -160,9 +165,16 @@ export function generateIntent(
   const a = anchor(places, seed);
   if (engine === "memo") {
     const t = MEMO_BANK[seed % MEMO_BANK.length];
+    const parts = {
+      query: t.text,
+      zone: `near ${a.near}`,
+      time: `${t.day} ${fmtHour(t.hour)}`,
+      party: null,
+    };
     return {
       engine,
       text: t.text,
+      parts,
       tokens: [...t.tokens].map(norm),
       lat: a.lat,
       lng: a.lng,
@@ -177,8 +189,16 @@ export function generateIntent(
   const party = [2, 2, 4, 6][seed % 4];
   const daypart = hour < 15 ? "lunch" : hour < 20 ? "evening" : "night";
   const taste = profile.tasteTokens.slice(0, 4);
-  const base = {
+  const parts = {
+    query: `${engine === "map" ? "map browse" : "swipe deck"} · ${daypart} plans · taste: ${taste.join(", ")}`,
+    zone: engine === "map" ? `viewport ≈2 km around ${a.near}` : `near ${a.near}`,
+    time: `${day} ${fmtHour(hour)}`,
+    party: `party of ${party}`,
+  };
+  return {
     engine,
+    text: [parts.query, parts.zone, parts.time, parts.party].filter(Boolean).join(" · "),
+    parts,
     tokens: [daypart, ...taste].map(norm),
     lat: a.lat,
     lng: a.lng,
@@ -186,10 +206,6 @@ export function generateIntent(
     hour,
     timeLabel: `${day} ${fmtHour(hour)}`,
   };
-  if (engine === "map") {
-    return { ...base, text: `map · viewport ≈2 km around ${a.near} · ${day} ${fmtHour(hour)} · party of ${party} · taste: ${taste.join(", ")}` };
-  }
-  return { ...base, text: `swipe · near ${a.near} · ${day} ${fmtHour(hour)} · party of ${party} · taste: ${taste.join(", ")}` };
 }
 
 // ── Match heuristics (RM/LM stand-ins) ──────────────────────────────────
@@ -224,18 +240,22 @@ const CLASH: Record<string, string[]> = {
 };
 
 /** LM-CIP — RM plus the structured judgments a judge adds. Deterministic.
- * Pass `rmBase` to build on the vector-cosine RM instead of token overlap. */
+ * Pass `rmBase` to build on the vector-cosine RM instead of token overlap.
+ * `enabled` = the LIPM context config: the judge only judges on fields it
+ * was given (category off → no category bonus/clash; zone off → no zone). */
 export function lmCip(
   ciTokens: string[],
   place: SamplePlace,
   consumerId: string,
   rmBase?: number,
+  enabled?: ReadonlySet<string> | null,
 ): number {
   let v = rmBase ?? rmCip(ciTokens, place);
   const ci = new Set(ciTokens);
-  const cat = place.category ? norm(place.category) : null;
+  const has = (k: string) => !enabled || enabled.has(k);
+  const cat = has("place.category") && place.category ? norm(place.category) : null;
   if (cat && ci.has(cat)) v += 15;
-  if (place.zone && ci.has(norm(place.zone))) v += 8;
+  if (has("place.zone_city") && place.zone && ci.has(norm(place.zone))) v += 8;
   if (cat) {
     for (const t of ci) if (CLASH[t]?.includes(cat)) { v -= 18; break; }
   }
@@ -338,8 +358,15 @@ export function whatFits(category: string | null, hour: number): boolean {
 
 // ── CONTEXT DOCUMENTS — the wide RAG/LLM contexts, assembled for real ───
 // These are the documents the real pipeline will embed (RIPM) and hand to
-// the judge (LIPM), per the PIPELINE_CONTEXT contract: everything is TEXT —
-// hours and zones appear as words; numeric distance/time live only in WWW.
+// the judge (LIPM): everything is TEXT — hours and zones appear as words;
+// numeric distance/time live only in WWW. WHICH fields go in is CONFIG
+// (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
+// `enabled` key set and assembles from exactly that — so RIPM and LIPM read
+// genuinely different documents, and a toggle on the Pipeline tab changes
+// the embedding, the cosine, and the ranking. `enabled` omitted = all on.
+
+type Enabled = ReadonlySet<string> | null | undefined;
+const on = (enabled: Enabled, key: string) => !enabled || enabled.has(key);
 
 export function hoursToText(hours: SamplePlace["hours"]): string {
   if (!hours || typeof hours !== "object") return "hours unknown";
@@ -350,46 +377,64 @@ export function hoursToText(hours: SamplePlace["hours"]): string {
 }
 
 /** The consumer half of the CI document — barely-mutable side. */
-export function buildConsumerDoc(profile: ConsumerProfile): string {
+export function buildConsumerDoc(profile: ConsumerProfile, enabled?: Enabled): string {
   const c = profile.consumer;
   const who = [
-    c?.label ?? "Anonymous consumer",
-    c?.sex ?? null,
-    c?.age != null ? `${c.age} years old` : null,
-    c?.country ?? null,
-    `${c?.class_key ?? "free"} class`,
-    c?.instagram_followers != null ? `${c.instagram_followers} IG followers` : null,
+    on(enabled, "consumer.name") ? (c?.label ?? "Anonymous consumer") : "Consumer",
+    on(enabled, "consumer.sex") ? (c?.sex ?? null) : null,
+    on(enabled, "consumer.age") && c?.age != null ? `${c.age} years old` : null,
+    on(enabled, "consumer.country") ? (c?.country ?? null) : null,
+    on(enabled, "consumer.class") ? `${c?.class_key ?? "free"} class` : null,
+    on(enabled, "consumer.ig") && c?.instagram_followers != null
+      ? `${c.instagram_followers} IG followers`
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");
-  const taste = `Taste: ${profile.tasteTokens.join(", ")}${profile.synthetic ? " (synthesized — no history yet)" : ""}`;
-  const history = c
-    ? `History: ${c.saved_taste.length > 0 ? `saves around ${c.saved_taste.slice(0, 6).join(", ")}` : "no saves"}; ${c.visited_taste.length > 0 ? `visits around ${c.visited_taste.slice(0, 6).join(", ")}` : "no paid visits"}.`
-    : "History: none.";
-  return `${who}\n${taste}\n${history}`;
+  const taste = on(enabled, "consumer.taste")
+    ? `Taste: ${profile.tasteTokens.join(", ")}${profile.synthetic ? " (synthesized — no history yet)" : ""}`
+    : null;
+  const history = on(enabled, "consumer.history")
+    ? c
+      ? `History: ${c.saved_taste.length > 0 ? `saves around ${c.saved_taste.slice(0, 6).join(", ")}` : "no saves"}; ${c.visited_taste.length > 0 ? `visits around ${c.visited_taste.slice(0, 6).join(", ")}` : "no paid visits"}.`
+      : "History: none."
+    : null;
+  return [who, taste, history].filter(Boolean).join("\n");
 }
 
 /** The full CI document — consumer (stable) + intent (per-query), merged. */
-export function buildCiDoc(profile: ConsumerProfile, intent: Intent): string {
-  return `${buildConsumerDoc(profile)}\nIntent: ${intent.text}`;
+export function buildCiDoc(profile: ConsumerProfile, intent: Intent, enabled?: Enabled): string {
+  const intentBits = [
+    on(enabled, "intent.query") ? intent.parts.query : null,
+    on(enabled, "intent.zone") ? intent.parts.zone : null,
+    on(enabled, "intent.time") ? intent.parts.time : null,
+    on(enabled, "intent.party") ? intent.parts.party : null,
+  ].filter(Boolean);
+  const consumerDoc = buildConsumerDoc(profile, enabled);
+  return intentBits.length > 0
+    ? `${consumerDoc}\nIntent: ${intentBits.join(" · ")}`
+    : consumerDoc;
 }
 
 /** The place document — what the Enricher's profile embeds / the judge reads. */
-export function buildPlaceDoc(p: SamplePlace): string {
+export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
   const head = [
-    p.name,
-    p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
-    [p.zone, p.city].filter(Boolean).join(", ") || null,
+    on(enabled, "place.name") ? p.name : null,
+    on(enabled, "place.category") && p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
+    on(enabled, "place.zone_city") ? [p.zone, p.city].filter(Boolean).join(", ") || null : null,
   ]
     .filter(Boolean)
     .join(" — ");
-  const tags = Array.isArray(p.tags) && p.tags.length > 0 ? `Tags: ${p.tags.join(", ")}.` : "";
-  const desc = p.description ? p.description : "";
+  const tags =
+    on(enabled, "place.tags") && Array.isArray(p.tags) && p.tags.length > 0
+      ? `Tags: ${p.tags.join(", ")}.`
+      : "";
+  const desc = on(enabled, "place.description") && p.description ? p.description : "";
   const proof =
-    p.google_stars_overall != null
+    on(enabled, "place.rating") && p.google_stars_overall != null
       ? `Rated ${p.google_stars_overall}★ across ${p.google_review_count ?? 0} Google reviews.`
       : "";
-  const hours = `Hours: ${hoursToText(p.hours)}.`;
+  const hours = on(enabled, "place.hours_text") ? `Hours: ${hoursToText(p.hours)}.` : "";
   return [head, tags, desc, proof, hours].filter(Boolean).join("\n");
 }
 
