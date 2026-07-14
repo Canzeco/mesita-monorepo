@@ -83,10 +83,9 @@ function shapeAuthedUser(raw: User): AuthedUser {
     email: raw.email ?? null,
     emailLower: raw.email?.toLowerCase() ?? null,
     phone: raw.phone ?? null,
-    appRole:
-      ((raw.app_metadata as Record<string, unknown> | null)?.role as
-        | string
-        | undefined) ?? null,
+    appRole: ((raw.app_metadata as Record<string, unknown> | null)?.role as
+      | string
+      | undefined) ?? null,
     raw,
   };
 }
@@ -186,25 +185,18 @@ export async function checkMembership(
   user: AuthedUser,
   projectId: string,
 ): Promise<Membership> {
-  const saPromise = user.emailLower
-    ? admin
-        .from("super_admins")
-        .select("email")
-        .eq("email", user.emailLower)
-        .maybeSingle()
-    : Promise.resolve({ data: null });
-
-  const vmPromise = admin
-    .from("project_members")
-    .select("role")
-    .eq("project_id", projectId)
-    .eq("business_id", user.id)
-    .maybeSingle();
-
-  const [sa, vm] = await Promise.all([saPromise, vmPromise]);
+  const [isSuperAdmin, vm] = await Promise.all([
+    checkSuperAdmin(admin, user),
+    admin
+      .from("project_members")
+      .select("role")
+      .eq("project_id", projectId)
+      .eq("business_id", user.id)
+      .maybeSingle(),
+  ]);
   const role = (vm.data?.role as MembershipRole | undefined) ?? null;
   return {
-    isSuperAdmin: !!sa.data,
+    isSuperAdmin,
     role,
   };
 }
@@ -212,6 +204,11 @@ export async function checkMembership(
 // Resolves the super-admin allowlist row for the caller, lazy-backfilling
 // user_id so future audit logs can join by uuid without re-reading
 // auth.users. Returns `null` if the caller isn't on the list.
+//
+// Matches on EITHER identity the caller carries: email (Google OAuth
+// operators) or phone (phone-OTP operators). A session may carry only one
+// of the two — `super_admins` rows are keyed by email (PK) but may also
+// pin a `phone`, so a phone-only operator is allowlisted by that column.
 //
 // Pattern moved out of 12+ admin EFs that each reimplemented the same
 // lookup + lazy backfill. Callers that need a hard 403 should use
@@ -222,36 +219,52 @@ export async function checkSuperAdmin(
   admin: SupabaseClient,
   user: AuthedUser,
 ): Promise<boolean> {
-  if (!user.emailLower) return false;
-  const { data: saRow } = await admin
-    .from("super_admins")
-    .select("email, user_id")
-    .eq("email", user.emailLower)
-    .maybeSingle();
+  type SaRow = { email: string; phone: string | null; user_id: string | null };
+  let saRow: SaRow | null = null;
+
+  if (user.emailLower) {
+    const { data } = await admin
+      .from("super_admins")
+      .select("email, phone, user_id")
+      .eq("email", user.emailLower)
+      .maybeSingle();
+    saRow = (data as SaRow | null) ?? null;
+  }
+  if (!saRow && user.phone) {
+    const { data } = await admin
+      .from("super_admins")
+      .select("email, phone, user_id")
+      .eq("phone", user.phone)
+      .maybeSingle();
+    saRow = (data as SaRow | null) ?? null;
+  }
   if (!saRow) return false;
+
   if (saRow.user_id == null) {
-    // Fire-and-forget; the next call picks up the backfilled uuid.
+    // Fire-and-forget; the next call picks up the backfilled uuid. Target
+    // the matched row by its email PK (always present) so the write is
+    // unambiguous regardless of which identity matched.
     void admin
       .from("super_admins")
       .update({ user_id: user.id })
-      .eq("email", user.emailLower)
+      .eq("email", saRow.email)
       .is("user_id", null);
   }
   return true;
 }
 
-// 403s unless the caller's email is in `public.super_admins`. The 401
-// for "no email on session" stays explicit because every admin EF wants
-// to distinguish "I don't know who you are" from "I know but you can't".
+// 403s unless the caller is in `public.super_admins`. The 401 for "no
+// identity on session" stays explicit because every admin EF wants to
+// distinguish "I don't know who you are" from "I know but you can't".
 export async function requireSuperAdmin(
   admin: SupabaseClient,
   user: AuthedUser,
   errorMessage = "Not a super-admin",
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
-  if (!user.emailLower) {
+  if (!user.emailLower && !user.phone) {
     return {
       ok: false,
-      response: json({ ok: false, error: "No email on session" }, 401),
+      response: json({ ok: false, error: "No identity on session" }, 401),
     };
   }
   const ok = await checkSuperAdmin(admin, user);
