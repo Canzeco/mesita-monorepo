@@ -12,8 +12,8 @@
 //       intent, real place; documents → vectors → cosine.
 //   GP  from the real place — google review count × rating (scores.gpParts).
 //   RP  from the real place — posture derived from its live promo rates.
-//   WW  computed from (intent × place): haversine distance + the place's real
-//       hours vs the intent's synthetic query time.
+//   IC  computed from (intent × place): haversine distance + the place's real
+//       hours vs the intent's synthetic query time — the intent's context.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
 // admin-web-get-scoring-sample) — never invented here. Intent is synthetic BY
@@ -205,7 +205,7 @@ export function generateIntent(
   };
 }
 
-// ── WW inputs from real geo + real hours ────────────────────────────────
+// ── IC inputs from real geo + real hours ────────────────────────────────
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371;
@@ -233,7 +233,7 @@ export type OpenWindow = {
 };
 
 /**
- * The place's real hours vs the intent's query time → WW's when-inputs.
+ * The place's real hours vs the intent's query time → IC's when-inputs.
  * Scans today + tomorrow (overnight closes roll past midnight), 12 h horizon.
  * No hours at all → unknown (the caller decides; unknown is not closed).
  */
@@ -278,7 +278,7 @@ export function openWindow(
 // ── CONTEXT DOCUMENTS — the wide embedding contexts, assembled for real ──
 // These are the documents the real pipeline will embed for ES: everything is
 // TEXT — hours and zones appear as words; numeric distance/time live only in
-// WW, numeric proof only in GP. WHICH fields go in is CONFIG
+// IC, numeric proof only in GP. WHICH fields go in is CONFIG
 // (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
 // `enabled` key set and assembles from exactly that — so a toggle on the
 // Pipeline tab changes the embedding, the cosine, and the ranking. `enabled`

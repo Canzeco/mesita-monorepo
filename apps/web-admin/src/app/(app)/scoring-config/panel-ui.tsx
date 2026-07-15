@@ -2,7 +2,7 @@
 
 import { CONTEXT_FIELDS, LANES, type ContextSide, type LaneId } from "@/lib/business/scores";
 
-// Tiny presentational bits shared by the Pipeline, Card Sim and Deck Sim panels.
+// Tiny presentational bits shared by the Subscores, Cards and Decks panels.
 
 /** ON/OF/IN/IF badge text — derived from Lane.short, never restated. */
 export const LANE_SHORT: Record<LaneId, string> = Object.fromEntries(
@@ -153,7 +153,7 @@ export function ContextCols({
 
 /**
  * ES's CONFIGURABLE data-access contract: every registry field as a toggle.
- * Enabled fields go into the embedded documents — the Card Sim and Deck Sim
+ * Enabled fields go into the embedded documents — the Cards and Decks tabs
  * assemble, embed and score from exactly this set, so a toggle here moves
  * the numbers there.
  */

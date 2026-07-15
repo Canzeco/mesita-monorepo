@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
-// The old /playground split into Internals + Engines (MESITA-617), which
-// became the Card Sim + Deck Sim in v9 (MESITA-620). Old links land on the
-// Card Sim.
+// The old /playground split into Internals + Engines (MESITA-617) → Card Sim
+// + Deck Sim (MESITA-620) → the Cards + Decks tabs (MESITA-621). Old links
+// land on Cards.
 export default function ScoringPlaygroundRedirect() {
-  redirect("/scoring-config/card");
+  redirect("/scoring-config/cards");
 }

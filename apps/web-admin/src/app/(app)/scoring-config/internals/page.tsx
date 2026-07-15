@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
-// v9 (MESITA-620): Internals became the Card Sim — one consumer × intent ×
-// place = one CARD with its four Scores. Old links land there.
+// v9 made Internals the Card Sim; v9.1 (MESITA-621) names it the Cards tab.
 export default function ScoringInternalsRedirect() {
-  redirect("/scoring-config/card");
+  redirect("/scoring-config/cards");
 }

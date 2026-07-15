@@ -57,15 +57,15 @@ import {
   VectorStrip,
 } from "../playground-ui";
 
-// CARD SIM — n = 1. One consumer × one intent × one place = ONE CARD; each
-// Sub-Score is its own box showing its whole internal process, result
+// CARDS — n = 1. One consumer × one intent × one place = ONE CARD; each
+// Subscore is its own box showing its whole internal process, result
 // headlined, and the Card's four Scores assemble at the bottom. Everything
-// recomputes live from the Pipeline tab's knobs + context config (shared
+// recomputes live from the Subscores tab's knobs + context config (shared
 // provider). Generate is deterministic (seed counter).
 
 type Specimen = { profile: ConsumerProfile; intent: Intent };
 
-export function CardSimPanel() {
+export function CardsPanel() {
   const { consumers, places, cfg, gpParams, rpVals, context, esParams } = useScoring();
   const [flavor, setFlavor] = useState<EngineId>("swipe");
   const [seed, setSeed] = useState(1);
@@ -112,7 +112,7 @@ export function CardSimPanel() {
     });
     const rp = (posture ? rpVals[posture] : rpVals.zero) ?? 0;
 
-    // WW — where × when, the numeric moment.
+    // IC — where × when, the intent's numeric context.
     const km =
       intent.lat != null && intent.lng != null && place.lat != null && place.lng != null
         ? haversineKm(intent.lat, intent.lng, Number(place.lat), Number(place.lng))
@@ -122,16 +122,16 @@ export function CardSimPanel() {
     const wait = win.unknown ? 1 : waitScore(win.opensInH, cfg);
     const fit = win.unknown ? 1 : fitScore(win.openForH, cfg);
     const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
-    const ww = where * when;
+    const ic = where * when;
 
     const laneRow = (lane: Lane) => ({
       lane,
-      score: laneScore(lane, { es, gp: gp.gp, rp, ww }),
+      score: laneScore(lane, { es, gp: gp.gp, rp, ic }),
     });
 
     return {
       ciDoc, placeDoc, ciVec, placeVec, cos, es, gp, posture, rp,
-      km, where, win, wait, fit, when, ww,
+      km, where, win, wait, fit, when, ic,
       lanes: LANES.map(laneRow),
     };
   }, [run, place, cfg, gpParams, rpVals, esSet, esParams]);
@@ -139,8 +139,8 @@ export function CardSimPanel() {
   if (places.length === 0) {
     return (
       <EmptyCatalog
-        title="Card Sim"
-        subtitle="A CARD = one consumer × intent × place, with its four Scores — every Sub-Score's internal process, on exactly one card."
+        title="Cards"
+        subtitle="A CARD = one consumer × intent × place, with its four Scores — every Subscore's internal process, on exactly one card."
       />
     );
   }
@@ -149,8 +149,8 @@ export function CardSimPanel() {
 
   return (
     <PanelCard
-      title="Card Sim"
-      subtitle="A CARD = one consumer × intent × place, with its four Scores. Each Sub-Score is its own box showing its whole internal process; the Card assembles at the bottom. The specimen lives below."
+      title="Cards"
+      subtitle="A CARD = one consumer × intent × place, with its four Scores. Each Subscore is its own box showing its whole internal process; the Card assembles at the bottom. The specimen lives below."
       pill="n = 1"
     >
       {/* ── The specimen: C × I × P ─────────────────────────────────── */}
@@ -247,7 +247,7 @@ export function CardSimPanel() {
 
       {!run || !it ? (
         <div className="border-border/60 text-muted-foreground mt-3 rounded-xl border border-dashed px-4 py-6 text-center text-[12px]">
-          Generate a consumer + intent — every box below walks one Sub-Score&apos;s internals for
+          Generate a consumer + intent — every box below walks one Subscore&apos;s internals for
           that single card.
         </div>
       ) : (
@@ -256,7 +256,7 @@ export function CardSimPanel() {
           <ScoreBox
             icon={ScanSearch}
             tint="emerald"
-            title="ES Sub-Score · Embeddings Similarity"
+            title="ES Subscore · Embeddings Similarity"
             note="documents → vectors → cosine"
             result={String(it.es)}
           >
@@ -282,7 +282,7 @@ export function CardSimPanel() {
           <ScoreBox
             icon={Star}
             tint="violet"
-            title="GP Sub-Score · Google Popularity"
+            title="GP Subscore · Google Popularity"
             note="reviews × rating → volume × quality → floor"
             result={it.gp.gp.toFixed(2)}
           >
@@ -350,13 +350,13 @@ export function CardSimPanel() {
             </ResultLine>
           </ScoreBox>
 
-          {/* WW — where × when */}
+          {/* IC — where × when */}
           <ScoreBox
             icon={Compass}
             tint="amber"
-            title="WW Sub-Score · the moment"
-            note="where × when — the numeric moment"
-            result={it.ww.toFixed(2)}
+            title="IC Subscore · Intent Context"
+            note="where × when — the intent's numeric context"
+            result={it.ic.toFixed(2)}
           >
             <FactorRow
               name="WHERE"
@@ -379,7 +379,7 @@ export function CardSimPanel() {
               value={it.when}
             />
             <ResultLine>
-              {it.where.toFixed(2)} × {it.when.toFixed(2)} = <b>WW {it.ww.toFixed(2)}</b> —
+              {it.where.toFixed(2)} × {it.when.toFixed(2)} = <b>IC {it.ic.toFixed(2)}</b> —
               multiplies the match in now-mode, never feeds it
             </ResultLine>
           </ScoreBox>
@@ -388,7 +388,7 @@ export function CardSimPanel() {
           <ScoreBox
             icon={BadgePercent}
             tint="rose"
-            title="RP Sub-Score · Rewards Promotions"
+            title="RP Subscore · Rewards Promotions"
             note="live rates → posture → rung"
             result={String(it.rp)}
           >
@@ -414,7 +414,7 @@ export function CardSimPanel() {
             icon={Layers}
             tint="sky"
             title="The Card · four Scores"
-            note="one Score per Lane, from the Sub-Scores above"
+            note="one Score per Lane, from the Subscores above"
             className="xl:col-span-2"
           >
             <div className="border-border/50 overflow-x-auto rounded-lg border">
