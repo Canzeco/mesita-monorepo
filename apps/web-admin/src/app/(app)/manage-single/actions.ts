@@ -95,7 +95,7 @@ export type ReservationTarget = {
   fallbacks?: { channel: ReservationChannel; value?: string | null }[];
 };
 
-// The full place row, loaded for a super-admin via business-get-overview
+// The full place row, loaded for a super-admin via business-web-get-overview
 // (which returns the single requested place when the caller is super-admin).
 // Typed loosely — the editor only touches the known fields below.
 export type AdminPlace = {
@@ -505,7 +505,7 @@ export async function findPlaceByPlaceId(
   // Clean URL — the operator opens this in a fresh tab, the business web's
   // middleware sees no session and bounces through / (the auth surface)
   // if needed. Once signed in (as themselves, via Google), the
-  // business-get-overview EF reads their JWT, finds their email in
+  // business-web-get-overview EF reads their JWT, finds their email in
   // super_admins, and grants place access regardless of project_members.
   const businessOrigin =
     (process.env.BUSINESS_WEB_URL ?? "").trim() || BUSINESS_WEB_URL_FALLBACK;

@@ -1,12 +1,10 @@
 import { getAtlasSettings } from "../actions";
-import { AtlasSettingsError } from "@/components/AtlasSettingsError";
+import { ErrorNote } from "@/components/ErrorNote";
 import { AtlasConfigurationClient } from "../AtlasClient";
-
-export const dynamic = "force-dynamic";
 
 export default async function EnricherConfigPage() {
   const result = await getAtlasSettings();
-  if (!result.ok) return <AtlasSettingsError error={result.error} />;
+  if (!result.ok) return <ErrorNote message={result.error} size="page" />;
 
   return (
     <AtlasConfigurationClient

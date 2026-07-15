@@ -104,7 +104,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
       <div className="border-border bg-muted/20 mt-5 flex flex-wrap items-end gap-3 rounded-xl border p-4">
         <div className="min-w-[12rem] flex-1">
           <TextField
-            label="Invite manager"
+            label="Invite member"
             type="email"
             value={email}
             onChange={setEmail}
@@ -140,7 +140,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
         <Spinner label="Loading team…" />
       ) : !snap ? null : (
         <div className="mt-5 flex flex-col gap-5">
-          <Group title="Managers" count={snap.businesses.length}>
+          <Group title="Business members" count={snap.businesses.length}>
             {snap.businesses.map((m) => (
               <Row key={m.memberId}>
                 <div className="min-w-0">

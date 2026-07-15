@@ -1,12 +1,10 @@
 import { getAtlasFields } from "./actions";
-import { AtlasSettingsError } from "@/components/AtlasSettingsError";
+import { ErrorNote } from "@/components/ErrorNote";
 import { AtlasFieldsClient } from "./AtlasFieldsClient";
-
-export const dynamic = "force-dynamic";
 
 export default async function AtlasConfigPage() {
   const result = await getAtlasFields();
-  if (!result.ok) return <AtlasSettingsError error={result.error} />;
+  if (!result.ok) return <ErrorNote message={result.error} size="page" />;
 
   return <AtlasFieldsClient data={result.data} />;
 }

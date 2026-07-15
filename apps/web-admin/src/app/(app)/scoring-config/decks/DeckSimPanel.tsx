@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { SectionCard } from "@/components/SectionCard";
 import {
   CH_ENGINES,
   chScore,
@@ -34,7 +35,7 @@ import {
 } from "@/lib/business/cip";
 import { strategyForPlace } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
-import { LANE_SHORT, PanelCard } from "../panel-ui";
+import { LANE_SHORT, PanelPill } from "../panel-ui";
 import {
   EmptyCatalog,
   ENGINE_ICONS,
@@ -176,10 +177,10 @@ export function DeckSimPanel() {
     : [];
 
   return (
-    <PanelCard
+    <SectionCard
       title="Decks"
       subtitle={`Compose the ${policy.deck} deck. Per-lane MAXES, not quotas: every lane fills its own sub-deck independently, the sub-decks merge into one deck removing repeated places (the paid copy wins), and nothing backfills — a deck is usually smaller than the sum of its maxes, by design.`}
-      pill={`n = ${places.length}`}
+      action={<PanelPill>{`n = ${places.length}`}</PanelPill>}
     >
       {/* ── Query side + deck control ───────────────────────────────── */}
       <div className="border-border/60 from-muted/60 to-card mt-4 rounded-2xl border bg-gradient-to-b p-3">
@@ -461,6 +462,6 @@ export function DeckSimPanel() {
         while paid ≤ organic). sample = {places.length} places; maxes above the pool WILL come up
         short here.
       </p>
-    </PanelCard>
+    </SectionCard>
   );
 }

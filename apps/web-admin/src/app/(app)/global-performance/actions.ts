@@ -2,7 +2,7 @@
 
 import { efResult, type EfResult } from "@/lib/supabase-ef";
 
-// Notification feed types — mirror of the admin-list-notifications EF
+// Notification feed types — mirror of the admin-web-list-notifications EF
 // envelope. The shape is category-agnostic on purpose: future categories
 // (billing, verifications, consumers…) reuse the same item shape and the
 // client renders title/icon from `type`.

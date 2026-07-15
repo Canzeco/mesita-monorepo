@@ -1,8 +1,6 @@
 import { listAdmins } from "./actions";
 import { AdminConfigClient } from "./AdminConfigClient";
 
-export const dynamic = "force-dynamic";
-
 export default async function AdminConfigPage() {
   const res = await listAdmins();
   return (

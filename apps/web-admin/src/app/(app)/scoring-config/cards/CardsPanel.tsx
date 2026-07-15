@@ -12,6 +12,7 @@ import {
   Star,
   UserRound,
 } from "lucide-react";
+import { SectionCard } from "@/components/SectionCard";
 import {
   CH_ENGINES,
   chScore,
@@ -43,7 +44,7 @@ import {
 } from "@/lib/business/cip";
 import { STRATEGIES, strategyForPlace } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
-import { LANE_SHORT, PanelCard } from "../panel-ui";
+import { LANE_SHORT, PanelPill } from "../panel-ui";
 import {
   ConnectorPill,
   DocPre,
@@ -154,10 +155,10 @@ export function CardsPanel() {
   const c = run?.profile.consumer ?? null;
 
   return (
-    <PanelCard
+    <SectionCard
       title="Cards"
       subtitle="A CARD = one consumer × intent × place, with its four Scores. Each Subscore is its own box showing its whole internal process; the Card assembles at the bottom. The specimen lives below."
-      pill="n = 1"
+      action={<PanelPill>n = 1</PanelPill>}
     >
       {/* ── The specimen: C × I × P ─────────────────────────────────── */}
       <div className="border-border/60 from-muted/60 to-card mt-4 rounded-2xl border bg-gradient-to-b p-3">
@@ -478,6 +479,6 @@ export function CardsPanel() {
           </ScoreBox>
         </div>
       )}
-    </PanelCard>
+    </SectionCard>
   );
 }

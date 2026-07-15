@@ -3,8 +3,6 @@ import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { listVerifications } from "./actions";
 import { VerificationsClient } from "./VerificationsClient";
 
-export const dynamic = "force-dynamic";
-
 export default async function VerificationsPage() {
   const result = await listVerifications();
 

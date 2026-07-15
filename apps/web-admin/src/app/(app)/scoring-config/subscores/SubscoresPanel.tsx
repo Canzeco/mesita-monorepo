@@ -13,14 +13,15 @@ import {
   type IcParams,
 } from "@/lib/business/scores";
 import { STRATEGIES } from "@/lib/business/strategies";
+import { SaveBar } from "@/components/SaveBar";
+import { SectionCard } from "@/components/SectionCard";
 import { useScoring } from "../ScoringProvider";
 import {
   Chip,
   ContextCols,
   ContextConfigCols,
-  GroupHead,
   LANE_SHORT,
-  PanelCard,
+  PanelPill,
   Slider,
   SubHead,
 } from "../panel-ui";
@@ -85,10 +86,10 @@ export function SubscoresPanel() {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       {/* ══ ES ═══════════════════════════════════════════════════════ */}
-      <PanelCard
+      <SectionCard
         title="ES Subscore · Embeddings Similarity"
         subtitle="cosine(consumer+intent embedding, place embedding) — one tier, whole catalog; there is no judge. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Cards tab re-embeds and re-ranks from exactly this set."
-        pill={`${context.es.length} fields in context`}
+        action={<PanelPill>{`${context.es.length} fields in context`}</PanelPill>}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
@@ -114,10 +115,10 @@ export function SubscoresPanel() {
           <Chip label="Today" value="feature-hash cosine" hint="emulated encoder until pgvector exists" />
         </div>
         <ContextConfigCols enabled={esSet} onToggle={toggleContext} />
-      </PanelCard>
+      </SectionCard>
 
       {/* ══ GP ═══════════════════════════════════════════════════════ */}
-      <PanelCard
+      <SectionCard
         title="GP Subscore · Google Popularity"
         subtitle="Smooth volume × quality of the place's google reviews — EARNED popularity, the organic lanes' multiplier. Literal reviews × rating was rejected (1★-farmable, rating-decorative) and so was a hard hinge at 3★ (cliff); this is smooth everywhere. The cold-start floor keeps unreviewed places organically alive."
       >
@@ -195,10 +196,10 @@ export function SubscoresPanel() {
           </div>
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.gp} />
-      </PanelCard>
+      </SectionCard>
 
       {/* ══ RP ═══════════════════════════════════════════════════════ */}
-      <PanelCard
+      <SectionCard
         title="RP Subscore · Rewards Promotions"
         subtitle="Posture from the place's live promo rates → a rung — BOUGHT popularity, the paid lanes' multiplier. Linear so relevance can beat money inside the paid lane; 0 = not in the paid lane (nothing to promote). Rates never reach the consumer blended-down — RP reads them server-side only."
       >
@@ -225,10 +226,10 @@ export function SubscoresPanel() {
           ))}
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.rp} />
-      </PanelCard>
+      </SectionCard>
 
       {/* ══ IC ═══════════════════════════════════════════════════════ */}
-      <PanelCard
+      <SectionCard
         title="IC Subscore · Intent Context — where · when"
         subtitle="How the place sits in the intent's numeric context: distance decay × open-window. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks. (The daypart WHAT term was deleted in v9 — ES alone carries semantic fit.)"
       >
@@ -309,73 +310,36 @@ export function SubscoresPanel() {
           </div>
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.ic} />
-      </PanelCard>
+      </SectionCard>
 
 
       {/* ══ CH ═══════════════════════════════════════════════════════ */}
-      <PanelCard
+      <SectionCard
         title="CH Subscore · Context History"
         subtitle="The consumer × place PAIR's history — did this consumer save this place, visit it, skip it n times in the deck? SWIPE-ONLY: it multiplies all four Swipe lanes; Map and Pre-Memo skip it. A STUB today — always 1, so no number moves anywhere — until the history starts boosting/penalizing."
-        pill="Swipe only"
+        action={<PanelPill>Swipe only</PanelPill>}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Chip label="Today" value="always 1" hint="stub — boosts/penalties arrive with the history data" />
           <Chip label="Knobs" value="none yet" hint="they join the saved blob when CH stops being a stub" />
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.ch} />
-      </PanelCard>
+      </SectionCard>
 
       {/* ══ Persistence ══════════════════════════════════════════════ */}
-      <PanelCard
+      <SectionCard
         title="Saved config"
         subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. The Cards and Decks tabs follow whatever the form holds, saved or not — Cards is the playground that walks every Subscore's internals."
       >
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={resetToDefaults}
-              disabled={saving}
-              className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-            >
-              Reset to defaults
-            </button>
-            <span className="text-xs" aria-live="polite">
-              {dirty && !saving ? (
-                <span className="text-muted-foreground inline-flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
-                  Unsaved changes
-                </span>
-              ) : savedOk && !saving ? (
-                <span className="text-muted-foreground">Saved ✓</span>
-              ) : null}
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={revert}
-              disabled={saving || !dirty}
-              className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving || !dirty}
-              className={
-                "inline-flex h-9 items-center gap-2 rounded-full px-5 text-sm font-semibold transition " +
-                (saving || dirty
-                  ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
-                  : "bg-muted text-muted-foreground")
-              }
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-          </div>
-        </div>
-        {saveError ? <p className="mt-2 text-xs font-medium text-red-600">{saveError}</p> : null}
+        <SaveBar
+          pending={saving}
+          dirty={dirty}
+          ok={savedOk}
+          onSave={save}
+          onCancel={revert}
+          onReset={resetToDefaults}
+          error={saveError}
+        />
 
         {/* Definitions footer */}
         <div className="text-muted-foreground border-border/60 mt-4 flex flex-col gap-1 border-t pt-3 font-mono text-[11px] leading-relaxed">
@@ -402,9 +366,11 @@ export function SubscoresPanel() {
             never feed it
           </p>
         </div>
-      </PanelCard>
+      </SectionCard>
 
-      <GroupHead>Every knob is a belief, not a fitted value — judge changes by break-even, not spread.</GroupHead>
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+        Every knob is a belief, not a fitted value — judge changes by break-even, not spread.
+      </p>
     </div>
   );
 }

@@ -9,14 +9,6 @@ export const LANE_SHORT: Record<LaneId, string> = Object.fromEntries(
   LANES.map((l) => [l.id, l.short.toUpperCase()]),
 ) as Record<LaneId, string>;
 
-export function GroupHead({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
-      {children}
-    </p>
-  );
-}
-
 export function SubHead({ children }: { children: React.ReactNode }) {
   return <p className="text-foreground/80 text-[12px] font-semibold tracking-tight">{children}</p>;
 }
@@ -71,33 +63,12 @@ export function Slider({
   );
 }
 
-/** The shared card shell every scoring tab wraps its panel in. */
-export function PanelCard({
-  title,
-  subtitle,
-  pill,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  pill?: string;
-  children: React.ReactNode;
-}) {
+/** The muted status pill a scoring panel hangs off SectionCard's `action`. */
+export function PanelPill({ children }: { children: React.ReactNode }) {
   return (
-    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2>
-          <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">{subtitle}</p>
-        </div>
-        {pill ? (
-          <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold">
-            {pill}
-          </span>
-        ) : null}
-      </div>
+    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold">
       {children}
-    </section>
+    </span>
   );
 }
 

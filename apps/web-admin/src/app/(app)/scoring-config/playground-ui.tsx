@@ -7,9 +7,9 @@ import {
   MessagesSquare,
   type LucideIcon,
 } from "lucide-react";
+import { SectionCard } from "@/components/SectionCard";
 import type { EngineId } from "@/lib/business/scores";
 import { SAMPLE_MAX } from "@/lib/business/cip";
-import { PanelCard } from "./panel-ui";
 
 // Presentational bits shared by the simulator subpages (Cards and Decks).
 // Pure UI — all scoring math stays in @/lib/business.
@@ -23,7 +23,7 @@ export const ENGINE_ICONS: Record<EngineId, LucideIcon> = {
 /** The n = 0 state both playgrounds share — nothing in the catalog to score. */
 export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <PanelCard title={title} subtitle={subtitle}>
+    <SectionCard title={title} subtitle={subtitle}>
       <div
         role="status"
         className="border-amber-200/80 bg-amber-50 text-amber-950 mt-5 flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm leading-relaxed"
@@ -38,7 +38,7 @@ export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: str
           </p>
         </div>
       </div>
-    </PanelCard>
+    </SectionCard>
   );
 }
 

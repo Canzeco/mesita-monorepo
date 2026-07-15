@@ -15,7 +15,7 @@ type ResetResult =
   | { ok: true; deletedAuthUsers: number | null }
   | { ok: false; error: string };
 
-// Calls the admin-reset-database EF. The EF re-checks super_admins and
+// Calls the admin-web-reset-database EF. The EF re-checks super_admins and
 // requires confirm === "RESET", so this action is only a thin pass-through.
 export async function resetDatabase(confirm: string): Promise<ResetResult> {
   const r = await efInvoke<ResetResponse>("admin-web-reset-database", { confirm });

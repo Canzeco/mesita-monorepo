@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
+import { SaveBar } from "@/components/SaveBar";
+import { SectionCard, TINT_CHIP, type Tint } from "@/components/SectionCard";
 import {
   COUNTRIES,
   COUNTRY_BY_CODE,
@@ -14,78 +16,9 @@ import {
 // surface — semantic tokens, calm and high-density, with a premium finish:
 // tinted icon chips (one hue per card so siblings scan apart), Fraunces
 // display titles, filled inputs, and a brand-gradient save pill.
-
-/** Fixed tint palette for card icon chips — differentiated, never loud. */
-export type Tint =
-  | "rose"
-  | "pink"
-  | "amber"
-  | "sky"
-  | "violet"
-  | "emerald"
-  | "teal"
-  | "orange"
-  | "indigo"
-  | "slate";
-
-export const TINT_CHIP: Record<Tint, string> = {
-  rose: "bg-rose-500/10 text-rose-600",
-  pink: "bg-pink-500/10 text-pink-600",
-  amber: "bg-amber-500/10 text-amber-600",
-  sky: "bg-sky-500/10 text-sky-600",
-  violet: "bg-violet-500/10 text-violet-600",
-  emerald: "bg-emerald-500/10 text-emerald-600",
-  teal: "bg-teal-500/10 text-teal-600",
-  orange: "bg-orange-500/10 text-orange-600",
-  indigo: "bg-indigo-500/10 text-indigo-600",
-  slate: "bg-muted text-muted-foreground",
-};
-
-export function SectionCard({
-  icon,
-  tint = "slate",
-  title,
-  subtitle,
-  action,
-  children,
-}: {
-  icon?: React.ReactNode;
-  /** Icon-chip hue — keep sibling cards on different tints. */
-  tint?: Tint;
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          {icon != null && (
-            <span
-              className={
-                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " +
-                TINT_CHIP[tint]
-              }
-            >
-              {icon}
-            </span>
-          )}
-          <div className="min-w-0">
-            <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2>
-            {subtitle && (
-              <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">
-                {subtitle}
-              </p>
-            )}
-          </div>
-        </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
+//
+// This file is the sections' barrel: the console-wide shells live in
+// @/components and are re-exported here, so a section imports one path.
 
 /** Uppercase micro-heading used to split a card into labelled groups. */
 export function GroupLabel({ children }: { children: React.ReactNode }) {
@@ -99,7 +32,7 @@ export function GroupLabel({ children }: { children: React.ReactNode }) {
 // Filled fields with a visible resting edge — a hairline border on the gray
 // well makes fields read as fields on the white card (the old transparent
 // border left them as faint smudges at a glance).
-const INPUT_BASE =
+export const INPUT_BASE =
   "w-full rounded-xl border border-border/60 bg-muted/60 text-sm outline-none transition " +
   "placeholder:text-muted-foreground/50 focus:border-ring/60 focus:bg-card focus:ring-4 " +
   "focus:ring-ring/10 disabled:opacity-50";
@@ -328,84 +261,8 @@ export function SelectField({
   );
 }
 
-export function SaveBar({
-  pending,
-  dirty,
-  ok,
-  onSave,
-  onCancel,
-  label = "Save changes",
-  cancelLabel = "Cancel",
-  dirtyLabel,
-  error,
-}: {
-  pending: boolean;
-  dirty: boolean;
-  ok: boolean;
-  onSave: () => void;
-  /** Revert this box to its last-saved values. Cancel only renders when given. */
-  onCancel?: () => void;
-  label?: string;
-  cancelLabel?: string;
-  /** e.g. "Basics · unsaved" — replaces generic copy when dirty. */
-  dirtyLabel?: string;
-  error?: string | null;
-}) {
-  const live = pending || dirty;
-
-  return (
-    <div className="border-border/60 mt-5 border-t pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs" aria-live="polite">
-          {dirty && !pending ? (
-            <span className="text-muted-foreground inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
-              {dirtyLabel ?? "Unsaved changes"}
-            </span>
-          ) : ok && !pending ? (
-            <span className="text-muted-foreground inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> Saved
-            </span>
-          ) : null}
-        </span>
-        <div className="flex shrink-0 items-center gap-2">
-          {onCancel ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={pending || !dirty}
-              className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-            >
-              {cancelLabel}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={pending || !dirty}
-            className={
-              "inline-flex h-9 items-center gap-2 rounded-full px-5 text-sm font-semibold transition " +
-              (live
-                ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
-                : "bg-muted text-muted-foreground")
-            }
-          >
-            {pending ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
-              </>
-            ) : (
-              label
-            )}
-          </button>
-        </div>
-      </div>
-      {error ? <ErrorNote message={error} /> : null}
-    </div>
-  );
-}
-
-export { ErrorNote };
+export { ErrorNote, SaveBar, SectionCard, TINT_CHIP };
+export type { Tint };
 
 /** Shared confirm modal — focus Escape + backdrop cancel. */
 export function ConfirmDialog({

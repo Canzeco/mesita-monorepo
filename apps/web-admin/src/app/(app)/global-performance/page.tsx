@@ -3,8 +3,6 @@ import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { listNotifications } from "./actions";
 import { GlobalPerformanceClient } from "./GlobalPerformanceClient";
 
-export const dynamic = "force-dynamic";
-
 // Global Performance console. The first view is Notifications — a derived
 // feed of platform events (auto-refreshed every 30 s while the tab is
 // visible, plus a manual Refresh button). Charts/metrics land here later as

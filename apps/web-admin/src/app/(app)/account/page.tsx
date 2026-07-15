@@ -4,8 +4,6 @@ import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { authSignOut } from "@/app/auth/actions";
 import { LogOut } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
 export default async function AccountPage() {
   const supabase = await createServerSupabase();
   const {

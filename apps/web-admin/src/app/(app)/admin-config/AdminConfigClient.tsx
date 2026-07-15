@@ -304,11 +304,7 @@ function ResetCard() {
           {result}
         </p>
       )}
-      {error && (
-        <p className="rounded-xl bg-red-100 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNote message={error} />}
     </section>
   );
 }

@@ -300,7 +300,7 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
   };
 }
 
-// Build a partial business-update-project patch for one Place box.
+// Build a partial business-web-update-project patch for one Place box.
 // Empty strings become null so a cleared field actually clears.
 type PlaceBox = "basics" | "time" | "channels" | "reservations" | "photos";
 
