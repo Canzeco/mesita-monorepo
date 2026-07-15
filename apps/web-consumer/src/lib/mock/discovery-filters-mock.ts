@@ -24,6 +24,14 @@ export const ZONE_KIND_LABELS: Record<ZoneKind, string> = {
   zone: "Zone",
 };
 
+/** Plural forms for the browse hint ("Cities in Nuevo León"). */
+export const ZONE_KIND_PLURAL_LABELS: Record<ZoneKind, string> = {
+  country: "Countries",
+  state: "States",
+  city: "Cities",
+  zone: "Zones",
+};
+
 // Monterrey metro is the richest branch on purpose — it's the app's home
 // market (map default centre). CDMX alcaldías double as "municipality"
 // rows; colonias sit at the zone level.
