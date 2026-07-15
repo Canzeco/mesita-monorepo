@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, CalendarCheck, ShieldCheck } from "lucide-react";
 import {
   ErrorNote,
@@ -8,7 +8,7 @@ import {
   SectionCard,
   Switch,
 } from "../enricher-config/atlas-ui";
-import { getReservationsConfig, updateReservationsConfig } from "./actions";
+import { updateReservationsConfig } from "./actions";
 import {
   channelMeta,
   type ReservationChannel,
@@ -31,26 +31,12 @@ export function ReservationsConfigClient({
   const [ok, setOk] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
-  // Re-fetch on mount so a client-side nav to the page shows the live row, not a
-  // stale server render. On failure we keep the initial/default config usable.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getReservationsConfig();
-      if (!active || !r.ok) return;
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
+  // Never dirty when the read failed: the form is holding DEFAULT_CONFIG, not
+  // the live row, and Save writes the whole blob — one edit would bury the real
+  // channel priority under a placeholder.
   const dirty = useMemo(
-    () => JSON.stringify(cfg) !== JSON.stringify(saved),
-    [cfg, saved],
+    () => loadError == null && JSON.stringify(cfg) !== JSON.stringify(saved),
+    [cfg, saved, loadError],
   );
 
   const move = (index: number, delta: number) => {
