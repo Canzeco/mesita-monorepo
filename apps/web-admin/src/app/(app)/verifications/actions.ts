@@ -18,11 +18,13 @@ export type AdminVerification = {
   decided_by: string | null;
   decided_via: "auto" | "admin" | null;
   created_at: string;
+  // Flattened by the EF from project + place: id/slug/status are the
+  // project's, the rest the place's.
   place: {
     id: string;
-    slug: string;
-    name: string;
-    status: string;
+    slug: string | null;
+    name: string | null;
+    status: string | null;
     phone: string | null;
     address: string | null;
     google_place_id: string | null;

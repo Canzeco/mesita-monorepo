@@ -54,10 +54,15 @@ Deno.serve(async (req) => {
   const body = await readJsonOr<Body>(req, {});
   const limit = Math.min(200, Math.max(1, body.limit ?? 100));
 
+  // project_verifications FKs to `projects`, never to `places`, so the place
+  // has to come through the project. `slug` and `status` are project columns;
+  // only name/address/phone/google_place_id live on `places`. Embedding
+  // places directly here fails the whole query with PGRST200 — same trap
+  // admin-web-list-notifications documents.
   let query = admin
     .from("project_verifications")
     .select(
-      "id, project_id, requester_id, method, payload, requester_email, status, reject_reason, decided_at, decided_by, decided_via, created_at, place:places(id, slug, name, status, phone, address, google_place_id)",
+      "id, project_id, requester_id, method, payload, requester_email, status, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, status, place:places(name, address, phone, google_place_id))",
     )
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -87,6 +92,46 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Flatten project+place back into the single `place` object the admin
+  // web renders. id/slug/status come from the project, the rest from the
+  // place — the shape the client sees is unchanged.
+  type PlaceRow = {
+    name: string | null;
+    address: string | null;
+    phone: string | null;
+    google_place_id: string | null;
+  };
+  type ProjectRow = {
+    id: string;
+    slug: string | null;
+    status: string | null;
+    place: PlaceRow | PlaceRow[] | null;
+  };
+  const one = <T,>(v: T | T[] | null): T | null =>
+    Array.isArray(v) ? (v[0] ?? null) : v;
+
+  const verifications = (data ?? []).map((row) => {
+    const { project, ...rest } = row as typeof row & {
+      project: ProjectRow | ProjectRow[] | null;
+    };
+    const p = one(project);
+    const pl = p ? one(p.place) : null;
+    return {
+      ...rest,
+      place: p
+        ? {
+            id: p.id,
+            slug: p.slug,
+            status: p.status,
+            name: pl?.name ?? null,
+            address: pl?.address ?? null,
+            phone: pl?.phone ?? null,
+            google_place_id: pl?.google_place_id ?? null,
+          }
+        : null,
+    };
+  });
+
   // Auto-mode flags piggyback on this call so the admin web doesn't
   // need a second round-trip just to render the toggles' current
   // state.
@@ -98,7 +143,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    verifications: data ?? [],
+    verifications,
     autoVerifyAiCall: settings?.auto_verify_ai_call ?? true,
     autoVerifyVideo: settings?.auto_verify_video ?? false,
     autoVerifyUpdatedAt: settings?.updated_at ?? null,
