@@ -11,8 +11,8 @@ import type { EngineId } from "@/lib/business/scores";
 import { SAMPLE_MAX } from "@/lib/business/cip";
 import { PanelCard } from "./panel-ui";
 
-// Presentational bits shared by the two playground subpages (Internals and
-// Engines). Pure UI — all scoring math stays in @/lib/business.
+// Presentational bits shared by the simulator subpages (Card Sim and Deck
+// Sim). Pure UI — all scoring math stays in @/lib/business.
 
 export const ENGINE_ICONS: Record<EngineId, LucideIcon> = {
   swipe: GalleryHorizontalEnd,
@@ -32,9 +32,9 @@ export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: str
         <div className="min-w-0">
           <p className="font-semibold">n = 0 — no places to score.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            Internals and Engines draw a random sample of up to {SAMPLE_MAX} places from the
-            catalog, and the catalog came back empty. The model still stands; there is simply
-            nothing to run it on.
+            The Card Sim and Deck Sim draw a random sample of up to {SAMPLE_MAX} places from
+            the catalog, and the catalog came back empty. The model still stands; there is
+            simply nothing to run it on.
           </p>
         </div>
       </div>
@@ -141,7 +141,7 @@ export function FactChip({
   );
 }
 
-/** One sub-score, its own labeled cell — RM · LM · WWW · P read as four boxes. */
+/** One Sub-Score, its own labeled cell — ES · GP · RP · WW read as four boxes. */
 export function ScoreCell({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint} className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">
@@ -150,6 +150,24 @@ export function ScoreCell({ label, value, hint }: { label: string; value: string
       </p>
       <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">{value}</p>
     </div>
+  );
+}
+
+/** ON/OF/IN/IF card-type badge — organic sky, inorganic (paid) pink. */
+export function LaneBadge({ short, title }: { short: string; title?: string }) {
+  const paid = short === "IN" || short === "IF";
+  return (
+    <span
+      title={title}
+      className={
+        "inline-flex w-8 shrink-0 items-center justify-center rounded-md border px-1 py-0.5 font-mono text-[9.5px] font-bold " +
+        (paid
+          ? "border-pink-300/80 bg-pink-50 text-pink-700"
+          : "border-sky-300/80 bg-sky-50 text-sky-700")
+      }
+    >
+      {short}
+    </span>
   );
 }
 
@@ -177,15 +195,15 @@ export function DocPre({
   );
 }
 
-/** One line of the judge's itemized verdict. */
-export function JudgeRow({
+/** One line of an itemized ledger (GP's volume × quality × floor rows). */
+export function LedgerRow({
   label,
   value,
   dim,
   strong,
 }: {
   label: string;
-  value: number;
+  value: string | number;
   dim?: boolean;
   strong?: boolean;
 }) {
@@ -199,7 +217,7 @@ export function JudgeRow({
     >
       <span className={"text-[10.5px] " + (strong ? "font-semibold" : "")}>{label}</span>
       <span className={"font-mono text-[11px] tabular-nums " + (strong ? "font-bold" : "")}>
-        {!strong && value > 0 ? `+${value}` : value}
+        {value}
       </span>
     </div>
   );
@@ -227,7 +245,7 @@ export function ConnectorPill({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** One WWW factor: its inputs, its math, its value. */
+/** One factor row (WW's where/when, GP's volume/quality): inputs · math · value. */
 export function FactorRow({
   name,
   inputs,

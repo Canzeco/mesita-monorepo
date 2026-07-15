@@ -1,6 +1,6 @@
 // CIP — Consumer · Intent · Place. The playground's data plumbing for the
-// scoring draft: build the consumer side, synthesize intents, and estimate the
-// FM/SM Sub-Scores until real embeddings and a judge EF exist.
+// scoring draft: build the consumer side, synthesize intents, and emulate the
+// ES Sub-Score until real embeddings exist.
 //
 // THREE DATA OBJECTS, TWO SIDES. Consumer-data and intent-data are the SAME
 // side of the match (the query side) — merged before matching. The difference
@@ -8,23 +8,23 @@
 // per-query (tonight, near X, with friends). Place-data is the other side.
 //
 // How the four Sub-Scores get their inputs here:
-//   FM   over (consumer + intent) × place — real consumer, synthetic intent,
-//        real place.
-//   SM   the same triple, judged.
-//   WWW  computed from (intent × place): haversine distance + the place's real
-//        hours vs the intent's synthetic query time.
-//   BP   from the real place — posture derived from its live promo rates.
+//   ES  over (consumer + intent) doc × place doc — real consumer, synthetic
+//       intent, real place; documents → vectors → cosine.
+//   GP  from the real place — google review count × rating (scores.gpParts).
+//   RP  from the real place — posture derived from its live promo rates.
+//   WW  computed from (intent × place): haversine distance + the place's real
+//       hours vs the intent's synthetic query time.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
 // admin-web-get-scoring-sample) — never invented here. Intent is synthetic BY
 // DESIGN (that's what an intent generator is). Consumer taste uses real
 // saves/visits when they exist; an empty history gets a deterministic
-// synthetic taste and is LABELED synthetic. FM/SM here are deterministic
-// token-overlap heuristics — stand-ins for pgvector cosine and the LLM judge,
-// which do not exist yet; the numbers are for exercising the model's shape,
-// not for believing.
+// synthetic taste and is LABELED synthetic. ES here runs a feature-hash
+// encoder — a deterministic stand-in for the real embedding model, which does
+// not exist yet; the numbers are for exercising the model's shape, not for
+// believing.
 
-import { DEFAULT_SM_PARAMS, type EngineId, type SmParams } from "./scores";
+import type { EngineId } from "./scores";
 
 /** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
 export const SAMPLE_MAX = 10;
@@ -114,8 +114,6 @@ export type Intent = {
    * include/exclude each piece (intent.query / .zone / .time / .party).
    */
   parts: { query: string; zone: string | null; time: string; party: string | null };
-  /** The mutable query-side tokens (merged with taste for matching). */
-  tokens: string[];
   lat: number | null;
   lng: number | null;
   day: string;
@@ -126,16 +124,16 @@ export type Intent = {
 const DAYS = ["wednesday", "friday", "saturday", "sunday"] as const;
 const HOURS = [13, 18.5, 20.5, 22.5] as const;
 
-// Memo's flexible bank — occasion templates with their own tokens and their
-// own natural time. Swipe/Map never touch these: their prompt structure is
-// fixed and only the data changes.
+// Memo's flexible bank — occasion templates with their own natural time.
+// Swipe/Map never touch these: their prompt structure is fixed and only the
+// data changes. Memo's question IS its retrieval query — the "+RAG" leg.
 const MEMO_BANK = [
-  { text: "Where do I take a first date tonight?", tokens: ["date_night", "romantic", "cocktail_bar", "wine_bar", "upscale"], hour: 20.5, day: "friday" },
-  { text: "Best brunch for Sunday with my parents?", tokens: ["brunch", "casual", "family", "specialty_coffee"], hour: 11, day: "sunday" },
-  { text: "Where can we dance until late on Saturday?", tokens: ["night_club", "live_music", "trendy", "dance"], hour: 23, day: "saturday" },
-  { text: "Quiet spot to work over coffee this afternoon?", tokens: ["specialty_coffee", "quiet", "casual", "work"], hour: 16, day: "wednesday" },
-  { text: "Big group birthday dinner — where?", tokens: ["fine_dining", "groups", "celebrations", "lively"], hour: 21, day: "saturday" },
-  { text: "Rooftop drinks with a view before dinner?", tokens: ["rooftop", "terrace", "cocktail_bar", "city_view"], hour: 19, day: "friday" },
+  { text: "Where do I take a first date tonight?", hour: 20.5, day: "friday" },
+  { text: "Best brunch for Sunday with my parents?", hour: 11, day: "sunday" },
+  { text: "Where can we dance until late on Saturday?", hour: 23, day: "saturday" },
+  { text: "Quiet spot to work over coffee this afternoon?", hour: 16, day: "wednesday" },
+  { text: "Big group birthday dinner — where?", hour: 21, day: "saturday" },
+  { text: "Rooftop drinks with a view before dinner?", hour: 19, day: "friday" },
 ] as const;
 
 function fmtHour(h: number): string {
@@ -176,7 +174,6 @@ export function generateIntent(
       engine,
       text: t.text,
       parts,
-      tokens: [...t.tokens].map(norm),
       lat: a.lat,
       lng: a.lng,
       day: t.day,
@@ -200,7 +197,6 @@ export function generateIntent(
     engine,
     text: [parts.query, parts.zone, parts.time, parts.party].filter(Boolean).join(" · "),
     parts,
-    tokens: [daypart, ...taste].map(norm),
     lat: a.lat,
     lng: a.lng,
     day,
@@ -209,99 +205,7 @@ export function generateIntent(
   };
 }
 
-// ── Match heuristics (RM/LM stand-ins) ──────────────────────────────────
-
-export function placeTokens(p: SamplePlace): string[] {
-  return [
-    ...(p.category ? [p.category] : []),
-    ...(Array.isArray(p.tags) ? p.tags : []),
-    ...(p.zone ? [p.zone] : []),
-    ...(p.city ? [p.city] : []),
-  ].map(norm);
-}
-
-/** FM — set-cosine token overlap of (taste + intent) × place → 0–100. */
-export function fmScore(ciTokens: string[], place: SamplePlace): number {
-  const a = new Set(ciTokens);
-  const b = new Set(placeTokens(place));
-  if (a.size === 0 || b.size === 0) return 0;
-  let inter = 0;
-  for (const t of a) if (b.has(t)) inter++;
-  return Math.round((inter / Math.sqrt(a.size * b.size)) * 100);
-}
-
-// Occasion×category clashes an LLM judge would catch but token overlap won't.
-const CLASH: Record<string, string[]> = {
-  date_night: ["sports_bar", "fast_food"],
-  romantic: ["sports_bar", "night_club"],
-  work: ["night_club", "live_music"],
-  quiet: ["night_club", "sports_bar", "live_music"],
-  family: ["night_club", "speakeasy"],
-  brunch: ["night_club"],
-};
-
-/** The judge's itemized verdict — every adjustment SM layers on FM. */
-export type SmParts = {
-  /** The base estimate the judge starts from (vector FM or token overlap). */
-  base: number;
-  /** +15 when the place's category is in the consumer+intent tokens. */
-  catBonus: number;
-  /** +8 when the place's zone is in the consumer+intent tokens. */
-  zoneBonus: number;
-  /** −18 when an occasion token clashes with the category. */
-  clashPenalty: number;
-  /** ±6 stable per consumer×place pair — judgment nuance, never random. */
-  nuance: number;
-  /** base + adjustments, clamped 0–100. */
-  total: number;
-};
-
-/** SM itemized. Pass `fmBase` to build on the vector-cosine FM instead of
- * token overlap. `enabled` = the SM context config: the judge only judges on
- * fields it was given (category off → no category bonus/clash; zone off → no
- * zone bonus). `w` = the judge's rubric weights — a Pipeline knob (defaults =
- * the classic 15/8/18/6). */
-export function smScoreParts(
-  ciTokens: string[],
-  place: SamplePlace,
-  consumerId: string,
-  fmBase?: number,
-  enabled?: ReadonlySet<string> | null,
-  w: SmParams = DEFAULT_SM_PARAMS,
-): SmParts {
-  const base = fmBase ?? fmScore(ciTokens, place);
-  const ci = new Set(ciTokens);
-  const has = (k: string) => !enabled || enabled.has(k);
-  const cat = has("place.category") && place.category ? norm(place.category) : null;
-  const catBonus = cat && ci.has(cat) ? w.catBonus : 0;
-  const zoneBonus =
-    has("place.zone_city") && place.zone && ci.has(norm(place.zone)) ? w.zoneBonus : 0;
-  let clashPenalty = 0;
-  if (cat) {
-    for (const t of ci) if (CLASH[t]?.includes(cat)) { clashPenalty = -w.clashPenalty; break; }
-  }
-  const amp = Math.max(0, Math.round(w.nuanceAmp));
-  const nuance = amp === 0 ? 0 : (hash(consumerId + place.id) % (2 * amp + 1)) - amp;
-  const total = Math.max(
-    0,
-    Math.min(100, Math.round(base + catBonus + zoneBonus + clashPenalty + nuance)),
-  );
-  return { base, catBonus, zoneBonus, clashPenalty, nuance, total };
-}
-
-/** SM — FM plus the structured judgments a judge adds. Deterministic. */
-export function smScore(
-  ciTokens: string[],
-  place: SamplePlace,
-  consumerId: string,
-  fmBase?: number,
-  enabled?: ReadonlySet<string> | null,
-  w: SmParams = DEFAULT_SM_PARAMS,
-): number {
-  return smScoreParts(ciTokens, place, consumerId, fmBase, enabled, w).total;
-}
-
-// ── WWW inputs from real geo + real hours ───────────────────────────────
+// ── WW inputs from real geo + real hours ────────────────────────────────
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371;
@@ -329,7 +233,7 @@ export type OpenWindow = {
 };
 
 /**
- * The place's real hours vs the intent's query time → WWW's when-inputs.
+ * The place's real hours vs the intent's query time → WW's when-inputs.
  * Scans today + tomorrow (overnight closes roll past midnight), 12 h horizon.
  * No hours at all → unknown (the caller decides; unknown is not closed).
  */
@@ -371,46 +275,14 @@ export function openWindow(
   return best ?? { opensInH: HORIZON, openForH: 0, unknown: false };
 }
 
-// ── WHAT — daypart suitability of a category ────────────────────────────
-// The temporal half of "what": is this hour the category's natural daypart?
-// (Match handles the SEMANTIC what.) Keyword windows, hours may wrap past
-// midnight. Unknown categories fit every hour — no penalty on ignorance.
-
-const WHAT_WINDOWS: { re: RegExp; start: number; end: number }[] = [
-  { re: /club|antro|night_club|karaoke/, start: 21, end: 28 }, // 21:00–04:00
-  { re: /bar|cantina|pub|speakeasy|wine|cocktail|brewer/, start: 17, end: 26 }, // 17:00–02:00
-  { re: /brunch|breakfast|cafe|coffee|bakery|desayun|juice/, start: 7, end: 17 },
-];
-
-/** The category's daypart window, human-readable — null when none is known
- * (unknown categories fit every hour). For the internals playground. */
-export function whatWindow(category: string | null): string | null {
-  if (!category) return null;
-  const w = WHAT_WINDOWS.find((x) => x.re.test(category.toLowerCase()));
-  if (!w) return null;
-  const f = (h: number) => `${String(Math.floor(h % 24)).padStart(2, "0")}:00`;
-  return `${f(w.start)}–${f(w.end)}${w.end > 24 ? " (wraps past midnight)" : ""}`;
-}
-
-/** True when `hour` falls in the category's natural daypart (or none is known). */
-export function whatFits(category: string | null, hour: number): boolean {
-  if (!category) return true;
-  const w = WHAT_WINDOWS.find((x) => x.re.test(category.toLowerCase()));
-  if (!w) return true;
-  const h = ((hour % 24) + 24) % 24;
-  if (w.end <= 24) return h >= w.start && h < w.end;
-  // Wrapping window (e.g. 21–28 = 21:00–04:00).
-  return h >= w.start || h < w.end - 24;
-}
-
-// ── CONTEXT DOCUMENTS — the wide RAG/LLM contexts, assembled for real ───
-// These are the documents the real pipeline will embed (FM) and hand to the
-// judge (SM): everything is TEXT — hours and zones appear as words; numeric
-// distance/time live only in WWW. WHICH fields go in is CONFIG
+// ── CONTEXT DOCUMENTS — the wide embedding contexts, assembled for real ──
+// These are the documents the real pipeline will embed for ES: everything is
+// TEXT — hours and zones appear as words; numeric distance/time live only in
+// WW, numeric proof only in GP. WHICH fields go in is CONFIG
 // (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
-// `enabled` key set and assembles from exactly that — so FM and SM read
-// genuinely different documents, and a toggle on the Pipeline tab changes the
-// embedding, the cosine, and the ranking. `enabled` omitted = all on.
+// `enabled` key set and assembles from exactly that — so a toggle on the
+// Pipeline tab changes the embedding, the cosine, and the ranking. `enabled`
+// omitted = all on.
 
 type Enabled = ReadonlySet<string> | null | undefined;
 const on = (enabled: Enabled, key: string) => !enabled || enabled.has(key);
@@ -463,7 +335,7 @@ export function buildCiDoc(profile: ConsumerProfile, intent: Intent, enabled?: E
     : consumerDoc;
 }
 
-/** The place document — what the Enricher's profile embeds / the judge reads. */
+/** The place document — what the Enricher's profile embeds. */
 export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
   const head = [
     on(enabled, "place.name") ? p.name : null,
@@ -489,7 +361,7 @@ export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
 // A deterministic stand-in for the real embedding model: tokenize the
 // document, hash every token into a signed slot of a fixed-dim vector, L2
 // normalize. Same shape as the real thing (document → vector → cosine), so
-// FM IS the cosine of two generated vectors — just from a toy encoder.
+// ES IS the cosine of two generated vectors — just from a toy encoder.
 
 export const EMBED_DIMS = 64;
 
@@ -524,7 +396,7 @@ export function cosineSim(a: number[], b: number[]): number {
   return dot;
 }
 
-/** FM from the two vectors — negative cosine floors at 0. */
-export function fmFromVectors(ciVec: number[], placeVec: number[]): number {
+/** ES from the two vectors — negative cosine floors at 0. */
+export function esFromVectors(ciVec: number[], placeVec: number[]): number {
   return Math.round(Math.max(0, cosineSim(ciVec, placeVec)) * 100);
 }

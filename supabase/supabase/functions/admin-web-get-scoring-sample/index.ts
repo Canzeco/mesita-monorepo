@@ -1,10 +1,10 @@
 // Supabase Edge Function — admin-web-get-scoring-sample
 //
-// Feeds the Scoring Config Internals + Engines tabs: a random sample of REAL
+// Feeds the Scoring Config Card Sim + Deck Sim: a random sample of REAL
 // consumers and REAL places, with everything the frontend scoring draft needs
-// to compute the four Sub-Scores — FM/SM (consumer+intent × place tokens),
-// WWW (geo + hours vs a synthetic query time) and BP (posture from the live
-// promo rates on projects).
+// to compute the four Sub-Scores — ES (consumer+intent doc × place doc), GP
+// (google review count × rating), WW (geo + hours vs a synthetic query time)
+// and RP (posture from the live promo rates on projects).
 //
 // Consumer taste comes from what they actually saved/visited (saved_places /
 // paid tickets → place categories+tags). Empty history returns empty arrays —
