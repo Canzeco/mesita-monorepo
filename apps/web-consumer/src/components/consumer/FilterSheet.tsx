@@ -8,16 +8,20 @@ import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 // action bar and from the Search bar's tune icon. Rides the shared
 // LocalSheet (portals into the app card, animated open/close, ESC) with
 // keepMounted so selections survive a close. Frontend-only for now — see
-// DiscoveryFilters for the wiring status.
+// DiscoveryFilters for the wiring status. `onActiveChange` reports whether
+// any filter deviates from defaults so the host can dot its trigger
+// (MESITA-633).
 
 export function FilterSheet({
   open,
   onClose,
   ariaLabel = "Discovery filters",
+  onActiveChange,
 }: {
   open: boolean;
   onClose: () => void;
   ariaLabel?: string;
+  onActiveChange?: (active: boolean) => void;
 }) {
   return (
     <LocalSheet
@@ -26,7 +30,7 @@ export function FilterSheet({
       ariaLabel={ariaLabel}
       keepMounted
     >
-      <DiscoveryFilters onClose={onClose} />
+      <DiscoveryFilters onClose={onClose} onActiveChange={onActiveChange} />
     </LocalSheet>
   );
 }
