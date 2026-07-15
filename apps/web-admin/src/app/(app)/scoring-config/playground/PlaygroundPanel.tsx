@@ -281,104 +281,132 @@ export function PlaygroundPanel() {
                   Generate to run: consumer → intent → documents → vectors → scores.
                 </p>
               ) : (
-                <>
-                  {/* CI — the merged consumer+intent document, then its vector */}
-                  <div className="bg-muted/50 border-border/60 mt-3 rounded-lg border px-3 py-2">
-                    <p className="text-muted-foreground text-[9.5px] font-bold tracking-[0.1em] uppercase">
-                      CI document · RIPM context{run.profile.synthetic ? " · taste SYNTH" : ""}
+                <div className="mt-3 flex flex-col gap-2.5">
+                  {/* 1 — the inputs */}
+                  <StepBox n={1} tint="sky" title="Consumer · Intent" note="the query side (CIP)">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <FactChip label="C" value={run.profile.consumer?.label ?? "synthetic"} />
+                      {run.profile.consumer?.sex ? <FactChip value={run.profile.consumer.sex} /> : null}
+                      {run.profile.consumer?.age != null ? <FactChip value={`${run.profile.consumer.age}y`} /> : null}
+                      {run.profile.consumer?.country ? <FactChip value={run.profile.consumer.country} /> : null}
+                      <FactChip value={`${run.profile.consumer?.class_key ?? "free"} class`} />
+                      {run.profile.synthetic ? <FactChip value="taste SYNTH" warn /> : null}
+                    </div>
+                    <p className="mt-2 text-[11.5px] leading-snug font-medium">“{run.intent.parts.query}”</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <FactChip label="when" value={run.intent.timeLabel} />
+                      {run.intent.parts.zone ? <FactChip label="where" value={run.intent.parts.zone} /> : null}
+                      {run.intent.parts.party ? <FactChip value={run.intent.parts.party} /> : null}
+                    </div>
+                  </StepBox>
+
+                  {/* 2 — the assembled context documents */}
+                  <StepBox n={2} tint="violet" title="Context documents" note="what RAG embeds / the judge reads">
+                    <p className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
+                      CI doc · RIPM context
                     </p>
-                    <pre className="mt-1 font-mono text-[10.5px] leading-relaxed whitespace-pre-wrap">
+                    <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
                       {res.ragCiDoc || "(every RIPM field toggled off)"}
                     </pre>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-muted-foreground text-[9.5px] font-bold tracking-[0.1em] uppercase">
-                      CI embedding · {EMBED_DIMS}d
+                    {res.judgeCiDoc !== res.ragCiDoc ? (
+                      <>
+                        <p className="text-muted-foreground border-border/50 mt-2 border-t pt-2 font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
+                          CI doc · LIPM context (the judge&apos;s copy)
+                        </p>
+                        <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
+                          {res.judgeCiDoc || "(every LIPM field toggled off)"}
+                        </pre>
+                      </>
+                    ) : null}
+                    <details className="mt-2">
+                      <summary className="text-muted-foreground cursor-pointer text-[10.5px] font-semibold">
+                        Place docs ({res.kept.length})
+                      </summary>
+                      <div className="mt-1.5 flex flex-col gap-1.5">
+                        {res.kept.map((r) => (
+                          <div key={r.place.id} className="bg-card/70 border-border/50 rounded-md border px-2.5 py-1.5">
+                            <p className="text-muted-foreground font-mono text-[9px]">
+                              {r.place.name} · RAG doc
+                            </p>
+                            <pre className="mt-0.5 font-mono text-[9.5px] leading-relaxed whitespace-pre-wrap">
+                              {r.ragDoc || "(every RIPM field toggled off)"}
+                            </pre>
+                            {r.judgeDoc !== r.ragDoc ? (
+                              <>
+                                <p className="text-muted-foreground border-border/40 mt-1.5 border-t pt-1.5 font-mono text-[9px]">
+                                  judge doc · LIPM context
+                                </p>
+                                <pre className="mt-0.5 font-mono text-[9.5px] leading-relaxed whitespace-pre-wrap">
+                                  {r.judgeDoc || "(every LIPM field toggled off)"}
+                                </pre>
+                              </>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </StepBox>
+
+                  {/* 3 — the vectors */}
+                  <StepBox n={3} tint="emerald" title="Embedding" note={`${EMBED_DIMS}d feature-hash · RM = cosine × 100`}>
+                    <p className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
+                      CI vector
                     </p>
                     <VectorStrip vec={res.ciVec} className="mt-1" />
-                  </div>
-
-                  {/* The list — every sub-score emulated per place */}
-                  <div className="mt-3 flex flex-col">
-                    {res.kept.map((r, k) => (
-                      <div key={r.place.id} className="border-border/40 border-b py-2 last:border-0">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-muted-foreground w-4 shrink-0 font-mono text-[11px] tabular-nums">
-                            {k + 1}
-                          </span>
-                          <span
-                            className="min-w-0 flex-1 truncate text-[12.5px] font-medium"
-                            title={r.place.name}
-                          >
+                    <div className="mt-2 flex flex-col gap-1">
+                      {res.kept.map((r) => (
+                        <div key={r.place.id} className="flex items-center gap-2">
+                          <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[9.5px]">
                             {r.place.name}
                           </span>
-                          <span className="font-mono text-[14px] font-semibold tabular-nums">
-                            {r.slowTotal.toFixed(1)}
+                          <VectorStrip vec={r.ragVec} mini className="w-[88px] shrink-0" />
+                          <span className="w-14 shrink-0 text-right font-mono text-[9.5px] tabular-nums">
+                            cos {cosineSim(res.ciVec, r.ragVec).toFixed(2)}
                           </span>
-                        </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
-                          <ScoreChip label="RM" value={String(r.rm)} hint="cosine(CI, place) × 100" />
-                          <ScoreChip label="LM" value={String(r.lm)} hint="RM + judge adjustments" />
-                          <ScoreChip
-                            label="WWW"
-                            value={r.www.toFixed(2)}
-                            hint={`what ${r.what.toFixed(2)} × where ${r.where.toFixed(2)} × when ${r.when.toFixed(2)}${r.hoursUnknown ? " (hours?)" : ""}${r.km != null ? ` · ${Math.round(r.km)} km` : ""}`}
-                          />
-                          <ScoreChip label="P" value={String(r.promos)} hint="posture from live rates" />
-                          <span className="min-w-0 flex-1" />
-                          <VectorStrip vec={r.ragVec} mini className="w-[72px] shrink-0" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {res.screened > 0 ? (
-                    <p className="text-muted-foreground mt-1 text-[10px]">
-                      Fast screened out {res.screened} below the top {retrieval.shortlistN}.
-                    </p>
-                  ) : null}
-
-                  {/* The wide contexts, verbatim — per tier when the configs differ */}
-                  <details className="mt-2">
-                    <summary className="text-muted-foreground cursor-pointer text-[11px] font-semibold">
-                      Context documents — what RAG embeds / the judge reads
-                    </summary>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {res.judgeCiDoc !== res.ragCiDoc ? (
-                        <div className="bg-muted/40 border-border/60 rounded-lg border px-3 py-2">
-                          <p className="text-muted-foreground font-mono text-[9.5px]">
-                            CI document · LIPM context (the judge&apos;s copy)
-                          </p>
-                          <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
-                            {res.judgeCiDoc || "(every LIPM field toggled off)"}
-                          </pre>
-                        </div>
-                      ) : null}
-                      {res.kept.map((r) => (
-                        <div
-                          key={r.place.id}
-                          className="bg-muted/40 border-border/60 rounded-lg border px-3 py-2"
-                        >
-                          <p className="text-muted-foreground font-mono text-[9.5px]">
-                            RAG place doc · cos {cosineSim(res.ciVec, r.ragVec).toFixed(3)}
-                          </p>
-                          <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
-                            {r.ragDoc || "(every RIPM field toggled off)"}
-                          </pre>
-                          {r.judgeDoc !== r.ragDoc ? (
-                            <>
-                              <p className="text-muted-foreground border-border/50 mt-2 border-t pt-2 font-mono text-[9.5px]">
-                                judge place doc · LIPM context
-                              </p>
-                              <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
-                                {r.judgeDoc || "(every LIPM field toggled off)"}
-                              </pre>
-                            </>
-                          ) : null}
                         </div>
                       ))}
                     </div>
-                  </details>
-                </>
+                  </StepBox>
+
+                  {/* 4 — every sub-score, then the ranking */}
+                  <StepBox n={4} tint="amber" title="Scores → ranking" note="fast screens → slow sorts">
+                    <div className="flex flex-col gap-1.5">
+                      {res.kept.map((r, k) => (
+                        <div key={r.place.id} className="bg-card/70 border-border/60 rounded-lg border px-2.5 py-2">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-muted-foreground w-4 shrink-0 font-mono text-[11px] tabular-nums">
+                              {k + 1}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold" title={r.place.name}>
+                              {r.place.name}
+                            </span>
+                            <span
+                              className="font-mono text-[14px] font-semibold tabular-nums"
+                              title={`fast ${r.fastTotal.toFixed(1)} → slow ${r.slowTotal.toFixed(1)} (ranked by slow)`}
+                            >
+                              {r.slowTotal.toFixed(1)}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 grid grid-cols-4 gap-1">
+                            <ScoreCell label="RM" value={String(r.rm)} hint="RAG match — cosine(CI, place) × 100" />
+                            <ScoreCell label="LM" value={String(r.lm)} hint="LLM match — RM + judge adjustments" />
+                            <ScoreCell
+                              label="WWW"
+                              value={r.www.toFixed(2)}
+                              hint={`what ${r.what.toFixed(2)} × where ${r.where.toFixed(2)} × when ${r.when.toFixed(2)}${r.hoursUnknown ? " (hours?)" : ""}${r.km != null ? ` · ${Math.round(r.km)} km` : ""}`}
+                            />
+                            <ScoreCell label="P" value={String(r.promos)} hint="promo posture from live rates" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {res.screened > 0 ? (
+                      <p className="text-muted-foreground mt-1.5 text-[10px]">
+                        Fast screened out {res.screened} below the top {retrieval.shortlistN}.
+                      </p>
+                    ) : null}
+                  </StepBox>
+                </div>
               )}
             </div>
           );
@@ -390,15 +418,71 @@ export function PlaygroundPanel() {
 
 // ── Local bits ─────────────────────────────────────────────────────────
 
-function ScoreChip({ label, value, hint }: { label: string; value: string; hint: string }) {
+// One stage of the run, as its own clearly bounded box: numbered badge +
+// tinted header strip, body on the card surface. The tints separate the
+// stages at a glance (input / documents / vectors / ranking).
+const STEP_TINTS = {
+  sky: { box: "border-sky-200/70", head: "bg-sky-50 text-sky-950", badge: "bg-sky-600" },
+  violet: { box: "border-violet-200/70", head: "bg-violet-50 text-violet-950", badge: "bg-violet-600" },
+  emerald: { box: "border-emerald-200/70", head: "bg-emerald-50 text-emerald-950", badge: "bg-emerald-600" },
+  amber: { box: "border-amber-200/70", head: "bg-amber-50 text-amber-950", badge: "bg-amber-600" },
+} as const;
+
+function StepBox({
+  n,
+  tint,
+  title,
+  note,
+  children,
+}: {
+  n: number;
+  tint: keyof typeof STEP_TINTS;
+  title: string;
+  note: string;
+  children: React.ReactNode;
+}) {
+  const t = STEP_TINTS[tint];
+  return (
+    <section className={`overflow-hidden rounded-xl border ${t.box}`}>
+      <div className={`flex items-baseline gap-2 px-3 py-1.5 ${t.head}`}>
+        <span
+          className={`flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full font-mono text-[9.5px] font-bold text-white ${t.badge}`}
+          aria-hidden
+        >
+          {n}
+        </span>
+        <span className="text-[11px] font-bold tracking-tight">{title}</span>
+        <span className="min-w-0 flex-1 truncate text-right font-mono text-[9px] opacity-70">{note}</span>
+      </div>
+      <div className="bg-card px-3 py-2.5">{children}</div>
+    </section>
+  );
+}
+
+/** A small labeled fact (consumer trait, intent slot). */
+function FactChip({ label, value, warn }: { label?: string; value: string; warn?: boolean }) {
   return (
     <span
-      title={hint}
-      className="border-border/60 bg-muted/50 inline-flex items-baseline gap-1 rounded-md border px-1.5 py-0.5"
+      className={
+        "inline-flex items-baseline gap-1 rounded-md border px-1.5 py-0.5 " +
+        (warn ? "border-amber-300/80 bg-amber-50 text-amber-900" : "border-border/60 bg-muted/50")
+      }
     >
-      <span className="text-muted-foreground font-mono text-[9px] font-bold">{label}</span>
-      <span className="font-mono text-[11px] font-semibold tabular-nums">{value}</span>
+      {label ? <span className="text-muted-foreground font-mono text-[8.5px] font-bold uppercase">{label}</span> : null}
+      <span className="font-mono text-[10.5px]">{value}</span>
     </span>
+  );
+}
+
+/** One sub-score, its own labeled cell — RM · LM · WWW · P read as four boxes. */
+function ScoreCell({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div title={hint} className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">
+      <p className="text-muted-foreground font-mono text-[8.5px] font-bold tracking-[0.08em] uppercase">
+        {label}
+      </p>
+      <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">{value}</p>
+    </div>
   );
 }
 
