@@ -2,13 +2,28 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  BadgePercent,
+  Compass,
+  GalleryHorizontalEnd,
+  Gavel,
+  Layers,
+  Map as MapIcon,
+  MapPin,
+  MessagesSquare,
+  Quote,
+  ScanSearch,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import {
   ENGINE_POLICIES,
   fitScore,
   laneFormula,
   laneScore,
   LANES,
+  MATCH_MAX,
   waitScore,
   whatScore,
   whenScore,
@@ -17,7 +32,6 @@ import {
   type Lane,
   type LaneId,
 } from "@/lib/business/scores";
-import { MATCH_MAX } from "@/lib/business/scores";
 import {
   buildCiDoc,
   buildConsumerProfile,
@@ -46,16 +60,19 @@ import { LANE_SHORT, PanelCard } from "../panel-ui";
 //
 //   Score internals  ONE consumer × ONE intent × ONE place (n = 1). Each
 //                    sub-score gets its own box showing its whole internal
-//                    process: RM's documents → vectors → cosine; LM's judge
-//                    itemization; WWW's what/where/when factor derivation;
-//                    P's rates → posture → rung; then the lane assembly.
+//                    process, with the RESULT headlined in the box header.
 //   Engines          the three engines ranking the WHOLE sample — inputs in,
-//                    ranked lists out. The internals live above, so these
-//                    cards stay outcome-shaped.
+//                    ranked lists out.
 //
 // Everything recomputes live from the Pipeline tab's knobs + context config
 // (shared provider). Generate is deterministic (seed counter — reproducible,
 // no Math.random in render scope).
+
+const ENGINE_ICONS: Record<EngineId, LucideIcon> = {
+  swipe: GalleryHorizontalEnd,
+  map: MapIcon,
+  memo: MessagesSquare,
+};
 
 export function PlaygroundPanel() {
   const { consumers, places } = useScoring();
@@ -177,97 +194,158 @@ function InternalsPlayground({ consumers: consumerCount }: { consumers: number }
     };
   }, [run, place, cfg, promoVals, ripmSet, lipmSet]);
 
+  const c = run?.profile.consumer ?? null;
+
   return (
     <PanelCard
       title="Score internals"
-      subtitle="The whole internal process of every score, on exactly ONE consumer × intent × place. Each score is its own box; pick the specimen below."
+      subtitle="The whole internal process of every score, on exactly ONE consumer × intent × place. Each score is its own box; the specimen lives below."
       pill="n = 1"
     >
-      {/* Specimen controls */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <div className="border-border/70 flex overflow-hidden rounded-full border">
-          {ENGINE_POLICIES.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              aria-pressed={flavor === e.id}
-              onClick={() => pickFlavor(e.id)}
-              className={
-                "px-3 py-1.5 text-[11.5px] font-semibold transition " +
-                (flavor === e.id ? "bg-foreground text-background" : "hover:bg-muted")
-              }
-            >
-              {e.engine}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => generate(flavor)}
-          className="bg-pink-gradient shadow-save rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
-        >
-          Generate consumer + intent
-        </button>
-        <span className="text-muted-foreground text-[10.5px]">
-          {consumerCount === 0 ? "no consumers in DB — synthetic, labeled" : `${consumerCount} real consumers`}
-        </span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
-          Place
-        </span>
-        {places.map((p) => (
+      {/* ── The specimen: C × I × P ─────────────────────────────────── */}
+      <div className="border-border/60 from-muted/60 to-card mt-4 rounded-2xl border bg-gradient-to-b p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="border-border/70 bg-card flex overflow-hidden rounded-full border">
+            {ENGINE_POLICIES.map((e) => {
+              const Icon = ENGINE_ICONS[e.id];
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  aria-pressed={flavor === e.id}
+                  onClick={() => pickFlavor(e.id)}
+                  className={
+                    "flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] font-semibold transition " +
+                    (flavor === e.id ? "bg-foreground text-background" : "hover:bg-muted")
+                  }
+                >
+                  <Icon className="h-3 w-3" aria-hidden />
+                  {e.engine}
+                </button>
+              );
+            })}
+          </div>
           <button
-            key={p.id}
             type="button"
-            aria-pressed={p.id === place.id}
-            onClick={() => setPlaceId(p.id)}
-            className={
-              "max-w-[180px] truncate rounded-md border px-2 py-0.5 font-mono text-[10.5px] transition " +
-              (p.id === place.id
-                ? "border-primary/50 bg-primary/10"
-                : "border-border/60 text-muted-foreground hover:bg-muted")
-            }
+            onClick={() => generate(flavor)}
+            className="bg-pink-gradient shadow-save rounded-full px-4 py-1.5 text-[12px] font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
           >
-            {p.name}
+            Generate consumer + intent
           </button>
-        ))}
+        </div>
+
+        <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <SpecimenCell icon={UserRound} tone="text-sky-700 bg-sky-100" label="Consumer">
+            {run ? (
+              <div className="flex flex-wrap gap-1.5">
+                <FactChip value={c?.label ?? "synthetic"} strong />
+                {c?.sex ? <FactChip value={c.sex} /> : null}
+                {c?.age != null ? <FactChip value={`${c.age}y`} /> : null}
+                {c?.country ? <FactChip value={c.country} /> : null}
+                <FactChip value={`${c?.class_key ?? "free"} class`} />
+                {run.profile.synthetic ? <FactChip value="taste SYNTH" warn /> : null}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-[10.5px]">
+                {consumerCount === 0
+                  ? "no consumers in DB — synthetic, labeled"
+                  : `Generate draws from ${consumerCount} real consumer${consumerCount === 1 ? "" : "s"}`}
+              </p>
+            )}
+          </SpecimenCell>
+
+          <SpecimenCell icon={Quote} tone="text-violet-700 bg-violet-100" label="Intent">
+            {run ? (
+              <>
+                <p className="text-[11.5px] leading-snug font-medium">“{run.intent.parts.query}”</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <FactChip label="when" value={run.intent.timeLabel} />
+                  {run.intent.parts.zone ? <FactChip label="where" value={run.intent.parts.zone} /> : null}
+                  {run.intent.parts.party ? <FactChip value={run.intent.parts.party} /> : null}
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-[10.5px]">
+                synthesized per engine flavor — Memo flexible, Swipe/Map fixed structure
+              </p>
+            )}
+          </SpecimenCell>
+
+          <SpecimenCell icon={MapPin} tone="text-rose-700 bg-rose-100" label="Place">
+            <div className="flex flex-wrap gap-1.5">
+              {places.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={p.id === place.id}
+                  onClick={() => setPlaceId(p.id)}
+                  className={
+                    "max-w-[170px] truncate rounded-md border px-2 py-0.5 font-mono text-[10.5px] transition " +
+                    (p.id === place.id
+                      ? "border-primary/50 bg-primary/10 font-semibold"
+                      : "border-border/60 text-muted-foreground hover:bg-muted bg-card")
+                  }
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </SpecimenCell>
+        </div>
       </div>
 
       {!run || !it ? (
-        <p className="text-muted-foreground mt-4 text-[12px]">
-          Generate a consumer + intent, pick a place — every box below walks one score&apos;s
-          internals for that single pair.
-        </p>
+        <div className="border-border/60 text-muted-foreground mt-3 rounded-xl border border-dashed px-4 py-6 text-center text-[12px]">
+          Generate a consumer + intent — every box below walks one score&apos;s internals for that
+          single pair.
+        </div>
       ) : (
         <div className="mt-3 grid gap-2.5 xl:grid-cols-2">
           {/* RM — docs → vectors → cosine */}
-          <StepBox n={1} tint="emerald" title="RM-CIP · RAG match" note="documents → vectors → cosine × 100">
+          <ScoreBox
+            icon={ScanSearch}
+            tint="emerald"
+            title="RM-CIP · RAG match"
+            note="documents → vectors → cosine"
+            result={String(it.rm)}
+          >
             <DocPre label="CI doc · RIPM context" text={it.ragCiDoc} empty="(every RIPM field toggled off)" />
             <VectorStrip vec={it.ciVec} className="mt-1.5" />
+            <div className="my-1.5 flex items-center gap-2">
+              <span className="border-border/60 flex-1 border-t border-dashed" aria-hidden />
+              <span className="border-border/70 bg-muted rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold">
+                cos = {it.cos.toFixed(3)}
+              </span>
+              <span className="border-border/60 flex-1 border-t border-dashed" aria-hidden />
+            </div>
+            <VectorStrip vec={it.placeVec} />
             <DocPre
               label={`place doc · ${place.name}`}
               text={it.ragPlaceDoc}
               empty="(every RIPM field toggled off)"
-              className="mt-2.5"
+              className="mt-1.5"
             />
-            <VectorStrip vec={it.placeVec} className="mt-1.5" />
             <ResultLine>
-              cos({EMBED_DIMS}d, {EMBED_DIMS}d) = {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 →{" "}
-              <b>RM {it.rm}</b>
+              cos({EMBED_DIMS}d) {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 → <b>RM {it.rm}</b>
             </ResultLine>
-          </StepBox>
+          </ScoreBox>
 
           {/* LM — the judge itemized */}
-          <StepBox n={2} tint="violet" title="LM-CIP · LLM match" note="the judge's copy + itemized verdict">
+          <ScoreBox
+            icon={Gavel}
+            tint="violet"
+            title="LM-CIP · LLM match"
+            note="the judge's copy + itemized verdict"
+            result={String(it.lm.total)}
+          >
             <DocPre label="CI doc · LIPM context" text={it.judgeCiDoc} empty="(every LIPM field toggled off)" />
             <DocPre
-              label={`place doc · LIPM context`}
+              label="place doc · LIPM context"
               text={it.judgePlaceDoc}
               empty="(every LIPM field toggled off)"
-              className="mt-2.5"
+              className="mt-2"
             />
-            <div className="border-border/50 mt-2.5 overflow-hidden rounded-md border">
+            <div className="border-border/50 mt-2.5 overflow-hidden rounded-lg border">
               <JudgeRow label="base — RM (vector cosine)" value={it.lm.base} />
               <JudgeRow label="category in taste/intent (+15)" value={it.lm.catBonus} dim={it.lm.catBonus === 0} />
               <JudgeRow label="zone in taste/intent (+8)" value={it.lm.zoneBonus} dim={it.lm.zoneBonus === 0} />
@@ -278,10 +356,16 @@ function InternalsPlayground({ consumers: consumerCount }: { consumers: number }
             <ResultLine>
               <b>LM {it.lm.total}</b> — vs RM {it.rm}: the gap is what the judge changed
             </ResultLine>
-          </StepBox>
+          </ScoreBox>
 
           {/* WWW — the only numbers */}
-          <StepBox n={3} tint="amber" title="WWW · the moment" note="what × where × when — the only numbers">
+          <ScoreBox
+            icon={Compass}
+            tint="amber"
+            title="WWW · the moment"
+            note="what × where × when — the only numbers"
+            result={(it.what * it.where * it.when).toFixed(2)}
+          >
             <FactorRow
               name="WHAT"
               inputs={`${place.category ?? "unknown category"} at ${run.intent.timeLabel}${whatWindow(place.category) ? ` · window ${whatWindow(place.category)}` : " · no daypart window"}`}
@@ -313,35 +397,47 @@ function InternalsPlayground({ consumers: consumerCount }: { consumers: number }
               <b>WWW {(it.what * it.where * it.when).toFixed(2)}</b> — multiplies the match in
               now-mode, never feeds it
             </ResultLine>
-          </StepBox>
+          </ScoreBox>
 
           {/* P — rates → posture → rung */}
-          <StepBox n={4} tint="rose" title="P · promo score" note="live rates → posture → rung">
-            <div className="grid grid-cols-4 gap-1">
+          <ScoreBox
+            icon={BadgePercent}
+            tint="rose"
+            title="P · promo score"
+            note="live rates → posture → rung"
+            result={String(it.promos)}
+          >
+            <div className="grid grid-cols-4 gap-1.5">
               <RateCell label="welcome · free" value={place.welcome_free_rate} />
               <RateCell label="welcome · prem" value={place.welcome_premium_rate} />
               <RateCell label="returning · free" value={place.free_rate} />
               <RateCell label="returning · prem" value={place.premium_rate} />
             </div>
+            <div className="mt-2.5 flex items-center justify-center gap-2">
+              <span className="border-border/60 flex-1 border-t border-dashed" aria-hidden />
+              <span className="border-border/70 bg-muted rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold">
+                posture: {STRATEGIES.find((s) => s.id === it.posture)?.name ?? it.posture}
+              </span>
+              <span className="border-border/60 flex-1 border-t border-dashed" aria-hidden />
+            </div>
             <ResultLine>
-              posture <b>{STRATEGIES.find((s) => s.id === it.posture)?.name ?? it.posture}</b> →
               rung <b>P {it.promos}</b>
               {it.promos === 0 ? " — not in the paid lane (nothing to promote)" : ""}
             </ResultLine>
-          </StepBox>
+          </ScoreBox>
 
           {/* Lane assembly */}
-          <StepBox
-            n={5}
+          <ScoreBox
+            icon={Layers}
             tint="sky"
             title="Lane assembly"
             note="the four lanes × two tiers, from the values above"
             className="xl:col-span-2"
           >
-            <div className="border-border/50 overflow-x-auto rounded-md border">
-              <table className="w-full min-w-[420px] border-collapse">
+            <div className="border-border/50 overflow-x-auto rounded-lg border">
+              <table className="w-full min-w-[440px] border-collapse">
                 <thead>
-                  <tr className="border-border/50 border-b">
+                  <tr className="bg-muted/60 border-border/50 border-b">
                     <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Lane</th>
                     <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Formula</th>
                     <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Fast (RM {it.rm})</th>
@@ -362,7 +458,7 @@ function InternalsPlayground({ consumers: consumerCount }: { consumers: number }
                 </tbody>
               </table>
             </div>
-          </StepBox>
+          </ScoreBox>
         </div>
       )}
     </PanelCard>
@@ -508,65 +604,94 @@ function EnginesPlayground() {
         {ENGINE_POLICIES.map((e) => {
           const run = runs[e.id];
           const res = results[e.id];
+          const Icon = ENGINE_ICONS[e.id];
+          const maxSlow = res ? Math.max(1, ...res.kept.map((r) => r.slowTotal)) : 1;
           return (
-            <div key={e.id} className="border-border/60 rounded-xl border p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-[13px] font-semibold">{e.engine}</p>
-                  <p className="text-muted-foreground font-mono text-[10px]">
-                    {e.id === "memo" ? "flexible intent · " : "fixed prompt structure · "}
-                    {e.policy}
-                  </p>
+            <div key={e.id} className="border-border/60 overflow-hidden rounded-2xl border">
+              <div className="bg-muted/50 border-border/60 flex items-center justify-between gap-2 border-b px-4 py-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="bg-pink-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm">
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[13px] leading-tight font-semibold">{e.engine}</p>
+                    <p className="text-muted-foreground truncate font-mono text-[9.5px]">
+                      {e.id === "memo" ? "flexible intent · " : "fixed prompt · "}
+                      {e.policy}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => generate(e.id)}
-                  className="bg-pink-gradient shadow-save rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
+                  className="bg-pink-gradient shadow-save shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
                 >
                   Generate
                 </button>
               </div>
 
-              {!run || !res ? (
-                <p className="text-muted-foreground mt-4 text-[12px]">
-                  Generate to run: consumer → intent → scores → ranking.
-                </p>
-              ) : (
-                <div className="mt-3 flex flex-col gap-2.5">
-                  <StepBox n={1} tint="sky" title="Consumer · Intent" note="the query side (CIP)">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <FactChip label="C" value={run.profile.consumer?.label ?? "synthetic"} />
-                      {run.profile.consumer?.sex ? <FactChip value={run.profile.consumer.sex} /> : null}
-                      {run.profile.consumer?.age != null ? <FactChip value={`${run.profile.consumer.age}y`} /> : null}
-                      {run.profile.consumer?.country ? <FactChip value={run.profile.consumer.country} /> : null}
-                      <FactChip value={`${run.profile.consumer?.class_key ?? "free"} class`} />
-                      {run.profile.synthetic ? <FactChip value="taste SYNTH" warn /> : null}
+              <div className="p-3.5">
+                {!run || !res ? (
+                  <div className="border-border/60 text-muted-foreground rounded-xl border border-dashed px-3 py-5 text-center text-[11.5px]">
+                    Generate to run: consumer → intent → scores → ranking.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    {/* the query side */}
+                    <div className="bg-muted/40 border-border/50 rounded-xl border px-3 py-2.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <FactChip value={run.profile.consumer?.label ?? "synthetic"} strong />
+                        {run.profile.consumer?.sex ? <FactChip value={run.profile.consumer.sex} /> : null}
+                        {run.profile.consumer?.age != null ? <FactChip value={`${run.profile.consumer.age}y`} /> : null}
+                        {run.profile.consumer?.country ? <FactChip value={run.profile.consumer.country} /> : null}
+                        <FactChip value={`${run.profile.consumer?.class_key ?? "free"} class`} />
+                        {run.profile.synthetic ? <FactChip value="taste SYNTH" warn /> : null}
+                      </div>
+                      <p className="mt-2 text-[11.5px] leading-snug font-medium">“{run.intent.parts.query}”</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <FactChip label="when" value={run.intent.timeLabel} />
+                        {run.intent.parts.zone ? <FactChip label="where" value={run.intent.parts.zone} /> : null}
+                        {run.intent.parts.party ? <FactChip value={run.intent.parts.party} /> : null}
+                      </div>
                     </div>
-                    <p className="mt-2 text-[11.5px] leading-snug font-medium">“{run.intent.parts.query}”</p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <FactChip label="when" value={run.intent.timeLabel} />
-                      {run.intent.parts.zone ? <FactChip label="where" value={run.intent.parts.zone} /> : null}
-                      {run.intent.parts.party ? <FactChip value={run.intent.parts.party} /> : null}
-                    </div>
-                  </StepBox>
 
-                  <StepBox n={2} tint="amber" title="Scores → ranking" note="fast screens → slow sorts">
+                    {/* the ranking */}
                     <div className="flex flex-col gap-1.5">
                       {res.kept.map((r, k) => (
-                        <div key={r.place.id} className="bg-card/70 border-border/60 rounded-lg border px-2.5 py-2">
+                        <div
+                          key={r.place.id}
+                          className={
+                            "rounded-xl border px-2.5 py-2 " +
+                            (k === 0
+                              ? "border-primary/40 bg-primary/5"
+                              : "border-border/60 bg-card")
+                          }
+                        >
                           <div className="flex items-baseline gap-2">
-                            <span className="text-muted-foreground w-4 shrink-0 font-mono text-[11px] tabular-nums">
+                            <span
+                              className={
+                                "flex h-4.5 w-4.5 shrink-0 translate-y-0.5 items-center justify-center rounded-full font-mono text-[9.5px] font-bold " +
+                                (k === 0 ? "bg-foreground text-background" : "bg-muted text-muted-foreground")
+                              }
+                              aria-hidden
+                            >
                               {k + 1}
                             </span>
                             <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold" title={r.place.name}>
                               {r.place.name}
                             </span>
                             <span
-                              className="font-mono text-[14px] font-semibold tabular-nums"
+                              className="font-display text-[15px] font-semibold tabular-nums"
                               title={`fast ${r.fastTotal.toFixed(1)} → slow ${r.slowTotal.toFixed(1)} (ranked by slow)`}
                             >
                               {r.slowTotal.toFixed(1)}
                             </span>
+                          </div>
+                          <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full" aria-hidden>
+                            <div
+                              className="bg-pink-gradient h-full rounded-full"
+                              style={{ width: `${Math.max(2, (r.slowTotal / maxSlow) * 100)}%` }}
+                            />
                           </div>
                           <div className="mt-1.5 grid grid-cols-4 gap-1">
                             <ScoreCell label="RM" value={String(r.rm)} hint="RAG match — cosine(CI, place) × 100" />
@@ -582,13 +707,13 @@ function EnginesPlayground() {
                       ))}
                     </div>
                     {res.screened > 0 ? (
-                      <p className="text-muted-foreground mt-1.5 text-[10px]">
+                      <p className="text-muted-foreground text-[10px]">
                         Fast screened out {res.screened} below the top {retrieval.shortlistN}.
                       </p>
                     ) : null}
-                  </StepBox>
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -599,51 +724,92 @@ function EnginesPlayground() {
 
 // ── Local bits ─────────────────────────────────────────────────────────
 
-// One stage / one score, as its own clearly bounded box: numbered badge +
-// tinted header strip, body on the card surface.
-const STEP_TINTS = {
-  sky: { box: "border-sky-200/70", head: "bg-sky-50 text-sky-950", badge: "bg-sky-600" },
-  violet: { box: "border-violet-200/70", head: "bg-violet-50 text-violet-950", badge: "bg-violet-600" },
-  emerald: { box: "border-emerald-200/70", head: "bg-emerald-50 text-emerald-950", badge: "bg-emerald-600" },
-  amber: { box: "border-amber-200/70", head: "bg-amber-50 text-amber-950", badge: "bg-amber-600" },
-  rose: { box: "border-rose-200/70", head: "bg-rose-50 text-rose-950", badge: "bg-rose-600" },
+/** One cell of the specimen bar — tinted icon circle + label + content. */
+function SpecimenCell({
+  icon: Icon,
+  tone,
+  label,
+  children,
+}: {
+  icon: LucideIcon;
+  tone: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-border/60 bg-card rounded-xl border px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <span className={`flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full ${tone}`}>
+          <Icon className="h-3 w-3" aria-hidden />
+        </span>
+        <span className="text-muted-foreground text-[9.5px] font-bold tracking-[0.1em] uppercase">
+          {label}
+        </span>
+      </div>
+      <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+// One score, one box: tinted icon circle + title in the header, the RESULT
+// headlined top-right, the process in the body.
+const SCORE_TINTS = {
+  sky: { box: "border-sky-200/70", head: "bg-sky-50 text-sky-950", circle: "bg-sky-600" },
+  violet: { box: "border-violet-200/70", head: "bg-violet-50 text-violet-950", circle: "bg-violet-600" },
+  emerald: { box: "border-emerald-200/70", head: "bg-emerald-50 text-emerald-950", circle: "bg-emerald-600" },
+  amber: { box: "border-amber-200/70", head: "bg-amber-50 text-amber-950", circle: "bg-amber-600" },
+  rose: { box: "border-rose-200/70", head: "bg-rose-50 text-rose-950", circle: "bg-rose-600" },
 } as const;
 
-function StepBox({
-  n,
+function ScoreBox({
+  icon: Icon,
   tint,
   title,
   note,
+  result,
   className = "",
   children,
 }: {
-  n: number;
-  tint: keyof typeof STEP_TINTS;
+  icon: LucideIcon;
+  tint: keyof typeof SCORE_TINTS;
   title: string;
   note: string;
+  result?: string;
   className?: string;
   children: React.ReactNode;
 }) {
-  const t = STEP_TINTS[tint];
+  const t = SCORE_TINTS[tint];
   return (
-    <section className={`overflow-hidden rounded-xl border ${t.box} ${className}`}>
-      <div className={`flex items-baseline gap-2 px-3 py-1.5 ${t.head}`}>
-        <span
-          className={`flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full font-mono text-[9.5px] font-bold text-white ${t.badge}`}
-          aria-hidden
-        >
-          {n}
+    <section className={`overflow-hidden rounded-2xl border ${t.box} ${className}`}>
+      <div className={`flex items-center gap-2.5 px-3.5 py-2 ${t.head}`}>
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${t.circle}`}>
+          <Icon className="h-3.5 w-3.5" aria-hidden />
         </span>
-        <span className="text-[11px] font-bold tracking-tight">{title}</span>
-        <span className="min-w-0 flex-1 truncate text-right font-mono text-[9px] opacity-70">{note}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] leading-tight font-bold tracking-tight">{title}</p>
+          <p className="truncate font-mono text-[9px] leading-tight opacity-70">{note}</p>
+        </div>
+        {result != null ? (
+          <span className="font-display shrink-0 text-lg font-semibold tabular-nums">{result}</span>
+        ) : null}
       </div>
-      <div className="bg-card px-3 py-2.5">{children}</div>
+      <div className="bg-card px-3.5 py-3">{children}</div>
     </section>
   );
 }
 
 /** A small labeled fact (consumer trait, intent slot). */
-function FactChip({ label, value, warn }: { label?: string; value: string; warn?: boolean }) {
+function FactChip({
+  label,
+  value,
+  warn,
+  strong,
+}: {
+  label?: string;
+  value: string;
+  warn?: boolean;
+  strong?: boolean;
+}) {
   return (
     <span
       className={
@@ -652,7 +818,7 @@ function FactChip({ label, value, warn }: { label?: string; value: string; warn?
       }
     >
       {label ? <span className="text-muted-foreground font-mono text-[8.5px] font-bold uppercase">{label}</span> : null}
-      <span className="font-mono text-[10.5px]">{value}</span>
+      <span className={"font-mono text-[10.5px]" + (strong ? " font-semibold" : "")}>{value}</span>
     </span>
   );
 }
@@ -686,7 +852,7 @@ function DocPre({
       <p className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
         {label}
       </p>
-      <pre className="bg-muted/40 border-border/50 mt-1 rounded-md border px-2.5 py-1.5 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
+      <pre className="bg-muted/40 border-border/50 mt-1 rounded-lg border px-2.5 py-1.5 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
         {text || empty}
       </pre>
     </div>
@@ -768,7 +934,8 @@ function RateCell({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-/** A generated vector, drawn: bar height = |value|, color = sign. */
+/** A generated vector as a mirrored waveform: bars up = positive slots,
+ * bars down = negative, around a faint baseline. */
 function VectorStrip({
   vec,
   mini,
@@ -786,20 +953,28 @@ function VectorStrip({
   return (
     <div
       className={
-        "bg-muted/40 border-border/50 flex items-end gap-px overflow-hidden rounded border px-0.5 pt-0.5 " +
-        (mini ? "h-4" : "h-8") +
+        "bg-muted/40 border-border/50 relative flex items-stretch gap-px overflow-hidden rounded-md border px-0.5 " +
+        (mini ? "h-4" : "h-9") +
         " " +
         className
       }
-      title={`${vec.length}d feature-hash embedding (emulated)`}
+      title={`${vec.length}d feature-hash embedding (emulated) — up = positive slot, down = negative`}
     >
-      {vals.map((v, i) => (
-        <span
-          key={i}
-          className={"w-full rounded-t-[1px] " + (v >= 0 ? "bg-sky-500/60" : "bg-pink-500/60")}
-          style={{ height: `${Math.max(6, (Math.abs(v) / max) * 100)}%` }}
-        />
-      ))}
+      <span className="border-border/60 pointer-events-none absolute inset-x-0 top-1/2 border-t" aria-hidden />
+      {vals.map((v, i) => {
+        const h = Math.max(6, (Math.abs(v) / max) * 46);
+        return (
+          <span key={i} className="relative w-full" aria-hidden>
+            <span
+              className={
+                "absolute right-0 left-0 " +
+                (v >= 0 ? "bottom-1/2 rounded-t-[1px] bg-sky-500/70" : "top-1/2 rounded-b-[1px] bg-pink-500/70")
+              }
+              style={{ height: `${h}%` }}
+            />
+          </span>
+        );
+      })}
     </div>
   );
 }
