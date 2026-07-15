@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   BadgePercent,
   Compass,
+  History,
   Layers,
   MapPin,
   Quote,
@@ -12,6 +13,8 @@ import {
   UserRound,
 } from "lucide-react";
 import {
+  CH_ENGINES,
+  chScore,
   ENGINE_POLICIES,
   fitScore,
   gpParts,
@@ -124,14 +127,17 @@ export function CardsPanel() {
     const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
     const ic = where * when;
 
+    // CH — Swipe-only pair history; stub 1 today, absent (≡1) elsewhere.
+    const ch = CH_ENGINES.has(intent.engine) ? chScore() : undefined;
+
     const laneRow = (lane: Lane) => ({
       lane,
-      score: laneScore(lane, { es, gp: gp.gp, rp, ic }),
+      score: laneScore(lane, { es, gp: gp.gp, rp, ic, ch }),
     });
 
     return {
       ciDoc, placeDoc, ciVec, placeVec, cos, es, gp, posture, rp,
-      km, where, win, wait, fit, when, ic,
+      km, where, win, wait, fit, when, ic, ch,
       lanes: LANES.map(laneRow),
     };
   }, [run, place, cfg, gpParams, rpVals, esSet, esParams]);
@@ -409,6 +415,28 @@ export function CardsPanel() {
             </ResultLine>
           </ScoreBox>
 
+          {/* CH — Swipe-only pair history (stub) */}
+          {it.ch != null && run ? (
+            <ScoreBox
+              icon={History}
+              tint="sky"
+              title="CH Subscore · Context History"
+              note="the consumer × place pair's history — Swipe only"
+              result={it.ch.toFixed(2)}
+            >
+              <p className="text-muted-foreground text-[10.5px] leading-relaxed">
+                STUB — always 1, so it moves nothing yet. The contract: did{" "}
+                <b>{c?.label ?? "this consumer"}</b> save {place.name}? visit it (paid ticket)?
+                skip it n times in the deck? When that history starts boosting/penalizing, its
+                knobs join the Subscores tab.
+              </p>
+              <ResultLine>
+                <b>CH {it.ch.toFixed(2)}</b> — multiplies all four Swipe lanes; Map and Pre-Memo
+                skip it
+              </ResultLine>
+            </ScoreBox>
+          ) : null}
+
           {/* The Card — four Scores, one value each */}
           <ScoreBox
             icon={Layers}
@@ -434,7 +462,7 @@ export function CardsPanel() {
                         <LaneBadge short={LANE_SHORT[lane.id]} title={`${lane.lane} · ${lane.mode}`} />
                       </td>
                       <td className="text-muted-foreground px-2.5 py-1.5 font-mono text-[10px]">
-                        {laneFormula(lane)}
+                        {laneFormula(lane, run?.intent.engine)}
                       </td>
                       <td className="px-2.5 py-1.5 text-right font-mono text-[11px] font-semibold tabular-nums">
                         {score.toFixed(1)}

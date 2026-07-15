@@ -33,6 +33,7 @@ import {
 //   GP  Google Popularity — smooth volume × quality
 //   RP  Rewards Promotions — posture from the live rates
 //   IC  Intent Context — where × when, the intent's numeric context
+//   CH  Context History — Swipe-only pair history; STUB 1, no knobs yet
 //
 // Deck maxes live on the Decks tab (deck-layer config, not Subscore params).
 // Values set here drive the Cards and Decks tabs live (shared provider) and
@@ -310,6 +311,20 @@ export function SubscoresPanel() {
         <ContextCols ctx={PIPELINE_CONTEXT.ic} />
       </PanelCard>
 
+
+      {/* ══ CH ═══════════════════════════════════════════════════════ */}
+      <PanelCard
+        title="CH Subscore · Context History"
+        subtitle="The consumer × place PAIR's history — did this consumer save this place, visit it, skip it n times in the deck? SWIPE-ONLY: it multiplies all four Swipe lanes; Map and Pre-Memo skip it. A STUB today — always 1, so no number moves anywhere — until the history starts boosting/penalizing."
+        pill="Swipe only"
+      >
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
+          <Chip label="Today" value="always 1" hint="stub — boosts/penalties arrive with the history data" />
+          <Chip label="Knobs" value="none yet" hint="they join the saved blob when CH stops being a stub" />
+        </div>
+        <ContextCols ctx={PIPELINE_CONTEXT.ch} />
+      </PanelCard>
+
       {/* ══ Persistence ══════════════════════════════════════════════ */}
       <PanelCard
         title="Saved config"
@@ -370,7 +385,8 @@ export function SubscoresPanel() {
           </p>
           <p>
             ES = embeddings cosine · 0–{ES_MAX} · GP = volume × quality · 0–1 · RP = rates → posture
-            → rung · 0–{RP_MAX} · IC = where × when · 0–1
+            → rung · 0–{RP_MAX} · IC = where × when · 0–1 · CH = context history · Swipe only ·
+            stub 1
           </p>
           <p>
             GP = log10(1+n)/log10(1+{gpParams.refCount.toLocaleString("en-US")}) ×

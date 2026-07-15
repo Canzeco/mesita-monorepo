@@ -3,7 +3,8 @@
 // FIVE LAYERS. Every name in the model is defined exactly once, here; the
 // Scoring Config page and the per-place Scores tab only render them.
 //
-//   4 SUBSCORES  ES · GP · RP · IC     the factors a Score multiplies
+//   5 SUBSCORES  ES · GP · RP · IC     the factors a Score multiplies
+//                (+ CH on Swipe)
 //      ↓
 //   4 SCORES     ON · OF · IN · IF     one per Lane, carried by a CARD
 //      ↓
@@ -30,6 +31,11 @@
 //   IC  Intent Context         0–1    where(km) × when(opens_in, open_for) —
 //                                     how the place sits in the intent's
 //                                     numeric context. Now-mode lanes only.
+//   CH  Context History        stub 1 the consumer × place pair's history
+//                                     (saved · visited · skipped n times).
+//                                     SWIPE-ONLY, and a stub until the
+//                                     history data starts boosting/
+//                                     penalizing — no knobs yet.
 //
 // ONE pattern builds every Score — Match × popularity × moment, where the
 // popularity is EARNED in the organic lanes and BOUGHT in the paid ones:
@@ -39,6 +45,9 @@
 //   OF  organic   future OF = ES × GP                 100
 //   IN  inorganic now    IN = ES × RP × IC            300
 //   IF  inorganic future IF = ES × RP                 300
+//
+//   Swipe's lanes additionally multiply CH (Context History) — engine-scoped,
+//   all four Swipe lanes; a stub 1 today, so no number moves anywhere.
 //
 // ES reaches 0, and 0 zeroes every Score — "money can't buy irrelevance" is
 // the whole reason Match multiplies.
@@ -145,14 +154,32 @@ export const TIME_BLOCK_H = 0.5;
 // keyed off these ids, so a Sub-Score can never be renamed on screen without
 // its storage following.
 
-export type SubScoreId = "es" | "gp" | "rp" | "ic";
+export type SubScoreId = "es" | "gp" | "rp" | "ic" | "ch";
 
 /** ES — the one field-configurable Sub-Score (its context is CONFIG). */
 export type ConfigurableSubScoreId = Extract<SubScoreId, "es">;
 
-/** GP · RP · IC — inputs are structural (the numeric fields ARE the
+/** GP · RP · IC · CH — inputs are structural (the numeric fields ARE the
  * function), so these are tuned by knobs, never by field selection. */
 export type FixedSubScoreId = Exclude<SubScoreId, ConfigurableSubScoreId>;
+
+/** The engines. Declared here because CH below is ENGINE-scoped. */
+export type EngineId = "swipe" | "map" | "memo";
+
+// ── CH — Context History, the engine-scoped Subscore ───────────────────
+// The consumer × place PAIR's history: did this consumer save this place,
+// visit it (paid ticket), skip it n times in the deck? SWIPE-ONLY — the
+// swipe deck is where repeat exposure lives. STUB: always 1 until the
+// history starts boosting/penalizing; no knobs yet ("maybe in the future we
+// configure that param" — they join the blob when they exist).
+
+/** Which engines' lanes multiply CH. */
+export const CH_ENGINES: ReadonlySet<EngineId> = new Set(["swipe"]);
+
+/** CH — Context History. Stub: always 1. */
+export function chScore(): number {
+  return 1;
+}
 
 /** RP's ceiling — the top rung of the membership ladder. */
 export const RP_MAX = 3;
@@ -359,10 +386,12 @@ export const LANES: readonly Lane[] = [
 /** DeckKeys in canonical order (on · of · in · if) — blob key order too. */
 export const DECK_KEYS: readonly DeckKey[] = LANES.map((l) => l.short);
 
-/** A lane's Score in the model's shorthand — e.g. "ES·RP·IC". */
-export function laneFormula(lane: Lane): string {
+/** A lane's Score in the model's shorthand — e.g. "ES·RP·IC". Pass the
+ * engine to include its engine-scoped Subscores (Swipe appends ·CH). */
+export function laneFormula(lane: Lane, engine?: EngineId): string {
   const parts: string[] = ["ES", lane.lane === "organic" ? "GP" : "RP"];
   if (lane.mode === "now") parts.push("IC");
+  if (engine && CH_ENGINES.has(engine)) parts.push("CH");
   return parts.join("·");
 }
 
@@ -375,6 +404,8 @@ export type LaneInputs = {
   rp: number;
   /** 0–1 — Intent Context (now-mode lanes only). */
   ic: number;
+  /** Context History — Swipe lanes only; omit for 1. Stub 1 today. */
+  ch?: number;
 };
 
 /** One lane's Score. ES multiplies un-floored, so 0 relevance zeroes it. */
@@ -382,12 +413,11 @@ export function laneScore(lane: Lane, i: LaneInputs): number {
   const es = Math.max(0, Math.min(ES_MAX, i.es));
   const popularity = lane.lane === "organic" ? i.gp : i.rp;
   const moment = lane.mode === "now" ? i.ic : 1;
-  return es * popularity * moment;
+  const history = i.ch ?? 1;
+  return es * popularity * moment * history;
 }
 
 // ── ENGINES ────────────────────────────────────────────────────────────
-
-export type EngineId = "swipe" | "map" | "memo";
 
 export type EnginePolicy = {
   id: EngineId;
@@ -444,6 +474,9 @@ export const DECK_COUNT_MAX = 20;
 export const DEFAULT_DECKS: Decks = {
   swipe: { on: 7, of: 2, in: 2, if: 1 },
   map:   { on: 8, of: 2, in: 1, if: 1 },
+  // PROVISIONAL — Pre-Memo's sub-deck structure is undecided (Memo layers
+  // RAG on top; whether its deck composes from these four lanes is an open
+  // design question). Placeholder maxes until that's settled.
   memo:  { on: 4, of: 3, in: 1, if: 0 },
 };
 
@@ -823,5 +856,16 @@ export const PIPELINE_CONTEXT: Record<FixedSubScoreId, SubScoreContext> = {
       { field: "lat/lng (NUMERIC)", status: "live" },
       { field: "hours → open windows (NUMERIC)", status: "live" },
     ],
+  },
+  // CH reads the consumer × place PAIR — "spec" = the data exists but the
+  // stub ignores it by design; "planned" = no data at all (skips untracked).
+  ch: {
+    consumer: [
+      { field: "saved this place? (saved_places)", status: "spec" },
+      { field: "visited? (paid tickets)", status: "spec" },
+      { field: "skipped n times (deck history)", status: "planned" },
+    ],
+    intent: [{ field: "—", status: "live" }],
+    place: [{ field: "— (the pair IS the input)", status: "live" }],
   },
 };
