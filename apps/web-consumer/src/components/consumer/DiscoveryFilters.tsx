@@ -31,72 +31,114 @@ import {
 // FRONTEND-ONLY (MESITA-632): selections are local component state and are
 // NOT applied to the deck / map yet — the recommender wiring lands with the
 // filtering backend. Both host sheets mount this with keepMounted so
-// selections survive a close.
+// selections survive a close. The one thing that DOES leave the sheet is
+// `onActiveChange` (MESITA-633): fired on every change with whether any
+// filter deviates from the defaults, so hosts can dot their trigger.
 
 const DEFAULT_RANDOMNESS = 5;
 
-export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
-  // Where — "near me" or a node of the zone tree; null zone = anywhere.
-  const [nearMe, setNearMe] = useState(true);
-  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
-  // Drill path through the tree (breadcrumb). Kept separate from the
-  // selection so browsing deeper never loses what's picked.
-  const [pathIds, setPathIds] = useState<string[]>([]);
-  // When — "now" or a fixed 0–23 hour. Seeded client-side only (the sheet
-  // portals in after mount), so Date here can't desync hydration.
-  const [whenNow, setWhenNow] = useState(true);
-  const [hour, setHour] = useState(() => new Date().getHours());
-  // What — multi-select category slugs; empty = all categories.
-  const [categorySlugs, setCategorySlugs] = useState<string[]>([]);
-  // Randomness — 1 plays it safe, 10 is full surprise.
-  const [randomness, setRandomness] = useState(DEFAULT_RANDOMNESS);
+type FiltersState = {
+  /** Where — "near me" (default) or a zone-tree selection. */
+  nearMe: boolean;
+  /** Selected zone node id; null = anywhere. Only meaningful when !nearMe. */
+  selectedZoneId: string | null;
+  /** Drill path through the tree (breadcrumb) — browsing, not selection. */
+  pathIds: string[];
+  /** When — "now" (default) or the fixed `hour`. */
+  whenNow: boolean;
+  hour: number;
+  /** What — multi-select category slugs; empty = all categories. */
+  categorySlugs: string[];
+  /** Randomness — 1 plays it safe, 10 is full surprise. */
+  randomness: number;
+};
 
-  const path = pathIds
+// Seeded client-side only (the sheet portals in after mount), so Date here
+// can't desync hydration.
+function defaultFiltersState(): FiltersState {
+  return {
+    nearMe: true,
+    selectedZoneId: null,
+    pathIds: [],
+    whenNow: true,
+    hour: new Date().getHours(),
+    categorySlugs: [],
+    randomness: DEFAULT_RANDOMNESS,
+  };
+}
+
+// "Any filter set?" — drives the trigger dot on both surfaces. The drill
+// path and the parked hour don't count: browsing zones without picking one
+// (or moving the slider and tapping Now again) leaves nothing applied.
+function filtersAreActive(state: FiltersState): boolean {
+  return (
+    !state.nearMe ||
+    !state.whenNow ||
+    state.categorySlugs.length > 0 ||
+    state.randomness !== DEFAULT_RANDOMNESS
+  );
+}
+
+export function DiscoveryFilters({
+  onClose,
+  onActiveChange,
+}: {
+  onClose: () => void;
+  onActiveChange?: (active: boolean) => void;
+}) {
+  const [state, setState] = useState<FiltersState>(defaultFiltersState);
+
+  // Every mutation funnels through here so active-ness is reported in the
+  // same event tick (no effects — react-hooks/set-state-in-effect).
+  const patch = (partial: Partial<FiltersState>) => {
+    const next = { ...state, ...partial };
+    setState(next);
+    onActiveChange?.(filtersAreActive(next));
+  };
+
+  const path = state.pathIds
     .map((id) => findZoneTrail(id)?.at(-1))
     .filter((n): n is ZoneNode => !!n);
   const level = path.at(-1);
   const options = level?.children ?? ZONE_TREE;
-  const selectedTrail = selectedZoneId ? findZoneTrail(selectedZoneId) : null;
+  const selectedTrail = state.selectedZoneId
+    ? findZoneTrail(state.selectedZoneId)
+    : null;
   const selectedZone = selectedTrail?.at(-1) ?? null;
 
   const pickZone = (node: ZoneNode) => {
-    setNearMe(false);
-    setSelectedZoneId(node.id);
-    if (node.children?.length) {
-      setPathIds((ids) => [...ids, node.id]);
-    }
+    patch({
+      nearMe: false,
+      selectedZoneId: node.id,
+      pathIds: node.children?.length
+        ? [...state.pathIds, node.id]
+        : state.pathIds,
+    });
   };
 
-  const jumpTo = (depth: number) => setPathIds((ids) => ids.slice(0, depth));
+  const jumpTo = (depth: number) =>
+    patch({ pathIds: state.pathIds.slice(0, depth) });
 
   const toggleCategory = (slug: string) => {
-    setCategorySlugs((slugs) =>
-      slugs.includes(slug)
-        ? slugs.filter((s) => s !== slug)
-        : [...slugs, slug],
-    );
+    patch({
+      categorySlugs: state.categorySlugs.includes(slug)
+        ? state.categorySlugs.filter((s) => s !== slug)
+        : [...state.categorySlugs, slug],
+    });
   };
 
-  const reset = () => {
-    setNearMe(true);
-    setSelectedZoneId(null);
-    setPathIds([]);
-    setWhenNow(true);
-    setHour(new Date().getHours());
-    setCategorySlugs([]);
-    setRandomness(DEFAULT_RANDOMNESS);
-  };
+  const reset = () => patch(defaultFiltersState());
 
-  const whereSummary = nearMe
+  const whereSummary = state.nearMe
     ? "Near me"
     : (selectedZone?.name ?? "Anywhere");
   const whatSummary =
-    categorySlugs.length === 0
+    state.categorySlugs.length === 0
       ? "All"
-      : categorySlugs.length === 1
-        ? (FILTER_CATEGORIES.find((c) => c.slug === categorySlugs[0])?.label ??
-          "1 selected")
-        : `${categorySlugs.length} selected`;
+      : state.categorySlugs.length === 1
+        ? (FILTER_CATEGORIES.find((c) => c.slug === state.categorySlugs[0])
+            ?.label ?? "1 selected")
+        : `${state.categorySlugs.length} selected`;
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -134,10 +176,10 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
         <Section icon={MapPin} label="Where" value={whereSummary}>
           <button
             type="button"
-            onClick={() => setNearMe(true)}
+            onClick={() => patch({ nearMe: true })}
             className={cn(
               "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]",
-              nearMe
+              state.nearMe
                 ? "border-primary/40 bg-primary/5"
                 : "border-border bg-card hover:bg-muted/50",
             )}
@@ -145,7 +187,7 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
             <span
               className={cn(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                nearMe
+                state.nearMe
                   ? "bg-pink-gradient text-white"
                   : "bg-muted text-muted-foreground",
               )}
@@ -161,7 +203,7 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
             <span
               className={cn(
                 "h-4 w-4 shrink-0 rounded-full border-2 transition",
-                nearMe ? "border-primary bg-primary" : "border-border",
+                state.nearMe ? "border-primary bg-primary" : "border-border",
               )}
               aria-hidden="true"
             />
@@ -206,21 +248,17 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
           <div className="mt-2 flex flex-wrap gap-2">
             {level ? (
               <Chip
-                active={!nearMe && selectedZoneId === level.id}
-                onClick={() => {
-                  setNearMe(false);
-                  setSelectedZoneId(level.id);
-                }}
+                active={!state.nearMe && state.selectedZoneId === level.id}
+                onClick={() =>
+                  patch({ nearMe: false, selectedZoneId: level.id })
+                }
               >
                 All {level.name}
               </Chip>
             ) : (
               <Chip
-                active={!nearMe && selectedZoneId === null}
-                onClick={() => {
-                  setNearMe(false);
-                  setSelectedZoneId(null);
-                }}
+                active={!state.nearMe && state.selectedZoneId === null}
+                onClick={() => patch({ nearMe: false, selectedZoneId: null })}
               >
                 Anywhere
               </Chip>
@@ -228,7 +266,7 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
             {options.map((node) => (
               <Chip
                 key={node.id}
-                active={!nearMe && selectedZoneId === node.id}
+                active={!state.nearMe && state.selectedZoneId === node.id}
                 onClick={() => pickZone(node)}
                 trailing={
                   node.children?.length ? (
@@ -251,34 +289,33 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
         <Section
           icon={Clock}
           label="When"
-          value={whenNow ? "Now" : formatHourLabel(hour)}
+          value={state.whenNow ? "Now" : formatHourLabel(state.hour)}
         >
           <div className="flex items-center gap-3">
-            <Chip active={whenNow} onClick={() => {
-              setWhenNow(true);
-              setHour(new Date().getHours());
-            }}>
+            <Chip
+              active={state.whenNow}
+              onClick={() =>
+                patch({ whenNow: true, hour: new Date().getHours() })
+              }
+            >
               Now
             </Chip>
             <span
               className={cn(
                 "font-display ml-auto text-lg font-semibold tabular-nums transition",
-                whenNow && "text-muted-foreground/60",
+                state.whenNow && "text-muted-foreground/60",
               )}
             >
-              {formatHourLabel(hour)}
+              {formatHourLabel(state.hour)}
             </span>
           </div>
           <GradientRange
             min={0}
             max={23}
-            value={hour}
+            value={state.hour}
             ariaLabel="Hour of day"
-            dimmed={whenNow}
-            onChange={(next) => {
-              setWhenNow(false);
-              setHour(next);
-            }}
+            dimmed={state.whenNow}
+            onChange={(next) => patch({ whenNow: false, hour: next })}
             className="mt-3"
           />
           <div className="text-muted-foreground/70 mt-1.5 flex justify-between text-[10px] font-medium">
@@ -298,15 +335,15 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
           <div className="scrollbar-hide -mx-4 overflow-x-auto px-4">
             <div className="grid w-max grid-flow-col grid-rows-2 gap-2">
               <Chip
-                active={categorySlugs.length === 0}
-                onClick={() => setCategorySlugs([])}
+                active={state.categorySlugs.length === 0}
+                onClick={() => patch({ categorySlugs: [] })}
               >
                 ✨ All
               </Chip>
               {FILTER_CATEGORIES.map((category) => (
                 <Chip
                   key={category.slug}
-                  active={categorySlugs.includes(category.slug)}
+                  active={state.categorySlugs.includes(category.slug)}
                   onClick={() => toggleCategory(category.slug)}
                 >
                   {category.label}
@@ -320,19 +357,19 @@ export function DiscoveryFilters({ onClose }: { onClose: () => void }) {
         <Section
           icon={Dices}
           label="Randomness"
-          value={`${randomness} · ${randomnessLabel(randomness)}`}
+          value={`${state.randomness} · ${randomnessLabel(state.randomness)}`}
         >
           <GradientRange
             min={1}
             max={10}
-            value={randomness}
+            value={state.randomness}
             ariaLabel="Randomness level"
-            onChange={setRandomness}
+            onChange={(next) => patch({ randomness: next })}
           />
           <div className="text-muted-foreground mt-1.5 flex items-baseline justify-between text-[11px] font-medium">
             <span>Play it safe</span>
             <span className="text-foreground">
-              {randomnessLabel(randomness)}
+              {randomnessLabel(state.randomness)}
             </span>
             <span>Surprise me</span>
           </div>

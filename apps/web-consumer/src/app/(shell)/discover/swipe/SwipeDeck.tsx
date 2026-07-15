@@ -121,6 +121,9 @@ function Deck({ places }: { places: Place[] }) {
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Whether any discovery filter deviates from defaults — reported by the
+  // sheet, drives the red dot on the Filter action (MESITA-633).
+  const [filtersActive, setFiltersActive] = useState(false);
   const infoOpeningRef = useRef(false);
   const cardElRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
@@ -596,11 +599,21 @@ function Deck({ places }: { places: Place[] }) {
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            aria-label="Filters"
-            title="Filters"
+            aria-label={filtersActive ? "Filters (active)" : "Filters"}
+            title={filtersActive ? "Filters (active)" : "Filters"}
             className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
           >
-            <SlidersHorizontal className="h-5 w-5" />
+            <span className="relative">
+              <SlidersHorizontal className="h-5 w-5" />
+              {/* Red "filters set" dot (MESITA-633) — any deviation from
+                  the sheet's defaults lights it. */}
+              {filtersActive && (
+                <span
+                  className="ring-card absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 ring-2"
+                  aria-hidden="true"
+                />
+              )}
+            </span>
           </button>
           <button
             type="button"
@@ -647,7 +660,11 @@ function Deck({ places }: { places: Place[] }) {
         </div>
       </div>
 
-      <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+      <FilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onActiveChange={setFiltersActive}
+      />
     </div>
   );
 }

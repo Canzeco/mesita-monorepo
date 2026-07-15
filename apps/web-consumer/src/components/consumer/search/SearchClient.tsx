@@ -88,6 +88,9 @@ export function SearchClient({
   // one tap, before any typing.
   const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Whether any discovery filter deviates from defaults — reported by the
+  // sheet, drives the red dot on the tune icon (MESITA-633).
+  const [filtersActive, setFiltersActive] = useState(false);
   const [activeChips, setActiveChips] = useState<string[]>([]);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
@@ -366,14 +369,19 @@ export function SearchClient({
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            aria-label="Filters"
+            aria-label={filtersActive ? "Filters (active)" : "Filters"}
+            title={filtersActive ? "Filters (active)" : "Filters"}
             className="text-foreground hover:text-primary relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95"
           >
             <SlidersHorizontal className="h-4 w-4" />
-            {activeChips.length > 0 && (
-              <span className="bg-primary text-primary-foreground absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold">
-                {activeChips.length}
-              </span>
+            {/* Red "filters set" dot (MESITA-633) — any deviation from the
+                sheet's defaults lights it. Replaced the old activeChips
+                count badge (dead since the chips were parked). */}
+            {filtersActive && (
+              <span
+                className="ring-card absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 ring-2"
+                aria-hidden="true"
+              />
             )}
           </button>
         </div>
@@ -520,6 +528,7 @@ export function SearchClient({
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         ariaLabel="Search filters"
+        onActiveChange={setFiltersActive}
       />
 
       <GooglePlaceSheet
