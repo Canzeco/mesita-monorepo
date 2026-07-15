@@ -57,15 +57,19 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   }
 
   // v7.4: the moment is WWW (what · where · when). Accept legacy `ww` too.
+  // v7.7: distanceExp + timeBlockH stop being code constants (default-filled
+  // for older clients, like whatOffFactor was).
   const www = (r.www ?? r.ww) as Record<string, unknown> | undefined;
   const distanceHalfKm = num(www?.distanceHalfKm, 1, 20);
+  const distanceExp = num(www?.distanceExp ?? 1.6, 1, 3);
   const waitHalfH = num(www?.waitHalfH, 0.5, 4);
   const waitExp = num(www?.waitExp, 1, 5);
   const sessionH = num(www?.sessionH, 0.5, 4);
   const whatOffFactor = num(www?.whatOffFactor ?? 0.3, 0, 1);
+  const timeBlockH = num(www?.timeBlockH ?? 0.5, 0.25, 1);
   if (
-    distanceHalfKm == null || waitHalfH == null || waitExp == null ||
-    sessionH == null || whatOffFactor == null
+    distanceHalfKm == null || distanceExp == null || waitHalfH == null ||
+    waitExp == null || sessionH == null || whatOffFactor == null || timeBlockH == null
   ) {
     return { ok: false, error: "www knobs out of range" };
   }
@@ -105,15 +109,42 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     }
   }
 
+  // v7.7: the match tiers' INTERNAL params — RIPM encoder dims + the LIPM
+  // judge's rubric weights. Default-filled so older clients keep working;
+  // always written so the blob stays complete going forward.
+  const ripmIn = r.ripm as Record<string, unknown> | undefined;
+  const embedDims = num(ripmIn?.embedDims ?? 64, 16, 256);
+  const lipmIn = r.lipm as Record<string, unknown> | undefined;
+  const catBonus = num(lipmIn?.catBonus ?? 15, 0, 30);
+  const zoneBonus = num(lipmIn?.zoneBonus ?? 8, 0, 20);
+  const clashPenalty = num(lipmIn?.clashPenalty ?? 18, 0, 30);
+  const nuanceAmp = num(lipmIn?.nuanceAmp ?? 6, 0, 12);
+  if (
+    embedDims == null || catBonus == null || zoneBonus == null ||
+    clashPenalty == null || nuanceAmp == null
+  ) {
+    return { ok: false, error: "ripm/lipm params out of range" };
+  }
+
   return {
     ok: true,
     config: {
       v: 1,
       mix,
       retrieval: { recallTopK, shortlistN },
-      www: { distanceHalfKm, waitHalfH, waitExp, sessionH, whatOffFactor },
+      www: {
+        distanceHalfKm,
+        distanceExp,
+        waitHalfH,
+        waitExp,
+        sessionH,
+        whatOffFactor,
+        timeBlockH,
+      },
       promos,
       ...(context ? { context } : {}),
+      ripm: { embedDims: Math.round(embedDims) },
+      lipm: { catBonus, zoneBonus, clashPenalty, nuanceAmp: Math.round(nuanceAmp) },
     },
   };
 }

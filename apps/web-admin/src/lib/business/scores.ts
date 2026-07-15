@@ -123,6 +123,8 @@ export type ScoresConfig = {
    * than closed.
    */
   whatOffFactor: number;
+  /** Time-grid resolution, hours. 0.5 = 30-min blocks (the default belief). */
+  timeBlockH: number;
 };
 
 // WWW defaults, argued from what Mesita IS — not from what looked right on a
@@ -152,6 +154,39 @@ export const DEFAULT_SCORES_CONFIG: ScoresConfig = {
   waitExp: 2.5,
   sessionH: 1.5,
   whatOffFactor: 0.3,
+  timeBlockH: TIME_BLOCK_H,
+};
+
+// ── Match-tier internal params — configurable, not constants ────────────
+// The estimators' own knobs. RIPM: the encoder's dimensionality (emulated
+// feature-hash today; the real embedding model's dims when live). LIPM: the
+// judge's rubric weights — what each structured judgment is worth. These were
+// hardcoded (+15/+8/−18/±6, 64d) until v7.7; now they persist in the blob
+// and every playground computes from them.
+
+export type RipmParams = {
+  /** Embedding dimensionality. */
+  embedDims: number;
+};
+
+export type LipmParams = {
+  /** + when the place's category is in the consumer+intent tokens. */
+  catBonus: number;
+  /** + when the place's zone is in the consumer+intent tokens. */
+  zoneBonus: number;
+  /** − when an occasion token clashes with the category (stored positive). */
+  clashPenalty: number;
+  /** ± judgment-nuance amplitude, stable per consumer×place pair. */
+  nuanceAmp: number;
+};
+
+export const DEFAULT_RIPM_PARAMS: RipmParams = { embedDims: 64 };
+
+export const DEFAULT_LIPM_PARAMS: LipmParams = {
+  catBonus: 15,
+  zoneBonus: 8,
+  clashPenalty: 18,
+  nuanceAmp: 6,
 };
 
 /**
@@ -165,10 +200,12 @@ export function whatScore(fits: boolean, cfg: ScoresConfig = DEFAULT_SCORES_CONF
   return fits ? 1 : Math.max(0, Math.min(1, cfg.whatOffFactor));
 }
 
-/** Snap hours to the 30-minute grid. Everything time-shaped goes through this. */
-export function quantizeH(hours: number): number {
+/** Snap hours to the time grid (default 30-min blocks). Everything
+ * time-shaped goes through this. */
+export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number {
   if (!Number.isFinite(hours) || hours <= 0) return 0;
-  return Math.round(hours / TIME_BLOCK_H) * TIME_BLOCK_H;
+  if (blockH <= 0) return hours;
+  return Math.round(hours / blockH) * blockH;
 }
 
 /** Hill curve → 0–1. Plateau, shoulder, heavy tail. */
@@ -186,13 +223,13 @@ export function whereScore(km: number | null, cfg: ScoresConfig = DEFAULT_SCORES
 
 /** wait — the cost of arriving `opensInH` hours from now, 0–1. Open now → 1. */
 export function waitScore(opensInH: number, cfg: ScoresConfig = DEFAULT_SCORES_CONFIG): number {
-  return hill(quantizeH(opensInH), cfg.waitHalfH, cfg.waitExp);
+  return hill(quantizeH(opensInH, cfg.timeBlockH), cfg.waitHalfH, cfg.waitExp);
 }
 
 /** fit — is there time to complete the visit, 0–1. Caps at 1: enough is enough. */
 export function fitScore(openForH: number, cfg: ScoresConfig = DEFAULT_SCORES_CONFIG): number {
   if (cfg.sessionH <= 0) return 1;
-  return Math.max(0, Math.min(1, quantizeH(openForH) / cfg.sessionH));
+  return Math.max(0, Math.min(1, quantizeH(openForH, cfg.timeBlockH) / cfg.sessionH));
 }
 
 /** when — the moment, 0–1. */
@@ -400,27 +437,25 @@ export type ScoringSettings = {
   v: 1;
   mix: Record<EngineId, Record<LaneId, number>>;
   retrieval: { recallTopK: number; shortlistN: number };
-  www: Pick<ScoresConfig, "distanceHalfKm" | "waitHalfH" | "waitExp" | "sessionH" | "whatOffFactor">;
+  www: ScoresConfig;
   promos: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
   context: ContextConfig;
+  ripm: RipmParams;
+  lipm: LipmParams;
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   v: 1,
   mix: DEFAULT_ENGINE_MIX,
   retrieval: DEFAULT_RETRIEVAL,
-  www: {
-    distanceHalfKm: DEFAULT_SCORES_CONFIG.distanceHalfKm,
-    waitHalfH: DEFAULT_SCORES_CONFIG.waitHalfH,
-    waitExp: DEFAULT_SCORES_CONFIG.waitExp,
-    sessionH: DEFAULT_SCORES_CONFIG.sessionH,
-    whatOffFactor: DEFAULT_SCORES_CONFIG.whatOffFactor,
-  },
+  www: DEFAULT_SCORES_CONFIG,
   // Linear so relevance can beat money inside the paid lane; Zero = 0 because
   // there is nothing to promote (no discount) — the membership buys listing +
   // tools, generosity buys placement.
   promos: { zero: 0, conservative: 1, aggressive: 2, dominant: 3 },
   context: DEFAULT_CONTEXT_CONFIG,
+  ripm: DEFAULT_RIPM_PARAMS,
+  lipm: DEFAULT_LIPM_PARAMS,
 };
 
 // Sorted + deduped so key order can never fake a settings diff. An empty
@@ -460,6 +495,8 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const www = ((r.www ?? r.ww) ?? {}) as Record<string, unknown>;
   const promos = (r.promos ?? {}) as Record<string, unknown>;
   const ctx = (r.context ?? {}) as Record<string, unknown>;
+  const ripm = (r.ripm ?? {}) as Record<string, unknown>;
+  const lipm = (r.lipm ?? {}) as Record<string, unknown>;
 
   return {
     v: 1,
@@ -470,10 +507,12 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
     },
     www: {
       distanceHalfKm: num(www.distanceHalfKm, d.www.distanceHalfKm, 1, 20),
+      distanceExp: num(www.distanceExp, d.www.distanceExp, 1, 3),
       waitHalfH: num(www.waitHalfH, d.www.waitHalfH, 0.5, 4),
       waitExp: num(www.waitExp, d.www.waitExp, 1, 5),
       sessionH: num(www.sessionH, d.www.sessionH, 0.5, 4),
       whatOffFactor: num(www.whatOffFactor, d.www.whatOffFactor, 0, 1),
+      timeBlockH: num(www.timeBlockH, d.www.timeBlockH, 0.25, 1),
     },
     promos: {
       zero: num(promos.zero, d.promos.zero, 0, 9),
@@ -484,6 +523,15 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
     context: {
       ripm: coerceContextKeys(ctx.ripm, d.context.ripm),
       lipm: coerceContextKeys(ctx.lipm, d.context.lipm),
+    },
+    ripm: {
+      embedDims: Math.round(num(ripm.embedDims, d.ripm.embedDims, 16, 256)),
+    },
+    lipm: {
+      catBonus: num(lipm.catBonus, d.lipm.catBonus, 0, 30),
+      zoneBonus: num(lipm.zoneBonus, d.lipm.zoneBonus, 0, 20),
+      clashPenalty: num(lipm.clashPenalty, d.lipm.clashPenalty, 0, 30),
+      nuanceAmp: Math.round(num(lipm.nuanceAmp, d.lipm.nuanceAmp, 0, 12)),
     },
   };
 }

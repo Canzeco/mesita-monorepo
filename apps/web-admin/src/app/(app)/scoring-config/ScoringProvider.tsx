@@ -8,6 +8,8 @@ import {
   type ContextConfig,
   type EngineId,
   type LaneId,
+  type LipmParams,
+  type RipmParams,
   type ScoresConfig,
   type ScoringSettings,
 } from "@/lib/business/scores";
@@ -34,6 +36,8 @@ function fromSettings(s: ScoringSettings): {
   retrieval: Retrieval;
   promoVals: PromoVals;
   context: ContextConfig;
+  ripmParams: RipmParams;
+  lipmParams: LipmParams;
 } {
   return {
     cfg: { ...DEFAULT_SCORES_CONFIG, ...s.www },
@@ -41,6 +45,8 @@ function fromSettings(s: ScoringSettings): {
     retrieval: s.retrieval,
     promoVals: { ...s.promos },
     context: { ripm: [...s.context.ripm], lipm: [...s.context.lipm] },
+    ripmParams: { ...s.ripm },
+    lipmParams: { ...s.lipm },
   };
 }
 
@@ -59,6 +65,12 @@ type ScoringCtx = {
   context: ContextConfig;
   /** Toggle one registry field in one tier's context. */
   toggleContext: (tier: keyof ContextConfig, key: string) => void;
+  /** RIPM internals — the encoder's params. */
+  ripmParams: RipmParams;
+  setRipmParams: React.Dispatch<React.SetStateAction<RipmParams>>;
+  /** LIPM internals — the judge's rubric weights. */
+  lipmParams: LipmParams;
+  setLipmParams: React.Dispatch<React.SetStateAction<LipmParams>>;
   /** Current form as a settings blob. */
   current: ScoringSettings;
   dirty: boolean;
@@ -97,6 +109,8 @@ export function ScoringProvider({
   const [retrieval, setRetrieval] = useState<Retrieval>(seed.retrieval);
   const [promoVals, setPromoVals] = useState<PromoVals>(seed.promoVals);
   const [context, setContext] = useState<ContextConfig>(seed.context);
+  const [ripmParams, setRipmParams] = useState<RipmParams>(seed.ripmParams);
+  const [lipmParams, setLipmParams] = useState<LipmParams>(seed.lipmParams);
 
   const toggleContext = (tier: keyof ContextConfig, key: string) =>
     setContext((c) => ({
@@ -113,13 +127,7 @@ export function ScoringProvider({
       v: 1,
       mix,
       retrieval,
-      www: {
-        distanceHalfKm: cfg.distanceHalfKm,
-        waitHalfH: cfg.waitHalfH,
-        waitExp: cfg.waitExp,
-        sessionH: cfg.sessionH,
-        whatOffFactor: cfg.whatOffFactor,
-      },
+      www: { ...cfg },
       promos: {
         zero: promoVals.zero,
         conservative: promoVals.conservative,
@@ -128,8 +136,10 @@ export function ScoringProvider({
       },
       // Sorted so toggle order never fakes a diff against the saved blob.
       context: { ripm: [...context.ripm].sort(), lipm: [...context.lipm].sort() },
+      ripm: { ...ripmParams },
+      lipm: { ...lipmParams },
     }),
-    [mix, retrieval, cfg, promoVals, context],
+    [mix, retrieval, cfg, promoVals, context, ripmParams, lipmParams],
   );
 
   const dirty = useMemo(
@@ -144,6 +154,8 @@ export function ScoringProvider({
     setRetrieval(f.retrieval);
     setPromoVals(f.promoVals);
     setContext(f.context);
+    setRipmParams(f.ripmParams);
+    setLipmParams(f.lipmParams);
   };
 
   const save = () => {
@@ -178,6 +190,10 @@ export function ScoringProvider({
         setPromoVals,
         context,
         toggleContext,
+        ripmParams,
+        setRipmParams,
+        lipmParams,
+        setLipmParams,
         current,
         dirty,
         saving,
