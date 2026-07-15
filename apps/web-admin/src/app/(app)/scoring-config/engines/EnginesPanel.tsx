@@ -60,7 +60,8 @@ type EngineResult = { kept: ScoredRow[]; screened: number };
 
 export function EnginesPanel() {
   const router = useRouter();
-  const { consumers, places, cfg, mix, retrieval, promoVals, context } = useScoring();
+  const { consumers, places, cfg, mix, retrieval, promoVals, context, ripmParams, lipmParams } =
+    useScoring();
 
   const [runs, setRuns] = useState<Partial<Record<EngineId, EngineRun>>>({});
   const [seed, setSeed] = useState(1);
@@ -80,8 +81,8 @@ export function EnginesPanel() {
 
   // Place vectors are intent-independent — embed once per sample per config.
   const placeIndex = useMemo(
-    () => new Map(places.map((p) => [p.id, embedText(buildPlaceDoc(p, ripmSet))])),
-    [places, ripmSet],
+    () => new Map(places.map((p) => [p.id, embedText(buildPlaceDoc(p, ripmSet), ripmParams.embedDims)])),
+    [places, ripmSet, ripmParams.embedDims],
   );
 
   const maxPromo = Math.max(1, ...Object.values(promoVals));
@@ -104,12 +105,13 @@ export function EnginesPanel() {
         ...(lipmSet.has("intent.query") ? run.intent.tokens : []),
       ];
       const cid = run.profile.consumer?.id ?? "synthetic";
-      const ciVec = embedText(buildCiDoc(run.profile, run.intent, ripmSet));
+      const ciVec = embedText(buildCiDoc(run.profile, run.intent, ripmSet), ripmParams.embedDims);
 
       const rows: ScoredRow[] = places.map((p) => {
-        const pVec = placeIndex.get(p.id) ?? embedText(buildPlaceDoc(p, ripmSet));
+        const pVec =
+          placeIndex.get(p.id) ?? embedText(buildPlaceDoc(p, ripmSet), ripmParams.embedDims);
         const rm = rmFromVectors(ciVec, pVec);
-        const lm = lmCip(ci, p, cid, rm, lipmSet);
+        const lm = lmCip(ci, p, cid, rm, lipmSet, lipmParams);
         const km =
           run.intent.lat != null && run.intent.lng != null && p.lat != null && p.lng != null
             ? haversineKm(run.intent.lat, run.intent.lng, Number(p.lat), Number(p.lng))
@@ -149,7 +151,7 @@ export function EnginesPanel() {
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, places, placeIndex, cfg, mix, promoVals, retrieval, ripmSet, lipmSet]);
+  }, [runs, places, placeIndex, cfg, mix, promoVals, retrieval, ripmSet, lipmSet, ripmParams, lipmParams]);
 
   if (places.length === 0) {
     return (

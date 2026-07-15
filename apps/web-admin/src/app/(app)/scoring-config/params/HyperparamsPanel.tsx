@@ -8,7 +8,6 @@ import {
   MATCH_MAX,
   MATCH_TIERS,
   PIPELINE_CONTEXT,
-  TIME_BLOCK_H,
   waitScore,
   whereScore,
   type EngineId,
@@ -53,6 +52,10 @@ export function HyperparamsPanel() {
     setPromoVals,
     context,
     toggleContext,
+    ripmParams,
+    setRipmParams,
+    lipmParams,
+    setLipmParams,
     dirty,
     saving,
     saveError,
@@ -153,7 +156,7 @@ export function HyperparamsPanel() {
         subtitle="cosine(consumer+intent embedding, place embedding) — cheap, whole catalog. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Playground re-embeds and re-ranks from exactly this set."
         pill={`${context.ripm.length} fields in context`}
       >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-md">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
             label="Recall top-K"
             value={String(retrieval.recallTopK)}
@@ -163,6 +166,16 @@ export function HyperparamsPanel() {
             v={retrieval.recallTopK}
             onChange={(v) => setRetrieval((r) => ({ ...r, recallTopK: v }))}
             hint="places pgvector returns per query"
+          />
+          <Slider
+            label="Embedding dims"
+            value={`${ripmParams.embedDims}d`}
+            min={16}
+            max={256}
+            step={16}
+            v={ripmParams.embedDims}
+            onChange={(v) => setRipmParams({ embedDims: v })}
+            hint="encoder dimensionality — vectors + cosine follow live"
           />
           <Chip label="Today" value="feature-hash cosine" hint="emulated encoder until pgvector exists" />
         </div>
@@ -175,7 +188,7 @@ export function HyperparamsPanel() {
         subtitle="A judge reads the merged consumer+intent profile against the full place profile — expensive, shortlist only. Same question as RIPM, higher fidelity; still text-only. Its context is configured separately: the judge usually reads MORE than the embedding (names, proof lines, hours as text)."
         pill={`${context.lipm.length} fields in context`}
       >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-md">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
             label="Shortlist n"
             value={String(retrieval.shortlistN)}
@@ -187,6 +200,55 @@ export function HyperparamsPanel() {
             hint="Fast keeps this many for the Slow sort"
           />
           <Chip label="Today" value="RM + judgments" hint="stand-in until the judge EF exists" />
+        </div>
+        <div className="mt-4">
+          <SubHead>Judge rubric weights</SubHead>
+          <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+            What each structured judgment is worth on top of the RM base. The Internals tab
+            itemizes a verdict with exactly these numbers.
+          </p>
+          <div className="mt-3 grid max-w-xl grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+            <Slider
+              label="Category hit"
+              value={`+${lipmParams.catBonus}`}
+              min={0}
+              max={30}
+              step={1}
+              v={lipmParams.catBonus}
+              onChange={(v) => setLipmParams((p) => ({ ...p, catBonus: v }))}
+              hint="place category in taste/intent"
+            />
+            <Slider
+              label="Zone hit"
+              value={`+${lipmParams.zoneBonus}`}
+              min={0}
+              max={20}
+              step={1}
+              v={lipmParams.zoneBonus}
+              onChange={(v) => setLipmParams((p) => ({ ...p, zoneBonus: v }))}
+              hint="place zone in taste/intent"
+            />
+            <Slider
+              label="Occasion clash"
+              value={`−${lipmParams.clashPenalty}`}
+              min={0}
+              max={30}
+              step={1}
+              v={lipmParams.clashPenalty}
+              onChange={(v) => setLipmParams((p) => ({ ...p, clashPenalty: v }))}
+              hint="occasion × category conflict"
+            />
+            <Slider
+              label="Nuance ±"
+              value={`±${lipmParams.nuanceAmp}`}
+              min={0}
+              max={12}
+              step={1}
+              v={lipmParams.nuanceAmp}
+              onChange={(v) => setLipmParams((p) => ({ ...p, nuanceAmp: v }))}
+              hint="pair-stable judgment spread; 0 = none"
+            />
+          </div>
         </div>
         <ContextConfigCols enabled={lipmSet} onToggle={(k) => toggleContext("lipm", k)} />
       </PanelCard>
@@ -214,7 +276,7 @@ export function HyperparamsPanel() {
           </div>
           <div className="border-border/60 rounded-xl border p-4">
             <SubHead>Where · distance decay</SubHead>
-            <div className="mt-3">
+            <div className="mt-3 flex flex-col gap-4">
               <Slider
                 label="Half-pull radius · d₀"
                 value={`${cfg.distanceHalfKm.toFixed(1)} km`}
@@ -223,7 +285,17 @@ export function HyperparamsPanel() {
                 step={0.5}
                 v={cfg.distanceHalfKm}
                 onChange={(v) => set("distanceHalfKm", v)}
-                hint={`20 km lands at ${whereScore(20, cfg).toFixed(2)} · exponent ${cfg.distanceExp} fixed`}
+                hint={`20 km lands at ${whereScore(20, cfg).toFixed(2)}`}
+              />
+              <Slider
+                label="Falloff exponent · s"
+                value={cfg.distanceExp.toFixed(1)}
+                min={1}
+                max={3}
+                step={0.1}
+                v={cfg.distanceExp}
+                onChange={(v) => set("distanceExp", v)}
+                hint="1.6 ≈ the empirical human-mobility exponent"
               />
             </div>
           </div>
@@ -263,6 +335,16 @@ export function HyperparamsPanel() {
                 v={cfg.sessionH}
                 onChange={(v) => set("sessionH", v)}
                 hint={`30 min left → fit ${fitScore(0.5, cfg).toFixed(2)}`}
+              />
+              <Slider
+                label="Time grid"
+                value={`${Math.round(cfg.timeBlockH * 60)} min`}
+                min={0.25}
+                max={1}
+                step={0.25}
+                v={cfg.timeBlockH}
+                onChange={(v) => set("timeBlockH", v)}
+                hint="hours quantize to this block before wait/fit"
               />
             </div>
           </div>
@@ -365,8 +447,8 @@ export function HyperparamsPanel() {
           </p>
           <p>
             WWW = what × where × when · what = fits ? 1 : offFactor · where = 1/(1+(km/d₀)^
-            {cfg.distanceExp}) · wait = 1/(1+(h/a½)^k) · fit = min(1, h/L) · {TIME_BLOCK_H * 60}
-            -min blocks
+            {cfg.distanceExp.toFixed(1)}) · wait = 1/(1+(h/a½)^k) · fit = min(1, h/L) ·{" "}
+            {Math.round(cfg.timeBlockH * 60)}-min blocks
           </p>
           <p>
             consumer+intent data carry where/when as TEXT only — WWW is the only numeric

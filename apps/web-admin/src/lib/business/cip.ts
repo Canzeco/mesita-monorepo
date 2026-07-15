@@ -23,7 +23,7 @@
 // which do not exist yet; the numbers are for exercising the model's shape,
 // not for believing.
 
-import type { EngineId } from "./scores";
+import { DEFAULT_LIPM_PARAMS, type EngineId, type LipmParams } from "./scores";
 
 /** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
 export const SAMPLE_MAX = 10;
@@ -258,25 +258,29 @@ export type LmParts = {
 /** LM-CIP itemized. Pass `rmBase` to build on the vector-cosine RM instead
  * of token overlap. `enabled` = the LIPM context config: the judge only
  * judges on fields it was given (category off → no category bonus/clash;
- * zone off → no zone bonus). */
+ * zone off → no zone bonus). `w` = the judge's rubric weights — a Pipeline
+ * knob (defaults = the classic 15/8/18/6). */
 export function lmCipParts(
   ciTokens: string[],
   place: SamplePlace,
   consumerId: string,
   rmBase?: number,
   enabled?: ReadonlySet<string> | null,
+  w: LipmParams = DEFAULT_LIPM_PARAMS,
 ): LmParts {
   const base = rmBase ?? rmCip(ciTokens, place);
   const ci = new Set(ciTokens);
   const has = (k: string) => !enabled || enabled.has(k);
   const cat = has("place.category") && place.category ? norm(place.category) : null;
-  const catBonus = cat && ci.has(cat) ? 15 : 0;
-  const zoneBonus = has("place.zone_city") && place.zone && ci.has(norm(place.zone)) ? 8 : 0;
+  const catBonus = cat && ci.has(cat) ? w.catBonus : 0;
+  const zoneBonus =
+    has("place.zone_city") && place.zone && ci.has(norm(place.zone)) ? w.zoneBonus : 0;
   let clashPenalty = 0;
   if (cat) {
-    for (const t of ci) if (CLASH[t]?.includes(cat)) { clashPenalty = -18; break; }
+    for (const t of ci) if (CLASH[t]?.includes(cat)) { clashPenalty = -w.clashPenalty; break; }
   }
-  const nuance = (hash(consumerId + place.id) % 13) - 6;
+  const amp = Math.max(0, Math.round(w.nuanceAmp));
+  const nuance = amp === 0 ? 0 : (hash(consumerId + place.id) % (2 * amp + 1)) - amp;
   const total = Math.max(
     0,
     Math.min(100, Math.round(base + catBonus + zoneBonus + clashPenalty + nuance)),
@@ -291,8 +295,9 @@ export function lmCip(
   consumerId: string,
   rmBase?: number,
   enabled?: ReadonlySet<string> | null,
+  w: LipmParams = DEFAULT_LIPM_PARAMS,
 ): number {
-  return lmCipParts(ciTokens, place, consumerId, rmBase, enabled).total;
+  return lmCipParts(ciTokens, place, consumerId, rmBase, enabled, w).total;
 }
 
 // ── WW inputs from real geo + real hours ────────────────────────────────

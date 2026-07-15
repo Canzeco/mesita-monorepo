@@ -30,7 +30,6 @@ import {
   buildConsumerProfile,
   buildPlaceDoc,
   cosineSim,
-  EMBED_DIMS,
   embedText,
   generateIntent,
   haversineKm,
@@ -68,7 +67,7 @@ import {
 type Specimen = { profile: ConsumerProfile; intent: Intent };
 
 export function InternalsPanel() {
-  const { consumers, places, cfg, promoVals, context } = useScoring();
+  const { consumers, places, cfg, promoVals, context, ripmParams, lipmParams } = useScoring();
   const [flavor, setFlavor] = useState<EngineId>("swipe");
   const [seed, setSeed] = useState(1);
   const [run, setRun] = useState<Specimen | null>(null);
@@ -96,22 +95,23 @@ export function InternalsPanel() {
     const { profile, intent } = run;
     const cid = profile.consumer?.id ?? "synthetic";
 
-    // RM — documents → vectors → cosine.
+    // RM — documents → vectors → cosine, at the configured dimensionality.
     const ragCiDoc = buildCiDoc(profile, intent, ripmSet);
     const ragPlaceDoc = buildPlaceDoc(place, ripmSet);
-    const ciVec = embedText(ragCiDoc);
-    const placeVec = embedText(ragPlaceDoc);
+    const ciVec = embedText(ragCiDoc, ripmParams.embedDims);
+    const placeVec = embedText(ragPlaceDoc, ripmParams.embedDims);
     const cos = cosineSim(ciVec, placeVec);
     const rm = rmFromVectors(ciVec, placeVec);
 
-    // LM — the judge's documents + itemized adjustments on top of RM.
+    // LM — the judge's documents + itemized adjustments, at the configured
+    // rubric weights.
     const judgeCiDoc = buildCiDoc(profile, intent, lipmSet);
     const judgePlaceDoc = buildPlaceDoc(place, lipmSet);
     const ci = [
       ...(lipmSet.has("consumer.taste") ? profile.tasteTokens : []),
       ...(lipmSet.has("intent.query") ? intent.tokens : []),
     ];
-    const lm = lmCipParts(ci, place, cid, rm, lipmSet);
+    const lm = lmCipParts(ci, place, cid, rm, lipmSet, lipmParams);
 
     // WWW — the only numbers.
     const fits = whatFits(place.category, intent.hour);
@@ -146,7 +146,7 @@ export function InternalsPanel() {
       cos, rm, lm, fits, what, km, where, win, wait, fit, when, posture, promos,
       lanes: LANES.map(laneRow),
     };
-  }, [run, place, cfg, promoVals, ripmSet, lipmSet]);
+  }, [run, place, cfg, promoVals, ripmSet, lipmSet, ripmParams, lipmParams]);
 
   if (places.length === 0) {
     return (
@@ -285,7 +285,8 @@ export function InternalsPanel() {
               className="mt-1.5"
             />
             <ResultLine>
-              cos({EMBED_DIMS}d) {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 → <b>RM {it.rm}</b>
+              cos({ripmParams.embedDims}d) {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 →{" "}
+              <b>RM {it.rm}</b>
             </ResultLine>
           </ScoreBox>
 
@@ -306,10 +307,25 @@ export function InternalsPanel() {
             />
             <div className="border-border/50 mt-2.5 overflow-hidden rounded-lg border">
               <JudgeRow label="base — RM (vector cosine)" value={it.lm.base} />
-              <JudgeRow label="category in taste/intent (+15)" value={it.lm.catBonus} dim={it.lm.catBonus === 0} />
-              <JudgeRow label="zone in taste/intent (+8)" value={it.lm.zoneBonus} dim={it.lm.zoneBonus === 0} />
-              <JudgeRow label="occasion × category clash (−18)" value={it.lm.clashPenalty} dim={it.lm.clashPenalty === 0} />
-              <JudgeRow label="judgment nuance (±6, pair-stable)" value={it.lm.nuance} />
+              <JudgeRow
+                label={`category in taste/intent (+${lipmParams.catBonus})`}
+                value={it.lm.catBonus}
+                dim={it.lm.catBonus === 0}
+              />
+              <JudgeRow
+                label={`zone in taste/intent (+${lipmParams.zoneBonus})`}
+                value={it.lm.zoneBonus}
+                dim={it.lm.zoneBonus === 0}
+              />
+              <JudgeRow
+                label={`occasion × category clash (−${lipmParams.clashPenalty})`}
+                value={it.lm.clashPenalty}
+                dim={it.lm.clashPenalty === 0}
+              />
+              <JudgeRow
+                label={`judgment nuance (±${lipmParams.nuanceAmp}, pair-stable)`}
+                value={it.lm.nuance}
+              />
               <JudgeRow label="clamped 0–100" value={it.lm.total} strong />
             </div>
             <ResultLine>
