@@ -4,9 +4,10 @@
 // the public.app_settings singleton (scoring_config). Whole-blob writes only
 // — the Pipeline tab always saves its full form, so partial patches would
 // only invite drift. Keys follow the Sub-Score names: www · bp · fm · sm,
-// plus mix / retrieval / context (see web-admin lib/business/scores.ts). Validation is structural + range-clamping; the mix rows are
-// NOT forced to sum to 100 (the admin UI warns instead — an operator may
-// deliberately save a work-in-progress mix).
+// plus mix / retrieval / context (see web-admin lib/business/scores.ts).
+// Validation is structural + range-clamping; the mix rows are NOT forced to
+// sum to 100 (the admin UI warns instead — an operator may deliberately save
+// a work-in-progress mix).
 //
 // The model is still a frontend draft: nothing in Swipe/Map/Memo reads this
 // yet. When the engines go live, this blob is their config source.
@@ -84,13 +85,12 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   }
 
   // v7.6: the configurable pipeline — which TEXT fields each match tier (FM,
-  // SM) reads
-  // (keys of web-admin's CONTEXT_FIELDS registry). Validation is STRUCTURAL
-  // only ("side.name" strings, deduped, capped) — the exact key list lives in
-  // the frontend registry and its coercer drops unknowns on read, so this EF
-  // never has to chase it. Missing/absent → omitted; the client coerces to
-  // its defaults. Empty arrays are VALID (everything off — degenerate on
-  // purpose).
+  // SM) reads (keys of web-admin's CONTEXT_FIELDS registry). Validation is
+  // STRUCTURAL only ("side.name" strings, deduped, capped) — the exact key
+  // list lives in the frontend registry and its coercer drops unknowns on
+  // read, so this EF never has to chase it. Missing/absent → omitted; the
+  // client coerces to its defaults. Empty arrays are VALID (everything off —
+  // degenerate on purpose).
   const KEY_RE = /^(consumer|intent|place)\.[a-z_]{1,32}$/;
   const contextIn = r.context as Record<string, unknown> | undefined;
   let context: Record<string, string[]> | null = null;
