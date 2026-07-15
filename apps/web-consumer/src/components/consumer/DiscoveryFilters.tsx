@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  FILTER_CATEGORIES,
   ZONE_KIND_PLURAL_LABELS,
   ZONE_TREE,
   findZoneTrail,
@@ -24,11 +23,16 @@ import {
   randomnessLabel,
   type ZoneNode,
 } from "@/lib/mock/discovery-filters-mock";
+import {
+  PLACE_FAMILIES,
+  placeFamilyByKey,
+  type FamilyKey,
+} from "@/lib/place-families";
 
 // Shared body of the discovery FilterSheet (Home Swipe + Search map) —
 // un-parks the FiltersComingSoon panel from MESITA-249 with the real four
-// filters: Where (hierarchical zones + near me), When (hour), What (place
-// category), Randomness (1–10). Visual language (MESITA-634): one bordered
+// filters: Where (hierarchical zones + near me), When (hour), What (the six
+// place families — MESITA-635), Randomness (1–10). Visual language: one bordered
 // card per filter with a differentiated tinted icon circle + live value
 // pill; Near me / Anywhere are mode cards; zone and category chips are soft
 // borderless pills that go brand-gradient when selected.
@@ -52,8 +56,8 @@ type FiltersState = {
   /** When — "now" (default) or the fixed `hour`. */
   whenNow: boolean;
   hour: number;
-  /** What — multi-select category slugs; empty = all categories. */
-  categorySlugs: string[];
+  /** What — multi-select place families; empty = every family. */
+  familyKeys: FamilyKey[];
   /** Randomness — 1 plays it safe, 10 is full surprise. */
   randomness: number;
 };
@@ -67,7 +71,7 @@ function defaultFiltersState(): FiltersState {
     pathIds: [],
     whenNow: true,
     hour: new Date().getHours(),
-    categorySlugs: [],
+    familyKeys: [],
     randomness: DEFAULT_RANDOMNESS,
   };
 }
@@ -79,7 +83,7 @@ function filtersAreActive(state: FiltersState): boolean {
   return (
     !state.nearMe ||
     !state.whenNow ||
-    state.categorySlugs.length > 0 ||
+    state.familyKeys.length > 0 ||
     state.randomness !== DEFAULT_RANDOMNESS
   );
 }
@@ -142,11 +146,11 @@ export function DiscoveryFilters({
   const jumpTo = (depth: number) =>
     patch({ pathIds: state.pathIds.slice(0, depth) });
 
-  const toggleCategory = (slug: string) => {
+  const toggleFamily = (key: FamilyKey) => {
     patch({
-      categorySlugs: state.categorySlugs.includes(slug)
-        ? state.categorySlugs.filter((s) => s !== slug)
-        : [...state.categorySlugs, slug],
+      familyKeys: state.familyKeys.includes(key)
+        ? state.familyKeys.filter((k) => k !== key)
+        : [...state.familyKeys, key],
     });
   };
 
@@ -157,12 +161,11 @@ export function DiscoveryFilters({
     ? "Near me"
     : (selectedZone?.name ?? "Anywhere");
   const whatSummary =
-    state.categorySlugs.length === 0
+    state.familyKeys.length === 0
       ? "All"
-      : state.categorySlugs.length === 1
-        ? (FILTER_CATEGORIES.find((c) => c.slug === state.categorySlugs[0])
-            ?.label ?? "1 selected")
-        : `${state.categorySlugs.length} selected`;
+      : state.familyKeys.length === 1
+        ? (placeFamilyByKey(state.familyKeys[0])?.label ?? "1 selected")
+        : `${state.familyKeys.length} selected`;
   const browseLabel = level
     ? `${ZONE_KIND_PLURAL_LABELS[options[0]?.kind ?? "zone"]} in ${level.name}`
     : "Browse by country";
@@ -344,27 +347,25 @@ export function DiscoveryFilters({
           value={whatSummary}
           tint={TINTS.what}
         >
-          {/* Two-row horizontal pill grid keeps 20+ categories browsable
-              without turning the sheet into a wall. Multi-select; empty
-              selection = All. -mx-4 bleeds the scroll to the card edge. */}
-          <div className="scrollbar-hide -mx-4 overflow-x-auto px-4">
-            <div className="grid w-max grid-flow-col grid-rows-2 gap-1.5">
+          {/* The six place families — every Mesita place rolls up to exactly
+              one, so the whole set wraps into view with no scrolling.
+              Multi-select; empty selection = All. */}
+          <div className="flex flex-wrap gap-1.5">
+            <Pill
+              active={state.familyKeys.length === 0}
+              onClick={() => patch({ familyKeys: [] })}
+            >
+              ✨ All
+            </Pill>
+            {PLACE_FAMILIES.map((family) => (
               <Pill
-                active={state.categorySlugs.length === 0}
-                onClick={() => patch({ categorySlugs: [] })}
+                key={family.key}
+                active={state.familyKeys.includes(family.key)}
+                onClick={() => toggleFamily(family.key)}
               >
-                ✨ All
+                {family.emoji} {family.label}
               </Pill>
-              {FILTER_CATEGORIES.map((category) => (
-                <Pill
-                  key={category.slug}
-                  active={state.categorySlugs.includes(category.slug)}
-                  onClick={() => toggleCategory(category.slug)}
-                >
-                  {category.label}
-                </Pill>
-              ))}
-            </div>
+            ))}
           </div>
         </Section>
 

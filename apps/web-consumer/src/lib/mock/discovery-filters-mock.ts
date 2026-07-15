@@ -211,35 +211,8 @@ export function findZoneTrail(id: string): ZoneNode[] | null {
   return walk(ZONE_TREE, []);
 }
 
-// Curated subset of the live 100-category taxonomy (slug + emoji label as
-// stored on place_categories) — a spread of food / drink / nightlife /
-// leisure so the mock reads like the real catalog.
-export type FilterCategory = { slug: string; label: string };
-
-export const FILTER_CATEGORIES: FilterCategory[] = [
-  { slug: "taco", label: "🌮 Tacos" },
-  { slug: "mexican", label: "🌮 Mexican" },
-  { slug: "sushi", label: "🍣 Sushi" },
-  { slug: "italian", label: "🍝 Italian" },
-  { slug: "pizza", label: "🍕 Pizza" },
-  { slug: "burger", label: "🍔 Burgers" },
-  { slug: "steak_house", label: "🥩 Steakhouse" },
-  { slug: "seafood", label: "🦐 Seafood" },
-  { slug: "breakfast", label: "🍳 Breakfast" },
-  { slug: "brunch", label: "🥞 Brunch" },
-  { slug: "cafe", label: "☕ Café" },
-  { slug: "bakery", label: "🥐 Bakery" },
-  { slug: "dessert_shop", label: "🍰 Desserts" },
-  { slug: "fine_dining", label: "🍽️ Fine Dining" },
-  { slug: "bar", label: "🍺 Bar" },
-  { slug: "cocktail_bar", label: "🍸 Cocktail Bar" },
-  { slug: "wine_bar", label: "🍷 Wine Bar" },
-  { slug: "brewery", label: "🍻 Brewery" },
-  { slug: "night_club", label: "🪩 Nightclub" },
-  { slug: "karaoke", label: "🎤 Karaoke" },
-  { slug: "spa", label: "💆 Spa" },
-  { slug: "museum", label: "🏛️ Museum" },
-];
+// The What filter's options are the six place FAMILIES — a real contract, so
+// they live in @/lib/place-families, not in this mock.
 
 /** "8:00 PM"-style label for a 0–23 hour. */
 export function formatHourLabel(hour: number): string {
