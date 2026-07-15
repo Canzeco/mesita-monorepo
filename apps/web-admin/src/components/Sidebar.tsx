@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
+import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { SCORING_PARENT } from "@/app/(app)/scoring-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
@@ -55,6 +56,11 @@ const SIDEBAR_NAV = [
     href: ENRICHER_PARENT.href,
     label: ENRICHER_PARENT.label,
     Icon: ENRICHER_PARENT.Icon,
+  },
+  {
+    href: RESERVATIONS_PARENT.href,
+    label: RESERVATIONS_PARENT.label,
+    Icon: RESERVATIONS_PARENT.Icon,
   },
   {
     // Memo Config folded in as a Scoring tab — Memo is one of the three engines.
