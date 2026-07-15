@@ -21,8 +21,8 @@ import {
   type Strategy,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { dbStateForSubscription } from "@/lib/business/plans";
-import { updatePlace, type AdminPlace } from "../actions";
+import { planForSubscription } from "@/lib/business/plans";
+import { setPlacePlan, updatePlace, type AdminPlace } from "../actions";
 import { SectionCard, ErrorNote } from "../ui";
 
 // Admin Promos — Mesita Membership (MESITA-585, card shape MESITA-590).
@@ -122,41 +122,59 @@ export function PromosSection({
   const [error, setError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
 
-  const persist = (patch: Record<string, unknown>) => {
-    const prev = v;
-    const next = { ...v, ...patch } as AdminPlace;
-    setV(next);
-    onSaved(next);
-    setError(null);
-    start(async () => {
-      const r = await updatePlace({ id: v.id, ...patch });
-      if (!r.ok) {
-        setV(prev);
-        onSaved(prev);
-        setError(r.error);
-        return;
-      }
-      setV(r.data);
-      onSaved(r.data);
-    });
-  };
-
   const member = isMember(v);
   const storedStrategy = strategyForPlace(v);
 
   // The modal is the confirm step: its footer action commits the posture.
+  //
+  // A posture is rates + cap + plan, but plan lives behind a different door:
+  // business-web-update-project rejects any body carrying `plan` (that field
+  // belongs to billing), so it goes through admin-web-set-plan instead. Two
+  // calls can't be atomic, so order them by what a partial failure leaves
+  // behind — never discounts running without the membership that pays for
+  // them. Joining grants the plan first; leaving drops the rates first.
   const commitStrategy = (target: StrategyId) => {
     setModalId(null);
     if (pending || target === storedStrategy) return;
     const s = STRATEGY_BY_ID[target];
-    // Rates + cap + paying flags in ONE write: the membership IS the rates.
-    persist({
-      ...dbStateForSubscription(target === "zero" ? "free" : "pro_discount"),
+    const leaving = target === "zero";
+    const plan = planForSubscription(leaving ? "free" : "pro_discount");
+    const rates = {
       welcome_free_rate: s.rates.welcome_free_rate,
       welcome_premium_rate: s.rates.welcome_premium_rate,
       free_rate: s.rates.free_rate,
       premium_rate: s.rates.premium_rate,
       monthly_promo_cap: s.cap,
+    };
+
+    const prev = v;
+    setV({ ...v, ...rates, plan } as AdminPlace);
+    onSaved({ ...v, ...rates, plan } as AdminPlace);
+    setError(null);
+
+    start(async () => {
+      const writeRates = () => updatePlace({ id: prev.id, ...rates });
+      const writePlan = () => setPlacePlan(prev.id, plan);
+      const writes = leaving ? [writeRates, writePlan] : [writePlan, writeRates];
+
+      let confirmed: AdminPlace | null = null;
+      for (const write of writes) {
+        const r = await write();
+        if (!r.ok) {
+          // Show the truth, not the optimistic guess: whatever the server
+          // confirmed so far, else the pre-commit state.
+          const truth = confirmed ?? prev;
+          setV(truth);
+          onSaved(truth);
+          setError(r.error);
+          return;
+        }
+        confirmed = r.data;
+      }
+      if (confirmed) {
+        setV(confirmed);
+        onSaved(confirmed);
+      }
     });
   };
 
