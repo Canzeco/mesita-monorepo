@@ -586,57 +586,63 @@ function Deck({ places }: { places: Place[] }) {
           )}
         </div>
 
-        {/* Five actions, Filter first. Tightened to text-xs + gap-1 so all
-            five fit one row on a phone; Filter/Skip/Info read as neutral
-            chrome, Save (soft pink) is the positive action. Reserve is
-            parked while booking ships — rendered disabled + muted (the row
-            is too tight for a "Soon" tag; the detail page CTA carries it).
-            Filter opens the discovery filter sheet. */}
-        <div className="mt-3 flex items-center gap-1.5">
+        {/* Five actions, Filter first — icon-only (Pato: no labels), so the
+            row reads as a clean control strip; aria-label + title carry the
+            semantics. Filter/Skip/Info are neutral chrome, Save (soft pink,
+            red once saved — MESITA-591's universal "hearted" hue) is the
+            positive action. Reserve is parked while booking ships —
+            disabled + muted (the detail page CTA carries the "Soon"). */}
+        <div className="mt-3 flex items-center gap-2">
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap transition active:scale-[0.97]"
+            aria-label="Filters"
+            title="Filters"
+            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
           >
-            <SlidersHorizontal className="h-4 w-4" /> Filter
+            <SlidersHorizontal className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={skip}
-            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap transition active:scale-[0.97]"
+            aria-label="Skip"
+            title="Skip"
+            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
           >
-            <X className="h-4 w-4" /> Skip
+            <X className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={openInfo}
             aria-label="About this place"
-            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap transition active:scale-[0.97]"
+            title="About this place"
+            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
           >
-            <Store className="h-4 w-4" /> Info
+            <Store className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={save}
+            aria-label={saved ? "Saved" : "Save"}
+            title={saved ? "Saved" : "Save"}
             className={cn(
-              "flex h-12 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-semibold whitespace-nowrap transition active:scale-[0.97]",
-              // Saved reads RED like the place-detail button (MESITA-591) —
-              // the universal "hearted" hue, consistent across surfaces.
+              "flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]",
               saved
-                ? "border border-red-500/50 bg-red-500/12 text-red-600 hover:bg-red-500/18"
-                : "border-border bg-card text-secondary hover:bg-muted border",
+                ? "border-red-500/50 bg-red-500/12 text-red-600 hover:bg-red-500/18"
+                : "border-border bg-card text-secondary hover:bg-muted",
             )}
           >
-            <Heart className={cn("h-4 w-4", saved && "fill-current")} />
-            {saved ? "Saved" : "Save"}
+            <Heart className={cn("h-5 w-5", saved && "fill-current")} />
           </button>
           <button
             type="button"
             disabled
             aria-disabled="true"
-            className="border-border bg-muted/40 text-muted-foreground/70 flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-lg border text-xs font-medium whitespace-nowrap"
+            aria-label="Reserve (coming soon)"
+            title="Reserve (coming soon)"
+            className="border-border bg-muted/40 text-muted-foreground/70 flex h-12 flex-1 cursor-not-allowed items-center justify-center rounded-lg border"
           >
-            <CalendarCheck className="h-4 w-4" /> Reserve
+            <CalendarCheck className="h-5 w-5" />
           </button>
         </div>
       </div>

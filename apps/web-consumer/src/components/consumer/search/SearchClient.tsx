@@ -44,15 +44,14 @@ import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, firstInitial, formatKm, formatRating } from "@/lib/utils";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { FiltersComingSoon } from "@/components/consumer/FiltersComingSoon";
+import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import type { AddState } from "./PredictionRow";
-// CHIP_GROUPS / ChipTone / FilterChip dropped with the parked filter chips;
-// applyChipFilters stays (no-op with the now always-empty activeChips) so the
-// map/rail pipeline is untouched and un-parking is a localized restore.
+// The shared FilterSheet (Where/When/What/Randomness) is frontend-only for
+// now — activeChips stays empty, so applyChipFilters is a no-op that keeps
+// the map/rail pipeline intact until the filtering backend lands.
 import { applyChipFilters } from "./search-filters";
 import {
   matchPredictionToPlace,
@@ -282,7 +281,8 @@ export function SearchClient({
     setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
   };
 
-  // toggleChip removed with the parked filter chips (FiltersSheet is soon).
+  // toggleChip went with the old chip filters (the FilterSheet is
+  // presentational for now, so nothing writes activeChips yet).
   // clearChips stays: the "No places match" rail escape hatch still calls it.
   const clearChips = () => {
     resetRail();
@@ -516,9 +516,10 @@ export function SearchClient({
         </div>
       )}
 
-      <FiltersSheet
+      <FilterSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
+        ariaLabel="Search filters"
       />
 
       <GooglePlaceSheet
@@ -654,25 +655,5 @@ function RailCard({
         )}
       </div>
     </button>
-  );
-}
-
-// PARKED (soon): the trigger still opens this sheet, but it shows a single
-// coming-soon state instead of the Vibe / Availability / Price chips while we
-// finish the real filtering backend. The full chip body + SheetChip live in
-// this file's git history — to un-park, restore them (and re-wire
-// activeIds/onToggle/onClear) and drop FiltersComingSoon. Props kept minimal so
-// SearchClient's call site stays stable.
-function FiltersSheet({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
-  return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Search filters">
-      <FiltersComingSoon onClose={onClose} />
-    </LocalSheet>
   );
 }
