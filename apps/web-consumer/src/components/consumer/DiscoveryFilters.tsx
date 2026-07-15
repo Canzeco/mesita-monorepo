@@ -2,9 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import {
+  Check,
   ChevronRight,
   Clock,
   Dices,
+  Globe,
   LocateFixed,
   MapPin,
   SlidersHorizontal,
@@ -15,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   FILTER_CATEGORIES,
-  ZONE_KIND_LABELS,
+  ZONE_KIND_PLURAL_LABELS,
   ZONE_TREE,
   findZoneTrail,
   formatHourLabel,
@@ -26,7 +28,10 @@ import {
 // Shared body of the discovery FilterSheet (Home Swipe + Search map) —
 // un-parks the FiltersComingSoon panel from MESITA-249 with the real four
 // filters: Where (hierarchical zones + near me), When (hour), What (place
-// category), Randomness (1–10).
+// category), Randomness (1–10). Visual language (MESITA-634): one bordered
+// card per filter with a differentiated tinted icon circle + live value
+// pill; Near me / Anywhere are mode cards; zone and category chips are soft
+// borderless pills that go brand-gradient when selected.
 //
 // FRONTEND-ONLY (MESITA-632): selections are local component state and are
 // NOT applied to the deck / map yet — the recommender wiring lands with the
@@ -79,6 +84,24 @@ function filtersAreActive(state: FiltersState): boolean {
   );
 }
 
+// Per-section accent — tinted icon circle + value pill (premium bar:
+// differentiated colors, never four identical gray rows).
+const TINTS = {
+  where: { circle: "bg-primary/10 text-primary", pill: "bg-primary/10 text-primary" },
+  when: { circle: "bg-amber-500/15 text-amber-600", pill: "bg-amber-500/15 text-amber-700" },
+  what: { circle: "bg-violet-500/15 text-violet-600", pill: "bg-violet-500/15 text-violet-700" },
+  random: { circle: "bg-emerald-500/15 text-emerald-600", pill: "bg-emerald-500/15 text-emerald-700" },
+} as const;
+
+/** Daypart glyph for the hour readout. */
+function hourEmoji(hour: number): string {
+  if (hour < 6) return "🌙";
+  if (hour < 12) return "🌅";
+  if (hour < 18) return "☀️";
+  if (hour < 22) return "🌆";
+  return "🌙";
+}
+
 export function DiscoveryFilters({
   onClose,
   onActiveChange,
@@ -129,6 +152,7 @@ export function DiscoveryFilters({
 
   const reset = () => patch(defaultFiltersState());
 
+  const anywhere = !state.nearMe && state.selectedZoneId === null;
   const whereSummary = state.nearMe
     ? "Near me"
     : (selectedZone?.name ?? "Anywhere");
@@ -139,16 +163,19 @@ export function DiscoveryFilters({
         ? (FILTER_CATEGORIES.find((c) => c.slug === state.categorySlugs[0])
             ?.label ?? "1 selected")
         : `${state.categorySlugs.length} selected`;
+  const browseLabel = level
+    ? `${ZONE_KIND_PLURAL_LABELS[options[0]?.kind ?? "zone"]} in ${level.name}`
+    : "Browse by country";
 
   return (
     <div className="flex min-h-0 flex-col">
       {/* Header — tinted icon circle + Reset ghost + close. */}
       <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-xl">
             <SlidersHorizontal className="h-4 w-4" />
           </span>
-          <p className="font-display text-base leading-tight font-semibold">
+          <p className="font-display text-lg leading-tight font-semibold tracking-tight">
             Filters
           </p>
         </div>
@@ -156,7 +183,7 @@ export function DiscoveryFilters({
           <button
             type="button"
             onClick={reset}
-            className="text-muted-foreground hover:text-foreground rounded-full px-3 py-1.5 text-xs font-medium transition"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-full px-3 py-1.5 text-xs font-medium transition"
           >
             Reset
           </button>
@@ -171,69 +198,60 @@ export function DiscoveryFilters({
         </div>
       </div>
 
-      <div className="scrollbar-hide min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pt-1 pb-4">
+      <div className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pt-1 pb-4">
         {/* ---- Where ------------------------------------------------- */}
-        <Section icon={MapPin} label="Where" value={whereSummary}>
-          <button
-            type="button"
-            onClick={() => patch({ nearMe: true })}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]",
-              state.nearMe
-                ? "border-primary/40 bg-primary/5"
-                : "border-border bg-card hover:bg-muted/50",
-            )}
-          >
-            <span
-              className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                state.nearMe
-                  ? "bg-pink-gradient text-white"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              <LocateFixed className="h-4 w-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Near me</span>
-              <span className="text-muted-foreground block text-[11px]">
-                Use my current location
-              </span>
-            </span>
-            <span
-              className={cn(
-                "h-4 w-4 shrink-0 rounded-full border-2 transition",
-                state.nearMe ? "border-primary bg-primary" : "border-border",
-              )}
-              aria-hidden="true"
+        <Section
+          icon={MapPin}
+          label="Where"
+          value={whereSummary}
+          tint={TINTS.where}
+        >
+          {/* Two mode cards: live location vs. the whole catalog. Picking
+              a zone below deselects both. */}
+          <div className="grid grid-cols-2 gap-2">
+            <ModeCard
+              icon={LocateFixed}
+              title="Near me"
+              sub="Current location"
+              active={state.nearMe}
+              onClick={() => patch({ nearMe: true })}
             />
-          </button>
+            <ModeCard
+              icon={Globe}
+              title="Anywhere"
+              sub="No zone limit"
+              active={anywhere}
+              onClick={() => patch({ nearMe: false, selectedZoneId: null })}
+            />
+          </div>
 
-          {/* Breadcrumb — Anywhere › México › Nuevo León. Tapping a crumb
-              pops the drill back to that level. */}
-          <div className="scrollbar-hide -mx-4 mt-3 flex items-center gap-1 overflow-x-auto px-4 text-[11px] font-semibold whitespace-nowrap">
+          {/* Zone browser — segmented breadcrumb bar + drillable pills. */}
+          <p className="text-muted-foreground mt-3 mb-1.5 text-[11px] font-semibold">
+            {browseLabel}
+          </p>
+          <div className="bg-muted/60 scrollbar-hide -mx-0.5 flex items-center gap-0.5 overflow-x-auto rounded-xl p-1 whitespace-nowrap">
             <button
               type="button"
               onClick={() => jumpTo(0)}
               className={cn(
-                "shrink-0 rounded-full px-2 py-1 transition",
+                "shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition",
                 path.length === 0
-                  ? "bg-muted text-foreground"
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              🌎 Anywhere
+              🌎 World
             </button>
             {path.map((node, i) => (
-              <span key={node.id} className="flex shrink-0 items-center gap-1">
-                <ChevronRight className="text-muted-foreground/50 h-3 w-3" />
+              <span key={node.id} className="flex shrink-0 items-center">
+                <ChevronRight className="text-muted-foreground/40 h-3 w-3 shrink-0" />
                 <button
                   type="button"
                   onClick={() => jumpTo(i + 1)}
                   className={cn(
-                    "rounded-full px-2 py-1 transition",
+                    "rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition",
                     i === path.length - 1
-                      ? "bg-muted text-foreground"
+                      ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -244,45 +262,33 @@ export function DiscoveryFilters({
           </div>
 
           {/* Current level — "All <level>" first once drilled, then the
-              children; chips with children drill deeper on tap. */}
-          <div className="mt-2 flex flex-wrap gap-2">
-            {level ? (
-              <Chip
+              children; pills with children drill deeper on tap. */}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {level && (
+              <Pill
                 active={!state.nearMe && state.selectedZoneId === level.id}
                 onClick={() =>
                   patch({ nearMe: false, selectedZoneId: level.id })
                 }
               >
                 All {level.name}
-              </Chip>
-            ) : (
-              <Chip
-                active={!state.nearMe && state.selectedZoneId === null}
-                onClick={() => patch({ nearMe: false, selectedZoneId: null })}
-              >
-                Anywhere
-              </Chip>
+              </Pill>
             )}
             {options.map((node) => (
-              <Chip
+              <Pill
                 key={node.id}
                 active={!state.nearMe && state.selectedZoneId === node.id}
                 onClick={() => pickZone(node)}
                 trailing={
                   node.children?.length ? (
-                    <ChevronRight className="-mr-1 h-3.5 w-3.5 opacity-60" />
+                    <ChevronRight className="-mr-1 h-3.5 w-3.5 opacity-50" />
                   ) : null
                 }
               >
                 {node.name}
-              </Chip>
+              </Pill>
             ))}
           </div>
-          {level && (
-            <p className="text-muted-foreground/70 mt-2 text-[10px] font-medium tracking-wide uppercase">
-              {ZONE_KIND_LABELS[options[0]?.kind ?? "zone"]}s in {level.name}
-            </p>
-          )}
         </Section>
 
         {/* ---- When -------------------------------------------------- */}
@@ -290,22 +296,26 @@ export function DiscoveryFilters({
           icon={Clock}
           label="When"
           value={state.whenNow ? "Now" : formatHourLabel(state.hour)}
+          tint={TINTS.when}
         >
           <div className="flex items-center gap-3">
-            <Chip
+            <Pill
               active={state.whenNow}
               onClick={() =>
                 patch({ whenNow: true, hour: new Date().getHours() })
               }
             >
               Now
-            </Chip>
+            </Pill>
             <span
               className={cn(
-                "font-display ml-auto text-lg font-semibold tabular-nums transition",
+                "font-display ml-auto flex items-center gap-1.5 text-lg font-semibold tabular-nums transition",
                 state.whenNow && "text-muted-foreground/60",
               )}
             >
+              <span className="text-base" aria-hidden="true">
+                {hourEmoji(state.hour)}
+              </span>
               {formatHourLabel(state.hour)}
             </span>
           </div>
@@ -328,26 +338,31 @@ export function DiscoveryFilters({
         </Section>
 
         {/* ---- What -------------------------------------------------- */}
-        <Section icon={Tag} label="What" value={whatSummary}>
-          {/* Two-row horizontal chip grid keeps 20+ categories browsable
+        <Section
+          icon={Tag}
+          label="What"
+          value={whatSummary}
+          tint={TINTS.what}
+        >
+          {/* Two-row horizontal pill grid keeps 20+ categories browsable
               without turning the sheet into a wall. Multi-select; empty
-              selection = All. */}
+              selection = All. -mx-4 bleeds the scroll to the card edge. */}
           <div className="scrollbar-hide -mx-4 overflow-x-auto px-4">
-            <div className="grid w-max grid-flow-col grid-rows-2 gap-2">
-              <Chip
+            <div className="grid w-max grid-flow-col grid-rows-2 gap-1.5">
+              <Pill
                 active={state.categorySlugs.length === 0}
                 onClick={() => patch({ categorySlugs: [] })}
               >
                 ✨ All
-              </Chip>
+              </Pill>
               {FILTER_CATEGORIES.map((category) => (
-                <Chip
+                <Pill
                   key={category.slug}
                   active={state.categorySlugs.includes(category.slug)}
                   onClick={() => toggleCategory(category.slug)}
                 >
                   {category.label}
-                </Chip>
+                </Pill>
               ))}
             </div>
           </div>
@@ -358,6 +373,7 @@ export function DiscoveryFilters({
           icon={Dices}
           label="Randomness"
           value={`${state.randomness} · ${randomnessLabel(state.randomness)}`}
+          tint={TINTS.random}
         >
           <GradientRange
             min={1}
@@ -366,12 +382,12 @@ export function DiscoveryFilters({
             ariaLabel="Randomness level"
             onChange={(next) => patch({ randomness: next })}
           />
-          <div className="text-muted-foreground mt-1.5 flex items-baseline justify-between text-[11px] font-medium">
-            <span>Play it safe</span>
-            <span className="text-foreground">
+          <div className="text-muted-foreground mt-2 flex items-baseline justify-between text-[11px] font-medium">
+            <span>🎯 Play it safe</span>
+            <span className="text-foreground font-semibold">
               {randomnessLabel(state.randomness)}
             </span>
-            <span>Surprise me</span>
+            <span>🎲 Surprise me</span>
           </div>
         </Section>
       </div>
@@ -382,7 +398,7 @@ export function DiscoveryFilters({
         <button
           type="button"
           onClick={onClose}
-          className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-lg text-sm font-semibold text-white transition active:scale-[0.99]"
+          className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition active:scale-[0.99]"
         >
           Show places
         </button>
@@ -391,36 +407,105 @@ export function DiscoveryFilters({
   );
 }
 
+// One filter = one card: tinted icon circle + title + live value pill.
 function Section({
   icon: Icon,
   label,
   value,
+  tint,
   children,
 }: {
   icon: LucideIcon;
   label: string;
   value?: string;
+  tint: { circle: string; pill: string };
   children: ReactNode;
 }) {
   return (
-    <div>
-      <div className="mb-2 flex items-baseline gap-1.5">
-        <Icon className="text-secondary h-3.5 w-3.5 shrink-0 self-center" />
-        <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
-          {label}
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <div className="mb-3 flex items-center gap-2.5">
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+            tint.circle,
+          )}
+        >
+          <Icon className="h-4 w-4" />
         </span>
+        <span className="text-[13px] font-semibold">{label}</span>
         {value && (
-          <span className="text-primary ml-auto max-w-[55%] truncate text-xs font-semibold">
+          <span
+            className={cn(
+              "ml-auto max-w-[55%] truncate rounded-full px-2.5 py-1 text-[11px] font-semibold",
+              tint.pill,
+            )}
+          >
             {value}
           </span>
         )}
       </div>
       {children}
-    </div>
+    </section>
   );
 }
 
-function Chip({
+// Where mode card (Near me / Anywhere) — icon circle, label, check badge.
+function ModeCard({
+  icon: Icon,
+  title,
+  sub,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  title: string;
+  sub: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition active:scale-[0.98]",
+        active
+          ? "border-primary/40 bg-primary/5"
+          : "border-border bg-card hover:bg-muted/50",
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+          active
+            ? "bg-pink-gradient text-white"
+            : "bg-muted text-muted-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] leading-tight font-semibold">
+          {title}
+        </span>
+        <span className="text-muted-foreground block truncate text-[10px] leading-tight">
+          {sub}
+        </span>
+      </span>
+      {active && (
+        <span
+          className="bg-primary absolute -top-1.5 -right-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full text-white shadow-sm"
+          aria-hidden="true"
+        >
+          <Check className="h-3 w-3 stroke-[3]" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Soft borderless pill — muted at rest, brand gradient when selected.
+function Pill({
   active,
   onClick,
   trailing,
@@ -436,10 +521,10 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex shrink-0 items-center gap-1 rounded-lg border px-3.5 py-2 text-[13px] font-medium whitespace-nowrap transition active:scale-[0.97]",
+        "flex shrink-0 items-center gap-1 rounded-full px-3.5 py-2 text-[13px] font-medium whitespace-nowrap transition active:scale-[0.97]",
         active
-          ? "bg-pink-gradient border-transparent text-white shadow-sm"
-          : "border-border bg-card text-muted-foreground hover:text-foreground",
+          ? "bg-pink-gradient text-white shadow-sm"
+          : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground",
       )}
     >
       {children}
