@@ -17,11 +17,11 @@ import {
   STRATEGY_BY_ID,
   STRATEGY_VISIBILITY_LADDER,
   UNIVERSAL_CAP_MXN,
+  dbStateForSubscription,
   strategyForPlace,
   type Strategy,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { dbStateForSubscription } from "@/lib/business/plans";
 import { updatePlace, type AdminPlace } from "../actions";
 import { SectionCard, ErrorNote } from "../ui";
 

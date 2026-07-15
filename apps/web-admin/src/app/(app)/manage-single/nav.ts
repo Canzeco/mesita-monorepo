@@ -45,11 +45,7 @@ export function parseUnitId(pathname: string): string | null {
   const m = pathname.match(/^\/manage-single\/([^/]+)(?:\/|$)/);
   if (!m) return null;
   const id = m[1];
-  if (id === "select" || id === "create" || id === "add") return null;
+  if (id === "select") return null;
   return id;
-}
-
-export function isManageSingleHubRoute(pathname: string): boolean {
-  return pathname === "/manage-single/select" || parseUnitId(pathname) !== null;
 }
 

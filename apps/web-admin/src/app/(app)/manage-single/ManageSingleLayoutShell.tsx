@@ -20,12 +20,7 @@ export function ManageSingleLayoutShell({
 
   // Select hub owns its chrome — full-bleed like the per-unit editor so the
   // search bar spans sidebar-edge → window-edge (no max-w-6xl gutters).
-  if (
-    pathname === "/manage-single" ||
-    pathname === "/manage-single/select" ||
-    pathname.startsWith("/manage-single/create") ||
-    pathname.startsWith("/manage-single/add")
-  ) {
+  if (pathname === "/manage-single" || pathname === "/manage-single/select") {
     return <div className="w-full pb-10 sm:pb-14">{children}</div>;
   }
 

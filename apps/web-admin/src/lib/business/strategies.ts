@@ -181,3 +181,18 @@ export const RP_BY_STRATEGY: Record<StrategyId, number> = {
 export function rpForStrategy(id: StrategyId | null): number {
   return id == null ? 0 : RP_BY_STRATEGY[id];
 }
+
+// The paying states the picker can write. `ultra_discount` outlives the
+// Free/Pro/Ultra model it came from: the places.plan DB enum still carries the
+// ultra rows, so the mapping below stays until that enum is narrowed.
+type SubscriptionId = "free" | "pro_discount" | "ultra_discount";
+
+/** Atomic write payload for the plan picker — admin bypasses Stripe. */
+export function dbStateForSubscription(sub: SubscriptionId): {
+  plan: string;
+  fiscal_type?: string;
+} {
+  if (sub === "pro_discount") return { plan: "informal_pro", fiscal_type: "informal" };
+  if (sub === "ultra_discount") return { plan: "informal_ultra", fiscal_type: "informal" };
+  return { plan: "free" };
+}
