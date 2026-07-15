@@ -270,12 +270,18 @@ export function DeckSimPanel() {
             {shortfalls.map((l) => {
               const f = result.plan.fills[l.short];
               const short = f.requested - f.taken;
+              // `eligible` counts LANE-SCORE > 0 — for a paid lane that means
+              // ES AND RP (and WW in now-mode) all > 0, so never phrase it as
+              // "has RP > 0": a promo-active place with ES 0 would make that
+              // a lie, in exactly the case an operator would investigate.
+              const factors =
+                l.lane === "inorganic"
+                  ? ` (needs ES · RP${l.mode === "now" ? " · WW" : ""} all > 0)`
+                  : "";
               const reason =
                 f.claimedByEarlier > 0
                   ? `${f.claimedByEarlier} eligible place${f.claimedByEarlier === 1 ? "" : "s"} already claimed by earlier lanes`
-                  : l.lane === "inorganic"
-                    ? `only ${f.eligible} place${f.eligible === 1 ? "" : "s"} ${f.eligible === 1 ? "has" : "have"} RP > 0`
-                    : `only ${f.eligible} place${f.eligible === 1 ? "" : "s"} score${f.eligible === 1 ? "s" : ""} > 0`;
+                  : `only ${f.eligible} place${f.eligible === 1 ? "" : "s"} score${f.eligible === 1 ? "s" : ""} > 0 in this lane${factors}`;
               return (
                 <li key={l.id} className="font-mono text-[10.5px]">
                   {LANE_SHORT[l.id]} {f.taken}/{f.requested} (−{short}) — {reason}
