@@ -29,6 +29,7 @@ import { loadEnrichConfig } from "../_shared/enrich-config.ts";
 import { fetchPlaceCategories, inferPlaceCategory } from "../_shared/categories.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import {
+  coerceReservationsPolicy,
   hasReservationTarget,
   mergeProductsReservations,
   selectReservationEndpoint,
@@ -120,11 +121,20 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // Selected Reservation Endpoint (Product Rules §G / MESITA-597) — seed
   // products.reservations { channel, value } for the Reservationist.
-  // Priority among available contacts: phone > whatsapp > instagram.
+  // Channel priority + parked channels are the operator's, read live off
+  // app_settings.reservations_config (admin console → Reservations Config,
+  // MESITA-623); the default is phone > whatsapp > instagram.
   // Phone is stripped from gathered.place (research-only write), and
   // whatsapp_url is not discovered by channel search, so read live contacts +
-  // products from places. Skip when admin already picked a channel so
-  // re-enrich never clobbers an operator choice.
+  // products from places. Skip when admin already picked a channel — unless the
+  // operator turned respectAdminOverride off, which re-seeds every run.
+  const { data: settingsRow } = await admin
+    .from("app_settings")
+    .select("reservations_config")
+    .eq("id", 1)
+    .maybeSingle();
+  const reservationsPolicy = coerceReservationsPolicy(settingsRow?.reservations_config);
+
   const { data: liveContacts } = await admin
     .from("places")
     .select("phone, whatsapp_url, instagram_url, products")
@@ -132,7 +142,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     .maybeSingle();
   const liveProducts = liveContacts?.products ?? null;
   let reservationChannel: string | null = null;
-  if (hasReservationTarget(liveProducts)) {
+  if (reservationsPolicy.respectAdminOverride && hasReservationTarget(liveProducts)) {
     const existing = (liveProducts as Record<string, unknown>).reservations as {
       channel?: string;
     };
@@ -147,7 +157,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
         ((place.instagram_url as string | null | undefined) ?? null) ||
         ((liveContacts?.instagram_url as string | null | undefined) ?? null),
     };
-    const { target, diag: reservationDiag } = selectReservationEndpoint({ candidates });
+    const { target, diag: reservationDiag } = selectReservationEndpoint({
+      candidates,
+      policy: reservationsPolicy,
+    });
     sources.reservation_endpoint = reservationDiag;
     if (target) {
       place.products = mergeProductsReservations(liveProducts, target);
