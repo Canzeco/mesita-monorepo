@@ -59,11 +59,6 @@ const SIDEBAR_NAV = [
     Icon: ENRICHER_PARENT.Icon,
   },
   {
-    href: RESERVATIONS_PARENT.href,
-    label: RESERVATIONS_PARENT.label,
-    Icon: RESERVATIONS_PARENT.Icon,
-  },
-  {
     href: SCORING_PARENT.href,
     label: SCORING_PARENT.label,
     Icon: SCORING_PARENT.Icon,
@@ -72,6 +67,11 @@ const SIDEBAR_NAV = [
     href: MEMO_PARENT.href,
     label: MEMO_PARENT.label,
     Icon: MEMO_PARENT.Icon,
+  },
+  {
+    href: RESERVATIONS_PARENT.href,
+    label: RESERVATIONS_PARENT.label,
+    Icon: RESERVATIONS_PARENT.Icon,
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
