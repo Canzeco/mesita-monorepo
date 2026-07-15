@@ -32,9 +32,9 @@ export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: str
         <div className="min-w-0">
           <p className="font-semibold">n = 0 — no places to score.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            The playground draws a random sample of up to {SAMPLE_MAX} places from the catalog, and
-            the catalog came back empty. The model still stands; there is simply nothing to run it
-            on.
+            Internals and Engines draw a random sample of up to {SAMPLE_MAX} places from the
+            catalog, and the catalog came back empty. The model still stands; there is simply
+            nothing to run it on.
           </p>
         </div>
       </div>

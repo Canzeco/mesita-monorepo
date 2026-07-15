@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Braces, Gauge } from "lucide-react";
 import {
-  promoScoreForStrategy,
-  PROMO_SCORE_BY_STRATEGY,
+  bpForStrategy,
+  BP_BY_STRATEGY,
   strategyForPlace,
   STRATEGIES,
   STRATEGY_BY_ID,
@@ -14,6 +14,7 @@ import {
 import {
   DEFAULT_SCORES_CONFIG as CFG,
   fitScore,
+  BP_MAX,
   laneScore,
   LANES,
   MATCH_MAX,
@@ -31,19 +32,18 @@ import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 // Memo). Admin-only: the whole console sits behind the super-admin gate.
 //
 // This file RENDERS the model; the model, its knobs and the reasoning behind
-// every one live in @/lib/business/scores (promos in ./strategies), and the
-// global view is Scoring Config. Four lanes:
+// every one live in @/lib/business/scores (BP in ./strategies), and the
+// global view is Scoring Config. Four Lanes, one Score each:
 //
-//   organic   now = match × where × when      organic   future = match
-//   inorganic now = match × where × when × promos   inorganic future = match × promos
+//   ON = Match · where · when          OF = Match
+//   IN = Match · where · when · BP     IF = Match · BP
 //
-// Only ONE input is real data here: promos, derived from the place's live
-// promo rates. There is no consumer and no query in an admin view, so match
+// Only ONE Sub-Score is real data here: BP, derived from the place's live
+// promo rates. There is no consumer and no query in an admin view, so Match
 // and the moment are operator controls — that is the nature of the surface,
-// not a gap in it.
+// not a gap in it. WWW is deliberately NOT named on this page: `what` has no
+// control here, so where × when is only part of the moment.
 // ════════════════════════════════════════════════════════════════════════
-
-const PROMO_MAX = Math.max(...Object.values(PROMO_SCORE_BY_STRATEGY));
 
 /** Deterministic pseudo-vector from the place id — stand-in until real embeddings exist. */
 function mockVector(seed: string, dims: number): number[] {
@@ -74,7 +74,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
     free_rate: place.free_rate,
     premium_rate: place.premium_rate,
   });
-  const promos = promoScoreForStrategy(strategyId); // 0 · 1 · 2 · 3 — real
+  const bp = bpForStrategy(strategyId); // 0 · 1 · 2 · 3 — real
   const posture = strategyId ? STRATEGY_BY_ID[strategyId] : null;
 
   const where = whereScore(km);
@@ -94,7 +94,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         <div className="min-w-0">
           <p className="font-semibold">Draft simulator — does not affect Swipe, Map, or Memo.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            Only Promos is real data. Global knobs and the worked example live in{" "}
+            Only BP is real data. Global knobs and the worked example live in{" "}
             <Link href="/scoring-config" className="font-semibold underline-offset-2 hover:underline">
               Scoring Config
             </Link>
@@ -108,7 +108,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         icon={<Gauge className="h-4.5 w-4.5" />}
         tint="pink"
         title="Scores"
-        subtitle="Four lanes that never compete: {organic, inorganic} × {now, future}. Zero match zeroes every one — money can't buy irrelevance."
+        subtitle="Four Lanes that never compete: {organic, inorganic} × {now, future}. Zero Match zeroes every Score — money can't buy irrelevance."
         action={<Pill>Draft model</Pill>}
       >
         <div className="grid gap-3 sm:grid-cols-2">
@@ -116,11 +116,11 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
             <LaneCard
               key={lane.id}
               lane={lane}
-              score={laneScore(lane, { match, where, when, promos })}
+              score={laneScore(lane, { match, where, when, bp })}
               detail={
                 lane.mode === "now"
-                  ? `match ${fmt(match, 0)} × where ${fmt(where, 2)} × when ${fmt(when, 2)}${lane.lane === "inorganic" ? ` × promos ${promos}` : ""}`
-                  : `match ${fmt(match, 0)}${lane.lane === "inorganic" ? ` × promos ${promos}` : ""}`
+                  ? `Match ${fmt(match, 0)} · where ${fmt(where, 2)} · when ${fmt(when, 2)}${lane.lane === "inorganic" ? ` · BP ${bp}` : ""}`
+                  : `Match ${fmt(match, 0)}${lane.lane === "inorganic" ? ` · BP ${bp}` : ""}`
               }
             />
           ))}
@@ -129,7 +129,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         {/* Match — the gate */}
         <div className="mt-6">
           <div className="flex items-baseline justify-between">
-            <GroupLabel>Match · the gate on every lane</GroupLabel>
+            <GroupLabel>Match · the gate on every Lane</GroupLabel>
             <span className="text-sm font-semibold tabular-nums">
               {fmt(match, 0)}/{MATCH_MAX}
             </span>
@@ -202,12 +202,12 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
           </div>
         </div>
 
-        {/* Promos — the only real input */}
+        {/* BP — the only real input */}
         <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
-            <GroupLabel>Promos · bought — live from this place&apos;s rates</GroupLabel>
+            <GroupLabel>BP · Business Promo — live from this place&apos;s rates</GroupLabel>
             <p className="text-muted-foreground font-mono text-[11px]">
-              {fmt(promos, 0)}/{PROMO_MAX}
+              {fmt(bp, 0)}/{BP_MAX}
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
@@ -383,7 +383,7 @@ function PostureLadder({ current }: { current: StrategyId | null }) {
                 (active ? "text-pink-700" : "text-muted-foreground")
               }
             >
-              {PROMO_SCORE_BY_STRATEGY[s.id]}
+              {BP_BY_STRATEGY[s.id]}
             </p>
             <p className="text-muted-foreground mt-0.5 text-[10px] leading-tight">{s.name}</p>
           </div>

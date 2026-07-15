@@ -13,9 +13,9 @@ import { SCORING_SUBROUTES } from "./nav";
 // scoring engines.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/scoring-config/params":
-    "The scoring pipeline, one box per sub-function — engine lane mix, RIPM, LIPM, WWW (what · where · when), P — each with its knobs and its data-access contract.",
+    "The scoring pipeline, one box per Sub-Score — engine lane mix, FM (Fast-Match), SM (Slow-Match), WWW (what · where · when), BP (Business Promo) — each with its knobs and its data-access contract.",
   "/scoring-config/internals":
-    "The internal process of every score — documents, vectors, the judge's verdict, the moment's factors — on exactly ONE consumer × intent × place.",
+    "The internal process of every Sub-Score — documents, vectors, the judge's verdict, the moment's factors — on exactly ONE consumer × intent × place.",
   "/scoring-config/engines":
     "Real consumers + real places + synthetic intents → the three engines' ranked lists. Per-place scores live in Manage Single Unit → Scores.",
   "/scoring-config/memo":

@@ -1,60 +1,65 @@
 // Recommendation Scores — the model behind Swipe · Map · Memo (draft).
 //
-// ONE MATCH, TWO ESTIMATORS. Match is always the same question — how well
-// does this intent fit this place — asked at two fidelities:
+// THREE LEVELS. Every name in the model is defined exactly once, here; the
+// Scoring Config page and the per-place Scores tab only render them.
 //
-//   RIPM  RAG intent-place match  cosine(intent embedding, place embedding).
-//                                 Cheap; runs over the whole catalog in
-//                                 pgvector.
-//   LIPM  LLM intent-place match  a judge reads intent + place profile and
-//                                 scores it. Expensive; shortlist only.
+//   4 LANES       ON · OF · IN · IF     organic|inorganic × now|future
+//      ↓
+//   4 SCORES      one per lane          what a surface actually ranks by
+//      ↑
+//   4 SUB-SCORES  FM · SM · WWW · BP    the factors a Score multiplies
 //
-// FOUR LANES × TWO TIERS. The Slow column is the Fast column with LIPM
-// swapped in for RIPM — nothing else moves. That symmetry is deliberate: fast
-// and slow only disagree where the estimators disagree, which is exactly the
-// disagreement the Swipe rerank exists to fix.
+// ── THE SUB-SCORES ─────────────────────────────────────────────────────
+//   FM   Fast-Match      0–100  cosine(intent embedding, place embedding).
+//                               Cheap; runs over the whole catalog in
+//                               pgvector.
+//   SM   Slow-Match      0–100  a judge reads intent + place profile and
+//                               scores it. Expensive; shortlist only.
+//   WWW  the moment      0–1    what(daypart) × where(km) × when(opens_in,
+//                               open_for). Now-mode lanes only.
+//   BP   Business Promo  0–3    the membership ladder; see ./strategies.
 //
-//   lane              Fast (RAG)      Slow (LLM)
-//   organic   now     RIPM·WWW         LIPM·WWW
-//   organic   future  RIPM            LIPM
-//   inorganic now     RIPM·WWW·P       LIPM·WWW·P
-//   inorganic future  RIPM·P          LIPM·P
+// ONE MATCH, TWO ESTIMATORS. FM and SM ask the same question — how well does
+// this intent fit this place — at two fidelities. They are ALTERNATIVES in the
+// Match slot, never co-factors, so every Score has two values:
 //
-//   RIPM, LIPM 0–100  0 is reachable and zeroes every lane — "money can't
-//                     buy irrelevance" is the whole reason match multiplies.
-//   WWW        0–1    the moment: what(daypart) × where(km) × when(opens_in,
-//                     open_for). Now-mode only.
-//   P          0–3    promos — the membership ladder; see ./strategies.
+//   lane                 Score      Fast tier    Slow tier
+//   ON  organic   now    ON Score   FM·WWW       SM·WWW
+//   OF  organic   future OF Score   FM           SM
+//   IN  inorganic now    IN Score   FM·WWW·BP    SM·WWW·BP
+//   IF  inorganic future IF Score   FM·BP        SM·BP
+//
+// The Slow column is the Fast column with SM swapped in for FM — nothing else
+// moves. That symmetry is deliberate: fast and slow only disagree where the
+// estimators disagree, which is exactly the disagreement the Swipe rerank
+// exists to fix.
+//
+// FM and SM reach 0, and 0 zeroes every Score — "money can't buy irrelevance"
+// is the whole reason Match multiplies.
 //
 // ── TEXT vs NUMBERS — who actually knows about where/when ─────────────
 // Intent-data and place-data both carry where/when as TEXT — an address, hours
-// as written, a question that says "near Providencia tonight". So RIPM/LIPM
-// may pick up place- and time-flavor implicitly. That's redundant with WWW,
-// and it's fine. What the match tiers NEVER receive is computed numbers: no
+// as written, a question that says "near Providencia tonight". So FM/SM may
+// pick up place- and time-flavor implicitly. That's redundant with WWW, and
+// it's fine. What the match tiers NEVER receive is computed numbers: no
 // distance-km, no hours-until-open are precomputed and written into their
-// context. WWW is the only function that computes where and when as numerical
-// values — and it MULTIPLIES RIPM or LIPM; it never feeds them.
+// context. WWW is the only Sub-Score that computes where and when as numerical
+// values — and it MULTIPLIES FM or SM; it never feeds them.
 //
-// ENGINES ARE PIPELINE POLICIES, not formulas — each decides how far up the
-// fidelity ladder to climb (ENGINE_POLICIES below):
+// ENGINES ARE PIPELINE POLICIES, not formulas. Every engine runs the SAME
+// ladder — FM screens the catalog (top-K, with WWW·BP applied, so no SM calls
+// are wasted on closed or far places) → SM sorts the shortlist. What differs
+// per engine is its LANE MIX (DEFAULT_ENGINE_MIX) and where INTENT-data comes
+// from: Swipe and Map read the prebuilt taste embedding (Map adds the
+// viewport); Memo synthesizes intent from the question at query time.
+// Place-data is always prebuilt by the Enricher. One place representation, one
+// Match definition, three query policies.
 //
-//   Swipe  screen with Fast (top n over the catalog — WWW·P included, so no
-//          Slow calls are wasted on closed or far places) → sort n with Slow.
-//   Map    Fast only. RAG order is good enough at map altitude, and the
-//          viewport already did half the filtering.
-//   Memo   Slow sorts. Fast is recall only — its order is irrelevant.
-//
-// The only per-engine difference in inputs is where INTENT-data comes from:
-// Swipe and Map read the prebuilt taste embedding (Map adds the viewport);
-// Memo synthesizes intent from the question at query time. Place-data is
-// always prebuilt by the Enricher. One place representation, one match
-// definition, three query policies.
-//
-// The lanes never compete: organic results rank by the organic lane, promoted
-// slots by the inorganic lane, and each sorts only against itself, so their
+// The lanes never compete: organic results rank by the ON/OF Scores, promoted
+// slots by the IN/IF Scores, and each sorts only against itself, so their
 // different ceilings (100 vs 300) are meaningless across. Note the inorganic
-// lane IS the organic lane × promos — the paid lane is the earned one tilted
-// by generosity.
+// Score IS the organic Score × BP — the paid lane is the earned one tilted by
+// generosity.
 //
 // ── WHERE ──────────────────────────────────────────────────────────────
 //   where = 1 / (1 + (km / d₀)^s)
@@ -93,7 +98,7 @@
 //
 // EVERY KNOB IS A BELIEF, NOT AN ESTIMATE. There are no clicks, no conversions,
 // no relevance labels — nothing here is fitted. Judge a change by its
-// BREAK-EVEN (how far a mega-place's match must fall before a well-matched
+// BREAK-EVEN (how far a mega-place's Match must fall before a well-matched
 // small place beats it), never by how far apart the numbers land: any monotone
 // rescale leaves the ranking identical. Tune here; both the Scoring Config page
 // and the per-place Scores tab derive from this config and never restate a knob
@@ -158,18 +163,18 @@ export const DEFAULT_SCORES_CONFIG: ScoresConfig = {
 };
 
 // ── Match-tier internal params — configurable, not constants ────────────
-// The estimators' own knobs. RIPM: the encoder's dimensionality (emulated
-// feature-hash today; the real embedding model's dims when live). LIPM: the
+// The two estimators' own knobs. FM: the encoder's dimensionality (emulated
+// feature-hash today; the real embedding model's dims when live). SM: the
 // judge's rubric weights — what each structured judgment is worth. These were
 // hardcoded (+15/+8/−18/±6, 64d) until v7.7; now they persist in the blob
 // and every playground computes from them.
 
-export type RipmParams = {
+export type FmParams = {
   /** Embedding dimensionality. */
   embedDims: number;
 };
 
-export type LipmParams = {
+export type SmParams = {
   /** + when the place's category is in the consumer+intent tokens. */
   catBonus: number;
   /** + when the place's zone is in the consumer+intent tokens. */
@@ -180,9 +185,9 @@ export type LipmParams = {
   nuanceAmp: number;
 };
 
-export const DEFAULT_RIPM_PARAMS: RipmParams = { embedDims: 64 };
+export const DEFAULT_FM_PARAMS: FmParams = { embedDims: 64 };
 
-export const DEFAULT_LIPM_PARAMS: LipmParams = {
+export const DEFAULT_SM_PARAMS: SmParams = {
   catBonus: 15,
   zoneBonus: 8,
   clashPenalty: 18,
@@ -241,48 +246,66 @@ export function whenScore(
   return waitScore(opensInH, cfg) * fitScore(openForH, cfg);
 }
 
+// ── THE FOUR SUB-SCORES ────────────────────────────────────────────────
+// These ids are the model's spine: the persisted blob keys, the context
+// registry and PIPELINE_CONTEXT are all keyed off them, so a Sub-Score can
+// never be renamed on screen without its storage following.
+
+export type SubScoreId = "fm" | "sm" | "www" | "bp";
+
+/** FM · SM — the two Match estimators, and the field-configurable Sub-Scores. */
+export type MatchTierId = Extract<SubScoreId, "fm" | "sm">;
+
+/** WWW · BP — inputs are structural (the numeric fields ARE the function), so
+ * these are tuned by knobs, never by field selection. */
+export type FixedSubScoreId = Exclude<SubScoreId, MatchTierId>;
+
+export type MatchTier = {
+  id: MatchTierId;
+  /** The pipeline verb — "Fast screens → Slow sorts". */
+  label: string;
+  /** The Sub-Score's name, as rendered. */
+  term: "FM" | "SM";
+  detail: string;
+};
+
+/** One Match (intent × place), two estimators. Fast screens; Slow settles. */
+export const MATCH_TIERS: readonly MatchTier[] = [
+  { id: "fm", label: "Fast", term: "FM", detail: "Fast-Match · embeddings, cosine over the whole catalog" },
+  { id: "sm", label: "Slow", term: "SM", detail: "Slow-Match · LLM judge, shortlist only" },
+];
+
+/** BP's ceiling — the top rung of the membership ladder. */
+export const BP_MAX = 3;
+
+// ── THE FOUR LANES ─────────────────────────────────────────────────────
+
 export type LaneId = "organic-now" | "organic-future" | "inorganic-now" | "inorganic-future";
 
 export type Lane = {
   id: LaneId;
-  /** "Organic" | "Inorganic" — which ranking this feeds. */
+  /** "organic" | "inorganic" — which ranking this lane's Score feeds. */
   lane: "organic" | "inorganic";
   /** "now" | "future" — a property of the QUERY, not the place. */
   mode: "now" | "future";
-  formula: string;
-  /** The lane's ceiling, for the `/N` an operator reads. */
+  /** The Score's ceiling, for the `/N` an operator reads. */
   max: number;
 };
 
-export const PROMO_MAX = 3;
-
 export const LANES: readonly Lane[] = [
-  { id: "organic-now",     lane: "organic",   mode: "now",    formula: "match × where × when",          max: MATCH_MAX },
-  { id: "organic-future",  lane: "organic",   mode: "future", formula: "match",                         max: MATCH_MAX },
-  { id: "inorganic-now",   lane: "inorganic", mode: "now",    formula: "match × where × when × promos", max: MATCH_MAX * PROMO_MAX },
-  { id: "inorganic-future",lane: "inorganic", mode: "future", formula: "match × promos",                max: MATCH_MAX * PROMO_MAX },
+  { id: "organic-now",      lane: "organic",   mode: "now",    max: MATCH_MAX },
+  { id: "organic-future",   lane: "organic",   mode: "future", max: MATCH_MAX },
+  { id: "inorganic-now",    lane: "inorganic", mode: "now",    max: MATCH_MAX * BP_MAX },
+  { id: "inorganic-future", lane: "inorganic", mode: "future", max: MATCH_MAX * BP_MAX },
 ];
 
-/** A lane's formula at one tier, in the model's shorthand — e.g. "LIPM·WWW·P". */
-export function laneFormula(lane: Lane, term: "RIPM" | "LIPM"): string {
+/** A lane's Score at one tier, in the model's shorthand — e.g. "SM·WWW·BP". */
+export function laneFormula(lane: Lane, term: MatchTier["term"]): string {
   const parts: string[] = [term];
   if (lane.mode === "now") parts.push("WWW");
-  if (lane.lane === "inorganic") parts.push("P");
+  if (lane.lane === "inorganic") parts.push("BP");
   return parts.join("·");
 }
-
-export type MatchTier = {
-  id: "fast" | "slow";
-  label: string;
-  term: "RIPM" | "LIPM";
-  detail: string;
-};
-
-/** One match (intent × place), two estimators. Fast screens; Slow settles. */
-export const MATCH_TIERS: readonly MatchTier[] = [
-  { id: "fast", label: "Fast", term: "RIPM", detail: "RAG intent-place match · cosine, whole catalog" },
-  { id: "slow", label: "Slow", term: "LIPM", detail: "LLM intent-place match · judge, shortlist only" },
-];
 
 export type EngineId = "swipe" | "map" | "memo";
 
@@ -337,9 +360,9 @@ export const DEFAULT_ENGINE_MIX: Record<EngineId, Record<LaneId, number>> = {
 };
 
 /**
- * Retrieval knobs — RIPD (RAG intent-place data) and LIPD (LLM intent-place
- * data) sides of the match. The playground doesn't retrieve, so these bind
- * only when the engines go live; they live here so the page derives them.
+ * Retrieval knobs — how wide FM screens and how deep SM sorts. The playground
+ * doesn't retrieve, so these bind only when the engines go live; they live
+ * here so the page derives them.
  *
  * Defaults, argued:
  *   recallTopK 50 — recall must give the judge headroom (≥2× shortlist, the
@@ -351,20 +374,19 @@ export const DEFAULT_ENGINE_MIX: Record<EngineId, Record<LaneId, number>> = {
  *     is the smallest n that never starves the mix.
  */
 export const DEFAULT_RETRIEVAL = {
-  /** RIPD — how many places pgvector recall returns. */
+  /** How many places pgvector recall returns for FM to screen. */
   recallTopK: 50,
-  /** LIPD — how many recalled places the LLM judge re-scores. */
+  /** How many FM-screened places SM re-scores. */
   shortlistN: 20,
 };
 
 // ── CONTEXT FIELD REGISTRY — the configurable pipeline ──────────────────
 // Every TEXT field the match tiers could read, with a stable key. Which of
-// these RIPM and LIPM actually receive is CONFIG (ContextConfig below,
-// persisted in the blob): the admin toggles fields per sub-function and the
-// playground assembles its documents from exactly the enabled set — so a
-// toggle visibly changes the embedding, the cosine, and the ranking. WWW and
-// P are NOT field-configurable: their inputs are structural (the numeric
-// fields ARE the function), and their behavior knobs live above.
+// these FM and SM actually receive is CONFIG (ContextConfig below, persisted
+// in the blob): the admin toggles fields per Sub-Score and the playground
+// assembles its documents from exactly the enabled set — so a toggle visibly
+// changes the embedding, the cosine, and the ranking. WWW and BP are the
+// FixedSubScoreIds — not field-configurable; their behavior knobs live above.
 
 export type ContextSide = "consumer" | "intent" | "place";
 
@@ -408,40 +430,42 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
 
 export const CONTEXT_KEYS: ReadonlySet<string> = new Set(CONTEXT_FIELDS.map((f) => f.key));
 
-/** Which fields each match tier reads — the configurable half of the pipeline. */
-export type ContextConfig = Record<"ripm" | "lipm", string[]>;
+/** Which fields each match tier reads — the configurable half of the pipeline.
+ * Keyed by MatchTierId, so the blob key always follows the Sub-Score name. */
+export type ContextConfig = Record<MatchTierId, string[]>;
 
-// Defaults follow the tiers' economics: RIPM embeds a LEAN taste+intent
-// document (names, follower counts and proof lines are noise in a cosine);
-// LIPM is the expensive judge and reads EVERYTHING that exists. Planned
-// fields default off — they can be toggled on, but contribute nothing until
-// the data exists.
+// Defaults follow the tiers' economics: FM embeds a LEAN taste+intent document
+// (names, follower counts and proof lines are noise in a cosine); SM is the
+// expensive judge and reads EVERYTHING that exists. Planned fields default off
+// — they can be toggled on, but contribute nothing until the data exists.
 // Arrays kept SORTED — the canonical order everywhere (form state sorts too),
 // so key order can never fake an unsaved-changes diff.
 export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
-  ripm: [
+  fm: [
     "consumer.taste", "consumer.class", "consumer.age", "consumer.sex", "consumer.country",
     "intent.query", "intent.time", "intent.zone", "intent.party",
     "place.name", "place.category", "place.zone_city", "place.tags", "place.description",
   ].sort(),
-  lipm: CONTEXT_FIELDS.filter((f) => f.status === "live").map((f) => f.key).sort(),
+  sm: CONTEXT_FIELDS.filter((f) => f.status === "live").map((f) => f.key).sort(),
 };
 
 // ── Persisted settings (app_settings.scoring_config) ────────────────────
-// The Params tab saves ONE versioned blob. NULL in the DB means "following
-// code defaults" — so default improvements propagate until someone saves an
-// override. Reset-to-defaults loads these values into the form; Save writes
-// the blob.
+// The Pipeline tab saves ONE versioned blob, keyed by the names above: the
+// three Sub-Scores with knobs (`www`, `bp`, plus `fm`/`sm` params) sit at the
+// top level, and `context` holds the two match tiers' field selections. NULL
+// in the DB means "following code defaults" — so default improvements
+// propagate until someone saves an override. Reset-to-defaults loads these
+// values into the form; Save writes the blob.
 
 export type ScoringSettings = {
   v: 1;
   mix: Record<EngineId, Record<LaneId, number>>;
   retrieval: { recallTopK: number; shortlistN: number };
   www: ScoresConfig;
-  promos: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
+  bp: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
   context: ContextConfig;
-  ripm: RipmParams;
-  lipm: LipmParams;
+  fm: FmParams;
+  sm: SmParams;
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
@@ -452,10 +476,10 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   // Linear so relevance can beat money inside the paid lane; Zero = 0 because
   // there is nothing to promote (no discount) — the membership buys listing +
   // tools, generosity buys placement.
-  promos: { zero: 0, conservative: 1, aggressive: 2, dominant: 3 },
+  bp: { zero: 0, conservative: 1, aggressive: 2, dominant: 3 },
   context: DEFAULT_CONTEXT_CONFIG,
-  ripm: DEFAULT_RIPM_PARAMS,
-  lipm: DEFAULT_LIPM_PARAMS,
+  fm: DEFAULT_FM_PARAMS,
+  sm: DEFAULT_SM_PARAMS,
 };
 
 // Sorted + deduped so key order can never fake a settings diff. An empty
@@ -492,11 +516,11 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   ) as ScoringSettings["mix"];
 
   const ret = (r.retrieval ?? {}) as Record<string, unknown>;
-  const www = ((r.www ?? r.ww) ?? {}) as Record<string, unknown>;
-  const promos = (r.promos ?? {}) as Record<string, unknown>;
+  const www = (r.www ?? {}) as Record<string, unknown>;
+  const bp = (r.bp ?? {}) as Record<string, unknown>;
   const ctx = (r.context ?? {}) as Record<string, unknown>;
-  const ripm = (r.ripm ?? {}) as Record<string, unknown>;
-  const lipm = (r.lipm ?? {}) as Record<string, unknown>;
+  const fm = (r.fm ?? {}) as Record<string, unknown>;
+  const sm = (r.sm ?? {}) as Record<string, unknown>;
 
   return {
     v: 1,
@@ -514,55 +538,55 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       whatOffFactor: num(www.whatOffFactor, d.www.whatOffFactor, 0, 1),
       timeBlockH: num(www.timeBlockH, d.www.timeBlockH, 0.25, 1),
     },
-    promos: {
-      zero: num(promos.zero, d.promos.zero, 0, 9),
-      conservative: num(promos.conservative, d.promos.conservative, 0, 9),
-      aggressive: num(promos.aggressive, d.promos.aggressive, 0, 9),
-      dominant: num(promos.dominant, d.promos.dominant, 0, 9),
+    bp: {
+      zero: num(bp.zero, d.bp.zero, 0, 9),
+      conservative: num(bp.conservative, d.bp.conservative, 0, 9),
+      aggressive: num(bp.aggressive, d.bp.aggressive, 0, 9),
+      dominant: num(bp.dominant, d.bp.dominant, 0, 9),
     },
     context: {
-      ripm: coerceContextKeys(ctx.ripm, d.context.ripm),
-      lipm: coerceContextKeys(ctx.lipm, d.context.lipm),
+      fm: coerceContextKeys(ctx.fm, d.context.fm),
+      sm: coerceContextKeys(ctx.sm, d.context.sm),
     },
-    ripm: {
-      embedDims: Math.round(num(ripm.embedDims, d.ripm.embedDims, 16, 256)),
+    fm: {
+      embedDims: Math.round(num(fm.embedDims, d.fm.embedDims, 16, 256)),
     },
-    lipm: {
-      catBonus: num(lipm.catBonus, d.lipm.catBonus, 0, 30),
-      zoneBonus: num(lipm.zoneBonus, d.lipm.zoneBonus, 0, 20),
-      clashPenalty: num(lipm.clashPenalty, d.lipm.clashPenalty, 0, 30),
-      nuanceAmp: Math.round(num(lipm.nuanceAmp, d.lipm.nuanceAmp, 0, 12)),
+    sm: {
+      catBonus: num(sm.catBonus, d.sm.catBonus, 0, 30),
+      zoneBonus: num(sm.zoneBonus, d.sm.zoneBonus, 0, 20),
+      clashPenalty: num(sm.clashPenalty, d.sm.clashPenalty, 0, 30),
+      nuanceAmp: Math.round(num(sm.nuanceAmp, d.sm.nuanceAmp, 0, 12)),
     },
   };
 }
 
 export type LaneInputs = {
-  /** 0–100 — RIPM or LIPM, whichever tier the caller is scoring. */
+  /** 0–100 — FM or SM, whichever tier the caller is scoring. */
   match: number;
-  /** 0–1. */
+  /** 0–1 — WWW's where. */
   where: number;
-  /** 0–1. */
+  /** 0–1 — WWW's when. */
   when: number;
-  /** 0–1 — daypart suitability (WHAT). Omit for 1 (no penalty). */
+  /** 0–1 — WWW's what (daypart suitability). Omit for 1 (no penalty). */
   what?: number;
-  /** 0–3. */
-  promos: number;
+  /** 0–BP_MAX. */
+  bp: number;
 };
 
-/** One lane's rank value. Match multiplies un-floored, so 0 relevance zeroes it. */
+/** One lane's Score. Match multiplies un-floored, so 0 relevance zeroes it. */
 export function laneScore(lane: Lane, i: LaneInputs): number {
   const m = Math.max(0, Math.min(MATCH_MAX, i.match));
   const moment = lane.mode === "now" ? (i.what ?? 1) * i.where * i.when : 1;
-  const paid = lane.lane === "inorganic" ? i.promos : 1;
+  const paid = lane.lane === "inorganic" ? i.bp : 1;
   return m * moment * paid;
 }
 
 // ── PIPELINE CONTEXT — the FIXED data-access contracts ──────────────────
-// RIPM/LIPM contracts are CONFIG now (CONTEXT_FIELDS + ContextConfig above —
-// the admin toggles what each tier reads and the playground honors it). WWW
-// and P stay fixed contracts: their inputs are structural — WWW alone reads
-// NUMBERS (that boundary is the model's debuggability), and P reads only the
-// live rates. Their behavior is tuned by the knobs, not by field selection.
+// FM/SM contracts are CONFIG now (CONTEXT_FIELDS + ContextConfig above — the
+// admin toggles what each tier reads and the playground honors it). The
+// FixedSubScoreIds keep fixed contracts: their inputs are structural — WWW
+// alone reads NUMBERS (that boundary is the model's debuggability), and BP
+// reads only the live rates. Tuned by the knobs, not by field selection.
 
 export type ContextField = {
   field: string;
@@ -570,13 +594,13 @@ export type ContextField = {
   note?: string;
 };
 
-export type SubFunctionContext = {
+export type SubScoreContext = {
   consumer: ContextField[];
   intent: ContextField[];
   place: ContextField[];
 };
 
-export const PIPELINE_CONTEXT: Record<"www" | "promo", SubFunctionContext> = {
+export const PIPELINE_CONTEXT: Record<FixedSubScoreId, SubScoreContext> = {
   www: {
     consumer: [{ field: "— (location arrives via intent)", status: "live" }],
     intent: [
@@ -589,12 +613,12 @@ export const PIPELINE_CONTEXT: Record<"www" | "promo", SubFunctionContext> = {
       { field: "category → daypart map (WHAT)", status: "live" },
     ],
   },
-  promo: {
+  bp: {
     consumer: [{ field: "— (never; rates stay blended)", status: "live" }],
     intent: [{ field: "—", status: "live" }],
     place: [
       { field: "welcome/returning × free/premium rates (projects)", status: "live" },
-      { field: "→ posture → rung 0–3", status: "live" },
+      { field: `→ posture → rung 0–${BP_MAX}`, status: "live" },
     ],
   },
 };

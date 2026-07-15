@@ -7,20 +7,21 @@ import {
   DEFAULT_SCORING_SETTINGS,
   type ContextConfig,
   type EngineId,
+  type FmParams,
   type LaneId,
-  type LipmParams,
-  type RipmParams,
+  type MatchTierId,
   type ScoresConfig,
   type ScoringSettings,
+  type SmParams,
 } from "@/lib/business/scores";
 import { type StrategyId } from "@/lib/business/strategies";
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 import { updateScoringSettings } from "./settings-actions";
 
 // Shared state for the Scoring Config tabs. The layout mounts this ONCE, so
-// hyperparameters set on Params carry into the Playground tab live and
-// survive tab switches. The DB sample flows through as plain props; the SAVED
-// settings blob seeds the knobs on first mount (null in DB = code defaults).
+// knobs set on Pipeline carry into Internals and Engines live and survive tab
+// switches. The DB sample flows through as plain props; the SAVED settings
+// blob seeds the knobs on first mount (null in DB = code defaults).
 //
 // Save = whole-blob write to app_settings.scoring_config via the EF pair.
 // Reset-to-defaults = load DEFAULT_SCORING_SETTINGS into the form (dirty
@@ -28,49 +29,51 @@ import { updateScoringSettings } from "./settings-actions";
 
 type EngineMix = Record<EngineId, Record<LaneId, number>>;
 type Retrieval = ScoringSettings["retrieval"];
-type PromoVals = Record<StrategyId, number>;
+type BpVals = Record<StrategyId, number>;
 
 function fromSettings(s: ScoringSettings): {
   cfg: ScoresConfig;
   mix: EngineMix;
   retrieval: Retrieval;
-  promoVals: PromoVals;
+  bpVals: BpVals;
   context: ContextConfig;
-  ripmParams: RipmParams;
-  lipmParams: LipmParams;
+  fmParams: FmParams;
+  smParams: SmParams;
 } {
   return {
     cfg: { ...DEFAULT_SCORES_CONFIG, ...s.www },
     mix: s.mix,
     retrieval: s.retrieval,
-    promoVals: { ...s.promos },
-    context: { ripm: [...s.context.ripm], lipm: [...s.context.lipm] },
-    ripmParams: { ...s.ripm },
-    lipmParams: { ...s.lipm },
+    bpVals: { ...s.bp },
+    context: { fm: [...s.context.fm], sm: [...s.context.sm] },
+    fmParams: { ...s.fm },
+    smParams: { ...s.sm },
   };
 }
 
 type ScoringCtx = {
   consumers: SampleConsumer[];
   places: SamplePlace[];
+  /** WWW's knobs. */
   cfg: ScoresConfig;
   setCfg: React.Dispatch<React.SetStateAction<ScoresConfig>>;
   mix: EngineMix;
   setMix: React.Dispatch<React.SetStateAction<EngineMix>>;
   retrieval: Retrieval;
   setRetrieval: React.Dispatch<React.SetStateAction<Retrieval>>;
-  promoVals: PromoVals;
-  setPromoVals: React.Dispatch<React.SetStateAction<PromoVals>>;
+  /** BP — the rung each posture earns. */
+  bpVals: BpVals;
+  setBpVals: React.Dispatch<React.SetStateAction<BpVals>>;
   /** Which fields each match tier reads — the configurable pipeline. */
   context: ContextConfig;
   /** Toggle one registry field in one tier's context. */
-  toggleContext: (tier: keyof ContextConfig, key: string) => void;
-  /** RIPM internals — the encoder's params. */
-  ripmParams: RipmParams;
-  setRipmParams: React.Dispatch<React.SetStateAction<RipmParams>>;
-  /** LIPM internals — the judge's rubric weights. */
-  lipmParams: LipmParams;
-  setLipmParams: React.Dispatch<React.SetStateAction<LipmParams>>;
+  toggleContext: (tier: MatchTierId, key: string) => void;
+  /** FM internals — the encoder's params. */
+  fmParams: FmParams;
+  setFmParams: React.Dispatch<React.SetStateAction<FmParams>>;
+  /** SM internals — the judge's rubric weights. */
+  smParams: SmParams;
+  setSmParams: React.Dispatch<React.SetStateAction<SmParams>>;
   /** Current form as a settings blob. */
   current: ScoringSettings;
   dirty: boolean;
@@ -107,12 +110,12 @@ export function ScoringProvider({
   const [cfg, setCfg] = useState<ScoresConfig>(seed.cfg);
   const [mix, setMix] = useState<EngineMix>(seed.mix);
   const [retrieval, setRetrieval] = useState<Retrieval>(seed.retrieval);
-  const [promoVals, setPromoVals] = useState<PromoVals>(seed.promoVals);
+  const [bpVals, setBpVals] = useState<BpVals>(seed.bpVals);
   const [context, setContext] = useState<ContextConfig>(seed.context);
-  const [ripmParams, setRipmParams] = useState<RipmParams>(seed.ripmParams);
-  const [lipmParams, setLipmParams] = useState<LipmParams>(seed.lipmParams);
+  const [fmParams, setFmParams] = useState<FmParams>(seed.fmParams);
+  const [smParams, setSmParams] = useState<SmParams>(seed.smParams);
 
-  const toggleContext = (tier: keyof ContextConfig, key: string) =>
+  const toggleContext = (tier: MatchTierId, key: string) =>
     setContext((c) => ({
       ...c,
       [tier]: c[tier].includes(key) ? c[tier].filter((k) => k !== key) : [...c[tier], key],
@@ -128,18 +131,18 @@ export function ScoringProvider({
       mix,
       retrieval,
       www: { ...cfg },
-      promos: {
-        zero: promoVals.zero,
-        conservative: promoVals.conservative,
-        aggressive: promoVals.aggressive,
-        dominant: promoVals.dominant,
+      bp: {
+        zero: bpVals.zero,
+        conservative: bpVals.conservative,
+        aggressive: bpVals.aggressive,
+        dominant: bpVals.dominant,
       },
       // Sorted so toggle order never fakes a diff against the saved blob.
-      context: { ripm: [...context.ripm].sort(), lipm: [...context.lipm].sort() },
-      ripm: { ...ripmParams },
-      lipm: { ...lipmParams },
+      context: { fm: [...context.fm].sort(), sm: [...context.sm].sort() },
+      fm: { ...fmParams },
+      sm: { ...smParams },
     }),
-    [mix, retrieval, cfg, promoVals, context, ripmParams, lipmParams],
+    [mix, retrieval, cfg, bpVals, context, fmParams, smParams],
   );
 
   const dirty = useMemo(
@@ -152,10 +155,10 @@ export function ScoringProvider({
     setCfg(f.cfg);
     setMix(f.mix);
     setRetrieval(f.retrieval);
-    setPromoVals(f.promoVals);
+    setBpVals(f.bpVals);
     setContext(f.context);
-    setRipmParams(f.ripmParams);
-    setLipmParams(f.lipmParams);
+    setFmParams(f.fmParams);
+    setSmParams(f.smParams);
   };
 
   const save = () => {
@@ -186,14 +189,14 @@ export function ScoringProvider({
         setMix,
         retrieval,
         setRetrieval,
-        promoVals,
-        setPromoVals,
+        bpVals,
+        setBpVals,
         context,
         toggleContext,
-        ripmParams,
-        setRipmParams,
-        lipmParams,
-        setLipmParams,
+        fmParams,
+        setFmParams,
+        smParams,
+        setSmParams,
         current,
         dirty,
         saving,

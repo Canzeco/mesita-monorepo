@@ -4,10 +4,10 @@ import { getScoringSettings } from "./settings-actions";
 import { ScoringLayoutShell } from "./ScoringLayoutShell";
 import { ScoringProvider } from "./ScoringProvider";
 
-// Scoring Config — tabbed (Params · Playground · Memo). The layout fetches the
-// DB sample ONCE and mounts the shared knob provider, so hyperparameters set
-// on Params drive the Playground live and survive tab switches (the layout
-// persists across child navigation). Resample = router.refresh() → this
+// Scoring Config — tabbed (Pipeline · Internals · Engines · Memo). The layout
+// fetches the DB sample ONCE and mounts the shared knob provider, so knobs set
+// on Pipeline drive Internals + Engines live and survive tab switches (the
+// layout persists across child navigation). Resample = router.refresh() → this
 // re-fetches; knob state is untouched because the provider isn't remounted.
 export const dynamic = "force-dynamic";
 

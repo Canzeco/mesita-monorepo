@@ -2,8 +2,9 @@
 //
 // Writes the scoring model's hyperparameters as ONE versioned jsonb blob on
 // the public.app_settings singleton (scoring_config). Whole-blob writes only
-// — the Params tab always saves its full form, so partial patches would only
-// invite drift. Validation is structural + range-clamping; the mix rows are
+// — the Pipeline tab always saves its full form, so partial patches would
+// only invite drift. Keys follow the Sub-Score names: www · bp · fm · sm,
+// plus mix / retrieval / context (see web-admin lib/business/scores.ts). Validation is structural + range-clamping; the mix rows are
 // NOT forced to sum to 100 (the admin UI warns instead — an operator may
 // deliberately save a work-in-progress mix).
 //
@@ -56,10 +57,10 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     return { ok: false, error: "retrieval.recallTopK / shortlistN out of range" };
   }
 
-  // v7.4: the moment is WWW (what · where · when). Accept legacy `ww` too.
+  // v7.4: the moment is WWW (what · where · when).
   // v7.7: distanceExp + timeBlockH stop being code constants (default-filled
   // for older clients, like whatOffFactor was).
-  const www = (r.www ?? r.ww) as Record<string, unknown> | undefined;
+  const www = r.www as Record<string, unknown> | undefined;
   const distanceHalfKm = num(www?.distanceHalfKm, 1, 20);
   const distanceExp = num(www?.distanceExp ?? 1.6, 1, 3);
   const waitHalfH = num(www?.waitHalfH, 0.5, 4);
@@ -74,15 +75,16 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     return { ok: false, error: "www knobs out of range" };
   }
 
-  const promosIn = r.promos as Record<string, unknown> | undefined;
-  const promos: Record<string, number> = {};
+  const bpIn = r.bp as Record<string, unknown> | undefined;
+  const bp: Record<string, number> = {};
   for (const p of POSTURES) {
-    const v = num(promosIn?.[p], 0, 9);
-    if (v == null) return { ok: false, error: `promos.${p} must be a number 0–9` };
-    promos[p] = v;
+    const v = num(bpIn?.[p], 0, 9);
+    if (v == null) return { ok: false, error: `bp.${p} must be a number 0–9` };
+    bp[p] = v;
   }
 
-  // v7.6: the configurable pipeline — which TEXT fields each match tier reads
+  // v7.6: the configurable pipeline — which TEXT fields each match tier (FM,
+  // SM) reads
   // (keys of web-admin's CONTEXT_FIELDS registry). Validation is STRUCTURAL
   // only ("side.name" strings, deduped, capped) — the exact key list lives in
   // the frontend registry and its coercer drops unknowns on read, so this EF
@@ -97,7 +99,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       return { ok: false, error: "config.context must be an object" };
     }
     context = {};
-    for (const tier of ["ripm", "lipm"] as const) {
+    for (const tier of ["fm", "sm"] as const) {
       const v = contextIn[tier];
       if (!Array.isArray(v)) return { ok: false, error: `context.${tier} must be an array` };
       const clean = [...new Set(v.filter((k) => typeof k === "string" && KEY_RE.test(k)))];
@@ -109,21 +111,21 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     }
   }
 
-  // v7.7: the match tiers' INTERNAL params — RIPM encoder dims + the LIPM
-  // judge's rubric weights. Default-filled so older clients keep working;
-  // always written so the blob stays complete going forward.
-  const ripmIn = r.ripm as Record<string, unknown> | undefined;
-  const embedDims = num(ripmIn?.embedDims ?? 64, 16, 256);
-  const lipmIn = r.lipm as Record<string, unknown> | undefined;
-  const catBonus = num(lipmIn?.catBonus ?? 15, 0, 30);
-  const zoneBonus = num(lipmIn?.zoneBonus ?? 8, 0, 20);
-  const clashPenalty = num(lipmIn?.clashPenalty ?? 18, 0, 30);
-  const nuanceAmp = num(lipmIn?.nuanceAmp ?? 6, 0, 12);
+  // v7.7: the match tiers' INTERNAL params — FM encoder dims + the SM judge's
+  // rubric weights. Default-filled so older clients keep working; always
+  // written so the blob stays complete going forward.
+  const fmIn = r.fm as Record<string, unknown> | undefined;
+  const embedDims = num(fmIn?.embedDims ?? 64, 16, 256);
+  const smIn = r.sm as Record<string, unknown> | undefined;
+  const catBonus = num(smIn?.catBonus ?? 15, 0, 30);
+  const zoneBonus = num(smIn?.zoneBonus ?? 8, 0, 20);
+  const clashPenalty = num(smIn?.clashPenalty ?? 18, 0, 30);
+  const nuanceAmp = num(smIn?.nuanceAmp ?? 6, 0, 12);
   if (
     embedDims == null || catBonus == null || zoneBonus == null ||
     clashPenalty == null || nuanceAmp == null
   ) {
-    return { ok: false, error: "ripm/lipm params out of range" };
+    return { ok: false, error: "fm/sm params out of range" };
   }
 
   return {
@@ -141,10 +143,10 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
         whatOffFactor,
         timeBlockH,
       },
-      promos,
+      bp,
       ...(context ? { context } : {}),
-      ripm: { embedDims: Math.round(embedDims) },
-      lipm: { catBonus, zoneBonus, clashPenalty, nuanceAmp: Math.round(nuanceAmp) },
+      fm: { embedDims: Math.round(embedDims) },
+      sm: { catBonus, zoneBonus, clashPenalty, nuanceAmp: Math.round(nuanceAmp) },
     },
   };
 }
