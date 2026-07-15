@@ -5,14 +5,18 @@ import { PageHeader } from "@/components/PageContainer";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { SCORING_SUBROUTES } from "./nav";
 
-// Scoring Config — three tabs. Params = the model's hyperparameters;
-// Playground = the three engines run over real consumers/places + synthetic
-// intents; Memo = the concierge's own config (persona/model/retrieval),
-// folded in because Memo is one of the three scoring engines.
+// Scoring Config — four tabs. Pipeline = the model's hyperparameters +
+// configurable data-access contracts; Internals = every score's internal
+// process on ONE consumer × intent × place; Engines = the three engines
+// ranking the whole sample; Memo = the concierge's own config
+// (persona/model/retrieval), folded in because Memo is one of the three
+// scoring engines.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/scoring-config/params":
     "The scoring pipeline, one box per sub-function — engine lane mix, RIPM, LIPM, WWW (what · where · when), P — each with its knobs and its data-access contract.",
-  "/scoring-config/playground":
+  "/scoring-config/internals":
+    "The internal process of every score — documents, vectors, the judge's verdict, the moment's factors — on exactly ONE consumer × intent × place.",
+  "/scoring-config/engines":
     "Real consumers + real places + synthetic intents → the three engines' ranked lists. Per-place scores live in Manage Single Unit → Scores.",
   "/scoring-config/memo":
     "Memo — Mesita's consumer AI concierge (consumer-web-ask-memo). Tune its persona, model, and how it retrieves places.",
