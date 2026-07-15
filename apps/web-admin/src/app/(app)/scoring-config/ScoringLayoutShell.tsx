@@ -13,7 +13,7 @@ import { SCORING_SUBROUTES } from "./nav";
 // in because the Pre-Memo deck feeds it.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/scoring-config/subscores":
-    "One box per Subscore — ES (Embeddings Similarity), GP (Google Popularity), RP (Rewards Promotions), IC (Intent Context) — each with its knobs and its data-access contract: exactly what data computes it.",
+    "One box per Subscore — ES (Embeddings Similarity), GP (Google Popularity), RP (Rewards Promotions), IC (Intent Context), CH (Context History — Swipe only, stub) — each with its knobs and its data-access contract: exactly what data computes it.",
   "/scoring-config/cards":
     "One consumer × intent × place = one CARD with four Scores. Every Subscore's internal process — documents, vectors, the popularity curve, the intent context's factors — on exactly that card.",
   "/scoring-config/decks":

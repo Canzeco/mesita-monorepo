@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import {
+  CH_ENGINES,
+  chScore,
   composeDeck,
   DECK_COUNT_MAX,
   ENGINE_POLICIES,
@@ -63,6 +65,8 @@ type ScoredPlace = {
   gp: number;
   rp: number;
   ic: number;
+  /** Context History — present on CH engines (Swipe), stub 1. */
+  ch?: number;
   scores: Record<DeckKey, number>;
 };
 
@@ -135,10 +139,12 @@ export function DeckSimPanel() {
       const where = whereScore(km, cfg);
       const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
       const ic = where * when;
+      // CH — Swipe-only pair history; stub 1 today, absent (≡1) elsewhere.
+      const ch = CH_ENGINES.has(engine) ? chScore() : undefined;
       const scores = Object.fromEntries(
-        LANES.map((lane) => [lane.short, laneScore(lane, { es, gp, rp, ic })]),
+        LANES.map((lane) => [lane.short, laneScore(lane, { es, gp, rp, ic, ch })]),
       ) as Record<DeckKey, number>;
-      return { place: p, es, gp, rp, ic, scores };
+      return { place: p, es, gp, rp, ic, ch, scores };
     });
 
     const candidates: DeckCandidate[] = scored.map((s) => ({ id: s.place.id, scores: s.scores }));
@@ -271,6 +277,13 @@ export function DeckSimPanel() {
             </Link>
           ) : null}
         </div>
+        {engine === "memo" ? (
+          <p className="text-muted-foreground mt-2 text-[10.5px] leading-snug">
+            Pre-Memo&apos;s sub-deck structure is PROVISIONAL — Memo layers RAG on top, and whether
+            its deck composes from these four lanes is an open design question. The maxes above are
+            a placeholder until that&apos;s settled.
+          </p>
+        ) : null}
       </div>
 
       {!result ? (
@@ -412,11 +425,19 @@ export function DeckSimPanel() {
                     <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
                       {s.place.name}
                     </span>
-                    <div className="hidden w-56 shrink-0 grid-cols-4 gap-1 sm:grid">
+                    <div
+                      className={
+                        "hidden shrink-0 gap-1 sm:grid " +
+                        (s.ch != null ? "w-68 grid-cols-5" : "w-56 grid-cols-4")
+                      }
+                    >
                       <ScoreCell label="ES" value={String(s.es)} hint="Embeddings Similarity — cosine(CI, place) × 100" />
                       <ScoreCell label="GP" value={s.gp.toFixed(2)} hint="Google Popularity — volume × quality" />
                       <ScoreCell label="RP" value={String(s.rp)} hint="Rewards Promotions — posture from live rates" />
                       <ScoreCell label="IC" value={s.ic.toFixed(2)} hint="Intent Context — where × when" />
+                      {s.ch != null ? (
+                        <ScoreCell label="CH" value={s.ch.toFixed(2)} hint="Context History — Swipe-only pair history · stub 1" />
+                      ) : null}
                     </div>
                     <span
                       className="font-display shrink-0 text-base font-semibold tabular-nums"
