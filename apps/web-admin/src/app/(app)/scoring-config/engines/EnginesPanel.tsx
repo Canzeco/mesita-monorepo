@@ -21,9 +21,9 @@ import {
   embedText,
   generateIntent,
   haversineKm,
-  lmCip,
+  smScore,
   openWindow,
-  rmFromVectors,
+  fmFromVectors,
   whatFits,
   type ConsumerProfile,
   type Intent,
@@ -35,7 +35,7 @@ import { PanelCard } from "../panel-ui";
 import { EmptyCatalog, ENGINE_ICONS, FactChip, ScoreCell } from "../playground-ui";
 
 // ENGINES — the three engines ranking the WHOLE sample. Inputs in, ranked
-// lists out; any score's internal process lives on the Internals subpage.
+// lists out; any Sub-Score's internal process lives on the Internals subpage.
 // Everything recomputes live from the Pipeline tab's knobs + context config
 // (shared provider). Generate is deterministic (seed counter).
 
@@ -43,15 +43,15 @@ type EngineRun = { profile: ConsumerProfile; intent: Intent };
 
 type ScoredRow = {
   place: SamplePlace;
-  rm: number;
-  lm: number;
+  fm: number;
+  sm: number;
   what: number;
   where: number;
   when: number;
   www: number;
   km: number | null;
   hoursUnknown: boolean;
-  promos: number;
+  bp: number;
   fastTotal: number;
   slowTotal: number;
 };
@@ -60,7 +60,7 @@ type EngineResult = { kept: ScoredRow[]; screened: number };
 
 export function EnginesPanel() {
   const router = useRouter();
-  const { consumers, places, cfg, mix, retrieval, promoVals, context, ripmParams, lipmParams } =
+  const { consumers, places, cfg, mix, retrieval, bpVals, context, fmParams, smParams } =
     useScoring();
 
   const [runs, setRuns] = useState<Partial<Record<EngineId, EngineRun>>>({});
@@ -76,17 +76,17 @@ export function EnginesPanel() {
     setRuns((r) => ({ ...r, [engine]: { profile, intent } }));
   };
 
-  const ripmSet = useMemo(() => new Set(context.ripm), [context.ripm]);
-  const lipmSet = useMemo(() => new Set(context.lipm), [context.lipm]);
+  const fmSet = useMemo(() => new Set(context.fm), [context.fm]);
+  const smSet = useMemo(() => new Set(context.sm), [context.sm]);
 
   // Place vectors are intent-independent — embed once per sample per config.
   const placeIndex = useMemo(
-    () => new Map(places.map((p) => [p.id, embedText(buildPlaceDoc(p, ripmSet), ripmParams.embedDims)])),
-    [places, ripmSet, ripmParams.embedDims],
+    () => new Map(places.map((p) => [p.id, embedText(buildPlaceDoc(p, fmSet), fmParams.embedDims)])),
+    [places, fmSet, fmParams.embedDims],
   );
 
-  const maxPromo = Math.max(1, ...Object.values(promoVals));
-  const dynMax = (lane: Lane) => (lane.lane === "inorganic" ? MATCH_MAX * maxPromo : MATCH_MAX);
+  const maxBp = Math.max(1, ...Object.values(bpVals));
+  const dynMax = (lane: Lane) => (lane.lane === "inorganic" ? MATCH_MAX * maxBp : MATCH_MAX);
 
   const blend = (engine: EngineId, laneVals: Record<LaneId, number>) =>
     LANES.reduce(
@@ -101,17 +101,17 @@ export function EnginesPanel() {
       const run = runs[e.id];
       if (!run) continue;
       const ci = [
-        ...(lipmSet.has("consumer.taste") ? run.profile.tasteTokens : []),
-        ...(lipmSet.has("intent.query") ? run.intent.tokens : []),
+        ...(smSet.has("consumer.taste") ? run.profile.tasteTokens : []),
+        ...(smSet.has("intent.query") ? run.intent.tokens : []),
       ];
       const cid = run.profile.consumer?.id ?? "synthetic";
-      const ciVec = embedText(buildCiDoc(run.profile, run.intent, ripmSet), ripmParams.embedDims);
+      const ciVec = embedText(buildCiDoc(run.profile, run.intent, fmSet), fmParams.embedDims);
 
       const rows: ScoredRow[] = places.map((p) => {
         const pVec =
-          placeIndex.get(p.id) ?? embedText(buildPlaceDoc(p, ripmSet), ripmParams.embedDims);
-        const rm = rmFromVectors(ciVec, pVec);
-        const lm = lmCip(ci, p, cid, rm, lipmSet, lipmParams);
+          placeIndex.get(p.id) ?? embedText(buildPlaceDoc(p, fmSet), fmParams.embedDims);
+        const fm = fmFromVectors(ciVec, pVec);
+        const sm = smScore(ci, p, cid, fm, smSet, smParams);
         const km =
           run.intent.lat != null && run.intent.lng != null && p.lat != null && p.lng != null
             ? haversineKm(run.intent.lat, run.intent.lng, Number(p.lat), Number(p.lng))
@@ -120,8 +120,8 @@ export function EnginesPanel() {
         const what = whatScore(whatFits(p.category, run.intent.hour), cfg);
         const where = whereScore(km, cfg);
         const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
-        const promos =
-          promoVals[
+        const bp =
+          bpVals[
             strategyForPlace({
               welcome_free_rate: p.welcome_free_rate,
               welcome_premium_rate: p.welcome_premium_rate,
@@ -132,14 +132,14 @@ export function EnginesPanel() {
 
         const laneVals = (match: number) =>
           Object.fromEntries(
-            LANES.map((lane) => [lane.id, laneScore(lane, { match, what, where, when, promos })]),
+            LANES.map((lane) => [lane.id, laneScore(lane, { match, what, where, when, bp })]),
           ) as Record<LaneId, number>;
 
         return {
-          place: p, rm, lm, what, where, when, www: what * where * when, km,
-          hoursUnknown: win.unknown, promos,
-          fastTotal: blend(e.id, laneVals(rm)),
-          slowTotal: blend(e.id, laneVals(lm)),
+          place: p, fm, sm, what, where, when, www: what * where * when, km,
+          hoursUnknown: win.unknown, bp,
+          fastTotal: blend(e.id, laneVals(fm)),
+          slowTotal: blend(e.id, laneVals(sm)),
         };
       });
 
@@ -151,7 +151,7 @@ export function EnginesPanel() {
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, places, placeIndex, cfg, mix, promoVals, retrieval, ripmSet, lipmSet, ripmParams, lipmParams]);
+  }, [runs, places, placeIndex, cfg, mix, bpVals, retrieval, fmSet, smSet, fmParams, smParams]);
 
   if (places.length === 0) {
     return (
@@ -265,7 +265,7 @@ export function EnginesPanel() {
                             </span>
                             <span
                               className="font-display text-[15px] font-semibold tabular-nums"
-                              title={`fast ${r.fastTotal.toFixed(1)} → slow ${r.slowTotal.toFixed(1)} (ranked by slow)`}
+                              title={`FM ${r.fastTotal.toFixed(1)} → SM ${r.slowTotal.toFixed(1)} (ranked by SM)`}
                             >
                               {r.slowTotal.toFixed(1)}
                             </span>
@@ -277,14 +277,14 @@ export function EnginesPanel() {
                             />
                           </div>
                           <div className="mt-1.5 grid grid-cols-4 gap-1">
-                            <ScoreCell label="RM" value={String(r.rm)} hint="RAG match — cosine(CI, place) × 100" />
-                            <ScoreCell label="LM" value={String(r.lm)} hint="LLM match — RM + judge adjustments" />
+                            <ScoreCell label="FM" value={String(r.fm)} hint="Fast-Match — cosine(CI, place) × 100" />
+                            <ScoreCell label="SM" value={String(r.sm)} hint="Slow-Match — FM + judge adjustments" />
                             <ScoreCell
                               label="WWW"
                               value={r.www.toFixed(2)}
                               hint={`what ${r.what.toFixed(2)} × where ${r.where.toFixed(2)} × when ${r.when.toFixed(2)}${r.hoursUnknown ? " (hours?)" : ""}${r.km != null ? ` · ${Math.round(r.km)} km` : ""}`}
                             />
-                            <ScoreCell label="P" value={String(r.promos)} hint="promo posture from live rates" />
+                            <ScoreCell label="BP" value={String(r.bp)} hint="Business Promo — posture from live rates" />
                           </div>
                         </div>
                       ))}

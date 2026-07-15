@@ -33,9 +33,9 @@ import {
   embedText,
   generateIntent,
   haversineKm,
-  lmCipParts,
+  smScoreParts,
   openWindow,
-  rmFromVectors,
+  fmFromVectors,
   whatFits,
   whatWindow,
   type ConsumerProfile,
@@ -60,21 +60,21 @@ import {
 } from "../playground-ui";
 
 // SCORE INTERNALS — n = 1. One consumer × one intent × one place; each
-// sub-score is its own box showing its whole internal process, result
+// Sub-Score is its own box showing its whole internal process, result
 // headlined. Everything recomputes live from the Pipeline tab's knobs +
 // context config (shared provider). Generate is deterministic (seed counter).
 
 type Specimen = { profile: ConsumerProfile; intent: Intent };
 
 export function InternalsPanel() {
-  const { consumers, places, cfg, promoVals, context, ripmParams, lipmParams } = useScoring();
+  const { consumers, places, cfg, bpVals, context, fmParams, smParams } = useScoring();
   const [flavor, setFlavor] = useState<EngineId>("swipe");
   const [seed, setSeed] = useState(1);
   const [run, setRun] = useState<Specimen | null>(null);
   const [placeId, setPlaceId] = useState<string | null>(null);
 
-  const ripmSet = useMemo(() => new Set(context.ripm), [context.ripm]);
-  const lipmSet = useMemo(() => new Set(context.lipm), [context.lipm]);
+  const fmSet = useMemo(() => new Set(context.fm), [context.fm]);
+  const smSet = useMemo(() => new Set(context.sm), [context.sm]);
 
   const place = places.find((p) => p.id === placeId) ?? places[0];
 
@@ -95,23 +95,23 @@ export function InternalsPanel() {
     const { profile, intent } = run;
     const cid = profile.consumer?.id ?? "synthetic";
 
-    // RM — documents → vectors → cosine, at the configured dimensionality.
-    const ragCiDoc = buildCiDoc(profile, intent, ripmSet);
-    const ragPlaceDoc = buildPlaceDoc(place, ripmSet);
-    const ciVec = embedText(ragCiDoc, ripmParams.embedDims);
-    const placeVec = embedText(ragPlaceDoc, ripmParams.embedDims);
+    // FM — documents → vectors → cosine, at the configured dimensionality.
+    const ragCiDoc = buildCiDoc(profile, intent, fmSet);
+    const ragPlaceDoc = buildPlaceDoc(place, fmSet);
+    const ciVec = embedText(ragCiDoc, fmParams.embedDims);
+    const placeVec = embedText(ragPlaceDoc, fmParams.embedDims);
     const cos = cosineSim(ciVec, placeVec);
-    const rm = rmFromVectors(ciVec, placeVec);
+    const fm = fmFromVectors(ciVec, placeVec);
 
-    // LM — the judge's documents + itemized adjustments, at the configured
+    // SM — the judge's documents + itemized adjustments, at the configured
     // rubric weights.
-    const judgeCiDoc = buildCiDoc(profile, intent, lipmSet);
-    const judgePlaceDoc = buildPlaceDoc(place, lipmSet);
+    const judgeCiDoc = buildCiDoc(profile, intent, smSet);
+    const judgePlaceDoc = buildPlaceDoc(place, smSet);
     const ci = [
-      ...(lipmSet.has("consumer.taste") ? profile.tasteTokens : []),
-      ...(lipmSet.has("intent.query") ? intent.tokens : []),
+      ...(smSet.has("consumer.taste") ? profile.tasteTokens : []),
+      ...(smSet.has("intent.query") ? intent.tokens : []),
     ];
-    const lm = lmCipParts(ci, place, cid, rm, lipmSet, lipmParams);
+    const sm = smScoreParts(ci, place, cid, fm, smSet, smParams);
 
     // WWW — the only numbers.
     const fits = whatFits(place.category, intent.hour);
@@ -126,27 +126,27 @@ export function InternalsPanel() {
     const fit = win.unknown ? 1 : fitScore(win.openForH, cfg);
     const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
 
-    // P — rates → posture → rung.
+    // BP — rates → posture → rung.
     const posture = strategyForPlace({
       welcome_free_rate: place.welcome_free_rate,
       welcome_premium_rate: place.welcome_premium_rate,
       free_rate: place.free_rate,
       premium_rate: place.premium_rate,
     }) as StrategyId;
-    const promos = promoVals[posture] ?? 0;
+    const bp = bpVals[posture] ?? 0;
 
     const laneRow = (lane: Lane) => ({
       lane,
-      fast: laneScore(lane, { match: rm, what, where, when, promos }),
-      slow: laneScore(lane, { match: lm.total, what, where, when, promos }),
+      fast: laneScore(lane, { match: fm, what, where, when, bp }),
+      slow: laneScore(lane, { match: sm.total, what, where, when, bp }),
     });
 
     return {
       cid, ragCiDoc, ragPlaceDoc, judgeCiDoc, judgePlaceDoc, ciVec, placeVec,
-      cos, rm, lm, fits, what, km, where, win, wait, fit, when, posture, promos,
+      cos, fm, sm, fits, what, km, where, win, wait, fit, when, posture, bp,
       lanes: LANES.map(laneRow),
     };
-  }, [run, place, cfg, promoVals, ripmSet, lipmSet, ripmParams, lipmParams]);
+  }, [run, place, cfg, bpVals, fmSet, smSet, fmParams, smParams]);
 
   if (places.length === 0) {
     return (
@@ -264,15 +264,15 @@ export function InternalsPanel() {
         </div>
       ) : (
         <div className="mt-3 grid gap-2.5 xl:grid-cols-2">
-          {/* RM — docs → vectors → cosine */}
+          {/* FM — docs → vectors → cosine */}
           <ScoreBox
             icon={ScanSearch}
             tint="emerald"
-            title="RM-CIP · RAG match"
+            title="FM Sub-Score · Fast-Match"
             note="documents → vectors → cosine"
-            result={String(it.rm)}
+            result={String(it.fm)}
           >
-            <DocPre label="CI doc · RIPM context" text={it.ragCiDoc} empty="(every RIPM field toggled off)" />
+            <DocPre label="CI doc · FM context" text={it.ragCiDoc} empty="(every FM field toggled off)" />
             <VectorStrip vec={it.ciVec} className="mt-1.5" />
             <div className="my-1.5">
               <ConnectorPill>cos = {it.cos.toFixed(3)}</ConnectorPill>
@@ -281,55 +281,55 @@ export function InternalsPanel() {
             <DocPre
               label={`place doc · ${place.name}`}
               text={it.ragPlaceDoc}
-              empty="(every RIPM field toggled off)"
+              empty="(every FM field toggled off)"
               className="mt-1.5"
             />
             <ResultLine>
-              cos({ripmParams.embedDims}d) {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 →{" "}
-              <b>RM {it.rm}</b>
+              cos({fmParams.embedDims}d) {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 →{" "}
+              <b>FM {it.fm}</b>
             </ResultLine>
           </ScoreBox>
 
-          {/* LM — the judge itemized */}
+          {/* SM — the judge itemized */}
           <ScoreBox
             icon={Gavel}
             tint="violet"
-            title="LM-CIP · LLM match"
+            title="SM Sub-Score · Slow-Match"
             note="the judge's copy + itemized verdict"
-            result={String(it.lm.total)}
+            result={String(it.sm.total)}
           >
-            <DocPre label="CI doc · LIPM context" text={it.judgeCiDoc} empty="(every LIPM field toggled off)" />
+            <DocPre label="CI doc · SM context" text={it.judgeCiDoc} empty="(every SM field toggled off)" />
             <DocPre
-              label="place doc · LIPM context"
+              label="place doc · SM context"
               text={it.judgePlaceDoc}
-              empty="(every LIPM field toggled off)"
+              empty="(every SM field toggled off)"
               className="mt-2"
             />
             <div className="border-border/50 mt-2.5 overflow-hidden rounded-lg border">
-              <JudgeRow label="base — RM (vector cosine)" value={it.lm.base} />
+              <JudgeRow label="base — FM (vector cosine)" value={it.sm.base} />
               <JudgeRow
-                label={`category in taste/intent (+${lipmParams.catBonus})`}
-                value={it.lm.catBonus}
-                dim={it.lm.catBonus === 0}
+                label={`category in taste/intent (+${smParams.catBonus})`}
+                value={it.sm.catBonus}
+                dim={it.sm.catBonus === 0}
               />
               <JudgeRow
-                label={`zone in taste/intent (+${lipmParams.zoneBonus})`}
-                value={it.lm.zoneBonus}
-                dim={it.lm.zoneBonus === 0}
+                label={`zone in taste/intent (+${smParams.zoneBonus})`}
+                value={it.sm.zoneBonus}
+                dim={it.sm.zoneBonus === 0}
               />
               <JudgeRow
-                label={`occasion × category clash (−${lipmParams.clashPenalty})`}
-                value={it.lm.clashPenalty}
-                dim={it.lm.clashPenalty === 0}
+                label={`occasion × category clash (−${smParams.clashPenalty})`}
+                value={it.sm.clashPenalty}
+                dim={it.sm.clashPenalty === 0}
               />
               <JudgeRow
-                label={`judgment nuance (±${lipmParams.nuanceAmp}, pair-stable)`}
-                value={it.lm.nuance}
+                label={`judgment nuance (±${smParams.nuanceAmp}, pair-stable)`}
+                value={it.sm.nuance}
               />
-              <JudgeRow label="clamped 0–100" value={it.lm.total} strong />
+              <JudgeRow label="clamped 0–100" value={it.sm.total} strong />
             </div>
             <ResultLine>
-              <b>LM {it.lm.total}</b> — vs RM {it.rm}: the gap is what the judge changed
+              <b>SM {it.sm.total}</b> — vs FM {it.fm}: the gap is what the judge changed
             </ResultLine>
           </ScoreBox>
 
@@ -337,7 +337,7 @@ export function InternalsPanel() {
           <ScoreBox
             icon={Compass}
             tint="amber"
-            title="WWW · the moment"
+            title="WWW Sub-Score · the moment"
             note="what × where × when — the only numbers"
             result={(it.what * it.where * it.when).toFixed(2)}
           >
@@ -374,13 +374,13 @@ export function InternalsPanel() {
             </ResultLine>
           </ScoreBox>
 
-          {/* P — rates → posture → rung */}
+          {/* BP — rates → posture → rung */}
           <ScoreBox
             icon={BadgePercent}
             tint="rose"
-            title="P · promo score"
+            title="BP Sub-Score · Business Promo"
             note="live rates → posture → rung"
-            result={String(it.promos)}
+            result={String(it.bp)}
           >
             <div className="grid grid-cols-4 gap-1.5">
               <RateCell label="welcome · free" value={place.welcome_free_rate} />
@@ -394,17 +394,17 @@ export function InternalsPanel() {
               </ConnectorPill>
             </div>
             <ResultLine>
-              rung <b>P {it.promos}</b>
-              {it.promos === 0 ? " — not in the paid lane (nothing to promote)" : ""}
+              rung <b>BP {it.bp}</b>
+              {it.bp === 0 ? " — not in the paid lane (nothing to promote)" : ""}
             </ResultLine>
           </ScoreBox>
 
-          {/* Lane assembly */}
+          {/* Scores — the four Lanes × two tiers */}
           <ScoreBox
             icon={Layers}
             tint="sky"
-            title="Lane assembly"
-            note="the four lanes × two tiers, from the values above"
+            title="Scores · four Lanes × two tiers"
+            note="each Lane's Score, from the Sub-Scores above"
             className="xl:col-span-2"
           >
             <div className="border-border/50 overflow-x-auto rounded-lg border">
@@ -413,8 +413,8 @@ export function InternalsPanel() {
                   <tr className="bg-muted/60 border-border/50 border-b">
                     <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Lane</th>
                     <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Formula</th>
-                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Fast (RM {it.rm})</th>
-                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Slow (LM {it.lm.total})</th>
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Fast (FM {it.fm})</th>
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Slow (SM {it.sm.total})</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -422,7 +422,7 @@ export function InternalsPanel() {
                     <tr key={lane.id} className="border-border/40 border-b last:border-0">
                       <td className="px-2.5 py-1.5 font-mono text-[10.5px] font-semibold">{LANE_SHORT[lane.id]}</td>
                       <td className="text-muted-foreground px-2.5 py-1.5 font-mono text-[10px]">
-                        {laneFormula(lane, "RIPM")} | {laneFormula(lane, "LIPM")}
+                        {laneFormula(lane, "FM")} | {laneFormula(lane, "SM")}
                       </td>
                       <td className="px-2.5 py-1.5 text-right font-mono text-[11px] tabular-nums">{fast.toFixed(1)}</td>
                       <td className="px-2.5 py-1.5 text-right font-mono text-[11px] font-semibold tabular-nums">{slow.toFixed(1)}</td>

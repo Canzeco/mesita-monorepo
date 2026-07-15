@@ -27,18 +27,18 @@ import {
   SubHead,
 } from "../panel-ui";
 
-// Scoring Pipeline — divide et impera: ONE BOX PER SUB-FUNCTION, each with
-// its own knobs AND its data-access contract (which consumer / intent / place
+// Scoring Pipeline — divide et impera: ONE BOX PER SUB-SCORE, each with its
+// own knobs AND its data-access contract (which consumer / intent / place
 // fields it reads — the PIPELINE_CONTEXT spec in @/lib/business/scores).
 //
-//   Engine lane mix   how the four lanes compose each engine's results
-//   RIPM              RAG match score — text in, estimate out
-//   LIPM              LLM match score — text in, verdict out
+//   Engine lane mix   how the four Lanes compose each engine's results
+//   FM                Fast-Match — embeddings in, estimate out
+//   SM                Slow-Match — text in, judge's verdict out
 //   WWW               the moment: WHAT · WHERE · WHEN — the only numbers
-//   P                 promo score — posture from the live rates
+//   BP                Business Promo — posture from the live rates
 //
-// Values set here drive the Playground live (shared provider) and persist to
-// app_settings.scoring_config via the save bar at the bottom.
+// Values set here drive Internals and Engines live (shared provider) and
+// persist to app_settings.scoring_config via the save bar at the bottom.
 
 export function HyperparamsPanel() {
   const {
@@ -48,14 +48,14 @@ export function HyperparamsPanel() {
     setMix,
     retrieval,
     setRetrieval,
-    promoVals,
-    setPromoVals,
+    bpVals,
+    setBpVals,
     context,
     toggleContext,
-    ripmParams,
-    setRipmParams,
-    lipmParams,
-    setLipmParams,
+    fmParams,
+    setFmParams,
+    smParams,
+    setSmParams,
     dirty,
     saving,
     saveError,
@@ -65,8 +65,8 @@ export function HyperparamsPanel() {
     revert,
   } = useScoring();
 
-  const ripmSet = new Set(context.ripm);
-  const lipmSet = new Set(context.lipm);
+  const fmSet = new Set(context.fm);
+  const smSet = new Set(context.sm);
 
   const set = <K extends keyof ScoresConfig>(k: K, v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
@@ -79,7 +79,7 @@ export function HyperparamsPanel() {
       {/* ══ Engine lane mix ══════════════════════════════════════════ */}
       <PanelCard
         title="Engine lane mix"
-        subtitle="How the four lanes compose each engine's results — the interleave knob. Paid share is capped by trust-sensitivity; now share follows each surface's temporal intent."
+        subtitle="How the four Lanes compose each engine's results — the interleave knob. Paid share is capped by trust-sensitivity; now share follows each surface's temporal intent."
         pill="Draft — drives nothing yet"
       >
         <div className="border-border/60 mt-4 overflow-x-auto rounded-xl border">
@@ -145,16 +145,16 @@ export function HyperparamsPanel() {
           </table>
         </div>
         <p className="text-muted-foreground mt-1.5 text-[11px] leading-snug">
-          ON organic·now · OF organic·future · IN inorganic·now · IF inorganic·future. Rows should
-          sum to 100.
+          Lanes — ON organic·now · OF organic·future · IN inorganic·now · IF inorganic·future. Each
+          Lane produces one Score; rows should sum to 100.
         </p>
       </PanelCard>
 
-      {/* ══ RIPM ═════════════════════════════════════════════════════ */}
+      {/* ══ FM ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="RIPM · RAG match score"
-        subtitle="cosine(consumer+intent embedding, place embedding) — cheap, whole catalog. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Playground re-embeds and re-ranks from exactly this set."
-        pill={`${context.ripm.length} fields in context`}
+        title="FM Sub-Score · Fast-Match"
+        subtitle="Embeddings: cosine(consumer+intent embedding, place embedding) — cheap, whole catalog. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Internals tab re-embeds and re-ranks from exactly this set."
+        pill={`${context.fm.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
@@ -169,24 +169,24 @@ export function HyperparamsPanel() {
           />
           <Slider
             label="Embedding dims"
-            value={`${ripmParams.embedDims}d`}
+            value={`${fmParams.embedDims}d`}
             min={16}
             max={256}
             step={16}
-            v={ripmParams.embedDims}
-            onChange={(v) => setRipmParams({ embedDims: v })}
+            v={fmParams.embedDims}
+            onChange={(v) => setFmParams({ embedDims: v })}
             hint="encoder dimensionality — vectors + cosine follow live"
           />
           <Chip label="Today" value="feature-hash cosine" hint="emulated encoder until pgvector exists" />
         </div>
-        <ContextConfigCols enabled={ripmSet} onToggle={(k) => toggleContext("ripm", k)} />
+        <ContextConfigCols enabled={fmSet} onToggle={(k) => toggleContext("fm", k)} />
       </PanelCard>
 
-      {/* ══ LIPM ═════════════════════════════════════════════════════ */}
+      {/* ══ SM ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="LIPM · LLM match score"
-        subtitle="A judge reads the merged consumer+intent profile against the full place profile — expensive, shortlist only. Same question as RIPM, higher fidelity; still text-only. Its context is configured separately: the judge usually reads MORE than the embedding (names, proof lines, hours as text)."
-        pill={`${context.lipm.length} fields in context`}
+        title="SM Sub-Score · Slow-Match"
+        subtitle="LLM: a judge reads the merged consumer+intent profile against the full place profile — expensive, shortlist only. Same question as FM, higher fidelity; still text-only. Its context is configured separately: the judge usually reads MORE than the embedding (names, proof lines, hours as text)."
+        pill={`${context.sm.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
@@ -199,64 +199,64 @@ export function HyperparamsPanel() {
             onChange={(v) => setRetrieval((r) => ({ ...r, shortlistN: v }))}
             hint="Fast keeps this many for the Slow sort"
           />
-          <Chip label="Today" value="RM + judgments" hint="stand-in until the judge EF exists" />
+          <Chip label="Today" value="FM + judgments" hint="stand-in until the judge EF exists" />
         </div>
         <div className="mt-4">
           <SubHead>Judge rubric weights</SubHead>
           <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-            What each structured judgment is worth on top of the RM base. The Internals tab
+            What each structured judgment is worth on top of the FM base. The Internals tab
             itemizes a verdict with exactly these numbers.
           </p>
           <div className="mt-3 grid max-w-xl grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
             <Slider
               label="Category hit"
-              value={`+${lipmParams.catBonus}`}
+              value={`+${smParams.catBonus}`}
               min={0}
               max={30}
               step={1}
-              v={lipmParams.catBonus}
-              onChange={(v) => setLipmParams((p) => ({ ...p, catBonus: v }))}
+              v={smParams.catBonus}
+              onChange={(v) => setSmParams((p) => ({ ...p, catBonus: v }))}
               hint="place category in taste/intent"
             />
             <Slider
               label="Zone hit"
-              value={`+${lipmParams.zoneBonus}`}
+              value={`+${smParams.zoneBonus}`}
               min={0}
               max={20}
               step={1}
-              v={lipmParams.zoneBonus}
-              onChange={(v) => setLipmParams((p) => ({ ...p, zoneBonus: v }))}
+              v={smParams.zoneBonus}
+              onChange={(v) => setSmParams((p) => ({ ...p, zoneBonus: v }))}
               hint="place zone in taste/intent"
             />
             <Slider
               label="Occasion clash"
-              value={`−${lipmParams.clashPenalty}`}
+              value={`−${smParams.clashPenalty}`}
               min={0}
               max={30}
               step={1}
-              v={lipmParams.clashPenalty}
-              onChange={(v) => setLipmParams((p) => ({ ...p, clashPenalty: v }))}
+              v={smParams.clashPenalty}
+              onChange={(v) => setSmParams((p) => ({ ...p, clashPenalty: v }))}
               hint="occasion × category conflict"
             />
             <Slider
               label="Nuance ±"
-              value={`±${lipmParams.nuanceAmp}`}
+              value={`±${smParams.nuanceAmp}`}
               min={0}
               max={12}
               step={1}
-              v={lipmParams.nuanceAmp}
-              onChange={(v) => setLipmParams((p) => ({ ...p, nuanceAmp: v }))}
+              v={smParams.nuanceAmp}
+              onChange={(v) => setSmParams((p) => ({ ...p, nuanceAmp: v }))}
               hint="pair-stable judgment spread; 0 = none"
             />
           </div>
         </div>
-        <ContextConfigCols enabled={lipmSet} onToggle={(k) => toggleContext("lipm", k)} />
+        <ContextConfigCols enabled={smSet} onToggle={(k) => toggleContext("sm", k)} />
       </PanelCard>
 
       {/* ══ WWW ══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="WWW · the moment — what · where · when"
-        subtitle="The ONLY sub-function that computes numbers: daypart fit × distance decay × open-window. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks."
+        title="WWW Sub-Score · the moment — what · where · when"
+        subtitle="The ONLY Sub-Score that computes numbers: daypart fit × distance decay × open-window. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks."
       >
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           <div className="border-border/60 rounded-xl border p-4">
@@ -352,10 +352,10 @@ export function HyperparamsPanel() {
         <ContextCols ctx={PIPELINE_CONTEXT.www} />
       </PanelCard>
 
-      {/* ══ P ════════════════════════════════════════════════════════ */}
+      {/* ══ BP ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="P · promo score"
-        subtitle="Posture from the place's live promo rates → a rung. Linear so relevance can beat money inside the paid lane; 0 = not in the paid lane (nothing to promote). Rates never reach the consumer blended-down — P reads them server-side only."
+        title="BP Sub-Score · Business Promo"
+        subtitle="Posture from the place's live promo rates → a rung. Linear so relevance can beat money inside the paid lane; 0 = not in the paid lane (nothing to promote). Rates never reach the consumer blended-down — BP reads them server-side only."
       >
         <div className="mt-4 grid max-w-md grid-cols-4 gap-2">
           {STRATEGIES.map((s) => (
@@ -366,26 +366,26 @@ export function HyperparamsPanel() {
                 min={0}
                 max={9}
                 step={1}
-                value={promoVals[s.id]}
+                value={bpVals[s.id]}
                 onChange={(e) =>
-                  setPromoVals((p) => ({
+                  setBpVals((p) => ({
                     ...p,
                     [s.id]: Math.max(0, Math.min(9, Number(e.target.value))),
                   }))
                 }
-                aria-label={`Promo value for ${s.name}`}
+                aria-label={`BP rung for ${s.name}`}
                 className="border-border/70 bg-card font-display mt-1 w-14 rounded-lg border px-1 py-0.5 text-center text-lg font-semibold tabular-nums"
               />
             </div>
           ))}
         </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.promo} />
+        <ContextCols ctx={PIPELINE_CONTEXT.bp} />
       </PanelCard>
 
       {/* ══ Persistence ══════════════════════════════════════════════ */}
       <PanelCard
         title="Saved config"
-        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. The Playground follows whatever the form holds, saved or not."
+        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. Internals and Engines follow whatever the form holds, saved or not."
       >
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -438,7 +438,7 @@ export function HyperparamsPanel() {
         <div className="text-muted-foreground border-border/60 mt-4 flex flex-col gap-1 border-t pt-3 font-mono text-[11px] leading-relaxed">
           <p>
             lanes:{" "}
-            {LANES.map((l) => `${l.lane} ${l.mode} = ${laneFormula(l, "RIPM")} | ${laneFormula(l, "LIPM")}`).join("  ·  ")}
+            {LANES.map((l) => `${l.lane} ${l.mode} = ${laneFormula(l, "FM")} | ${laneFormula(l, "SM")}`).join("  ·  ")}
           </p>
           <p>
             {MATCH_TIERS.map((t) => `${t.term} = ${t.detail}`).join("  ·  ")}

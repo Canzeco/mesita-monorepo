@@ -1,29 +1,30 @@
 // CIP — Consumer · Intent · Place. The playground's data plumbing for the
-// scoring draft: build the consumer side, synthesize intents, and estimate
-// RIPM/LIPM until real embeddings and a judge EF exist.
+// scoring draft: build the consumer side, synthesize intents, and estimate the
+// FM/SM Sub-Scores until real embeddings and a judge EF exist.
 //
 // THREE DATA OBJECTS, TWO SIDES. Consumer-data and intent-data are the SAME
 // side of the match (the query side) — merged before matching. The difference
 // is mutability: consumer-data barely moves (taste, class), intent-data is
 // per-query (tonight, near X, with friends). Place-data is the other side.
 //
-//   RM-CIP  RAG match over (consumer + intent) × place — real consumer,
-//           synthetic intent, real place.
-//   LM-CIP  LLM-judge match over the same triple.
-//   WW      computed from (intent × place): haversine distance + the place's
-//           real hours vs the intent's synthetic query time.
-//   P       from the real place — posture derived from its live promo rates.
+// How the four Sub-Scores get their inputs here:
+//   FM   over (consumer + intent) × place — real consumer, synthetic intent,
+//        real place.
+//   SM   the same triple, judged.
+//   WWW  computed from (intent × place): haversine distance + the place's real
+//        hours vs the intent's synthetic query time.
+//   BP   from the real place — posture derived from its live promo rates.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
 // admin-web-get-scoring-sample) — never invented here. Intent is synthetic BY
 // DESIGN (that's what an intent generator is). Consumer taste uses real
 // saves/visits when they exist; an empty history gets a deterministic
-// synthetic taste and is LABELED synthetic. RM/LM here are deterministic
+// synthetic taste and is LABELED synthetic. FM/SM here are deterministic
 // token-overlap heuristics — stand-ins for pgvector cosine and the LLM judge,
 // which do not exist yet; the numbers are for exercising the model's shape,
 // not for believing.
 
-import { DEFAULT_LIPM_PARAMS, type EngineId, type LipmParams } from "./scores";
+import { DEFAULT_SM_PARAMS, type EngineId, type SmParams } from "./scores";
 
 /** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
 export const SAMPLE_MAX = 10;
@@ -219,8 +220,8 @@ export function placeTokens(p: SamplePlace): string[] {
   ].map(norm);
 }
 
-/** RM-CIP — set-cosine token overlap of (taste + intent) × place → 0–100. */
-export function rmCip(ciTokens: string[], place: SamplePlace): number {
+/** FM — set-cosine token overlap of (taste + intent) × place → 0–100. */
+export function fmScore(ciTokens: string[], place: SamplePlace): number {
   const a = new Set(ciTokens);
   const b = new Set(placeTokens(place));
   if (a.size === 0 || b.size === 0) return 0;
@@ -239,9 +240,9 @@ const CLASH: Record<string, string[]> = {
   brunch: ["night_club"],
 };
 
-/** The judge's itemized verdict — every adjustment LM-CIP layers on RM. */
-export type LmParts = {
-  /** The base estimate the judge starts from (vector RM or token overlap). */
+/** The judge's itemized verdict — every adjustment SM layers on FM. */
+export type SmParts = {
+  /** The base estimate the judge starts from (vector FM or token overlap). */
   base: number;
   /** +15 when the place's category is in the consumer+intent tokens. */
   catBonus: number;
@@ -255,20 +256,20 @@ export type LmParts = {
   total: number;
 };
 
-/** LM-CIP itemized. Pass `rmBase` to build on the vector-cosine RM instead
- * of token overlap. `enabled` = the LIPM context config: the judge only
- * judges on fields it was given (category off → no category bonus/clash;
- * zone off → no zone bonus). `w` = the judge's rubric weights — a Pipeline
- * knob (defaults = the classic 15/8/18/6). */
-export function lmCipParts(
+/** SM itemized. Pass `fmBase` to build on the vector-cosine FM instead of
+ * token overlap. `enabled` = the SM context config: the judge only judges on
+ * fields it was given (category off → no category bonus/clash; zone off → no
+ * zone bonus). `w` = the judge's rubric weights — a Pipeline knob (defaults =
+ * the classic 15/8/18/6). */
+export function smScoreParts(
   ciTokens: string[],
   place: SamplePlace,
   consumerId: string,
-  rmBase?: number,
+  fmBase?: number,
   enabled?: ReadonlySet<string> | null,
-  w: LipmParams = DEFAULT_LIPM_PARAMS,
-): LmParts {
-  const base = rmBase ?? rmCip(ciTokens, place);
+  w: SmParams = DEFAULT_SM_PARAMS,
+): SmParts {
+  const base = fmBase ?? fmScore(ciTokens, place);
   const ci = new Set(ciTokens);
   const has = (k: string) => !enabled || enabled.has(k);
   const cat = has("place.category") && place.category ? norm(place.category) : null;
@@ -288,19 +289,19 @@ export function lmCipParts(
   return { base, catBonus, zoneBonus, clashPenalty, nuance, total };
 }
 
-/** LM-CIP — RM plus the structured judgments a judge adds. Deterministic. */
-export function lmCip(
+/** SM — FM plus the structured judgments a judge adds. Deterministic. */
+export function smScore(
   ciTokens: string[],
   place: SamplePlace,
   consumerId: string,
-  rmBase?: number,
+  fmBase?: number,
   enabled?: ReadonlySet<string> | null,
-  w: LipmParams = DEFAULT_LIPM_PARAMS,
+  w: SmParams = DEFAULT_SM_PARAMS,
 ): number {
-  return lmCipParts(ciTokens, place, consumerId, rmBase, enabled, w).total;
+  return smScoreParts(ciTokens, place, consumerId, fmBase, enabled, w).total;
 }
 
-// ── WW inputs from real geo + real hours ────────────────────────────────
+// ── WWW inputs from real geo + real hours ───────────────────────────────
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371;
@@ -328,7 +329,7 @@ export type OpenWindow = {
 };
 
 /**
- * The place's real hours vs the intent's query time → WW's when-inputs.
+ * The place's real hours vs the intent's query time → WWW's when-inputs.
  * Scans today + tomorrow (overnight closes roll past midnight), 12 h horizon.
  * No hours at all → unknown (the caller decides; unknown is not closed).
  */
@@ -403,13 +404,13 @@ export function whatFits(category: string | null, hour: number): boolean {
 }
 
 // ── CONTEXT DOCUMENTS — the wide RAG/LLM contexts, assembled for real ───
-// These are the documents the real pipeline will embed (RIPM) and hand to
-// the judge (LIPM): everything is TEXT — hours and zones appear as words;
-// numeric distance/time live only in WWW. WHICH fields go in is CONFIG
+// These are the documents the real pipeline will embed (FM) and hand to the
+// judge (SM): everything is TEXT — hours and zones appear as words; numeric
+// distance/time live only in WWW. WHICH fields go in is CONFIG
 // (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
-// `enabled` key set and assembles from exactly that — so RIPM and LIPM read
-// genuinely different documents, and a toggle on the Pipeline tab changes
-// the embedding, the cosine, and the ranking. `enabled` omitted = all on.
+// `enabled` key set and assembles from exactly that — so FM and SM read
+// genuinely different documents, and a toggle on the Pipeline tab changes the
+// embedding, the cosine, and the ranking. `enabled` omitted = all on.
 
 type Enabled = ReadonlySet<string> | null | undefined;
 const on = (enabled: Enabled, key: string) => !enabled || enabled.has(key);
@@ -488,7 +489,7 @@ export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
 // A deterministic stand-in for the real embedding model: tokenize the
 // document, hash every token into a signed slot of a fixed-dim vector, L2
 // normalize. Same shape as the real thing (document → vector → cosine), so
-// RM-CIP IS the cosine of two generated vectors — just from a toy encoder.
+// FM IS the cosine of two generated vectors — just from a toy encoder.
 
 export const EMBED_DIMS = 64;
 
@@ -523,7 +524,7 @@ export function cosineSim(a: number[], b: number[]): number {
   return dot;
 }
 
-/** RM-CIP from the two vectors — negative cosine floors at 0. */
-export function rmFromVectors(ciVec: number[], placeVec: number[]): number {
+/** FM from the two vectors — negative cosine floors at 0. */
+export function fmFromVectors(ciVec: number[], placeVec: number[]): number {
   return Math.round(Math.max(0, cosineSim(ciVec, placeVec)) * 100);
 }

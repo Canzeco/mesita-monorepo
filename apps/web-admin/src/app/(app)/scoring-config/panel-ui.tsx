@@ -2,7 +2,7 @@
 
 import { CONTEXT_FIELDS, type ContextSide, type LaneId } from "@/lib/business/scores";
 
-// Tiny presentational bits shared by the Params and Playground panels.
+// Tiny presentational bits shared by the Pipeline, Internals and Engines panels.
 
 export const LANE_SHORT: Record<LaneId, string> = {
   "organic-now": "ON",
@@ -154,10 +154,10 @@ export function ContextCols({
 }
 
 /**
- * The CONFIGURABLE data-access contract of a match tier (RIPM/LIPM): every
+ * The CONFIGURABLE data-access contract of a match tier (FM/SM): every
  * registry field as a toggle. Enabled fields go into the tier's context
- * documents — the Playground assembles, embeds and scores from exactly this
- * set, so a toggle here moves the numbers there.
+ * documents — Internals and Engines assemble, embed and score from exactly
+ * this set, so a toggle here moves the numbers there.
  */
 export function ContextConfigCols({
   enabled,
