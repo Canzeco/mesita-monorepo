@@ -4,22 +4,22 @@ import { useMemo, useState } from "react";
 import {
   BadgePercent,
   Compass,
-  Gavel,
   Layers,
   MapPin,
   Quote,
   ScanSearch,
+  Star,
   UserRound,
 } from "lucide-react";
 import {
   ENGINE_POLICIES,
   fitScore,
+  gpParts,
   laneFormula,
   laneScore,
   LANES,
-  MATCH_MAX,
+  ES_MAX,
   waitScore,
-  whatScore,
   whenScore,
   whereScore,
   type EngineId,
@@ -31,17 +31,14 @@ import {
   buildPlaceDoc,
   cosineSim,
   embedText,
+  esFromVectors,
   generateIntent,
   haversineKm,
-  smScoreParts,
   openWindow,
-  fmFromVectors,
-  whatFits,
-  whatWindow,
   type ConsumerProfile,
   type Intent,
 } from "@/lib/business/cip";
-import { STRATEGIES, strategyForPlace, type StrategyId } from "@/lib/business/strategies";
+import { STRATEGIES, strategyForPlace } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
 import { LANE_SHORT, PanelCard } from "../panel-ui";
 import {
@@ -51,7 +48,8 @@ import {
   ENGINE_ICONS,
   FactChip,
   FactorRow,
-  JudgeRow,
+  LaneBadge,
+  LedgerRow,
   RateCell,
   ResultLine,
   ScoreBox,
@@ -59,22 +57,22 @@ import {
   VectorStrip,
 } from "../playground-ui";
 
-// SCORE INTERNALS — n = 1. One consumer × one intent × one place; each
+// CARD SIM — n = 1. One consumer × one intent × one place = ONE CARD; each
 // Sub-Score is its own box showing its whole internal process, result
-// headlined. Everything recomputes live from the Pipeline tab's knobs +
-// context config (shared provider). Generate is deterministic (seed counter).
+// headlined, and the Card's four Scores assemble at the bottom. Everything
+// recomputes live from the Pipeline tab's knobs + context config (shared
+// provider). Generate is deterministic (seed counter).
 
 type Specimen = { profile: ConsumerProfile; intent: Intent };
 
-export function InternalsPanel() {
-  const { consumers, places, cfg, bpVals, context, fmParams, smParams } = useScoring();
+export function CardSimPanel() {
+  const { consumers, places, cfg, gpParams, rpVals, context, esParams } = useScoring();
   const [flavor, setFlavor] = useState<EngineId>("swipe");
   const [seed, setSeed] = useState(1);
   const [run, setRun] = useState<Specimen | null>(null);
   const [placeId, setPlaceId] = useState<string | null>(null);
 
-  const fmSet = useMemo(() => new Set(context.fm), [context.fm]);
-  const smSet = useMemo(() => new Set(context.sm), [context.sm]);
+  const esSet = useMemo(() => new Set(context.es), [context.es]);
 
   const place = places.find((p) => p.id === placeId) ?? places[0];
 
@@ -93,29 +91,28 @@ export function InternalsPanel() {
   const it = useMemo(() => {
     if (!run || !place) return null;
     const { profile, intent } = run;
-    const cid = profile.consumer?.id ?? "synthetic";
 
-    // FM — documents → vectors → cosine, at the configured dimensionality.
-    const ragCiDoc = buildCiDoc(profile, intent, fmSet);
-    const ragPlaceDoc = buildPlaceDoc(place, fmSet);
-    const ciVec = embedText(ragCiDoc, fmParams.embedDims);
-    const placeVec = embedText(ragPlaceDoc, fmParams.embedDims);
+    // ES — documents → vectors → cosine, at the configured dimensionality.
+    const ciDoc = buildCiDoc(profile, intent, esSet);
+    const placeDoc = buildPlaceDoc(place, esSet);
+    const ciVec = embedText(ciDoc, esParams.embedDims);
+    const placeVec = embedText(placeDoc, esParams.embedDims);
     const cos = cosineSim(ciVec, placeVec);
-    const fm = fmFromVectors(ciVec, placeVec);
+    const es = esFromVectors(ciVec, placeVec);
 
-    // SM — the judge's documents + itemized adjustments, at the configured
-    // rubric weights.
-    const judgeCiDoc = buildCiDoc(profile, intent, smSet);
-    const judgePlaceDoc = buildPlaceDoc(place, smSet);
-    const ci = [
-      ...(smSet.has("consumer.taste") ? profile.tasteTokens : []),
-      ...(smSet.has("intent.query") ? intent.tokens : []),
-    ];
-    const sm = smScoreParts(ci, place, cid, fm, smSet, smParams);
+    // GP — google reviews → volume × quality → floor.
+    const gp = gpParts(place.google_review_count, place.google_stars_overall, gpParams);
 
-    // WWW — the only numbers.
-    const fits = whatFits(place.category, intent.hour);
-    const what = whatScore(fits, cfg);
+    // RP — rates → posture → rung.
+    const posture = strategyForPlace({
+      welcome_free_rate: place.welcome_free_rate,
+      welcome_premium_rate: place.welcome_premium_rate,
+      free_rate: place.free_rate,
+      premium_rate: place.premium_rate,
+    });
+    const rp = (posture ? rpVals[posture] : rpVals.zero) ?? 0;
+
+    // WW — where × when, the numeric moment.
     const km =
       intent.lat != null && intent.lng != null && place.lat != null && place.lng != null
         ? haversineKm(intent.lat, intent.lng, Number(place.lat), Number(place.lng))
@@ -125,34 +122,25 @@ export function InternalsPanel() {
     const wait = win.unknown ? 1 : waitScore(win.opensInH, cfg);
     const fit = win.unknown ? 1 : fitScore(win.openForH, cfg);
     const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
-
-    // BP — rates → posture → rung.
-    const posture = strategyForPlace({
-      welcome_free_rate: place.welcome_free_rate,
-      welcome_premium_rate: place.welcome_premium_rate,
-      free_rate: place.free_rate,
-      premium_rate: place.premium_rate,
-    }) as StrategyId;
-    const bp = bpVals[posture] ?? 0;
+    const ww = where * when;
 
     const laneRow = (lane: Lane) => ({
       lane,
-      fast: laneScore(lane, { match: fm, what, where, when, bp }),
-      slow: laneScore(lane, { match: sm.total, what, where, when, bp }),
+      score: laneScore(lane, { es, gp: gp.gp, rp, ww }),
     });
 
     return {
-      cid, ragCiDoc, ragPlaceDoc, judgeCiDoc, judgePlaceDoc, ciVec, placeVec,
-      cos, fm, sm, fits, what, km, where, win, wait, fit, when, posture, bp,
+      ciDoc, placeDoc, ciVec, placeVec, cos, es, gp, posture, rp,
+      km, where, win, wait, fit, when, ww,
       lanes: LANES.map(laneRow),
     };
-  }, [run, place, cfg, bpVals, fmSet, smSet, fmParams, smParams]);
+  }, [run, place, cfg, gpParams, rpVals, esSet, esParams]);
 
   if (places.length === 0) {
     return (
       <EmptyCatalog
-        title="Score internals"
-        subtitle="The whole internal process of every score, on exactly ONE consumer × intent × place."
+        title="Card Sim"
+        subtitle="A CARD = one consumer × intent × place, with its four Scores — every Sub-Score's internal process, on exactly one card."
       />
     );
   }
@@ -161,8 +149,8 @@ export function InternalsPanel() {
 
   return (
     <PanelCard
-      title="Score internals"
-      subtitle="The whole internal process of every score, on exactly ONE consumer × intent × place. Each score is its own box; the specimen lives below."
+      title="Card Sim"
+      subtitle="A CARD = one consumer × intent × place, with its four Scores. Each Sub-Score is its own box showing its whole internal process; the Card assembles at the bottom. The specimen lives below."
       pill="n = 1"
     >
       {/* ── The specimen: C × I × P ─────────────────────────────────── */}
@@ -259,20 +247,20 @@ export function InternalsPanel() {
 
       {!run || !it ? (
         <div className="border-border/60 text-muted-foreground mt-3 rounded-xl border border-dashed px-4 py-6 text-center text-[12px]">
-          Generate a consumer + intent — every box below walks one score&apos;s internals for that
-          single pair.
+          Generate a consumer + intent — every box below walks one Sub-Score&apos;s internals for
+          that single card.
         </div>
       ) : (
         <div className="mt-3 grid gap-2.5 xl:grid-cols-2">
-          {/* FM — docs → vectors → cosine */}
+          {/* ES — docs → vectors → cosine */}
           <ScoreBox
             icon={ScanSearch}
             tint="emerald"
-            title="FM Sub-Score · Fast-Match"
+            title="ES Sub-Score · Embeddings Similarity"
             note="documents → vectors → cosine"
-            result={String(it.fm)}
+            result={String(it.es)}
           >
-            <DocPre label="CI doc · FM context" text={it.ragCiDoc} empty="(every FM field toggled off)" />
+            <DocPre label="CI doc · ES context" text={it.ciDoc} empty="(every ES field toggled off)" />
             <VectorStrip vec={it.ciVec} className="mt-1.5" />
             <div className="my-1.5">
               <ConnectorPill>cos = {it.cos.toFixed(3)}</ConnectorPill>
@@ -280,73 +268,96 @@ export function InternalsPanel() {
             <VectorStrip vec={it.placeVec} />
             <DocPre
               label={`place doc · ${place.name}`}
-              text={it.ragPlaceDoc}
-              empty="(every FM field toggled off)"
+              text={it.placeDoc}
+              empty="(every ES field toggled off)"
               className="mt-1.5"
             />
             <ResultLine>
-              cos({fmParams.embedDims}d) {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 →{" "}
-              <b>FM {it.fm}</b>
+              cos({esParams.embedDims}d) {it.cos.toFixed(3)} → ×{ES_MAX}, floor 0 →{" "}
+              <b>ES {it.es}</b>
             </ResultLine>
           </ScoreBox>
 
-          {/* SM — the judge itemized */}
+          {/* GP — reviews × rating → volume × quality → floor */}
           <ScoreBox
-            icon={Gavel}
+            icon={Star}
             tint="violet"
-            title="SM Sub-Score · Slow-Match"
-            note="the judge's copy + itemized verdict"
-            result={String(it.sm.total)}
+            title="GP Sub-Score · Google Popularity"
+            note="reviews × rating → volume × quality → floor"
+            result={it.gp.gp.toFixed(2)}
           >
-            <DocPre label="CI doc · SM context" text={it.judgeCiDoc} empty="(every SM field toggled off)" />
-            <DocPre
-              label="place doc · SM context"
-              text={it.judgePlaceDoc}
-              empty="(every SM field toggled off)"
-              className="mt-2"
-            />
-            <div className="border-border/50 mt-2.5 overflow-hidden rounded-lg border">
-              <JudgeRow label="base — FM (vector cosine)" value={it.sm.base} />
-              <JudgeRow
-                label={`category in taste/intent (+${smParams.catBonus})`}
-                value={it.sm.catBonus}
-                dim={it.sm.catBonus === 0}
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">
+                <p className="text-muted-foreground font-mono text-[8px] font-bold tracking-[0.04em] uppercase">google rating</p>
+                <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">
+                  {it.gp.rating != null ? `${it.gp.rating}★` : "—"}
+                </p>
+              </div>
+              <div className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">
+                <p className="text-muted-foreground font-mono text-[8px] font-bold tracking-[0.04em] uppercase">reviews</p>
+                <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">
+                  {it.gp.reviews.toLocaleString("en-US")}
+                </p>
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <FactorRow
+                name="VOLUME"
+                inputs={`${it.gp.reviews.toLocaleString("en-US")} of ref ${gpParams.refCount.toLocaleString("en-US")} reviews`}
+                math={`log10(1+${it.gp.reviews})/log10(1+${gpParams.refCount})`}
+                value={it.gp.volume}
               />
-              <JudgeRow
-                label={`zone in taste/intent (+${smParams.zoneBonus})`}
-                value={it.sm.zoneBonus}
-                dim={it.sm.zoneBonus === 0}
+              <FactorRow
+                name="QUALITY"
+                inputs={it.gp.rating != null ? `${it.gp.rating}★ vs mid ${gpParams.qualityMid.toFixed(2)}★` : "no rating → quality 0"}
+                math={
+                  it.gp.rating != null
+                    ? `1/(1+e^(−${gpParams.qualitySteep.toFixed(1)}·(${it.gp.rating}−${gpParams.qualityMid.toFixed(2)})))`
+                    : "cold start, never neutral"
+                }
+                value={it.gp.quality}
               />
-              <JudgeRow
-                label={`occasion × category clash (−${smParams.clashPenalty})`}
-                value={it.sm.clashPenalty}
-                dim={it.sm.clashPenalty === 0}
+            </div>
+            <div className="my-1.5">
+              <ConnectorPill>
+                raw = {it.gp.volume.toFixed(2)} × {it.gp.quality.toFixed(2)} = {it.gp.raw.toFixed(2)}
+              </ConnectorPill>
+            </div>
+            <div className="border-border/50 overflow-hidden rounded-lg border">
+              <LedgerRow
+                label={
+                  it.gp.floored
+                    ? `cold-start floor (${it.gp.reviews} < ${gpParams.minReviews} reviews)`
+                    : `cold-start floor (${it.gp.reviews.toLocaleString("en-US")} ≥ ${gpParams.minReviews} reviews — inactive)`
+                }
+                value={it.gp.floored ? `max(${it.gp.raw.toFixed(2)}, ${gpParams.coldStartFloor.toFixed(2)})` : "—"}
+                dim={!it.gp.floored}
               />
-              <JudgeRow
-                label={`judgment nuance (±${smParams.nuanceAmp}, pair-stable)`}
-                value={it.sm.nuance}
-              />
-              <JudgeRow label="clamped 0–100" value={it.sm.total} strong />
+              <LedgerRow label="GP" value={it.gp.gp.toFixed(2)} strong />
             </div>
             <ResultLine>
-              <b>SM {it.sm.total}</b> — vs FM {it.fm}: the gap is what the judge changed
+              {it.gp.floored ? (
+                <>
+                  raw {it.gp.raw.toFixed(2)} → floored to <b>GP {it.gp.gp.toFixed(2)}</b> —
+                  unreviewed places stay organically alive
+                </>
+              ) : (
+                <>
+                  volume {it.gp.volume.toFixed(2)} × quality {it.gp.quality.toFixed(2)} →{" "}
+                  <b>GP {it.gp.gp.toFixed(2)}</b> — multiplies ES in the organic lanes
+                </>
+              )}
             </ResultLine>
           </ScoreBox>
 
-          {/* WWW — the only numbers */}
+          {/* WW — where × when */}
           <ScoreBox
             icon={Compass}
             tint="amber"
-            title="WWW Sub-Score · the moment"
-            note="what × where × when — the only numbers"
-            result={(it.what * it.where * it.when).toFixed(2)}
+            title="WW Sub-Score · the moment"
+            note="where × when — the numeric moment"
+            result={it.ww.toFixed(2)}
           >
-            <FactorRow
-              name="WHAT"
-              inputs={`${place.category ?? "unknown category"} at ${run.intent.timeLabel}${whatWindow(place.category) ? ` · window ${whatWindow(place.category)}` : " · no daypart window"}`}
-              math={it.fits ? "in daypart → 1.00" : `off daypart → ×${cfg.whatOffFactor.toFixed(2)}`}
-              value={it.what}
-            />
             <FactorRow
               name="WHERE"
               inputs={it.km != null ? `${it.km.toFixed(1)} km (haversine, intent → place)` : "no geo on one side"}
@@ -368,19 +379,18 @@ export function InternalsPanel() {
               value={it.when}
             />
             <ResultLine>
-              {it.what.toFixed(2)} × {it.where.toFixed(2)} × {it.when.toFixed(2)} ={" "}
-              <b>WWW {(it.what * it.where * it.when).toFixed(2)}</b> — multiplies the match in
-              now-mode, never feeds it
+              {it.where.toFixed(2)} × {it.when.toFixed(2)} = <b>WW {it.ww.toFixed(2)}</b> —
+              multiplies the match in now-mode, never feeds it
             </ResultLine>
           </ScoreBox>
 
-          {/* BP — rates → posture → rung */}
+          {/* RP — rates → posture → rung */}
           <ScoreBox
             icon={BadgePercent}
             tint="rose"
-            title="BP Sub-Score · Business Promo"
+            title="RP Sub-Score · Rewards Promotions"
             note="live rates → posture → rung"
-            result={String(it.bp)}
+            result={String(it.rp)}
           >
             <div className="grid grid-cols-4 gap-1.5">
               <RateCell label="welcome · free" value={place.welcome_free_rate} />
@@ -390,21 +400,21 @@ export function InternalsPanel() {
             </div>
             <div className="mt-2.5">
               <ConnectorPill>
-                posture: {STRATEGIES.find((s) => s.id === it.posture)?.name ?? it.posture}
+                posture: {STRATEGIES.find((s) => s.id === it.posture)?.name ?? "Zero"}
               </ConnectorPill>
             </div>
             <ResultLine>
-              rung <b>BP {it.bp}</b>
-              {it.bp === 0 ? " — not in the paid lane (nothing to promote)" : ""}
+              rung <b>RP {it.rp}</b>
+              {it.rp === 0 ? " — not in the paid lane (nothing to promote)" : ""}
             </ResultLine>
           </ScoreBox>
 
-          {/* Scores — the four Lanes × two tiers */}
+          {/* The Card — four Scores, one value each */}
           <ScoreBox
             icon={Layers}
             tint="sky"
-            title="Scores · four Lanes × two tiers"
-            note="each Lane's Score, from the Sub-Scores above"
+            title="The Card · four Scores"
+            note="one Score per Lane, from the Sub-Scores above"
             className="xl:col-span-2"
           >
             <div className="border-border/50 overflow-x-auto rounded-lg border">
@@ -413,19 +423,25 @@ export function InternalsPanel() {
                   <tr className="bg-muted/60 border-border/50 border-b">
                     <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Lane</th>
                     <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Formula</th>
-                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Fast (FM {it.fm})</th>
-                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Slow (SM {it.sm.total})</th>
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Score</th>
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">/ max</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {it.lanes.map(({ lane, fast, slow }) => (
+                  {it.lanes.map(({ lane, score }) => (
                     <tr key={lane.id} className="border-border/40 border-b last:border-0">
-                      <td className="px-2.5 py-1.5 font-mono text-[10.5px] font-semibold">{LANE_SHORT[lane.id]}</td>
-                      <td className="text-muted-foreground px-2.5 py-1.5 font-mono text-[10px]">
-                        {laneFormula(lane, "FM")} | {laneFormula(lane, "SM")}
+                      <td className="px-2.5 py-1.5">
+                        <LaneBadge short={LANE_SHORT[lane.id]} title={`${lane.lane} · ${lane.mode}`} />
                       </td>
-                      <td className="px-2.5 py-1.5 text-right font-mono text-[11px] tabular-nums">{fast.toFixed(1)}</td>
-                      <td className="px-2.5 py-1.5 text-right font-mono text-[11px] font-semibold tabular-nums">{slow.toFixed(1)}</td>
+                      <td className="text-muted-foreground px-2.5 py-1.5 font-mono text-[10px]">
+                        {laneFormula(lane)}
+                      </td>
+                      <td className="px-2.5 py-1.5 text-right font-mono text-[11px] font-semibold tabular-nums">
+                        {score.toFixed(1)}
+                      </td>
+                      <td className="text-muted-foreground px-2.5 py-1.5 text-right font-mono text-[10px] tabular-nums">
+                        {lane.max}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

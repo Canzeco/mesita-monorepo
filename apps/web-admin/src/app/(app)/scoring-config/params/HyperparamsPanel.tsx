@@ -1,18 +1,18 @@
 "use client";
 
 import {
+  DECK_COUNT_MAX,
   ENGINE_POLICIES,
-  fitScore,
+  ES_MAX,
+  gpParts,
   laneFormula,
   LANES,
-  MATCH_MAX,
-  MATCH_TIERS,
   PIPELINE_CONTEXT,
+  RP_MAX,
+  fitScore,
   waitScore,
   whereScore,
-  type EngineId,
-  type LaneId,
-  type ScoresConfig,
+  type WwParams,
 } from "@/lib/business/scores";
 import { STRATEGIES } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
@@ -31,31 +31,31 @@ import {
 // own knobs AND its data-access contract (which consumer / intent / place
 // fields it reads — the PIPELINE_CONTEXT spec in @/lib/business/scores).
 //
-//   Engine lane mix   how the four Lanes compose each engine's results
-//   FM                Fast-Match — embeddings in, estimate out
-//   SM                Slow-Match — text in, judge's verdict out
-//   WWW               the moment: WHAT · WHERE · WHEN — the only numbers
-//   BP                Business Promo — posture from the live rates
+//   Deck composition  cards per lane per engine — counts, not shares
+//   ES                Embeddings Similarity — documents in, cosine out
+//   GP                Google Popularity — smooth volume × quality
+//   RP                Rewards Promotions — posture from the live rates
+//   WW                the moment: WHERE · WHEN
 //
-// Values set here drive Internals and Engines live (shared provider) and
+// Values set here drive the Card Sim and Deck Sim live (shared provider) and
 // persist to app_settings.scoring_config via the save bar at the bottom.
 
 export function HyperparamsPanel() {
   const {
-    cfg,
-    setCfg,
-    mix,
-    setMix,
+    decks,
+    setDeckCount,
     retrieval,
     setRetrieval,
-    bpVals,
-    setBpVals,
+    esParams,
+    setEsParams,
+    gpParams,
+    setGpParams,
+    rpVals,
+    setRpVals,
+    cfg,
+    setCfg,
     context,
     toggleContext,
-    fmParams,
-    setFmParams,
-    smParams,
-    setSmParams,
     dirty,
     saving,
     saveError,
@@ -65,21 +65,40 @@ export function HyperparamsPanel() {
     revert,
   } = useScoring();
 
-  const fmSet = new Set(context.fm);
-  const smSet = new Set(context.sm);
+  const esSet = new Set(context.es);
 
-  const set = <K extends keyof ScoresConfig>(k: K, v: number) =>
+  const setWw = <K extends keyof WwParams>(k: K, v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
-  const setMixCell = (e: EngineId, l: LaneId, v: number) =>
-    setMix((m) => ({ ...m, [e]: { ...m[e], [l]: Math.max(0, Math.min(100, v)) } }));
-  const mixSum = (e: EngineId) => LANES.reduce((s, l) => s + (mix[e][l.id] ?? 0), 0);
+
+  const deckSize = (e: (typeof ENGINE_POLICIES)[number]["id"]) =>
+    LANES.reduce((s, l) => s + (decks[e][l.short] ?? 0), 0);
+  const paidShare = (e: (typeof ENGINE_POLICIES)[number]["id"]) => {
+    const total = deckSize(e);
+    if (total === 0) return 0;
+    return Math.round(((decks[e].in + decks[e].if) / total) * 100);
+  };
+
+  // GP's quality curve at the CURRENT knobs — every hint recomputes live.
+  const quality = (stars: number) =>
+    1 / (1 + Math.exp(-gpParams.qualitySteep * (stars - gpParams.qualityMid)));
+  const volumeOf = (reviews: number) =>
+    Math.max(0, Math.min(1, Math.log10(1 + reviews) / Math.log10(1 + gpParams.refCount)));
+
+  // The archetype strip — live worked examples, doubling as the regression
+  // test for knob edits (drag a knob, watch the archetypes move).
+  const archetypes = [
+    { label: "the institution", reviews: 3000, stars: 4.5 },
+    { label: "the solid local", reviews: 150, stars: 4.2 },
+    { label: "the newcomer", reviews: 3, stars: 5.0 },
+    { label: "the 1★-farm test", reviews: 10000, stars: 3.0 },
+  ].map((a) => ({ ...a, parts: gpParts(a.reviews, a.stars, gpParams) }));
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      {/* ══ Engine lane mix ══════════════════════════════════════════ */}
+      {/* ══ Deck composition ═════════════════════════════════════════ */}
       <PanelCard
-        title="Engine lane mix"
-        subtitle="How the four Lanes compose each engine's results — the interleave knob. Paid share is capped by trust-sensitivity; now share follows each surface's temporal intent."
+        title="Deck composition"
+        subtitle="Cards per Lane per engine — absolute COUNTS, not shares. Each Lane ranks only against itself; the deck interleaves the counts (paid cards spaced through the organic stream). Paid share is capped by trust-sensitivity; now share follows each surface's temporal intent."
         pill="Draft — drives nothing yet"
       >
         <div className="border-border/60 mt-4 overflow-x-auto rounded-xl border">
@@ -98,16 +117,19 @@ export function HyperparamsPanel() {
                   </th>
                 ))}
                 <th className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-right text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  Σ
+                  Deck
+                </th>
+                <th className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-right text-[10px] font-semibold tracking-[0.1em] uppercase">
+                  Paid
                 </th>
                 <th className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-left text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  Tier policy · not a knob
+                  Pipeline · not a knob
                 </th>
               </tr>
             </thead>
             <tbody>
               {ENGINE_POLICIES.map((e) => {
-                const sum = mixSum(e.id);
+                const total = deckSize(e.id);
                 return (
                   <tr key={e.id} className="border-border/60 border-b last:border-0">
                     <td className="px-3 py-2.5 text-[13px] font-semibold">{e.engine}</td>
@@ -116,23 +138,20 @@ export function HyperparamsPanel() {
                         <input
                           type="number"
                           min={0}
-                          max={100}
-                          step={5}
-                          value={mix[e.id][l.id]}
-                          onChange={(ev) => setMixCell(e.id, l.id, Number(ev.target.value))}
-                          aria-label={`${e.engine} share from ${l.lane} ${l.mode}`}
+                          max={DECK_COUNT_MAX}
+                          step={1}
+                          value={decks[e.id][l.short]}
+                          onChange={(ev) => setDeckCount(e.id, l.short, Number(ev.target.value))}
+                          aria-label={`${e.engine} ${LANE_SHORT[l.id]} cards (${l.lane} ${l.mode})`}
                           className="border-border/70 bg-card w-14 rounded-lg border px-1.5 py-1 text-right font-mono text-[12px] tabular-nums"
                         />
-                        <span className="text-muted-foreground ml-0.5 font-mono text-[10px]">%</span>
                       </td>
                     ))}
-                    <td
-                      className={
-                        "px-3 py-2.5 text-right font-mono text-[12px] font-semibold tabular-nums " +
-                        (sum === 100 ? "text-muted-foreground" : "text-amber-700")
-                      }
-                    >
-                      {sum}
+                    <td className="px-3 py-2.5 text-right font-mono text-[12px] font-semibold tabular-nums">
+                      {total}
+                    </td>
+                    <td className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] tabular-nums">
+                      {paidShare(e.id)}%
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       <span className="text-muted-foreground font-mono text-[11px]">{e.policy}</span>
@@ -144,17 +163,23 @@ export function HyperparamsPanel() {
             </tbody>
           </table>
         </div>
+        {ENGINE_POLICIES.some((e) => deckSize(e.id) > retrieval.recallTopK) ? (
+          <p className="mt-1.5 text-[11px] leading-snug font-medium text-amber-700">
+            A deck asks for more cards than ES recall returns (top-K {retrieval.recallTopK}) — that
+            composition can never materialize in production.
+          </p>
+        ) : null}
         <p className="text-muted-foreground mt-1.5 text-[11px] leading-snug">
           Lanes — ON organic·now · OF organic·future · IN inorganic·now · IF inorganic·future. Each
-          Lane produces one Score; rows should sum to 100.
+          Lane produces one Score per card; counts are CARDS, not shares.
         </p>
       </PanelCard>
 
-      {/* ══ FM ═══════════════════════════════════════════════════════ */}
+      {/* ══ ES ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="FM Sub-Score · Fast-Match"
-        subtitle="Embeddings: cosine(consumer+intent embedding, place embedding) — cheap, whole catalog. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Internals tab re-embeds and re-ranks from exactly this set."
-        pill={`${context.fm.length} fields in context`}
+        title="ES Sub-Score · Embeddings Similarity"
+        subtitle="cosine(consumer+intent embedding, place embedding) — one tier, whole catalog; there is no judge. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Card Sim re-embeds and re-ranks from exactly this set."
+        pill={`${context.es.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
@@ -165,197 +190,108 @@ export function HyperparamsPanel() {
             step={10}
             v={retrieval.recallTopK}
             onChange={(v) => setRetrieval((r) => ({ ...r, recallTopK: v }))}
-            hint="places pgvector returns per query"
+            hint="places pgvector returns per query — the decks compose from these"
           />
           <Slider
             label="Embedding dims"
-            value={`${fmParams.embedDims}d`}
+            value={`${esParams.embedDims}d`}
             min={16}
             max={256}
             step={16}
-            v={fmParams.embedDims}
-            onChange={(v) => setFmParams({ embedDims: v })}
+            v={esParams.embedDims}
+            onChange={(v) => setEsParams({ embedDims: v })}
             hint="encoder dimensionality — vectors + cosine follow live"
           />
           <Chip label="Today" value="feature-hash cosine" hint="emulated encoder until pgvector exists" />
         </div>
-        <ContextConfigCols enabled={fmSet} onToggle={(k) => toggleContext("fm", k)} />
+        <ContextConfigCols enabled={esSet} onToggle={toggleContext} />
       </PanelCard>
 
-      {/* ══ SM ═══════════════════════════════════════════════════════ */}
+      {/* ══ GP ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="SM Sub-Score · Slow-Match"
-        subtitle="LLM: a judge reads the merged consumer+intent profile against the full place profile — expensive, shortlist only. Same question as FM, higher fidelity; still text-only. Its context is configured separately: the judge usually reads MORE than the embedding (names, proof lines, hours as text)."
-        pill={`${context.sm.length} fields in context`}
+        title="GP Sub-Score · Google Popularity"
+        subtitle="Smooth volume × quality of the place's google reviews — EARNED popularity, the organic lanes' multiplier. Literal reviews × rating was rejected (1★-farmable, rating-decorative) and so was a hard hinge at 3★ (cliff); this is smooth everywhere. The cold-start floor keeps unreviewed places organically alive."
       >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
           <Slider
-            label="Shortlist n"
-            value={String(retrieval.shortlistN)}
-            min={1}
+            label="Reference volume"
+            value={gpParams.refCount.toLocaleString("en-US")}
+            min={500}
+            max={20000}
+            step={500}
+            v={gpParams.refCount}
+            onChange={(v) => setGpParams((p) => ({ ...p, refCount: v }))}
+            hint={`1,000 reviews → volume ${volumeOf(1000).toFixed(2)} · ${gpParams.refCount.toLocaleString("en-US")}+ → 1.00`}
+          />
+          <Slider
+            label="Quality midpoint"
+            value={`${gpParams.qualityMid.toFixed(2)}★`}
+            min={3}
+            max={4.5}
+            step={0.05}
+            v={gpParams.qualityMid}
+            onChange={(v) => setGpParams((p) => ({ ...p, qualityMid: v }))}
+            hint={`a ${gpParams.qualityMid.toFixed(2)}★ place scores 0.50 · 4.5★ → ${quality(4.5).toFixed(2)}`}
+          />
+          <Slider
+            label="Quality steepness"
+            value={gpParams.qualitySteep.toFixed(2)}
+            min={0.5}
+            max={5}
+            step={0.25}
+            v={gpParams.qualitySteep}
+            onChange={(v) => setGpParams((p) => ({ ...p, qualitySteep: v }))}
+            hint={`3.0★ → ${quality(3).toFixed(2)} · 4.5★ → ${quality(4.5).toFixed(2)} — the gap IS the knob`}
+          />
+          <Slider
+            label="Cold-start floor"
+            value={gpParams.coldStartFloor.toFixed(2)}
+            min={0}
+            max={0.5}
+            step={0.05}
+            v={gpParams.coldStartFloor}
+            onChange={(v) => setGpParams((p) => ({ ...p, coldStartFloor: v }))}
+            hint={`unreviewed places keep ≥ ${gpParams.coldStartFloor.toFixed(2)} of their organic weight`}
+          />
+          <Slider
+            label="Floor applies under"
+            value={`${gpParams.minReviews} reviews`}
+            min={0}
             max={50}
             step={1}
-            v={retrieval.shortlistN}
-            onChange={(v) => setRetrieval((r) => ({ ...r, shortlistN: v }))}
-            hint="Fast keeps this many for the Slow sort"
+            v={gpParams.minReviews}
+            onChange={(v) => setGpParams((p) => ({ ...p, minReviews: v }))}
+            hint={`${gpParams.minReviews}+ reviews → the curve speaks for itself`}
           />
-          <Chip label="Today" value="FM + judgments" hint="stand-in until the judge EF exists" />
         </div>
         <div className="mt-4">
-          <SubHead>Judge rubric weights</SubHead>
-          <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-            What each structured judgment is worth on top of the FM base. The Internals tab
-            itemizes a verdict with exactly these numbers.
-          </p>
-          <div className="mt-3 grid max-w-xl grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-            <Slider
-              label="Category hit"
-              value={`+${smParams.catBonus}`}
-              min={0}
-              max={30}
-              step={1}
-              v={smParams.catBonus}
-              onChange={(v) => setSmParams((p) => ({ ...p, catBonus: v }))}
-              hint="place category in taste/intent"
-            />
-            <Slider
-              label="Zone hit"
-              value={`+${smParams.zoneBonus}`}
-              min={0}
-              max={20}
-              step={1}
-              v={smParams.zoneBonus}
-              onChange={(v) => setSmParams((p) => ({ ...p, zoneBonus: v }))}
-              hint="place zone in taste/intent"
-            />
-            <Slider
-              label="Occasion clash"
-              value={`−${smParams.clashPenalty}`}
-              min={0}
-              max={30}
-              step={1}
-              v={smParams.clashPenalty}
-              onChange={(v) => setSmParams((p) => ({ ...p, clashPenalty: v }))}
-              hint="occasion × category conflict"
-            />
-            <Slider
-              label="Nuance ±"
-              value={`±${smParams.nuanceAmp}`}
-              min={0}
-              max={12}
-              step={1}
-              v={smParams.nuanceAmp}
-              onChange={(v) => setSmParams((p) => ({ ...p, nuanceAmp: v }))}
-              hint="pair-stable judgment spread; 0 = none"
-            />
+          <SubHead>Worked examples · live at these knobs</SubHead>
+          <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {archetypes.map((a) => (
+              <div key={a.label} className="bg-muted/60 border-border/60 rounded-xl border px-2.5 py-2">
+                <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.04em] uppercase">
+                  {a.label}
+                </p>
+                <p className="mt-0.5 font-mono text-[11px]">
+                  {a.stars.toFixed(1)}★ × {a.reviews.toLocaleString("en-US")}
+                </p>
+                <p className="text-muted-foreground mt-0.5 font-mono text-[10px] leading-snug">
+                  {a.parts.floored
+                    ? `raw ${a.parts.raw.toFixed(2)} → floor → `
+                    : `vol ${a.parts.volume.toFixed(2)} × qual ${a.parts.quality.toFixed(2)} → `}
+                  <b className="text-foreground">GP {a.parts.gp.toFixed(2)}</b>
+                </p>
+              </div>
+            ))}
           </div>
         </div>
-        <ContextConfigCols enabled={smSet} onToggle={(k) => toggleContext("sm", k)} />
+        <ContextCols ctx={PIPELINE_CONTEXT.gp} />
       </PanelCard>
 
-      {/* ══ WWW ══════════════════════════════════════════════════════ */}
+      {/* ══ RP ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="WWW Sub-Score · the moment — what · where · when"
-        subtitle="The ONLY Sub-Score that computes numbers: daypart fit × distance decay × open-window. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks."
-      >
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          <div className="border-border/60 rounded-xl border p-4">
-            <SubHead>What · daypart fit</SubHead>
-            <div className="mt-3">
-              <Slider
-                label="Off-daypart factor"
-                value={`×${cfg.whatOffFactor.toFixed(2)}`}
-                min={0}
-                max={1}
-                step={0.05}
-                v={cfg.whatOffFactor}
-                onChange={(v) => set("whatOffFactor", v)}
-                hint={`brunch at 23:00 keeps ×${cfg.whatOffFactor.toFixed(2)} — soft; Match handles the semantic what`}
-              />
-            </div>
-          </div>
-          <div className="border-border/60 rounded-xl border p-4">
-            <SubHead>Where · distance decay</SubHead>
-            <div className="mt-3 flex flex-col gap-4">
-              <Slider
-                label="Half-pull radius · d₀"
-                value={`${cfg.distanceHalfKm.toFixed(1)} km`}
-                min={1}
-                max={20}
-                step={0.5}
-                v={cfg.distanceHalfKm}
-                onChange={(v) => set("distanceHalfKm", v)}
-                hint={`20 km lands at ${whereScore(20, cfg).toFixed(2)}`}
-              />
-              <Slider
-                label="Falloff exponent · s"
-                value={cfg.distanceExp.toFixed(1)}
-                min={1}
-                max={3}
-                step={0.1}
-                v={cfg.distanceExp}
-                onChange={(v) => set("distanceExp", v)}
-                hint="1.6 ≈ the empirical human-mobility exponent"
-              />
-            </div>
-          </div>
-          <div className="border-border/60 rounded-xl border p-4">
-            <SubHead>When · wait × fit</SubHead>
-            <div className="mt-3 flex flex-col gap-4">
-              <Slider
-                label="Wait half-life · a½"
-                value={`${cfg.waitHalfH.toFixed(1)} h`}
-                min={0.5}
-                max={4}
-                step={0.5}
-                v={cfg.waitHalfH}
-                onChange={(v) => set("waitHalfH", v)}
-                hint={`a 2 h wait lands at ${waitScore(2, cfg).toFixed(2)}`}
-              />
-              <Slider
-                label="Cliff sharpness · k"
-                value={cfg.waitExp.toFixed(2)}
-                min={1}
-                max={5}
-                step={0.25}
-                v={cfg.waitExp}
-                onChange={(v) => set("waitExp", v)}
-                hint={
-                  cfg.waitExp <= 1
-                    ? "no plateau — every block costs"
-                    : `30 min → ${waitScore(0.5, cfg).toFixed(2)} · plateau then cliff`
-                }
-              />
-              <Slider
-                label="Session length · L"
-                value={`${cfg.sessionH.toFixed(1)} h`}
-                min={0.5}
-                max={4}
-                step={0.5}
-                v={cfg.sessionH}
-                onChange={(v) => set("sessionH", v)}
-                hint={`30 min left → fit ${fitScore(0.5, cfg).toFixed(2)}`}
-              />
-              <Slider
-                label="Time grid"
-                value={`${Math.round(cfg.timeBlockH * 60)} min`}
-                min={0.25}
-                max={1}
-                step={0.25}
-                v={cfg.timeBlockH}
-                onChange={(v) => set("timeBlockH", v)}
-                hint="hours quantize to this block before wait/fit"
-              />
-            </div>
-          </div>
-        </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.www} />
-      </PanelCard>
-
-      {/* ══ BP ═══════════════════════════════════════════════════════ */}
-      <PanelCard
-        title="BP Sub-Score · Business Promo"
-        subtitle="Posture from the place's live promo rates → a rung. Linear so relevance can beat money inside the paid lane; 0 = not in the paid lane (nothing to promote). Rates never reach the consumer blended-down — BP reads them server-side only."
+        title="RP Sub-Score · Rewards Promotions"
+        subtitle="Posture from the place's live promo rates → a rung — BOUGHT popularity, the paid lanes' multiplier. Linear so relevance can beat money inside the paid lane; 0 = not in the paid lane (nothing to promote). Rates never reach the consumer blended-down — RP reads them server-side only."
       >
         <div className="mt-4 grid max-w-md grid-cols-4 gap-2">
           {STRATEGIES.map((s) => (
@@ -366,26 +302,110 @@ export function HyperparamsPanel() {
                 min={0}
                 max={9}
                 step={1}
-                value={bpVals[s.id]}
+                value={rpVals[s.id]}
                 onChange={(e) =>
-                  setBpVals((p) => ({
+                  setRpVals((p) => ({
                     ...p,
                     [s.id]: Math.max(0, Math.min(9, Number(e.target.value))),
                   }))
                 }
-                aria-label={`BP rung for ${s.name}`}
+                aria-label={`RP rung for ${s.name}`}
                 className="border-border/70 bg-card font-display mt-1 w-14 rounded-lg border px-1 py-0.5 text-center text-lg font-semibold tabular-nums"
               />
             </div>
           ))}
         </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.bp} />
+        <ContextCols ctx={PIPELINE_CONTEXT.rp} />
+      </PanelCard>
+
+      {/* ══ WW ═══════════════════════════════════════════════════════ */}
+      <PanelCard
+        title="WW Sub-Score · the moment — where · when"
+        subtitle="Distance decay × open-window — the numeric moment. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks. (The daypart WHAT term was deleted in v9 — ES alone carries semantic fit.)"
+      >
+        <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-2">
+          <div>
+            <SubHead>Where · distance decay</SubHead>
+            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+              <Slider
+                label="Half-pull radius · d₀"
+                value={`${cfg.distanceHalfKm.toFixed(1)} km`}
+                min={1}
+                max={20}
+                step={0.5}
+                v={cfg.distanceHalfKm}
+                onChange={(v) => setWw("distanceHalfKm", v)}
+                hint={`20 km lands at ${whereScore(20, cfg).toFixed(2)}`}
+              />
+              <Slider
+                label="Falloff exponent · s"
+                value={cfg.distanceExp.toFixed(1)}
+                min={1}
+                max={3}
+                step={0.1}
+                v={cfg.distanceExp}
+                onChange={(v) => setWw("distanceExp", v)}
+                hint="1.6 ≈ the empirical human-mobility exponent"
+              />
+            </div>
+          </div>
+          <div>
+            <SubHead>When · wait × fit</SubHead>
+            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+              <Slider
+                label="Wait half-life · a½"
+                value={`${cfg.waitHalfH.toFixed(1)} h`}
+                min={0.5}
+                max={4}
+                step={0.25}
+                v={cfg.waitHalfH}
+                onChange={(v) => setWw("waitHalfH", v)}
+                hint={`a 2 h wait lands at ${waitScore(2, cfg).toFixed(2)}`}
+              />
+              <Slider
+                label="Cliff sharpness · k"
+                value={cfg.waitExp.toFixed(2)}
+                min={1}
+                max={5}
+                step={0.25}
+                v={cfg.waitExp}
+                onChange={(v) => setWw("waitExp", v)}
+                hint={
+                  cfg.waitExp <= 1.25
+                    ? "no plateau — every block costs"
+                    : `30 min → ${waitScore(0.5, cfg).toFixed(2)} · plateau then cliff`
+                }
+              />
+              <Slider
+                label="Session length · L"
+                value={`${cfg.sessionH.toFixed(1)} h`}
+                min={0.5}
+                max={4}
+                step={0.25}
+                v={cfg.sessionH}
+                onChange={(v) => setWw("sessionH", v)}
+                hint={`30 min left → fit ${fitScore(0.5, cfg).toFixed(2)}`}
+              />
+              <Slider
+                label="Time grid"
+                value={`${Math.round(cfg.timeBlockH * 60)} min`}
+                min={0.25}
+                max={1}
+                step={0.25}
+                v={cfg.timeBlockH}
+                onChange={(v) => setWw("timeBlockH", v)}
+                hint="hours quantize to this block before wait/fit"
+              />
+            </div>
+          </div>
+        </div>
+        <ContextCols ctx={PIPELINE_CONTEXT.ww} />
       </PanelCard>
 
       {/* ══ Persistence ══════════════════════════════════════════════ */}
       <PanelCard
         title="Saved config"
-        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. Internals and Engines follow whatever the form holds, saved or not."
+        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. The Card Sim and Deck Sim follow whatever the form holds, saved or not."
       >
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -438,21 +458,24 @@ export function HyperparamsPanel() {
         <div className="text-muted-foreground border-border/60 mt-4 flex flex-col gap-1 border-t pt-3 font-mono text-[11px] leading-relaxed">
           <p>
             lanes:{" "}
-            {LANES.map((l) => `${l.lane} ${l.mode} = ${laneFormula(l, "FM")} | ${laneFormula(l, "SM")}`).join("  ·  ")}
+            {LANES.map((l) => `${LANE_SHORT[l.id]} ${l.lane} ${l.mode} = ${laneFormula(l)}`).join("  ·  ")}
           </p>
           <p>
-            {MATCH_TIERS.map((t) => `${t.term} = ${t.detail}`).join("  ·  ")}
-            {"  ·  both 0–"}
-            {MATCH_MAX}
+            ES = embeddings cosine · 0–{ES_MAX} · GP = volume × quality · 0–1 · RP = rates → posture
+            → rung · 0–{RP_MAX} · WW = where × when · 0–1
           </p>
           <p>
-            WWW = what × where × when · what = fits ? 1 : offFactor · where = 1/(1+(km/d₀)^
-            {cfg.distanceExp.toFixed(1)}) · wait = 1/(1+(h/a½)^k) · fit = min(1, h/L) ·{" "}
-            {Math.round(cfg.timeBlockH * 60)}-min blocks
+            GP = log10(1+n)/log10(1+{gpParams.refCount.toLocaleString("en-US")}) ×
+            1/(1+e^(−{gpParams.qualitySteep.toFixed(1)}·(★−{gpParams.qualityMid.toFixed(2)}))) ·
+            floor {gpParams.coldStartFloor.toFixed(2)} under {gpParams.minReviews} reviews
           </p>
           <p>
-            consumer+intent data carry where/when as TEXT only — WWW is the only numeric
-            what/where/when, and it multiplies the match, never feeds it
+            WW: where = 1/(1+(km/d₀)^{cfg.distanceExp.toFixed(1)}) · wait = 1/(1+(h/a½)^k) · fit =
+            min(1, h/L) · {Math.round(cfg.timeBlockH * 60)}-min blocks
+          </p>
+          <p>
+            ES reads TEXT only — GP · RP · WW are the numeric Sub-Scores, and they multiply ES,
+            never feed it
           </p>
         </div>
       </PanelCard>

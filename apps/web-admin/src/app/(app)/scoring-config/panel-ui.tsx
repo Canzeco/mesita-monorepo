@@ -1,15 +1,13 @@
 "use client";
 
-import { CONTEXT_FIELDS, type ContextSide, type LaneId } from "@/lib/business/scores";
+import { CONTEXT_FIELDS, LANES, type ContextSide, type LaneId } from "@/lib/business/scores";
 
-// Tiny presentational bits shared by the Pipeline, Internals and Engines panels.
+// Tiny presentational bits shared by the Pipeline, Card Sim and Deck Sim panels.
 
-export const LANE_SHORT: Record<LaneId, string> = {
-  "organic-now": "ON",
-  "organic-future": "OF",
-  "inorganic-now": "IN",
-  "inorganic-future": "IF",
-};
+/** ON/OF/IN/IF badge text — derived from Lane.short, never restated. */
+export const LANE_SHORT: Record<LaneId, string> = Object.fromEntries(
+  LANES.map((l) => [l.id, l.short.toUpperCase()]),
+) as Record<LaneId, string>;
 
 export function GroupHead({ children }: { children: React.ReactNode }) {
   return (
@@ -154,10 +152,10 @@ export function ContextCols({
 }
 
 /**
- * The CONFIGURABLE data-access contract of a match tier (FM/SM): every
- * registry field as a toggle. Enabled fields go into the tier's context
- * documents — Internals and Engines assemble, embed and score from exactly
- * this set, so a toggle here moves the numbers there.
+ * ES's CONFIGURABLE data-access contract: every registry field as a toggle.
+ * Enabled fields go into the embedded documents — the Card Sim and Deck Sim
+ * assemble, embed and score from exactly this set, so a toggle here moves
+ * the numbers there.
  */
 export function ContextConfigCols({
   enabled,

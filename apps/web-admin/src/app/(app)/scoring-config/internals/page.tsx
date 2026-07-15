@@ -1,5 +1,7 @@
-import { InternalsPanel } from "./InternalsPanel";
+import { redirect } from "next/navigation";
 
-export default function ScoringInternalsPage() {
-  return <InternalsPanel />;
+// v9 (MESITA-620): Internals became the Card Sim — one consumer × intent ×
+// place = one CARD with its four Scores. Old links land there.
+export default function ScoringInternalsRedirect() {
+  redirect("/scoring-config/card");
 }

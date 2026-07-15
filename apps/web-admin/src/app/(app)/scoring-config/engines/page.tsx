@@ -1,5 +1,7 @@
-import { EnginesPanel } from "./EnginesPanel";
+import { redirect } from "next/navigation";
 
-export default function ScoringEnginesPage() {
-  return <EnginesPanel />;
+// v9 (MESITA-620): Engines became the Deck Sim — counts in, ordered deck
+// out. Old links land there.
+export default function ScoringEnginesRedirect() {
+  redirect("/scoring-config/decks");
 }

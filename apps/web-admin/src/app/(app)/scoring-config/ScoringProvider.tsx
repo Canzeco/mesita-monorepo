@@ -3,77 +3,85 @@
 import { createContext, useContext, useMemo, useState, useTransition } from "react";
 import {
   coerceScoringSettings,
-  DEFAULT_SCORES_CONFIG,
+  DECK_COUNT_MAX,
   DEFAULT_SCORING_SETTINGS,
+  DEFAULT_WW_PARAMS,
   type ContextConfig,
+  type DeckKey,
+  type Decks,
   type EngineId,
-  type FmParams,
-  type LaneId,
-  type MatchTierId,
-  type ScoresConfig,
+  type EsParams,
+  type GpParams,
   type ScoringSettings,
-  type SmParams,
+  type WwParams,
 } from "@/lib/business/scores";
 import { type StrategyId } from "@/lib/business/strategies";
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 import { updateScoringSettings } from "./settings-actions";
 
 // Shared state for the Scoring Config tabs. The layout mounts this ONCE, so
-// knobs set on Pipeline carry into Internals and Engines live and survive tab
-// switches. The DB sample flows through as plain props; the SAVED settings
-// blob seeds the knobs on first mount (null in DB = code defaults).
+// knobs set on Pipeline carry into the Card Sim and Deck Sim live and survive
+// tab switches — the Deck Sim's composition steppers ARE the Pipeline form's
+// deck counts, same state. The DB sample flows through as plain props; the
+// SAVED settings blob seeds the knobs on first mount (null in DB = code
+// defaults).
 //
 // Save = whole-blob write to app_settings.scoring_config via the EF pair.
 // Reset-to-defaults = load DEFAULT_SCORING_SETTINGS into the form (dirty
 // until saved). Cancel = revert the form to the last-saved values.
 
-type EngineMix = Record<EngineId, Record<LaneId, number>>;
 type Retrieval = ScoringSettings["retrieval"];
-type BpVals = Record<StrategyId, number>;
+type RpVals = Record<StrategyId, number>;
 
 function fromSettings(s: ScoringSettings): {
-  cfg: ScoresConfig;
-  mix: EngineMix;
+  decks: Decks;
   retrieval: Retrieval;
-  bpVals: BpVals;
+  esParams: EsParams;
+  gpParams: GpParams;
+  rpVals: RpVals;
+  cfg: WwParams;
   context: ContextConfig;
-  fmParams: FmParams;
-  smParams: SmParams;
 } {
   return {
-    cfg: { ...DEFAULT_SCORES_CONFIG, ...s.www },
-    mix: s.mix,
+    decks: {
+      swipe: { ...s.decks.swipe },
+      map: { ...s.decks.map },
+      memo: { ...s.decks.memo },
+    },
     retrieval: s.retrieval,
-    bpVals: { ...s.bp },
-    context: { fm: [...s.context.fm], sm: [...s.context.sm] },
-    fmParams: { ...s.fm },
-    smParams: { ...s.sm },
+    esParams: { ...s.es },
+    gpParams: { ...s.gp },
+    rpVals: { ...s.rp },
+    cfg: { ...DEFAULT_WW_PARAMS, ...s.ww },
+    context: { es: [...s.context.es] },
   };
 }
 
 type ScoringCtx = {
   consumers: SampleConsumer[];
   places: SamplePlace[];
-  /** WWW's knobs. */
-  cfg: ScoresConfig;
-  setCfg: React.Dispatch<React.SetStateAction<ScoresConfig>>;
-  mix: EngineMix;
-  setMix: React.Dispatch<React.SetStateAction<EngineMix>>;
+  /** Deck composition — cards per lane per engine. Shared with the Deck Sim. */
+  decks: Decks;
+  /** The one mutation path for deck counts (rounds + clamps 0–DECK_COUNT_MAX). */
+  setDeckCount: (engine: EngineId, key: DeckKey, n: number) => void;
   retrieval: Retrieval;
   setRetrieval: React.Dispatch<React.SetStateAction<Retrieval>>;
-  /** BP — the rung each posture earns. */
-  bpVals: BpVals;
-  setBpVals: React.Dispatch<React.SetStateAction<BpVals>>;
-  /** Which fields each match tier reads — the configurable pipeline. */
+  /** ES internals — the encoder's params. */
+  esParams: EsParams;
+  setEsParams: React.Dispatch<React.SetStateAction<EsParams>>;
+  /** GP internals — the popularity curve's params. */
+  gpParams: GpParams;
+  setGpParams: React.Dispatch<React.SetStateAction<GpParams>>;
+  /** RP — the rung each posture earns. */
+  rpVals: RpVals;
+  setRpVals: React.Dispatch<React.SetStateAction<RpVals>>;
+  /** WW's knobs. */
+  cfg: WwParams;
+  setCfg: React.Dispatch<React.SetStateAction<WwParams>>;
+  /** Which fields ES reads — the configurable pipeline. */
   context: ContextConfig;
-  /** Toggle one registry field in one tier's context. */
-  toggleContext: (tier: MatchTierId, key: string) => void;
-  /** FM internals — the encoder's params. */
-  fmParams: FmParams;
-  setFmParams: React.Dispatch<React.SetStateAction<FmParams>>;
-  /** SM internals — the judge's rubric weights. */
-  smParams: SmParams;
-  setSmParams: React.Dispatch<React.SetStateAction<SmParams>>;
+  /** Toggle one registry field in ES's context. */
+  toggleContext: (key: string) => void;
   /** Current form as a settings blob. */
   current: ScoringSettings;
   dirty: boolean;
@@ -107,42 +115,56 @@ export function ScoringProvider({
     coerceScoringSettings(initialConfig),
   );
   const seed = useMemo(() => fromSettings(saved), [saved]);
-  const [cfg, setCfg] = useState<ScoresConfig>(seed.cfg);
-  const [mix, setMix] = useState<EngineMix>(seed.mix);
+  const [decks, setDecks] = useState<Decks>(seed.decks);
   const [retrieval, setRetrieval] = useState<Retrieval>(seed.retrieval);
-  const [bpVals, setBpVals] = useState<BpVals>(seed.bpVals);
+  const [esParams, setEsParams] = useState<EsParams>(seed.esParams);
+  const [gpParams, setGpParams] = useState<GpParams>(seed.gpParams);
+  const [rpVals, setRpVals] = useState<RpVals>(seed.rpVals);
+  const [cfg, setCfg] = useState<WwParams>(seed.cfg);
   const [context, setContext] = useState<ContextConfig>(seed.context);
-  const [fmParams, setFmParams] = useState<FmParams>(seed.fmParams);
-  const [smParams, setSmParams] = useState<SmParams>(seed.smParams);
 
-  const toggleContext = (tier: MatchTierId, key: string) =>
+  const setDeckCount = (engine: EngineId, key: DeckKey, n: number) =>
+    setDecks((d) => ({
+      ...d,
+      [engine]: {
+        ...d[engine],
+        [key]: Math.max(0, Math.min(DECK_COUNT_MAX, Math.round(Number.isFinite(n) ? n : 0))),
+      },
+    }));
+
+  const toggleContext = (key: string) =>
     setContext((c) => ({
-      ...c,
-      [tier]: c[tier].includes(key) ? c[tier].filter((k) => k !== key) : [...c[tier], key],
+      es: c.es.includes(key) ? c.es.filter((k) => k !== key) : [...c.es, key],
     }));
 
   const [saving, startSave] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedOk, setSavedOk] = useState(false);
 
+  // Literal-constructed in the SAME key order coerceScoringSettings outputs —
+  // the dirty diff is JSON.stringify equality.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 1,
-      mix,
-      retrieval,
-      www: { ...cfg },
-      bp: {
-        zero: bpVals.zero,
-        conservative: bpVals.conservative,
-        aggressive: bpVals.aggressive,
-        dominant: bpVals.dominant,
+      v: 2,
+      decks: {
+        swipe: { on: decks.swipe.on, of: decks.swipe.of, in: decks.swipe.in, if: decks.swipe.if },
+        map: { on: decks.map.on, of: decks.map.of, in: decks.map.in, if: decks.map.if },
+        memo: { on: decks.memo.on, of: decks.memo.of, in: decks.memo.in, if: decks.memo.if },
       },
+      retrieval: { recallTopK: retrieval.recallTopK },
+      es: { ...esParams },
+      gp: { ...gpParams },
+      rp: {
+        zero: rpVals.zero,
+        conservative: rpVals.conservative,
+        aggressive: rpVals.aggressive,
+        dominant: rpVals.dominant,
+      },
+      ww: { ...cfg },
       // Sorted so toggle order never fakes a diff against the saved blob.
-      context: { fm: [...context.fm].sort(), sm: [...context.sm].sort() },
-      fm: { ...fmParams },
-      sm: { ...smParams },
+      context: { es: [...context.es].sort() },
     }),
-    [mix, retrieval, cfg, bpVals, context, fmParams, smParams],
+    [decks, retrieval, esParams, gpParams, rpVals, cfg, context],
   );
 
   const dirty = useMemo(
@@ -152,13 +174,13 @@ export function ScoringProvider({
 
   const apply = (s: ScoringSettings) => {
     const f = fromSettings(s);
-    setCfg(f.cfg);
-    setMix(f.mix);
+    setDecks(f.decks);
     setRetrieval(f.retrieval);
-    setBpVals(f.bpVals);
+    setEsParams(f.esParams);
+    setGpParams(f.gpParams);
+    setRpVals(f.rpVals);
+    setCfg(f.cfg);
     setContext(f.context);
-    setFmParams(f.fmParams);
-    setSmParams(f.smParams);
   };
 
   const save = () => {
@@ -183,20 +205,20 @@ export function ScoringProvider({
       value={{
         consumers,
         places,
-        cfg,
-        setCfg,
-        mix,
-        setMix,
+        decks,
+        setDeckCount,
         retrieval,
         setRetrieval,
-        bpVals,
-        setBpVals,
+        esParams,
+        setEsParams,
+        gpParams,
+        setGpParams,
+        rpVals,
+        setRpVals,
+        cfg,
+        setCfg,
         context,
         toggleContext,
-        fmParams,
-        setFmParams,
-        smParams,
-        setSmParams,
         current,
         dirty,
         saving,

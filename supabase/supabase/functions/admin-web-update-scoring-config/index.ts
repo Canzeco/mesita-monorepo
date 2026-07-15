@@ -3,11 +3,20 @@
 // Writes the scoring model's hyperparameters as ONE versioned jsonb blob on
 // the public.app_settings singleton (scoring_config). Whole-blob writes only
 // — the Pipeline tab always saves its full form, so partial patches would
-// only invite drift. Keys follow the Sub-Score names: www · bp · fm · sm,
-// plus mix / retrieval / context (see web-admin lib/business/scores.ts).
-// Validation is structural + range-clamping; the mix rows are NOT forced to
-// sum to 100 (the admin UI warns instead — an operator may deliberately save
-// a work-in-progress mix).
+// only invite drift.
+//
+// v2 blob (scoring v9, MESITA-620) — keys follow the Sub-Score names:
+//   { v: 2, decks, retrieval, es, gp, rp, ww, context }
+//   decks     cards per lane per engine (counts, not shares)
+//   es        Embeddings Similarity params (embedDims)
+//   gp        Google Popularity curve (refCount · qualityMid · qualitySteep ·
+//             coldStartFloor · minReviews)
+//   rp        Rewards Promotions rungs per posture
+//   ww        Where When knobs (the moment; the daypart WHAT term is gone)
+//   context   which TEXT fields ES reads (ES is the only configurable one)
+// See web-admin lib/business/scores.ts — the RANGE TABLE there is mirrored
+// VERBATIM here; a value the UI allows but this EF clamps would silently
+// move the form on save.
 //
 // The model is still a frontend draft: nothing in Swipe/Map/Memo reads this
 // yet. When the engines go live, this blob is their config source.
@@ -26,8 +35,9 @@ import {
 type Body = { config?: unknown };
 
 const ENGINES = ["swipe", "map", "memo"] as const;
-const LANES = ["organic-now", "organic-future", "inorganic-now", "inorganic-future"] as const;
+const DECK_KEYS = ["on", "of", "in", "if"] as const;
 const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
+const DECK_COUNT_MAX = 20;
 
 function num(v: unknown, lo: number, hi: number): number | null {
   if (typeof v !== "number" || !Number.isFinite(v)) return null;
@@ -39,58 +49,74 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (!raw || typeof raw !== "object") return { ok: false, error: "config must be an object" };
   const r = raw as Record<string, unknown>;
 
-  const mixIn = r.mix as Record<string, Record<string, unknown>> | undefined;
-  if (!mixIn || typeof mixIn !== "object") return { ok: false, error: "config.mix missing" };
-  const mix: Record<string, Record<string, number>> = {};
+  // Deck composition — required per engine per lane; ints, 0–20.
+  const decksIn = r.decks as Record<string, Record<string, unknown>> | undefined;
+  if (!decksIn || typeof decksIn !== "object") return { ok: false, error: "config.decks missing" };
+  const decks: Record<string, Record<string, number>> = {};
   for (const e of ENGINES) {
-    mix[e] = {};
-    for (const l of LANES) {
-      const v = num(mixIn[e]?.[l], 0, 100);
-      if (v == null) return { ok: false, error: `mix.${e}.${l} must be a number 0–100` };
-      mix[e][l] = v;
+    decks[e] = {};
+    for (const k of DECK_KEYS) {
+      const v = num(decksIn[e]?.[k], 0, DECK_COUNT_MAX);
+      if (v == null) {
+        return { ok: false, error: `decks.${e}.${k} must be a number 0–${DECK_COUNT_MAX}` };
+      }
+      decks[e][k] = Math.round(v);
     }
   }
 
   const ret = r.retrieval as Record<string, unknown> | undefined;
   const recallTopK = num(ret?.recallTopK, 10, 200);
-  const shortlistN = num(ret?.shortlistN, 1, 50);
-  if (recallTopK == null || shortlistN == null) {
-    return { ok: false, error: "retrieval.recallTopK / shortlistN out of range" };
+  if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
+
+  // ES — the encoder's params.
+  const esIn = r.es as Record<string, unknown> | undefined;
+  const embedDims = num(esIn?.embedDims, 16, 256);
+  if (embedDims == null) return { ok: false, error: "es.embedDims out of range" };
+
+  // GP — the smooth popularity curve.
+  const gpIn = r.gp as Record<string, unknown> | undefined;
+  const refCount = num(gpIn?.refCount, 100, 100000);
+  const qualityMid = num(gpIn?.qualityMid, 1, 5);
+  const qualitySteep = num(gpIn?.qualitySteep, 0.1, 10);
+  const coldStartFloor = num(gpIn?.coldStartFloor, 0, 1);
+  const minReviews = num(gpIn?.minReviews, 0, 1000);
+  if (
+    refCount == null || qualityMid == null || qualitySteep == null ||
+    coldStartFloor == null || minReviews == null
+  ) {
+    return { ok: false, error: "gp knobs out of range" };
   }
 
-  // v7.4: the moment is WWW (what · where · when).
-  // v7.7: distanceExp + timeBlockH stop being code constants (default-filled
-  // for older clients, like whatOffFactor was).
-  const www = r.www as Record<string, unknown> | undefined;
-  const distanceHalfKm = num(www?.distanceHalfKm, 1, 20);
-  const distanceExp = num(www?.distanceExp ?? 1.6, 1, 3);
-  const waitHalfH = num(www?.waitHalfH, 0.5, 4);
-  const waitExp = num(www?.waitExp, 1, 5);
-  const sessionH = num(www?.sessionH, 0.5, 4);
-  const whatOffFactor = num(www?.whatOffFactor ?? 0.3, 0, 1);
-  const timeBlockH = num(www?.timeBlockH ?? 0.5, 0.25, 1);
+  // RP — the posture rungs.
+  const rpIn = r.rp as Record<string, unknown> | undefined;
+  const rp: Record<string, number> = {};
+  for (const p of POSTURES) {
+    const v = num(rpIn?.[p], 0, 9);
+    if (v == null) return { ok: false, error: `rp.${p} must be a number 0–9` };
+    rp[p] = v;
+  }
+
+  // WW — the moment's knobs.
+  const wwIn = r.ww as Record<string, unknown> | undefined;
+  const distanceHalfKm = num(wwIn?.distanceHalfKm, 1, 20);
+  const distanceExp = num(wwIn?.distanceExp, 1, 3);
+  const waitHalfH = num(wwIn?.waitHalfH, 0.5, 4);
+  const waitExp = num(wwIn?.waitExp, 1, 5);
+  const sessionH = num(wwIn?.sessionH, 0.5, 4);
+  const timeBlockH = num(wwIn?.timeBlockH, 0.25, 1);
   if (
     distanceHalfKm == null || distanceExp == null || waitHalfH == null ||
-    waitExp == null || sessionH == null || whatOffFactor == null || timeBlockH == null
+    waitExp == null || sessionH == null || timeBlockH == null
   ) {
-    return { ok: false, error: "www knobs out of range" };
+    return { ok: false, error: "ww knobs out of range" };
   }
 
-  const bpIn = r.bp as Record<string, unknown> | undefined;
-  const bp: Record<string, number> = {};
-  for (const p of POSTURES) {
-    const v = num(bpIn?.[p], 0, 9);
-    if (v == null) return { ok: false, error: `bp.${p} must be a number 0–9` };
-    bp[p] = v;
-  }
-
-  // v7.6: the configurable pipeline — which TEXT fields each match tier (FM,
-  // SM) reads (keys of web-admin's CONTEXT_FIELDS registry). Validation is
-  // STRUCTURAL only ("side.name" strings, deduped, capped) — the exact key
-  // list lives in the frontend registry and its coercer drops unknowns on
-  // read, so this EF never has to chase it. Missing/absent → omitted; the
-  // client coerces to its defaults. Empty arrays are VALID (everything off —
-  // degenerate on purpose).
+  // Context — which TEXT fields ES reads. Validation is STRUCTURAL only
+  // ("side.name" strings, deduped, capped) — the exact key list lives in the
+  // frontend registry and its coercer drops unknowns on read, so this EF
+  // never has to chase it. Missing/absent → omitted; the client coerces to
+  // its defaults. Empty arrays are VALID (everything off — degenerate on
+  // purpose).
   const KEY_RE = /^(consumer|intent|place)\.[a-z_]{1,32}$/;
   const contextIn = r.context as Record<string, unknown> | undefined;
   let context: Record<string, string[]> | null = null;
@@ -99,7 +125,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       return { ok: false, error: "config.context must be an object" };
     }
     context = {};
-    for (const tier of ["fm", "sm"] as const) {
+    for (const tier of ["es"] as const) {
       const v = contextIn[tier];
       if (!Array.isArray(v)) return { ok: false, error: `context.${tier} must be an array` };
       const clean = [...new Set(v.filter((k) => typeof k === "string" && KEY_RE.test(k)))];
@@ -111,42 +137,30 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     }
   }
 
-  // v7.7: the match tiers' INTERNAL params — FM encoder dims + the SM judge's
-  // rubric weights. Default-filled so older clients keep working; always
-  // written so the blob stays complete going forward.
-  const fmIn = r.fm as Record<string, unknown> | undefined;
-  const embedDims = num(fmIn?.embedDims ?? 64, 16, 256);
-  const smIn = r.sm as Record<string, unknown> | undefined;
-  const catBonus = num(smIn?.catBonus ?? 15, 0, 30);
-  const zoneBonus = num(smIn?.zoneBonus ?? 8, 0, 20);
-  const clashPenalty = num(smIn?.clashPenalty ?? 18, 0, 30);
-  const nuanceAmp = num(smIn?.nuanceAmp ?? 6, 0, 12);
-  if (
-    embedDims == null || catBonus == null || zoneBonus == null ||
-    clashPenalty == null || nuanceAmp == null
-  ) {
-    return { ok: false, error: "fm/sm params out of range" };
-  }
-
   return {
     ok: true,
     config: {
-      v: 1,
-      mix,
-      retrieval: { recallTopK, shortlistN },
-      www: {
+      v: 2,
+      decks,
+      retrieval: { recallTopK },
+      es: { embedDims: Math.round(embedDims) },
+      gp: {
+        refCount: Math.round(refCount),
+        qualityMid,
+        qualitySteep,
+        coldStartFloor,
+        minReviews: Math.round(minReviews),
+      },
+      rp,
+      ww: {
         distanceHalfKm,
         distanceExp,
         waitHalfH,
         waitExp,
         sessionH,
-        whatOffFactor,
         timeBlockH,
       },
-      bp,
       ...(context ? { context } : {}),
-      fm: { embedDims: Math.round(embedDims) },
-      sm: { catBonus, zoneBonus, clashPenalty, nuanceAmp: Math.round(nuanceAmp) },
     },
   };
 }
