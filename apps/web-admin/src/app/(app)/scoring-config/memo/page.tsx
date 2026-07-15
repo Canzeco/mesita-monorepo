@@ -1,16 +1,7 @@
-import { getMemoConfig } from "./actions";
-import { MemoConfigClient } from "./MemoConfigClient";
-import { MEMO_DEFAULTS } from "./types";
+import { redirect } from "next/navigation";
 
-// Memo Config, folded into the scoring system (Memo is one of the three
-// scoring engines). Same client + EFs as the old standalone /memo-config.
-
-export default async function ScoringMemoPage() {
-  const res = await getMemoConfig();
-  return (
-    <MemoConfigClient
-      initialConfig={res.ok ? res.data : MEMO_DEFAULTS}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// Memo moved back out to its own section (MESITA-627) — it's a product agent,
+// not a ranking tab. Keep the tab URL alive for saved links.
+export default function ScoringMemoRedirect() {
+  redirect("/memo-config");
 }
