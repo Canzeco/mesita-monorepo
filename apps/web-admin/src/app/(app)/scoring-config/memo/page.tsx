@@ -1,9 +1,7 @@
-import { MemoConfigClient } from "./MemoConfigClient";
+import { redirect } from "next/navigation";
 
-// Memo Config, folded into the scoring system (Memo is one of the three
-// scoring engines). Same client + EFs as the old standalone /memo-config.
-export const dynamic = "force-dynamic";
-
-export default function ScoringMemoPage() {
-  return <MemoConfigClient />;
+// Memo moved back out to its own section (MESITA-627) — it's a product agent,
+// not a ranking tab. Keep the tab URL alive for saved links.
+export default function ScoringMemoRedirect() {
+  redirect("/memo-config");
 }

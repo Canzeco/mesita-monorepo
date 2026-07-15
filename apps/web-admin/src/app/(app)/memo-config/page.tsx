@@ -1,7 +1,11 @@
-import { redirect } from "next/navigation";
+import { MemoConfigClient } from "./MemoConfigClient";
 
-// Memo Config moved into the scoring system (Memo is one of the three scoring
-// engines) — keep the old URL alive.
-export default function LegacyMemoConfigRedirect() {
-  redirect("/scoring-config/memo");
+// Memo Config — its own sidebar section again (MESITA-627). Memo is one of the
+// three product agents, not a ranking tab: the Pre-Memo deck is its input, but
+// its persona / model / retrieval knobs are its own. /scoring-config/memo now
+// redirects here.
+export const dynamic = "force-dynamic";
+
+export default function MemoConfigPage() {
+  return <MemoConfigClient />;
 }
