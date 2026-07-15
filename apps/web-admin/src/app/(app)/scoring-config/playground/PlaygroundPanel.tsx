@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import {
   ENGINE_POLICIES,
+  fitScore,
+  laneFormula,
   laneScore,
   LANES,
-  MATCH_MAX,
+  waitScore,
   whatScore,
   whenScore,
   whereScore,
@@ -15,6 +17,7 @@ import {
   type Lane,
   type LaneId,
 } from "@/lib/business/scores";
+import { MATCH_MAX } from "@/lib/business/scores";
 import {
   buildCiDoc,
   buildConsumerProfile,
@@ -25,41 +28,353 @@ import {
   generateIntent,
   haversineKm,
   lmCip,
+  lmCipParts,
   openWindow,
   rmFromVectors,
   SAMPLE_MAX,
   whatFits,
+  whatWindow,
   type ConsumerProfile,
   type Intent,
   type SamplePlace,
 } from "@/lib/business/cip";
-import { strategyForPlace, type StrategyId } from "@/lib/business/strategies";
+import { STRATEGIES, strategyForPlace, type StrategyId } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
-import { PanelCard } from "../panel-ui";
+import { LANE_SHORT, PanelCard } from "../panel-ui";
 
-// Playground — the three engines, functional, no decorative UI. Real consumer
-// (DB) + synthetic intent (generator) + real place (DB: rates, geo, hours) →
-// the WIDE context documents are actually assembled (buildCiDoc /
-// buildPlaceDoc — what the real RAG embeds and the judge reads), EMBEDDED
-// into deterministic feature-hash vectors, and every sub-score is emulated:
+// TWO PLAYGROUNDS, divided by question:
 //
-//   RM-CIP  = cosine(CI vector, place vector) × 100 — the vectors are shown
-//   LM-CIP  = RM + the judge's structured adjustments
-//   WWW     = what(daypart) × where(km) × when(open-window) — numeric only
-//   P       = posture from the live promo rates
+//   Score internals  ONE consumer × ONE intent × ONE place (n = 1). Each
+//                    sub-score gets its own box showing its whole internal
+//                    process: RM's documents → vectors → cosine; LM's judge
+//                    itemization; WWW's what/where/when factor derivation;
+//                    P's rates → posture → rung; then the lane assembly.
+//   Engines          the three engines ranking the WHOLE sample — inputs in,
+//                    ranked lists out. The internals live above, so these
+//                    cards stay outcome-shaped.
 //
-// Fast screens top shortlist-n by the RM blend → Slow sorts by the LM blend.
-// Hyperparameters come live from the Pipeline tab (shared provider).
+// Everything recomputes live from the Pipeline tab's knobs + context config
+// (shared provider). Generate is deterministic (seed counter — reproducible,
+// no Math.random in render scope).
+
+export function PlaygroundPanel() {
+  const { consumers, places } = useScoring();
+
+  if (places.length === 0) {
+    return (
+      <PanelCard
+        title="Playground"
+        subtitle="Real consumer + synthetic intent + real place → scores per engine."
+      >
+        <div
+          role="status"
+          className="border-amber-200/80 bg-amber-50 text-amber-950 mt-5 flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm leading-relaxed"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+          <div className="min-w-0">
+            <p className="font-semibold">n = 0 — no places to score.</p>
+            <p className="mt-0.5 text-xs text-amber-900/80">
+              The playground draws a random sample of up to {SAMPLE_MAX} places from the catalog,
+              and the catalog came back empty. The model still stands; there is simply nothing to
+              run it on.
+            </p>
+          </div>
+        </div>
+      </PanelCard>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <InternalsPlayground consumers={consumers.length} />
+      <EnginesPlayground />
+    </div>
+  );
+}
+
+// ══ Playground 1 — SCORE INTERNALS, n = 1 ════════════════════════════════
+
+type Specimen = { profile: ConsumerProfile; intent: Intent };
+
+function InternalsPlayground({ consumers: consumerCount }: { consumers: number }) {
+  const { consumers, places, cfg, promoVals, context } = useScoring();
+  const [flavor, setFlavor] = useState<EngineId>("swipe");
+  const [seed, setSeed] = useState(1);
+  const [run, setRun] = useState<Specimen | null>(null);
+  const [placeId, setPlaceId] = useState<string | null>(null);
+
+  const ripmSet = useMemo(() => new Set(context.ripm), [context.ripm]);
+  const lipmSet = useMemo(() => new Set(context.lipm), [context.lipm]);
+
+  const place = places.find((p) => p.id === placeId) ?? places[0];
+
+  const generate = (f: EngineId) => {
+    const s = seed;
+    setSeed((x) => x + 1);
+    const consumer = consumers.length > 0 ? consumers[(s * 7) % consumers.length] : null;
+    const profile = buildConsumerProfile(consumer);
+    setRun({ profile, intent: generateIntent(f, profile, places, s * 13) });
+  };
+  const pickFlavor = (f: EngineId) => {
+    setFlavor(f);
+    if (run) generate(f);
+  };
+
+  const it = useMemo(() => {
+    if (!run || !place) return null;
+    const { profile, intent } = run;
+    const cid = profile.consumer?.id ?? "synthetic";
+
+    // RM — documents → vectors → cosine.
+    const ragCiDoc = buildCiDoc(profile, intent, ripmSet);
+    const ragPlaceDoc = buildPlaceDoc(place, ripmSet);
+    const ciVec = embedText(ragCiDoc);
+    const placeVec = embedText(ragPlaceDoc);
+    const cos = cosineSim(ciVec, placeVec);
+    const rm = rmFromVectors(ciVec, placeVec);
+
+    // LM — the judge's documents + itemized adjustments on top of RM.
+    const judgeCiDoc = buildCiDoc(profile, intent, lipmSet);
+    const judgePlaceDoc = buildPlaceDoc(place, lipmSet);
+    const ci = [
+      ...(lipmSet.has("consumer.taste") ? profile.tasteTokens : []),
+      ...(lipmSet.has("intent.query") ? intent.tokens : []),
+    ];
+    const lm = lmCipParts(ci, place, cid, rm, lipmSet);
+
+    // WWW — the only numbers.
+    const fits = whatFits(place.category, intent.hour);
+    const what = whatScore(fits, cfg);
+    const km =
+      intent.lat != null && intent.lng != null && place.lat != null && place.lng != null
+        ? haversineKm(intent.lat, intent.lng, Number(place.lat), Number(place.lng))
+        : null;
+    const where = whereScore(km, cfg);
+    const win = openWindow(place.hours, intent.day, intent.hour);
+    const wait = win.unknown ? 1 : waitScore(win.opensInH, cfg);
+    const fit = win.unknown ? 1 : fitScore(win.openForH, cfg);
+    const when = win.unknown ? 1 : whenScore(win.opensInH, win.openForH, cfg);
+
+    // P — rates → posture → rung.
+    const posture = strategyForPlace({
+      welcome_free_rate: place.welcome_free_rate,
+      welcome_premium_rate: place.welcome_premium_rate,
+      free_rate: place.free_rate,
+      premium_rate: place.premium_rate,
+    }) as StrategyId;
+    const promos = promoVals[posture] ?? 0;
+
+    const laneRow = (lane: Lane) => ({
+      lane,
+      fast: laneScore(lane, { match: rm, what, where, when, promos }),
+      slow: laneScore(lane, { match: lm.total, what, where, when, promos }),
+    });
+
+    return {
+      cid, ragCiDoc, ragPlaceDoc, judgeCiDoc, judgePlaceDoc, ciVec, placeVec,
+      cos, rm, lm, fits, what, km, where, win, wait, fit, when, posture, promos,
+      lanes: LANES.map(laneRow),
+    };
+  }, [run, place, cfg, promoVals, ripmSet, lipmSet]);
+
+  return (
+    <PanelCard
+      title="Score internals"
+      subtitle="The whole internal process of every score, on exactly ONE consumer × intent × place. Each score is its own box; pick the specimen below."
+      pill="n = 1"
+    >
+      {/* Specimen controls */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="border-border/70 flex overflow-hidden rounded-full border">
+          {ENGINE_POLICIES.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              aria-pressed={flavor === e.id}
+              onClick={() => pickFlavor(e.id)}
+              className={
+                "px-3 py-1.5 text-[11.5px] font-semibold transition " +
+                (flavor === e.id ? "bg-foreground text-background" : "hover:bg-muted")
+              }
+            >
+              {e.engine}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => generate(flavor)}
+          className="bg-pink-gradient shadow-save rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
+        >
+          Generate consumer + intent
+        </button>
+        <span className="text-muted-foreground text-[10.5px]">
+          {consumerCount === 0 ? "no consumers in DB — synthetic, labeled" : `${consumerCount} real consumers`}
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
+          Place
+        </span>
+        {places.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            aria-pressed={p.id === place.id}
+            onClick={() => setPlaceId(p.id)}
+            className={
+              "max-w-[180px] truncate rounded-md border px-2 py-0.5 font-mono text-[10.5px] transition " +
+              (p.id === place.id
+                ? "border-primary/50 bg-primary/10"
+                : "border-border/60 text-muted-foreground hover:bg-muted")
+            }
+          >
+            {p.name}
+          </button>
+        ))}
+      </div>
+
+      {!run || !it ? (
+        <p className="text-muted-foreground mt-4 text-[12px]">
+          Generate a consumer + intent, pick a place — every box below walks one score&apos;s
+          internals for that single pair.
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-2.5 xl:grid-cols-2">
+          {/* RM — docs → vectors → cosine */}
+          <StepBox n={1} tint="emerald" title="RM-CIP · RAG match" note="documents → vectors → cosine × 100">
+            <DocPre label="CI doc · RIPM context" text={it.ragCiDoc} empty="(every RIPM field toggled off)" />
+            <VectorStrip vec={it.ciVec} className="mt-1.5" />
+            <DocPre
+              label={`place doc · ${place.name}`}
+              text={it.ragPlaceDoc}
+              empty="(every RIPM field toggled off)"
+              className="mt-2.5"
+            />
+            <VectorStrip vec={it.placeVec} className="mt-1.5" />
+            <ResultLine>
+              cos({EMBED_DIMS}d, {EMBED_DIMS}d) = {it.cos.toFixed(3)} → ×{MATCH_MAX}, floor 0 →{" "}
+              <b>RM {it.rm}</b>
+            </ResultLine>
+          </StepBox>
+
+          {/* LM — the judge itemized */}
+          <StepBox n={2} tint="violet" title="LM-CIP · LLM match" note="the judge's copy + itemized verdict">
+            <DocPre label="CI doc · LIPM context" text={it.judgeCiDoc} empty="(every LIPM field toggled off)" />
+            <DocPre
+              label={`place doc · LIPM context`}
+              text={it.judgePlaceDoc}
+              empty="(every LIPM field toggled off)"
+              className="mt-2.5"
+            />
+            <div className="border-border/50 mt-2.5 overflow-hidden rounded-md border">
+              <JudgeRow label="base — RM (vector cosine)" value={it.lm.base} />
+              <JudgeRow label="category in taste/intent (+15)" value={it.lm.catBonus} dim={it.lm.catBonus === 0} />
+              <JudgeRow label="zone in taste/intent (+8)" value={it.lm.zoneBonus} dim={it.lm.zoneBonus === 0} />
+              <JudgeRow label="occasion × category clash (−18)" value={it.lm.clashPenalty} dim={it.lm.clashPenalty === 0} />
+              <JudgeRow label="judgment nuance (±6, pair-stable)" value={it.lm.nuance} />
+              <JudgeRow label="clamped 0–100" value={it.lm.total} strong />
+            </div>
+            <ResultLine>
+              <b>LM {it.lm.total}</b> — vs RM {it.rm}: the gap is what the judge changed
+            </ResultLine>
+          </StepBox>
+
+          {/* WWW — the only numbers */}
+          <StepBox n={3} tint="amber" title="WWW · the moment" note="what × where × when — the only numbers">
+            <FactorRow
+              name="WHAT"
+              inputs={`${place.category ?? "unknown category"} at ${run.intent.timeLabel}${whatWindow(place.category) ? ` · window ${whatWindow(place.category)}` : " · no daypart window"}`}
+              math={it.fits ? "in daypart → 1.00" : `off daypart → ×${cfg.whatOffFactor.toFixed(2)}`}
+              value={it.what}
+            />
+            <FactorRow
+              name="WHERE"
+              inputs={it.km != null ? `${it.km.toFixed(1)} km (haversine, intent → place)` : "no geo on one side"}
+              math={it.km != null ? `1/(1+(${it.km.toFixed(1)}/${cfg.distanceHalfKm})^${cfg.distanceExp})` : "unknown → neutral 1.00"}
+              value={it.where}
+            />
+            <FactorRow
+              name="WHEN"
+              inputs={
+                it.win.unknown
+                  ? "no hours data (unknown ≠ closed)"
+                  : `opens in ${it.win.opensInH.toFixed(1)} h · open for ${it.win.openForH.toFixed(1)} h`
+              }
+              math={
+                it.win.unknown
+                  ? "unknown → neutral 1.00"
+                  : `wait ${it.wait.toFixed(2)} × fit ${it.fit.toFixed(2)}`
+              }
+              value={it.when}
+            />
+            <ResultLine>
+              {it.what.toFixed(2)} × {it.where.toFixed(2)} × {it.when.toFixed(2)} ={" "}
+              <b>WWW {(it.what * it.where * it.when).toFixed(2)}</b> — multiplies the match in
+              now-mode, never feeds it
+            </ResultLine>
+          </StepBox>
+
+          {/* P — rates → posture → rung */}
+          <StepBox n={4} tint="rose" title="P · promo score" note="live rates → posture → rung">
+            <div className="grid grid-cols-4 gap-1">
+              <RateCell label="welcome · free" value={place.welcome_free_rate} />
+              <RateCell label="welcome · prem" value={place.welcome_premium_rate} />
+              <RateCell label="returning · free" value={place.free_rate} />
+              <RateCell label="returning · prem" value={place.premium_rate} />
+            </div>
+            <ResultLine>
+              posture <b>{STRATEGIES.find((s) => s.id === it.posture)?.name ?? it.posture}</b> →
+              rung <b>P {it.promos}</b>
+              {it.promos === 0 ? " — not in the paid lane (nothing to promote)" : ""}
+            </ResultLine>
+          </StepBox>
+
+          {/* Lane assembly */}
+          <StepBox
+            n={5}
+            tint="sky"
+            title="Lane assembly"
+            note="the four lanes × two tiers, from the values above"
+            className="xl:col-span-2"
+          >
+            <div className="border-border/50 overflow-x-auto rounded-md border">
+              <table className="w-full min-w-[420px] border-collapse">
+                <thead>
+                  <tr className="border-border/50 border-b">
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Lane</th>
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-left text-[9px] font-bold tracking-[0.08em] uppercase">Formula</th>
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Fast (RM {it.rm})</th>
+                    <th className="text-muted-foreground px-2.5 pt-2 pb-1.5 text-right text-[9px] font-bold tracking-[0.08em] uppercase">Slow (LM {it.lm.total})</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {it.lanes.map(({ lane, fast, slow }) => (
+                    <tr key={lane.id} className="border-border/40 border-b last:border-0">
+                      <td className="px-2.5 py-1.5 font-mono text-[10.5px] font-semibold">{LANE_SHORT[lane.id]}</td>
+                      <td className="text-muted-foreground px-2.5 py-1.5 font-mono text-[10px]">
+                        {laneFormula(lane, "RIPM")} | {laneFormula(lane, "LIPM")}
+                      </td>
+                      <td className="px-2.5 py-1.5 text-right font-mono text-[11px] tabular-nums">{fast.toFixed(1)}</td>
+                      <td className="px-2.5 py-1.5 text-right font-mono text-[11px] font-semibold tabular-nums">{slow.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </StepBox>
+        </div>
+      )}
+    </PanelCard>
+  );
+}
+
+// ══ Playground 2 — ENGINES over the whole sample ═════════════════════════
 
 type EngineRun = { profile: ConsumerProfile; intent: Intent };
 
 type ScoredRow = {
   place: SamplePlace;
-  /** What RIPM embeds — assembled from the RIPM context config. */
-  ragDoc: string;
-  ragVec: number[];
-  /** What the LIPM judge reads — assembled from the LIPM context config. */
-  judgeDoc: string;
   rm: number;
   lm: number;
   what: number;
@@ -73,22 +388,15 @@ type ScoredRow = {
   slowTotal: number;
 };
 
-type EngineResult = {
-  ragCiDoc: string;
-  judgeCiDoc: string;
-  ciVec: number[];
-  kept: ScoredRow[];
-  screened: number;
-};
+type EngineResult = { kept: ScoredRow[]; screened: number };
 
-export function PlaygroundPanel() {
+function EnginesPlayground() {
   const router = useRouter();
   const { consumers, places, cfg, mix, retrieval, promoVals, context } = useScoring();
 
   const [runs, setRuns] = useState<Partial<Record<EngineId, EngineRun>>>({});
   const [seed, setSeed] = useState(1);
 
-  // Deterministic per click — reproducible runs, no Math.random in render scope.
   const generate = (engine: EngineId) => {
     const s = seed;
     setSeed((x) => x + 1);
@@ -99,21 +407,13 @@ export function PlaygroundPanel() {
     setRuns((r) => ({ ...r, [engine]: { profile, intent } }));
   };
 
-  // The configurable pipeline: which fields each tier reads (Pipeline tab).
   const ripmSet = useMemo(() => new Set(context.ripm), [context.ripm]);
   const lipmSet = useMemo(() => new Set(context.lipm), [context.lipm]);
 
-  // Place documents + vectors are intent-independent — build once per sample
-  // per context config: RAG doc (embedded, RIPM set) + judge doc (LIPM set).
+  // Place vectors are intent-independent — embed once per sample per config.
   const placeIndex = useMemo(
-    () =>
-      new Map(
-        places.map((p) => {
-          const ragDoc = buildPlaceDoc(p, ripmSet);
-          return [p.id, { ragDoc, ragVec: embedText(ragDoc), judgeDoc: buildPlaceDoc(p, lipmSet) }];
-        }),
-      ),
-    [places, ripmSet, lipmSet],
+    () => new Map(places.map((p) => [p.id, embedText(buildPlaceDoc(p, ripmSet))])),
+    [places, ripmSet],
   );
 
   const maxPromo = Math.max(1, ...Object.values(promoVals));
@@ -131,24 +431,16 @@ export function PlaygroundPanel() {
     for (const e of ENGINE_POLICIES) {
       const run = runs[e.id];
       if (!run) continue;
-      // The judge's tokens follow ITS context: taste only if consumer.taste is
-      // in the LIPM set, intent tokens only if intent.query is.
       const ci = [
         ...(lipmSet.has("consumer.taste") ? run.profile.tasteTokens : []),
         ...(lipmSet.has("intent.query") ? run.intent.tokens : []),
       ];
       const cid = run.profile.consumer?.id ?? "synthetic";
-      const ragCiDoc = buildCiDoc(run.profile, run.intent, ripmSet);
-      const judgeCiDoc = buildCiDoc(run.profile, run.intent, lipmSet);
-      const ciVec = embedText(ragCiDoc);
+      const ciVec = embedText(buildCiDoc(run.profile, run.intent, ripmSet));
 
       const rows: ScoredRow[] = places.map((p) => {
-        const pi = placeIndex.get(p.id) ?? {
-          ragDoc: buildPlaceDoc(p, ripmSet),
-          ragVec: embedText(buildPlaceDoc(p, ripmSet)),
-          judgeDoc: buildPlaceDoc(p, lipmSet),
-        };
-        const rm = rmFromVectors(ciVec, pi.ragVec);
+        const pVec = placeIndex.get(p.id) ?? embedText(buildPlaceDoc(p, ripmSet));
+        const rm = rmFromVectors(ciVec, pVec);
         const lm = lmCip(ci, p, cid, rm, lipmSet);
         const km =
           run.intent.lat != null && run.intent.lng != null && p.lat != null && p.lng != null
@@ -174,19 +466,8 @@ export function PlaygroundPanel() {
           ) as Record<LaneId, number>;
 
         return {
-          place: p,
-          ragDoc: pi.ragDoc,
-          ragVec: pi.ragVec,
-          judgeDoc: pi.judgeDoc,
-          rm,
-          lm,
-          what,
-          where,
-          when,
-          www: what * where * when,
-          km,
-          hoursUnknown: win.unknown,
-          promos,
+          place: p, rm, lm, what, where, when, www: what * where * when, km,
+          hoursUnknown: win.unknown, promos,
           fastTotal: blend(e.id, laneVals(rm)),
           slowTotal: blend(e.id, laneVals(lm)),
         };
@@ -196,53 +477,23 @@ export function PlaygroundPanel() {
       const kept = screened
         .slice(0, retrieval.shortlistN)
         .sort((a, b) => b.slowTotal - a.slowTotal);
-      out[e.id] = {
-        ragCiDoc,
-        judgeCiDoc,
-        ciVec,
-        kept,
-        screened: Math.max(0, rows.length - retrieval.shortlistN),
-      };
+      out[e.id] = { kept, screened: Math.max(0, rows.length - retrieval.shortlistN) };
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runs, places, placeIndex, cfg, mix, promoVals, retrieval, ripmSet, lipmSet]);
 
-  if (places.length === 0) {
-    return (
-      <PanelCard
-        title="Playground"
-        subtitle="Real consumer + synthetic intent + real place → ranked lists per engine."
-      >
-        <div
-          role="status"
-          className="border-amber-200/80 bg-amber-50 text-amber-950 mt-5 flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm leading-relaxed"
-        >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
-          <div className="min-w-0">
-            <p className="font-semibold">n = 0 — no places to score.</p>
-            <p className="mt-0.5 text-xs text-amber-900/80">
-              The playground draws a random sample of up to {SAMPLE_MAX} places from the catalog,
-              and the catalog came back empty. The model still stands; there is simply nothing to
-              run it on.
-            </p>
-          </div>
-        </div>
-      </PanelCard>
-    );
-  }
-
   return (
     <PanelCard
-      title="Playground"
-      subtitle={`${consumers.length} real consumer${consumers.length === 1 ? "" : "s"} · ${places.length} real places · synthetic intents. Documents are assembled from the Pipeline tab's context config (RIPM ${context.ripm.length} fields → embedded ${EMBED_DIMS}d; LIPM ${context.lipm.length} fields → the judge), so a toggle there re-ranks here. Fast screens top ${retrieval.shortlistN} → Slow sorts.`}
-      pill="emulated encoder + judge"
+      title="Engines"
+      subtitle={`The three engines ranking the WHOLE sample (${places.length} places) — inputs in, ranked lists out. For any score's internal process, use Score internals above. Fast screens top ${retrieval.shortlistN} → Slow sorts.`}
+      pill={`n = ${places.length}`}
     >
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-[11px] leading-snug">
           {consumers.length === 0
             ? "No consumers in the DB — runs use a labeled synthetic consumer."
-            : "Generate picks a consumer, synthesizes an intent, builds the documents, embeds them, scores every place."}
+            : "Generate picks a consumer, synthesizes an intent, scores every place, ranks."}
         </p>
         <button
           type="button"
@@ -278,11 +529,10 @@ export function PlaygroundPanel() {
 
               {!run || !res ? (
                 <p className="text-muted-foreground mt-4 text-[12px]">
-                  Generate to run: consumer → intent → documents → vectors → scores.
+                  Generate to run: consumer → intent → scores → ranking.
                 </p>
               ) : (
                 <div className="mt-3 flex flex-col gap-2.5">
-                  {/* 1 — the inputs */}
                   <StepBox n={1} tint="sky" title="Consumer · Intent" note="the query side (CIP)">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <FactChip label="C" value={run.profile.consumer?.label ?? "synthetic"} />
@@ -300,76 +550,7 @@ export function PlaygroundPanel() {
                     </div>
                   </StepBox>
 
-                  {/* 2 — the assembled context documents */}
-                  <StepBox n={2} tint="violet" title="Context documents" note="what RAG embeds / the judge reads">
-                    <p className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
-                      CI doc · RIPM context
-                    </p>
-                    <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
-                      {res.ragCiDoc || "(every RIPM field toggled off)"}
-                    </pre>
-                    {res.judgeCiDoc !== res.ragCiDoc ? (
-                      <>
-                        <p className="text-muted-foreground border-border/50 mt-2 border-t pt-2 font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
-                          CI doc · LIPM context (the judge&apos;s copy)
-                        </p>
-                        <pre className="mt-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
-                          {res.judgeCiDoc || "(every LIPM field toggled off)"}
-                        </pre>
-                      </>
-                    ) : null}
-                    <details className="mt-2">
-                      <summary className="text-muted-foreground cursor-pointer text-[10.5px] font-semibold">
-                        Place docs ({res.kept.length})
-                      </summary>
-                      <div className="mt-1.5 flex flex-col gap-1.5">
-                        {res.kept.map((r) => (
-                          <div key={r.place.id} className="bg-card/70 border-border/50 rounded-md border px-2.5 py-1.5">
-                            <p className="text-muted-foreground font-mono text-[9px]">
-                              {r.place.name} · RAG doc
-                            </p>
-                            <pre className="mt-0.5 font-mono text-[9.5px] leading-relaxed whitespace-pre-wrap">
-                              {r.ragDoc || "(every RIPM field toggled off)"}
-                            </pre>
-                            {r.judgeDoc !== r.ragDoc ? (
-                              <>
-                                <p className="text-muted-foreground border-border/40 mt-1.5 border-t pt-1.5 font-mono text-[9px]">
-                                  judge doc · LIPM context
-                                </p>
-                                <pre className="mt-0.5 font-mono text-[9.5px] leading-relaxed whitespace-pre-wrap">
-                                  {r.judgeDoc || "(every LIPM field toggled off)"}
-                                </pre>
-                              </>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  </StepBox>
-
-                  {/* 3 — the vectors */}
-                  <StepBox n={3} tint="emerald" title="Embedding" note={`${EMBED_DIMS}d feature-hash · RM = cosine × 100`}>
-                    <p className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
-                      CI vector
-                    </p>
-                    <VectorStrip vec={res.ciVec} className="mt-1" />
-                    <div className="mt-2 flex flex-col gap-1">
-                      {res.kept.map((r) => (
-                        <div key={r.place.id} className="flex items-center gap-2">
-                          <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[9.5px]">
-                            {r.place.name}
-                          </span>
-                          <VectorStrip vec={r.ragVec} mini className="w-[88px] shrink-0" />
-                          <span className="w-14 shrink-0 text-right font-mono text-[9.5px] tabular-nums">
-                            cos {cosineSim(res.ciVec, r.ragVec).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </StepBox>
-
-                  {/* 4 — every sub-score, then the ranking */}
-                  <StepBox n={4} tint="amber" title="Scores → ranking" note="fast screens → slow sorts">
+                  <StepBox n={2} tint="amber" title="Scores → ranking" note="fast screens → slow sorts">
                     <div className="flex flex-col gap-1.5">
                       {res.kept.map((r, k) => (
                         <div key={r.place.id} className="bg-card/70 border-border/60 rounded-lg border px-2.5 py-2">
@@ -418,14 +599,14 @@ export function PlaygroundPanel() {
 
 // ── Local bits ─────────────────────────────────────────────────────────
 
-// One stage of the run, as its own clearly bounded box: numbered badge +
-// tinted header strip, body on the card surface. The tints separate the
-// stages at a glance (input / documents / vectors / ranking).
+// One stage / one score, as its own clearly bounded box: numbered badge +
+// tinted header strip, body on the card surface.
 const STEP_TINTS = {
   sky: { box: "border-sky-200/70", head: "bg-sky-50 text-sky-950", badge: "bg-sky-600" },
   violet: { box: "border-violet-200/70", head: "bg-violet-50 text-violet-950", badge: "bg-violet-600" },
   emerald: { box: "border-emerald-200/70", head: "bg-emerald-50 text-emerald-950", badge: "bg-emerald-600" },
   amber: { box: "border-amber-200/70", head: "bg-amber-50 text-amber-950", badge: "bg-amber-600" },
+  rose: { box: "border-rose-200/70", head: "bg-rose-50 text-rose-950", badge: "bg-rose-600" },
 } as const;
 
 function StepBox({
@@ -433,17 +614,19 @@ function StepBox({
   tint,
   title,
   note,
+  className = "",
   children,
 }: {
   n: number;
   tint: keyof typeof STEP_TINTS;
   title: string;
   note: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   const t = STEP_TINTS[tint];
   return (
-    <section className={`overflow-hidden rounded-xl border ${t.box}`}>
+    <section className={`overflow-hidden rounded-xl border ${t.box} ${className}`}>
       <div className={`flex items-baseline gap-2 px-3 py-1.5 ${t.head}`}>
         <span
           className={`flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full font-mono text-[9.5px] font-bold text-white ${t.badge}`}
@@ -482,6 +665,105 @@ function ScoreCell({ label, value, hint }: { label: string; value: string; hint:
         {label}
       </p>
       <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+/** A verbatim context document, labeled. */
+function DocPre({
+  label,
+  text,
+  empty,
+  className = "",
+}: {
+  label: string;
+  text: string;
+  empty: string;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <p className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
+        {label}
+      </p>
+      <pre className="bg-muted/40 border-border/50 mt-1 rounded-md border px-2.5 py-1.5 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
+        {text || empty}
+      </pre>
+    </div>
+  );
+}
+
+/** One line of the judge's itemized verdict. */
+function JudgeRow({
+  label,
+  value,
+  dim,
+  strong,
+}: {
+  label: string;
+  value: number;
+  dim?: boolean;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "border-border/40 flex items-baseline justify-between gap-3 border-b px-2.5 py-1 last:border-0 " +
+        (strong ? "bg-muted/50" : "") +
+        (dim ? " opacity-50" : "")
+      }
+    >
+      <span className={"text-[10.5px] " + (strong ? "font-semibold" : "")}>{label}</span>
+      <span className={"font-mono text-[11px] tabular-nums " + (strong ? "font-bold" : "")}>
+        {!strong && value > 0 ? `+${value}` : value}
+      </span>
+    </div>
+  );
+}
+
+/** The box's bottom line — inputs already shown, this is the arithmetic. */
+function ResultLine({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="border-border/50 mt-2.5 border-t pt-2 font-mono text-[10.5px] leading-relaxed">
+      {children}
+    </p>
+  );
+}
+
+/** One WWW factor: its inputs, its math, its value. */
+function FactorRow({
+  name,
+  inputs,
+  math,
+  value,
+}: {
+  name: string;
+  inputs: string;
+  math: string;
+  value: number;
+}) {
+  return (
+    <div className="border-border/40 flex items-center gap-2.5 border-b py-1.5 first:pt-0 last:border-0">
+      <span className="text-muted-foreground w-11 shrink-0 font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
+        {name}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[10.5px]" title={inputs}>{inputs}</span>
+        <span className="text-muted-foreground block truncate font-mono text-[9.5px]" title={math}>{math}</span>
+      </span>
+      <span className="shrink-0 font-mono text-[13px] font-semibold tabular-nums">{value.toFixed(2)}</span>
+    </div>
+  );
+}
+
+/** One promo rate, labeled. */
+function RateCell({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">
+      <p className="text-muted-foreground font-mono text-[8px] font-bold tracking-[0.04em] uppercase">{label}</p>
+      <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">
+        {value != null ? `${value}%` : "—"}
+      </p>
     </div>
   );
 }
