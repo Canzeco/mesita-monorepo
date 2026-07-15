@@ -1,8 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { PageHeader } from "@/components/PageContainer";
-import { ConfigTabNav } from "@/components/ConfigTabNav";
+import { ConfigTabsLayout } from "@/components/ConfigTabsLayout";
 import { SCORING_SUBROUTES } from "./nav";
 
 // Scoring Config — four tabs mirroring the model's layers (subscores →
@@ -23,18 +21,13 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
 };
 
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const match = SCORING_SUBROUTES.find(
-    (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
-  );
-  const description =
-    (match && SUBPAGE_DESCRIPTION[match.href]) ?? SUBPAGE_DESCRIPTION["/scoring-config/subscores"];
-
   return (
-    <>
-      <PageHeader title="Scoring Config" description={description} />
-      <ConfigTabNav ariaLabel="Scoring Config" subroutes={SCORING_SUBROUTES} />
-      <div className="mt-6 sm:mt-8">{children}</div>
-    </>
+    <ConfigTabsLayout
+      title="Scoring Config"
+      subroutes={SCORING_SUBROUTES}
+      descriptions={SUBPAGE_DESCRIPTION}
+    >
+      {children}
+    </ConfigTabsLayout>
   );
 }

@@ -209,13 +209,13 @@ export function SubscoresPanel() {
               <input
                 type="number"
                 min={0}
-                max={9}
+                max={RP_MAX}
                 step={1}
                 value={rpVals[s.id]}
                 onChange={(e) =>
                   setRpVals((p) => ({
                     ...p,
-                    [s.id]: Math.max(0, Math.min(9, Number(e.target.value))),
+                    [s.id]: Math.max(0, Math.min(RP_MAX, Number(e.target.value))),
                   }))
                 }
                 aria-label={`RP rung for ${s.name}`}

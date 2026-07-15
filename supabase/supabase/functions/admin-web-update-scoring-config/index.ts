@@ -2,7 +2,7 @@
 //
 // Writes the scoring model's hyperparameters as ONE versioned jsonb blob on
 // the public.app_settings singleton (scoring_config). Whole-blob writes only
-// — the Pipeline tab always saves its full form, so partial patches would
+// — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
 // v3 blob (scoring v9.1, MESITA-621) — keys follow the Subscore names:
@@ -39,6 +39,8 @@ const ENGINES = ["swipe", "map", "memo"] as const;
 const DECK_KEYS = ["on", "of", "in", "if"] as const;
 const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
 const DECK_COUNT_MAX = 20;
+/** RP's ceiling — the top rung of the membership ladder (scores.RP_MAX). */
+const RP_MAX = 3;
 
 function num(v: unknown, lo: number, hi: number): number | null {
   if (typeof v !== "number" || !Number.isFinite(v)) return null;
@@ -92,8 +94,8 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   const rpIn = r.rp as Record<string, unknown> | undefined;
   const rp: Record<string, number> = {};
   for (const p of POSTURES) {
-    const v = num(rpIn?.[p], 0, 9);
-    if (v == null) return { ok: false, error: `rp.${p} must be a number 0–9` };
+    const v = num(rpIn?.[p], 0, RP_MAX);
+    if (v == null) return { ok: false, error: `rp.${p} must be a number 0–${RP_MAX}` };
     rp[p] = v;
   }
 

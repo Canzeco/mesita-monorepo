@@ -120,3 +120,31 @@ export async function efInvoke<T>(
 
   return { ok: true, status: 200, data: parsed as T };
 }
+
+/**
+ * What a server action hands its page: the EF payload, or a message to render.
+ *
+ * Deliberately NOT the throwing `EFError` the consumer/business apps use —
+ * admin's call sites are server actions whose results cross the RSC boundary
+ * to a client component, which can only receive serialisable values, so a
+ * failure has to BE a value. Every page here already branches on `.ok` to
+ * paint an error state; throwing would buy a try/catch per site and nothing else.
+ */
+export type EfResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+/**
+ * `efInvoke` narrowed to the shape most actions want: pass the payload
+ * through, keep only the human-readable message off a failure.
+ *
+ * Drops `status`/`code`/`fn`/`data` — call `efInvoke` directly when a site
+ * branches on those (e.g. the "place_already_exists" code), and reshape by
+ * hand when the action returns anything other than the EF payload verbatim.
+ */
+export async function efResult<T>(
+  fnName: string,
+  body: unknown,
+): Promise<EfResult<T>> {
+  const r = await efInvoke<T>(fnName, body);
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}

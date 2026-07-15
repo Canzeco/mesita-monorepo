@@ -1,6 +1,6 @@
 "use server";
 
-import { efInvoke } from "@/lib/supabase-ef";
+import { efResult, type EfResult } from "@/lib/supabase-ef";
 
 // ─── Atlas vocabulary (categories, tags, limits) ───────────────────────────
 //
@@ -44,10 +44,6 @@ export type AtlasFieldsPayload = {
   counts: { categories: number; tags: number; facets: number };
 };
 
-export async function getAtlasFields(): Promise<
-  { ok: true; data: AtlasFieldsPayload } | { ok: false; error: string }
-> {
-  const r = await efInvoke<AtlasFieldsPayload>("admin-web-get-atlas-fields", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+export async function getAtlasFields(): Promise<EfResult<AtlasFieldsPayload>> {
+  return efResult<AtlasFieldsPayload>("admin-web-get-atlas-fields", {});
 }

@@ -1,6 +1,6 @@
 "use server";
 
-// Server actions for the Params tab's Save/Reset — thin wrappers over the
+// Server actions for the Subscores tab's Save/Reset — thin wrappers over the
 // admin-web-*-scoring-config EF pair (app_settings.scoring_config jsonb;
 // NULL = following code defaults). "use server" because the Save button is a
 // client component; only async exports are allowed here, which is why these

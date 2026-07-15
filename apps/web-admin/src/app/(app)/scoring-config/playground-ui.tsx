@@ -245,7 +245,7 @@ export function ConnectorPill({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** One factor row (WW's where/when, GP's volume/quality): inputs · math · value. */
+/** One factor row (IC's where/when, GP's volume/quality): inputs · math · value. */
 export function FactorRow({
   name,
   inputs,

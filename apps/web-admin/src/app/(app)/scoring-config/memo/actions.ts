@@ -13,29 +13,17 @@
 // Types + model catalogs live in ./types (not here) — "use server" modules may
 // only export async functions to the client.
 
-import { efInvoke } from "@/lib/supabase-ef";
+import { efResult, type EfResult } from "@/lib/supabase-ef";
 import type { MemoConfig } from "./types";
 
 export type { MemoConfig } from "./types";
 
-export type GetMemoConfigResult =
-  | { ok: true; data: MemoConfig }
-  | { ok: false; error: string };
-
-export async function getMemoConfig(): Promise<GetMemoConfigResult> {
-  const r = await efInvoke<MemoConfig>("admin-web-get-memo-config", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+export async function getMemoConfig(): Promise<EfResult<MemoConfig>> {
+  return efResult<MemoConfig>("admin-web-get-memo-config", {});
 }
-
-export type UpdateMemoConfigResult =
-  | { ok: true; data: MemoConfig }
-  | { ok: false; error: string };
 
 export async function updateMemoConfig(
   patch: Partial<MemoConfig>,
-): Promise<UpdateMemoConfigResult> {
-  const r = await efInvoke<MemoConfig>("admin-web-update-memo-config", patch);
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+): Promise<EfResult<MemoConfig>> {
+  return efResult<MemoConfig>("admin-web-update-memo-config", patch);
 }

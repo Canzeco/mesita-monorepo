@@ -144,12 +144,14 @@
 // and the per-place Scores tab derive from this config and never restate a knob
 // (that is how database.types.ts drifted).
 
+import { RP_BY_STRATEGY, type StrategyId } from "./strategies";
+
 export const ES_MAX = 100;
 
 /** Time resolves to half-hour blocks. */
 export const TIME_BLOCK_H = 0.5;
 
-// ── THE FOUR SUB-SCORES — the model's spine ────────────────────────────
+// ── THE SUBSCORES — the model's spine ──────────────────────────────────
 // The persisted blob keys, the context registry and PIPELINE_CONTEXT are all
 // keyed off these ids, so a Sub-Score can never be renamed on screen without
 // its storage following.
@@ -425,18 +427,15 @@ export type EnginePolicy = {
   /** The DECK this engine composes. Memo's is PRE-MEMO — the retrieval set
    * the concierge consumes before answering; the agent itself stays Memo. */
   deck: "Swipe" | "Map" | "Pre-Memo";
-  /** The pipeline — a fact of the architecture, not a hyperparameter. */
-  policy: string;
-  intent: string;
 };
 
 // Engines don't own formulas — every engine recalls with ES, computes the
 // four Scores per card, and composes its deck from the per-lane counts. What
 // differs per engine is intent-data and its DECK COMPOSITION (DEFAULT_DECKS).
 export const ENGINE_POLICIES: readonly EnginePolicy[] = [
-  { id: "swipe", engine: "Swipe", deck: "Swipe",    policy: "ES recalls top-K → 4 Scores → sub-decks merge", intent: "prebuilt taste embedding" },
-  { id: "map",   engine: "Map",   deck: "Map",      policy: "ES recalls top-K → 4 Scores → sub-decks merge", intent: "taste embedding + viewport" },
-  { id: "memo",  engine: "Memo",  deck: "Pre-Memo", policy: "ES recalls top-K → 4 Scores → sub-decks merge", intent: "synthesized from the question, per query" },
+  { id: "swipe", engine: "Swipe", deck: "Swipe" },
+  { id: "map",   engine: "Map",   deck: "Map" },
+  { id: "memo",  engine: "Memo",  deck: "Pre-Memo" },
 ];
 
 // ── DECK COMPOSITION — per-lane MAXES, not quotas ──────────────────────
@@ -699,7 +698,7 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   gp.refCount       100–100000 int  gp.qualityMid      1–5
 //   gp.qualitySteep   0.1–10          gp.coldStartFloor  0–1
 //   gp.minReviews     0–1000 int
-//   rp.*              0–9
+//   rp.*              0–RP_MAX (0–3)
 //   ic.distanceHalfKm 1–20 · distanceExp 1–3 · waitHalfH 0.5–4 ·
 //   ic.waitExp 1–5 · sessionH 0.5–4 · timeBlockH 0.25–1
 
@@ -709,7 +708,7 @@ export type ScoringSettings = {
   retrieval: { recallTopK: number };
   es: EsParams;
   gp: GpParams;
-  rp: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
+  rp: Record<StrategyId, number>;
   ic: IcParams;
   context: ContextConfig;
 };
@@ -720,10 +719,9 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   retrieval: DEFAULT_RETRIEVAL,
   es: DEFAULT_ES_PARAMS,
   gp: DEFAULT_GP_PARAMS,
-  // Linear so relevance can beat money inside the paid lane; Zero = 0 because
-  // there is nothing to promote (no discount) — the membership buys listing +
-  // tools, generosity buys placement.
-  rp: { zero: 0, conservative: 1, aggressive: 2, dominant: 3 },
+  // The posture ladder itself lives in ./strategies (it is a property of the
+  // postures, not of the scorer) — the default is that ladder, unedited.
+  rp: { ...RP_BY_STRATEGY },
   ic: DEFAULT_IC_PARAMS,
   context: DEFAULT_CONTEXT_CONFIG,
 };
@@ -790,10 +788,10 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       minReviews: Math.round(num(gp.minReviews, d.gp.minReviews, 0, 1000)),
     },
     rp: {
-      zero: num(rp.zero, d.rp.zero, 0, 9),
-      conservative: num(rp.conservative, d.rp.conservative, 0, 9),
-      aggressive: num(rp.aggressive, d.rp.aggressive, 0, 9),
-      dominant: num(rp.dominant, d.rp.dominant, 0, 9),
+      zero: num(rp.zero, d.rp.zero, 0, RP_MAX),
+      conservative: num(rp.conservative, d.rp.conservative, 0, RP_MAX),
+      aggressive: num(rp.aggressive, d.rp.aggressive, 0, RP_MAX),
+      dominant: num(rp.dominant, d.rp.dominant, 0, RP_MAX),
     },
     ic: {
       distanceHalfKm: num(ic.distanceHalfKm, d.ic.distanceHalfKm, 1, 20),

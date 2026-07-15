@@ -1,8 +1,8 @@
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 
-// Shared chrome for the flat (no-sub-tab) admin config sections — Atlas,
-// Scoring, Memo, Sourcing. A page container, a header, and the section body below it.
-// Sections that own sub-tabs (e.g. Enricher) compose their own shell instead.
+// Shared chrome for the flat (no-sub-tab) admin config sections — Atlas and
+// Sourcing. A page container, a header, and the section body below it.
+// Sections that own sub-tabs (Scoring, Enricher) compose ConfigTabsLayout instead.
 export function ConfigPageLayout({
   eyebrow,
   title,

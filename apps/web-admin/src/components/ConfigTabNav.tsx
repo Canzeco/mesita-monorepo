@@ -10,9 +10,9 @@ export type ConfigSubRoute = {
   Icon: LucideIcon;
 };
 
-// Shared tab strip for the config pages (Atlas / Enricher / Memo). One row of
-// underline tabs, one per subroute. Matches the tablist styling used across the
-// admin console.
+// The tab strip rendered by ConfigTabsLayout, for the sections that own
+// sub-tabs (Scoring / Enricher / Manage Multiple). One row of underline tabs,
+// one per subroute. Matches the tablist styling used across the admin console.
 export function ConfigTabNav({
   ariaLabel,
   subroutes,

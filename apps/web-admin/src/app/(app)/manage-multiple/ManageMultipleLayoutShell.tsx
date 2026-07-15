@@ -1,8 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { PageHeader } from "@/components/PageContainer";
-import { ManageMultipleTabs } from "./TabNav";
+import { ConfigTabsLayout } from "@/components/ConfigTabsLayout";
 import { MULTIPLE_SUBROUTES } from "./nav";
 
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
@@ -19,19 +17,13 @@ export function ManageMultipleLayoutShell({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const match = MULTIPLE_SUBROUTES.find(
-    (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
-  );
-  const description =
-    (match && SUBPAGE_DESCRIPTION[match.href]) ??
-    SUBPAGE_DESCRIPTION["/manage-multiple/search"];
-
   return (
-    <>
-      <PageHeader title="Manage Multiple Units" description={description} />
-      <ManageMultipleTabs />
-      <div className="mt-6 sm:mt-8">{children}</div>
-    </>
+    <ConfigTabsLayout
+      title="Manage Multiple Units"
+      subroutes={MULTIPLE_SUBROUTES}
+      descriptions={SUBPAGE_DESCRIPTION}
+    >
+      {children}
+    </ConfigTabsLayout>
   );
 }

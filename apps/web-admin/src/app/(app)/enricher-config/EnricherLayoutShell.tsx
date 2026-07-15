@@ -1,8 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { PageHeader } from "@/components/PageContainer";
-import { ConfigTabNav } from "@/components/ConfigTabNav";
+import { ConfigTabsLayout } from "@/components/ConfigTabsLayout";
 import { ENRICHER_SUBROUTES } from "./nav";
 
 // Enricher Config — two tabs. "Config" tunes pipeline behaviour (the image
@@ -20,19 +18,13 @@ export function EnricherLayoutShell({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const match = ENRICHER_SUBROUTES.find(
-    (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
-  );
-  const description =
-    (match && SUBPAGE_DESCRIPTION[match.href]) ??
-    SUBPAGE_DESCRIPTION["/enricher-config/config"];
-
   return (
-    <>
-      <PageHeader title="Enricher Config" description={description} />
-      <ConfigTabNav ariaLabel="Enricher Config" subroutes={ENRICHER_SUBROUTES} />
-      <div className="mt-6 sm:mt-8">{children}</div>
-    </>
+    <ConfigTabsLayout
+      title="Enricher Config"
+      subroutes={ENRICHER_SUBROUTES}
+      descriptions={SUBPAGE_DESCRIPTION}
+    >
+      {children}
+    </ConfigTabsLayout>
   );
 }

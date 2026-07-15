@@ -107,8 +107,6 @@ export function buildConsumerProfile(c: SampleConsumer | null): ConsumerProfile 
 
 export type Intent = {
   engine: EngineId;
-  /** The rendered prompt. Fixed structure for swipe/map; flexible for memo. */
-  text: string;
   /**
    * The prompt decomposed by context key, so the configurable pipeline can
    * include/exclude each piece (intent.query / .zone / .time / .party).
@@ -172,7 +170,6 @@ export function generateIntent(
     };
     return {
       engine,
-      text: t.text,
       parts,
       lat: a.lat,
       lng: a.lng,
@@ -195,7 +192,6 @@ export function generateIntent(
   };
   return {
     engine,
-    text: [parts.query, parts.zone, parts.time, parts.party].filter(Boolean).join(" · "),
     parts,
     lat: a.lat,
     lng: a.lng,
@@ -281,7 +277,7 @@ export function openWindow(
 // IC, numeric proof only in GP. WHICH fields go in is CONFIG
 // (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
 // `enabled` key set and assembles from exactly that — so a toggle on the
-// Pipeline tab changes the embedding, the cosine, and the ranking. `enabled`
+// Subscores tab changes the embedding, the cosine, and the ranking. `enabled`
 // omitted = all on.
 
 type Enabled = ReadonlySet<string> | null | undefined;
@@ -363,8 +359,6 @@ export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
 // normalize. Same shape as the real thing (document → vector → cosine), so
 // ES IS the cosine of two generated vectors — just from a toy encoder.
 
-export const EMBED_DIMS = 64;
-
 const STOP = new Set([
   "the", "and", "for", "with", "near", "around", "from", "this", "that",
   "una", "unos", "las", "los", "del", "por", "para", "con",
@@ -377,8 +371,10 @@ function tokenize(text: string): string[] {
     .filter((t) => t.length >= 3 && !STOP.has(t));
 }
 
-/** Document → deterministic unit vector (feature hashing, signed slots). */
-export function embedText(text: string, dims = EMBED_DIMS): number[] {
+/** Document → deterministic unit vector (feature hashing, signed slots).
+ * `dims` is REQUIRED — the encoder's dimensionality is a saved knob
+ * (scores.EsParams.embedDims), so a default here would be a second one. */
+export function embedText(text: string, dims: number): number[] {
   const v = new Array<number>(dims).fill(0);
   for (const t of tokenize(text)) {
     const h = hash(t);

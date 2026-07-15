@@ -1,6 +1,6 @@
 "use server";
 
-import { efInvoke } from "@/lib/supabase-ef";
+import { efInvoke, efResult, type EfResult } from "@/lib/supabase-ef";
 
 type VerificationMethod = "ai_call" | "video" | "postcard";
 type VerificationStatus = "pending" | "approved" | "rejected";
@@ -36,14 +36,8 @@ type ListResponse = {
   autoVerifyUpdatedAt: string | null;
 };
 
-type ListResult =
-  | { ok: true; data: ListResponse }
-  | { ok: false; error: string };
-
-export async function listVerifications(): Promise<ListResult> {
-  const r = await efInvoke<ListResponse>("admin-web-list-verifications", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+export async function listVerifications(): Promise<EfResult<ListResponse>> {
+  return efResult<ListResponse>("admin-web-list-verifications", {});
 }
 
 type DecideResult =

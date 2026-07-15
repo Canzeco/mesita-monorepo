@@ -1,6 +1,6 @@
 "use server";
 
-import { efInvoke } from "@/lib/supabase-ef";
+import { efResult, type EfResult } from "@/lib/supabase-ef";
 
 // ─── Settings read ─────────────────────────────────────────────────────────
 
@@ -42,14 +42,8 @@ type SettingsResponse = {
   updatedAt: string | null;
 };
 
-type GetSettingsResult =
-  | { ok: true; data: SettingsResponse }
-  | { ok: false; error: string };
-
-export async function getAtlasSettings(): Promise<GetSettingsResult> {
-  const r = await efInvoke<SettingsResponse>("admin-web-get-settings", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+export async function getAtlasSettings(): Promise<EfResult<SettingsResponse>> {
+  return efResult<SettingsResponse>("admin-web-get-settings", {});
 }
 
 // ─── Enricher pipeline config ──────────────────────────────────────────────
@@ -78,10 +72,6 @@ type AtlasConfigResponse = {
   updatedAt: string | null;
 };
 
-type UpdateAtlasConfigResult =
-  | { ok: true; data: AtlasConfigResponse }
-  | { ok: false; error: string };
-
 // Partial update — pass only the fields you want to change.
 export async function updateAtlasConfig(patch: {
   gatherGoogleImages?: number;
@@ -104,11 +94,6 @@ export async function updateAtlasConfig(patch: {
   discoverFacebookN?: number;
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
-}): Promise<UpdateAtlasConfigResult> {
-  const r = await efInvoke<AtlasConfigResponse>(
-    "admin-web-update-atlas-config",
-    patch,
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+}): Promise<EfResult<AtlasConfigResponse>> {
+  return efResult<AtlasConfigResponse>("admin-web-update-atlas-config", patch);
 }

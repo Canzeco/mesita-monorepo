@@ -5,7 +5,6 @@ import {
   coerceScoringSettings,
   DECK_COUNT_MAX,
   DEFAULT_SCORING_SETTINGS,
-  DEFAULT_IC_PARAMS,
   type ContextConfig,
   type DeckKey,
   type Decks,
@@ -51,7 +50,7 @@ function fromSettings(s: ScoringSettings): {
     esParams: { ...s.es },
     gpParams: { ...s.gp },
     rpVals: { ...s.rp },
-    cfg: { ...DEFAULT_IC_PARAMS, ...s.ic },
+    cfg: { ...s.ic },
     context: { es: [...s.context.es] },
   };
 }
@@ -81,8 +80,6 @@ type ScoringCtx = {
   context: ContextConfig;
   /** Toggle one registry field in ES's context. */
   toggleContext: (key: string) => void;
-  /** Current form as a settings blob. */
-  current: ScoringSettings;
   dirty: boolean;
   saving: boolean;
   saveError: string | null;
@@ -218,7 +215,6 @@ export function ScoringProvider({
         setCfg,
         context,
         toggleContext,
-        current,
         dirty,
         saving,
         saveError,
