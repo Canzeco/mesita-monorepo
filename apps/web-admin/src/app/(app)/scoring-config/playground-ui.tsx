@@ -11,8 +11,8 @@ import type { EngineId } from "@/lib/business/scores";
 import { SAMPLE_MAX } from "@/lib/business/cip";
 import { PanelCard } from "./panel-ui";
 
-// Presentational bits shared by the simulator subpages (Card Sim and Deck
-// Sim). Pure UI — all scoring math stays in @/lib/business.
+// Presentational bits shared by the simulator subpages (Cards and Decks).
+// Pure UI — all scoring math stays in @/lib/business.
 
 export const ENGINE_ICONS: Record<EngineId, LucideIcon> = {
   swipe: GalleryHorizontalEnd,
@@ -32,7 +32,7 @@ export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: str
         <div className="min-w-0">
           <p className="font-semibold">n = 0 — no places to score.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            The Card Sim and Deck Sim draw a random sample of up to {SAMPLE_MAX} places from
+            The Cards and Decks tabs draw a random sample of up to {SAMPLE_MAX} places from
             the catalog, and the catalog came back empty. The model still stands; there is
             simply nothing to run it on.
           </p>
@@ -141,7 +141,7 @@ export function FactChip({
   );
 }
 
-/** One Sub-Score, its own labeled cell — ES · GP · RP · WW read as four boxes. */
+/** One Subscore, its own labeled cell — ES · GP · RP · IC read as four boxes. */
 export function ScoreCell({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint} className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">

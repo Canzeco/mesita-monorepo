@@ -5,14 +5,15 @@
 // — the Pipeline tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v2 blob (scoring v9, MESITA-620) — keys follow the Sub-Score names:
-//   { v: 2, decks, retrieval, es, gp, rp, ww, context }
-//   decks     cards per lane per engine (counts, not shares)
+// v3 blob (scoring v9.1, MESITA-621) — keys follow the Subscore names:
+//   { v: 3, decks, retrieval, es, gp, rp, ic, context }
+//   decks     per-lane MAXES per engine — sub-deck ceilings, not quotas
+//             (the merged deck dedupes and never backfills)
 //   es        Embeddings Similarity params (embedDims)
 //   gp        Google Popularity curve (refCount · qualityMid · qualitySteep ·
 //             coldStartFloor · minReviews)
 //   rp        Rewards Promotions rungs per posture
-//   ww        Where When knobs (the moment; the daypart WHAT term is gone)
+//   ic        Intent Context knobs (where × when; was `ww` in v2)
 //   context   which TEXT fields ES reads (ES is the only configurable one)
 // See web-admin lib/business/scores.ts — the RANGE TABLE there is mirrored
 // VERBATIM here; a value the UI allows but this EF clamps would silently
@@ -49,7 +50,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (!raw || typeof raw !== "object") return { ok: false, error: "config must be an object" };
   const r = raw as Record<string, unknown>;
 
-  // Deck composition — required per engine per lane; ints, 0–20.
+  // Deck composition — per-lane MAXES; required per engine per lane; ints, 0–20.
   const decksIn = r.decks as Record<string, Record<string, unknown>> | undefined;
   if (!decksIn || typeof decksIn !== "object") return { ok: false, error: "config.decks missing" };
   const decks: Record<string, Record<string, number>> = {};
@@ -96,19 +97,19 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     rp[p] = v;
   }
 
-  // WW — the moment's knobs.
-  const wwIn = r.ww as Record<string, unknown> | undefined;
-  const distanceHalfKm = num(wwIn?.distanceHalfKm, 1, 20);
-  const distanceExp = num(wwIn?.distanceExp, 1, 3);
-  const waitHalfH = num(wwIn?.waitHalfH, 0.5, 4);
-  const waitExp = num(wwIn?.waitExp, 1, 5);
-  const sessionH = num(wwIn?.sessionH, 0.5, 4);
-  const timeBlockH = num(wwIn?.timeBlockH, 0.25, 1);
+  // IC — the intent context's knobs.
+  const icIn = r.ic as Record<string, unknown> | undefined;
+  const distanceHalfKm = num(icIn?.distanceHalfKm, 1, 20);
+  const distanceExp = num(icIn?.distanceExp, 1, 3);
+  const waitHalfH = num(icIn?.waitHalfH, 0.5, 4);
+  const waitExp = num(icIn?.waitExp, 1, 5);
+  const sessionH = num(icIn?.sessionH, 0.5, 4);
+  const timeBlockH = num(icIn?.timeBlockH, 0.25, 1);
   if (
     distanceHalfKm == null || distanceExp == null || waitHalfH == null ||
     waitExp == null || sessionH == null || timeBlockH == null
   ) {
-    return { ok: false, error: "ww knobs out of range" };
+    return { ok: false, error: "ic knobs out of range" };
   }
 
   // Context — which TEXT fields ES reads. Validation is STRUCTURAL only
@@ -140,7 +141,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 2,
+      v: 3,
       decks,
       retrieval: { recallTopK },
       es: { embedDims: Math.round(embedDims) },
@@ -152,7 +153,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
         minReviews: Math.round(minReviews),
       },
       rp,
-      ww: {
+      ic: {
         distanceHalfKm,
         distanceExp,
         waitHalfH,

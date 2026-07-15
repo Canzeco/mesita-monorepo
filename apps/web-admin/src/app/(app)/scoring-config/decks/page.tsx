@@ -1,8 +1,8 @@
 import { DeckSimPanel } from "./DeckSimPanel";
 
-// Deck Sim — compose an engine's deck from the four Lanes: counts in,
-// ordered cards out. Sample + saved settings come from the layout's
-// ScoringProvider.
-export default function ScoringDeckSimPage() {
+// Decks — compose an engine's deck through the sub-deck pipeline: per-lane
+// maxes in, sub-decks merged (repeats out, paid copy wins), ordered cards
+// out. Sample + saved settings come from the layout's ScoringProvider.
+export default function ScoringDecksPage() {
   return <DeckSimPanel />;
 }

@@ -1,8 +1,6 @@
-import { CardSimPanel } from "./CardSimPanel";
+import { redirect } from "next/navigation";
 
-// Card Sim — one consumer × intent × place = one CARD with its four Scores;
-// every Sub-Score's internal process on that single card. Sample + saved
-// settings come from the layout's ScoringProvider.
-export default function ScoringCardSimPage() {
-  return <CardSimPanel />;
+// v9.1 (MESITA-621): the Card Sim is the Cards tab. Old links land there.
+export default function ScoringCardRedirect() {
+  redirect("/scoring-config/cards");
 }

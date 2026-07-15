@@ -12,7 +12,7 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import {
-  DEFAULT_WW_PARAMS as CFG,
+  DEFAULT_IC_PARAMS as CFG,
   ES_MAX,
   fitScore,
   gpParts,
@@ -36,15 +36,15 @@ import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 // every one live in @/lib/business/scores (RP in ./strategies), and the
 // global view is Scoring Config. Four Lanes, one Score each:
 //
-//   ON = ES · GP · WW     OF = ES · GP
-//   IN = ES · RP · WW     IF = ES · RP
+//   ON = ES · GP · IC     OF = ES · GP
+//   IN = ES · RP · IC     IF = ES · RP
 //
 // TWO Sub-Scores are real data here: GP (the place's google rating × review
 // count) and RP (its live promo rates). There is no consumer and no query in
-// an admin view, so ES and the moment (WW) are operator controls — that is
-// the nature of the surface, not a gap in it. This page uses the CODE
-// defaults for GP/WW knobs, same as it always has — the saved blob binds the
-// Scoring Config page, not this one.
+// an admin view, so ES and the intent context (IC) are operator controls —
+// that is the nature of the surface, not a gap in it. This page uses the
+// CODE defaults for GP/IC knobs, same as it always has — the saved blob
+// binds the Scoring Config page, not this one.
 // ════════════════════════════════════════════════════════════════════════
 
 /** Deterministic pseudo-vector from the place id — stand-in until real embeddings exist. */
@@ -86,7 +86,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
   const wait = waitScore(opensIn);
   const fit = fitScore(openFor);
   const when = whenScore(opensIn, openFor);
-  const ww = where * when;
+  const ic = where * when;
 
   const vector = useMemo(() => mockVector(place.id, 48), [place.id]);
 
@@ -123,12 +123,12 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
             <LaneCard
               key={lane.id}
               lane={lane}
-              score={laneScore(lane, { es, gp: gp.gp, rp, ww })}
+              score={laneScore(lane, { es, gp: gp.gp, rp, ic })}
               detail={
                 (lane.lane === "organic"
                   ? `ES ${fmt(es, 0)} · GP ${fmt(gp.gp, 2)}`
                   : `ES ${fmt(es, 0)} · RP ${rp}`) +
-                (lane.mode === "now" ? ` · WW ${fmt(ww, 2)}` : "")
+                (lane.mode === "now" ? ` · IC ${fmt(ic, 2)}` : "")
               }
             />
           ))}
@@ -184,9 +184,9 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         {/* The moment */}
         <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
-            <GroupLabel>WW · the moment — where × when · now-mode lanes only</GroupLabel>
+            <GroupLabel>IC · Intent Context — where × when · now-mode lanes only</GroupLabel>
             <p className="text-muted-foreground font-mono text-[11px]">
-              where {fmt(where, 2)} × when {fmt(when, 2)} = {fmt(ww, 2)}
+              where {fmt(where, 2)} × when {fmt(when, 2)} = {fmt(ic, 2)}
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">

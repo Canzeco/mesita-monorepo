@@ -1,17 +1,23 @@
 // Recommendation Scores — the model behind Swipe · Map · Memo (draft).
 //
-// THREE LEVELS. Every name in the model is defined exactly once, here; the
+// FIVE LAYERS. Every name in the model is defined exactly once, here; the
 // Scoring Config page and the per-place Scores tab only render them.
 //
-//   4 LANES       ON · OF · IN · IF     organic|inorganic × now|future
+//   4 SUBSCORES  ES · GP · RP · IC     the factors a Score multiplies
 //      ↓
-//   4 SCORES      one per Lane          what a CARD carries
-//      ↑
-//   4 SUB-SCORES  ES · GP · RP · WW     the factors a Score multiplies
+//   4 SCORES     ON · OF · IN · IF     one per Lane, carried by a CARD
+//      ↓
+//   CARDS        one (consumer, intent, place) with its four Scores
+//      ↓
+//   4 SUB-DECKS  each lane's top-MAX cards, generated independently
+//      ↓
+//   3 DECKS      Swipe · Map · Pre-Memo — the sub-decks merged, repeats out
 //
-// A CARD is one (consumer, intent, place) with its four Scores. A DECK is N
-// typed cards — each engine composes its deck from per-lane COUNTS
-// (DEFAULT_DECKS below); composeDeck is the composition function.
+// Deck composition takes per-lane MAXES, not quotas (DEFAULT_DECKS below):
+// every lane fills its own sub-deck in parallel, then composeDeck merges the
+// four sub-decks into ONE deck removing repeated places — NO backfill, so a
+// deck is usually SMALLER than the sum of its maxes. That shrinkage is the
+// design, not a defect: a card strong in two lanes appears once.
 //
 // ── THE SUB-SCORES ─────────────────────────────────────────────────────
 //   ES  Embeddings Similarity  0–100  cosine(consumer+intent embedding,
@@ -21,16 +27,17 @@
 //                                     google reviews. EARNED popularity.
 //   RP  Rewards Promotions     0–3    the membership ladder; see ./strategies.
 //                                     BOUGHT popularity.
-//   WW  Where When             0–1    where(km) × when(opens_in, open_for).
-//                                     Now-mode lanes only.
+//   IC  Intent Context         0–1    where(km) × when(opens_in, open_for) —
+//                                     how the place sits in the intent's
+//                                     numeric context. Now-mode lanes only.
 //
 // ONE pattern builds every Score — Match × popularity × moment, where the
 // popularity is EARNED in the organic lanes and BOUGHT in the paid ones:
 //
 //   lane                 Score                        max
-//   ON  organic   now    ON = ES × GP × WW            100
+//   ON  organic   now    ON = ES × GP × IC            100
 //   OF  organic   future OF = ES × GP                 100
-//   IN  inorganic now    IN = ES × RP × WW            300
+//   IN  inorganic now    IN = ES × RP × IC            300
 //   IF  inorganic future IF = ES × RP                 300
 //
 // ES reaches 0, and 0 zeroes every Score — "money can't buy irrelevance" is
@@ -40,17 +47,19 @@
 // ES reads TEXT only: an address, hours as written, a question that says
 // "near Providencia tonight". It never receives computed numbers — no
 // distance-km, no hours-until-open, no review counts are written into its
-// context. GP, RP and WW are the NUMERIC Sub-Scores (review count × rating,
+// context. GP, RP and IC are the NUMERIC Subscores (review count × rating,
 // live promo rates, km/hours) — they MULTIPLY ES; they never feed it.
 //
 // ENGINES ARE PIPELINE POLICIES, not formulas. Every engine runs the same
 // ladder — ES recalls the top-K of the catalog, the four Scores are computed
-// per card, and the deck composes from the per-lane counts. What differs per
+// per card, the four sub-decks fill, and the deck merges. What differs per
 // engine is its DECK COMPOSITION (DEFAULT_DECKS) and where INTENT-data comes
 // from: Swipe and Map read the prebuilt taste embedding (Map adds the
-// viewport); Memo synthesizes intent from the question at query time — its
-// retrieval-augmented leg. Place-data is always prebuilt by the Enricher.
-// One place representation, one Match definition, three query policies.
+// viewport); Memo synthesizes intent from the question at query time. Memo's
+// deck is PRE-MEMO — the retrieval set the concierge consumes before it
+// writes an answer (its RAG leg); the agent itself stays Memo. Place-data is
+// always prebuilt by the Enricher. One place representation, one Match
+// definition, three query policies.
 //
 // The lanes never compete: organic results rank by the ON/OF Scores, promoted
 // slots by the IN/IF Scores, and each sorts only against itself, so their
@@ -74,7 +83,7 @@
 //
 // COLD START: reviews < minReviews → GP = max(raw, coldStartFloor) — a new
 // place stays organically ALIVE at reduced weight. Missing google data is
-// cold start too, NEVER neutral-1: WW's unknown→1 is "don't punish missing
+// cold start too, NEVER neutral-1: IC's unknown→1 is "don't punish missing
 // geo", but GP multiplies the organic lanes — neutral would rank a data-less
 // place above a 4.5★ × 2,000-review institution. A well-reviewed bad place
 // (many reviews, low stars) gets no rescue — the quality floor survives.
@@ -107,8 +116,9 @@
 // needs, and it's category-shaped — coffee 0.5 · drink 1 · dinner 1.5 · night
 // out 2.5.
 //
-// WW is where × when, NOTHING ELSE — the daypart WHAT term was deleted in v9
-// (decision 2026-07-15, reversing v7.4): ES alone carries semantic fit.
+// IC is where × when, NOTHING ELSE — the daypart WHAT term was deleted in v9
+// (decision 2026-07-15, reversing v7.4): ES alone carries semantic fit. v9.1
+// renamed the Subscore WW → IC (Intent Context) — same knobs, same factors.
 //
 // ── TIME RESOLUTION ────────────────────────────────────────────────────
 // Time quantizes to 30-minute blocks before anything is computed. Real hours
@@ -135,21 +145,21 @@ export const TIME_BLOCK_H = 0.5;
 // keyed off these ids, so a Sub-Score can never be renamed on screen without
 // its storage following.
 
-export type SubScoreId = "es" | "gp" | "rp" | "ww";
+export type SubScoreId = "es" | "gp" | "rp" | "ic";
 
 /** ES — the one field-configurable Sub-Score (its context is CONFIG). */
 export type ConfigurableSubScoreId = Extract<SubScoreId, "es">;
 
-/** GP · RP · WW — inputs are structural (the numeric fields ARE the
+/** GP · RP · IC — inputs are structural (the numeric fields ARE the
  * function), so these are tuned by knobs, never by field selection. */
 export type FixedSubScoreId = Exclude<SubScoreId, ConfigurableSubScoreId>;
 
 /** RP's ceiling — the top rung of the membership ladder. */
 export const RP_MAX = 3;
 
-// ── WW — the moment's knobs ────────────────────────────────────────────
+// ── IC — the intent context's knobs ────────────────────────────────────
 
-export type WwParams = {
+export type IcParams = {
   /** Distance at which a place keeps half its pull, km. */
   distanceHalfKm: number;
   /** Distance falloff exponent. 1.6 ≈ the empirical human-mobility exponent. */
@@ -164,7 +174,7 @@ export type WwParams = {
   timeBlockH: number;
 };
 
-// WW defaults, argued from what Mesita IS — not from what looked right on a
+// IC defaults, argued from what Mesita IS — not from what looked right on a
 // 5-row catalog:
 //
 //   distanceHalfKm 6 — GDL and MTY are CAR cities. A normal Friday span (San
@@ -184,7 +194,7 @@ export type WwParams = {
 //     -out become per-category L when categories drive it.
 //   distanceExp 1.6 — the empirical human-mobility exponent; a fact more
 //     than a knob.
-export const DEFAULT_WW_PARAMS: WwParams = {
+export const DEFAULT_IC_PARAMS: IcParams = {
   distanceHalfKm: 6,
   distanceExp: 1.6,
   waitHalfH: 1.5,
@@ -276,7 +286,7 @@ export function gpScore(
   return gpParts(reviews, rating, p).gp;
 }
 
-// ── WW — the moment's functions ────────────────────────────────────────
+// ── IC — the intent context's functions ────────────────────────────────
 
 /** Snap hours to the time grid (default 30-min blocks). Everything
  * time-shaped goes through this. */
@@ -294,18 +304,18 @@ function hill(x: number, half: number, exp: number): number {
 }
 
 /** where — distance decay, 0–1. Unknown distance → 1 (don't punish missing geo). */
-export function whereScore(km: number | null, cfg: WwParams = DEFAULT_WW_PARAMS): number {
+export function whereScore(km: number | null, cfg: IcParams = DEFAULT_IC_PARAMS): number {
   if (km == null) return 1;
   return hill(km, cfg.distanceHalfKm, cfg.distanceExp);
 }
 
 /** wait — the cost of arriving `opensInH` hours from now, 0–1. Open now → 1. */
-export function waitScore(opensInH: number, cfg: WwParams = DEFAULT_WW_PARAMS): number {
+export function waitScore(opensInH: number, cfg: IcParams = DEFAULT_IC_PARAMS): number {
   return hill(quantizeH(opensInH, cfg.timeBlockH), cfg.waitHalfH, cfg.waitExp);
 }
 
 /** fit — is there time to complete the visit, 0–1. Caps at 1: enough is enough. */
-export function fitScore(openForH: number, cfg: WwParams = DEFAULT_WW_PARAMS): number {
+export function fitScore(openForH: number, cfg: IcParams = DEFAULT_IC_PARAMS): number {
   if (cfg.sessionH <= 0) return 1;
   return Math.max(0, Math.min(1, quantizeH(openForH, cfg.timeBlockH) / cfg.sessionH));
 }
@@ -314,7 +324,7 @@ export function fitScore(openForH: number, cfg: WwParams = DEFAULT_WW_PARAMS): n
 export function whenScore(
   opensInH: number,
   openForH: number,
-  cfg: WwParams = DEFAULT_WW_PARAMS,
+  cfg: IcParams = DEFAULT_IC_PARAMS,
 ): number {
   return waitScore(opensInH, cfg) * fitScore(openForH, cfg);
 }
@@ -349,10 +359,10 @@ export const LANES: readonly Lane[] = [
 /** DeckKeys in canonical order (on · of · in · if) — blob key order too. */
 export const DECK_KEYS: readonly DeckKey[] = LANES.map((l) => l.short);
 
-/** A lane's Score in the model's shorthand — e.g. "ES·RP·WW". */
+/** A lane's Score in the model's shorthand — e.g. "ES·RP·IC". */
 export function laneFormula(lane: Lane): string {
   const parts: string[] = ["ES", lane.lane === "organic" ? "GP" : "RP"];
-  if (lane.mode === "now") parts.push("WW");
+  if (lane.mode === "now") parts.push("IC");
   return parts.join("·");
 }
 
@@ -363,15 +373,15 @@ export type LaneInputs = {
   gp: number;
   /** 0–RP_MAX — Rewards Promotions (the inorganic lanes' multiplier). */
   rp: number;
-  /** 0–1 — the moment (now-mode lanes only). */
-  ww: number;
+  /** 0–1 — Intent Context (now-mode lanes only). */
+  ic: number;
 };
 
 /** One lane's Score. ES multiplies un-floored, so 0 relevance zeroes it. */
 export function laneScore(lane: Lane, i: LaneInputs): number {
   const es = Math.max(0, Math.min(ES_MAX, i.es));
   const popularity = lane.lane === "organic" ? i.gp : i.rp;
-  const moment = lane.mode === "now" ? i.ww : 1;
+  const moment = lane.mode === "now" ? i.ic : 1;
   return es * popularity * moment;
 }
 
@@ -382,6 +392,9 @@ export type EngineId = "swipe" | "map" | "memo";
 export type EnginePolicy = {
   id: EngineId;
   engine: "Swipe" | "Map" | "Memo";
+  /** The DECK this engine composes. Memo's is PRE-MEMO — the retrieval set
+   * the concierge consumes before answering; the agent itself stays Memo. */
+  deck: "Swipe" | "Map" | "Pre-Memo";
   /** The pipeline — a fact of the architecture, not a hyperparameter. */
   policy: string;
   intent: string;
@@ -391,24 +404,25 @@ export type EnginePolicy = {
 // four Scores per card, and composes its deck from the per-lane counts. What
 // differs per engine is intent-data and its DECK COMPOSITION (DEFAULT_DECKS).
 export const ENGINE_POLICIES: readonly EnginePolicy[] = [
-  { id: "swipe", engine: "Swipe", policy: "ES recalls top-K → 4 Scores → deck composes", intent: "prebuilt taste embedding" },
-  { id: "map",   engine: "Map",   policy: "ES recalls top-K → 4 Scores → deck composes", intent: "taste embedding + viewport" },
-  { id: "memo",  engine: "Memo",  policy: "ES recalls top-K → 4 Scores → deck composes", intent: "synthesized from the question, per query" },
+  { id: "swipe", engine: "Swipe", deck: "Swipe",    policy: "ES recalls top-K → 4 Scores → sub-decks merge", intent: "prebuilt taste embedding" },
+  { id: "map",   engine: "Map",   deck: "Map",      policy: "ES recalls top-K → 4 Scores → sub-decks merge", intent: "taste embedding + viewport" },
+  { id: "memo",  engine: "Memo",  deck: "Pre-Memo", policy: "ES recalls top-K → 4 Scores → sub-decks merge", intent: "synthesized from the question, per query" },
 ];
 
-// ── DECK COMPOSITION — counts, not shares ──────────────────────────────
+// ── DECK COMPOSITION — per-lane MAXES, not quotas ──────────────────────
 
-/** Cards per lane type in one engine's deck. */
-export type DeckCounts = Record<DeckKey, number>;
+/** MAX cards each lane's sub-deck may contribute to one engine's deck. */
+export type DeckMaxes = Record<DeckKey, number>;
 
-export type Decks = Record<EngineId, DeckCounts>;
+export type Decks = Record<EngineId, DeckMaxes>;
 
-/** Per-lane count ceiling — the range table, mirrored in the update EF. */
+/** Ceiling on a per-lane max — the range table, mirrored in the update EF. */
 export const DECK_COUNT_MAX = 20;
 
 /**
- * Deck composition defaults — absolute CARDS per lane, replacing the old
- * percent mix. Each row is still the product of the same two beliefs:
+ * Deck composition defaults — per-lane MAXES. A lane's sub-deck takes up to
+ * this many cards; the merged deck is usually SMALLER (dedupe, no backfill).
+ * Each row is still the product of the same two beliefs:
  *
  * PAID SHARE — by trust-sensitivity of the surface. "Visibility follows
  * generosity" must materialise as real slots, but "money can't buy
@@ -433,89 +447,109 @@ export const DEFAULT_DECKS: Decks = {
   memo:  { on: 4, of: 3, in: 1, if: 0 },
 };
 
-// ── composeDeck — the composition function ─────────────────────────────
+// ── composeDeck — sub-decks, then merge ────────────────────────────────
 // Lanes never compete on score, so cross-lane deck order is COMPOSITION:
 //
-//   FILL (claiming) — paid lanes claim first, in → if → on → of: paid slots
-//   are the scarce commitment, and organic has the depth to fill around
-//   them. Per lane: rank by that lane's Score desc (ties by id, so the plan
-//   is deterministic), drop Score ≤ 0, skip already-claimed places, take up
-//   to the requested count. Consequence, on purpose: a place strong in both
-//   IN and ON is claimed by the PAID lane — that is "visibility follows
-//   generosity" materialising, not a dedupe bug.
+//   SUB-DECKS (independent, in parallel when live) — each lane ranks the
+//   whole pool by its own Score (ties by id, so the plan is deterministic),
+//   drops Score ≤ 0, and takes up to its MAX. No cross-lane dedupe here —
+//   the same place may sit in several sub-decks.
+//
+//   MERGE (dedupe, NO backfill) — the four sub-decks merge into ONE deck,
+//   repeated places removed. A duplicated card keeps its PAID copy (merge
+//   order in → if → on → of) — "visibility follows generosity" carried into
+//   the merge. Nothing backfills a merged-away card, so the deck is usually
+//   SMALLER than the sum of the maxes: maxes are ceilings, not quotas.
 //
 //   ORDER (presentation) — organic stream = ON cards by ON Score, then OF by
 //   OF Score; paid card k (1-based) inserts after organic card ⌈k·G/(P+1)⌉.
 //   Slot 1 is always organic and no two paid cards sit adjacent while
 //   P ≤ G; a paid surplus appends at the tail and flags degradedSpacing
 //   instead of silently reordering.
-//
-//   SHORTFALL — a lane that can't fill stays SHORT, never backfilled. The
-//   fill records carry the two honest reasons apart: not enough places score
-//   > 0 in that lane, vs eligible places already claimed by earlier lanes.
 
 /** One place's four Scores, keyed by DeckKey. */
 export type DeckCandidate = { id: string; scores: Record<DeckKey, number> };
 
-export type LaneFill = {
-  requested: number;
-  taken: number;
-  /** Candidates with Score > 0 in this lane, before dedupe. */
+export type SubDeckFill = {
+  /** The lane's configured ceiling. */
+  max: number;
+  /** Candidates with Score > 0 in this lane (pool-wide). */
   eligible: number;
-  /** Eligible candidates this lane lost to earlier (paid-first) claims. */
-  claimedByEarlier: number;
+  /** min(eligible, max) — the sub-deck as generated, before the merge. */
+  subDeck: number;
+  /** Cards this lane actually placed in the merged deck. */
+  contributed: number;
+  /** Sub-deck cards dropped at merge — same place kept by an earlier lane. */
+  mergedAway: number;
 };
 
 export type DeckSlot = {
   id: string;
-  /** The lane that CLAIMED this card — its type badge. */
+  /** The lane whose sub-deck this card belongs to — its type badge. */
   laneKey: DeckKey;
-  /** The claiming lane's Score for this place. */
+  /** That lane's Score for this place. */
   score: number;
   paid: boolean;
 };
 
 export type DeckPlan = {
+  /** The four sub-decks AS GENERATED — including cards later merged away. */
+  subDecks: Record<DeckKey, DeckSlot[]>;
+  /** The merged, ordered deck. */
   slots: DeckSlot[];
-  fills: Record<DeckKey, LaneFill>;
+  fills: Record<DeckKey, SubDeckFill>;
   /** True when the paid cards couldn't be spaced (P > G or no organics). */
   degradedSpacing: boolean;
 };
 
-const FILL_ORDER: readonly DeckKey[] = ["in", "if", "on", "of"];
+/** Merge priority — a duplicated card keeps its PAID copy. */
+const MERGE_ORDER: readonly DeckKey[] = ["in", "if", "on", "of"];
 
 export function composeDeck(
   candidates: readonly DeckCandidate[],
-  counts: DeckCounts,
+  maxes: DeckMaxes,
 ): DeckPlan {
-  const claimed = new Set<string>();
-  const byLane = { on: [], of: [], in: [], if: [] } as Record<DeckKey, DeckSlot[]>;
-  const fills = {} as Record<DeckKey, LaneFill>;
-
-  for (const key of FILL_ORDER) {
-    const requested = Math.max(0, Math.round(counts[key] ?? 0));
-    const paid = key === "in" || key === "if";
+  // 1 · Sub-decks — each lane independently takes its top-max.
+  const subDecks = {} as Record<DeckKey, DeckSlot[]>;
+  const fills = {} as Record<DeckKey, SubDeckFill>;
+  for (const lane of LANES) {
+    const key = lane.short;
+    const max = Math.max(0, Math.round(maxes[key] ?? 0));
+    const paid = lane.lane === "inorganic";
     const ranked = candidates
       .filter((c) => (c.scores[key] ?? 0) > 0)
       .slice()
       .sort((a, b) => b.scores[key] - a.scores[key] || (a.id < b.id ? -1 : 1));
-    const open = ranked.filter((c) => !claimed.has(c.id));
-    const take = open.slice(0, requested);
-    for (const c of take) claimed.add(c.id);
-    byLane[key] = take.map((c) => ({ id: c.id, laneKey: key, score: c.scores[key], paid }));
+    subDecks[key] = ranked
+      .slice(0, max)
+      .map((c) => ({ id: c.id, laneKey: key, score: c.scores[key], paid }));
     fills[key] = {
-      requested,
-      taken: take.length,
+      max,
       eligible: ranked.length,
-      // Of the shortfall, how much did earlier lanes eat? Capped by
-      // `requested` so a deep bench past the quota doesn't inflate it.
-      claimedByEarlier:
-        Math.min(ranked.length, requested) - Math.min(open.length, requested),
+      subDeck: Math.min(ranked.length, max),
+      contributed: 0,
+      mergedAway: 0,
     };
   }
 
-  const organic = [...byLane.on, ...byLane.of];
-  const paidCards = [...byLane.in, ...byLane.if];
+  // 2 · Merge — dedupe by place, paid copy wins, NO backfill.
+  const seen = new Set<string>();
+  const kept = { on: [], of: [], in: [], if: [] } as Record<DeckKey, DeckSlot[]>;
+  for (const key of MERGE_ORDER) {
+    for (const slot of subDecks[key]) {
+      if (seen.has(slot.id)) {
+        fills[key].mergedAway++;
+        continue;
+      }
+      seen.add(slot.id);
+      kept[key].push(slot);
+      fills[key].contributed++;
+    }
+  }
+
+  // 3 · Order — paid cards spaced through the organic stream.
+  const organic = [...kept.on, ...kept.of];
+  const paidCards = [...kept.in, ...kept.if];
   const G = organic.length;
   const P = paidCards.length;
 
@@ -534,7 +568,7 @@ export function composeDeck(
     while (pi < P) slots.push(paidCards[pi++]);
   }
 
-  return { slots, fills, degradedSpacing: P > 0 && (G === 0 || P > G) };
+  return { subDecks, slots, fills, degradedSpacing: P > 0 && (G === 0 || P > G) };
 }
 
 /**
@@ -557,7 +591,7 @@ export const DEFAULT_RETRIEVAL = {
 // actually receives is CONFIG (ContextConfig below, persisted in the blob):
 // the admin toggles fields and the playground assembles its documents from
 // exactly the enabled set — so a toggle visibly changes the embedding, the
-// cosine, and the ranking. GP, RP and WW are the FixedSubScoreIds — not
+// cosine, and the ranking. GP, RP and IC are the FixedSubScoreIds — not
 // field-configurable; their behavior knobs live above.
 
 export type ContextSide = "consumer" | "intent" | "place";
@@ -595,7 +629,7 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   { key: "place.tags",        side: "place",   label: "tags",                        status: "live" },
   { key: "place.description", side: "place",   label: "description",                 status: "live" },
   { key: "place.rating",      side: "place",   label: "google rating + review count", status: "live", note: "proof is GP's job now (numeric) — toggling this ALSO embeds it as text" },
-  { key: "place.hours_text",  side: "place",   label: "hours (as text)",             status: "live", note: "text only — numeric hours live in WW" },
+  { key: "place.hours_text",  side: "place",   label: "hours (as text)",             status: "live", note: "text only — numeric hours live in IC" },
   { key: "place.reviews",     side: "place",   label: "review snippets",             status: "planned" },
   { key: "place.price",       side: "place",   label: "price level",                 status: "planned" },
 ];
@@ -620,11 +654,11 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 };
 
 // ── Persisted settings (app_settings.scoring_config) ────────────────────
-// The Pipeline tab saves ONE versioned blob, keyed by the names above: the
-// deck composition, ES recall + encoder params, and the three fixed
-// Sub-Scores' knobs. NULL in the DB means "following code defaults" — so
-// default improvements propagate until someone saves an override.
-// Reset-to-defaults loads these values into the form; Save writes the blob.
+// The Subscores tab saves ONE versioned blob, keyed by the names above: the
+// deck maxes, ES recall + encoder params, and the three fixed Subscores'
+// knobs. NULL in the DB means "following code defaults" — so default
+// improvements propagate until someone saves an override. Reset-to-defaults
+// loads these values into the form; Save writes the blob.
 //
 // RANGE TABLE (mirrored VERBATIM in admin-web-update-scoring-config):
 //   decks.*.*         0–20 int        retrieval.recallTopK  10–200
@@ -633,22 +667,22 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   gp.qualitySteep   0.1–10          gp.coldStartFloor  0–1
 //   gp.minReviews     0–1000 int
 //   rp.*              0–9
-//   ww.distanceHalfKm 1–20 · distanceExp 1–3 · waitHalfH 0.5–4 ·
-//   ww.waitExp 1–5 · sessionH 0.5–4 · timeBlockH 0.25–1
+//   ic.distanceHalfKm 1–20 · distanceExp 1–3 · waitHalfH 0.5–4 ·
+//   ic.waitExp 1–5 · sessionH 0.5–4 · timeBlockH 0.25–1
 
 export type ScoringSettings = {
-  v: 2;
+  v: 3;
   decks: Decks;
   retrieval: { recallTopK: number };
   es: EsParams;
   gp: GpParams;
   rp: Record<"zero" | "conservative" | "aggressive" | "dominant", number>;
-  ww: WwParams;
+  ic: IcParams;
   context: ContextConfig;
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 2,
+  v: 3,
   decks: DEFAULT_DECKS,
   retrieval: DEFAULT_RETRIEVAL,
   es: DEFAULT_ES_PARAMS,
@@ -657,7 +691,7 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   // there is nothing to promote (no discount) — the membership buys listing +
   // tools, generosity buys placement.
   rp: { zero: 0, conservative: 1, aggressive: 2, dominant: 3 },
-  ww: DEFAULT_WW_PARAMS,
+  ic: DEFAULT_IC_PARAMS,
   context: DEFAULT_CONTEXT_CONFIG,
 };
 
@@ -703,11 +737,11 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const es = (r.es ?? {}) as Record<string, unknown>;
   const gp = (r.gp ?? {}) as Record<string, unknown>;
   const rp = (r.rp ?? {}) as Record<string, unknown>;
-  const ww = (r.ww ?? {}) as Record<string, unknown>;
+  const ic = (r.ic ?? {}) as Record<string, unknown>;
   const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
-    v: 2,
+    v: 3,
     decks,
     retrieval: {
       recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
@@ -728,13 +762,13 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       aggressive: num(rp.aggressive, d.rp.aggressive, 0, 9),
       dominant: num(rp.dominant, d.rp.dominant, 0, 9),
     },
-    ww: {
-      distanceHalfKm: num(ww.distanceHalfKm, d.ww.distanceHalfKm, 1, 20),
-      distanceExp: num(ww.distanceExp, d.ww.distanceExp, 1, 3),
-      waitHalfH: num(ww.waitHalfH, d.ww.waitHalfH, 0.5, 4),
-      waitExp: num(ww.waitExp, d.ww.waitExp, 1, 5),
-      sessionH: num(ww.sessionH, d.ww.sessionH, 0.5, 4),
-      timeBlockH: num(ww.timeBlockH, d.ww.timeBlockH, 0.25, 1),
+    ic: {
+      distanceHalfKm: num(ic.distanceHalfKm, d.ic.distanceHalfKm, 1, 20),
+      distanceExp: num(ic.distanceExp, d.ic.distanceExp, 1, 3),
+      waitHalfH: num(ic.waitHalfH, d.ic.waitHalfH, 0.5, 4),
+      waitExp: num(ic.waitExp, d.ic.waitExp, 1, 5),
+      sessionH: num(ic.sessionH, d.ic.sessionH, 0.5, 4),
+      timeBlockH: num(ic.timeBlockH, d.ic.timeBlockH, 0.25, 1),
     },
     context: {
       es: coerceContextKeys(ctx.es, d.context.es),
@@ -746,7 +780,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
 // ES's contract is CONFIG (CONTEXT_FIELDS + ContextConfig above — the admin
 // toggles what it reads and the playground honors it). The FixedSubScoreIds
 // keep fixed contracts: their inputs are structural — GP reads only the
-// google aggregates, RP only the live rates, WW only geo + open windows.
+// google aggregates, RP only the live rates, IC only geo + open windows.
 // Tuned by the knobs, not by field selection.
 
 export type ContextField = {
@@ -779,7 +813,7 @@ export const PIPELINE_CONTEXT: Record<FixedSubScoreId, SubScoreContext> = {
       { field: `→ posture → rung 0–${RP_MAX}`, status: "live" },
     ],
   },
-  ww: {
+  ic: {
     consumer: [{ field: "— (location arrives via intent)", status: "live" }],
     intent: [
       { field: "location lat/lng (NUMERIC)", status: "live" },

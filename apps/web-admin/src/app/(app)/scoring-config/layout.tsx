@@ -4,9 +4,9 @@ import { getScoringSettings } from "./settings-actions";
 import { ScoringLayoutShell } from "./ScoringLayoutShell";
 import { ScoringProvider } from "./ScoringProvider";
 
-// Scoring Config — tabbed (Pipeline · Card Sim · Deck Sim · Memo). The layout
+// Scoring Config — tabbed (Subscores · Cards · Decks · Memo). The layout
 // fetches the DB sample ONCE and mounts the shared knob provider, so knobs set
-// on Pipeline drive the Card Sim + Deck Sim live and survive tab switches (the
+// on Subscores drive the Cards + Decks tabs live and survive tab switches (the
 // layout persists across child navigation). Resample = router.refresh() → this
 // re-fetches; knob state is untouched because the provider isn't remounted.
 export const dynamic = "force-dynamic";

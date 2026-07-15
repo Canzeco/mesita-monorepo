@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  DECK_COUNT_MAX,
-  ENGINE_POLICIES,
   ES_MAX,
   gpParts,
   laneFormula,
@@ -12,7 +10,7 @@ import {
   fitScore,
   waitScore,
   whereScore,
-  type WwParams,
+  type IcParams,
 } from "@/lib/business/scores";
 import { STRATEGIES } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
@@ -27,23 +25,21 @@ import {
   SubHead,
 } from "../panel-ui";
 
-// Scoring Pipeline — divide et impera: ONE BOX PER SUB-SCORE, each with its
-// own knobs AND its data-access contract (which consumer / intent / place
-// fields it reads — the PIPELINE_CONTEXT spec in @/lib/business/scores).
+// Subscores — divide et impera: ONE BOX PER SUBSCORE, each with its own
+// knobs AND its data-access contract (which consumer / intent / place fields
+// it reads — the PIPELINE_CONTEXT spec in @/lib/business/scores).
 //
-//   Deck composition  cards per lane per engine — counts, not shares
-//   ES                Embeddings Similarity — documents in, cosine out
-//   GP                Google Popularity — smooth volume × quality
-//   RP                Rewards Promotions — posture from the live rates
-//   WW                the moment: WHERE · WHEN
+//   ES  Embeddings Similarity — documents in, cosine out (context = CONFIG)
+//   GP  Google Popularity — smooth volume × quality
+//   RP  Rewards Promotions — posture from the live rates
+//   IC  Intent Context — where × when, the intent's numeric context
 //
-// Values set here drive the Card Sim and Deck Sim live (shared provider) and
+// Deck maxes live on the Decks tab (deck-layer config, not Subscore params).
+// Values set here drive the Cards and Decks tabs live (shared provider) and
 // persist to app_settings.scoring_config via the save bar at the bottom.
 
-export function HyperparamsPanel() {
+export function SubscoresPanel() {
   const {
-    decks,
-    setDeckCount,
     retrieval,
     setRetrieval,
     esParams,
@@ -67,16 +63,8 @@ export function HyperparamsPanel() {
 
   const esSet = new Set(context.es);
 
-  const setWw = <K extends keyof WwParams>(k: K, v: number) =>
+  const setIc = <K extends keyof IcParams>(k: K, v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
-
-  const deckSize = (e: (typeof ENGINE_POLICIES)[number]["id"]) =>
-    LANES.reduce((s, l) => s + (decks[e][l.short] ?? 0), 0);
-  const paidShare = (e: (typeof ENGINE_POLICIES)[number]["id"]) => {
-    const total = deckSize(e);
-    if (total === 0) return 0;
-    return Math.round(((decks[e].in + decks[e].if) / total) * 100);
-  };
 
   // GP's quality curve at the CURRENT knobs — every hint recomputes live.
   const quality = (stars: number) =>
@@ -95,90 +83,10 @@ export function HyperparamsPanel() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      {/* ══ Deck composition ═════════════════════════════════════════ */}
-      <PanelCard
-        title="Deck composition"
-        subtitle="Cards per Lane per engine — absolute COUNTS, not shares. Each Lane ranks only against itself; the deck interleaves the counts (paid cards spaced through the organic stream). Paid share is capped by trust-sensitivity; now share follows each surface's temporal intent."
-        pill="Draft — drives nothing yet"
-      >
-        <div className="border-border/60 mt-4 overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[680px] border-collapse">
-            <thead>
-              <tr>
-                <th className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-left text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  Engine
-                </th>
-                {LANES.map((l) => (
-                  <th
-                    key={l.id}
-                    className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-right text-[10px] font-semibold tracking-[0.1em] uppercase"
-                  >
-                    {LANE_SHORT[l.id]}
-                  </th>
-                ))}
-                <th className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-right text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  Deck
-                </th>
-                <th className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-right text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  Paid
-                </th>
-                <th className="text-muted-foreground border-border/60 border-b px-3 pt-3 pb-2 text-left text-[10px] font-semibold tracking-[0.1em] uppercase">
-                  Pipeline · not a knob
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {ENGINE_POLICIES.map((e) => {
-                const total = deckSize(e.id);
-                return (
-                  <tr key={e.id} className="border-border/60 border-b last:border-0">
-                    <td className="px-3 py-2.5 text-[13px] font-semibold">{e.engine}</td>
-                    {LANES.map((l) => (
-                      <td key={l.id} className="px-3 py-2.5 text-right whitespace-nowrap">
-                        <input
-                          type="number"
-                          min={0}
-                          max={DECK_COUNT_MAX}
-                          step={1}
-                          value={decks[e.id][l.short]}
-                          onChange={(ev) => setDeckCount(e.id, l.short, Number(ev.target.value))}
-                          aria-label={`${e.engine} ${LANE_SHORT[l.id]} cards (${l.lane} ${l.mode})`}
-                          className="border-border/70 bg-card w-14 rounded-lg border px-1.5 py-1 text-right font-mono text-[12px] tabular-nums"
-                        />
-                      </td>
-                    ))}
-                    <td className="px-3 py-2.5 text-right font-mono text-[12px] font-semibold tabular-nums">
-                      {total}
-                    </td>
-                    <td className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] tabular-nums">
-                      {paidShare(e.id)}%
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <span className="text-muted-foreground font-mono text-[11px]">{e.policy}</span>
-                      <span className="text-muted-foreground/70 ml-2 text-[10px]">intent: {e.intent}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {ENGINE_POLICIES.some((e) => deckSize(e.id) > retrieval.recallTopK) ? (
-          <p className="mt-1.5 text-[11px] leading-snug font-medium text-amber-700">
-            A deck asks for more cards than ES recall returns (top-K {retrieval.recallTopK}) — that
-            composition can never materialize in production.
-          </p>
-        ) : null}
-        <p className="text-muted-foreground mt-1.5 text-[11px] leading-snug">
-          Lanes — ON organic·now · OF organic·future · IN inorganic·now · IF inorganic·future. Each
-          Lane produces one Score per card; counts are CARDS, not shares.
-        </p>
-      </PanelCard>
-
       {/* ══ ES ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="ES Sub-Score · Embeddings Similarity"
-        subtitle="cosine(consumer+intent embedding, place embedding) — one tier, whole catalog; there is no judge. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Card Sim re-embeds and re-ranks from exactly this set."
+        title="ES Subscore · Embeddings Similarity"
+        subtitle="cosine(consumer+intent embedding, place embedding) — one tier, whole catalog; there is no judge. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Cards tab re-embeds and re-ranks from exactly this set."
         pill={`${context.es.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
@@ -209,7 +117,7 @@ export function HyperparamsPanel() {
 
       {/* ══ GP ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="GP Sub-Score · Google Popularity"
+        title="GP Subscore · Google Popularity"
         subtitle="Smooth volume × quality of the place's google reviews — EARNED popularity, the organic lanes' multiplier. Literal reviews × rating was rejected (1★-farmable, rating-decorative) and so was a hard hinge at 3★ (cliff); this is smooth everywhere. The cold-start floor keeps unreviewed places organically alive."
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -290,7 +198,7 @@ export function HyperparamsPanel() {
 
       {/* ══ RP ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="RP Sub-Score · Rewards Promotions"
+        title="RP Subscore · Rewards Promotions"
         subtitle="Posture from the place's live promo rates → a rung — BOUGHT popularity, the paid lanes' multiplier. Linear so relevance can beat money inside the paid lane; 0 = not in the paid lane (nothing to promote). Rates never reach the consumer blended-down — RP reads them server-side only."
       >
         <div className="mt-4 grid max-w-md grid-cols-4 gap-2">
@@ -318,10 +226,10 @@ export function HyperparamsPanel() {
         <ContextCols ctx={PIPELINE_CONTEXT.rp} />
       </PanelCard>
 
-      {/* ══ WW ═══════════════════════════════════════════════════════ */}
+      {/* ══ IC ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="WW Sub-Score · the moment — where · when"
-        subtitle="Distance decay × open-window — the numeric moment. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks. (The daypart WHAT term was deleted in v9 — ES alone carries semantic fit.)"
+        title="IC Subscore · Intent Context — where · when"
+        subtitle="How the place sits in the intent's numeric context: distance decay × open-window. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks. (The daypart WHAT term was deleted in v9 — ES alone carries semantic fit.)"
       >
         <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-2">
           <div>
@@ -334,7 +242,7 @@ export function HyperparamsPanel() {
                 max={20}
                 step={0.5}
                 v={cfg.distanceHalfKm}
-                onChange={(v) => setWw("distanceHalfKm", v)}
+                onChange={(v) => setIc("distanceHalfKm", v)}
                 hint={`20 km lands at ${whereScore(20, cfg).toFixed(2)}`}
               />
               <Slider
@@ -344,7 +252,7 @@ export function HyperparamsPanel() {
                 max={3}
                 step={0.1}
                 v={cfg.distanceExp}
-                onChange={(v) => setWw("distanceExp", v)}
+                onChange={(v) => setIc("distanceExp", v)}
                 hint="1.6 ≈ the empirical human-mobility exponent"
               />
             </div>
@@ -359,7 +267,7 @@ export function HyperparamsPanel() {
                 max={4}
                 step={0.25}
                 v={cfg.waitHalfH}
-                onChange={(v) => setWw("waitHalfH", v)}
+                onChange={(v) => setIc("waitHalfH", v)}
                 hint={`a 2 h wait lands at ${waitScore(2, cfg).toFixed(2)}`}
               />
               <Slider
@@ -369,7 +277,7 @@ export function HyperparamsPanel() {
                 max={5}
                 step={0.25}
                 v={cfg.waitExp}
-                onChange={(v) => setWw("waitExp", v)}
+                onChange={(v) => setIc("waitExp", v)}
                 hint={
                   cfg.waitExp <= 1.25
                     ? "no plateau — every block costs"
@@ -383,7 +291,7 @@ export function HyperparamsPanel() {
                 max={4}
                 step={0.25}
                 v={cfg.sessionH}
-                onChange={(v) => setWw("sessionH", v)}
+                onChange={(v) => setIc("sessionH", v)}
                 hint={`30 min left → fit ${fitScore(0.5, cfg).toFixed(2)}`}
               />
               <Slider
@@ -393,19 +301,19 @@ export function HyperparamsPanel() {
                 max={1}
                 step={0.25}
                 v={cfg.timeBlockH}
-                onChange={(v) => setWw("timeBlockH", v)}
+                onChange={(v) => setIc("timeBlockH", v)}
                 hint="hours quantize to this block before wait/fit"
               />
             </div>
           </div>
         </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.ww} />
+        <ContextCols ctx={PIPELINE_CONTEXT.ic} />
       </PanelCard>
 
       {/* ══ Persistence ══════════════════════════════════════════════ */}
       <PanelCard
         title="Saved config"
-        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. The Card Sim and Deck Sim follow whatever the form holds, saved or not."
+        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. The Cards and Decks tabs follow whatever the form holds, saved or not — Cards is the playground that walks every Subscore's internals."
       >
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -462,7 +370,7 @@ export function HyperparamsPanel() {
           </p>
           <p>
             ES = embeddings cosine · 0–{ES_MAX} · GP = volume × quality · 0–1 · RP = rates → posture
-            → rung · 0–{RP_MAX} · WW = where × when · 0–1
+            → rung · 0–{RP_MAX} · IC = where × when · 0–1
           </p>
           <p>
             GP = log10(1+n)/log10(1+{gpParams.refCount.toLocaleString("en-US")}) ×
@@ -470,11 +378,11 @@ export function HyperparamsPanel() {
             floor {gpParams.coldStartFloor.toFixed(2)} under {gpParams.minReviews} reviews
           </p>
           <p>
-            WW: where = 1/(1+(km/d₀)^{cfg.distanceExp.toFixed(1)}) · wait = 1/(1+(h/a½)^k) · fit =
+            IC: where = 1/(1+(km/d₀)^{cfg.distanceExp.toFixed(1)}) · wait = 1/(1+(h/a½)^k) · fit =
             min(1, h/L) · {Math.round(cfg.timeBlockH * 60)}-min blocks
           </p>
           <p>
-            ES reads TEXT only — GP · RP · WW are the numeric Sub-Scores, and they multiply ES,
+            ES reads TEXT only — GP · RP · IC are the numeric Subscores, and they multiply ES,
             never feed it
           </p>
         </div>

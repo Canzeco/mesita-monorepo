@@ -2,7 +2,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 import { SAMPLE_MAX } from "@/lib/business/cip";
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 
-// Scoring sample for the Card Sim + Deck Sim — REAL consumers and REAL places via the
+// Scoring sample for the Cards + Decks tabs — REAL consumers and REAL places via the
 // dedicated `admin-web-get-scoring-sample` EF (random server-side sample;
 // consumer taste from actual saves/visits; place rates joined from projects).
 // Clients never touch the DB.

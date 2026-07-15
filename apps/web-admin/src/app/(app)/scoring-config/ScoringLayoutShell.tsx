@@ -5,20 +5,21 @@ import { PageHeader } from "@/components/PageContainer";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { SCORING_SUBROUTES } from "./nav";
 
-// Scoring Config — four tabs. Pipeline = the model's knobs, one box per
-// Sub-Score; Card Sim = every Sub-Score's internal process on ONE consumer ×
-// intent × place (= one CARD); Deck Sim = compose an engine's deck from the
-// four lanes; Memo = the concierge's own config (persona/model/retrieval),
-// folded in because Memo is one of the three scoring engines.
+// Scoring Config — four tabs mirroring the model's layers (subscores →
+// scores → cards → sub-decks → decks). Subscores = every Subscore's knobs +
+// data contract; Cards = every Subscore's internal process on ONE consumer ×
+// intent × place (= one CARD); Decks = sub-decks merged into an engine's
+// deck; Memo = the concierge's own config (persona/model/retrieval), folded
+// in because the Pre-Memo deck feeds it.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
-  "/scoring-config/params":
-    "The scoring pipeline, one box per Sub-Score — deck composition, ES (Embeddings Similarity), GP (Google Popularity), RP (Rewards Promotions), WW (where · when) — each with its knobs and its data-access contract.",
-  "/scoring-config/card":
-    "One consumer × intent × place = one CARD with four Scores. Every Sub-Score's internal process — documents, vectors, the popularity curve, the moment's factors — on exactly that card.",
+  "/scoring-config/subscores":
+    "One box per Subscore — ES (Embeddings Similarity), GP (Google Popularity), RP (Rewards Promotions), IC (Intent Context) — each with its knobs and its data-access contract: exactly what data computes it.",
+  "/scoring-config/cards":
+    "One consumer × intent × place = one CARD with four Scores. Every Subscore's internal process — documents, vectors, the popularity curve, the intent context's factors — on exactly that card.",
   "/scoring-config/decks":
-    "Compose an engine's deck from the four Lanes — counts in, ordered cards out. Real consumers + real places + synthetic intents. Per-place scores live in Manage Single Unit → Scores.",
+    "Swipe · Map · Pre-Memo. Per-lane maxes in → four sub-decks → merged deck, repeats removed (nothing backfills). Per-place scores live in Manage Single Unit → Scores.",
   "/scoring-config/memo":
-    "Memo — Mesita's consumer AI concierge (consumer-web-ask-memo). Tune its persona, model, and how it retrieves places.",
+    "Memo — Mesita's consumer AI concierge (consumer-web-ask-memo). Tune its persona, model, and how it retrieves places. Its retrieval set is the Pre-Memo deck.",
 };
 
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {
@@ -27,7 +28,7 @@ export function ScoringLayoutShell({ children }: { children: React.ReactNode }) 
     (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
   );
   const description =
-    (match && SUBPAGE_DESCRIPTION[match.href]) ?? SUBPAGE_DESCRIPTION["/scoring-config/params"];
+    (match && SUBPAGE_DESCRIPTION[match.href]) ?? SUBPAGE_DESCRIPTION["/scoring-config/subscores"];
 
   return (
     <>

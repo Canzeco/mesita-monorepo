@@ -5,7 +5,7 @@ import {
   coerceScoringSettings,
   DECK_COUNT_MAX,
   DEFAULT_SCORING_SETTINGS,
-  DEFAULT_WW_PARAMS,
+  DEFAULT_IC_PARAMS,
   type ContextConfig,
   type DeckKey,
   type Decks,
@@ -13,16 +13,15 @@ import {
   type EsParams,
   type GpParams,
   type ScoringSettings,
-  type WwParams,
+  type IcParams,
 } from "@/lib/business/scores";
 import { type StrategyId } from "@/lib/business/strategies";
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 import { updateScoringSettings } from "./settings-actions";
 
 // Shared state for the Scoring Config tabs. The layout mounts this ONCE, so
-// knobs set on Pipeline carry into the Card Sim and Deck Sim live and survive
-// tab switches — the Deck Sim's composition steppers ARE the Pipeline form's
-// deck counts, same state. The DB sample flows through as plain props; the
+// knobs set on Subscores carry into the Cards and Decks tabs live and survive
+// tab switches — the Decks tab's max steppers ARE the same form state. The DB sample flows through as plain props; the
 // SAVED settings blob seeds the knobs on first mount (null in DB = code
 // defaults).
 //
@@ -39,7 +38,7 @@ function fromSettings(s: ScoringSettings): {
   esParams: EsParams;
   gpParams: GpParams;
   rpVals: RpVals;
-  cfg: WwParams;
+  cfg: IcParams;
   context: ContextConfig;
 } {
   return {
@@ -52,7 +51,7 @@ function fromSettings(s: ScoringSettings): {
     esParams: { ...s.es },
     gpParams: { ...s.gp },
     rpVals: { ...s.rp },
-    cfg: { ...DEFAULT_WW_PARAMS, ...s.ww },
+    cfg: { ...DEFAULT_IC_PARAMS, ...s.ic },
     context: { es: [...s.context.es] },
   };
 }
@@ -75,9 +74,9 @@ type ScoringCtx = {
   /** RP — the rung each posture earns. */
   rpVals: RpVals;
   setRpVals: React.Dispatch<React.SetStateAction<RpVals>>;
-  /** WW's knobs. */
-  cfg: WwParams;
-  setCfg: React.Dispatch<React.SetStateAction<WwParams>>;
+  /** IC's knobs. */
+  cfg: IcParams;
+  setCfg: React.Dispatch<React.SetStateAction<IcParams>>;
   /** Which fields ES reads — the configurable pipeline. */
   context: ContextConfig;
   /** Toggle one registry field in ES's context. */
@@ -120,7 +119,7 @@ export function ScoringProvider({
   const [esParams, setEsParams] = useState<EsParams>(seed.esParams);
   const [gpParams, setGpParams] = useState<GpParams>(seed.gpParams);
   const [rpVals, setRpVals] = useState<RpVals>(seed.rpVals);
-  const [cfg, setCfg] = useState<WwParams>(seed.cfg);
+  const [cfg, setCfg] = useState<IcParams>(seed.cfg);
   const [context, setContext] = useState<ContextConfig>(seed.context);
 
   const setDeckCount = (engine: EngineId, key: DeckKey, n: number) =>
@@ -145,7 +144,7 @@ export function ScoringProvider({
   // the dirty diff is JSON.stringify equality.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 2,
+      v: 3,
       decks: {
         swipe: { on: decks.swipe.on, of: decks.swipe.of, in: decks.swipe.in, if: decks.swipe.if },
         map: { on: decks.map.on, of: decks.map.of, in: decks.map.in, if: decks.map.if },
@@ -160,7 +159,7 @@ export function ScoringProvider({
         aggressive: rpVals.aggressive,
         dominant: rpVals.dominant,
       },
-      ww: { ...cfg },
+      ic: { ...cfg },
       // Sorted so toggle order never fakes a diff against the saved blob.
       context: { es: [...context.es].sort() },
     }),
