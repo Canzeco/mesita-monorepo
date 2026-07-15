@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Layers, Star, Users } from "lucide-react";
 import {
   ErrorNote,
@@ -8,10 +8,7 @@ import {
   SectionCard,
   Switch,
 } from "../enricher-config/atlas-ui";
-import {
-  getSourcingConfig,
-  updateSourcingConfig,
-} from "./actions";
+import { updateSourcingConfig } from "./actions";
 import {
   CHANNELS,
   FAMILIES,
@@ -36,26 +33,12 @@ export function SourcingConfigClient({
   const [ok, setOk] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
-  // Re-fetch on mount so a client-side nav to the page shows the live row, not a
-  // stale server render. On failure we keep the initial/default config usable.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getSourcingConfig();
-      if (!active || !r.ok) return;
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
+  // Never dirty when the read failed: the form is holding DEFAULT_CONFIG, not
+  // the live row, and Save writes the whole blob — one edit would bury every
+  // real channel setting under a placeholder.
   const dirty = useMemo(
-    () => JSON.stringify(cfg) !== JSON.stringify(saved),
-    [cfg, saved],
+    () => loadError == null && JSON.stringify(cfg) !== JSON.stringify(saved),
+    [cfg, saved, loadError],
   );
 
   const patch = <K extends keyof SourcingConfig[ChannelKey]>(

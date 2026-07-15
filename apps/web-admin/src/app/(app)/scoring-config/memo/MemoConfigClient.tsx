@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Bot, Globe, MessageSquare } from "lucide-react";
 import {
   ErrorNote,
@@ -9,7 +9,7 @@ import {
   Switch,
   TextAreaField,
 } from "../../enricher-config/atlas-ui";
-import { getMemoConfig, updateMemoConfig } from "./actions";
+import { updateMemoConfig } from "./actions";
 import {
   OPENAI_MODELS,
   PERPLEXITY_MODELS,
@@ -17,20 +17,10 @@ import {
 } from "./types";
 
 // Memo's config surface — kept deliberately small: the persona prose and the
-// models. These DEFAULTS are the pre-load placeholder; on mount the page loads
-// the persisted values from admin-web-get-memo-config (app_settings.memo_*).
-// memo_instructions is read live by consumer-web-ask-memo; the model knobs are
-// persisted for the forthcoming Memo model rebuild.
-const DEFAULTS: MemoConfig = {
-  greeting:
-    "Hola ✨ I'm Memo, your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.",
-  instructions:
-    "You are Memo, Mesita's warm, sharp local concierge for dining, nightlife, cafés, and experiences — deep taste for Monterrey, able to help anywhere. Reply in the user's language, plain text, 2–4 sentences, opinionated and specific. Be time-aware: prefer spots open and appropriate for the local hour. When the user is place-seeking, name the real places on the shortlist; for general questions just answer conversationally.",
-  provider: "openai",
-  openaiModel: "gpt-4o-mini",
-  webGrounding: false,
-  perplexityModel: "sonar-pro",
-};
+// models. The persisted values (app_settings.memo_*, via
+// admin-web-get-memo-config) are read by the page and arrive as props; the
+// form never fetches. memo_instructions is read live by consumer-web-ask-memo;
+// the model knobs are persisted for the forthcoming Memo model rebuild.
 
 function Select<T extends string>({
   value,
@@ -74,35 +64,24 @@ function Field({
   );
 }
 
-export function MemoConfigClient() {
-  const [cfg, setCfg] = useState<MemoConfig>(DEFAULTS);
-  const [saved, setSaved] = useState<MemoConfig>(DEFAULTS);
+export function MemoConfigClient({
+  initialConfig,
+  loadError,
+}: {
+  initialConfig: MemoConfig;
+  /** The read failed — `initialConfig` is placeholder defaults, not the live row. */
+  loadError: string | null;
+}) {
+  const [cfg, setCfg] = useState<MemoConfig>(initialConfig);
+  const [saved, setSaved] = useState<MemoConfig>(initialConfig);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(loadError);
   const [ok, setOk] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // Load the persisted config (app_settings.memo_*) on mount so the page shows
-  // the live values, not just the local DEFAULTS. On failure we keep DEFAULTS
-  // and let a Save surface the real error — the page stays usable either way.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getMemoConfig();
-      if (!active) return;
-      if (r.ok) {
-        setCfg(r.data);
-        setSaved(r.data);
-      }
-      setLoading(false);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const busy = pending || loading;
-  const dirty = JSON.stringify(cfg) !== JSON.stringify(saved);
+  // Never dirty when the read failed: the form is holding MEMO_DEFAULTS, not the
+  // live row, and Save writes the whole blob — one edit would bury every real
+  // memo_* value under a placeholder.
+  const dirty = loadError == null && JSON.stringify(cfg) !== JSON.stringify(saved);
   const set = <K extends keyof MemoConfig>(key: K, value: MemoConfig[K]) => {
     setCfg((c) => ({ ...c, [key]: value }));
     setOk(false);
@@ -134,13 +113,13 @@ export function MemoConfigClient() {
           <TextAreaField
             label="Greeting"
             value={cfg.greeting}
-            disabled={busy}
+            disabled={pending}
             onChange={(v) => set("greeting", v)}
           />
           <TextAreaField
             label="Instructions (system prompt)"
             value={cfg.instructions}
-            disabled={busy}
+            disabled={pending}
             onChange={(v) => set("instructions", v)}
           />
         </div>
@@ -157,7 +136,7 @@ export function MemoConfigClient() {
             <Select
               value={cfg.openaiModel}
               options={OPENAI_MODELS}
-              disabled={busy}
+              disabled={pending}
               onChange={(v) => set("openaiModel", v)}
             />
           </Field>
@@ -180,7 +159,7 @@ export function MemoConfigClient() {
             <Select
               value={cfg.perplexityModel}
               options={PERPLEXITY_MODELS}
-              disabled={busy || !cfg.webGrounding}
+              disabled={pending || !cfg.webGrounding}
               onChange={(v) => set("perplexityModel", v)}
             />
           </Field>

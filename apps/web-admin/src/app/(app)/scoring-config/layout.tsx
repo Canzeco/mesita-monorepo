@@ -23,7 +23,13 @@ export default async function ScoringConfigLayout({
 
   return (
     <PageContainer>
-      <ScoringProvider consumers={consumers} places={places} initialConfig={initialConfig}>
+      <ScoringProvider
+        consumers={consumers}
+        places={places}
+        initialConfig={initialConfig}
+        sampleError={res.ok ? null : res.error}
+        configError={settings.ok ? null : settings.error}
+      >
         <ScoringLayoutShell>{children}</ScoringLayoutShell>
       </ScoringProvider>
     </PageContainer>

@@ -15,10 +15,12 @@ export type PerplexityPreset =
   | "deep-research"
   | "advanced-deep-research";
 
-type SettingsResponse = {
-  autoVerifyAiCall: boolean;
-  autoVerifyAiEmail: boolean;
-  autoVerifyVideo: boolean;
+// The Enricher's pipeline knobs, echoed identically by both EFs below. Shared
+// ADDITIVELY (never `Omit<>` off the settings shape): subtracting by exclusion
+// would silently admit any future non-atlas settings key into the config echo,
+// which is the same drift in the other direction. A knob belongs here only if
+// BOTH endpoints return it.
+type AtlasKnobs = {
   atlasGatherGoogleImages: number;
   atlasGatherInstagramDepth: number;
   atlasGatherInstagramPosts: number;
@@ -39,6 +41,12 @@ type SettingsResponse = {
   atlasDiscoverFacebookN: number;
   atlasDiscoverOpentableN: number;
   atlasDiscoverUbereatsN: number;
+};
+
+type SettingsResponse = AtlasKnobs & {
+  autoVerifyAiCall: boolean;
+  autoVerifyAiEmail: boolean;
+  autoVerifyVideo: boolean;
   updatedAt: string | null;
 };
 
@@ -48,32 +56,15 @@ export async function getAtlasSettings(): Promise<EfResult<SettingsResponse>> {
 
 // ─── Enricher pipeline config ──────────────────────────────────────────────
 
-type AtlasConfigResponse = {
-  atlasGatherGoogleImages: number;
-  atlasGatherInstagramDepth: number;
-  atlasGatherInstagramPosts: number;
-  atlasGatherReviews: number;
-  atlasImageVisionEnabled: boolean;
-  atlasAnalyzeGoogleImages: number;
-  atlasImageAnalysisPrompt: string;
-  atlasImageSortingPrompt: string;
-  atlasAnalyzeInstagramImages: number;
-  atlasSaveTotalImages: number;
-  atlasSaveImagesToStorage: boolean;
-  atlasSynthesisQuality: SynthesisQuality;
-  atlasVisionQuality: SynthesisQuality;
-  atlasPerplexityPreset: PerplexityPreset;
-  atlasPerRunCostCapUsd: number;
-  atlasDiscoverWebsiteN: number;
-  atlasDiscoverInstagramN: number;
-  atlasDiscoverFacebookN: number;
-  atlasDiscoverOpentableN: number;
-  atlasDiscoverUbereatsN: number;
+// The echo every section re-seeds its fields from: the EF is the authority on
+// what a knob actually ended up as, so it returns the whole knob block on every
+// partial update, not just the keys that were sent.
+export type AtlasConfigResponse = AtlasKnobs & {
   updatedAt: string | null;
 };
 
-// Partial update — pass only the fields you want to change.
-export async function updateAtlasConfig(patch: {
+/** The knobs a section may write — every key optional, mirroring AtlasKnobs. */
+export type AtlasConfigPatch = {
   gatherGoogleImages?: number;
   gatherInstagramDepth?: number;
   gatherInstagramPosts?: number;
@@ -94,6 +85,11 @@ export async function updateAtlasConfig(patch: {
   discoverFacebookN?: number;
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
-}): Promise<EfResult<AtlasConfigResponse>> {
+};
+
+// Partial update — pass only the fields you want to change.
+export async function updateAtlasConfig(
+  patch: AtlasConfigPatch,
+): Promise<EfResult<AtlasConfigResponse>> {
   return efResult<AtlasConfigResponse>("admin-web-update-atlas-config", patch);
 }

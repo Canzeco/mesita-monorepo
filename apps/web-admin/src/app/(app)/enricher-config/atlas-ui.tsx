@@ -3,10 +3,18 @@
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import type { SynthesisQuality } from "./actions";
 
-// Local presentational primitives for the Atlas / Enricher config surface.
-// Light-themed admin surface — semantic tokens only. Kept in one module so the
-// config sections, the read-only catalog and the cost calculator all share the
-// exact same card / control / disclosure chrome.
+// Presentational primitives for the FLAT config-page style — the Atlas /
+// Enricher surface they were built for, plus the other config pages that have
+// since adopted them (atlas-config, sourcing-config, scoring-config/memo import
+// from here). They live under enricher-config for historical reasons; treat
+// them as the shared config chrome, and keep them free of Enricher specifics.
+// Light-themed admin surface — semantic tokens only. Kept in one module so
+// every config page shares the exact same card / control / disclosure chrome.
+//
+// NOT interchangeable with manage-single/ui.tsx's same-named SectionCard: that
+// one is the ELEVATED style (shadow, tint-chip icon, `action` slot) used by the
+// manage-single and scoring surfaces. Two styles, on purpose — config pages are
+// flat. Don't merge them.
 
 // Uniform config card: icon + title + one-line subtitle + optional status,
 // then the controls. The single wrapper keeps every section consistent.

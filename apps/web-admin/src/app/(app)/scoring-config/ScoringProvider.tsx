@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, useTransition } from "react";
+import { createContext, useContext, useMemo, useRef, useState, useTransition } from "react";
 import {
   coerceScoringSettings,
   DECK_COUNT_MAX,
@@ -27,6 +27,12 @@ import { updateScoringSettings } from "./settings-actions";
 // Save = whole-blob write to app_settings.scoring_config via the EF pair.
 // Reset-to-defaults = load DEFAULT_SCORING_SETTINGS into the form (dirty
 // until saved). Cancel = revert the form to the last-saved values.
+//
+// When the config READ failed, `saved` is code defaults standing in for values
+// we never saw — so the form is pinned not-dirty and Save is refused. The write
+// is whole-blob: one edit on top of a failed read would persist those defaults
+// over every knob the operator never touched. Not-dirty is what disables the
+// Save button, so the block lives here rather than in each tab.
 
 type Retrieval = ScoringSettings["retrieval"];
 type RpVals = Record<StrategyId, number>;
@@ -80,6 +86,10 @@ type ScoringCtx = {
   context: ContextConfig;
   /** Toggle one registry field in ES's context. */
   toggleContext: (key: string) => void;
+  /** The sample read failed — the tabs are running on an empty catalog. */
+  sampleError: string | null;
+  /** The saved-config read failed — the knobs are defaults and Save is blocked. */
+  configError: string | null;
   dirty: boolean;
   saving: boolean;
   saveError: string | null;
@@ -97,12 +107,16 @@ export function ScoringProvider({
   consumers,
   places,
   initialConfig,
+  sampleError,
+  configError,
   children,
 }: {
   consumers: SampleConsumer[];
   places: SamplePlace[];
   /** Raw app_settings.scoring_config (null = code defaults). */
   initialConfig: unknown;
+  sampleError: string | null;
+  configError: string | null;
   children: React.ReactNode;
 }) {
   // Seed once from the saved blob; the provider persists across tab
@@ -164,8 +178,8 @@ export function ScoringProvider({
   );
 
   const dirty = useMemo(
-    () => JSON.stringify(current) !== JSON.stringify(saved),
-    [current, saved],
+    () => configError == null && JSON.stringify(current) !== JSON.stringify(saved),
+    [configError, current, saved],
   );
 
   const apply = (s: ScoringSettings) => {
@@ -179,7 +193,12 @@ export function ScoringProvider({
     setContext(f.context);
   };
 
+  // Held so a fast second save re-arms the toast instead of inheriting the
+  // first timer, which would clear the "Saved" tick early.
+  const okTimer = useRef<number | null>(null);
+
   const save = () => {
+    if (configError != null) return;
     setSaveError(null);
     setSavedOk(false);
     startSave(async () => {
@@ -192,7 +211,8 @@ export function ScoringProvider({
       setSaved(clean);
       apply(clean);
       setSavedOk(true);
-      window.setTimeout(() => setSavedOk(false), 2500);
+      if (okTimer.current !== null) window.clearTimeout(okTimer.current);
+      okTimer.current = window.setTimeout(() => setSavedOk(false), 2500);
     });
   };
 
@@ -215,6 +235,8 @@ export function ScoringProvider({
         setCfg,
         context,
         toggleContext,
+        sampleError,
+        configError,
         dirty,
         saving,
         saveError,

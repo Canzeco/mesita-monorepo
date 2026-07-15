@@ -1,6 +1,8 @@
 "use client";
 
 import { ConfigTabsLayout } from "@/components/ConfigTabsLayout";
+import { ErrorNote } from "@/components/ErrorNote";
+import { useScoring } from "./ScoringProvider";
 import { SCORING_SUBROUTES } from "./nav";
 
 // Scoring Config — four tabs mirroring the model's layers (subscores →
@@ -20,13 +22,28 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
     "Memo — Mesita's consumer AI concierge (consumer-web-ask-memo). Tune its persona, model, and how it retrieves places. Its retrieval set is the Pre-Memo deck.",
 };
 
+// The layout's two reads seed every tab, so a failure has to be said out loud
+// here — defaults are indistinguishable from saved values on the knobs
+// themselves. Rendered above the tab body (ConfigTabsLayout owns the header and
+// the tab strip, and is shared with the other sections).
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {
+  const { sampleError, configError } = useScoring();
   return (
     <ConfigTabsLayout
       title="Scoring Config"
       subroutes={SCORING_SUBROUTES}
       descriptions={SUBPAGE_DESCRIPTION}
     >
+      {configError && (
+        <ErrorNote
+          message={`Couldn't load the saved scoring config — ${configError}. Every knob below is showing a code default, not what's live. Save is disabled until a read succeeds.`}
+        />
+      )}
+      {sampleError && (
+        <ErrorNote
+          message={`Couldn't load the scoring sample — ${sampleError}. The Cards and Decks tabs have no consumers or places to run on.`}
+        />
+      )}
       {children}
     </ConfigTabsLayout>
   );

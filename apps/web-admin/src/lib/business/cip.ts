@@ -215,7 +215,12 @@ export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: numb
 
 const DAY_ORDER = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-function parseHM(s: string): number | null {
+// `unknown` in, not `string`: hours are jsonb off the row, so the declared
+// shape is a claim about the data, not a guarantee — a non-string open/close
+// would throw on .trim() and take the whole tab down. Same guard as the EFs'
+// _shared/local-time.ts toMinutes.
+function parseHM(s: unknown): number | null {
+  if (typeof s !== "string") return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
   if (!m) return null;
   return Number(m[1]) + Number(m[2]) / 60;

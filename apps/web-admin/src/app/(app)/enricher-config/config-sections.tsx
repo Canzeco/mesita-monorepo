@@ -18,7 +18,13 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
-import { updateAtlasConfig, type PerplexityPreset, type SynthesisQuality } from "./actions";
+import {
+  updateAtlasConfig,
+  type AtlasConfigPatch,
+  type AtlasConfigResponse,
+  type PerplexityPreset,
+  type SynthesisQuality,
+} from "./actions";
 import {
   Collapsible,
   ErrorNote,
@@ -28,6 +34,57 @@ import {
   Switch,
   TextAreaField,
 } from "./atlas-ui";
+
+// ─── The one draft/save cycle every section on this page runs ───────────────
+// Hold a draft, diff it field-by-field against the last SAVED snapshot to drive
+// `dirty`, then on success re-seed BOTH sides from the EF echo rather than from
+// what was typed: the EF is the authority on what a knob ended up as, so a value
+// it clamps or coerces lands back in the field instead of drifting out of sync.
+// Drafts are flat records of primitives so the dirty check can stay a shallow
+// compare; a section whose knobs carry an invariant re-applies it in its own
+// `patch` wrapper (see ImageFunnelSection), never here — this hook has no
+// opinion about what the values mean.
+function useAtlasDraft<T extends Record<string, string | number>>(
+  initial: T,
+  toPatch: (draft: T) => AtlasConfigPatch,
+  fromEcho: (echo: AtlasConfigResponse) => T,
+  onSaved: (updatedAt: string | null) => void,
+) {
+  const [draft, setDraft] = useState<T>(initial);
+  const [saved, setSaved] = useState<T>(initial);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const dirty = (Object.keys(draft) as (keyof T)[]).some((k) => draft[k] !== saved[k]);
+
+  // Merge a partial, or pass an updater when the merge needs the current values
+  // (an invariant to re-apply). Either form clears the "Saved" note.
+  const patch = (p: Partial<T> | ((cur: T) => T)) => {
+    setOk(false);
+    setDraft((cur) => (typeof p === "function" ? p(cur) : { ...cur, ...p }));
+  };
+
+  const save = () => {
+    if (!dirty) return;
+    setError(null);
+    setOk(false);
+    start(async () => {
+      const r = await updateAtlasConfig(toPatch(draft));
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      const next = fromEcho(r.data);
+      setDraft(next);
+      setSaved(next);
+      onSaved(r.data.updatedAt);
+      setOk(true);
+    });
+  };
+
+  return { draft, patch, dirty, pending, ok, error, setError, save };
+}
 
 // ─── Image funnel (Collection → Analysis → Selection) ───────────────────────
 // Two stacked stages with a hard PER-SOURCE lock: every downstream count is
@@ -57,6 +114,12 @@ function normalizeFunnel(s: Funnel): Funnel {
   const save = clampN(s.save, 1, Math.min(10, ag + ai)); // Selection ≤ analyzed, ≤ 10
   return { gg, depth, ag, ai, save };
 }
+
+// The counts and the prompts save together under one button, so they're one
+// draft. Only the counts are locked — the prompts ride along untouched.
+type ImageDraft = Funnel & { analysisPrompt: string; sortingPrompt: string };
+
+const normalizeImageDraft = (d: ImageDraft): ImageDraft => ({ ...d, ...normalizeFunnel(d) });
 
 function StageTotal({ label, n }: { label: string; n: number }) {
   return (
@@ -117,46 +180,63 @@ export function ImageFunnelSection({
   initialImageSortingPrompt: string;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const init = normalizeFunnel({
-    gg: initialGatherGoogleImages,
-    depth: initialGatherInstagramDepth,
-    ag: initialAnalyzeGoogleImages,
-    ai: initialAnalyzeInstagramImages,
-    save: initialSaveTotalImages,
-  });
-  const [f, setF] = useState<Funnel>(init);
-  const [analysisPrompt, setAnalysisPrompt] = useState(initialImageAnalysisPrompt);
-  const [sortingPrompt, setSortingPrompt] = useState(initialImageSortingPrompt);
+  const {
+    draft: f,
+    patch: patchDraft,
+    dirty,
+    pending: savePending,
+    ok,
+    error,
+    setError,
+    save,
+  } = useAtlasDraft(
+    normalizeImageDraft({
+      gg: initialGatherGoogleImages,
+      depth: initialGatherInstagramDepth,
+      ag: initialAnalyzeGoogleImages,
+      ai: initialAnalyzeInstagramImages,
+      save: initialSaveTotalImages,
+      analysisPrompt: initialImageAnalysisPrompt,
+      sortingPrompt: initialImageSortingPrompt,
+    }),
+    (d) => ({
+      gatherGoogleImages: d.gg,
+      gatherInstagramDepth: d.depth,
+      // No separate "keep" knob: the full likes-sorted window IS the pool, and
+      // Analysis takes the first N. Keep posts == depth so nothing is dropped
+      // before ranking.
+      gatherInstagramPosts: d.depth,
+      analyzeGoogleImages: d.ag,
+      analyzeInstagramImages: d.ai,
+      saveTotalImages: d.save,
+      imageAnalysisPrompt: d.analysisPrompt,
+      imageSortingPrompt: d.sortingPrompt,
+    }),
+    (e) =>
+      normalizeImageDraft({
+        gg: e.atlasGatherGoogleImages,
+        depth: e.atlasGatherInstagramDepth,
+        ag: e.atlasAnalyzeGoogleImages,
+        ai: e.atlasAnalyzeInstagramImages,
+        save: e.atlasSaveTotalImages,
+        analysisPrompt: e.atlasImageAnalysisPrompt,
+        sortingPrompt: e.atlasImageSortingPrompt,
+      }),
+    onSaved,
+  );
+
   const [storage, setStorage] = useState(initialSaveImagesToStorage);
-  const [saved, setSaved] = useState({
-    ...init,
-    analysisPrompt: initialImageAnalysisPrompt,
-    sortingPrompt: initialImageSortingPrompt,
-  });
-  const [savePending, startSave] = useTransition();
   const [storagePending, startStorage] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
 
   // Every edit re-normalizes the whole funnel, so the lock holds at all times.
-  const patch = (p: Partial<Funnel>) => {
-    setOk(false);
-    setF((cur) => normalizeFunnel({ ...cur, ...p }));
-  };
+  const patch = (p: Partial<ImageDraft>) =>
+    patchDraft((cur) => normalizeImageDraft({ ...cur, ...p }));
 
   const cSum = f.gg + f.depth;
   const aSum = f.ag + f.ai;
 
-  const dirty =
-    f.gg !== saved.gg ||
-    f.depth !== saved.depth ||
-    f.ag !== saved.ag ||
-    f.ai !== saved.ai ||
-    f.save !== saved.save ||
-    analysisPrompt !== saved.analysisPrompt ||
-    sortingPrompt !== saved.sortingPrompt;
-
-  // Storage mirroring is a feature switch — persist it on the spot.
+  // Storage mirroring is a feature switch — persist it on the spot, outside the
+  // batched draft. It shares the section's one error slot.
   const flipStorage = () => {
     setError(null);
     const next = !storage;
@@ -169,48 +249,6 @@ export function ImageFunnelSection({
         return;
       }
       onSaved(r.data.updatedAt);
-    });
-  };
-
-  const save = () => {
-    if (!dirty) return;
-    setError(null);
-    setOk(false);
-    startSave(async () => {
-      const r = await updateAtlasConfig({
-        gatherGoogleImages: f.gg,
-        gatherInstagramDepth: f.depth,
-        // No separate "keep" knob: the full likes-sorted window IS the pool, and
-        // Analysis takes the first N. Keep posts == depth so nothing is dropped
-        // before ranking.
-        gatherInstagramPosts: f.depth,
-        analyzeGoogleImages: f.ag,
-        analyzeInstagramImages: f.ai,
-        saveTotalImages: f.save,
-        imageAnalysisPrompt: analysisPrompt,
-        imageSortingPrompt: sortingPrompt,
-      });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      const nf = normalizeFunnel({
-        gg: r.data.atlasGatherGoogleImages,
-        depth: r.data.atlasGatherInstagramDepth,
-        ag: r.data.atlasAnalyzeGoogleImages,
-        ai: r.data.atlasAnalyzeInstagramImages,
-        save: r.data.atlasSaveTotalImages,
-      });
-      setF(nf);
-      setAnalysisPrompt(r.data.atlasImageAnalysisPrompt);
-      setSortingPrompt(r.data.atlasImageSortingPrompt);
-      setSaved({
-        ...nf,
-        analysisPrompt: r.data.atlasImageAnalysisPrompt,
-        sortingPrompt: r.data.atlasImageSortingPrompt,
-      });
-      onSaved(r.data.updatedAt);
-      setOk(true);
     });
   };
 
@@ -255,8 +293,8 @@ export function ImageFunnelSection({
 
         <Collapsible summary="Edit photo analysis prompts">
           <div className="space-y-4">
-            <TextAreaField label="Image analysis prompt" value={analysisPrompt} onChange={(v) => { setOk(false); setAnalysisPrompt(v); }} disabled={savePending} />
-            <TextAreaField label="Image sorting prompt" value={sortingPrompt} onChange={(v) => { setOk(false); setSortingPrompt(v); }} disabled={savePending} />
+            <TextAreaField label="Image analysis prompt" value={f.analysisPrompt} onChange={(v) => patch({ analysisPrompt: v })} disabled={savePending} />
+            <TextAreaField label="Image sorting prompt" value={f.sortingPrompt} onChange={(v) => patch({ sortingPrompt: v })} disabled={savePending} />
           </div>
         </Collapsible>
       </div>
@@ -334,61 +372,30 @@ export function DiscoverySection({
   initialUbereatsN: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [website, setWebsite] = useState(initialWebsiteN);
-  const [instagram, setInstagram] = useState(initialInstagramN);
-  const [facebook, setFacebook] = useState(initialFacebookN);
-  const [opentable, setOpentable] = useState(initialOpentableN);
-  const [ubereats, setUbereats] = useState(initialUbereatsN);
-  const [saved, setSaved] = useState({
-    website: initialWebsiteN,
-    instagram: initialInstagramN,
-    facebook: initialFacebookN,
-    opentable: initialOpentableN,
-    ubereats: initialUbereatsN,
-  });
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
-
-  const dirty =
-    website !== saved.website ||
-    instagram !== saved.instagram ||
-    facebook !== saved.facebook ||
-    opentable !== saved.opentable ||
-    ubereats !== saved.ubereats;
-
-  const save = () => {
-    if (!dirty) return;
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updateAtlasConfig({
-        discoverWebsiteN: website,
-        discoverInstagramN: instagram,
-        discoverFacebookN: facebook,
-        discoverOpentableN: opentable,
-        discoverUbereatsN: ubereats,
-      });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setSaved({
-        website: r.data.atlasDiscoverWebsiteN,
-        instagram: r.data.atlasDiscoverInstagramN,
-        facebook: r.data.atlasDiscoverFacebookN,
-        opentable: r.data.atlasDiscoverOpentableN,
-        ubereats: r.data.atlasDiscoverUbereatsN,
-      });
-      setWebsite(r.data.atlasDiscoverWebsiteN);
-      setInstagram(r.data.atlasDiscoverInstagramN);
-      setFacebook(r.data.atlasDiscoverFacebookN);
-      setOpentable(r.data.atlasDiscoverOpentableN);
-      setUbereats(r.data.atlasDiscoverUbereatsN);
-      onSaved(r.data.updatedAt);
-      setOk(true);
-    });
-  };
+  const { draft, patch, dirty, pending, ok, error, save } = useAtlasDraft(
+    {
+      website: initialWebsiteN,
+      instagram: initialInstagramN,
+      facebook: initialFacebookN,
+      opentable: initialOpentableN,
+      ubereats: initialUbereatsN,
+    },
+    (d) => ({
+      discoverWebsiteN: d.website,
+      discoverInstagramN: d.instagram,
+      discoverFacebookN: d.facebook,
+      discoverOpentableN: d.opentable,
+      discoverUbereatsN: d.ubereats,
+    }),
+    (e) => ({
+      website: e.atlasDiscoverWebsiteN,
+      instagram: e.atlasDiscoverInstagramN,
+      facebook: e.atlasDiscoverFacebookN,
+      opentable: e.atlasDiscoverOpentableN,
+      ubereats: e.atlasDiscoverUbereatsN,
+    }),
+    onSaved,
+  );
 
   return (
     <SectionCard
@@ -397,11 +404,11 @@ export function DiscoverySection({
       subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these and picks the best one per field (or none). 0 turns a source off."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={website} min={0} max={10} onChange={setWebsite} disabled={pending} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram" value={instagram} min={0} max={10} onChange={setInstagram} disabled={pending} />
-        <NumberField icon={<Facebook className="text-muted-foreground h-4 w-4" />} label="Facebook" value={facebook} min={0} max={10} onChange={setFacebook} disabled={pending} />
-        <NumberField icon={<CalendarClock className="text-muted-foreground h-4 w-4" />} label="OpenTable" value={opentable} min={0} max={10} onChange={setOpentable} disabled={pending} />
-        <NumberField icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />} label="Uber Eats" value={ubereats} min={0} max={10} onChange={setUbereats} disabled={pending} />
+        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={draft.website} min={0} max={10} onChange={(v) => patch({ website: v })} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram" value={draft.instagram} min={0} max={10} onChange={(v) => patch({ instagram: v })} disabled={pending} />
+        <NumberField icon={<Facebook className="text-muted-foreground h-4 w-4" />} label="Facebook" value={draft.facebook} min={0} max={10} onChange={(v) => patch({ facebook: v })} disabled={pending} />
+        <NumberField icon={<CalendarClock className="text-muted-foreground h-4 w-4" />} label="OpenTable" value={draft.opentable} min={0} max={10} onChange={(v) => patch({ opentable: v })} disabled={pending} />
+        <NumberField icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />} label="Uber Eats" value={draft.ubereats} min={0} max={10} onChange={(v) => patch({ ubereats: v })} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
@@ -419,30 +426,12 @@ export function ReviewsSection({
   initialGatherReviews: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [reviews, setReviews] = useState(initialGatherReviews);
-  const [saved, setSaved] = useState(initialGatherReviews);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
-
-  const dirty = reviews !== saved;
-
-  const save = () => {
-    if (!dirty) return;
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updateAtlasConfig({ gatherReviews: reviews });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setSaved(r.data.atlasGatherReviews);
-      setReviews(r.data.atlasGatherReviews);
-      onSaved(r.data.updatedAt);
-      setOk(true);
-    });
-  };
+  const { draft, patch, dirty, pending, ok, error, save } = useAtlasDraft(
+    { reviews: initialGatherReviews },
+    (d) => ({ gatherReviews: d.reviews }),
+    (e) => ({ reviews: e.atlasGatherReviews }),
+    onSaved,
+  );
 
   return (
     <SectionCard
@@ -454,10 +443,10 @@ export function ReviewsSection({
         <NumberField
           icon={<Star className="text-muted-foreground h-4 w-4" />}
           label="Google reviews to pull"
-          value={reviews}
+          value={draft.reviews}
           min={0}
           max={100}
-          onChange={setReviews}
+          onChange={(v) => patch({ reviews: v })}
           disabled={pending}
         />
       </div>
@@ -500,46 +489,24 @@ export function ModelsSection({
   initialPerplexityPreset: PerplexityPreset;
   onSaved: (updatedAt: string | null) => void;
 }) {
-  const [text, setText] = useState<SynthesisQuality>(initialSynthesisQuality);
-  const [image, setImage] = useState<SynthesisQuality>(initialVisionQuality);
-  const [search, setSearch] = useState<PerplexityPreset>(initialPerplexityPreset);
-  const [saved, setSaved] = useState({
-    text: initialSynthesisQuality,
-    image: initialVisionQuality,
-    search: initialPerplexityPreset,
-  });
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
-
-  const dirty = text !== saved.text || image !== saved.image || search !== saved.search;
-
-  const save = () => {
-    if (!dirty) return;
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updateAtlasConfig({
-        synthesisQuality: text,
-        visionQuality: image,
-        perplexityPreset: search,
-      });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setSaved({
-        text: r.data.atlasSynthesisQuality,
-        image: r.data.atlasVisionQuality,
-        search: r.data.atlasPerplexityPreset,
-      });
-      setText(r.data.atlasSynthesisQuality);
-      setImage(r.data.atlasVisionQuality);
-      setSearch(r.data.atlasPerplexityPreset);
-      onSaved(r.data.updatedAt);
-      setOk(true);
-    });
-  };
+  const { draft, patch, dirty, pending, ok, error, save } = useAtlasDraft(
+    {
+      text: initialSynthesisQuality,
+      image: initialVisionQuality,
+      search: initialPerplexityPreset,
+    },
+    (d) => ({
+      synthesisQuality: d.text,
+      visionQuality: d.image,
+      perplexityPreset: d.search,
+    }),
+    (e) => ({
+      text: e.atlasSynthesisQuality,
+      image: e.atlasVisionQuality,
+      search: e.atlasPerplexityPreset,
+    }),
+    onSaved,
+  );
 
   return (
     <SectionCard
@@ -552,8 +519,8 @@ export function ModelsSection({
           icon={<Brain className="text-muted-foreground h-4 w-4" />}
           label="Text model"
           hint="writes the profile"
-          value={text}
-          onChange={setText}
+          value={draft.text}
+          onChange={(v) => patch({ text: v })}
           options={QUALITY_OPTIONS}
           disabled={pending}
         />
@@ -561,8 +528,8 @@ export function ModelsSection({
           icon={<Eye className="text-muted-foreground h-4 w-4" />}
           label="Image model"
           hint="analyzes photos"
-          value={image}
-          onChange={setImage}
+          value={draft.image}
+          onChange={(v) => patch({ image: v })}
           options={QUALITY_OPTIONS}
           disabled={pending}
         />
@@ -570,8 +537,8 @@ export function ModelsSection({
           icon={<Globe className="text-muted-foreground h-4 w-4" />}
           label="Search model"
           hint="Agent X + Y preset"
-          value={search}
-          onChange={setSearch}
+          value={draft.search}
+          onChange={(v) => patch({ search: v })}
           options={PERPLEXITY_OPTIONS}
           disabled={pending}
         />
