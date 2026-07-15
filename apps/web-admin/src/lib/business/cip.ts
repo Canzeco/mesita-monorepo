@@ -239,10 +239,52 @@ const CLASH: Record<string, string[]> = {
   brunch: ["night_club"],
 };
 
-/** LM-CIP — RM plus the structured judgments a judge adds. Deterministic.
- * Pass `rmBase` to build on the vector-cosine RM instead of token overlap.
- * `enabled` = the LIPM context config: the judge only judges on fields it
- * was given (category off → no category bonus/clash; zone off → no zone). */
+/** The judge's itemized verdict — every adjustment LM-CIP layers on RM. */
+export type LmParts = {
+  /** The base estimate the judge starts from (vector RM or token overlap). */
+  base: number;
+  /** +15 when the place's category is in the consumer+intent tokens. */
+  catBonus: number;
+  /** +8 when the place's zone is in the consumer+intent tokens. */
+  zoneBonus: number;
+  /** −18 when an occasion token clashes with the category. */
+  clashPenalty: number;
+  /** ±6 stable per consumer×place pair — judgment nuance, never random. */
+  nuance: number;
+  /** base + adjustments, clamped 0–100. */
+  total: number;
+};
+
+/** LM-CIP itemized. Pass `rmBase` to build on the vector-cosine RM instead
+ * of token overlap. `enabled` = the LIPM context config: the judge only
+ * judges on fields it was given (category off → no category bonus/clash;
+ * zone off → no zone bonus). */
+export function lmCipParts(
+  ciTokens: string[],
+  place: SamplePlace,
+  consumerId: string,
+  rmBase?: number,
+  enabled?: ReadonlySet<string> | null,
+): LmParts {
+  const base = rmBase ?? rmCip(ciTokens, place);
+  const ci = new Set(ciTokens);
+  const has = (k: string) => !enabled || enabled.has(k);
+  const cat = has("place.category") && place.category ? norm(place.category) : null;
+  const catBonus = cat && ci.has(cat) ? 15 : 0;
+  const zoneBonus = has("place.zone_city") && place.zone && ci.has(norm(place.zone)) ? 8 : 0;
+  let clashPenalty = 0;
+  if (cat) {
+    for (const t of ci) if (CLASH[t]?.includes(cat)) { clashPenalty = -18; break; }
+  }
+  const nuance = (hash(consumerId + place.id) % 13) - 6;
+  const total = Math.max(
+    0,
+    Math.min(100, Math.round(base + catBonus + zoneBonus + clashPenalty + nuance)),
+  );
+  return { base, catBonus, zoneBonus, clashPenalty, nuance, total };
+}
+
+/** LM-CIP — RM plus the structured judgments a judge adds. Deterministic. */
 export function lmCip(
   ciTokens: string[],
   place: SamplePlace,
@@ -250,18 +292,7 @@ export function lmCip(
   rmBase?: number,
   enabled?: ReadonlySet<string> | null,
 ): number {
-  let v = rmBase ?? rmCip(ciTokens, place);
-  const ci = new Set(ciTokens);
-  const has = (k: string) => !enabled || enabled.has(k);
-  const cat = has("place.category") && place.category ? norm(place.category) : null;
-  if (cat && ci.has(cat)) v += 15;
-  if (has("place.zone_city") && place.zone && ci.has(norm(place.zone))) v += 8;
-  if (cat) {
-    for (const t of ci) if (CLASH[t]?.includes(cat)) { v -= 18; break; }
-  }
-  // Judgment nuance — stable per consumer×place pair, never random.
-  v += (hash(consumerId + place.id) % 13) - 6;
-  return Math.max(0, Math.min(100, Math.round(v)));
+  return lmCipParts(ciTokens, place, consumerId, rmBase, enabled).total;
 }
 
 // ── WW inputs from real geo + real hours ────────────────────────────────
@@ -344,6 +375,16 @@ const WHAT_WINDOWS: { re: RegExp; start: number; end: number }[] = [
   { re: /bar|cantina|pub|speakeasy|wine|cocktail|brewer/, start: 17, end: 26 }, // 17:00–02:00
   { re: /brunch|breakfast|cafe|coffee|bakery|desayun|juice/, start: 7, end: 17 },
 ];
+
+/** The category's daypart window, human-readable — null when none is known
+ * (unknown categories fit every hour). For the internals playground. */
+export function whatWindow(category: string | null): string | null {
+  if (!category) return null;
+  const w = WHAT_WINDOWS.find((x) => x.re.test(category.toLowerCase()));
+  if (!w) return null;
+  const f = (h: number) => `${String(Math.floor(h % 24)).padStart(2, "0")}:00`;
+  return `${f(w.start)}–${f(w.end)}${w.end > 24 ? " (wraps past midnight)" : ""}`;
+}
 
 /** True when `hour` falls in the category's natural daypart (or none is known). */
 export function whatFits(category: string | null, hour: number): boolean {
