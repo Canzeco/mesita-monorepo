@@ -69,6 +69,12 @@ export function formatKm(km: number): string {
   return `${km < 10 ? km.toFixed(1) : Math.round(km).toString()} km`;
 }
 
+/** Place-detail distance chip: null/≤0 means "couldn't calculate" → "- km". */
+export function formatDistanceKm(km: number | null | undefined): string {
+  if (km == null || km <= 0) return '- km';
+  return `${km} km`;
+}
+
 export function formatCompactCount(n: number, exact = false): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (exact && n >= 1000) return n.toLocaleString('en-US');

@@ -50,7 +50,7 @@ export default function RewardsScreen() {
           code={profile?.code ?? ''}
           name={name}
           instagramHandle={
-            profile?.instagram_handle ?? profile?.instagram ?? null
+            profile?.instagram_handle ?? null
           }
         />
       </SafeAreaView>

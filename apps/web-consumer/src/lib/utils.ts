@@ -95,6 +95,12 @@ export function formatKm(km: number): string {
   return `${km < 10 ? km.toFixed(1) : Math.round(km).toString()} km`;
 }
 
+/** Place-detail distance chip: null/≤0 means "couldn't calculate" → "- km". */
+export function formatDistanceKm(km: number | null | undefined): string {
+  if (km == null || km <= 0) return "- km";
+  return `${km} km`;
+}
+
 /** Compact count for chips: 1.2K / 12K / 1.5M. When `exact`, keep mid-range
  *  counts as locale integers (e.g. review totals as "1,891"). */
 export function formatCompactCount(n: number, exact = false): string {

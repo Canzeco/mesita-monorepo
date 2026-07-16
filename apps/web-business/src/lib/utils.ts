@@ -48,3 +48,10 @@ export function formatRating(
 ): string | null {
   return rating != null ? rating.toFixed(1) : null;
 }
+
+/** Whole-unit money label for promo copy (MX$1,200 / $1,200). Distinct from
+ *  centsToMoney — this takes major units, not cents. */
+export function formatMoney(amount: number, currency: string): string {
+  const prefix = currency === "MXN" ? "MX$" : "$";
+  return `${prefix}${amount.toLocaleString("en-US")}`;
+}

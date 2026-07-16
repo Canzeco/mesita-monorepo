@@ -4,6 +4,7 @@
 // inline on each page.
 
 import { cn } from "@/lib/utils";
+import { SECTION_TITLE_CLASS } from "@/lib/ui-classes";
 
 export function EmptyState({
   icon,
@@ -28,9 +29,7 @@ export function EmptyState({
       <div className="bg-muted mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
         {icon}
       </div>
-      <h2 className="font-display text-xl font-semibold tracking-tight">
-        {title}
-      </h2>
+      <h2 className={SECTION_TITLE_CLASS}>{title}</h2>
       {description && (
         <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
           {description}

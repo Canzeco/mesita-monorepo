@@ -82,7 +82,7 @@ export default function MeScreen() {
     useAuth();
   const effective = useEffectiveClass(
     consumerClass,
-    profile?.instagram_handle ?? profile?.instagram ?? null,
+    profile?.instagram_handle ?? null,
   );
   const isPremium = effective.key === 'premium';
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -99,7 +99,7 @@ export default function MeScreen() {
     CLASSES.find((c) => c.id === effective.key)?.label ?? 'Free';
   const classVia =
     isPremium && effective.origin !== 'default' ? effective.origin : null;
-  const handle = profile?.instagram_handle ?? profile?.instagram ?? effective.handle;
+  const handle = profile?.instagram_handle ?? effective.handle;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
 
   function openVerify() {

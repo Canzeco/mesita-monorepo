@@ -58,7 +58,13 @@ import { formatPlacePriceChip } from "@/lib/place-price";
 import { menuSubtitle } from "@/lib/menu-url";
 import type { Place } from "@/lib/api/places";
 
-import { cn, firstInitial, formatCompactCount, formatRating } from "@/lib/utils";
+import {
+  cn,
+  firstInitial,
+  formatCompactCount,
+  formatDistanceKm,
+  formatRating,
+} from "@/lib/utils";
 import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
 import { buildUberDropoffUrl } from "@/lib/uber-link";
 import {
@@ -443,12 +449,6 @@ function ProfileMetaChip({ children }: { children: React.ReactNode }) {
       {children}
     </span>
   );
-}
-
-/** distance_km === 0 is the "couldn't calculate" placeholder — show "- km". */
-function formatDistanceKm(km: number | null | undefined): string {
-  if (km == null || km <= 0) return "- km";
-  return `${km} km`;
 }
 
 /** Shim PlaceDetail → Place shape PromoChip / resolvePromoRateFromPlaceRow expect. */

@@ -60,6 +60,7 @@ import { buildUberDropoffUrl } from '@/lib/uber-link';
 import {
   firstInitial,
   formatCompactCount,
+  formatDistanceKm,
   formatRating,
 } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
@@ -428,11 +429,6 @@ function PromoMetaChip({ place }: { place: PlaceDetail }) {
       </Text>
     </ProfileMetaChip>
   );
-}
-
-function formatDistanceKm(km: number | null | undefined): string {
-  if (km == null || km <= 0) return '- km';
-  return `${km} km`;
 }
 
 function ProfileActions({
