@@ -47,38 +47,17 @@ export function formatPlacePriceLevelSymbols(
   return '$'.repeat(level);
 }
 
-/** Place profile: numeric range when available. Accepts object (web) or positional. */
-export function formatPlacePriceChip(
-  priceRangeOrInput:
-    | string
-    | null
-    | undefined
-    | {
-        priceRange?: string | null;
-        priceLevel?: number | null;
-        currency?: string | null;
-      },
-  priceLevel?: number | null,
-  currency?: string | null,
-): string | null {
-  if (
-    priceRangeOrInput &&
-    typeof priceRangeOrInput === 'object' &&
-    !Array.isArray(priceRangeOrInput)
-  ) {
-    const raw = priceRangeOrInput.priceRange?.trim() ?? '';
-    if (raw && /\d/.test(raw)) return withPerPerson(raw);
-    const fromLevel = fallbackFromLevel(
-      priceRangeOrInput.priceLevel,
-      priceRangeOrInput.currency,
-    );
-    if (fromLevel) return withPerPerson(fromLevel);
-    return formatPlacePriceLevelSymbols(priceRangeOrInput.priceLevel);
-  }
-
-  const raw = typeof priceRangeOrInput === 'string' ? priceRangeOrInput : '';
+/** Place profile: numeric range when available (object-only, web parity). */
+export function formatPlacePriceChip(input: {
+  priceRange?: string | null;
+  priceLevel?: number | null;
+  currency?: string | null;
+}): string | null {
+  const raw = input.priceRange?.trim() ?? '';
   if (raw && /\d/.test(raw)) return withPerPerson(raw);
-  const fromLevel = fallbackFromLevel(priceLevel, currency);
+
+  const fromLevel = fallbackFromLevel(input.priceLevel, input.currency);
   if (fromLevel) return withPerPerson(fromLevel);
-  return formatPlacePriceLevelSymbols(priceLevel);
+
+  return formatPlacePriceLevelSymbols(input.priceLevel);
 }

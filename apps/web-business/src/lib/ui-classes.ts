@@ -57,3 +57,7 @@ export const ICON_BUTTON_CLASS =
 // not full-width like PRIMARY_BUTTON_CLASS. Compose with cn() for margins.
 export const CTA_BUTTON_CLASS =
   "bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90";
+
+// Section / empty-state title — display face, xl, tight tracking.
+export const SECTION_TITLE_CLASS =
+  "font-display text-xl font-semibold tracking-tight";

@@ -506,7 +506,7 @@ function Rewards() {
         </div>
         <p className="text-muted-foreground mt-8 inline-flex items-center gap-2 text-[13px]">
           <CheckCircle2 className="text-secondary h-4 w-4" />
-          Sin cashback, sin monedero, sin factura. El descuento es el gasto de
+          Sin reembolsos, sin monedero, sin factura. El descuento es el gasto de
           marketing del propio lugar, aplicado en su propia cuenta.
         </p>
       </div>
@@ -739,7 +739,7 @@ function FAQ() {
     },
     {
       q: "¿Mesita mueve o guarda dinero?",
-      a: "Nunca. Mesita es un producto de suscripción, no un marketplace — sin cashback, sin monedero, sin intermediarios. El descuento es el gasto de marketing del propio lugar, aplicado en su propia cuenta, y el comensal le paga al lugar directo.",
+      a: "Nunca. Mesita es un producto de suscripción, no un marketplace — sin reembolsos, sin monedero, sin intermediarios. El descuento es el gasto de marketing del propio lugar, aplicado en su propia cuenta, y el comensal le paga al lugar directo.",
     },
   ];
   return (
