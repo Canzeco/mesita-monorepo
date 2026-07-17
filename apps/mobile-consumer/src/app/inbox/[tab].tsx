@@ -10,10 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  ConsumerActivityList,
-  InboxSegmentTabs,
-} from '@/components/inbox/ConsumerActivityList';
+import { ConsumerActivityList } from '@/components/inbox/ConsumerActivityList';
+import { InboxSegmentTabs } from '@/components/inbox/inbox-segment-tabs';
 import {
   NotificationRow,
   SkeletonRow,
