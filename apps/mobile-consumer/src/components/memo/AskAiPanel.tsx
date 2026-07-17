@@ -14,34 +14,22 @@ import {
 } from 'react-native';
 
 import { MemoAnswerText } from '@/components/memo/MemoAnswerText';
-import type { AddState, AiMessage } from '@/components/memo/types';
+import type { AddState } from '@/components/memo/types';
+import {
+  buildAiReply,
+  buildMemoHistory,
+  clearThreadCache,
+  getThreadCache,
+  greetingThread,
+  msgId,
+  saveThreadCache,
+  type AiMessage,
+} from '@/components/memo/ask-ai-thread';
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { MemoAnswer, MemoTurn } from '@/lib/api/memo';
 import type { Place, PlacePrediction } from '@/lib/api/places';
 
-const GREETING =
-  "Hello 👋 I'm Memo, the AI of Mesita. Tell me what you're craving — try “rooftop date tonight” or just “tacos al pastor”.";
-
-const AI_ERROR =
-  'Hmm, my line dropped for a second — give it another try in a moment.';
-
-const MAX_CARDS = 3;
-const MAX_RELATED = 3;
-const THREAD_CAP = 40;
 const DRAFT_KEY = 'mesita:memo-draft';
-
-let nextId = 0;
-function msgId(): string {
-  nextId += 1;
-  return `ai-msg-${nextId}`;
-}
-
-type StoredThread = { messages: AiMessage[]; related: string[] };
-let threadCache: StoredThread | null = null;
-
-function greetingThread(): AiMessage[] {
-  return [{ id: msgId(), role: 'ai', kind: 'text', text: GREETING }];
-}
 
 export function AskAiPanel({
   ask,
@@ -57,13 +45,13 @@ export function AskAiPanel({
   onAdd: (prediction: PlacePrediction) => void;
 }) {
   const [messages, setMessages] = useState<AiMessage[]>(
-    () => threadCache?.messages ?? greetingThread(),
+    () => getThreadCache()?.messages ?? greetingThread(),
   );
   const [input, setInput] = useState('');
   const [draftReady, setDraftReady] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [related, setRelated] = useState<string[]>(
-    () => threadCache?.related ?? [],
+    () => getThreadCache()?.related ?? [],
   );
   const scrollRef = useRef<ScrollView>(null);
 
@@ -87,10 +75,7 @@ export function AskAiPanel({
   }, [input, draftReady]);
 
   useEffect(() => {
-    threadCache =
-      messages.length > 1
-        ? { messages: messages.slice(-THREAD_CAP), related }
-        : null;
+    saveThreadCache(messages, related);
   }, [messages, related]);
 
   useEffect(() => {
@@ -104,7 +89,7 @@ export function AskAiPanel({
     setMessages(greetingThread());
     setRelated([]);
     setInput('');
-    threadCache = null;
+    clearThreadCache();
     void AsyncStorage.removeItem(DRAFT_KEY);
   };
 
@@ -115,10 +100,7 @@ export function AskAiPanel({
     void AsyncStorage.removeItem(DRAFT_KEY);
     setRelated([]);
 
-    const history: MemoTurn[] = messages.map((m) => ({
-      role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.text,
-    }));
+    const history = buildMemoHistory(messages);
 
     setMessages((m) => [
       ...m,
@@ -132,18 +114,12 @@ export function AskAiPanel({
       } catch {
         reply = null;
       }
-      const shown = (reply?.predictions ?? []).slice(0, MAX_CARDS);
+      const aiReply = buildAiReply(reply);
       setMessages((m) => [
         ...m,
-        {
-          id: msgId(),
-          role: 'ai',
-          kind: 'text',
-          text: reply?.answer?.trim() ? reply.answer : AI_ERROR,
-          predictions: shown,
-        },
+        aiReply.message,
       ]);
-      setRelated((reply?.related ?? []).slice(0, MAX_RELATED));
+      setRelated(aiReply.related);
       setThinking(false);
     })();
   };

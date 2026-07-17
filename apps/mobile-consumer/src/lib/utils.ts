@@ -38,6 +38,12 @@ export function formatSex(sex: string | null | undefined): string | null {
   return sex.charAt(0).toUpperCase() + sex.slice(1);
 }
 
+// Guest-count noun: "person" for 1, "people" otherwise. Pair with the count
+// at the call site — `${n} ${guestNoun(n)}`. Keep in sync with web-consumer.
+export function guestNoun(n: number): string {
+  return n === 1 ? 'person' : 'people';
+}
+
 export function formatRating(
   rating: number | null | undefined,
 ): string | null {

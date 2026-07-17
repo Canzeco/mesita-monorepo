@@ -96,7 +96,7 @@ export const FAMILIES: Family[] = [
     key: "bars_nightlife",
     label: "Bars & Nightlife",
     emoji: "🍸",
-    blurb: "Bars, cocktail lounges, breweries, clubs and live-music venues.",
+    blurb: "Bars, cocktail lounges, breweries, clubs and live-music places.",
     googleTypes: [
       "bar",
       "cocktail_bar",
