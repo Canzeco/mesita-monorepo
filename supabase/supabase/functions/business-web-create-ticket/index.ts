@@ -35,7 +35,10 @@ import {
   assessPromoLane,
   loadMembershipRow,
 } from "../_shared/membership-enforcement.ts";
-import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
+import {
+  computeTicketBill,
+  type TicketBillSnapshot,
+} from "../_shared/business-ticket-billing.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
 import { toCents } from "../_shared/money.ts";
 
@@ -54,6 +57,38 @@ type Body = {
   reservationChannel?: string;
   reservationNotes?: string;
 };
+
+type TicketPlaceSnapshot = {
+  id: string;
+  slug?: string | null;
+  name: string;
+  photos?: string[] | null;
+};
+
+function buildBillNotificationPayload(
+  place: TicketPlaceSnapshot,
+  kind: string,
+  snap: TicketBillSnapshot,
+  capPesos: number | null,
+  currency: string | null,
+) {
+  return {
+    project_id: place.id,
+    place_slug: place.slug ?? null,
+    place_name: place.name,
+    place_photo_url: place.photos?.[0] ?? null,
+    ticket_kind: kind,
+    check_subtotal_cents: snap.checkSubtotalCents,
+    tip_cents: snap.tipCents,
+    total_cents: snap.totalCents,
+    discount_cents: snap.discountCents ?? 0,
+    discount_percent: snap.discountPercent ?? 0,
+    total_reward_cents: snap.discountCents ?? 0,
+    reward_cap_mxn: capPesos ?? null,
+    amount_due_cents: snap.amountDueCents,
+    currency: currency ?? "MXN",
+  };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -316,22 +351,13 @@ Deno.serve(async (req) => {
     kind: "bill",
     status: "completed",
     resolved_at: now,
-    payload: {
-      project_id: place.id,
-      place_slug: place.slug ?? null,
-      place_name: place.name,
-      place_photo_url: place.photos?.[0] ?? null,
-      ticket_kind: kind,
-      check_subtotal_cents: snap.checkSubtotalCents,
-      tip_cents: snap.tipCents,
-      total_cents: snap.totalCents,
-      discount_cents: snap.discountCents ?? 0,
-      discount_percent: snap.discountPercent ?? 0,
-      total_reward_cents: snap.discountCents ?? 0,
-      reward_cap_mxn: capPesos ?? null,
-      amount_due_cents: snap.amountDueCents,
-      currency: insert.data.currency ?? "MXN",
-    },
+    payload: buildBillNotificationPayload(
+      place,
+      kind,
+      snap,
+      capPesos,
+      insert.data.currency ?? null,
+    ),
   });
 
   // Type A closes immediately — queue the consumer's review now.
