@@ -4,6 +4,7 @@
 import { dedup, safeParseJson } from "./parse-utils.ts";
 import type { Img } from "./enrich-config.ts";
 import { OPENAI_URL, VISION_MODEL } from "./enrich-config.ts";
+import { needsInlineImage } from "./enrich-image-inline-hosts.ts";
 
 export type WebImage = {
   url: string;
@@ -160,19 +161,6 @@ export async function rankWebsiteImagesByRelevance(
     return order.map((i) => images[i].url);
   } catch {
     return images.map((i) => i.url);
-  }
-}
-
-// Hosts whose signed/CDN links reject OpenAI's third-party image fetcher, so we
-// must download the bytes inside the EF and inline them as a base64 data: URL.
-// Extend this predicate as new blocking hosts surface.
-const FETCHER_BLOCKED_HOST = /(^|\.)(cdninstagram\.com|fbcdn\.net)$/i;
-
-function needsInlineImage(url: string): boolean {
-  try {
-    return FETCHER_BLOCKED_HOST.test(new URL(url).hostname);
-  } catch {
-    return false;
   }
 }
 
