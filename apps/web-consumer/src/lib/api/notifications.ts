@@ -88,19 +88,3 @@ export async function fetchPayTicketList(
     ticketMetaById,
   };
 }
-
-export async function fetchPendingNotificationCount(
-  client: SupabaseClient<Database>,
-  _consumerId: string,
-): Promise<number> {
-  try {
-    const data = await invokeEF<{ pendingCount: number }>(
-      client,
-      "consumer-web-list-pay-notifications",
-      { pendingCountOnly: true },
-    );
-    return data.pendingCount ?? 0;
-  } catch {
-    return 0;
-  }
-}

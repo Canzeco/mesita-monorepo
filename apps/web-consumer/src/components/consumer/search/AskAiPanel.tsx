@@ -22,51 +22,16 @@ import type { MemoAnswer, MemoTurn } from "@/lib/api/memo";
 import { cn } from "@/lib/utils";
 import type { AddState } from "./PredictionRow";
 import { MemoAnswerText } from "./MemoAnswerText";
-
-// Ask AI has no place cards — Memo's suggestions live inline in the prose as
-// underlined links (see MemoAnswerText). Each AI turn carries the predictions
-// its answer refers to so the names can be linkified.
-type AiMessage = {
-  id: string;
-  role: "user" | "ai";
-  kind: "text";
-  text: string;
-  predictions?: PlacePrediction[];
-};
-
-const GREETING =
-  "Hello 👋 I'm Memo, the AI of Mesita. Tell me what you're craving — try “rooftop date tonight” or just “tacos al pastor”.";
-
-const AI_ERROR =
-  "Hmm, my line dropped for a second — give it another try in a moment.";
-
-// Cap how many cards one reply drops into the thread — a tight, curated
-// shortlist reads like a recommendation, not search results.
-const MAX_CARDS = 3;
-// Cap the follow-up chips Memo suggests under a reply.
-const MAX_RELATED = 3;
-
-let nextId = 0;
-function msgId(): string {
-  nextId += 1;
-  return `ai-msg-${nextId}`;
-}
-
-// Thread persistence — the Ask AI tab is a route now, so switching Home tabs
-// unmounts it. Keep the conversation in a module-level cache so it survives
-// remounts within the session. Writes happen only on the client (in a save
-// effect / event handlers), so the server module stays null across requests
-// and the first render always matches SSR (greeting) — no hydration mismatch,
-// and no set-state-in-effect. Intentionally NOT localStorage: a full reload
-// starts fresh, which keeps this clean and avoids a client-only initial read.
-type StoredThread = { messages: AiMessage[]; related: string[] };
-const THREAD_CAP = 40; // bound the retained history
-
-let threadCache: StoredThread | null = null;
-
-function greetingThread(): AiMessage[] {
-  return [{ id: msgId(), role: "ai", kind: "text", text: GREETING }];
-}
+import {
+  buildAiReply,
+  buildMemoHistory,
+  clearThreadCache,
+  getThreadCache,
+  greetingThread,
+  msgId,
+  saveThreadCache,
+  type AiMessage,
+} from "./ask-ai-thread";
 
 export function AskAiPanel({
   onClose,
@@ -94,22 +59,19 @@ export function AskAiPanel({
   // Lazy init from the session cache (populated by a previous mount this
   // session). Null on a fresh load / SSR → greeting, so hydration matches.
   const [messages, setMessages] = useState<AiMessage[]>(
-    () => threadCache?.messages ?? greetingThread(),
+    () => getThreadCache()?.messages ?? greetingThread(),
   );
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [related, setRelated] = useState<string[]>(
-    () => threadCache?.related ?? [],
+    () => getThreadCache()?.related ?? [],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Persist to the session cache on every change (writes a module var, not
   // state — no set-state-in-effect). A lone greeting resets the cache to fresh.
   useEffect(() => {
-    threadCache =
-      messages.length > 1
-        ? { messages: messages.slice(-THREAD_CAP), related }
-        : null;
+    saveThreadCache(messages, related);
   }, [messages, related]);
 
   useEffect(() => {
@@ -121,7 +83,7 @@ export function AskAiPanel({
     setMessages(greetingThread());
     setRelated([]);
     setInput("");
-    threadCache = null;
+    clearThreadCache();
   };
 
   const send = (raw?: string) => {
@@ -132,12 +94,7 @@ export function AskAiPanel({
 
     // Snapshot the prior text turns as history BEFORE appending this one, so
     // Memo can follow up on the conversation.
-    const history: MemoTurn[] = messages
-      .filter((m): m is Extract<AiMessage, { kind: "text" }> => m.kind === "text")
-      .map((m) => ({
-        role: m.role === "user" ? "user" : "assistant",
-        content: m.text,
-      }));
+    const history = buildMemoHistory(messages);
 
     setMessages((m) => [
       ...m,
@@ -151,18 +108,12 @@ export function AskAiPanel({
       } catch {
         reply = null;
       }
-      const shown = (reply?.predictions ?? []).slice(0, MAX_CARDS);
+      const aiReply = buildAiReply(reply);
       setMessages((m) => [
         ...m,
-        {
-          id: msgId(),
-          role: "ai",
-          kind: "text",
-          text: reply?.answer?.trim() ? reply.answer : AI_ERROR,
-          predictions: shown,
-        },
+        aiReply.message,
       ]);
-      setRelated((reply?.related ?? []).slice(0, MAX_RELATED));
+      setRelated(aiReply.related);
       setThinking(false);
     })();
   };

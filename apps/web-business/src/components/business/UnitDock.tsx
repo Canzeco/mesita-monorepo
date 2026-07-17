@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Check,
   ChevronDown,
   CircleUser,
   Plus,
@@ -16,14 +14,16 @@ import {
   BarChart3,
   type LucideIcon,
 } from "lucide-react";
-import { cn, initialLetter } from "@/lib/utils";
-import { placeSubtitle } from "@/components/business/place/place-utils";
+import { cn } from "@/lib/utils";
 import { useUnitChrome } from "./UnitChrome";
+import {
+  PlaceChip,
+  UnitDockPlacePicker,
+} from "./UnitDockPlacePicker";
 import {
   BUSINESS_ROUTES,
   dockHrefForSection,
   pathnameUnitId,
-  placeSwitchHref,
 } from "@/lib/business-route-contract";
 import { resolveActiveUnitId } from "@/lib/active-unit";
 
@@ -109,66 +109,16 @@ export function UnitDock() {
     return () => window.removeEventListener("resize", update);
   }, [pickerOpen]);
 
-  const picker =
-    pickerOpen && canOpenPlaceMenu
-      ? createPortal(
-          <>
-            <button
-              type="button"
-              aria-label="Close place picker"
-              onClick={() => setPickerOpen(false)}
-              className="fixed inset-0 z-[100] cursor-default bg-black/30"
-            />
-            <div
-              className="border-border bg-card shadow-elev fixed z-[110] max-h-[min(20rem,50vh)] overflow-y-auto rounded-2xl border"
-              style={{
-                bottom: menuRect.bottom,
-                left: menuRect.left + 12,
-                width: Math.max(menuRect.width - 24, 0),
-              }}
-            >
-              <p className="text-muted-foreground sticky top-0 border-b border-border/40 bg-card px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-[0.12em] uppercase">
-                Your places
-              </p>
-              {places.map((v) => (
-                <Link
-                  key={v.id}
-                  href={placeSwitchHref(v.id, pathname)}
-                  onClick={() => setPickerOpen(false)}
-                  className={cn(
-                    "hover:bg-muted/40 flex items-center gap-3 px-3 py-2.5 transition",
-                    v.id === activePlace?.id && "bg-primary/5",
-                  )}
-                >
-                  <PlaceAvatar name={v.name} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{v.name}</p>
-                    <p className="text-muted-foreground truncate text-[11px]">
-                      {placeSubtitle(v, "Tap to switch")}
-                    </p>
-                  </div>
-                  {v.id === activePlace?.id ? (
-                    <Check className="text-primary h-4 w-4 shrink-0" />
-                  ) : null}
-                </Link>
-              ))}
-              <Link
-                href="/add"
-                onClick={() => setPickerOpen(false)}
-                className="border-border text-primary hover:bg-primary/5 flex items-center gap-2 border-t px-3 py-2.5 text-sm font-semibold transition"
-              >
-                <Plus className="h-4 w-4" />
-                Add a place
-              </Link>
-            </div>
-          </>,
-          document.body,
-        )
-      : null;
-
   return (
     <>
-      {picker}
+      <UnitDockPlacePicker
+        open={pickerOpen && canOpenPlaceMenu}
+        places={places}
+        activePlace={activePlace}
+        pathname={pathname}
+        menuRect={menuRect}
+        onClose={() => setPickerOpen(false)}
+      />
       <footer
         ref={footerRef}
         className="bg-dock text-dock-foreground border-dock-border relative z-40 shrink-0 border-t pb-[max(0.375rem,env(safe-area-inset-bottom))]"
@@ -281,23 +231,5 @@ export function UnitDock() {
         </div>
       </footer>
     </>
-  );
-}
-
-function PlaceChip({ name }: { name: string }) {
-  const initial = initialLetter(name);
-  return (
-    <span className="bg-pink-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white shadow-sm">
-      {initial}
-    </span>
-  );
-}
-
-function PlaceAvatar({ name }: { name: string }) {
-  const initial = initialLetter(name);
-  return (
-    <span className="bg-pink-gradient flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
-      {initial}
-    </span>
   );
 }
