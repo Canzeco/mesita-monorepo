@@ -446,19 +446,7 @@ function DeckBody({
           </View>
         ) : null}
 
-        {showTutorial ? (
-          <View
-            className="absolute inset-0 z-50 items-center justify-center bg-black/45"
-            pointerEvents="none"
-          >
-            <View className="items-center gap-5">
-              <Hand color="#fff" size={80} strokeWidth={1.4} />
-              <Text className="text-center text-[13px] font-medium tracking-wide text-white/95">
-                Swipe left to skip · right to save
-              </Text>
-            </View>
-          </View>
-        ) : null}
+        {showTutorial ? <SwipeTutorialOverlay /> : null}
       </View>
 
       <View className="mt-3 flex-row items-center gap-1.5">
@@ -475,6 +463,22 @@ function DeckBody({
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
       />
+    </View>
+  );
+}
+
+function SwipeTutorialOverlay() {
+  return (
+    <View
+      className="absolute inset-0 z-50 items-center justify-center bg-black/45"
+      pointerEvents="none"
+    >
+      <View className="items-center gap-5">
+        <Hand color="#fff" size={80} strokeWidth={1.4} />
+        <Text className="text-center text-[13px] font-medium tracking-wide text-white/95">
+          Swipe left to skip · right to save
+        </Text>
+      </View>
     </View>
   );
 }
