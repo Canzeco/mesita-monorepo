@@ -5,6 +5,7 @@ import { dedup, safeParseJson } from "./parse-utils.ts";
 import type { Img } from "./enrich-config.ts";
 import { OPENAI_URL, VISION_MODEL } from "./enrich-config.ts";
 import { needsInlineImage } from "./enrich-image-inline-hosts.ts";
+import { selectWithDiversity } from "./enrich-image-diversity.ts";
 
 export type WebImage = {
   url: string;
@@ -387,40 +388,6 @@ export type ImageFunnelResult = {
   imageAnalysisByUrl: Map<string, string>;
   diag: Record<string, unknown>;
 };
-
-// Pick the final photo set with a SOURCE-DIVERSITY floor: reserve up to
-// reservePerSource of each non-Google source's best (in `ordered` order), then
-// fill the remaining slots by overall order, capped at `cap`. Guarantees website
-// + Instagram representation whenever those sources contributed images — the
-// vision rubric otherwise tends to rank Google Places photos highest and crowd
-// the others out (which is why places looked "Google-only").
-function selectWithDiversity(
-  ordered: string[],
-  srcOf: Map<string, Img["source"]>,
-  cap: number,
-): string[] {
-  const reservePerSource = Math.min(3, Math.max(1, Math.floor(cap / 4)));
-  const picked: string[] = [];
-  const seen = new Set<string>();
-  const take = (u: string) => {
-    if (u && !seen.has(u) && picked.length < cap) {
-      seen.add(u);
-      picked.push(u);
-    }
-  };
-  for (const src of ["instagram", "website"] as const) {
-    let n = 0;
-    for (const u of ordered) {
-      if (n >= reservePerSource) break;
-      if (srcOf.get(u) === src && !seen.has(u)) {
-        take(u);
-        n += 1;
-      }
-    }
-  }
-  for (const u of ordered) take(u);
-  return picked;
-}
 
 // Image funnel: build the gathered pool (each source contributes its gather-
 // capped, metadata-sorted bucket), then ANALYZE (vision describes the per-source
