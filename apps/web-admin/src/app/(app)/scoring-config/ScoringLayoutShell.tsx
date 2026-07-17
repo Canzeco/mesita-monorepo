@@ -5,22 +5,17 @@ import { PageHeader } from "@/components/PageContainer";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { SCORING_SUBROUTES } from "./nav";
 
-// Scoring Config — three tabs mirroring the model's layers (subscores →
-// scores → cards → sub-decks → decks). Subscores = every Subscore's knobs +
-// data contract; Cards = every Subscore's internal process on ONE consumer ×
-// intent × place (= one CARD); Decks = sub-decks merged into an engine's
-// deck. Memo moved back out to /memo-config (MESITA-627) — the Pre-Memo deck
-// feeds it, but the concierge's own knobs are not a ranking layer.
+// Scoring Config — two tabs (v10): Subscores (the five subscores' knobs +
+// data-access, with the Subscore playground) and Scores & Lanes (lane
+// composition + the merge into the final deck, with the Deck playground).
 //
 // The header stays "Scoring Config"; only the sidebar entry says "Ranking
 // Config" (MESITA-627).
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/scoring-config/subscores":
-    "One box per Subscore — ES (Embeddings Similarity), GP (Google Popularity), RP (Rewards Promotions), IC (Intent Context), CH (Context History — Swipe only, stub) — each with its knobs and its data-access contract: exactly what data computes it.",
-  "/scoring-config/cards":
-    "One consumer × intent × place = one CARD with four Scores. Every Subscore's internal process — documents, vectors, the popularity curve, the intent context's factors — on exactly that card.",
-  "/scoring-config/decks":
-    "Swipe · Map · Pre-Memo. Per-lane maxes in → four sub-decks → merged deck, repeats removed (nothing backfills). Per-place scores live in Manage Single Unit → Scores. The Pre-Memo deck is what Memo retrieves over — its own knobs live in Memo Config.",
+    "One box per subscore — EM (Embeddings Match), SM (Structured Match), GP (Google Popularity), RP (Rewards Promotions), XX (Random Number) — each with its knobs and its data-access contract, all in [0,1]. The Subscore playground below runs any subscore's internals on one consumer × intent × place.",
+  "/scoring-config/lanes":
+    "Three lanes, one score each — Organic EM·SM·GP·XX · Inorganic EM·SM·RP·XX · Hybrid EM·SM·GP·RP·XX — merged round-robin O → I → H, dedupe on insert, no backfill (≤ 3·N). The Deck playground below runs the whole pipeline into a final deck.",
 };
 
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {

@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 
-// The old /playground split into Internals + Engines (MESITA-617) → Card Sim
-// + Deck Sim (MESITA-620) → the Cards + Decks tabs (MESITA-621). Old links
-// land on Cards.
+// v10 (MESITA-644): each tab carries its own playground now — the Subscore
+// playground on Subscores, the Deck playground on Scores & Lanes.
 export default function ScoringPlaygroundRedirect() {
-  redirect("/scoring-config/cards");
+  redirect("/scoring-config/subscores");
 }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// v9 made Internals the Card Sim; v9.1 (MESITA-621) names it the Cards tab.
+// v10 (MESITA-644): internals live in the Subscores tab's playground.
 export default function ScoringInternalsRedirect() {
-  redirect("/scoring-config/cards");
+  redirect("/scoring-config/subscores");
 }

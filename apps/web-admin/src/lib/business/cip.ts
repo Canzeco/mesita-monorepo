@@ -1,30 +1,34 @@
 // CIP — Consumer · Intent · Place. The playground's data plumbing for the
-// scoring draft: build the consumer side, synthesize intents, and emulate the
-// ES Sub-Score until real embeddings exist.
+// scoring model (v10): build the consumer side, synthesize intents, and
+// emulate the EM subscore until the real encoder (OpenAI embeddings) is wired.
 //
 // THREE DATA OBJECTS, TWO SIDES. Consumer-data and intent-data are the SAME
 // side of the match (the query side) — merged before matching. The difference
 // is mutability: consumer-data barely moves (taste, class), intent-data is
 // per-query (tonight, near X, with friends). Place-data is the other side.
 //
-// How the four Sub-Scores get their inputs here:
-//   ES  over (consumer + intent) doc × place doc — real consumer, synthetic
-//       intent, real place; documents → vectors → cosine.
-//   GP  from the real place — google review count × rating (scores.gpParts).
+// How the five subscores get their inputs here:
+//   EM  over (consumer + intent) doc × place doc — real consumer, synthetic
+//       intent, real place; documents → vectors → cosine, max(0, cos).
+//   SM  computed from (intent × place): haversine to the intent's W (zone
+//       string match → km 0), the place's real hours vs the intent's query
+//       time, and the category ladder — where × when × what.
+//   GP  from the real place — ln(1 + rating × reviews) / ceiling.
 //   RP  from the real place — posture derived from its live promo rates.
-//   IC  computed from (intent × place): haversine distance + the place's real
-//       hours vs the intent's synthetic query time — the intent's context.
+//   XX  a seeded unit draw per card per lane (scores.unitDraw), U^control.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
 // admin-web-get-scoring-sample) — never invented here. Intent is synthetic BY
 // DESIGN (that's what an intent generator is). Consumer taste uses real
 // saves/visits when they exist; an empty history gets a deterministic
-// synthetic taste and is LABELED synthetic. ES here runs a feature-hash
-// encoder — a deterministic stand-in for the real embedding model, which does
-// not exist yet; the numbers are for exercising the model's shape, not for
-// believing.
+// synthetic taste and is LABELED synthetic. EM here runs a feature-hash
+// encoder — a deterministic stand-in for the real embedding model; the
+// numbers are for exercising the model's shape, not for believing. SM's
+// where emulates W as the anchor point + a zone string match (the zones
+// registry / edge-distance geometry is the backend build), and the category
+// ladder proxies mega-category siblings through tag overlap.
 
-import type { EngineId } from "./scores";
+import type { EngineId, WhatRelation } from "./scores";
 
 /** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
 export const SAMPLE_MAX = 10;
@@ -114,6 +118,10 @@ export type Intent = {
    * include/exclude each piece (intent.query / .zone / .time / .party).
    */
   parts: { query: string; zone: string | null; time: string; party: string | null };
+  /** The zone the intent NAMES (SM's zone-mode string match) — null = point mode. */
+  zoneName: string | null;
+  /** The intent's category ask — a SET; empty = nothing asked (what → 1). */
+  cats: string[];
   lat: number | null;
   lng: number | null;
   day: string;
@@ -128,12 +136,12 @@ const HOURS = [13, 18.5, 20.5, 22.5] as const;
 // Swipe/Map never touch these: their prompt structure is fixed and only the
 // data changes. Memo's question IS its retrieval query — the "+RAG" leg.
 const MEMO_BANK = [
-  { text: "Where do I take a first date tonight?", hour: 20.5, day: "friday" },
-  { text: "Best brunch for Sunday with my parents?", hour: 11, day: "sunday" },
-  { text: "Where can we dance until late on Saturday?", hour: 23, day: "saturday" },
-  { text: "Quiet spot to work over coffee this afternoon?", hour: 16, day: "wednesday" },
-  { text: "Big group birthday dinner — where?", hour: 21, day: "saturday" },
-  { text: "Rooftop drinks with a view before dinner?", hour: 19, day: "friday" },
+  { text: "Where do I take a first date tonight?", hour: 20.5, day: "friday", cats: ["cocktail_bar", "wine_bar", "fine_dining"] },
+  { text: "Best brunch for Sunday with my parents?", hour: 11, day: "sunday", cats: ["brunch"] },
+  { text: "Where can we dance until late on Saturday?", hour: 23, day: "saturday", cats: ["night_club"] },
+  { text: "Quiet spot to work over coffee this afternoon?", hour: 16, day: "wednesday", cats: ["specialty_coffee"] },
+  { text: "Big group birthday dinner — where?", hour: 21, day: "saturday", cats: ["fine_dining", "casual"] },
+  { text: "Rooftop drinks with a view before dinner?", hour: 19, day: "friday", cats: ["rooftop", "cocktail_bar"] },
 ] as const;
 
 function fmtHour(h: number): string {
@@ -143,15 +151,23 @@ function fmtHour(h: number): string {
 }
 
 /** Anchor the synthetic user near a real place: same city, walkable jitter. */
-function anchor(places: SamplePlace[], seed: number): { lat: number | null; lng: number | null; near: string } {
+function anchor(places: SamplePlace[], seed: number): {
+  lat: number | null;
+  lng: number | null;
+  near: string;
+  zoneName: string | null;
+} {
   const geo = places.filter((p) => p.lat != null && p.lng != null);
-  if (geo.length === 0) return { lat: null, lng: null, near: "unknown" };
+  if (geo.length === 0) return { lat: null, lng: null, near: "unknown", zoneName: null };
   const p = geo[seed % geo.length];
   const jitter = ((seed % 17) - 8) / 8; // −1..1
   return {
     lat: Number(p.lat) + jitter * 0.012, // ≈ ±1.3 km
     lng: Number(p.lng) + jitter * 0.01,
     near: p.zone ?? p.city ?? p.name,
+    // The intent NAMES a zone only when the anchor place carries one — SM's
+    // zone mode; otherwise the intent is a pure point (GPS mode).
+    zoneName: p.zone ?? null,
   };
 }
 
@@ -174,6 +190,8 @@ export function generateIntent(
       engine,
       text: t.text,
       parts,
+      zoneName: a.zoneName,
+      cats: [...t.cats],
       lat: a.lat,
       lng: a.lng,
       day: t.day,
@@ -197,6 +215,10 @@ export function generateIntent(
     engine,
     text: [parts.query, parts.zone, parts.time, parts.party].filter(Boolean).join(" · "),
     parts,
+    zoneName: a.zoneName,
+    // Swipe/Map default intents ask no category — the deck is open-ended
+    // (what → 1 for every place); Memo's questions carry category sets.
+    cats: [],
     lat: a.lat,
     lng: a.lng,
     day,
@@ -205,7 +227,45 @@ export function generateIntent(
   };
 }
 
-// ── IC inputs from real geo + real hours ────────────────────────────────
+// ── SM inputs from the intent × place pair ──────────────────────────────
+
+/**
+ * where's inputs, emulated: zone mode when the intent names a zone — the
+ * place's zone string matching it → km 0 (inside W); otherwise haversine to
+ * the anchor. The real build measures border distance off the zones
+ * registry's rectangles; the anchor-point distance is the playground's
+ * stand-in.
+ */
+export function resolveWhere(
+  intent: Intent,
+  place: SamplePlace,
+): { km: number | null; zoneMode: boolean } {
+  const zoneMode = intent.zoneName != null;
+  if (zoneMode && place.zone && place.zone === intent.zoneName) return { km: 0, zoneMode };
+  if (intent.lat == null || intent.lng == null || place.lat == null || place.lng == null) {
+    return { km: null, zoneMode };
+  }
+  return {
+    km: haversineKm(intent.lat, intent.lng, Number(place.lat), Number(place.lng)),
+    zoneMode,
+  };
+}
+
+/**
+ * The category ladder's resolution, emulated: exact when the place's category
+ * is in the intent's set; sibling when a place TAG overlaps the set (tag
+ * overlap proxies the mega-category family until the taxonomy's mega layer
+ * is wired here); mismatch otherwise; none when nothing was asked.
+ */
+export function whatRelation(intent: Intent, place: SamplePlace): WhatRelation {
+  if (intent.cats.length === 0) return "none";
+  const cats = new Set(intent.cats.map(norm));
+  if (place.category && cats.has(norm(place.category))) return "exact";
+  if (Array.isArray(place.tags) && place.tags.some((t) => cats.has(norm(t)))) return "sibling";
+  return "mismatch";
+}
+
+// ── when's inputs from real geo + real hours ────────────────────────────
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371;
@@ -233,7 +293,7 @@ export type OpenWindow = {
 };
 
 /**
- * The place's real hours vs the intent's query time → IC's when-inputs.
+ * The place's real hours vs the intent's query time → SM's when-inputs.
  * Scans today + tomorrow (overnight closes roll past midnight), 12 h horizon.
  * No hours at all → unknown (the caller decides; unknown is not closed).
  */
@@ -276,12 +336,12 @@ export function openWindow(
 }
 
 // ── CONTEXT DOCUMENTS — the wide embedding contexts, assembled for real ──
-// These are the documents the real pipeline will embed for ES: everything is
+// These are the documents the real pipeline will embed for EM: everything is
 // TEXT — hours and zones appear as words; numeric distance/time live only in
-// IC, numeric proof only in GP. WHICH fields go in is CONFIG
+// SM, numeric proof only in GP. WHICH fields go in is CONFIG
 // (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
 // `enabled` key set and assembles from exactly that — so a toggle on the
-// Pipeline tab changes the embedding, the cosine, and the ranking. `enabled`
+// Subscores tab changes the embedding, the cosine, and the ranking. `enabled`
 // omitted = all on.
 
 type Enabled = ReadonlySet<string> | null | undefined;
@@ -358,10 +418,11 @@ export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
 }
 
 // ── EMULATED EMBEDDINGS — feature-hashed bag-of-tokens ──────────────────
-// A deterministic stand-in for the real embedding model: tokenize the
-// document, hash every token into a signed slot of a fixed-dim vector, L2
-// normalize. Same shape as the real thing (document → vector → cosine), so
-// ES IS the cosine of two generated vectors — just from a toy encoder.
+// A deterministic stand-in for the real encoder (OpenAI
+// text-embedding-3-small): tokenize the document, hash every token into a
+// signed slot of a fixed-dim vector, L2 normalize. Same shape as the real
+// thing (document → unit vector → dot product), so EM IS the cosine of two
+// generated vectors — just from a toy encoder.
 
 export const EMBED_DIMS = 64;
 
@@ -396,7 +457,7 @@ export function cosineSim(a: number[], b: number[]): number {
   return dot;
 }
 
-/** ES from the two vectors — negative cosine floors at 0. */
-export function esFromVectors(ciVec: number[], placeVec: number[]): number {
-  return Math.round(Math.max(0, cosineSim(ciVec, placeVec)) * 100);
+/** EM from the two vectors — max(0, cos), in [0,1]. */
+export function emFromVectors(ciVec: number[], placeVec: number[]): number {
+  return Math.max(0, Math.min(1, cosineSim(ciVec, placeVec)));
 }

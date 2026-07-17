@@ -2,11 +2,11 @@
 
 import { CONTEXT_FIELDS, LANES, type ContextSide, type LaneId } from "@/lib/business/scores";
 
-// Tiny presentational bits shared by the Subscores, Cards and Decks panels.
+// Tiny presentational bits shared by the Subscores and Scores & Lanes panels.
 
-/** ON/OF/IN/IF badge text — derived from Lane.short, never restated. */
+/** O / I / H badge text — derived from Lane.label, never restated. */
 export const LANE_SHORT: Record<LaneId, string> = Object.fromEntries(
-  LANES.map((l) => [l.id, l.short.toUpperCase()]),
+  LANES.map((l) => [l.id, l.label[0].toUpperCase()]),
 ) as Record<LaneId, string>;
 
 export function GroupHead({ children }: { children: React.ReactNode }) {
@@ -101,7 +101,8 @@ export function PanelCard({
   );
 }
 
-/** The data-access contract of one sub-function — three columns of fields. */
+/** The data-access contract of one fixed subscore — three or four columns
+ * of fields (interaction = the consumer × place EDGE, SM-only). */
 export function ContextCols({
   ctx,
 }: {
@@ -109,6 +110,7 @@ export function ContextCols({
     consumer: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
     intent: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
     place: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
+    interaction?: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
   };
 }) {
   const col = (
@@ -143,10 +145,11 @@ export function ContextCols({
     </div>
   );
   return (
-    <div className="mt-4 grid gap-4 lg:grid-cols-3">
+    <div className={`mt-4 grid gap-4 ${ctx.interaction ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
       {col("Consumer-data", ctx.consumer)}
       {col("Intent-data", ctx.intent)}
       {col("Place-data", ctx.place)}
+      {ctx.interaction ? col("Interaction-data", ctx.interaction) : null}
     </div>
   );
 }

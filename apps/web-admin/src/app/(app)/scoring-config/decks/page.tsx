@@ -1,8 +1,7 @@
-import { DeckSimPanel } from "./DeckSimPanel";
+import { redirect } from "next/navigation";
 
-// Decks — compose an engine's deck through the sub-deck pipeline: per-lane
-// maxes in, sub-decks merged (repeats out, paid copy wins), ordered cards
-// out. Sample + saved settings come from the layout's ScoringProvider.
-export default function ScoringDecksPage() {
-  return <DeckSimPanel />;
+// v10 (MESITA-644): decks became Scores & Lanes (three lanes, one merge).
+// Old links land there.
+export default function ScoringDecksRedirect() {
+  redirect("/scoring-config/lanes");
 }

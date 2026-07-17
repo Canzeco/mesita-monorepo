@@ -3,83 +3,71 @@
 import { createContext, useContext, useMemo, useState, useTransition } from "react";
 import {
   coerceScoringSettings,
-  DECK_COUNT_MAX,
   DEFAULT_SCORING_SETTINGS,
-  DEFAULT_IC_PARAMS,
+  LANE_N_MAX,
   type ContextConfig,
-  type DeckKey,
-  type Decks,
-  type EngineId,
-  type EsParams,
+  type EmParams,
   type GpParams,
+  type RpRungs,
   type ScoringSettings,
-  type IcParams,
+  type SmParams,
+  type XxParams,
 } from "@/lib/business/scores";
-import { type StrategyId } from "@/lib/business/strategies";
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 import { updateScoringSettings } from "./settings-actions";
 
-// Shared state for the Scoring Config tabs. The layout mounts this ONCE, so
-// knobs set on Subscores carry into the Cards and Decks tabs live and survive
-// tab switches — the Decks tab's max steppers ARE the same form state. The DB sample flows through as plain props; the
-// SAVED settings blob seeds the knobs on first mount (null in DB = code
-// defaults).
+// Shared state for the Scoring Config tabs (v10 blob). The layout mounts
+// this ONCE, so knobs set on Subscores carry into Scores & Lanes live and
+// survive tab switches — both playgrounds compute from the SAME form state.
+// The DB sample flows through as plain props; the SAVED settings blob seeds
+// the knobs on first mount (null in DB = code defaults).
 //
 // Save = whole-blob write to app_settings.scoring_config via the EF pair.
 // Reset-to-defaults = load DEFAULT_SCORING_SETTINGS into the form (dirty
-// until saved). Cancel = revert the form to the last-saved values.
-
-type Retrieval = ScoringSettings["retrieval"];
-type RpVals = Record<StrategyId, number>;
+// until saved). Revert = the form back to the last-saved values.
 
 function fromSettings(s: ScoringSettings): {
-  decks: Decks;
-  retrieval: Retrieval;
-  esParams: EsParams;
-  gpParams: GpParams;
-  rpVals: RpVals;
-  cfg: IcParams;
+  laneN: number;
+  recallTopK: number;
+  em: EmParams;
+  sm: SmParams;
+  gp: GpParams;
+  rp: RpRungs;
+  xx: XxParams;
   context: ContextConfig;
 } {
   return {
-    decks: {
-      swipe: { ...s.decks.swipe },
-      map: { ...s.decks.map },
-      memo: { ...s.decks.memo },
-    },
-    retrieval: s.retrieval,
-    esParams: { ...s.es },
-    gpParams: { ...s.gp },
-    rpVals: { ...s.rp },
-    cfg: { ...DEFAULT_IC_PARAMS, ...s.ic },
-    context: { es: [...s.context.es] },
+    laneN: s.laneN,
+    recallTopK: s.retrieval.recallTopK,
+    em: { ...s.em },
+    sm: { where: { ...s.sm.where }, when: { ...s.sm.when }, what: { ...s.sm.what } },
+    gp: { ...s.gp },
+    rp: { ...s.rp },
+    xx: { ...s.xx },
+    context: { em: [...s.context.em] },
   };
 }
 
 type ScoringCtx = {
   consumers: SampleConsumer[];
   places: SamplePlace[];
-  /** Deck composition — cards per lane per engine. Shared with the Deck Sim. */
-  decks: Decks;
-  /** The one mutation path for deck counts (rounds + clamps 0–DECK_COUNT_MAX). */
-  setDeckCount: (engine: EngineId, key: DeckKey, n: number) => void;
-  retrieval: Retrieval;
-  setRetrieval: React.Dispatch<React.SetStateAction<Retrieval>>;
-  /** ES internals — the encoder's params. */
-  esParams: EsParams;
-  setEsParams: React.Dispatch<React.SetStateAction<EsParams>>;
-  /** GP internals — the popularity curve's params. */
-  gpParams: GpParams;
-  setGpParams: React.Dispatch<React.SetStateAction<GpParams>>;
-  /** RP — the rung each posture earns. */
-  rpVals: RpVals;
-  setRpVals: React.Dispatch<React.SetStateAction<RpVals>>;
-  /** IC's knobs. */
-  cfg: IcParams;
-  setCfg: React.Dispatch<React.SetStateAction<IcParams>>;
-  /** Which fields ES reads — the configurable pipeline. */
+  /** Shared lane length N — every lane contributes up to N cards. */
+  laneN: number;
+  setLaneN: (n: number) => void;
+  recallTopK: number;
+  setRecallTopK: (n: number) => void;
+  em: EmParams;
+  setEm: React.Dispatch<React.SetStateAction<EmParams>>;
+  sm: SmParams;
+  setSm: React.Dispatch<React.SetStateAction<SmParams>>;
+  gp: GpParams;
+  setGp: React.Dispatch<React.SetStateAction<GpParams>>;
+  rp: RpRungs;
+  setRp: React.Dispatch<React.SetStateAction<RpRungs>>;
+  xx: XxParams;
+  setXx: React.Dispatch<React.SetStateAction<XxParams>>;
+  /** Which fields EM reads — the configurable pipeline. */
   context: ContextConfig;
-  /** Toggle one registry field in ES's context. */
   toggleContext: (key: string) => void;
   /** Current form as a settings blob. */
   current: ScoringSettings;
@@ -88,9 +76,7 @@ type ScoringCtx = {
   saveError: string | null;
   savedOk: boolean;
   save: () => void;
-  /** Load code defaults into the form (dirty until saved). */
   resetToDefaults: () => void;
-  /** Revert the form to the last-saved values. */
   revert: () => void;
 };
 
@@ -114,26 +100,23 @@ export function ScoringProvider({
     coerceScoringSettings(initialConfig),
   );
   const seed = useMemo(() => fromSettings(saved), [saved]);
-  const [decks, setDecks] = useState<Decks>(seed.decks);
-  const [retrieval, setRetrieval] = useState<Retrieval>(seed.retrieval);
-  const [esParams, setEsParams] = useState<EsParams>(seed.esParams);
-  const [gpParams, setGpParams] = useState<GpParams>(seed.gpParams);
-  const [rpVals, setRpVals] = useState<RpVals>(seed.rpVals);
-  const [cfg, setCfg] = useState<IcParams>(seed.cfg);
+  const [laneN, setLaneNRaw] = useState<number>(seed.laneN);
+  const [recallTopK, setRecallTopKRaw] = useState<number>(seed.recallTopK);
+  const [em, setEm] = useState<EmParams>(seed.em);
+  const [sm, setSm] = useState<SmParams>(seed.sm);
+  const [gp, setGp] = useState<GpParams>(seed.gp);
+  const [rp, setRp] = useState<RpRungs>(seed.rp);
+  const [xx, setXx] = useState<XxParams>(seed.xx);
   const [context, setContext] = useState<ContextConfig>(seed.context);
 
-  const setDeckCount = (engine: EngineId, key: DeckKey, n: number) =>
-    setDecks((d) => ({
-      ...d,
-      [engine]: {
-        ...d[engine],
-        [key]: Math.max(0, Math.min(DECK_COUNT_MAX, Math.round(Number.isFinite(n) ? n : 0))),
-      },
-    }));
+  const setLaneN = (n: number) =>
+    setLaneNRaw(Math.max(1, Math.min(LANE_N_MAX, Math.round(Number.isFinite(n) ? n : 1))));
+  const setRecallTopK = (n: number) =>
+    setRecallTopKRaw(Math.max(10, Math.min(200, Math.round(Number.isFinite(n) ? n : 10))));
 
   const toggleContext = (key: string) =>
     setContext((c) => ({
-      es: c.es.includes(key) ? c.es.filter((k) => k !== key) : [...c.es, key],
+      em: c.em.includes(key) ? c.em.filter((k) => k !== key) : [...c.em, key],
     }));
 
   const [saving, startSave] = useTransition();
@@ -144,26 +127,37 @@ export function ScoringProvider({
   // the dirty diff is JSON.stringify equality.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 3,
-      decks: {
-        swipe: { on: decks.swipe.on, of: decks.swipe.of, in: decks.swipe.in, if: decks.swipe.if },
-        map: { on: decks.map.on, of: decks.map.of, in: decks.map.in, if: decks.map.if },
-        memo: { on: decks.memo.on, of: decks.memo.of, in: decks.memo.in, if: decks.memo.if },
+      v: 4,
+      laneN,
+      retrieval: { recallTopK },
+      em: { embedDims: em.embedDims },
+      sm: {
+        where: {
+          pointTolKm: sm.where.pointTolKm,
+          zoneSpillKm: sm.where.zoneSpillKm,
+          distExp: sm.where.distExp,
+        },
+        when: {
+          waitFloor: sm.when.waitFloor,
+          waitTransitionH: sm.when.waitTransitionH,
+          waitSteep: sm.when.waitSteep,
+          sessionH: sm.when.sessionH,
+          timeBlockH: sm.when.timeBlockH,
+        },
+        what: { sibling: sm.what.sibling, mismatch: sm.what.mismatch },
       },
-      retrieval: { recallTopK: retrieval.recallTopK },
-      es: { ...esParams },
-      gp: { ...gpParams },
+      gp: { lnCeiling: gp.lnCeiling },
       rp: {
-        zero: rpVals.zero,
-        conservative: rpVals.conservative,
-        aggressive: rpVals.aggressive,
-        dominant: rpVals.dominant,
+        zero: rp.zero,
+        conservative: rp.conservative,
+        aggressive: rp.aggressive,
+        dominant: rp.dominant,
       },
-      ic: { ...cfg },
+      xx: { control: xx.control },
       // Sorted so toggle order never fakes a diff against the saved blob.
-      context: { es: [...context.es].sort() },
+      context: { em: [...context.em].sort() },
     }),
-    [decks, retrieval, esParams, gpParams, rpVals, cfg, context],
+    [laneN, recallTopK, em, sm, gp, rp, xx, context],
   );
 
   const dirty = useMemo(
@@ -173,12 +167,13 @@ export function ScoringProvider({
 
   const apply = (s: ScoringSettings) => {
     const f = fromSettings(s);
-    setDecks(f.decks);
-    setRetrieval(f.retrieval);
-    setEsParams(f.esParams);
-    setGpParams(f.gpParams);
-    setRpVals(f.rpVals);
-    setCfg(f.cfg);
+    setLaneNRaw(f.laneN);
+    setRecallTopKRaw(f.recallTopK);
+    setEm(f.em);
+    setSm(f.sm);
+    setGp(f.gp);
+    setRp(f.rp);
+    setXx(f.xx);
     setContext(f.context);
   };
 
@@ -204,18 +199,20 @@ export function ScoringProvider({
       value={{
         consumers,
         places,
-        decks,
-        setDeckCount,
-        retrieval,
-        setRetrieval,
-        esParams,
-        setEsParams,
-        gpParams,
-        setGpParams,
-        rpVals,
-        setRpVals,
-        cfg,
-        setCfg,
+        laneN,
+        setLaneN,
+        recallTopK,
+        setRecallTopK,
+        em,
+        setEm,
+        sm,
+        setSm,
+        gp,
+        setGp,
+        rp,
+        setRp,
+        xx,
+        setXx,
         context,
         toggleContext,
         current,

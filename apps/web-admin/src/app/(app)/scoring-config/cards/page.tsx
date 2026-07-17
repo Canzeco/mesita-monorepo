@@ -1,8 +1,7 @@
-import { CardsPanel } from "./CardsPanel";
+import { redirect } from "next/navigation";
 
-// Cards — one consumer × intent × place = one CARD with its four Scores;
-// every Subscore's internal process on that single card. Sample + saved
-// settings come from the layout's ScoringProvider.
-export default function ScoringCardsPage() {
-  return <CardsPanel />;
+// v10 (MESITA-644): the Cards tab folded into the Subscores tab's playground.
+// Old links land there.
+export default function ScoringCardsRedirect() {
+  redirect("/scoring-config/subscores");
 }
