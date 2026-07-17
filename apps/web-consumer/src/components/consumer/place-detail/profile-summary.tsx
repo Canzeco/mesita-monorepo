@@ -64,22 +64,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
     // the page header; pink body starts at the tab strip below.
     <section className="border-border bg-card flex flex-col gap-3 border-b px-4 pt-3 pb-4">
       <div className="flex items-center gap-4">
-        <div className="border-border h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border">
-          {place.photos.length > 0 ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={place.photos[0]}
-              alt={place.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
-              <span className="font-display text-3xl font-bold text-white/80">
-                {firstInitial(place.name)}
-              </span>
-            </div>
-          )}
-        </div>
+        <ProfilePhoto place={place} />
         <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
           <ProfileStat
             value={googleRating}
@@ -178,6 +163,27 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
 
       <ProfileActions className="mt-5" place={place} />
     </section>
+  );
+}
+
+function ProfilePhoto({ place }: { place: PlaceDetail }) {
+  return (
+    <div className="border-border h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border">
+      {place.photos.length > 0 ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={place.photos[0]}
+          alt={place.name}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
+          <span className="font-display text-3xl font-bold text-white/80">
+            {firstInitial(place.name)}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
