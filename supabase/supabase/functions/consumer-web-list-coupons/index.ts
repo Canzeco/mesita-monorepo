@@ -1,10 +1,10 @@
 // Supabase Edge Function — consumer-web-list-coupons (natural caller)
 //
-// Authenticated read of the caller's coupons wallet. Returns coupons
-// joined with the place summary needed to render the coupon card
-// (name, slug, photo, address). Defaults to active coupons only; pass
-// `include_inactive: true` to also receive redeemed / expired /
-// cancelled history (used by the wallet's "Past" subtab).
+// Authenticated read of the caller's coupons. Returns coupons joined with
+// the place summary needed to render the coupon card (name, slug, photo,
+// address). Defaults to active coupons only; pass `include_inactive: true`
+// to also receive redeemed / expired / cancelled history (used by the
+// Rewards "Past" subtab).
 //
 // Deploy: supabase functions deploy consumer-web-list-coupons
 

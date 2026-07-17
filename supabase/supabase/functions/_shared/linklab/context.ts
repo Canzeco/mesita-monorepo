@@ -1,13 +1,13 @@
-// linklab — per-venue context assembly (shared by every strategy).
+// linklab — per-place context assembly (shared by every strategy).
 // Resolves the Google Place (identity spine + any website Google already knows) and a
 // one-shot Perplexity SERP summary (the "SERP AI summary": a neutral synthesis of what the
-// web says about the venue, used as soft grounding — NOT the answer). Cached per venue.
+// web says about the place, used as soft grounding — NOT the answer). Cached per place.
 
 import { googleResolvePlace, GooglePlace, Keys, perplexitySonar } from "./providers.ts";
 
-export type VenueInput = { name: string; city: string; country?: string };
+export type PlaceInput = { name: string; city: string; country?: string };
 
-export type VenueContext = {
+export type PlaceContext = {
   name: string;
   city: string;
   locationLine: string;
@@ -17,10 +17,10 @@ export type VenueContext = {
   serpSummary: string | null;
 };
 
-export async function assembleContext(keys: Keys, v: VenueInput): Promise<VenueContext> {
+export async function assembleContext(keys: Keys, v: PlaceInput): Promise<PlaceContext> {
   const google = await googleResolvePlace(keys, v.name, v.city);
   const locationLine = google?.formattedAddress ?? `${v.city}, ${v.country ?? "Mexico"}`;
-  const serpSummary = await venueSerpSummary(keys, v, google);
+  const serpSummary = await placeSerpSummary(keys, v, google);
   return {
     name: v.name,
     city: v.city,
@@ -31,9 +31,9 @@ export async function assembleContext(keys: Keys, v: VenueInput): Promise<VenueC
   };
 }
 
-async function venueSerpSummary(
+async function placeSerpSummary(
   keys: Keys,
-  v: VenueInput,
+  v: PlaceInput,
   google: GooglePlace | null,
 ): Promise<string | null> {
   const schema = {
@@ -47,7 +47,7 @@ async function venueSerpSummary(
     "You summarize restaurants factually for an internal knowledge base. Return strict JSON.",
     `In 3-4 sentences, describe the restaurant "${v.name}" in ${v.city}, ${v.country ?? "Mexico"} ` +
       `(category hints: ${cat}). Cover cuisine/concept, neighborhood, and any facts that help ` +
-      `uniquely identify it (chef, year, sister venues). Do NOT list its website or social handles. ` +
+      `uniquely identify it (chef, year, sister places). Do NOT list its website or social handles. ` +
       `Return {"summary": "..."}.`,
     schema,
     { searchContextSize: "low" },

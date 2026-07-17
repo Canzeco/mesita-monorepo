@@ -40,7 +40,7 @@ export const CHANNELS: Channel[] = [
     emoji: "☎️",
     source: "places.phone",
     blurb:
-      "A call to the venue's line. The most universal channel — nearly every place has one, and it reaches a human who can hold a table.",
+      "A call to the place's line. The most universal channel — nearly every place has one, and it reaches a human who can hold a table.",
   },
   {
     key: "whatsapp",
@@ -48,7 +48,7 @@ export const CHANNELS: Channel[] = [
     emoji: "💬",
     source: "places.whatsapp_url",
     blurb:
-      "A WhatsApp thread with the venue. Written, async and the default way Mexico books — but only some places publish a number.",
+      "A WhatsApp thread with the place. Written, async and the default way Mexico books — but only some places publish a number.",
   },
   {
     key: "instagram",
@@ -56,7 +56,7 @@ export const CHANNELS: Channel[] = [
     emoji: "📸",
     source: "places.instagram_url",
     blurb:
-      "A DM to the venue's IG. The weakest channel — DMs get missed — but often the only contact a new place publishes.",
+      "A DM to the place's IG. The weakest channel — DMs get missed — but often the only contact a new place publishes.",
   },
 ];
 

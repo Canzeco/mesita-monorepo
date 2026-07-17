@@ -2,13 +2,13 @@
 //
 // Toggle a place's bookmark state for the calling consumer. Inserting a
 // saved_places row fires the `tg_saved_places_issue_coupon` trigger which
-// drops an active coupon into the consumer's wallet (for partner places
-// only — web listings get bookmarked but spawn no coupon). Deleting fires
-// the mirror trigger that cancels any active coupon.
+// drops an active coupon for the consumer (for partner places only — web
+// listings get bookmarked but spawn no coupon). Deleting fires the mirror
+// trigger that cancels any active coupon.
 //
 // Response includes the saved_place row (when saved=true) plus the
 // auto-issued coupon, if any — saves the client a follow-up round trip
-// to refresh the wallet after a save.
+// to refresh coupons after a save.
 //
 // Local:  supabase functions serve consumer-web-save-place
 // Deploy: supabase functions deploy consumer-web-save-place

@@ -5,7 +5,7 @@
 // money fields, because the entity split's contract is that the
 // reservation card never carries financial info. The (optional)
 // linked coupon is exposed by id only so the client can cross-
-// reference the coupons wallet, but the rates / cap live on the
+// reference the coupons list, but the rates / cap live on the
 // coupon row, never here.
 //
 // Defaults to upcoming + recently completed; pass `scope: "past"` for

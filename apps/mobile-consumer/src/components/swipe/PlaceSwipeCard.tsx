@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { resolveZoneLabel } from '@/lib/adapters/place-to-detail';
 import type { Place } from '@/lib/api/places';
+import { resolvePlaceCategoryName } from '@/lib/place-category';
 import { formatPlacePriceLevelSymbols } from '@/lib/place-price';
 import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import {
@@ -24,9 +26,14 @@ export function PlaceSwipeCard({ place }: { place: Place }) {
     place.distance_km == null || place.distance_km <= 0
       ? '- km'
       : `${place.distance_km} km`;
-  const zoneLabel = place.zone?.trim() || null;
-  const categoryLabel =
-    place.category_label?.trim() || place.category?.trim() || null;
+  const zoneLabel = resolveZoneLabel({
+    zone: place.zone,
+    address: place.address,
+  });
+  const categoryLabel = resolvePlaceCategoryName({
+    categoryLabel: place.category_label,
+    category: place.category,
+  });
   const isVerified = place.listing_type === 'partner';
   const isFirstVisit = place.is_first_visit !== false;
   const promoPercent =

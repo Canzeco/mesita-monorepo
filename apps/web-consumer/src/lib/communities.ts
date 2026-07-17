@@ -31,10 +31,6 @@ export const COMMUNITIES: Community[] = [
   { id: "harvard", name: "Harvard", emoji: "🎓", blurb: "Cambridge · Campus community" },
 ];
 
-export const COMMUNITY_BY_ID: Record<string, Community> = Object.fromEntries(
-  COMMUNITIES.map((c) => [c.id, c]),
-);
-
 const COMMUNITIES_KEY = "mesita:communities";
 
 // Joined-community ids + a toggle, SSR-safe. Returns the resolved Community

@@ -260,7 +260,7 @@ export const CHANNELS: Channel[] = [
     verb: "search",
     label: "Business · Search",
     description:
-      "What a business owner sees when searching for their venue to claim — including places not yet in Mesita. Kept broad so they can find even a brand-new listing.",
+      "What a business owner sees when searching for their place to claim — including places not yet in Mesita. Kept broad so they can find even a brand-new listing.",
     live: false,
   },
   {
@@ -269,7 +269,7 @@ export const CHANNELS: Channel[] = [
     verb: "add",
     label: "Business · Add",
     description:
-      "A business owner claims or adds their own venue. No review floor by default — you own your venue even when it's brand-new.",
+      "A business owner claims or adds their own place. No review floor by default — you own your place even when it's brand-new.",
     live: false,
   },
   {

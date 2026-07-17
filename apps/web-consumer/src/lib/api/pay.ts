@@ -115,52 +115,6 @@ export function formatTicketVisitDate(
   return `${day}/${month}/${year}`;
 }
 
-export function formatTicketPlaceTitle(
-  name: string | null | undefined,
-  dateIso: string | null | undefined,
-): string {
-  const place = name ?? "Partner place";
-  const date = formatTicketVisitDate(dateIso);
-  return date ? `${place} · ${date}` : place;
-}
-
-export type TicketBillDisplayLine = {
-  label: string;
-  cents: number;
-  emphasis?: boolean;
-};
-
-/** Bill + tip lines for ticket billing step (waiter enters both separately). */
-export function ticketBillDisplayLines(
-  p: TicketBillPayload,
-): TicketBillDisplayLine[] {
-  const lines: TicketBillDisplayLine[] = [];
-  const hasSubtotal =
-    p.check_subtotal_cents != null && p.check_subtotal_cents > 0;
-  const hasTip = p.tip_cents != null && p.tip_cents > 0;
-  const hasTotal = p.total_cents != null && p.total_cents > 0;
-
-  if (hasSubtotal) {
-    lines.push({ label: "Bill", cents: p.check_subtotal_cents! });
-  }
-  if (hasTip) {
-    lines.push({ label: "Tip", cents: p.tip_cents! });
-  }
-  if (hasTotal) {
-    if (hasSubtotal || hasTip) {
-      lines.push({
-        label: "Total",
-        cents: p.total_cents!,
-        emphasis: true,
-      });
-    } else {
-      lines.push({ label: "Bill + tip", cents: p.total_cents! });
-    }
-  }
-
-  return lines;
-}
-
 export type TicketBillPromoExplanation = {
   ratePercent: number | null;
   /** Promo from ticket snapshot (discount_cents). */

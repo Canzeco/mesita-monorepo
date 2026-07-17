@@ -51,7 +51,7 @@ const BLOCKED_WEBSITE_HOSTS = [
   "foursquare.com",
   "youtube.com",
   // NOTE: builder domains (wixsite.com, mystrikingly.com, etc.) are NOT blocked —
-  // small venues genuinely host their official site there.
+  // small places genuinely host their official site there.
 ];
 
 /** Instagram handle (lowercase) from any instagram URL, or null.
@@ -109,7 +109,7 @@ export type FieldOutcome = "TP" | "TN" | "FP" | "FN" | "WRONG";
 
 /** Compare one predicted value against truth for a field.
  *  TP  predicted correct non-null
- *  TN  correctly predicted null (venue truly has none)
+ *  TN  correctly predicted null (place truly has none)
  *  FP  predicted a value where truth is null
  *  FN  predicted null where truth has a value
  *  WRONG predicted a value but it disagrees with truth (counts against precision AND recall) */

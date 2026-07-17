@@ -2,7 +2,7 @@
 // Each: (ctx, keys) => { website, instagram } (raw chosen URL or null). Scoring normalizes.
 // They deliberately span the retrieval x reasoner space; see the table in the benchmark README.
 
-import { VenueContext } from "./context.ts";
+import { PlaceContext } from "./context.ts";
 import {
   firecrawlScrapeLinks,
   firecrawlSearch,
@@ -19,7 +19,7 @@ export type StrategyResult = LinkAnswer & { debug?: Record<string, unknown> };
 export type Strategy = {
   id: string;
   name: string;
-  run: (ctx: VenueContext, keys: Keys) => Promise<StrategyResult>;
+  run: (ctx: PlaceContext, keys: Keys) => Promise<StrategyResult>;
 };
 
 const LINK_SCHEMA = {
@@ -53,7 +53,7 @@ function domainLabel(host: string): string {
   }
   return parts[parts.length - 2] ?? host;
 }
-/** fraction of the domain label's letters that the venue-name tokens account for. */
+/** fraction of the domain label's letters that the place-name tokens account for. */
 function hostNameCoverage(host: string, name: string): number {
   const label = domainLabel(host).replace(/[^a-z0-9]/g, "");
   const toks = nameTokens(name);
@@ -104,8 +104,8 @@ function igUrl(handle: string | null): string | null {
   return handle ? `https://www.instagram.com/${handle}` : null;
 }
 
-// The single highest-precision IG disambiguator: the handle the venue's OWN site links.
-// Used to break venue-vs-group and handle-variant ties (Round 2 improvement).
+// The single highest-precision IG disambiguator: the handle the place's OWN site links.
+// Used to break place-vs-group and handle-variant ties (Round 2 improvement).
 async function footerIgUrls(keys: Keys, site: string | null, name: string): Promise<string[]> {
   if (!site) return [];
   const scraped = await firecrawlScrapeLinks(keys, site);
@@ -116,12 +116,12 @@ async function footerIgUrls(keys: Keys, site: string | null, name: string): Prom
 // Judge rubric shared by the Sonar-judge strategies — prefer own-account over group.
 const IG_PREFERENCE_RULES =
   "Instagram selection rules, in priority order: (1) STRONGLY prefer a handle that is BOTH in the " +
-  "candidate list AND linked from the venue's own official website (marked [site] below); " +
-  "(2) prefer the venue's OWN account over a parent brand / group / umbrella account that covers " +
+  "candidate list AND linked from the place's own official website (marked [site] below); " +
+  "(2) prefer the place's OWN account over a parent brand / group / umbrella account that covers " +
   "many locations; (3) if several official accounts exist, prefer the primary (most-followed / most-active); " +
   "(4) never invent a handle that is not among the candidates; prefer null over a wrong guess.";
 
-function contextLine(ctx: VenueContext): string {
+function contextLine(ctx: PlaceContext): string {
   return (
     `Place: "${ctx.name}" in ${ctx.locationLine}.` +
     (ctx.google?.types?.length ? ` Category: ${ctx.google.types.slice(0, 3).join(", ")}.` : "") +
@@ -227,9 +227,9 @@ const stratC: Strategy = {
     ]);
     const { answer } = await perplexitySonar(
       keys,
-      `You select a venue's official website + Instagram from a candidate list. Return strict JSON. ${IG_PREFERENCE_RULES}`,
+      `You select a place's official website + Instagram from a candidate list. Return strict JSON. ${IG_PREFERENCE_RULES}`,
       `${contextLine(ctx)}\n\nCandidate URLs (pick ONLY from these; [site] = linked from the ` +
-        `venue's own website):\n${renderCandidates(candidates, footerIg)}\n\n` +
+        `place's own website):\n${renderCandidates(candidates, footerIg)}\n\n` +
         `Return {"website_url": <the official own-domain website or null>, ` +
         `"instagram_url": <the official instagram profile URL or null>}.`,
       LINK_SCHEMA,
@@ -263,7 +263,7 @@ const stratD: Strategy = {
       `${contextLine(ctx)}\n\nSearch results for this place ([site] = linked from its own website):\n` +
         `${renderCandidates(candidates, footerIg)}\n\n` +
         `Return the official WEBSITE and official INSTAGRAM profile URL for THIS place. ` +
-        `Prefer the Instagram handle marked [site]; prefer the venue's own account over a group/umbrella ` +
+        `Prefer the Instagram handle marked [site]; prefer the place's own account over a group/umbrella ` +
         `brand account; prefer null over a guess. Return {"website_url","instagram_url"}.`,
       LINK_SCHEMA,
     );
@@ -299,14 +299,14 @@ const stratE: Strategy = {
     ]).slice(0, 30);
     const { answer } = await perplexitySonar(
       keys,
-      `You select a venue's official website + Instagram from a candidate list (union of two search ` +
+      `You select a place's official website + Instagram from a candidate list (union of two search ` +
         `engines + the site's own footer). Return strict JSON. Cross-validate: the chosen Instagram ` +
         `handle should plausibly match the website's brand/domain. ${IG_PREFERENCE_RULES}`,
-      `${contextLine(ctx)}\n\nCandidate URLs (pick ONLY from these; [site] = linked from the venue's ` +
+      `${contextLine(ctx)}\n\nCandidate URLs (pick ONLY from these; [site] = linked from the place's ` +
         `own website):\n${renderCandidates(candidates, footerIg)}\n\n` +
         `Return {"website_url": <official own-domain website or null>, ` +
         `"instagram_url": <official instagram profile URL or null>}. ` +
-        `If the venue genuinely has no website, return null for website but still give instagram.`,
+        `If the place genuinely has no website, return null for website but still give instagram.`,
       LINK_SCHEMA,
       { searchContextSize: "medium" },
     );
@@ -326,8 +326,8 @@ const stratF: Strategy = {
     const seedSite = ctx.seedWebsite ? `https://${normWebsiteHost(ctx.seedWebsite)}` : null;
     const { answer } = await perplexitySonar(
       keys,
-      `You find a venue's official website + Instagram from your own knowledge/search. ` +
-        `Return strict JSON. Prefer null over a guess. Prefer the venue's OWN account over a ` +
+      `You find a place's official website + Instagram from your own knowledge/search. ` +
+        `Return strict JSON. Prefer null over a guess. Prefer the place's OWN account over a ` +
         `parent brand / group account.`,
       `${contextLine(ctx)}\n` +
         (seedSite ? `Known official website (from Google): ${seedSite}.\n` : "") +
@@ -342,7 +342,7 @@ const stratF: Strategy = {
   },
 };
 
-// Round 4 (precision-safe FN recovery): if the judge declined an Instagram but the venue's OWN
+// Round 4 (precision-safe FN recovery): if the judge declined an Instagram but the place's OWN
 // site links one, trust that footer handle. Only fills a null — never overrides a judge pick — so
 // it cannot introduce a wrong answer over a correct one; footer = the site linking its own account.
 function fillIgFromFooter(out: LinkAnswer, footerIg: string[]): StrategyResult {
@@ -350,7 +350,7 @@ function fillIgFromFooter(out: LinkAnswer, footerIg: string[]): StrategyResult {
   return out;
 }
 
-// Render candidate URLs one per line, tagging the ones the venue's own site links.
+// Render candidate URLs one per line, tagging the ones the place's own site links.
 function renderCandidates(urls: string[], footer: string[]): string {
   const fset = new Set(footer.map((u) => u.toLowerCase().replace(/\/+$/, "")));
   return urls
@@ -375,7 +375,7 @@ function dedupeUrls(urls: string[]): string[] {
 export const STRATEGIES: Strategy[] = [stratA, stratB, stratC, stratD, stratE, stratF];
 
 export async function runAllStrategies(
-  ctx: VenueContext,
+  ctx: PlaceContext,
   keys: Keys,
 ): Promise<Record<string, StrategyResult>> {
   const out: Record<string, StrategyResult> = {};
