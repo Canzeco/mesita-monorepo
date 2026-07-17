@@ -24,7 +24,7 @@ import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 // `open`) so the exit animation plays, backdrop covers the whole MobileFrame
 // card (TopBar/BottomNav included), and ESC closes it.
 
-export type SocialPlatform = "instagram";
+type SocialPlatform = "instagram";
 
 // The @mesita.bot DM bot doesn't exist yet, so the follower count can't be
 // read from a real social-graph check. Until the bot ships, any 8-digit code
