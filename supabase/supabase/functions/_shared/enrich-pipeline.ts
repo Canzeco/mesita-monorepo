@@ -28,10 +28,11 @@
 // live in gathered->sources, not the feed (the judge reads those, never beacons).
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { MediaAssetPayload } from "./enrich-config.ts";
 import { corsPreflight, json, readJson } from "./http.ts";
 import { adminClient, type EFEnv, readEFEnv } from "./auth.ts";
 import { requireInternalCaller } from "./internal.ts";
+
+export { buildMediaAssets, mapToObject } from "./enrich-media-assets.ts";
 
 export type ResearchStage = "research" | "analysis" | "contents" | "done" | "failed";
 
@@ -243,32 +244,6 @@ export async function reportEnrichmentStep(
 }
 
 // ── Misc shared bits ─────────────────────────────────────────────────────────
-
-// Serialise a Map to a jsonb-safe plain object.
-export function mapToObject<V>(m: Map<string, V> | null | undefined): Record<string, V> {
-  const out: Record<string, V> = {};
-  if (m) for (const [k, v] of m.entries()) out[k] = v;
-  return out;
-}
-
-// Build the media-asset payload rows for _shared/store-place-images from the
-// analysis output + research metadata.
-export function buildMediaAssets(
-  gathered: GatheredPayload,
-  analysis: AnalysisPayload,
-): MediaAssetPayload[] {
-  return analysis.saved.map((img) => {
-    const im = gathered.instagramAssetMeta[img.url];
-    return {
-      source: img.source,
-      source_url: img.url,
-      likes_count: im?.likes_count ?? null,
-      caption: im?.caption ?? null,
-      analysis: analysis.imageAnalysisByUrl[img.url] ?? null,
-      source_metadata: im?.source_metadata ?? null,
-    };
-  });
-}
 
 // Run a stage's work as an EdgeRuntime background task (ack-early pattern —
 // the poller's HTTP call returns immediately; the wall clock still applies).
