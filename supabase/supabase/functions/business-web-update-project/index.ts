@@ -41,6 +41,7 @@ import {
   type ReservationContact,
   sanitiseReservationContacts,
 } from "./reservation-contacts.ts";
+import { applyMediaUpdates } from "./project-media-update.ts";
 
 const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
@@ -333,16 +334,8 @@ Deno.serve(async (req) => {
       update.monthly_promo_cap = v;
     }
   }
-  if ("photos" in body) {
-    if (!Array.isArray(body.photos)) {
-      return json({
-        ok: false,
-        error: "photos must be an array of URL strings",
-      }, 400);
-    }
-    const clean = body.photos.filter(isUrl).slice(0, MAX_PHOTOS);
-    update.photos = clean;
-  }
+  const mediaError = applyMediaUpdates(body, update, MAX_PHOTOS);
+  if (mediaError) return mediaError;
 
   // External + social URLs — each optional, each validated to https://.
   for (const field of URL_FIELDS) {
@@ -364,60 +357,6 @@ Deno.serve(async (req) => {
   // Place-redesign editable fields.
   if ("description" in body) {
     update.description = optString(body.description, MAX_DESCRIPTION_LEN);
-  }
-  if ("menu_pdf_url" in body) {
-    const raw = body.menu_pdf_url;
-    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
-      update.menu_pdf_url = null;
-    } else if (!isUrl(raw)) {
-      return json({
-        ok: false,
-        error: "menu_pdf_url must be a valid https:// URL",
-      }, 400);
-    } else {
-      update.menu_pdf_url = raw.trim();
-    }
-  }
-  if ("product_catalog_url" in body) {
-    const raw = body.product_catalog_url;
-    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
-      update.menu_pdf_url = null;
-    } else if (!isUrl(raw)) {
-      return json({
-        ok: false,
-        error: "product_catalog_url must be a valid https:// URL",
-      }, 400);
-    } else {
-      update.menu_pdf_url = raw.trim();
-    }
-  }
-  if ("menu_pdf_name" in body) {
-    update.menu_pdf_name = optString(body.menu_pdf_name, 80);
-  }
-  if ("product_catalog_name" in body) {
-    update.menu_pdf_name = optString(body.product_catalog_name, 80);
-  }
-  if ("products" in body) {
-    const p = body.products;
-    if (p == null) {
-      update.products = null;
-    } else if (typeof p !== "object" || Array.isArray(p)) {
-      return json(
-        { ok: false, error: "products must be an object or null" },
-        400,
-      );
-    } else {
-      const menu = (p as { menu?: unknown }).menu;
-      if (menu != null && !Array.isArray(menu)) {
-        return json({
-          ok: false,
-          error: "products.menu must be an array or null",
-        }, 400);
-      }
-      update.products = p;
-      // Keep legacy menus in sync while consumers/business migrate.
-      if (Array.isArray(menu)) update.menus = menu;
-    }
   }
   if ("tags" in body) {
     if (!Array.isArray(body.tags)) {
