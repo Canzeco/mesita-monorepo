@@ -15,26 +15,12 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { clean } from "../_shared/input.ts";
-
-type Body = {
-  // Legacy single-field name. Still accepted so older clients keep
-  // working. New clients should send first_name + last_name; this EF
-  // joins them to repopulate full_name for downstream readers.
-  full_name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  sex?: string | null;
-  birthday?: string | null;
-  country?: string | null;
-  phone?: string | null;
-  // Profile visibility flags (MESITA-76). Sent alone or alongside the
-  // identity fields; only the keys present are patched.
-  profile_public?: boolean;
-  profile_show_saves?: boolean;
-  profile_show_visits?: boolean;
-};
-
-const SEX_VALUES = new Set(["male", "female", "other"]);
+import {
+  buildProfilePatch,
+  parseBirthday,
+  parseSex,
+  type UpdateProfileBody,
+} from "./update-profile-fields.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -46,7 +32,7 @@ Deno.serve(async (req) => {
   if (!authRes.ok) return authRes.response;
   const userId = authRes.user.id;
 
-  const bodyRes = await readJson<Body>(req);
+  const bodyRes = await readJson<UpdateProfileBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
@@ -63,26 +49,13 @@ Deno.serve(async (req) => {
   const sexRaw = clean(body.sex, 16);
   const birthdayRaw = clean(body.birthday, 32);
 
-  const sex = sexRaw && SEX_VALUES.has(sexRaw.toLowerCase()) ? sexRaw.toLowerCase() : null;
-  if (sexRaw && !sex) {
-    return json({ ok: false, error: "sex must be male, female, or other" }, 400);
-  }
+  const sexRes = parseSex(sexRaw);
+  if (!sexRes.ok) return sexRes.response;
+  const { sex } = sexRes;
 
-  let birthday: string | null = null;
-  if (birthdayRaw) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthdayRaw)) {
-      return json({ ok: false, error: "birthday must be YYYY-MM-DD" }, 400);
-    }
-    // Sanity check: must parse + not in the future.
-    const parsed = new Date(`${birthdayRaw}T00:00:00Z`);
-    if (Number.isNaN(parsed.getTime())) {
-      return json({ ok: false, error: "birthday is not a real date" }, 400);
-    }
-    if (parsed.getTime() > Date.now()) {
-      return json({ ok: false, error: "birthday can't be in the future" }, 400);
-    }
-    birthday = birthdayRaw;
-  }
+  const birthdayRes = parseBirthday(birthdayRaw);
+  if (!birthdayRes.ok) return birthdayRes.response;
+  const { birthday } = birthdayRes;
 
   const admin = adminClient(envRes.env);
 
@@ -114,40 +87,17 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Build a patch with only the fields the caller actually sent. Avoids
-  // null-clobbering values they didn't intend to touch. When the client
-  // sends first_name and/or last_name, full_name is also updated to
-  // the joined version so downstream readers keep working.
-  const patch: Record<string, unknown> = {};
-  if (body.first_name !== undefined) patch.first_name = firstName;
-  if (body.last_name !== undefined) patch.last_name = lastName;
-  if (
-    body.first_name !== undefined ||
-    body.last_name !== undefined ||
-    body.full_name !== undefined
-  ) {
-    patch.full_name = fullName;
-  }
-  if (body.sex !== undefined) patch.sex = sex;
-  if (body.birthday !== undefined) patch.birthday = birthday;
-  if (body.country !== undefined) patch.country = country;
-  if (body.phone !== undefined) patch.phone = phone;
-  for (const key of [
-    "profile_public",
-    "profile_show_saves",
-    "profile_show_visits",
-  ] as const) {
-    const value = body[key];
-    if (value === undefined) continue;
-    if (typeof value !== "boolean") {
-      return json({ ok: false, error: `${key} must be a boolean` }, 400);
-    }
-    patch[key] = value;
-  }
-
-  if (Object.keys(patch).length === 0) {
-    return json({ ok: false, error: "Nothing to update" }, 400);
-  }
+  const built = buildProfilePatch(body, {
+    firstName,
+    lastName,
+    fullName,
+    sex,
+    birthday,
+    country,
+    phone,
+  });
+  if (!built.ok) return built.response;
+  const patch = built.patch;
 
   const update = await admin
     .from("consumers")
