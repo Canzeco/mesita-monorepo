@@ -58,6 +58,7 @@ import { sendStaffWhatsAppReply } from "./staff-whatsapp-messages.ts";
 import { sendWhatsAppText, type TwilioEnv } from "./twilio.ts";
 import { recordMembershipStrike } from "./membership-enforcement.ts";
 import { handleStaffPaymentConfirm } from "./staff-whatsapp-payment-confirm.ts";
+import { buildStaffBillTicketInsert } from "./staff-whatsapp-ticket-payload.ts";
 
 export type { StaffAccess, StaffIdentity, StaffPlace } from "./staff-whatsapp-types.ts";
 export { resolveStaffAccess } from "./staff-whatsapp-access.ts";
@@ -580,23 +581,7 @@ async function handleSubmitBill(
   const now = new Date().toISOString();
   const insert = await admin
     .from("tickets")
-    .insert({
-      project_id: staff.projectId,
-      consumer_id: session.consumer_id,
-      opened_by: opener,
-      opened_by_staff_user_id: staff.staffUserId,
-      // Staff WhatsApp Type-A flow is discount-only (no story, no reservation),
-      // which persists as `coupon` under the collapsed ticket_kind enum.
-      kind: "coupon",
-      status: "awaiting_payment_confirm",
-      story_status: "not_required",
-      check_subtotal_cents: calc.subtotal,
-      tip_cents: calc.tip,
-      total_cents: calc.total,
-      redeem_cents: 0,
-      discount_percent: calc.discountPercent,
-      discount_cents: calc.discountCents,
-    })
+    .insert(buildStaffBillTicketInsert(staff, session.consumer_id, opener, calc))
     .select("id")
     .single();
   if (insert.error) {
