@@ -70,58 +70,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const subscriptionId =
-          typeof session.subscription === "string"
-            ? session.subscription
-            : session.subscription?.id ?? null;
-        if (!subscriptionId) break;
-
-        // Business checkout sessions always carry project_id metadata;
-        // consumer ones carry consumer_id (or client_reference_id).
-        const projectId =
-          (session.metadata?.project_id as string | undefined) ?? null;
-        if (projectId) {
-          const sub = await stripe.subscriptions.retrieve(subscriptionId);
-          await reconcileProjectSubscription(admin, projectId, sub);
-          break;
-        }
-
-        const consumerId =
-          session.client_reference_id ??
-          (session.metadata?.consumer_id as string | undefined) ??
-          null;
-        if (consumerId) {
-          const sub = await stripe.subscriptions.retrieve(subscriptionId);
-          await reconcileConsumerSubscription(admin, consumerId, sub);
-        }
-        break;
-      }
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-
-        const projectId =
-          (sub.metadata?.project_id as string | undefined) ??
-          (await resolveProjectId(admin, sub));
-        if (projectId) {
-          await reconcileProjectSubscription(admin, projectId, sub);
-          break;
-        }
-
-        const consumerId = await resolveConsumerId(admin, stripe, sub);
-        if (consumerId) {
-          await reconcileConsumerSubscription(admin, consumerId, sub);
-        }
-        break;
-      }
-      default:
-        // Unhandled event types are acknowledged and ignored.
-        break;
-    }
+    await handleStripeEvent(admin, stripe, event);
   } catch (err) {
     console.error(`[stripe-webhook-handle-event] handler error (${event.type}):`, err);
     // Roll back the dedupe marker so Stripe's retry re-processes this event
@@ -135,6 +84,65 @@ Deno.serve(async (req) => {
     headers: { "Content-Type": "application/json" },
   });
 });
+
+async function handleStripeEvent(
+  admin: ReturnType<typeof adminClient>,
+  stripe: Stripe,
+  event: Stripe.Event,
+): Promise<void> {
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id ?? null;
+      if (!subscriptionId) break;
+
+      // Business checkout sessions always carry project_id metadata;
+      // consumer ones carry consumer_id (or client_reference_id).
+      const projectId =
+        (session.metadata?.project_id as string | undefined) ?? null;
+      if (projectId) {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        await reconcileProjectSubscription(admin, projectId, sub);
+        break;
+      }
+
+      const consumerId =
+        session.client_reference_id ??
+        (session.metadata?.consumer_id as string | undefined) ??
+        null;
+      if (consumerId) {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        await reconcileConsumerSubscription(admin, consumerId, sub);
+      }
+      break;
+    }
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted": {
+      const sub = event.data.object as Stripe.Subscription;
+
+      const projectId =
+        (sub.metadata?.project_id as string | undefined) ??
+        (await resolveProjectId(admin, sub));
+      if (projectId) {
+        await reconcileProjectSubscription(admin, projectId, sub);
+        break;
+      }
+
+      const consumerId = await resolveConsumerId(admin, stripe, sub);
+      if (consumerId) {
+        await reconcileConsumerSubscription(admin, consumerId, sub);
+      }
+      break;
+    }
+    default:
+      // Unhandled event types are acknowledged and ignored.
+      break;
+  }
+}
 
 // ─── Consumer side ──────────────────────────────────────────────────────────
 
