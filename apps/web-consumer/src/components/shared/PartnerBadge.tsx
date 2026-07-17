@@ -10,7 +10,7 @@ import {
 // Place badge that distinguishes Verified Partners (signed up at
 // business.mesita.ai, configured a coupon mechanic) from Web-Listed
 // places (scraped from Google Business, no dashboard, no coupons).
-export type ListingType = "partner" | "web";
+type ListingType = "partner" | "web";
 
 export function PartnerBadge({
   listingType,
