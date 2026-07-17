@@ -39,7 +39,7 @@ export function deslugify(slug: string): string {
   return slug.replace(/_/g, " ");
 }
 
-export type PlaceVerificationPresentation = {
+type PlaceVerificationPresentation = {
   label: string;
   hint?: string;
   tone: "verified" | "pending" | "unverified";
