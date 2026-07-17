@@ -21,7 +21,7 @@ import type {
   TicketTransactionSummary as TicketTransactionSummaryData,
 } from "@/lib/api/pay";
 
-export type TicketDetailsViewProps = {
+type TicketDetailsViewProps = {
   ticketKind: string;
   payload: TicketBillPayload;
   capMxn?: number | null;

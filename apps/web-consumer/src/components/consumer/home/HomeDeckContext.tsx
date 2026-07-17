@@ -9,7 +9,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { Place } from "@/lib/api/places";
 
-export type HomeDeck = { places: Place[]; fetchError: string | null };
+type HomeDeck = { places: Place[]; fetchError: string | null };
 
 const HomeDeckContext = createContext<HomeDeck | null>(null);
 
