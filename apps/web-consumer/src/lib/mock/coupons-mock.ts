@@ -1,5 +1,5 @@
 // Coupon entity, independent of reservations and of the legacy ticket
-// model. A coupon is a discount instrument: it lives in the wallet, gets
+// model. A coupon is a discount instrument: it is held by the guest, gets
 // redeemed on a visit, and has its own per-kind lifecycle.
 //
 // When the coupon is being used (or planned-to-be-used) at a known

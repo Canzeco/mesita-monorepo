@@ -4,7 +4,9 @@ import { useState, type ReactNode } from "react";
 import { Mail, MessagesSquare, Phone } from "lucide-react";
 import type { LookupMethods, LookupPlace } from "@/lib/api/verifications";
 import { cn } from "@/lib/utils";
-import { EmailBody, PhoneBody, WhatsAppBody } from "./create-unit-verify-bodies";
+import { EmailBody } from "./create-unit-verify-email";
+import { PhoneBody } from "./create-unit-verify-phone";
+import { WhatsAppBody } from "./create-unit-verify-whatsapp";
 import type { VerificationCallbacks } from "./create-unit-shared";
 
 // ── Methods picker ────────────────────────────────────────────────────

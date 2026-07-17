@@ -1,0 +1,12 @@
+export { AIReservations } from "./ai-reservations";
+export { DiscoveryIntelligence } from "./discovery-intelligence";
+export { FAQ } from "./faq";
+export { FinalCTA } from "./final-cta";
+export { Footer } from "./footer";
+export { ForBusinesses } from "./for-businesses";
+export { Hero } from "./hero";
+export { HowItWorks } from "./how-it-works";
+export { Nav } from "./nav";
+export { Premium } from "./premium";
+export { ProofStrip } from "./proof-strip";
+export { Rewards } from "./rewards";

@@ -63,7 +63,7 @@ export async function createMinimalPlace(opts: {
   // app_settings.sourcing_config[sourcingChannel] (family + rating + review
   // floors) after the Google fetch and rejected (422) if ineligible. Consumer
   // adds pass "consumer_add"; admin/business callers pass nothing (unquota'd,
-  // ungated — trusted operators / venue owners).
+  // ungated — trusted operators / place owners).
   sourcingChannel?: ChannelKey;
 }): Promise<CreatePlaceOutcome> {
   const { admin, callerName, googlePlaceId } = opts;

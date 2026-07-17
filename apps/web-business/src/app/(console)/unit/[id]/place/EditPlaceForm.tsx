@@ -10,11 +10,9 @@ import {
   apiUpdatePlace,
   type MyPlace,
   type UpdatePlaceInput,
-  type PlaceHours,
 } from "@/lib/api/places";
 import {
   PLACE_DESCRIPTION_MAX,
-  PLACE_HOUR_DAYS,
   PLACE_NAME_MAX,
   PlaceBasicsModule,
   PlaceChannelsModule,
@@ -22,8 +20,6 @@ import {
   PlaceMenuModule,
   PlacePreviewModule,
   PlaceReviewsModule,
-  type DayKey,
-  type DayShifts,
   type PlaceFormState,
 } from "@/components/business/place";
 import {
@@ -33,9 +29,8 @@ import {
 import { MAX_PHOTOS } from "@/components/business/place/place-upload-utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
+import { formHoursToPlace, placeHoursToForm } from "./place-hours";
 
-const DAYS = PLACE_HOUR_DAYS;
-const MAX_SHIFTS_PER_DAY = 1;
 const SAVED_TOAST_MS = 2200;
 const TAG_MAX = 40;
 const TAG_MAX_COUNT = 20;
@@ -54,83 +49,6 @@ function nullable(v: string): string | null {
   return t === "" ? null : t;
 }
 
-function mergeOvernightSplit(h: PlaceHours): PlaceHours {
-  const longKeys = DAYS.map((d) => d.long);
-  const out: PlaceHours = {};
-  for (const k of longKeys) {
-    const arr = h[k];
-    if (arr) out[k] = arr.map((r) => ({ open: r.open, close: r.close }));
-  }
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (let i = 0; i < longKeys.length; i += 1) {
-      const a = longKeys[i];
-      const b = longKeys[(i + 1) % longKeys.length];
-      const aRanges = out[a];
-      const bRanges = out[b];
-      if (
-        !aRanges ||
-        !bRanges ||
-        aRanges.length === 0 ||
-        bRanges.length === 0
-      ) {
-        continue;
-      }
-      const tailIdx = aRanges.findIndex(
-        (r) => r.close === "23:59" && r.open !== "00:00",
-      );
-      const headIdx = bRanges.findIndex(
-        (r) => r.open === "00:00" && r.close !== "23:59",
-      );
-      if (tailIdx < 0 || headIdx < 0) continue;
-      aRanges[tailIdx] = {
-        open: aRanges[tailIdx].open,
-        close: bRanges[headIdx].close,
-      };
-      bRanges.splice(headIdx, 1);
-      if (bRanges.length === 0) delete out[b];
-      changed = true;
-    }
-  }
-  return out;
-}
-
-function placeHoursToForm(h: PlaceHours | null): Record<DayKey, DayShifts> {
-  const merged = h ? mergeOvernightSplit(h) : null;
-  const out = {} as Record<DayKey, DayShifts>;
-  for (const d of DAYS) {
-    const ranges = merged?.[d.long] ?? null;
-    if (ranges === null) {
-      out[d.key] = { ranges: [{ open: "", close: "" }], closed: false };
-    } else if (ranges.length === 0) {
-      out[d.key] = { ranges: [], closed: true };
-    } else {
-      out[d.key] = {
-        ranges: ranges.slice(0, MAX_SHIFTS_PER_DAY).map((r) => ({
-          open: r.open,
-          close: r.close,
-        })),
-        closed: false,
-      };
-    }
-  }
-  return out;
-}
-
-function formHoursToPlace(form: Record<DayKey, DayShifts>): PlaceHours {
-  const out: PlaceHours = {};
-  for (const d of DAYS) {
-    const v = form[d.key];
-    if (v.closed) continue;
-    const clean = v.ranges
-      .map((r) => ({ open: r.open.trim(), close: r.close.trim() }))
-      .filter((r) => r.open && r.close);
-    if (clean.length > 0) out[d.long] = clean;
-  }
-  return out;
-}
-
 function placeToFormState(place: MyPlace): PlaceFormState {
   return {
     name: place.name ?? "",
@@ -144,7 +62,11 @@ function placeToFormState(place: MyPlace): PlaceFormState {
         ? raw
             .map((m) => {
               if (!m || typeof m !== "object") return null;
-              const row = m as { name?: unknown; url?: unknown; pdf_url?: unknown };
+              const row = m as {
+                name?: unknown;
+                url?: unknown;
+                pdf_url?: unknown;
+              };
               const url =
                 typeof row.url === "string"
                   ? row.url.trim()
@@ -253,7 +175,9 @@ export function EditPlaceForm({
 
     // Preserve sibling products keys (e.g. reservations) while rewriting menu.
     const existingProducts =
-      place.products && typeof place.products === "object" && !Array.isArray(place.products)
+      place.products &&
+      typeof place.products === "object" &&
+      !Array.isArray(place.products)
         ? { ...place.products }
         : {};
 
@@ -357,9 +281,7 @@ export function EditPlaceForm({
       </div>
 
       {error && (
-        <p className={cn(ERROR_BOX_CLASS, "mx-4 mb-2 text-sm")}>
-          {error}
-        </p>
+        <p className={cn(ERROR_BOX_CLASS, "mx-4 mb-2 text-sm")}>{error}</p>
       )}
 
       {(isDirty || pending || saved) && (
