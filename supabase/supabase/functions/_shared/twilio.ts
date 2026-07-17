@@ -1,7 +1,6 @@
 // Twilio helpers for WhatsApp (and future SMS) from Edge Functions.
-// Webhook security: HMAC-SHA1 per Twilio docs (no SDK required).
-
-import { timingSafeEqual } from "./timing-safe-equal.ts";
+// Webhook security: HMAC-SHA1 per Twilio docs (no SDK required) —
+// implementation in twilio-signature.ts, re-exported below.
 
 export type TwilioEnv = {
   accountSid: string;
@@ -57,40 +56,12 @@ export async function parseTwilioForm(
   return params;
 }
 
-/** Reconstruct the public URL Twilio POSTed to (set TWILIO_WEBHOOK_URL if needed). */
-export function webhookUrlForFunction(functionName: string): string {
-  const explicit = Deno.env.get(`TWILIO_WEBHOOK_URL_${functionName.toUpperCase().replace(/-/g, "_")}`);
-  if (explicit?.trim()) return explicit.trim();
-  const base = Deno.env.get("SUPABASE_URL")?.replace(/\/$/, "");
-  if (!base) throw new Error("SUPABASE_URL missing");
-  return `${base}/functions/v1/${functionName}`;
-}
+// ─── Webhook signature (re-export — implementation in twilio-signature.ts) ──
 
-export async function validateTwilioRequest(
-  authToken: string,
-  signature: string | null,
-  url: string,
-  params: Record<string, string>,
-): Promise<boolean> {
-  if (!signature) return false;
-  const sorted = Object.keys(params).sort();
-  let payload = url;
-  for (const key of sorted) payload += key + params[key];
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(authToken),
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"],
-  );
-  const mac = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(payload),
-  );
-  const expected = btoa(String.fromCharCode(...new Uint8Array(mac)));
-  return timingSafeEqual(expected, signature);
-}
+export {
+  validateTwilioRequest,
+  webhookUrlForFunction,
+} from "./twilio-signature.ts";
 
 export function emptyMessagingTwiml(): Response {
   return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
