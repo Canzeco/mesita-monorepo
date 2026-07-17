@@ -1,12 +1,5 @@
-// Shared Stripe billing helpers — the single place the Mesita subscription
-// catalog is defined and provisioned.
-//
-//   consumer_premium   — Mesita Premium · $100 MXN/mo · classes.premium
-//   business_verified  — Mesita Verified · $1,000 MXN/yr · business_plans.pro
-//
-// Promos v4 (MESITA-541) retired business Pro/Ultra monthly SKUs. Verified is
-// the only business product sold; `ultra` remains a legacy plan key for
-// existing places but is not self-provisioned here.
+// Shared Stripe billing helpers — catalog provisioning for Mesita subscriptions.
+// Catalog entries live in stripe-billing-catalog.ts (re-exported below).
 //
 // resolvePlanPrice() is self-provisioning: the first real checkout after a
 // deploy materializes the product + price in whatever Stripe account
@@ -19,48 +12,18 @@
 
 import type Stripe from "npm:stripe@17";
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  type PlanCatalogEntry,
+  STRIPE_CATALOG,
+} from "./stripe-billing-catalog.ts";
+
+export type { PlanCatalogEntry };
+export { STRIPE_CATALOG };
 
 // Same version string prod has always passed. The cast keeps `deno check`
 // happy when the locally-cached stripe@17 minor pins an older literal.
 export const STRIPE_API_VERSION =
   "2025-03-31.basil" as Stripe.LatestApiVersion;
-
-export type PlanCatalogEntry = {
-  // Stable Mesita-wide id, stored in Stripe metadata.mesita_plan.
-  id: "consumer_premium" | "business_verified";
-  // Lookup row backing this price.
-  table: "classes" | "business_plans";
-  rowKey: string;
-  // Stripe price lookup_key — the idempotency anchor.
-  lookupKey: string;
-  productName: string;
-  productDescription: string;
-  // Recurring interval matching business_plans / classes price semantics.
-  interval: "month" | "year";
-};
-
-export const STRIPE_CATALOG: PlanCatalogEntry[] = [
-  {
-    id: "consumer_premium",
-    table: "classes",
-    rowKey: "premium",
-    lookupKey: "consumer_premium_monthly",
-    productName: "Mesita Premium",
-    productDescription:
-      "Mesita consumer Premium plan — monthly subscription.",
-    interval: "month",
-  },
-  {
-    id: "business_verified",
-    table: "business_plans",
-    rowKey: "pro",
-    lookupKey: "business_verified_yearly",
-    productName: "Mesita Verified",
-    productDescription:
-      "Mesita business Verified membership — annual subscription.",
-    interval: "year",
-  },
-];
 
 export type ResolvedPrice = {
   priceId: string;
