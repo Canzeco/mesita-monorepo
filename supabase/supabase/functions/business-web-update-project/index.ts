@@ -28,6 +28,18 @@ import {
   refreshSocialFollowers,
   runFollowersRefreshInBackground,
 } from "../_shared/social-followers.ts";
+import { type PlaceHours, sanitiseHours } from "./project-hours.ts";
+import {
+  isReservationEndpoint,
+  isUrl,
+  URL_FIELDS,
+  type UrlField,
+} from "./project-urls.ts";
+import { normalisePromoRate, PROMO_RATE_FIELDS } from "./promo-rates.ts";
+import {
+  type ReservationContact,
+  sanitiseReservationContacts,
+} from "./reservation-contacts.ts";
 
 const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
@@ -111,61 +123,15 @@ type UpdateBody = {
   segmentation_advanced_enabled?: boolean;
 };
 
-type HoursRange = { open: string; close: string };
-type DayKey =
-  | "monday"
-  | "tuesday"
-  | "wednesday"
-  | "thursday"
-  | "friday"
-  | "saturday"
-  | "sunday";
-type PlaceHours = Partial<Record<DayKey, HoursRange[]>>;
-
-/** One person the reservationist can call/message when booking. */
-type ReservationContact = {
-  name: string;
-  role?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  notes?: string | null;
-};
-
-const MAX_RESERVATION_CONTACTS = 8;
-
-const DAY_KEYS: DayKey[] = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-];
-const HHMM_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
-
-const URL_FIELDS = [
-  "website_url",
-  "instagram_url",
-  "facebook_url",
-  "whatsapp_url",
-  "opentable_url",
-  "resy_url",
-  "uber_eats_url",
-  "x_url",
-  "threads_url",
-  "reddit_url",
-  "didi_food_url",
-] as const;
-type UrlField = (typeof URL_FIELDS)[number];
-
 const EDITABLE_STATUSES = new Set(["active", "paused", "archived"]);
 const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
 const APIFY_KEY = Deno.env.get("APIFY_KEY");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") {
+    return json({ ok: false, error: "Method not allowed" }, 405);
+  }
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -198,7 +164,11 @@ Deno.serve(async (req) => {
     update.name = n;
   }
   if ("category" in body) {
-    const resolved = await resolveCategoryInput(admin, body.category, OPENAI_KEY);
+    const resolved = await resolveCategoryInput(
+      admin,
+      body.category,
+      OPENAI_KEY,
+    );
     if (!resolved.ok) {
       return json({ ok: false, error: resolved.error }, 400);
     }
@@ -229,7 +199,10 @@ Deno.serve(async (req) => {
   if ("status" in body) {
     const s = body.status;
     if (!s || !EDITABLE_STATUSES.has(s)) {
-      return json({ ok: false, error: "status must be active|paused|archived" }, 400);
+      return json(
+        { ok: false, error: "status must be active|paused|archived" },
+        400,
+      );
     }
     update.status = s;
   }
@@ -250,7 +223,8 @@ Deno.serve(async (req) => {
       {
         ok: false,
         code: "plan_via_billing",
-        error: "plan is managed by business-web-change-subscription (Stripe), not by profile updates.",
+        error:
+          "plan is managed by business-web-change-subscription (Stripe), not by profile updates.",
       },
       400,
     );
@@ -296,7 +270,11 @@ Deno.serve(async (req) => {
     const cleaned = sanitiseHours(body.hours);
     if (cleaned === "invalid") {
       return json(
-        { ok: false, error: "hours must be a map of weekday → [{open,close}] with HH:MM values" },
+        {
+          ok: false,
+          error:
+            "hours must be a map of weekday → [{open,close}] with HH:MM values",
+        },
         400,
       );
     }
@@ -324,31 +302,13 @@ Deno.serve(async (req) => {
   // The Promos page sends the tens grid {10, 20, 30, 40, 50} via its four
   // preset strategies (50 is the ceiling; legacy 70 retired — MESITA-543).
   // Coupons + projects CHECKs mirror this set.
-  const PROMO_RATE_FIELDS = [
-    "welcome_free_rate",
-    "welcome_premium_rate",
-    "free_rate",
-    "premium_rate",
-  ] as const;
-  const LEGAL_PROMO_RATES = new Set([10, 20, 30, 40, 50]);
   for (const field of PROMO_RATE_FIELDS) {
     if (!(field in body)) continue;
-    const raw = body[field];
-    if (raw == null) {
-      update[field] = null;
-      continue;
+    const rate = normalisePromoRate(field, body[field]);
+    if (!rate.ok) {
+      return json({ ok: false, error: rate.error }, 400);
     }
-    const v = Number(raw);
-    if (!LEGAL_PROMO_RATES.has(v)) {
-      return json(
-        {
-          ok: false,
-          error: `${field} must be null or one of 10, 20, 30, 40, 50`,
-        },
-        400,
-      );
-    }
-    update[field] = v;
+    update[field] = rate.value;
   }
 
   // Monthly promo spend cap. Nullable (null clears the ceiling) or one of
@@ -361,7 +321,11 @@ Deno.serve(async (req) => {
       const v = Number(raw);
       if (![200, 500, 1000, 2000].includes(v)) {
         return json(
-          { ok: false, error: "monthly_promo_cap must be null or one of 200, 500, 1000, 2000" },
+          {
+            ok: false,
+            error:
+              "monthly_promo_cap must be null or one of 200, 500, 1000, 2000",
+          },
           400,
         );
       }
@@ -370,7 +334,10 @@ Deno.serve(async (req) => {
   }
   if ("photos" in body) {
     if (!Array.isArray(body.photos)) {
-      return json({ ok: false, error: "photos must be an array of URL strings" }, 400);
+      return json({
+        ok: false,
+        error: "photos must be an array of URL strings",
+      }, 400);
     }
     const clean = body.photos.filter(isUrl).slice(0, MAX_PHOTOS);
     update.photos = clean;
@@ -385,7 +352,10 @@ Deno.serve(async (req) => {
       continue;
     }
     if (!isUrl(raw)) {
-      return json({ ok: false, error: `${field} must be a valid https:// URL` }, 400);
+      return json(
+        { ok: false, error: `${field} must be a valid https:// URL` },
+        400,
+      );
     }
     update[field] = raw.trim();
   }
@@ -399,7 +369,10 @@ Deno.serve(async (req) => {
     if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
       update.menu_pdf_url = null;
     } else if (!isUrl(raw)) {
-      return json({ ok: false, error: "menu_pdf_url must be a valid https:// URL" }, 400);
+      return json({
+        ok: false,
+        error: "menu_pdf_url must be a valid https:// URL",
+      }, 400);
     } else {
       update.menu_pdf_url = raw.trim();
     }
@@ -409,7 +382,10 @@ Deno.serve(async (req) => {
     if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
       update.menu_pdf_url = null;
     } else if (!isUrl(raw)) {
-      return json({ ok: false, error: "product_catalog_url must be a valid https:// URL" }, 400);
+      return json({
+        ok: false,
+        error: "product_catalog_url must be a valid https:// URL",
+      }, 400);
     } else {
       update.menu_pdf_url = raw.trim();
     }
@@ -425,11 +401,17 @@ Deno.serve(async (req) => {
     if (p == null) {
       update.products = null;
     } else if (typeof p !== "object" || Array.isArray(p)) {
-      return json({ ok: false, error: "products must be an object or null" }, 400);
+      return json(
+        { ok: false, error: "products must be an object or null" },
+        400,
+      );
     } else {
       const menu = (p as { menu?: unknown }).menu;
       if (menu != null && !Array.isArray(menu)) {
-        return json({ ok: false, error: "products.menu must be an array or null" }, 400);
+        return json({
+          ok: false,
+          error: "products.menu must be an array or null",
+        }, 400);
       }
       update.products = p;
       // Keep legacy menus in sync while consumers/business migrate.
@@ -438,7 +420,10 @@ Deno.serve(async (req) => {
   }
   if ("tags" in body) {
     if (!Array.isArray(body.tags)) {
-      return json({ ok: false, error: "tags must be an array of strings" }, 400);
+      return json(
+        { ok: false, error: "tags must be an array of strings" },
+        400,
+      );
     }
     // Lowercase + trim + dedupe in one pass. Empty entries drop out so the
     // form can submit a partially typed list without rejecting the request.
@@ -457,10 +442,12 @@ Deno.serve(async (req) => {
   }
   // Promos section toggles. Strict boolean only — silently coerce
   // truthy / "true" strings would let stale clients write garbage.
-  for (const boolField of [
-    "segmentation_basic_enabled",
-    "segmentation_advanced_enabled",
-  ] as const) {
+  for (
+    const boolField of [
+      "segmentation_basic_enabled",
+      "segmentation_advanced_enabled",
+    ] as const
+  ) {
     if (!(boolField in body)) continue;
     const value = body[boolField];
     if (typeof value !== "boolean") {
@@ -480,7 +467,10 @@ Deno.serve(async (req) => {
     } else {
       const trimmed = raw.trim();
       if (!isEmailish(trimmed)) {
-        return json({ ok: false, error: "email must look like name@domain.tld" }, 400);
+        return json({
+          ok: false,
+          error: "email must look like name@domain.tld",
+        }, 400);
       }
       if (trimmed.length > 254) {
         return json({ ok: false, error: "email too long" }, 400);
@@ -495,7 +485,10 @@ Deno.serve(async (req) => {
     if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
       update.reservation_endpoint = null;
     } else if (typeof raw !== "string") {
-      return json({ ok: false, error: "reservation_endpoint must be a string" }, 400);
+      return json(
+        { ok: false, error: "reservation_endpoint must be a string" },
+        400,
+      );
     } else {
       const trimmed = raw.trim().slice(0, 500);
       // Allow https://… and common deep-link schemes the reservationist may dial.
@@ -537,7 +530,10 @@ Deno.serve(async (req) => {
   // instagram_url/facebook_url triggers an Apify follower refresh after the
   // response. Snapshot the current URLs first — clients resubmit whole forms,
   // and an unchanged URL must not burn a paid scrape.
-  type PrevSocial = { instagram_url: string | null; facebook_url: string | null };
+  type PrevSocial = {
+    instagram_url: string | null;
+    facebook_url: string | null;
+  };
   let prevSocial: PrevSocial | null = null;
   if (APIFY_KEY && ("instagram_url" in update || "facebook_url" in update)) {
     const { data: prev } = await admin
@@ -558,7 +554,10 @@ Deno.serve(async (req) => {
   // Backward compatibility: in projects where category_label migration hasn't
   // landed (or schema cache is stale), retry the same update without
   // category_label so edits can still be saved.
-  if (updateError && isMissingCategoryLabelColumnError(updateError) && "category_label" in update) {
+  if (
+    updateError && isMissingCategoryLabelColumnError(updateError) &&
+    "category_label" in update
+  ) {
     const retryUpdate = { ...update };
     delete retryUpdate.category_label;
     const retry = await admin
@@ -572,16 +571,26 @@ Deno.serve(async (req) => {
   }
   if (updateError) {
     return json(
-      { ok: false, error: `place_update: ${updateError.message}`, code: updateError.code ?? null },
+      {
+        ok: false,
+        error: `place_update: ${updateError.message}`,
+        code: updateError.code ?? null,
+      },
       400,
     );
   }
 
   if (APIFY_KEY) {
-    const igNext = "instagram_url" in update ? (update.instagram_url as string | null) : undefined;
-    const fbNext = "facebook_url" in update ? (update.facebook_url as string | null) : undefined;
-    const igChanged = igNext !== undefined && igNext !== (prevSocial?.instagram_url ?? null);
-    const fbChanged = fbNext !== undefined && fbNext !== (prevSocial?.facebook_url ?? null);
+    const igNext = "instagram_url" in update
+      ? (update.instagram_url as string | null)
+      : undefined;
+    const fbNext = "facebook_url" in update
+      ? (update.facebook_url as string | null)
+      : undefined;
+    const igChanged = igNext !== undefined &&
+      igNext !== (prevSocial?.instagram_url ?? null);
+    const fbChanged = fbNext !== undefined &&
+      fbNext !== (prevSocial?.facebook_url ?? null);
     if (igChanged || fbChanged) {
       runFollowersRefreshInBackground(
         refreshSocialFollowers({
@@ -632,7 +641,9 @@ async function resolveCategoryInput(
   });
   if (inferredSlug) {
     const inferredHit = categories.find((c) => c.slug === inferredSlug);
-    if (inferredHit) return { ok: true, slug: inferredHit.slug, label: inferredHit.label };
+    if (inferredHit) {
+      return { ok: true, slug: inferredHit.slug, label: inferredHit.label };
+    }
   }
 
   return {
@@ -642,7 +653,9 @@ async function resolveCategoryInput(
   };
 }
 
-function isMissingCategoryLabelColumnError(err: { message?: string } | null): boolean {
+function isMissingCategoryLabelColumnError(
+  err: { message?: string } | null,
+): boolean {
   if (!err?.message) return false;
   return (
     err.message.includes("category_label") &&
@@ -657,93 +670,3 @@ function optString(v: unknown, maxLen: number): string | null {
   if (!trimmed) return null;
   return trimmed.slice(0, maxLen);
 }
-
-// "invalid" is the only failure sentinel so the caller can return a single
-// 400. Null means the business intentionally cleared their hours. Empty object
-// is permitted — the place is open zero days.
-function sanitiseHours(v: unknown): PlaceHours | null | "invalid" {
-  if (v == null) return null;
-  if (typeof v !== "object" || Array.isArray(v)) return "invalid";
-  const input = v as Record<string, unknown>;
-  const out: PlaceHours = {};
-  for (const day of DAY_KEYS) {
-    if (!(day in input)) continue;
-    const ranges = input[day];
-    if (ranges == null) continue;
-    if (!Array.isArray(ranges)) return "invalid";
-    const cleanRanges: HoursRange[] = [];
-    for (const r of ranges) {
-      if (!r || typeof r !== "object") return "invalid";
-      const open = (r as { open?: unknown }).open;
-      const close = (r as { close?: unknown }).close;
-      if (typeof open !== "string" || typeof close !== "string") return "invalid";
-      if (!HHMM_RE.test(open) || !HHMM_RE.test(close)) return "invalid";
-      cleanRanges.push({ open, close });
-    }
-    if (cleanRanges.length > 0) out[day] = cleanRanges;
-  }
-  return out;
-}
-
-function isUrl(v: unknown): v is string {
-  if (typeof v !== "string") return false;
-  try {
-    const u = new URL(v);
-    // Require https — http:// breaks mixed-content guards in the browser.
-    return u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-/** POS / booking endpoint: https URL or a phone/email deep link. */
-function isReservationEndpoint(v: string): boolean {
-  try {
-    const u = new URL(v);
-    return (
-      u.protocol === "https:" ||
-      u.protocol === "tel:" ||
-      u.protocol === "mailto:" ||
-      u.protocol === "sms:"
-    );
-  } catch {
-    return false;
-  }
-}
-
-function sanitiseReservationContacts(
-  v: unknown,
-): ReservationContact[] | "invalid" {
-  if (v == null) return [];
-  if (!Array.isArray(v)) return "invalid";
-  if (v.length > MAX_RESERVATION_CONTACTS) return "invalid";
-  const out: ReservationContact[] = [];
-  for (const raw of v) {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return "invalid";
-    const row = raw as Record<string, unknown>;
-    const name = typeof row.name === "string" ? row.name.trim().slice(0, 80) : "";
-    if (!name) return "invalid";
-    const role =
-      typeof row.role === "string" && row.role.trim()
-        ? row.role.trim().slice(0, 60)
-        : null;
-    const phone =
-      typeof row.phone === "string" && row.phone.trim()
-        ? row.phone.trim().slice(0, 40)
-        : null;
-    let email: string | null = null;
-    if (typeof row.email === "string" && row.email.trim()) {
-      const e = row.email.trim().toLowerCase().slice(0, 254);
-      if (!isEmailish(e)) return "invalid";
-      email = e;
-    }
-    const notes =
-      typeof row.notes === "string" && row.notes.trim()
-        ? row.notes.trim().slice(0, 200)
-        : null;
-    if (!phone && !email) return "invalid";
-    out.push({ name, role, phone, email, notes });
-  }
-  return out;
-}
-
