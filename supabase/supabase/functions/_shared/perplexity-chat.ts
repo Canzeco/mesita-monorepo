@@ -24,7 +24,7 @@ export type PplxMessage = {
   content: string;
 };
 
-export type PplxChatResult = {
+type PplxChatResult = {
   text: string;
   citations: string[];
   related: string[];
