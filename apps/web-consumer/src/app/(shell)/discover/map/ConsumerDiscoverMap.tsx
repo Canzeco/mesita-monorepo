@@ -24,10 +24,10 @@ import {
 import {
   MapChromeHeader,
   MapLoadingVeil,
-  PlacePreview,
   RecentreButton,
   SetupCard,
 } from "./map-chrome";
+import { PlacePreview } from "./place-preview";
 
 function placeIcon(isPartner: boolean) {
   return {
