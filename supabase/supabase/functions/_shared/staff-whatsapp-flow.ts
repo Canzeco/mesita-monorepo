@@ -7,15 +7,17 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   applyActivePlace,
   enterPlaceSelection,
+  loadSession,
+  resetSession,
+  resolveActivePlace,
+} from "./staff-whatsapp-session.ts";
+import {
   helpText,
   idleOpsBlockedReminder,
   isSwitchPlaceCommand,
-  loadSession,
   parsePlaceSelection,
-  resetSession,
-  resolveActivePlace,
   placePickerText,
-} from "./staff-whatsapp-session.ts";
+} from "./staff-whatsapp-session-text.ts";
 import { resolveTicketOpener } from "./staff-whatsapp-payment.ts";
 import { handleLookupCode } from "./staff-whatsapp-lookup.ts";
 import type {
