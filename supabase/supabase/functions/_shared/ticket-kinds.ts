@@ -19,7 +19,7 @@
 // Pure sets / pure function — no DB reads, no I/O.
 
 /** Persisted `public.ticket_kind` enum values. */
-export type DbTicketKind = "reservation" | "coupon";
+type DbTicketKind = "reservation" | "coupon";
 
 export const STORY_KINDS = new Set([
   "s_dp_sf",
