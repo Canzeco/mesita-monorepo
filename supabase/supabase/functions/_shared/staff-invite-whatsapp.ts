@@ -4,10 +4,12 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { phonesMatch } from "./phone.ts";
 import {
   buildStaffInviteAcceptedReply,
+  isStaffInviteAcceptMessage,
+} from "./staff-invite-accept-text.ts";
+import {
   ensureAuthUserForStaffPhone,
   findPendingStaffInviteByToken,
   findPendingStaffInviteForPhone,
-  isStaffInviteAcceptMessage,
   redeemStaffInvite,
 } from "./staff-invite-redeem.ts";
 import { sendStaffWhatsAppReply } from "./staff-whatsapp-messages.ts";
