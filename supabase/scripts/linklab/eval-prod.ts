@@ -10,7 +10,7 @@
 //     scripts/linklab/eval-prod.ts [--limit N] [--concurrency 3]
 //
 // ⚠️ BUDGET: this is UN-CACHED — every run spends real Firecrawl + Perplexity on
-// every venue (resolveChannels calls the providers directly, no cache layer).
+// every place (resolveChannels calls the providers directly, no cache layer).
 // Keep --limit small while iterating a prompt. Needs a Pato go-ahead like any
 // live-budget run (MESITA-192).
 //
@@ -98,7 +98,7 @@ async function main() {
   const truth = truthAll.slice(0, LIMIT);
 
   console.log(
-    `\nAgent Y prod eval — ${truth.length} venues (UN-CACHED, spends budget)\n`,
+    `\nAgent Y prod eval — ${truth.length} places (UN-CACHED, spends budget)\n`,
   );
   const started = performance.now();
 
@@ -165,7 +165,7 @@ async function main() {
   console.log(misses.length ? misses.join("\n") : "  none");
 
   const secs = ((performance.now() - started) / 1000).toFixed(0);
-  console.log(`\n  venues ${rows.length}   time ${secs}s`);
+  console.log(`\n  places ${rows.length}   time ${secs}s`);
   Deno.writeTextFileSync(
     `${HERE}last_eval_prod.json`,
     JSON.stringify({ note: "stamp externally", website: w, instagram: i, rows }, null, 2),

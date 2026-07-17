@@ -1,6 +1,6 @@
 // Compact class catalog — mirrored from web-consumer `lib/consumer-data.ts`.
 
-export type ClassId = 'free' | 'premium';
+type ClassId = 'free' | 'premium';
 
 export const CLASSES: {
   id: ClassId;

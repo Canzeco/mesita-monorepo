@@ -1,11 +1,11 @@
 # linklab benchmark — results
 
-Task: from `{name, city}` (+ the Google Place it resolves), discover a venue's **official website**
+Task: from `{name, city}` (+ the Google Place it resolves), discover a place's **official website**
 and **official Instagram**. 5 strategies, scored on 50 verified Mexican restaurants (43 with a
 website, 50 with IG, 7 IG-only). Ranked by **mean F1 of the two fields**. Website matched at
-registrable-host level, IG at lowercase-handle level; a correct `null` (venue has no site) is a TN.
+registrable-host level, IG at lowercase-handle level; a correct `null` (place has no site) is a TN.
 
-## Final leaderboard — full 50 venues (Round 3)
+## Final leaderboard — full 50 places (Round 3)
 
 | rank | strategy | meanF1 | website F1 (P / R) | instagram F1 (P / R) |
 |------|----------|:------:|:------------------:|:--------------------:|
@@ -23,8 +23,8 @@ by the Google seed for every strategy.
 
 - Highest overall (92.4) and highest **precision** on both fields — it *fails safe*, returning `null`
   when unsure instead of guessing wrong (IG precision 98%, only 1 wrong IG in 50).
-- **Cheapest of the top 3**: one ~$0.006 Sonar call per venue + Firecrawl search/scrape. No
-  `pro-search` Agent (A/B/D each run an 8–10 step browsing agent per venue — the dominant cost).
+- **Cheapest of the top 3**: one ~$0.006 Sonar call per place + Firecrawl search/scrape. No
+  `pro-search` Agent (A/B/D each run an 8–10 step browsing agent per place — the dominant cost).
 - Runner-up **D** is the pick if you want maximum **recall** — it never returns null (0 IG false
   negatives, IG recall 94%) — at the price of 3 wrong IG, a lower website precision (7 FP), and the
   expensive Agent call.
@@ -38,7 +38,7 @@ Every remaining miss falls into one of three genuinely-ambiguous buckets, shared
 2. **Handle variants** — `@_corazondetierra` (leading underscore), `@mision.19` (dot),
    `@hueso_restaurante`. C conservatively returns null (FN) on some; D guesses the un-punctuated form (WRONG).
 3. **Group vs location domain** — Pangea (`grupopangea.com` vs `restaurantepangea.com`), El Farallón
-   (`restaurantelfarallon.com` vs `farallon.com.mx`). Both resolve to the venue.
+   (`restaurantelfarallon.com` vs `farallon.com.mx`). Both resolve to the place.
 
 The distinction between the top two strategies is a **precision/recall temperament**, not capability:
 - **C** = conservative (its IG errors are 4 FN + 1 wrong) → use when a wrong link is worse than a blank.
@@ -46,9 +46,9 @@ The distinction between the top two strategies is a **precision/recall temperame
 
 ## Tuning history
 
-- **Round 1** (10 venues): D 92.4 led; C/E 89.5; A/B 87.4. Instagram identified as the sole battleground.
-- **Round 2** (10 venues): added **website-footer anchoring** — feed the judge the IG handle the venue's
-  own site links, tagged `[site]`, and a rubric preferring the venue's own account over a group/umbrella
+- **Round 1** (10 places): D 92.4 led; C/E 89.5; A/B 87.4. Instagram identified as the sole battleground.
+- **Round 2** (10 places): added **website-footer anchoring** — feed the judge the IG handle the place's
+  own site links, tagged `[site]`, and a rubric preferring the place's own account over a group/umbrella
   account. Lifted **C 89.5 → 92.4** (IG 84 → 90); D held.
 - **Round 3** (full 50): C 92.4, D 92.2, E 91.5.
 
@@ -63,20 +63,20 @@ Shipped in code (no live re-bill in this PR):
 2. **Sonar malformed-JSON resilience** — shared `safeParseJson` now tolerates trailing
    commas + truncated closing braces; linklab `safeJson` uses it.
 3. **Strategy F** — pure Sonar judge with `disable_search` (benchmark-only; `--only F`).
-4. **$ estimate line** — `run.ts` prints suite + per-venue $ and a strategy-C-alone
-   estimate (~$0.01/venue excl. shared Google resolve).
+4. **$ estimate line** — `run.ts` prints suite + per-place $ and a strategy-C-alone
+   estimate (~$0.01/place excl. shared Google resolve).
 
 Still money-gated (needs Pato go-ahead to burn Firecrawl/Perplexity/Apify):
 
 - Restaurant-domain prod E2E on a few real MX restaurants
-- Full 50-venue re-score of C vs F (and FB/OpenTable/UberEats accuracy)
+- Full 50-place re-score of C vs F (and FB/OpenTable/UberEats accuracy)
 - Bigger / long-tail ground truth for statistical significance
 
-## Cost of the full 50-venue run
+## Cost of the full 50-place run
 
 `fc-search 82 · fc-scrape 39 · ppx-search 160 · ppx-agent 120 · ppx-sonar 120 · g-text 40` (14 min,
 concurrency 4). The 120 `pro-search` Agent calls (A/B/D) dominate cost; C/E avoid them entirely.
 Disk cache made Rounds 2–3 reuse all search/scrape calls, re-billing only changed LLM prompts.
 
-**Strategy C alone (shipped):** ~$0.009–0.012 / venue at list rates (2–3 Firecrawl searches +
+**Strategy C alone (shipped):** ~$0.009–0.012 / place at list rates (2–3 Firecrawl searches +
 1 scrape + 1 sonar-pro), plus one shared Google Places Text Search when resolving context.

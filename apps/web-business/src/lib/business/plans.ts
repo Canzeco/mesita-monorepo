@@ -46,7 +46,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
 ];
 
 /** True when the place holds Verified membership (any paid plan key). */
-export function isVerifiedMember(p: PlacePlan): boolean {
+function isVerifiedMember(p: PlacePlan): boolean {
   return p !== "free";
 }
 
@@ -56,9 +56,4 @@ export function visibilityForPlan(p: PlacePlan): PlanVisibility {
 
 export function subscriptionForPlace(p: PlacePlan): SubscriptionId {
   return isVerifiedMember(p) ? "verified" : "free";
-}
-
-/** Plan key the billing EF expects for a catalog card. */
-export function planForSubscription(sub: SubscriptionId): PlacePlan {
-  return sub === "verified" ? "pro" : "free";
 }

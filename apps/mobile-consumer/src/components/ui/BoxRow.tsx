@@ -36,7 +36,7 @@ const ICON_COLOR: Record<BoxTint, string> = {
   premium: '#ffffff',
 };
 
-export function TintedIconTile({
+function TintedIconTile({
   tint,
   children,
   size = 44,
