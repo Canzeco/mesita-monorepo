@@ -9,7 +9,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { prepareTicketForReview } from "../_shared/ticket-informal.ts";
+import { prepareTicketForReview } from "../_shared/ticket-review-notify.ts";
 
 type Body = {
   ticketId?: string;
