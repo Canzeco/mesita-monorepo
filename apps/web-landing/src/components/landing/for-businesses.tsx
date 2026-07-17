@@ -1,45 +1,11 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  BarChart3,
-  CalendarCheck,
-  CheckCircle2,
-  Instagram,
-  Target,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BUSINESS_BENEFITS } from "@/components/landing/for-businesses-data";
 import { ListedVsVerifiedDark } from "@/components/landing/listed-vs-verified-dark";
 import { BUSINESS_SIGNUP_URL } from "@/components/landing/urls";
 
 function ForBusinesses() {
-  const items: { title: string; body: string; Icon: typeof TrendingUp }[] = [
-    {
-      title: "Aparece primero",
-      body: "Colocación prioritaria justo en el momento en que la gente decide a dónde ir. El descuento de bienvenida convierte esa visibilidad en primeras visitas.",
-      Icon: TrendingUp,
-    },
-    {
-      title: "Llena la sala con la gente correcta",
-      body: "Configura descuentos distintos para los usuarios gratis y los Premium, y atrae a quienes traen alcance o consumo — no a todos por igual.",
-      Icon: Target,
-    },
-    {
-      title: "Alcance en Instagram garantizado",
-      body: "Las recompensas con historia se verifican antes de liberar el descuento — automático para cuentas públicas, captura y un toque del mesero para las privadas. Primero la exposición, siempre.",
-      Icon: Instagram,
-    },
-    {
-      title: "Reservas sin instalar nada",
-      body: "Nuestro asistente reserva por los canales que ya usas — teléfono, WhatsApp, Instagram, correo. Ves cuántas personas y qué tipo de cliente antes de la visita.",
-      Icon: CalendarCheck,
-    },
-    {
-      title: "Resultados, no promesas",
-      body: "Un solo tablero: el embudo completo (vistas → interés → recompensas → visitas → historias), gasto influenciado, tasa de regreso y retorno de inversión, con un copiloto de IA que te arma la siguiente promoción.",
-      Icon: BarChart3,
-    },
-  ];
   return (
     <section
       id="negocios"
@@ -64,7 +30,7 @@ function ForBusinesses() {
         <ListedVsVerifiedDark />
 
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {items.map((it) => {
+          {BUSINESS_BENEFITS.map((it) => {
             const Icon = it.Icon;
             return (
               <article
