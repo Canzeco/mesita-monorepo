@@ -212,19 +212,7 @@ async function answerWithPerplexity(
   // "where" (location) AND "when" (local time + daypart). Feeding the moment is
   // what stops Memo pitching dinner at 5am — it can now favour open, time-fit
   // spots and flag off-hours asks.
-  const { clock, daypart } = localMoment(lng);
-  const ctxBits: string[] = [];
-  if (profileCtx) ctxBits.push(profileCtx);
-  if (lat !== null && lng !== null) {
-    ctxBits.push(
-      `near latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}`,
-    );
-  }
-  if (clock) ctxBits.push(`local time ${clock} (${daypart})`);
-  const ctx = ctxBits.length > 0
-    ? ` [context, do not repeat back: the user is ${ctxBits.join("; ")}. ` +
-      `Favour places open and appropriate for this time of day.]`
-    : "";
+  const ctx = hiddenMemoContext(profileCtx, lat, lng);
 
   // Feed the exact cards the user will see so the recommendation stays
   // coherent with the rail — Memo names the real cards instead of drifting to
@@ -243,6 +231,26 @@ async function answerWithPerplexity(
   });
   if (!res) return null;
   return { text: res.text, related: res.related, citations: res.citations };
+}
+
+function hiddenMemoContext(
+  profileCtx: string | null,
+  lat: number | null,
+  lng: number | null,
+): string {
+  const { clock, daypart } = localMoment(lng);
+  const ctxBits: string[] = [];
+  if (profileCtx) ctxBits.push(profileCtx);
+  if (lat !== null && lng !== null) {
+    ctxBits.push(
+      `near latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}`,
+    );
+  }
+  if (clock) ctxBits.push(`local time ${clock} (${daypart})`);
+  return ctxBits.length > 0
+    ? ` [context, do not repeat back: the user is ${ctxBits.join("; ")}. ` +
+      `Favour places open and appropriate for this time of day.]`
+    : "";
 }
 
 // ── Leg 2: place candidates (Google Text Search + Mesita merge) ─────────
