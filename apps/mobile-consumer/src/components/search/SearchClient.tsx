@@ -265,76 +265,19 @@ export function SearchClient() {
         </View>
       ) : null}
 
-      {/* Idle catalog rail */}
-      {idle && !railCollapsed ? (
-        <View
-          className="absolute inset-x-0 z-20"
-          style={{ bottom: Math.max(insets.bottom, 8) + 4 }}
-        >
-          <View className="mb-2 flex-row items-center justify-between px-4">
-            <Text className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Nearby
-            </Text>
-            <Pressable
-              onPress={() => setRailCollapsed(true)}
-              className="flex-row items-center gap-1 rounded-full bg-card/90 px-2.5 py-1"
-            >
-              <X color="#775254" size={14} />
-              <Text className="text-[11px] font-medium text-muted-foreground">
-                {catalogLoading ? '…' : `${visible.length}`}
-              </Text>
-            </Pressable>
-          </View>
-          {catalogLoading ? (
-            <View className="h-28 items-center justify-center">
-              <ActivityIndicator color="#fb2b7b" />
-            </View>
-          ) : fetchError ? (
-            <View className="mx-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-              <Text className="text-xs text-rose-700">{fetchError}</Text>
-            </View>
-          ) : (
-            <FlatList
-              horizontal
-              data={visible}
-              keyExtractor={(p) => p.id}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 12, gap: 10 }}
-              renderItem={({ item }) => (
-                <RailCard
-                  place={item}
-                  selected={item.id === selectedId}
-                  onPress={() => {
-                    if (selectedId === item.id) {
-                      router.push(`/place/${item.id}`);
-                    } else {
-                      setSelectedId(item.id);
-                    }
-                  }}
-                />
-              )}
-            />
-          )}
-        </View>
-      ) : null}
-
-      {idle && railCollapsed ? (
-        <View
-          className="absolute inset-x-0 z-20 items-center"
-          style={{ bottom: Math.max(insets.bottom, 8) + 8 }}
-        >
-          <Pressable
-            onPress={() => setRailCollapsed(false)}
-            className="flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2"
-            style={SHADOW_ELEV}
-          >
-            <ChevronUp color="#fb2b7b" size={16} />
-            <Text className="text-xs font-semibold text-foreground">
-              Show places
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <IdleCatalogRail
+        idle={idle}
+        collapsed={railCollapsed}
+        loading={catalogLoading}
+        fetchError={fetchError}
+        places={visible}
+        selectedId={selectedId}
+        bottomInset={insets.bottom}
+        onCollapse={() => setRailCollapsed(true)}
+        onExpand={() => setRailCollapsed(false)}
+        onSelectPlace={setSelectedId}
+        onOpenPlace={(id) => router.push(`/place/${id}`)}
+      />
 
       {/* Selected chip when rail collapsed */}
       {selectedPlace && railCollapsed ? (
@@ -367,6 +310,106 @@ export function SearchClient() {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
       />
+    </View>
+  );
+}
+
+function IdleCatalogRail({
+  idle,
+  collapsed,
+  loading,
+  fetchError,
+  places,
+  selectedId,
+  bottomInset,
+  onCollapse,
+  onExpand,
+  onSelectPlace,
+  onOpenPlace,
+}: {
+  idle: boolean;
+  collapsed: boolean;
+  loading: boolean;
+  fetchError: string | null;
+  places: Place[];
+  selectedId: string | null;
+  bottomInset: number;
+  onCollapse: () => void;
+  onExpand: () => void;
+  onSelectPlace: (id: string) => void;
+  onOpenPlace: (id: string) => void;
+}) {
+  if (!idle) return null;
+
+  if (collapsed) {
+    return (
+      <View
+        className="absolute inset-x-0 z-20 items-center"
+        style={{ bottom: Math.max(bottomInset, 8) + 8 }}
+      >
+        <Pressable
+          onPress={onExpand}
+          className="flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2"
+          style={SHADOW_ELEV}
+        >
+          <ChevronUp color="#fb2b7b" size={16} />
+          <Text className="text-xs font-semibold text-foreground">
+            Show places
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className="absolute inset-x-0 z-20"
+      style={{ bottom: Math.max(bottomInset, 8) + 4 }}
+    >
+      <View className="mb-2 flex-row items-center justify-between px-4">
+        <Text className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          Nearby
+        </Text>
+        <Pressable
+          onPress={onCollapse}
+          className="flex-row items-center gap-1 rounded-full bg-card/90 px-2.5 py-1"
+        >
+          <X color="#775254" size={14} />
+          <Text className="text-[11px] font-medium text-muted-foreground">
+            {loading ? '...' : `${places.length}`}
+          </Text>
+        </Pressable>
+      </View>
+      {loading ? (
+        <View className="h-28 items-center justify-center">
+          <ActivityIndicator color="#fb2b7b" />
+        </View>
+      ) : fetchError ? (
+        <View className="mx-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+          <Text className="text-xs text-rose-700">{fetchError}</Text>
+        </View>
+      ) : (
+        <FlatList
+          horizontal
+          data={places}
+          keyExtractor={(p) => p.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 12, gap: 10 }}
+          renderItem={({ item }) => (
+            <RailCard
+              place={item}
+              selected={item.id === selectedId}
+              onPress={() => {
+                if (selectedId === item.id) {
+                  onOpenPlace(item.id);
+                } else {
+                  onSelectPlace(item.id);
+                }
+              }}
+            />
+          )}
+        />
+      )}
     </View>
   );
 }
