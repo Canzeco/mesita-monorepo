@@ -23,7 +23,6 @@ import {
   ChevronUp,
   MapPin,
   Search,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -43,6 +42,7 @@ import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { RailCard } from "./SearchRailCard";
+import { SearchBar } from "./SearchBar";
 import type { AddState } from "./PredictionRow";
 // The shared FilterSheet (Where/When/What/Randomness) is frontend-only for
 // now — activeChips stays empty, so applyChipFilters is a no-op that keeps
@@ -339,47 +339,15 @@ export function SearchClient({
       {/* Floating top overlay — full-width search bar + idle chip row.
           (Ask AI moved to the Home tab's Memo concierge.) */}
       <div className="absolute inset-x-3 top-3 z-30">
-        <div className="border-border bg-card shadow-elev flex h-12 items-center gap-1 rounded-full border pr-1.5 pl-4 backdrop-blur-xl">
-          <Search className="text-muted-foreground h-4 w-4 shrink-0" />
-          <input
-            value={query}
-            onChange={(e) => updateQuery(e.target.value)}
-            onFocus={() => setSearchOpen(true)}
-            placeholder="Search places…"
-            className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
-          />
-          {(query || searchOpen) && (
-            <button
-              type="button"
-              onClick={dismissSearch}
-              aria-label="Clear search"
-              className="text-muted-foreground hover:text-foreground shrink-0 transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-          {/* Filter now lives inside the bar (reference layout): a hairline
-              divider then the tune icon, replacing the standalone chip below. */}
-          <span className="bg-border h-6 w-px shrink-0" aria-hidden="true" />
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            aria-label={filtersActive ? "Filters (active)" : "Filters"}
-            title={filtersActive ? "Filters (active)" : "Filters"}
-            className="text-foreground hover:text-primary relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            {/* Red "filters set" dot (MESITA-633) — any deviation from the
-                sheet's defaults lights it. Replaced the old activeChips
-                count badge (dead since the chips were parked). */}
-            {filtersActive && (
-              <span
-                className="ring-card absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 ring-2"
-                aria-hidden="true"
-              />
-            )}
-          </button>
-        </div>
+        <SearchBar
+          query={query}
+          showClear={Boolean(query || searchOpen)}
+          filtersActive={filtersActive}
+          onQueryChange={updateQuery}
+          onFocus={() => setSearchOpen(true)}
+          onClear={dismissSearch}
+          onOpenFilters={() => setFiltersOpen(true)}
+        />
 
         {fetchError && idle && (
           <p className={cn(ERROR_BOX_CLASS, "mt-2 rounded-xl backdrop-blur")}>
