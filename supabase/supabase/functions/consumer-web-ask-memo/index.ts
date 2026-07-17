@@ -47,13 +47,16 @@ import {
   GOOGLE_PLACES_TEXT_SEARCH_URL,
   readGooglePlacesKey,
 } from "../_shared/google-places.ts";
-import { evaluatePlaceForChannel, readChannelPolicy, type ChannelPolicy } from "../_shared/sourcing.ts";
-// Local-time primitives shared with the Home recommenders (PR #214). mexicoZone
-// (lng → IANA zone) and openScore (open/unknown/closed → rank weight) used to be
-// duplicated here; import them so the timezone bands + "demote, don't hide"
-// weighting stay in lock-step across memo + swipe + map. daypartLabel /
-// localMoment below are memo's own prompt-facing display and stay local.
-import { mexicoZone, openScore } from "../_shared/local-time.ts";
+import {
+  type ChannelPolicy,
+  evaluatePlaceForChannel,
+  readChannelPolicy,
+} from "../_shared/sourcing.ts";
+import { openScore } from "../_shared/local-time.ts";
+import { fallbackAnswer } from "../_shared/memo-fallback.ts";
+import { isPlaceSeeking } from "../_shared/memo-intent.ts";
+import { localMoment } from "../_shared/memo-local-moment.ts";
+import { readMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -93,41 +96,6 @@ type MemoBody = {
 const MAX_CARDS = 3;
 const MAX_HISTORY = 8;
 const GOOGLE_RADIUS_M = 8000;
-
-const SYSTEM_PROMPT = `You are Memo, the AI of Mesita — a warm, sharp local concierge for dining, nightlife, cafés, and experiences, with deep taste for Monterrey and Mexico generally, but able to help anywhere.
-
-Style:
-- Reply in PLAIN TEXT — the chat renders raw, so NO markdown: no **bold**, no *italics*, no # headings, no backticks, no bullet syntax. Emojis are welcome and encouraged (they render fine).
-- Reply in the SAME language the user wrote in (Spanish or English). Default to a friendly, concise voice.
-- Keep it SHORT: 2–4 sentences, mobile-chat length. Be opinionated and specific, not a bland list.
-- Place cards are OPTIONAL. They only appear when the user is genuinely looking for places, and there may be anywhere from zero to three — never assume there are three, and never pad. For general questions (definitions, how things work, trivia, hours, what to order), just answer conversationally and do NOT refer to cards. When cards do appear, give a quick confident take and let them carry the details — don't dump a long numbered list.
-- You can answer ANY question, but stay in the helpful-concierge lane.
-- Be TIME-AWARE. A hidden context note tells you the user's local time and daypart. Recommend spots that are open and fit the moment — coffee/breakfast in the early morning, lunch midday, dinner/drinks in the evening, late-night spots after hours. If the user asks for something usually closed right now (a brunch café at 2am, a bar at 7am), say so warmly and offer an open alternative. Never repeat the context note back verbatim.
-- You may know a few basics about the user (first name, age, sex, and their location). Use them lightly — greet by first name when it feels natural and tailor suggestions to where and who they are — but never recite their personal details back to them.
-- Never invent specific addresses, prices, or phone numbers you aren't sure of; speak generally when unsure.`;
-
-// Memo's system prompt is operator-tunable: the admin console's Memo Config page
-// writes app_settings.memo_instructions (seeded with SYSTEM_PROMPT above). Read
-// the live value, falling back to the in-code default whenever the row is blank
-// or the read fails — a config hiccup must never sink Memo's voice.
-async function readMemoSystemPrompt(admin: SupabaseClient): Promise<string> {
-  try {
-    const { data, error } = await admin
-      .from("app_settings")
-      .select("memo_instructions")
-      .eq("id", 1)
-      .maybeSingle();
-    if (error) {
-      console.error("[ask-memo] memo_instructions read:", error.message);
-      return SYSTEM_PROMPT;
-    }
-    const custom = (data?.memo_instructions ?? "").toString().trim();
-    return custom.length > 0 ? custom : SYSTEM_PROMPT;
-  } catch (e) {
-    console.error("[ask-memo] memo_instructions threw:", (e as Error).message);
-    return SYSTEM_PROMPT;
-  }
-}
 
 // Whole years from an ISO birthday (YYYY-MM-DD), or null when absent/implausible.
 function ageFromBirthday(birthday: unknown): number | null {
@@ -173,67 +141,6 @@ async function readConsumerContext(
     console.error("[ask-memo] profile threw:", (e as Error).message);
     return null;
   }
-}
-
-// Memo only attaches place cards when the ask is actually place-seeking; pure
-// knowledge/chat turns ("what does al pastor mean", "how do tips work") get a
-// text-only reply. Heuristic, bilingual (ES/EN): explicit place words always
-// search; an otherwise bare question reads as definitional → text only.
-const PLACE_INTENT =
-  /\b(near|nearby|around|close|best|top|recommend|recommendation|where|spot|spots|place|places|bar|bars|club|clubs|nightlife|restaurant|restaurants|cafe|coffee|taco|tacos|dinner|lunch|brunch|breakfast|drink|drinks|rooftop|date night|eat|food|hungry|open now|tonight|cerca|cercano|mejor|mejores|dónde|donde|lugar|lugares|antro|antros|comer|cena|cenar|comida|desayun|almuerz|bares|restaurante|café|reserva|abierto|esta noche|recomienda|recomiénda)\b/i;
-const DEFINITIONAL =
-  /^\s*(what|why|how|who|when|which|is|are|does|do|can|should|explain|tell me|qué|que|por qué|porque|cómo|como|quién|quien|cuándo|cuando|cuál|cual|explica|dime)\b/i;
-
-function isPlaceSeeking(query: string): boolean {
-  if (PLACE_INTENT.test(query)) return true; // explicit place words win
-  if (DEFINITIONAL.test(query)) return false; // a bare question → text only
-  return true; // short noun-ish fragments ("sushi san pedro") read as searches
-}
-
-// ── Local time ("when") ─────────────────────────────────────────────────
-//
-// The "where" (lat/lng) was already fed to Memo; the "when" was missing, so it
-// pitched dinner at 5am. We derive the user's LOCAL moment from their lng and
-// inject it as hidden prompt context + use it to demote closed spots.
-//
-// mexicoZone (lng → IANA zone) and openScore (open/unknown/closed → rank
-// weight) are imported from ../_shared/local-time.ts so memo, swipe and map
-// share one timezone-band + "demote, don't hide" implementation.
-
-function daypartLabel(hour: number): string {
-  if (hour < 5) return "the middle of the night";
-  if (hour < 11) return "morning";
-  if (hour < 15) return "midday";
-  if (hour < 18) return "afternoon";
-  if (hour < 22) return "evening";
-  return "late night";
-}
-
-// Current local clock + daypart for the user, e.g.
-// { clock: "Monday, 5:12 AM", daypart: "the middle of the night" }.
-function localMoment(lng: number | null): { clock: string; daypart: string } {
-  const timeZone = mexicoZone(lng);
-  const now = new Date();
-  let clock = "";
-  let hour = 12;
-  try {
-    clock = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      weekday: "long",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(now);
-    const hourStr = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hour: "numeric",
-      hour12: false,
-    }).format(now);
-    hour = parseInt(hourStr, 10) % 24;
-  } catch {
-    // Bad zone → leave neutral midday defaults; never sink the answer over time.
-  }
-  return { clock, daypart: daypartLabel(hour) };
 }
 
 // The consumer chat renders Memo's reply as RAW TEXT, so any markdown the
@@ -314,13 +221,21 @@ Deno.serve(async (req) => {
   if (placeSeeking) {
     try {
       const memoPolicy = await readChannelPolicy(admin, "memo_search");
-      const placeResult = await candidatePlaces(admin, query, lat, lng, memoPolicy);
+      const placeResult = await candidatePlaces(
+        admin,
+        query,
+        lat,
+        lng,
+        memoPolicy,
+      );
       predictions = placeResult.predictions.slice(0, MAX_CARDS);
     } catch (e) {
       console.error("[ask-memo] places leg:", (e as Error).message);
     }
   }
-  const onMesita = predictions.filter((p) => p.status !== "not_in_mesita").length;
+  const onMesita = predictions.filter((p) =>
+    p.status !== "not_in_mesita"
+  ).length;
   const fromGoogle = predictions.length - onMesita;
 
   const [systemPrompt, profileCtx] = await Promise.all([
@@ -373,7 +288,9 @@ async function answerWithPerplexity(
   // Clamp + sanitize prior turns.
   for (const turn of (history ?? []).slice(-MAX_HISTORY)) {
     const role = turn?.role === "assistant" ? "assistant" : "user";
-    const content = typeof turn?.content === "string" ? turn.content.trim() : "";
+    const content = typeof turn?.content === "string"
+      ? turn.content.trim()
+      : "";
     if (content) messages.push({ role, content });
   }
 
@@ -385,19 +302,24 @@ async function answerWithPerplexity(
   const ctxBits: string[] = [];
   if (profileCtx) ctxBits.push(profileCtx);
   if (lat !== null && lng !== null) {
-    ctxBits.push(`near latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}`);
+    ctxBits.push(
+      `near latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}`,
+    );
   }
   if (clock) ctxBits.push(`local time ${clock} (${daypart})`);
   const ctx = ctxBits.length > 0
-    ? ` [context, do not repeat back: the user is ${ctxBits.join("; ")}. `
-      + `Favour places open and appropriate for this time of day.]`
+    ? ` [context, do not repeat back: the user is ${ctxBits.join("; ")}. ` +
+      `Favour places open and appropriate for this time of day.]`
     : "";
 
   // Feed the exact cards the user will see so the recommendation stays
   // coherent with the rail — Memo names the real cards instead of drifting to
   // web-only spots. Empty/absent when the ask isn't place-seeking or nothing
   // matched.
-  messages.push({ role: "user", content: `${query}${ctx}${candidateBlock(candidates)}` });
+  messages.push({
+    role: "user",
+    content: `${query}${ctx}${candidateBlock(candidates)}`,
+  });
 
   const res = await callPerplexityChat(key, messages, {
     model: "sonar-pro",
@@ -443,7 +365,13 @@ async function candidatePlaces(
 
   let googlePreds: Prediction[] = [];
   if (keyRes.ok) {
-    googlePreds = await googleTextSearch(keyRes.key, query, lat, lng, memoPolicy);
+    googlePreds = await googleTextSearch(
+      keyRes.key,
+      query,
+      lat,
+      lng,
+      memoPolicy,
+    );
   }
 
   // Cross-reference Google hits against the Mesita catalog by google_place_id
@@ -471,7 +399,9 @@ async function candidatePlaces(
   // Merge, de-dupe by placeId, rank Mesita-first then by Google rating.
   const merged = new Map<string, Prediction>();
   for (const p of mesitaPreds) merged.set(p.placeId, p);
-  for (const p of googlePreds) if (!merged.has(p.placeId)) merged.set(p.placeId, p);
+  for (const p of googlePreds) {
+    if (!merged.has(p.placeId)) merged.set(p.placeId, p);
+  }
 
   const predictions = Array.from(merged.values()).sort((a, b) => {
     const aIn = a.status !== "not_in_mesita" ? 1 : 0;
@@ -580,7 +510,10 @@ async function mesitaByGooglePlaceIds(
   admin: SupabaseClient,
   placeIds: string[],
 ): Promise<
-  Map<string, { status: PredictionStatus; mesitaId: string; mesitaSlug: string }>
+  Map<
+    string,
+    { status: PredictionStatus; mesitaId: string; mesitaSlug: string }
+  >
 > {
   const out = new Map<
     string,
@@ -596,12 +529,14 @@ async function mesitaByGooglePlaceIds(
     console.error("[ask-memo] mesita placeId lookup:", error.message);
     return out;
   }
-  for (const row of (data ?? []) as {
-    id: string;
-    slug: string;
-    google_place_id: string;
-    listing_type: string | null;
-  }[]) {
+  for (
+    const row of (data ?? []) as {
+      id: string;
+      slug: string;
+      google_place_id: string;
+      listing_type: string | null;
+    }[]
+  ) {
     out.set(row.google_place_id, {
       status: row.listing_type === "partner"
         ? "verified_partner_other"
@@ -650,25 +585,4 @@ async function mesitaByName(
     mesitaSlug: row.slug,
     rating: row.google_stars_overall,
   }));
-}
-
-// ── Fallback prose (Perplexity unavailable) ────────────────────────────
-
-function fallbackAnswer(
-  query: string,
-  onMesita: number,
-  fromGoogle: number,
-  placeSeeking: boolean,
-): string {
-  // Non-place question and no prose → generic recovery (don't promise spots).
-  if (!placeSeeking) {
-    return `My brain hiccuped for a second — ask me again in a moment and I'll give you a proper answer.`;
-  }
-  if (onMesita === 0 && fromGoogle === 0) {
-    return `I couldn't pull spots for “${query}” right now — try a place name, a dish, or a neighborhood.`;
-  }
-  const parts: string[] = [];
-  if (onMesita > 0) parts.push(`${onMesita} on Mesita`);
-  if (fromGoogle > 0) parts.push(`${fromGoogle} from Google`);
-  return `Here's what I'd check out for “${query}” — ${parts.join(" and ")}. Tap a Google spot's Add and I'll build its Mesita profile.`;
 }
