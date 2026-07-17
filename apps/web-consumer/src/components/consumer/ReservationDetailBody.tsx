@@ -1,28 +1,23 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import {
   Calendar,
   Users,
   Clock,
   CheckCircle2,
   X,
-  MapPin,
-  CalendarPlus,
-  Phone,
 } from "lucide-react";
 import type {
   ReservationItem,
   ReservationStatus,
 } from "@/lib/mock/reservations-mock";
 import { cn, guestNoun } from "@/lib/utils";
-import { toast } from "@/lib/toast";
-import { placeHref } from "@/lib/place-route";
 import {
   LinkedCouponCard,
   MetaRow,
 } from "@/components/consumer/reservation-detail-ui";
+import { ReservationActions } from "@/components/consumer/reservation-actions";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
@@ -144,84 +139,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
         <LinkedCouponCard coupon={r.linkedCoupon} />
       )}
 
-      {/* Action cluster — keep it scoped to what a reservation can do.
-          Payment, reward redemption, and the full place page each have
-          their own surfaces; we just link out. */}
-      <section className="flex flex-col gap-2">
-        <Link
-          href={placeHref(r.projectId, "saved")}
-          className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
-        >
-          <span className="flex items-center gap-3">
-            <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
-              <MapPin className="h-4 w-4" />
-            </span>
-            <span className="text-sm font-semibold">View place</span>
-          </span>
-          <span className="text-muted-foreground text-[12px]">
-            Details, map, menu
-          </span>
-        </Link>
-
-        {!cancelled && (
-          <>
-            <button
-              type="button"
-              onClick={() =>
-                toast.action(
-                  "Calendar export lands with the booking integration.",
-                  { label: "Notify me", onClick: () => {} },
-                )
-              }
-              className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition"
-            >
-              <span className="flex items-center gap-3">
-                <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
-                  <CalendarPlus className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-semibold">Add to calendar</span>
-              </span>
-              <span className="text-muted-foreground text-[12px]">
-                Google, Apple, Outlook
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                toast.action(
-                  "Calling the place from inside the app lands soon.",
-                  { label: "Notify me", onClick: () => {} },
-                )
-              }
-              className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition"
-            >
-              <span className="flex items-center gap-3">
-                <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
-                  <Phone className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-semibold">Call place</span>
-              </span>
-              <span className="text-muted-foreground text-[12px]">
-                If plans change
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                toast.action(
-                  "Cancellation lands with the booking integration. Email support@mesita.ai meanwhile.",
-                  { label: "Copy email", onClick: () => {} },
-                )
-              }
-              className="border-border bg-card hover:bg-muted text-foreground/80 flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition"
-            >
-              Cancel reservation
-            </button>
-          </>
-        )}
-      </section>
+      <ReservationActions projectId={r.projectId} cancelled={cancelled} />
     </div>
   );
 }
