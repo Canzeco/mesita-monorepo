@@ -57,6 +57,7 @@ import { fallbackAnswer } from "../_shared/memo-fallback.ts";
 import { isPlaceSeeking } from "../_shared/memo-intent.ts";
 import { localMoment } from "../_shared/memo-local-moment.ts";
 import { readMemoSystemPrompt } from "../_shared/memo-prompt.ts";
+import { readConsumerContext } from "./memo-consumer-context.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -96,52 +97,6 @@ type MemoBody = {
 const MAX_CARDS = 3;
 const MAX_HISTORY = 8;
 const GOOGLE_RADIUS_M = 8000;
-
-// Whole years from an ISO birthday (YYYY-MM-DD), or null when absent/implausible.
-function ageFromBirthday(birthday: unknown): number | null {
-  if (typeof birthday !== "string" || birthday.length < 4) return null;
-  const dob = new Date(birthday);
-  if (isNaN(dob.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - dob.getFullYear();
-  const m = now.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1;
-  return age >= 13 && age <= 120 ? age : null;
-}
-
-// A short profile clause for Memo's hidden context — the signed-in user's first
-// name, age and sex from the consumers profile (keyed by auth user id). Only the
-// parts we actually have are included; returns null when there's nothing useful.
-// Never let a profile miss sink the answer.
-async function readConsumerContext(
-  admin: SupabaseClient,
-  userId: string,
-): Promise<string | null> {
-  try {
-    const { data, error } = await admin
-      .from("consumers")
-      .select("first_name, full_name, sex, birthday")
-      .eq("id", userId)
-      .maybeSingle();
-    if (error || !data) {
-      if (error) console.error("[ask-memo] profile read:", error.message);
-      return null;
-    }
-    const bits: string[] = [];
-    const name = ((data.first_name ?? data.full_name ?? "") as string)
-      .trim()
-      .split(/\s+/)[0];
-    if (name) bits.push(`named ${name}`);
-    const age = ageFromBirthday(data.birthday);
-    if (age) bits.push(`${age} years old`);
-    const sex = (data.sex ?? "").toString().trim().toLowerCase();
-    if (sex) bits.push(sex);
-    return bits.length > 0 ? bits.join(", ") : null;
-  } catch (e) {
-    console.error("[ask-memo] profile threw:", (e as Error).message);
-    return null;
-  }
-}
 
 // The consumer chat renders Memo's reply as RAW TEXT, so any markdown the
 // model emits (**bold**, *italics*, `code`, # headings, [links](url)) leaks
