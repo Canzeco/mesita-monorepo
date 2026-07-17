@@ -3,18 +3,17 @@
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { TicketActionCard } from "@/components/consumer/TicketActionCard";
 import { TicketVisitComplete } from "@/components/consumer/TicketVisitComplete";
 import { TicketVisitHeader } from "@/components/consumer/TicketVisitHeader";
-import { TicketReviewForm } from "@/components/consumer/TicketReviewForm";
+import { renderStepActions } from "@/components/consumer/ticket-step-actions";
 import {
   isTicketFlowComplete,
   resolveTicketFlowSteps,
   STEP_NOW_TITLE,
   ticketProgressFromBundle,
   type TicketFlowStepId,
-  type TicketFlowStepView,
 } from "@/lib/ticket-flow-steps";
 import type {
   TicketBillPayload,
@@ -178,51 +177,4 @@ export function TicketDetailsView({
       ) : null}
     </div>
   );
-}
-
-function renderStepActions({
-  step,
-  busy,
-  onSubmitReview,
-  onMockStoryDetect,
-  showMockStoryButton,
-  reviewDraft,
-  onReviewDraftChange,
-}: {
-  step: TicketFlowStepView;
-  busy: boolean;
-  reviewDraft: TicketDetailsViewProps["reviewDraft"];
-  onReviewDraftChange: TicketDetailsViewProps["onReviewDraftChange"];
-  onSubmitReview: () => void;
-  onMockStoryDetect?: () => void;
-  showMockStoryButton?: boolean;
-}): ReactNode {
-  if (step.state !== "active") return null;
-
-  if (step.id === "story" && showMockStoryButton && onMockStoryDetect) {
-    return (
-      <button
-        type="button"
-        onClick={onMockStoryDetect}
-        disabled={busy}
-        className="border-secondary/50 bg-secondary/10 text-secondary hover:bg-secondary/15 w-full rounded-xl border border-dashed px-4 py-3 text-sm font-semibold transition disabled:opacity-50"
-      >
-        {busy ? "Simulating…" : "Mock: story posted & detected"}
-      </button>
-    );
-  }
-
-  if (step.id === "review") {
-    return (
-      <TicketReviewForm
-        draft={reviewDraft}
-        onChange={onReviewDraftChange}
-        onSubmit={onSubmitReview}
-        busy={busy}
-        showIntro={false}
-      />
-    );
-  }
-
-  return null;
 }
