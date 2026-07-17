@@ -17,7 +17,7 @@ import {
   type VerificationCallbacks,
 } from "./create-unit-shared";
 
-export type CallState =
+type CallState =
   | { kind: "idle" }
   | { kind: "placing" }
   | {
