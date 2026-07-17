@@ -49,6 +49,25 @@ const MAX_TAG_LEN = ENRICH_FIELD_LIMITS.tagSlugLength.max;
 // Matches the business Place editor's About field cap (PLACE_DESCRIPTION_MAX).
 const MAX_DESCRIPTION_LEN = 2000;
 
+function normalisePlaceTags(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+
+  // Lowercase + trim + dedupe in one pass. Empty entries drop out so the
+  // form can submit a partially typed list without rejecting the request.
+  const seen = new Set<string>();
+  const clean: string[] = [];
+  for (const t of value) {
+    if (typeof t !== "string") continue;
+    const norm = t.trim().toLowerCase().slice(0, MAX_TAG_LEN);
+    if (!norm || seen.has(norm)) continue;
+    seen.add(norm);
+    clean.push(norm);
+    if (clean.length >= MAX_TAGS) break;
+  }
+  // Strip mutually exclusive catalog pairs (same rules as Enricher).
+  return sanitizePlaceTags(clean).slice(0, MAX_TAGS);
+}
+
 type UpdateBody = {
   id?: string;
   name?: string | null;
@@ -359,26 +378,14 @@ Deno.serve(async (req) => {
     update.description = optString(body.description, MAX_DESCRIPTION_LEN);
   }
   if ("tags" in body) {
-    if (!Array.isArray(body.tags)) {
+    const tags = normalisePlaceTags(body.tags);
+    if (!tags) {
       return json(
         { ok: false, error: "tags must be an array of strings" },
         400,
       );
     }
-    // Lowercase + trim + dedupe in one pass. Empty entries drop out so the
-    // form can submit a partially typed list without rejecting the request.
-    // Then strip mutually exclusive catalog pairs (same rules as Enricher).
-    const seen = new Set<string>();
-    const clean: string[] = [];
-    for (const t of body.tags) {
-      if (typeof t !== "string") continue;
-      const norm = t.trim().toLowerCase().slice(0, MAX_TAG_LEN);
-      if (!norm || seen.has(norm)) continue;
-      seen.add(norm);
-      clean.push(norm);
-      if (clean.length >= MAX_TAGS) break;
-    }
-    update.tags = sanitizePlaceTags(clean).slice(0, MAX_TAGS);
+    update.tags = tags;
   }
   // Promos section toggles. Strict boolean only — silently coerce
   // truthy / "true" strings would let stale clients write garbage.
