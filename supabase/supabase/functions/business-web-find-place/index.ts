@@ -38,7 +38,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { isOnDomain } from "../_shared/onboarding.ts";
+import { methodsFor, type PlaceRow } from "./find-place-methods.ts";
 
 // `googlePlaceId` is the canonical key (Google Place ID). Legacy `placeId`
 // is accepted as a fallback until every client sends the new key — it was
@@ -48,36 +48,6 @@ type Body = { googlePlaceId?: string; placeId?: string };
 
 const PLACE_COLUMNS =
   "id, slug, name, status, listing_type, address, phone, email, website_url, photos, category, vibe, created_at, updated_at";
-
-type PlaceRow = {
-  id: string;
-  phone: string | null;
-  email: string | null;
-  website_url: string | null;
-};
-
-type MethodsBlock = {
-  phone: { available: boolean; displayPhone: string | null };
-  email: { available: boolean; displayEmail: string | null };
-};
-
-function methodsFor(place: PlaceRow): MethodsBlock {
-  const phoneOk = !!place.phone;
-  const emailOk =
-    !!place.email &&
-    !!place.website_url &&
-    isOnDomain(place.email, place.website_url);
-  return {
-    phone: {
-      available: phoneOk,
-      displayPhone: phoneOk ? place.phone : null,
-    },
-    email: {
-      available: emailOk,
-      displayEmail: emailOk ? place.email : null,
-    },
-  };
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
