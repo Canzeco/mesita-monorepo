@@ -22,6 +22,11 @@ import {
   weeklyHoursFromPeriods,
   type WeeklyHours,
 } from "./enrich-google-hours.ts";
+import {
+  findAddressComponent,
+  internationalPhone,
+  priceLevelFromGoogle,
+} from "./enrich-google-basics-normalizers.ts";
 
 const GOOGLE_FIELD_MASK = [
   "id",
@@ -313,57 +318,6 @@ async function fetchTimezone(
     return d.status === "OK" ? (d.timeZoneId ?? null) : null;
   } catch {
     return null;
-  }
-}
-
-// ── helpers (ported verbatim from atlas-seed-place) ─────────────────────────
-function findAddressComponent(
-  components: GoogleDetails["addressComponents"],
-  types: string[],
-): string | null {
-  if (!components) return null;
-  for (const type of types) {
-    const found = components.find((c) => c.types?.includes(type));
-    if (found?.longText) return found.longText;
-  }
-  return null;
-}
-
-// Phone must ALWAYS carry the country code. Prefer Google's international
-// format outright; a bare national number is only salvaged when we know the
-// place's country calling code (Mesita is Mexico-only today) — otherwise we
-// store no phone rather than one the Reservationist can't dial cross-border.
-const COUNTRY_CALLING_CODES: Record<string, string> = {
-  "México": "+52",
-  "Mexico": "+52",
-};
-
-function internationalPhone(
-  details: Pick<GoogleDetails, "internationalPhoneNumber" | "nationalPhoneNumber">,
-  country: string | null,
-): string | null {
-  const intl = details.internationalPhoneNumber?.trim();
-  if (intl) return intl.startsWith("+") ? intl : `+${intl}`;
-  const national = details.nationalPhoneNumber?.trim();
-  if (!national) return null;
-  if (national.startsWith("+")) return national;
-  const code = country ? COUNTRY_CALLING_CODES[country] : undefined;
-  return code ? `${code} ${national}` : null;
-}
-
-function priceLevelFromGoogle(p?: string): number | null {
-  switch (p) {
-    case "PRICE_LEVEL_FREE":
-    case "PRICE_LEVEL_INEXPENSIVE":
-      return 1;
-    case "PRICE_LEVEL_MODERATE":
-      return 2;
-    case "PRICE_LEVEL_EXPENSIVE":
-      return 3;
-    case "PRICE_LEVEL_VERY_EXPENSIVE":
-      return 4;
-    default:
-      return null;
   }
 }
 
