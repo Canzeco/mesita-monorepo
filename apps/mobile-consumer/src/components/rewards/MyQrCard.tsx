@@ -1,32 +1,19 @@
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  AtSign,
-  Check,
-  Copy,
-  Crown,
-  Flame,
-  Users,
-} from 'lucide-react-native';
+import { Check, Copy, Crown, Flame } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-import { formatCurrency } from '@/lib/api/pay';
 import { displayConsumerCode } from '@/lib/consumer-code';
 import type { RewardStats } from '@/lib/hooks/useConsumerPayTickets';
-import { firstInitials, formatCompactCount } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
+
+import { IdentityStrip, IgChips, Scorecard } from './my-qr-card-parts';
 
 // Coral Mesita Card passport — web MyQrCard.tsx port (MESITA-580).
 // Free: #ff7a45→#ff2d78 · Premium: →#a13cf0. QR plate ink #2b1233.
 // White-on-coral is the one intentional white-on-color surface here.
-
-const ORIGIN_LABEL: Record<string, string> = {
-  instagram: 'Instagram',
-  subscription: 'Subscription',
-  invitation: 'Invite',
-};
 
 const PASSPORT_SHADOW = {
   shadowColor: '#ff4d6d',
@@ -43,25 +30,6 @@ const QR_PLATE_SHADOW = {
   shadowOffset: { width: 0, height: 8 },
   elevation: 6,
 } as const;
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View className="relative min-w-0 flex-1 items-center px-1">
-      <Text
-        className="font-extrabold tracking-tight text-white"
-        style={{ fontSize: 18, fontVariant: ['tabular-nums'] }}
-      >
-        {value}
-      </Text>
-      <Text
-        className="mt-1 font-bold uppercase text-white/80"
-        style={{ fontSize: 8.5, letterSpacing: 0.5 }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
 
 export function MyQrCard({
   code,
@@ -180,72 +148,19 @@ export function MyQrCard({
         </Pressable>
       </View>
 
-      {/* Identity strip */}
-      <View className="mt-4 flex-row items-center gap-3 border-t border-white/20 pt-4">
-        <View
-          className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20"
-          style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' }}
-        >
-          <Text className="text-sm font-extrabold text-white">
-            {firstInitials(displayName)}
-          </Text>
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text
-            numberOfLines={1}
-            className="font-extrabold tracking-tight text-white"
-            style={{ fontSize: 15 }}
-          >
-            {displayName}
-          </Text>
-          <View className="mt-0.5 flex-row items-center gap-1.5">
-            {isPremium ? (
-              <>
-                <Crown color="#fff" size={12} fill="#fff" />
-                <Text className="text-white/90" style={{ fontSize: 11 }}>
-                  Premium · via {ORIGIN_LABEL[origin] ?? 'Mesita'}
-                </Text>
-              </>
-            ) : (
-              <Text className="text-white/90" style={{ fontSize: 11 }}>
-                Free member
-              </Text>
-            )}
-          </View>
-        </View>
-      </View>
+      <IdentityStrip
+        displayName={displayName}
+        isPremium={isPremium}
+        origin={origin}
+      />
 
-      {igConnected ? (
-        <View className="mt-3 flex-row flex-wrap gap-2">
-          {instagramHandle ? (
-            <View className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1.5">
-              <AtSign color="#fff" size={14} />
-              <Text className="font-semibold text-white" style={{ fontSize: 11.5 }}>
-                @{instagramHandle.replace(/^@/, '')}
-              </Text>
-            </View>
-          ) : null}
-          {followerCount > 0 ? (
-            <View className="flex-row items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1.5">
-              <Users color="#fff" size={14} />
-              <Text className="font-semibold text-white" style={{ fontSize: 11.5 }}>
-                {formatCompactCount(followerCount)} followers
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+      <IgChips
+        igConnected={igConnected}
+        instagramHandle={instagramHandle}
+        followerCount={followerCount}
+      />
 
-      {/* Member scorecard */}
-      <View className="mt-4 flex-row border-t border-white/20 pt-4">
-        <Stat value={String(s.visits)} label="Visits" />
-        <Stat
-          value={s.savedCents > 0 ? formatCurrency(s.savedCents) : '—'}
-          label="Saved"
-        />
-        <Stat value={String(s.stories)} label="Stories" />
-        <Stat value={String(s.reviews)} label="Reviews" />
-      </View>
+      <Scorecard stats={s} />
     </LinearGradient>
   );
 }
