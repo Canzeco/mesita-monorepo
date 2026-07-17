@@ -536,23 +536,7 @@ function Deck({ places }: { places: Place[] }) {
             </div>
           )}
 
-          {showTutorial && (
-            <div className="animate-in fade-in pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] duration-500">
-              <div className="flex flex-col items-center gap-5">
-                <div className="animate-swipe-hint">
-                  <Hand
-                    className="h-20 w-20 text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
-                    strokeWidth={1.4}
-                  />
-                </div>
-                <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
-                  Swipe left to skip
-                  <span className="mx-1.5 opacity-50">·</span>
-                  right to save
-                </p>
-              </div>
-            </div>
-          )}
+          {showTutorial && <SwipeTutorialOverlay />}
         </div>
 
         <SwipeActionRow
@@ -570,6 +554,26 @@ function Deck({ places }: { places: Place[] }) {
         onClose={() => setFiltersOpen(false)}
         onActiveChange={setFiltersActive}
       />
+    </div>
+  );
+}
+
+function SwipeTutorialOverlay() {
+  return (
+    <div className="animate-in fade-in pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] duration-500">
+      <div className="flex flex-col items-center gap-5">
+        <div className="animate-swipe-hint">
+          <Hand
+            className="h-20 w-20 text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
+            strokeWidth={1.4}
+          />
+        </div>
+        <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
+          Swipe left to skip
+          <span className="mx-1.5 opacity-50">·</span>
+          right to save
+        </p>
+      </div>
     </div>
   );
 }

@@ -47,7 +47,6 @@ import { placeHasVerifiedOwner } from "./place-ownership.ts";
 import { replyStaffCoach } from "./staff-whatsapp-replies.ts";
 import {
   buildConsumerBillPayload,
-  closeTicketAndEnqueueReview,
   computeInformalBill,
   type ConsumerRow,
 } from "./ticket-informal.ts";
@@ -58,6 +57,7 @@ import {
 import { sendStaffWhatsAppReply } from "./staff-whatsapp-messages.ts";
 import { sendWhatsAppText, type TwilioEnv } from "./twilio.ts";
 import { recordMembershipStrike } from "./membership-enforcement.ts";
+import { handleStaffPaymentConfirm } from "./staff-whatsapp-payment-confirm.ts";
 
 export type { StaffAccess, StaffIdentity, StaffPlace } from "./staff-whatsapp-types.ts";
 export { resolveStaffAccess } from "./staff-whatsapp-access.ts";
@@ -644,52 +644,6 @@ async function handleSubmitBill(
     twilio,
     staff.phoneE164,
     staffBillReadyMessage(staff.placeName, calc),
-  );
-}
-
-async function handleStaffPaymentConfirm(
-  admin: SupabaseClient,
-  twilio: TwilioEnv,
-  staff: StaffContext,
-  session: SessionRow,
-) {
-  if (!session.ticket_id || !session.consumer_id) return;
-
-  const ticket = await admin
-    .from("tickets")
-    .select("id, status")
-    .eq("id", session.ticket_id)
-    .maybeSingle();
-  if (!ticket.data || ticket.data.status !== "awaiting_payment_confirm") {
-    await resetSession(admin, session.id, staff.projectId);
-    await reply(
-      admin,
-      twilio,
-      staff.phoneE164,
-      "No hay un cobro pendiente. Manda el código del siguiente comensal.",
-    );
-    return;
-  }
-
-  const done = await closeTicketAndEnqueueReview(
-    admin,
-    session.ticket_id,
-    session.consumer_id,
-    staff.projectId,
-  );
-  if (!done.ok) {
-    await reply(admin, twilio, staff.phoneE164, `Error al cerrar: ${done.error}`);
-    return;
-  }
-
-  await resetSession(admin, session.id, staff.projectId);
-  await reply(
-    admin,
-    twilio,
-    staff.phoneE164,
-    `Pago registrado ✓ Ticket cerrado en ${staff.placeName}.\n` +
-      `El comensal ya puede dejar su reseña en la app.\n` +
-      `Manda el código del siguiente comensal cuando quieras.`,
   );
 }
 
