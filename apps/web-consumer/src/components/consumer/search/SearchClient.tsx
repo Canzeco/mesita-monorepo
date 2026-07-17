@@ -465,27 +465,7 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Focused but empty → a solid prompt panel over the TOP ~70% only, so the
-          live map stays visible in the strip below (the search moment still
-          reads as "browse the map"). Sits at z-20 below the z-30 floating
-          search bar (which the user types into). */}
-      {searchOpen && trimmed.length === 0 && (
-        <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col items-center justify-center rounded-b-3xl border-b px-8 text-center shadow-sm">
-          {/* decision: Lucide line Search in a tinted circle — not the 🔍
-              emoji, which Apple renders as a heavy 3D lupa that clashes
-              with the rest of the consumer icon language. */}
-          <span
-            className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-full"
-            aria-hidden="true"
-          >
-            <Search className="h-6 w-6" strokeWidth={1.75} />
-          </span>
-          <p className="mt-4 text-lg font-semibold">Where to today?</p>
-          <p className="text-muted-foreground mt-1.5 max-w-[260px] text-sm">
-            Find the perfect place by name or category.
-          </p>
-        </div>
-      )}
+      {searchOpen && trimmed.length === 0 && <EmptySearchPrompt />}
 
       <FilterSheet
         open={filtersOpen}
@@ -502,6 +482,30 @@ export function SearchClient({
         onAdd={handleAdd}
         onClose={() => setPreviewOpen(false)}
       />
+    </div>
+  );
+}
+
+function EmptySearchPrompt() {
+  return (
+    // Focused but empty → a solid prompt panel over the TOP ~70% only, so the
+    // live map stays visible in the strip below (the search moment still
+    // reads as "browse the map"). Sits at z-20 below the z-30 floating
+    // search bar (which the user types into).
+    <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col items-center justify-center rounded-b-3xl border-b px-8 text-center shadow-sm">
+      {/* decision: Lucide line Search in a tinted circle — not the emoji, which
+          Apple renders as a heavy 3D lupa that clashes with the rest of the
+          consumer icon language. */}
+      <span
+        className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-full"
+        aria-hidden="true"
+      >
+        <Search className="h-6 w-6" strokeWidth={1.75} />
+      </span>
+      <p className="mt-4 text-lg font-semibold">Where to today?</p>
+      <p className="text-muted-foreground mt-1.5 max-w-[260px] text-sm">
+        Find the perfect place by name or category.
+      </p>
     </div>
   );
 }
