@@ -33,6 +33,11 @@ import {
 import { firecrawlSearch } from "./firecrawl.ts";
 import { callPerplexityAgent } from "./perplexity-agent.ts";
 import { dedup } from "./parse-utils.ts";
+import {
+  hostNameCoverage,
+  pathIncludes,
+  pathStartsWith,
+} from "./enrich-channel-url-helpers.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,24 +95,6 @@ export type ResolvedChannels = ChannelMap & {
   provenance: Partial<Record<ChannelField, { source: ChannelSource; url: string }>>;
 };
 
-// ── Shape validators (real domain knowledge, kept verbatim) ──────────────────
-
-function pathStartsWith(url: string, prefix: string): boolean {
-  try {
-    return new URL(url).pathname.toLowerCase().startsWith(prefix);
-  } catch {
-    return false;
-  }
-}
-
-function pathIncludes(url: string, frag: string): boolean {
-  try {
-    return new URL(url).pathname.toLowerCase().includes(frag);
-  } catch {
-    return false;
-  }
-}
-
 // Canonicalise + host-route + shape-gate a candidate for one field. Returns the
 // canonical URL or null. The single gate every candidate (Agent answer, citation,
 // candidate pool, degraded search) passes through before it is trusted.
@@ -138,44 +125,6 @@ function firstValidFromList(field: ChannelField, urls: string[]): string | null 
     if (v) return v;
   }
   return null;
-}
-
-// Minimal tokeniser for the one place we still name-match: website ranking.
-function nameTokens(s: string): string[] {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .split(/[^a-z0-9]+/)
-    .filter((t) => t.length >= 3);
-}
-
-// Main registrable label of a host (label before the TLD): "cosmoprofbeauty"
-// for both "cosmoprofbeauty.com" and "stores.cosmoprofbeauty.com".
-function mainDomainLabel(host: string): string {
-  const parts = host.replace(/^www\./, "").toLowerCase().split(".").filter(Boolean);
-  return parts.length >= 2 ? parts[parts.length - 2] : (parts[0] ?? "");
-}
-
-// Fraction of a candidate host's main-label letters that the place-name tokens
-// account for. Used only as a SOFT ranking signal now (footer harvest is gone, so
-// a slightly-wrong website no longer poisons downstream) — we surface the best
-// name-matched website candidate first so Agent Y anchors on it, but never hard-
-// drop on it: FP > FN. "cosmosanpedro" → 1.0, "cosmoprofbeauty" → 0.33.
-function hostNameCoverage(host: string, name: string): number {
-  const letters = mainDomainLabel(host).replace(/[^a-z0-9]/g, "");
-  const toks = nameTokens(name);
-  if (!letters || !toks.length) return 0;
-  let covered = 0;
-  let rest = letters;
-  for (const t of [...toks].sort((a, b) => b.length - a.length)) {
-    const idx = rest.indexOf(t);
-    if (idx !== -1) {
-      covered += t.length;
-      rest = rest.slice(0, idx) + rest.slice(idx + t.length);
-    }
-  }
-  return covered / letters.length;
 }
 
 // ── S4 — per-source candidate gather (Firecrawl Search) ──────────────────────
