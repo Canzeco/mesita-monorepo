@@ -31,10 +31,8 @@ import {
   toolError,
   toolText,
 } from "./rpc.ts";
+import { clamp, UUID_RE } from "./tool-args.ts";
 import { TOOLS } from "./tools.ts";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type JsonRpcReq = {
   jsonrpc?: string;
@@ -301,16 +299,6 @@ async function runTool(
     default:
       return toolError(`Unknown tool: ${name}`);
   }
-}
-
-function clamp(
-  value: unknown,
-  min: number,
-  max: number,
-  fallback: number,
-): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
-  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 Deno.serve(async (req) => {
