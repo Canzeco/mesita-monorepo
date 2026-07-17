@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, UserCircle } from "lucide-react";
+import { ArrowRight, type LucideIcon } from "lucide-react";
 
 function PathButton({
   href,
@@ -9,7 +9,7 @@ function PathButton({
   variant,
 }: {
   href: string;
-  Icon: typeof UserCircle;
+  Icon: LucideIcon;
   eyebrow: string;
   label: string;
   variant: "primary" | "dark";

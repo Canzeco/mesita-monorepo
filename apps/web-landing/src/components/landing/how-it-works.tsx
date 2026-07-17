@@ -1,13 +1,12 @@
 import { CalendarCheck, Compass, CreditCard } from "lucide-react";
 import { SectionHeader } from "@/components/landing/section-header";
+import {
+  NumberedStepCard,
+  type NumberedStep,
+} from "@/components/landing/numbered-step-card";
 
 function HowItWorks() {
-  const steps: {
-    n: string;
-    title: string;
-    body: string;
-    Icon: typeof Compass;
-  }[] = [
+  const steps: NumberedStep[] = [
     {
       n: "1",
       title: "Descubre",
@@ -36,30 +35,9 @@ function HowItWorks() {
           aside="Descubre, reserva y paga menos — sin puntos que juntar y sin letras chiquitas."
         />
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {steps.map((s) => {
-            const Icon = s.Icon;
-            return (
-              <article
-                key={s.n}
-                className="border-border bg-background relative flex flex-col gap-3 rounded-2xl border p-6"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="bg-pink-gradient flex h-10 w-10 items-center justify-center rounded-2xl text-white">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="font-display text-muted-foreground/40 text-4xl font-semibold">
-                    {s.n}
-                  </span>
-                </div>
-                <h3 className="font-display text-lg font-semibold tracking-tight">
-                  {s.title}
-                </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {s.body}
-                </p>
-              </article>
-            );
-          })}
+          {steps.map((s) => (
+            <NumberedStepCard key={s.n} {...s} />
+          ))}
         </div>
       </div>
     </section>
