@@ -52,30 +52,7 @@ export function ProfileSummary({
   return (
     <View className="gap-3 border-b border-border bg-card px-4 pt-3 pb-4">
       <View className="flex-row items-center gap-4">
-        <View className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border border-border">
-          {place.photos.length > 0 ? (
-            <Image
-              source={{ uri: place.photos[0] }}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-            />
-          ) : (
-            <LinearGradient
-              colors={[...GRADIENTS.pink]}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text className="font-display text-3xl font-bold text-white/80">
-                {firstInitial(place.name)}
-              </Text>
-            </LinearGradient>
-          )}
-        </View>
+        <ProfilePhoto place={place} />
         <View className="min-w-0 flex-1 flex-row">
           <ProfileStat
             value={googleRating}
@@ -163,6 +140,35 @@ export function ProfileSummary({
       </View>
 
       <ProfileActions place={place} onSaveToggle={onSaveToggle} />
+    </View>
+  );
+}
+
+function ProfilePhoto({ place }: { place: PlaceDetail }) {
+  return (
+    <View className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border border-border">
+      {place.photos.length > 0 ? (
+        <Image
+          source={{ uri: place.photos[0] }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+        />
+      ) : (
+        <LinearGradient
+          colors={[...GRADIENTS.pink]}
+          start={GRADIENT_DIAGONAL.start}
+          end={GRADIENT_DIAGONAL.end}
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text className="font-display text-3xl font-bold text-white/80">
+            {firstInitial(place.name)}
+          </Text>
+        </LinearGradient>
+      )}
     </View>
   );
 }
