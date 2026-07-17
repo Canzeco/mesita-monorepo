@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Dices, MessageSquareText, UserRound } from "lucide-react";
 import {
   composeFinalDeck,
+  EM_ENCODER,
   gpParts,
   LANES,
   laneScore,
@@ -41,7 +42,7 @@ import { EmptyCatalog, INTENT_STYLE_ICONS, FactChip, LaneBadge, SpecimenCell } f
 const INTENT_STYLES: readonly IntentStyle[] = ["browse", "viewport", "question"];
 
 export function DeckPlayground() {
-  const { consumers, places, laneN, em, sm, gp, rp, xx, dataAccess, context } = useScoring();
+  const { consumers, places, laneN, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
   const [consumerIdx, setConsumerIdx] = useState(0);
   const [style, setStyle] = useState<IntentStyle>("browse");
@@ -65,14 +66,14 @@ export function DeckPlayground() {
     const rpOn = dataAccess.rp.includes("place");
     const ciVec = embedText(
       buildCiDoc(profile, intent, enabled, { consumer: emSrc.consumer, intent: emSrc.intent }),
-      em.embedDims,
+      EM_ENCODER.dims,
     );
 
     const byId = new Map<string, SamplePlace>(places.map((p) => [p.id, p]));
     const candidates: DeckCandidate[] = places.map((p) => {
       const emVal = emFromVectors(
         ciVec,
-        embedText(buildPlaceDoc(p, enabled, emSrc.place), em.embedDims),
+        embedText(buildPlaceDoc(p, enabled, emSrc.place), EM_ENCODER.dims),
       );
       const w = smLive ? resolveWhere(intent, p) : { km: null, zoneMode: false };
       const win = smLive
@@ -120,7 +121,7 @@ export function DeckPlayground() {
 
     const deck = composeFinalDeck(candidates, laneN);
     return { intent, deck, byId };
-  }, [consumer, consumerIdx, places, style, roll, context.em, em.embedDims, sm, gp, rp, xx, dataAccess, laneN]);
+  }, [consumer, consumerIdx, places, style, roll, context.em, sm, gp, rp, xx, dataAccess, laneN]);
 
   if (places.length === 0) {
     return (

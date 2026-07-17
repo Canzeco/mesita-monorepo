@@ -10,7 +10,6 @@ import {
   type ContextConfig,
   type DataAccess,
   type DataSourceId,
-  type EmParams,
   type GpParams,
   type RpRungs,
   type ScoringSettings,
@@ -34,7 +33,6 @@ import { updateScoringSettings } from "./settings-actions";
 function fromSettings(s: ScoringSettings): {
   laneN: number;
   recallTopK: number;
-  em: EmParams;
   sm: SmParams;
   gp: GpParams;
   rp: RpRungs;
@@ -45,7 +43,6 @@ function fromSettings(s: ScoringSettings): {
   return {
     laneN: s.laneN,
     recallTopK: s.retrieval.recallTopK,
-    em: { ...s.em },
     sm: { where: { ...s.sm.where }, when: { ...s.sm.when }, what: { ...s.sm.what } },
     gp: { ...s.gp },
     rp: { ...s.rp },
@@ -65,8 +62,6 @@ type ScoringCtx = {
   setLaneN: (n: number) => void;
   recallTopK: number;
   setRecallTopK: (n: number) => void;
-  em: EmParams;
-  setEm: React.Dispatch<React.SetStateAction<EmParams>>;
   sm: SmParams;
   setSm: React.Dispatch<React.SetStateAction<SmParams>>;
   gp: GpParams;
@@ -114,7 +109,6 @@ export function ScoringProvider({
   const seed = useMemo(() => fromSettings(saved), [saved]);
   const [laneN, setLaneNRaw] = useState<number>(seed.laneN);
   const [recallTopK, setRecallTopKRaw] = useState<number>(seed.recallTopK);
-  const [em, setEm] = useState<EmParams>(seed.em);
   const [sm, setSm] = useState<SmParams>(seed.sm);
   const [gp, setGp] = useState<GpParams>(seed.gp);
   const [rp, setRp] = useState<RpRungs>(seed.rp);
@@ -155,7 +149,6 @@ export function ScoringProvider({
       v: 4,
       laneN,
       retrieval: { recallTopK },
-      em: { embedDims: em.embedDims },
       sm: {
         where: {
           pointTolKm: sm.where.pointTolKm,
@@ -185,7 +178,7 @@ export function ScoringProvider({
       ) as DataAccess,
       context: { em: [...context.em].sort() },
     }),
-    [laneN, recallTopK, em, sm, gp, rp, xx, dataAccess, context],
+    [laneN, recallTopK, sm, gp, rp, xx, dataAccess, context],
   );
 
   const dirty = useMemo(
@@ -197,7 +190,6 @@ export function ScoringProvider({
     const f = fromSettings(s);
     setLaneNRaw(f.laneN);
     setRecallTopKRaw(f.recallTopK);
-    setEm(f.em);
     setSm(f.sm);
     setGp(f.gp);
     setRp(f.rp);
@@ -232,8 +224,6 @@ export function ScoringProvider({
         setLaneN,
         recallTopK,
         setRecallTopK,
-        em,
-        setEm,
         sm,
         setSm,
         gp,
