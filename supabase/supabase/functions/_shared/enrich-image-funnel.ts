@@ -6,6 +6,7 @@ import type { Img } from "./enrich-config.ts";
 import { OPENAI_URL, VISION_MODEL } from "./enrich-config.ts";
 import { needsInlineImage } from "./enrich-image-inline-hosts.ts";
 import { selectWithDiversity } from "./enrich-image-diversity.ts";
+import { normaliseImageOrder } from "./enrich-image-order.ts";
 
 export type WebImage = {
   url: string;
@@ -148,17 +149,8 @@ export async function rankWebsiteImagesByRelevance(
     const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
     const raw = (safeParseJson(data.choices?.[0]?.message?.content ?? "") as { order?: unknown })
       ?.order;
-    if (!Array.isArray(raw)) return images.map((i) => i.url);
-    const order: number[] = [];
-    const seen = new Set<number>();
-    for (const v of raw) {
-      const n = typeof v === "number" ? v : Number(v);
-      if (Number.isInteger(n) && n >= 0 && n < images.length && !seen.has(n)) {
-        order.push(n);
-        seen.add(n);
-      }
-    }
-    for (let i = 0; i < images.length; i++) if (!seen.has(i)) order.push(i);
+    const order = normaliseImageOrder(raw, images.length);
+    if (!order) return images.map((i) => i.url);
     return order.map((i) => images[i].url);
   } catch {
     return images.map((i) => i.url);
@@ -360,20 +352,7 @@ export async function textSortImages(
     };
     const obj = safeParseJson(data.choices?.[0]?.message?.content ?? "");
     const raw = (obj as { order?: unknown })?.order;
-    if (!Array.isArray(raw)) return null;
-    const order: number[] = [];
-    const seen = new Set<number>();
-    for (const v of raw) {
-      const n = typeof v === "number" ? v : Number(v);
-      if (Number.isInteger(n) && n >= 0 && n < descriptions.length && !seen.has(n)) {
-        order.push(n);
-        seen.add(n);
-      }
-    }
-    for (let i = 0; i < descriptions.length; i++) {
-      if (!seen.has(i)) order.push(i);
-    }
-    return order;
+    return normaliseImageOrder(raw, descriptions.length);
   } catch {
     return null;
   }
