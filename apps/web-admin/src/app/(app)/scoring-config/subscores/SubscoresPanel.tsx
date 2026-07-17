@@ -21,6 +21,7 @@ import {
   Slider,
   SubHead,
 } from "../panel-ui";
+import { CongruencyCard } from "./CongruencyCard";
 import { SubscorePlayground } from "./SubscorePlayground";
 
 // Subscores — ONE BOX PER SUBSCORE (EM · SM · GP · RP · XX), each with its
@@ -440,6 +441,9 @@ export function SubscoresPanel() {
           <p>EM reads TEXT only — SM · GP · RP · XX are the numeric subscores; they multiply EM, never feed it</p>
         </div>
       </PanelCard>
+
+      {/* ══ Congruency — spec vs console ═════════════════════════════ */}
+      <CongruencyCard />
 
       {/* ══ The Subscore playground ══════════════════════════════════ */}
       <SubscorePlayground />
