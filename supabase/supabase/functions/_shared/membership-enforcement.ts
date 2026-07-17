@@ -12,12 +12,13 @@ import {
   type StrikeConsequence,
   strikeConsequenceForCount,
 } from "./membership-enforcement-helpers.ts";
+import { buildStrikePatch } from "./membership-strike-patch.ts";
+export { PROMO_PAUSE_MS } from "./membership-strike-patch.ts";
 
 export const STRIKE_REASONS = ["refused_qr", "ignored_qr"] as const;
 export type StrikeReason = (typeof STRIKE_REASONS)[number];
 
 export const STRIKE_DECAY_MS = 183 * 24 * 60 * 60 * 1000; // ~6 months
-export const PROMO_PAUSE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /** Dominant-like compensation rates for a burned guest (same Promos v4 grid). */
 export const COMPENSATION_RATES = {
@@ -296,31 +297,8 @@ export async function recordMembershipStrike(
   }
 
   const next = Math.min(3, effectiveStrikeCount(row, now) + 1);
-  const iso = now.toISOString();
-  const patch: Record<string, unknown> = {
-    strike_count: next,
-    last_strike_at: iso,
-  };
-
   const consequence = strikeConsequenceForCount(next);
-  if (next === 1) {
-    // Warning + re-run activation test: clear the ping stamp.
-    patch.staff_channel_pinged_at = null;
-  } else if (next === 2) {
-    patch.promo_paused_until = new Date(now.getTime() + PROMO_PAUSE_MS)
-      .toISOString();
-  } else {
-    // Strike 3: remove paid posture, forfeit fee stamp, keep catalog listing.
-    patch.plan = "free";
-    patch.welcome_free_rate = null;
-    patch.welcome_premium_rate = null;
-    patch.free_rate = null;
-    patch.premium_rate = null;
-    patch.monthly_promo_cap = null;
-    patch.membership_live_at = null;
-    patch.membership_forfeited_at = iso;
-    patch.promo_paused_until = null;
-  }
+  const patch = buildStrikePatch(next, now);
 
   const update = await admin.from("projects").update(patch).eq(
     "id",
