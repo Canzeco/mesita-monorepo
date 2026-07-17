@@ -23,171 +23,25 @@ import { getTierConfig } from "../_shared/membership.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
 import { CORS } from "../_shared/cors.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  type JsonRpcId,
+  PROTOCOL_VERSION,
+  rpcError,
+  rpcResult,
+  toolError,
+  toolText,
+} from "./rpc.ts";
+import { TOOLS } from "./tools.ts";
 
-const PROTOCOL_VERSION = "2025-03-26";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type JsonRpcId = string | number | null;
 type JsonRpcReq = {
   jsonrpc?: string;
   id?: JsonRpcId;
   method?: string;
   params?: Record<string, unknown>;
 };
-
-type ToolDef = {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-};
-
-const TOOLS: ToolDef[] = [
-  {
-    name: "get_profile",
-    description:
-      "Get the connected Mesita consumer profile: name, class (Free/Premium), reservation usage, Instagram handle.",
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  },
-  {
-    name: "list_saved_places",
-    description: "List places the consumer has saved (favorites).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: { type: "number", minimum: 1, maximum: 100 },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "save_place",
-    description:
-      "Save or unsave a place. Saving a Verified Partner also issues a reward coupon when eligible.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        place_id: { type: "string", description: "Place UUID" },
-        saved: { type: "boolean" },
-      },
-      required: ["place_id", "saved"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "suggest_places",
-    description:
-      "Search Mesita + Google for places by name or vibe query (autocomplete-style).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", minLength: 1 },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "get_place",
-    description: "Get a single place profile by id (UUID) or slug.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id_or_slug: { type: "string" },
-      },
-      required: ["id_or_slug"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "list_reservations",
-    description: "List the consumer's reservations (upcoming, past, or all).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        scope: { type: "string", enum: ["upcoming", "past", "all"] },
-        limit: { type: "number", minimum: 1, maximum: 100 },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "create_reservation",
-    description:
-      "Book a table at a place. Requires place_id, ISO reserved_at, and party_size.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        place_id: { type: "string" },
-        reserved_at: {
-          type: "string",
-          description: "ISO 8601 datetime for the reservation",
-        },
-        party_size: { type: "number", minimum: 1, maximum: 50 },
-        notes: { type: "string" },
-      },
-      required: ["place_id", "reserved_at", "party_size"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "list_rewards",
-    description:
-      "List active reward coupons (at-the-bill discounts) in the consumer wallet.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        include_inactive: { type: "boolean" },
-        limit: { type: "number", minimum: 1, maximum: 100 },
-      },
-      additionalProperties: false,
-    },
-  },
-];
-
-function rpcResult(id: JsonRpcId, result: unknown): Response {
-  return new Response(JSON.stringify({ jsonrpc: "2.0", id, result }), {
-    status: 200,
-    headers: {
-      ...CORS,
-      "Content-Type": "application/json",
-      "MCP-Protocol-Version": PROTOCOL_VERSION,
-    },
-  });
-}
-
-function rpcError(
-  id: JsonRpcId,
-  code: number,
-  message: string,
-  status = 200,
-): Response {
-  return new Response(
-    JSON.stringify({
-      jsonrpc: "2.0",
-      id,
-      error: { code, message },
-    }),
-    {
-      status,
-      headers: {
-        ...CORS,
-        "Content-Type": "application/json",
-        "MCP-Protocol-Version": PROTOCOL_VERSION,
-      },
-    },
-  );
-}
-
-function toolText(payload: unknown): { content: { type: "text"; text: string }[]; isError?: boolean } {
-  const text =
-    typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
-  return { content: [{ type: "text", text }] };
-}
-
-function toolError(message: string) {
-  return { ...toolText({ ok: false, error: message }), isError: true };
-}
 
 async function runTool(
   name: string,
@@ -258,7 +112,9 @@ async function runTool(
       const placeId = String(args.place_id ?? "");
       const saved = args.saved === true;
       if (!UUID_RE.test(placeId)) return toolError("place_id must be a UUID");
-      if (typeof args.saved !== "boolean") return toolError("saved (boolean) required");
+      if (typeof args.saved !== "boolean") {
+        return toolError("saved (boolean) required");
+      }
 
       if (saved) {
         const { data: row, error } = await admin
@@ -327,8 +183,9 @@ async function runTool(
 
     case "list_reservations": {
       const limit = clamp(args.limit, 1, 100, 50);
-      const scope =
-        args.scope === "past" || args.scope === "all" ? args.scope : "upcoming";
+      const scope = args.scope === "past" || args.scope === "all"
+        ? args.scope
+        : "upcoming";
       let q = admin
         .from("reservations")
         .select(
@@ -350,8 +207,9 @@ async function runTool(
       const placeId = String(args.place_id ?? "");
       const reservedAtRaw = String(args.reserved_at ?? "");
       const partySize = Math.trunc(Number(args.party_size));
-      const notes =
-        typeof args.notes === "string" ? args.notes.trim() || null : null;
+      const notes = typeof args.notes === "string"
+        ? args.notes.trim() || null
+        : null;
       if (!UUID_RE.test(placeId)) return toolError("place_id must be a UUID");
       const reservedAt = new Date(reservedAtRaw);
       if (Number.isNaN(reservedAt.getTime())) {
@@ -543,10 +401,9 @@ Deno.serve(async (req) => {
   if (method === "tools/call") {
     const params = body.params ?? {};
     const name = String(params.name ?? "");
-    const args =
-      params.arguments && typeof params.arguments === "object"
-        ? (params.arguments as Record<string, unknown>)
-        : {};
+    const args = params.arguments && typeof params.arguments === "object"
+      ? (params.arguments as Record<string, unknown>)
+      : {};
     if (!name) return rpcError(id, -32602, "tools/call requires params.name");
     try {
       const result = await runTool(name, args, admin, consumerId, envRes.env);
