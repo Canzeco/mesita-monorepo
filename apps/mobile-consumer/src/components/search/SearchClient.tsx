@@ -250,14 +250,7 @@ export function SearchClient() {
           }}
         >
           {trimmed.length === 0 ? (
-            <View className="items-center px-6 py-10">
-              <Text className="font-display text-xl font-semibold text-foreground">
-                Where to today?
-              </Text>
-              <Text className="mt-1 text-center text-sm text-muted-foreground">
-                Search Mesita partners and Google places.
-              </Text>
-            </View>
+            <EmptySearchPrompt />
           ) : (
             <SearchResultsPanel
               query={trimmed}
@@ -374,6 +367,19 @@ export function SearchClient() {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
       />
+    </View>
+  );
+}
+
+function EmptySearchPrompt() {
+  return (
+    <View className="items-center px-6 py-10">
+      <Text className="font-display text-xl font-semibold text-foreground">
+        Where to today?
+      </Text>
+      <Text className="mt-1 text-center text-sm text-muted-foreground">
+        Search Mesita partners and Google places.
+      </Text>
     </View>
   );
 }
