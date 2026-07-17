@@ -8,7 +8,7 @@
 const SCRAPE_URL = "https://api.firecrawl.dev/v1/scrape";
 const SEARCH_URL = "https://api.firecrawl.dev/v1/search";
 
-export type FirecrawlScrapeOpts = {
+type FirecrawlScrapeOpts = {
   formats?: string[];
   onlyMainContent?: boolean;
   excludeTags?: string[];
