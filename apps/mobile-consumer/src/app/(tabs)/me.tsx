@@ -15,9 +15,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiConnectModal } from '@/components/me/AiConnectModal';
 import { ClassModal } from '@/components/me/ClassModal';
+import { ContactSheet } from '@/components/me/contact-sheet';
 import { DeleteAccountSheet } from '@/components/me/DeleteAccountSheet';
+import { IdentityHero } from '@/components/me/IdentityHero';
 import {
-  ContactSheet,
   PersonalDetailsSheet,
   SettingsSheet,
 } from '@/components/me/MeProfileSheets';
@@ -27,7 +28,6 @@ import { VerifySocialSheet } from '@/components/me/VerifySocialSheet';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
-import { IdentityHero } from '@/components/me/IdentityHero';
 import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import {

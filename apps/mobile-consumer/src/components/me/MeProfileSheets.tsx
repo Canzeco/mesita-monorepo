@@ -1,8 +1,5 @@
 import {
   Download,
-  MessageCircle,
-  Settings as SettingsIcon,
-  Share2,
   Trash2,
 } from 'lucide-react-native';
 import { useState } from 'react';
@@ -23,8 +20,6 @@ import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
 import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
-const SUPPORT_EMAIL = 'support@mesita.ai';
-const INSTAGRAM_URL = 'https://instagram.com/mesita.ai';
 const TERMS_URL = 'https://www.mesita.ai/terms';
 const PRIVACY_URL = 'https://www.mesita.ai/privacy';
 const PRIVACY_EMAIL = 'privacy@mesita.ai';
@@ -208,51 +203,6 @@ export function SettingsSheet({
           // Defer so Settings sheet unmounts before Delete mounts.
           setTimeout(onDeleteAccount, 50);
         }}
-      />
-    </FullScreenSheet>
-  );
-}
-
-export function ContactSheet({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
-  return (
-    <FullScreenSheet
-      visible={visible}
-      onClose={onClose}
-      title="Contact us"
-      subtitle="We usually reply within a day"
-    >
-      <BoxRow
-        Icon={MessageCircle}
-        tint="emerald"
-        title="Email us"
-        summary={SUPPORT_EMAIL}
-        onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
-      />
-      <BoxRow
-        Icon={SettingsIcon}
-        tint="amber"
-        title="Get help"
-        summary="Report a problem or ask a question"
-        onPress={() =>
-          void Linking.openURL(
-            `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-              'I need help with Mesita',
-            )}`,
-          )
-        }
-      />
-      <BoxRow
-        Icon={Share2}
-        tint="pink"
-        title="Instagram"
-        summary="@mesita.ai"
-        onPress={() => void Linking.openURL(INSTAGRAM_URL)}
       />
     </FullScreenSheet>
   );
