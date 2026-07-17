@@ -136,7 +136,7 @@ export function coerceChannelPolicy(raw: unknown, channel: ChannelKey): ChannelP
   };
 }
 
-export type PlaceSignals = {
+type PlaceSignals = {
   primaryType: string | null;
   rating: number | null;
   reviewCount: number | null;
