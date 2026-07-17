@@ -19,7 +19,7 @@ import { Section } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdatePlace, type MyPlace } from "@/lib/api/places";
 import { apiChangeSubscription } from "@/lib/api/subscription";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import {
   STRATEGIES,
@@ -108,11 +108,6 @@ const CARD_ART: Record<
     recvBorder: "border-purple-500/25",
   },
 };
-
-function formatMoney(amount: number, currency: string): string {
-  const prefix = currency === "MXN" ? "MX$" : "$";
-  return `${prefix}${amount.toLocaleString("en-US")}`;
-}
 
 // A place on any product carries a subscription (plan != free).
 function isSubscribed(place: MyPlace): boolean {

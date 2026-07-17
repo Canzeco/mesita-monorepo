@@ -160,10 +160,6 @@ export function mergeProductsReservations(
 export function selectReservationEndpoint(input: {
   candidates: ReservationCandidates;
   policy?: ReservationsPolicy;
-  /** @deprecated Ignored — seeding is deterministic (MESITA-597). */
-  openaiKey?: string;
-  name?: string | null;
-  about?: string | null;
 }): { target: ReservationTarget | null; diag: Record<string, unknown> } {
   const policy = input.policy ?? DEFAULT_RESERVATIONS_POLICY;
   const available = availableReservationChannels(input.candidates, policy);

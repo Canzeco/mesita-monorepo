@@ -35,8 +35,6 @@ export type ConsumerProfile = {
   sex: string | null;
   /** Claimed Instagram username — normalized, no leading @. */
   instagram_handle?: string | null;
-  /** @deprecated legacy alias — prefer instagram_handle */
-  instagram?: string | null;
   avatar_url?: string | null;
 };
 

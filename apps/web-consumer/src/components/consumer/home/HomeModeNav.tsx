@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Flame, Heart, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 
@@ -119,9 +120,7 @@ function ComingSoon({ tab, onClose }: { tab: Tab; onClose: () => void }) {
       <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-[0.14em] uppercase">
         Coming soon
       </span>
-      <h2 className="font-display text-xl font-semibold tracking-tight">
-        {label}
-      </h2>
+      <h2 className={SHEET_TITLE_CLASS}>{label}</h2>
       <p className="text-muted-foreground text-sm leading-snug">{blurb}</p>
       <button
         type="button"

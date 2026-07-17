@@ -4,9 +4,25 @@ export type TicketStepCopyContext = {
   placeInstagramHandle?: string | null;
 };
 
-export type TicketKind = string;
-export type TicketStatus = string;
-export type StoryStatus = string;
+// Local mirrors of public.Enums — mobile has no database.types.ts copy;
+// keep in sync with apps/web-consumer/src/lib/supabase/database.types.ts.
+export type TicketKind = "reservation" | "coupon";
+export type TicketStatus =
+  | "open"
+  | "pending_payment"
+  | "paid"
+  | "cancelled"
+  | "revealed"
+  | "awaiting_story"
+  | "awaiting_payment_confirm";
+export type StoryStatus =
+  | "not_required"
+  | "pending"
+  | "submitted"
+  | "ai_verified"
+  | "ai_rejected"
+  | "staff_verified"
+  | "staff_rejected";
 
 export type TicketFlowType = "A" | "B";
 
@@ -40,7 +56,7 @@ export type TicketProgressInput = {
   reviewCompleted: boolean;
 };
 
-const STORY_VERIFIED = new Set<string>(["ai_verified", "staff_verified"]);
+const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "staff_verified"]);
 
 const STORY_KINDS = new Set(["s_dp_sf", "r_s_dp_sf"]);
 
@@ -217,7 +233,7 @@ function hasBill(input: TicketProgressInput): boolean {
 }
 
 function storyVerified(story_status: string): boolean {
-  return STORY_VERIFIED.has(story_status);
+  return STORY_VERIFIED.has(story_status as StoryStatus);
 }
 
 /** One-line fallback under the step label in the checklist. */
