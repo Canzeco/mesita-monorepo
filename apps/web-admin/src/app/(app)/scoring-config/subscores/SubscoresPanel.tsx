@@ -13,6 +13,7 @@ import {
 import { STRATEGIES } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
 import {
+  BoxSaveBar,
   Chip,
   ContextCols,
   ContextConfigCols,
@@ -22,7 +23,6 @@ import {
   Slider,
   SubHead,
 } from "../panel-ui";
-import { CongruencyCard } from "./CongruencyCard";
 import { SubscorePlayground } from "./SubscorePlayground";
 
 // Subscores — ONE BOX PER SUBSCORE (EM · SM · GP · RP · XX), each with its
@@ -56,14 +56,26 @@ export function SubscoresPanel() {
     toggleSource,
     context,
     toggleContext,
-    dirty,
-    saving,
+    sectionDirty,
+    savingSection,
     saveError,
-    savedOk,
-    save,
+    savedSection,
+    saveSection,
+    revertSection,
     resetToDefaults,
-    revert,
   } = useScoring();
+
+  // One per-box footer per section — each box saves/cancels ITSELF.
+  const bar = (section: Parameters<typeof saveSection>[0]) => (
+    <BoxSaveBar
+      dirty={sectionDirty[section]}
+      saving={savingSection === section}
+      savedOk={savedSection === section}
+      error={savingSection === section || sectionDirty[section] ? saveError : null}
+      onSave={() => saveSection(section)}
+      onCancel={() => revertSection(section)}
+    />
+  );
 
   const emSet = new Set(context.em);
 
@@ -100,6 +112,7 @@ export function SubscoresPanel() {
           — = structurally unreadable (EM never sees the pair; GP/RP read only the place; XX
           reads nothing but its own draw). EM&apos;s per-field detail lives in its box below.
         </p>
+        {bar("dataAccess")}
       </PanelCard>
 
       {/* ══ EM ═══════════════════════════════════════════════════════ */}
@@ -127,6 +140,7 @@ export function SubscoresPanel() {
           <Chip label="Mapping" value="max(0, cos)" hint="revisit (percentile calibration) only if real cosines cluster" />
         </div>
         <ContextConfigCols enabled={emSet} onToggle={toggleContext} />
+        {bar("em")}
       </PanelCard>
 
       {/* ══ SM ═══════════════════════════════════════════════════════ */}
@@ -256,6 +270,7 @@ export function SubscoresPanel() {
           </div>
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.sm} />
+        {bar("sm")}
       </PanelCard>
 
       {/* ══ GP ═══════════════════════════════════════════════════════ */}
@@ -300,6 +315,7 @@ export function SubscoresPanel() {
           </div>
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.gp} />
+        {bar("gp")}
       </PanelCard>
 
       {/* ══ RP ═══════════════════════════════════════════════════════ */}
@@ -333,17 +349,18 @@ export function SubscoresPanel() {
           ))}
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.rp} />
+        {bar("rp")}
       </PanelCard>
 
       {/* ══ XX ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="XX Subscore · Random Number"
-        subtitle="XX = U^control, U ~ Uniform[0,1) drawn fresh per card per lane (three independent draws — Organic, Inorganic, Hybrid). One deck-wide knob: control 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos. Higher control never changes WHO is luckiest, only how much luck beats merit."
-        pill={xx.control === 0 ? "off — pure merit" : `control ${xx.control.toFixed(1)}`}
+        subtitle="XX = U^control, U ~ Uniform[0,1) drawn fresh per card per lane (three independent draws — Organic, Inorganic, Hybrid). Control is the CONSUMER'S knob — the Randomness filter sets it per query. The admin configures only the DEFAULT below: what the Standard Engine uses when the consumer sets no filter. 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos; higher control never changes WHO is luckiest, only how much luck beats merit."
+        pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
           <Slider
-            label="Control"
+            label="Default control · no-filter value"
             value={xx.control.toFixed(1)}
             min={0}
             max={5}
@@ -351,9 +368,10 @@ export function SubscoresPanel() {
             v={xx.control}
             onChange={(v) => setXx({ control: v })}
             hint={
-              xx.control === 0
+              (xx.control === 0
                 ? "off — every card draws XX = 1"
-                : `median XX ${xxMedian.toFixed(3)} · ~${buriedPct}% of cards land below 0.1`
+                : `median XX ${xxMedian.toFixed(3)} · ~${buriedPct}% of cards land below 0.1`) +
+              " · the consumer's Randomness filter overrides this per query"
             }
           />
           <Chip
@@ -364,59 +382,27 @@ export function SubscoresPanel() {
           <Chip label="Determinism" value="seeded per (card, lane, roll)" hint="the playgrounds re-roll on demand; live decks draw fresh" />
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.xx} />
+        {bar("xx")}
       </PanelCard>
 
       {/* ══ Persistence ══════════════════════════════════════════════ */}
       <PanelCard
         title="Saved config"
-        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. Both playgrounds follow whatever the form holds, saved or not."
+        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. Every box above saves ITSELF (its own Save/Cancel appears when it's dirty); both playgrounds follow whatever the form holds, saved or not."
       >
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={resetToDefaults}
-              disabled={saving}
-              className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-            >
-              Reset to defaults
-            </button>
-            <span className="text-xs" aria-live="polite">
-              {dirty && !saving ? (
-                <span className="text-muted-foreground inline-flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
-                  Unsaved changes
-                </span>
-              ) : savedOk && !saving ? (
-                <span className="text-muted-foreground">Saved ✓</span>
-              ) : null}
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={revert}
-              disabled={saving || !dirty}
-              className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving || !dirty}
-              className={
-                "inline-flex h-9 items-center gap-2 rounded-full px-5 text-sm font-semibold transition " +
-                (saving || dirty
-                  ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
-                  : "bg-muted text-muted-foreground")
-              }
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-          </div>
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={resetToDefaults}
+            disabled={savingSection != null}
+            className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+          >
+            Reset all boxes to defaults
+          </button>
+          <span className="text-muted-foreground ml-3 text-xs">
+            loads the code defaults into every box — each box stays unsaved until ITS Save
+          </span>
         </div>
-        {saveError ? <p className="mt-2 text-xs font-medium text-red-600">{saveError}</p> : null}
 
         {/* Definitions footer */}
         <div className="text-muted-foreground border-border/60 mt-4 flex flex-col gap-1 border-t pt-3 font-mono text-[11px] leading-relaxed">
@@ -435,9 +421,6 @@ export function SubscoresPanel() {
           <p>EM reads TEXT only — SM · GP · RP · XX are the numeric subscores; they multiply EM, never feed it</p>
         </div>
       </PanelCard>
-
-      {/* ══ Congruency — spec vs console ═════════════════════════════ */}
-      <CongruencyCard />
 
       {/* ══ The Subscore playground ══════════════════════════════════ */}
       <SubscorePlayground />
