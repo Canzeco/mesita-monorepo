@@ -32,42 +32,9 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { resolveRequesterEmail } from "../_shared/input.ts";
+import { regionForCountry } from "./manual-review-region.ts";
 
 type Body = { placeId?: string; projectId?: string; requesterEmail?: string; note?: string };
-
-type Region = "mx_latam" | "us" | "other";
-
-const LATAM_COUNTRIES = new Set([
-  "mexico",
-  "argentina",
-  "colombia",
-  "chile",
-  "peru",
-  "uruguay",
-  "brazil",
-  "ecuador",
-  "bolivia",
-  "paraguay",
-  "venezuela",
-  "guatemala",
-  "costa rica",
-  "panama",
-  "dominican republic",
-  "el salvador",
-  "honduras",
-  "nicaragua",
-  "puerto rico",
-]);
-
-function regionForCountry(country: string | null): Region {
-  if (!country) return "other";
-  const c = country.toLowerCase();
-  if (c === "united states" || c === "us" || c === "canada" || c === "ca") {
-    return "us";
-  }
-  if (LATAM_COUNTRIES.has(c)) return "mx_latam";
-  return "other";
-}
 
 // Ops contact destinations. Email is hard-baked so the floor always
 // works; WhatsApp/SMS are env-driven so we can flip them on without
