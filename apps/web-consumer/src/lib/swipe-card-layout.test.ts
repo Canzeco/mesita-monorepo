@@ -2,7 +2,6 @@ import {
   computeWitcCoverLayout,
   computeWitcCoverPlacementFromRatios,
   resolveSwipeCardLayout,
-  WITC_THRESHOLD,
 } from "./swipe-card-layout";
 
 /** Typical portrait swipe card after shell chrome (~390×640). */
