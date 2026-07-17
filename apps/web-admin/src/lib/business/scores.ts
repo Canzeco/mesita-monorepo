@@ -542,6 +542,9 @@ export const STANDARD_ENGINE = {
  * consumer's METRO (city set — an identity fact, not a distance gate; the
  * curve does all demotion within a metro). Revisit with a wide bounding-box
  * prefilter only if catalog-per-metro passes ~400.
+ *
+ * decision (Pato 2026-07-17): recallTopK STAYS a config param — a good knob,
+ * unlike embedDims which became a fixed constant. Do not "fix" it.
  */
 export const DEFAULT_RETRIEVAL = {
   /** How many places pgvector recall returns for scoring. */
