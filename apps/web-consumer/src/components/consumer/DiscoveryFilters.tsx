@@ -1,14 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Clock, Dices, MapPin, SlidersHorizontal, X } from "lucide-react";
+import { Clock, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   DISTANCE_STEPS_KM,
   RANDOMNESS_LABELS,
   type CategoryOption,
-  type RandomnessLevel,
   type WhereOption,
 } from "@/lib/discovery-filters-engine";
 import {
