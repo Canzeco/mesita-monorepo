@@ -29,6 +29,12 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
+import {
+  effectiveFunnelValue,
+  FUNNEL_COLS,
+  funnelLockError,
+  intInRange,
+} from "./atlas-config-validate.ts";
 
 const GOOGLE_REVIEWS_MAX = ENRICH_FIELD_LIMITS.googleReviews.max;
 
@@ -70,12 +76,6 @@ const PERPLEXITY_PRESETS = new Set([
   "deep-research",
   "advanced-deep-research",
 ]);
-
-function intInRange(v: unknown, min: number, max: number): number | null {
-  if (typeof v !== "number" || !Number.isInteger(v)) return null;
-  if (v < min || v > max) return null;
-  return v;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -267,14 +267,6 @@ Deno.serve(async (req) => {
   // analyze 15 IG posts when only 10 were kept). Partial updates touch one
   // field at a time, so merge the patch over the current row before checking:
   //   IG keep ≤ IG depth · analyze ≤ keep per source · save ≤ analyzed total.
-  const FUNNEL_COLS = [
-    "atlas_gather_google_images",
-    "atlas_gather_instagram_depth",
-    "atlas_gather_instagram_posts",
-    "atlas_analyze_google_images",
-    "atlas_analyze_instagram_images",
-    "atlas_save_total_images",
-  ] as const;
   if (FUNNEL_COLS.some((c) => c in patch)) {
     const { data: cur } = await admin
       .from("app_settings")
@@ -283,42 +275,22 @@ Deno.serve(async (req) => {
       )
       .eq("id", 1)
       .maybeSingle();
-    const eff = (c: (typeof FUNNEL_COLS)[number]): number => {
-      const p = patch[c];
-      if (typeof p === "number") return p;
-      const v = (cur as Record<string, unknown> | null)?.[c];
-      return typeof v === "number" ? v : 0;
-    };
-    const googleKeep = eff("atlas_gather_google_images");
-    const igDepth = eff("atlas_gather_instagram_depth");
-    const igKeep = eff("atlas_gather_instagram_posts");
-    const googleAnalyze = eff("atlas_analyze_google_images");
-    const igAnalyze = eff("atlas_analyze_instagram_images");
-    const save = eff("atlas_save_total_images");
-    if (igKeep > igDepth) {
-      return json({
-        ok: false,
-        error: `Instagram keep (${igKeep}) can't exceed the download depth (${igDepth}).`,
-      }, 400);
-    }
-    if (googleAnalyze > googleKeep) {
-      return json({
-        ok: false,
-        error: `Google analyze (${googleAnalyze}) can't exceed Google images kept (${googleKeep}).`,
-      }, 400);
-    }
-    if (igAnalyze > igKeep) {
-      return json({
-        ok: false,
-        error: `Instagram analyze (${igAnalyze}) can't exceed Instagram images kept (${igKeep}).`,
-      }, 400);
-    }
-    if (save > googleAnalyze + igAnalyze) {
-      return json({
-        ok: false,
-        error: `Image selection (${save}) can't exceed the analysis total (${googleAnalyze + igAnalyze}).`,
-      }, 400);
-    }
+    const row = cur as Record<string, unknown> | null;
+    const googleKeep = effectiveFunnelValue(patch, row, "atlas_gather_google_images");
+    const igDepth = effectiveFunnelValue(patch, row, "atlas_gather_instagram_depth");
+    const igKeep = effectiveFunnelValue(patch, row, "atlas_gather_instagram_posts");
+    const googleAnalyze = effectiveFunnelValue(patch, row, "atlas_analyze_google_images");
+    const igAnalyze = effectiveFunnelValue(patch, row, "atlas_analyze_instagram_images");
+    const save = effectiveFunnelValue(patch, row, "atlas_save_total_images");
+    const lockErr = funnelLockError(
+      googleKeep,
+      igDepth,
+      igKeep,
+      googleAnalyze,
+      igAnalyze,
+      save,
+    );
+    if (lockErr) return json({ ok: false, error: lockErr }, 400);
   }
 
   if (Object.keys(patch).length === 0) {
