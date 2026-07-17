@@ -8,55 +8,22 @@ import {
   Globe,
   Link2,
   Phone,
-  SquareArrowOutUpRight,
   Tags,
 } from "lucide-react";
 
 import type { PlaceDetail } from "@/lib/mock/place";
-import { cn } from "@/lib/utils";
 
 import {
-  CHANNEL_CLAY,
   CHANNEL_DEFS,
-  FACET_TINT,
-  FACET_TINT_FALLBACK,
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
 import { Box } from "./box";
+import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
 // ── 10. Tags ────────────────────────────────────────────────────────────
-
-function TagChips({ tags }: { tags: PlaceDetail["tags"] }) {
-  // Render nothing when the place has no tags. Otherwise a flat, wrapping
-  // cluster of rounded-full pills, ordered by the incoming sort_order (the
-  // adapter preserves the EF order), each tinted by its facet group with a
-  // leading colored dot.
-  if (tags.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {tags.map((t) => {
-        const tint = FACET_TINT[t.facet] ?? FACET_TINT_FALLBACK;
-        return (
-          <span
-            key={t.slug}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold",
-              tint.chip,
-            )}
-          >
-            <span
-              className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tint.dot)}
-            />
-            {t.label}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
 
 export function TagsBox({ place }: { place: PlaceDetail }) {
   // Tags only — the curated taxonomy chip cluster (one tint per facet).
@@ -149,15 +116,7 @@ export function LinksBox({ place }: { place: PlaceDetail }) {
   // Flatten every link source into a single chip set — no subgroups.
   // Phone leads since calling is the most direct contact action; the
   // rest follow channel / reservation / review order.
-  const chips: {
-    key: string;
-    label: string;
-    Icon: typeof Globe;
-    logo?: string;
-    logoWide?: boolean;
-    logoOnly?: boolean;
-    url: string;
-  }[] = [];
+  const chips: ChannelChip[] = [];
   if (place.phone) {
     chips.push({
       key: "phone",
@@ -204,56 +163,7 @@ export function LinksBox({ place }: { place: PlaceDetail }) {
   // Soft clay brand tints (CHANNEL_CLAY) so each chip reads as its app.
   return (
     <Box title="Channels" icon={Link2} iconColor="text-cyan-400">
-      <div className="flex flex-wrap gap-2">
-        {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url }) => {
-          // decision: trailing SquareArrowOutUpRight on web destinations so
-          // chips read as "leaves the app" — skip tel: (Phone opens dialer).
-          const leavesApp = !url.startsWith("tel:");
-          return (
-            <a
-              key={key}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={
-                logoOnly
-                  ? leavesApp
-                    ? `${label} (opens externally)`
-                    : label
-                  : undefined
-              }
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
-                CHANNEL_CLAY[key] ??
-                  "border-border bg-background text-foreground hover:bg-muted",
-              )}
-            >
-              {logo ? (
-                // Real brand mark (SVG in /public/channels, brand colour baked
-                // in). The chip label carries the accessible name, so the glyph
-                // is decorative. next/image adds nothing for a 14px static SVG.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logo}
-                  alt=""
-                  aria-hidden
-                  className={cn(logoWide ? "h-4 w-auto" : "h-3.5 w-3.5")}
-                />
-              ) : (
-                <Icon className="h-3.5 w-3.5" />
-              )}
-              {!logoOnly && label}
-              {leavesApp && (
-                <SquareArrowOutUpRight
-                  className="h-3 w-3 opacity-55"
-                  aria-hidden
-                  strokeWidth={2}
-                />
-              )}
-            </a>
-          );
-        })}
-      </div>
+      <ChannelChips chips={chips} />
     </Box>
   );
 }
