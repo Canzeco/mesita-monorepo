@@ -2,9 +2,7 @@ import { ChevronDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
-  FlatList,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   Text,
@@ -13,12 +11,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CountryCodePicker } from '@/components/auth/CountryCodePicker';
 import { Button } from '@/components/ui/Button';
 import { HeroBackdrop } from '@/components/ui/HeroBackdrop';
 import { apiConsumerSigninPhone } from '@/lib/api/auth';
 import {
   combinePhoneE164,
-  COUNTRIES,
   COUNTRY_BY_CODE,
   type Country,
 } from '@/lib/countries';
@@ -230,72 +228,12 @@ export default function SignIn() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      <Modal
+      <CountryCodePicker
         visible={pickerOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPickerOpen(false)}
-      >
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            justifyContent: 'flex-end',
-          }}
-          onPress={() => setPickerOpen(false)}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            style={{
-              maxHeight: '70%',
-              backgroundColor: '#ffffff',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingBottom: 24,
-            }}
-          >
-            <Text
-              className="font-display font-semibold text-foreground"
-              style={{
-                paddingHorizontal: 20,
-                paddingTop: 20,
-                paddingBottom: 12,
-              }}
-            >
-              Country code
-            </Text>
-            <FlatList
-              data={COUNTRIES}
-              keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => {
-                    setCountryCode(item.code);
-                    setPickerOpen(false);
-                  }}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
-                    paddingHorizontal: 20,
-                    paddingVertical: 12,
-                    backgroundColor:
-                      item.code === countryCode ? '#ffe4ef' : 'transparent',
-                  }}
-                >
-                  <Text style={{ fontSize: 20 }}>{item.flag}</Text>
-                  <Text className="text-foreground" style={{ flex: 1, fontSize: 16 }}>
-                    {item.name}
-                  </Text>
-                  <Text className="font-semibold text-foreground">
-                    +{item.dial}
-                  </Text>
-                </Pressable>
-              )}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
+        countryCode={countryCode}
+        onClose={() => setPickerOpen(false)}
+        onSelect={setCountryCode}
+      />
     </View>
   );
 }
