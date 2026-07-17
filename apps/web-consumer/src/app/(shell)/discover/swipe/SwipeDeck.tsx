@@ -21,8 +21,18 @@ import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
+  applyDiscoveryFilters,
+  deriveZones,
+  discoveryFiltersAreActive,
+} from "@/lib/discovery-filters-engine";
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from "@/lib/use-discovery-filters";
+import {
   EmptyDeck,
   ExhaustedDeck,
+  FilterEmptyDeck,
   shuffleDeck,
   withUserDistance,
 } from "./swipe-deck-shells";
@@ -87,9 +97,11 @@ function Deck({ places }: { places: Place[] }) {
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // Whether any discovery filter deviates from defaults — reported by the
-  // sheet, drives the red dot on the Filter action (MESITA-633).
-  const [filtersActive, setFiltersActive] = useState(false);
+  // Shared discovery filters (MESITA-646): the deck below narrows LIVE and
+  // the red Filter-action dot (MESITA-633) lights on any deviation from
+  // defaults. One global store — Search shows the exact same state.
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
   const infoOpeningRef = useRef(false);
   const cardElRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
@@ -197,14 +209,26 @@ function Deck({ places }: { places: Place[] }) {
     [runtimeDeck, coords],
   );
 
+  // The deck the user actually swipes (MESITA-646): the shared discovery
+  // filters narrow `located` live, and Surprise-me trades the ranked
+  // partner-first order for a shuffle. Zone options derive from the RAW
+  // snapshot so the sheet offers every zone this deck actually has.
+  const deck = useMemo(() => {
+    const filtered = applyDiscoveryFilters(located, filters);
+    return filters.surprise ? shuffleDeck(filtered) : filtered;
+  }, [located, filters]);
+  const zones = useMemo(() => deriveZones(runtimeDeck), [runtimeDeck]);
+
   // Past the last card the deck is exhausted — no silent wrap. Looping
   // back to the first card with a tiny flash was reading as "the last
   // card got stuck" because the same card kept reappearing on small
   // catalogs. An explicit "you're caught up" state with a restart CTA
-  // is clearer.
-  const exhausted = idx >= located.length;
-  const v = exhausted ? null : located[idx];
-  const next = idx + 1 < located.length ? located[idx + 1] : null;
+  // is clearer. Filters excluding EVERYTHING is a distinct state — the
+  // deck isn't empty and the user hasn't seen it all; their filters did it.
+  const filterEmptied = deck.length === 0 && located.length > 0;
+  const exhausted = idx >= deck.length;
+  const v = exhausted ? null : deck[idx];
+  const next = idx + 1 < deck.length ? deck[idx + 1] : null;
 
   const advance = useCallback(() => {
     clearAdvanceTimer();
@@ -424,16 +448,51 @@ function Deck({ places }: { places: Place[] }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     for (let i = 1; i <= PRELOAD_CARDS_AHEAD; i += 1) {
-      const src = located[idx + i]?.photos?.[0];
+      const src = deck[idx + i]?.photos?.[0];
       if (src) {
         const img = new window.Image();
         img.src = src;
       }
     }
-  }, [located, idx]);
+  }, [deck, idx]);
+
+  // The sheet rides along in EVERY branch — narrowing to zero results while
+  // it's open must not unmount it mid-interaction.
+  const sheet = (
+    <FilterSheet
+      open={filtersOpen}
+      onClose={() => setFiltersOpen(false)}
+      zones={zones}
+      count={deck.length}
+      showSurprise
+    />
+  );
+
+  if (filterEmptied) {
+    return (
+      <div className="relative flex h-full flex-col">
+        <FilterEmptyDeck
+          onAdjustFilters={() => setFiltersOpen(true)}
+          onResetFilters={resetDiscoveryFilters}
+        />
+        {sheet}
+      </div>
+    );
+  }
 
   if (exhausted || !v) {
-    return <ExhaustedDeck onRestart={restart} restarting={restarting} />;
+    return (
+      <div className="relative flex h-full flex-col">
+        <ExhaustedDeck
+          onRestart={restart}
+          restarting={restarting}
+          onAdjustFilters={
+            filtersActive ? () => setFiltersOpen(true) : undefined
+          }
+        />
+        {sheet}
+      </div>
+    );
   }
 
   const skip = () => beginExit("left");
@@ -565,11 +624,7 @@ function Deck({ places }: { places: Place[] }) {
         />
       </div>
 
-      <FilterSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        onActiveChange={setFiltersActive}
-      />
+      {sheet}
     </div>
   );
 }

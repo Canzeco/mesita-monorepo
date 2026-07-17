@@ -3,9 +3,9 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
-//   • Top overlay: full-width search bar with a quick chip row + filter sheet
-//     while idle. Active chips filter BOTH the catalog rail and the map pins
-//     via applyChipFilters. (Ask AI / Memo now lives as a tab on Home.)
+//   • Top overlay: full-width search bar with the filter tune icon. The
+//     shared discovery filters (MESITA-646) narrow BOTH the catalog rail and
+//     the map pins live. (Ask AI / Memo now lives as a tab on Home.)
 //   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
 //     highlights + scrolls to the matching rail card, tapping a card opens
 //     the place page.
@@ -44,10 +44,15 @@ import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { RailCard } from "./SearchRailCard";
 import { SearchBar } from "./SearchBar";
 import type { AddState } from "./PredictionRow";
-// The shared FilterSheet (Where/When/What/Randomness) is frontend-only for
-// now — activeChips stays empty, so applyChipFilters is a no-op that keeps
-// the map/rail pipeline intact until the filtering backend lands.
-import { applyChipFilters } from "./search-filters";
+import {
+  applyDiscoveryFilters,
+  deriveZones,
+  discoveryFiltersAreActive,
+} from "@/lib/discovery-filters-engine";
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from "@/lib/use-discovery-filters";
 import {
   matchPredictionToPlace,
   newSessionToken,
@@ -83,10 +88,11 @@ export function SearchClient({
   // one tap, before any typing.
   const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // Whether any discovery filter deviates from defaults — reported by the
-  // sheet, drives the red dot on the tune icon (MESITA-633).
-  const [filtersActive, setFiltersActive] = useState(false);
-  const [activeChips, setActiveChips] = useState<string[]>([]);
+  // Shared discovery filters (MESITA-646): pins + rail narrow LIVE and the
+  // red tune-icon dot (MESITA-633) lights on any deviation from defaults.
+  // One global store — Swipe shows the exact same state.
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -108,23 +114,24 @@ export function SearchClient({
   // and catalog rail only exist here; the results panel owns the other state.
   const idle = trimmed.length === 0 && !searchOpen;
 
-  // Distances ride on the consumer's live location (chip hides until the
-  // grant); chips then facet the SAME array the map pins and rail render.
+  // Distances ride on the consumer's live location; the discovery filters
+  // then facet the SAME array the map pins and rail render.
   const catalog = useMemo(
     () => withDistances(places, userLocation),
     [places, userLocation],
   );
+  const zones = useMemo(() => deriveZones(catalog), [catalog]);
   const visible = useMemo(() => {
-    const filtered = applyChipFilters(catalog, activeChips);
-    // The selection must stay pinned even when the active chips would
-    // filter it out (a search pick lands here regardless of chips) —
-    // otherwise the red dot the user just asked for silently disappears.
+    const filtered = applyDiscoveryFilters(catalog, filters);
+    // The selection must stay pinned even when the active filters would
+    // exclude it (a search pick lands here regardless of filters) —
+    // otherwise the red pin the user just asked for silently disappears.
     if (selectedId && !filtered.some((p) => p.id === selectedId)) {
       const held = catalog.find((p) => p.id === selectedId);
       if (held) return [held, ...filtered];
     }
     return filtered;
-  }, [catalog, activeChips, selectedId]);
+  }, [catalog, filters, selectedId]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -279,12 +286,12 @@ export function SearchClient({
     setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
   };
 
-  // toggleChip went with the old chip filters (the FilterSheet is
-  // presentational for now, so nothing writes activeChips yet).
-  // clearChips stays: the "No places match" rail escape hatch still calls it.
-  const clearChips = () => {
+  // The "No places match" rail escape hatch resets the SHARED filter store
+  // (MESITA-646) — it used to clear the long-dead activeChips state, which
+  // once wired would have cleared the wrong thing and left the dot lit.
+  const clearFilters = () => {
     resetRail();
-    setActiveChips([]);
+    resetDiscoveryFilters();
   };
 
   // Pin tap → highlight + scroll the rail to the matching card. Tapping a
@@ -435,7 +442,7 @@ export function SearchClient({
                 </p>
                 <button
                   type="button"
-                  onClick={clearChips}
+                  onClick={clearFilters}
                   className="text-primary text-xs font-semibold"
                 >
                   Clear filters
@@ -487,11 +494,14 @@ export function SearchClient({
         </div>
       )}
 
+      {/* Surprise-me stays hidden here — it shuffles the swipe deck; a map
+          can't be shuffled. */}
       <FilterSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         ariaLabel="Search filters"
-        onActiveChange={setFiltersActive}
+        zones={zones}
+        count={visible.length}
       />
 
       <GooglePlaceSheet
