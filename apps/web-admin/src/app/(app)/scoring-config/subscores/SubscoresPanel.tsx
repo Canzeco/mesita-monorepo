@@ -1,16 +1,13 @@
 "use client";
 
 import {
-  ES_MAX,
   gpParts,
-  laneFormula,
-  LANES,
   PIPELINE_CONTEXT,
-  RP_MAX,
   fitScore,
   waitScore,
   whereScore,
-  type IcParams,
+  xxScore,
+  type SmParams,
 } from "@/lib/business/scores";
 import { STRATEGIES } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
@@ -19,38 +16,41 @@ import {
   ContextCols,
   ContextConfigCols,
   GroupHead,
-  LANE_SHORT,
   PanelCard,
   Slider,
   SubHead,
 } from "../panel-ui";
+import { SubscorePlayground } from "./SubscorePlayground";
 
-// Subscores — divide et impera: ONE BOX PER SUBSCORE, each with its own
-// knobs AND its data-access contract (which consumer / intent / place fields
-// it reads — the PIPELINE_CONTEXT spec in @/lib/business/scores).
+// Subscores — ONE BOX PER SUBSCORE (EM · SM · GP · RP · XX), each with its
+// knobs AND its data-access contract. Every subscore outputs [0,1], so a
+// lane score (the product on the Scores & Lanes tab) is itself [0,1].
 //
-//   ES  Embeddings Similarity — documents in, cosine out (context = CONFIG)
-//   GP  Google Popularity — smooth volume × quality
-//   RP  Rewards Promotions — posture from the live rates
-//   IC  Intent Context — where × when, the intent's numeric context
-//   CH  Context History — Swipe-only pair history; STUB 1, no knobs yet
+//   EM  Embeddings Match — documents in, cosine out (context = CONFIG)
+//   SM  Structured Match — where × when × what, the intent's structured asks
+//   GP  Google Popularity — ln(1 + rating × reviews) / ceiling
+//   RP  Rewards Promotions — posture from the live rates → a rung
+//   XX  Random Number — U^control, per card per lane
 //
-// Deck maxes live on the Decks tab (deck-layer config, not Subscore params).
-// Values set here drive the Cards and Decks tabs live (shared provider) and
-// persist to app_settings.scoring_config via the save bar at the bottom.
+// Values set here drive BOTH playgrounds live (shared provider) and persist
+// to app_settings.scoring_config via the save bar. The Subscore playground
+// at the bottom walks every subscore's internals on ONE consumer × intent ×
+// place.
 
 export function SubscoresPanel() {
   const {
-    retrieval,
-    setRetrieval,
-    esParams,
-    setEsParams,
-    gpParams,
-    setGpParams,
-    rpVals,
-    setRpVals,
-    cfg,
-    setCfg,
+    recallTopK,
+    setRecallTopK,
+    em,
+    setEm,
+    sm,
+    setSm,
+    gp,
+    setGp,
+    rp,
+    setRp,
+    xx,
+    setXx,
     context,
     toggleContext,
     dirty,
@@ -62,132 +62,226 @@ export function SubscoresPanel() {
     revert,
   } = useScoring();
 
-  const esSet = new Set(context.es);
+  const emSet = new Set(context.em);
 
-  const setIc = <K extends keyof IcParams>(k: K, v: number) =>
-    setCfg((c) => ({ ...c, [k]: v }));
+  const setWhere = <K extends keyof SmParams["where"]>(k: K, v: number) =>
+    setSm((s) => ({ ...s, where: { ...s.where, [k]: v } }));
+  const setWhen = <K extends keyof SmParams["when"]>(k: K, v: number) =>
+    setSm((s) => ({ ...s, when: { ...s.when, [k]: v } }));
+  const setWhat = <K extends keyof SmParams["what"]>(k: K, v: number) =>
+    setSm((s) => ({ ...s, what: { ...s.what, [k]: v } }));
 
-  // GP's quality curve at the CURRENT knobs — every hint recomputes live.
-  const quality = (stars: number) =>
-    1 / (1 + Math.exp(-gpParams.qualitySteep * (stars - gpParams.qualityMid)));
-  const volumeOf = (reviews: number) =>
-    Math.max(0, Math.min(1, Math.log10(1 + reviews) / Math.log10(1 + gpParams.refCount)));
-
-  // The archetype strip — live worked examples, doubling as the regression
-  // test for knob edits (drag a knob, watch the archetypes move).
-  const archetypes = [
+  // GP worked examples — live at the current ceiling; the regression strip
+  // for knob edits (drag the knob, watch the archetypes move).
+  const gpArchetypes = [
     { label: "the institution", reviews: 3000, stars: 4.5 },
     { label: "the solid local", reviews: 150, stars: 4.2 },
-    { label: "the newcomer", reviews: 3, stars: 5.0 },
-    { label: "the 1★-farm test", reviews: 10000, stars: 3.0 },
-  ].map((a) => ({ ...a, parts: gpParts(a.reviews, a.stars, gpParams) }));
+    { label: "the newcomer", reviews: 5, stars: 5.0 },
+    { label: "no google presence", reviews: 0, stars: null as number | null },
+  ].map((a) => ({ ...a, parts: gpParts(a.reviews, a.stars, gp) }));
+
+  // XX's feel at the current control — median and the buried share.
+  const xxMedian = Math.pow(0.5, xx.control);
+  const buriedPct = xx.control <= 0 ? 0 : Math.round((1 - Math.pow(0.1, 1 / xx.control)) * 100);
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      {/* ══ ES ═══════════════════════════════════════════════════════ */}
+      {/* ══ EM ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="ES Subscore · Embeddings Similarity"
-        subtitle="cosine(consumer+intent embedding, place embedding) — one tier, whole catalog; there is no judge. Reads TEXT only: address, hours and time appear as words, never as computed numbers. The context below is CONFIG — click a field to include or exclude it from the embedded documents; the Cards tab re-embeds and re-ranks from exactly this set."
-        pill={`${context.es.length} fields in context`}
+        title="EM Subscore · Embeddings Match"
+        subtitle="cosine(place vector, consumer + intent vector), clamped max(0, cos) → [0,1]. Encoder: OpenAI text-embedding-3-small at the dims below (unit vectors, so cos = A·B — pgvector computes it at recall); the playground emulates it with a feature-hash encoder. Reads TEXT only — the context below is CONFIG: click a field to include or exclude it from the embedded documents."
+        pill={`${context.em.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
             label="Recall top-K"
-            value={String(retrieval.recallTopK)}
+            value={String(recallTopK)}
             min={10}
             max={200}
             step={10}
-            v={retrieval.recallTopK}
-            onChange={(v) => setRetrieval((r) => ({ ...r, recallTopK: v }))}
-            hint="places pgvector returns per query — the decks compose from these"
+            v={recallTopK}
+            onChange={setRecallTopK}
+            hint="places pgvector returns per query, metro-filtered — the lanes score these"
           />
           <Slider
             label="Embedding dims"
-            value={`${esParams.embedDims}d`}
-            min={16}
-            max={256}
-            step={16}
-            v={esParams.embedDims}
-            onChange={(v) => setEsParams({ embedDims: v })}
-            hint="encoder dimensionality — vectors + cosine follow live"
+            value={`${em.embedDims}d`}
+            min={256}
+            max={3072}
+            step={256}
+            v={em.embedDims}
+            onChange={(v) => setEm({ embedDims: v })}
+            hint="the API's Matryoshka `dimensions` knob — 1536 = small's native size"
           />
-          <Chip label="Today" value="feature-hash cosine" hint="emulated encoder until pgvector exists" />
+          <Chip label="Mapping" value="max(0, cos)" hint="revisit (percentile calibration) only if real cosines cluster" />
         </div>
-        <ContextConfigCols enabled={esSet} onToggle={toggleContext} />
+        <ContextConfigCols enabled={emSet} onToggle={toggleContext} />
+      </PanelCard>
+
+      {/* ══ SM ═══════════════════════════════════════════════════════ */}
+      <PanelCard
+        title="SM Subscore · Structured Match — where × when × what"
+        subtitle="Deterministic checks of the intent's structured asks against place facts, each factor [0,1], multiplied — any hard miss tanks the card. where measures km to the consumer's W (a named region set, else the GPS point); when = wait × fit on the real hours; what is the category ladder. Every knob is a belief argued from the product."
+      >
+        <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-3">
+          <div>
+            <SubHead>where · distance decay — 1/(1+(km/tol)^k)</SubHead>
+            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+              <Slider
+                label="Point tolerance"
+                value={`${sm.where.pointTolKm.toFixed(1)} km`}
+                min={0.5}
+                max={20}
+                step={0.5}
+                v={sm.where.pointTolKm}
+                onChange={(v) => setWhere("pointTolKm", v)}
+                hint={`the consumer slider's default — 8 km lands at ${whereScore(8, sm.where.pointTolKm, sm.where.distExp).toFixed(2)}`}
+              />
+              <Slider
+                label="Zone spillover"
+                value={`${sm.where.zoneSpillKm.toFixed(1)} km`}
+                min={0.5}
+                max={10}
+                step={0.5}
+                v={sm.where.zoneSpillKm}
+                onChange={(v) => setWhere("zoneSpillKm", v)}
+                hint={`a typed zone is a constraint — 3 km past the border → ${whereScore(3, sm.where.zoneSpillKm, sm.where.distExp).toFixed(2)}`}
+              />
+              <Slider
+                label="Distance exponent"
+                value={sm.where.distExp.toFixed(1)}
+                min={1}
+                max={5}
+                step={0.5}
+                v={sm.where.distExp}
+                onChange={(v) => setWhere("distExp", v)}
+                hint={`doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×`}
+              />
+            </div>
+          </div>
+          <div>
+            <SubHead>when · wait × fit</SubHead>
+            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+              <Slider
+                label="Wait floor"
+                value={sm.when.waitFloor.toFixed(2)}
+                min={0}
+                max={1}
+                step={0.05}
+                v={sm.when.waitFloor}
+                onChange={(v) => setWhen("waitFloor", v)}
+                hint="the weekend-only gem browsed Monday keeps this — never 0"
+              />
+              <Slider
+                label="Wait transition"
+                value={`${sm.when.waitTransitionH.toFixed(1)} h`}
+                min={0.5}
+                max={6}
+                step={0.25}
+                v={sm.when.waitTransitionH}
+                onChange={(v) => setWhen("waitTransitionH", v)}
+                hint={`a 2 h wait (21:00 → club at 23:00) lands at ${waitScore(2, sm.when).toFixed(2)}`}
+              />
+              <Slider
+                label="Wait steepness"
+                value={sm.when.waitSteep.toFixed(1)}
+                min={1}
+                max={8}
+                step={0.5}
+                v={sm.when.waitSteep}
+                onChange={(v) => setWhen("waitSteep", v)}
+                hint="4 = two plateaus, thin middle — open-now-ish vs not-open"
+              />
+              <Slider
+                label="Session length"
+                value={`${sm.when.sessionH.toFixed(1)} h`}
+                min={0.5}
+                max={4}
+                step={0.25}
+                v={sm.when.sessionH}
+                onChange={(v) => setWhen("sessionH", v)}
+                hint={`dinner is the archetype — 30 min left → fit ${fitScore(0.5, sm.when).toFixed(2)}`}
+              />
+              <Slider
+                label="Time grid"
+                value={`${Math.round(sm.when.timeBlockH * 60)} min`}
+                min={0.25}
+                max={1}
+                step={0.25}
+                v={sm.when.timeBlockH}
+                onChange={(v) => setWhen("timeBlockH", v)}
+                hint="hours quantize to this block before wait/fit"
+              />
+            </div>
+          </div>
+          <div>
+            <SubHead>what · the category ladder</SubHead>
+            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+              <Slider
+                label="Sibling rung"
+                value={sm.what.sibling.toFixed(2)}
+                min={0}
+                max={1}
+                step={0.05}
+                v={sm.what.sibling}
+                onChange={(v) => setWhat("sibling", v)}
+                hint="shares a mega category — asked cocktail bar, got a mezcalería"
+              />
+              <Slider
+                label="Mismatch rung"
+                value={sm.what.mismatch.toFixed(2)}
+                min={0}
+                max={1}
+                step={0.05}
+                v={sm.what.mismatch}
+                onChange={(v) => setWhat("mismatch", v)}
+                hint="no overlap — floored above 0 so SM never vetoes semantics"
+              />
+            </div>
+            <p className="text-muted-foreground mt-3 font-mono text-[10px] leading-relaxed">
+              listed (or mega category listed) → 1 · sibling → {sm.what.sibling.toFixed(2)} ·
+              mismatch → {sm.what.mismatch.toFixed(2)} · nothing asked → 1
+            </p>
+          </div>
+        </div>
+        <ContextCols ctx={PIPELINE_CONTEXT.sm} />
       </PanelCard>
 
       {/* ══ GP ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="GP Subscore · Google Popularity"
-        subtitle="Smooth volume × quality of the place's google reviews — EARNED popularity, the organic lanes' multiplier. Literal reviews × rating was rejected (1★-farmable, rating-decorative) and so was a hard hinge at 3★ (cliff); this is smooth everywhere. The cold-start floor keeps unreviewed places organically alive."
+        subtitle="min(1, ln(1 + rating × reviews) / ceiling) — total star mass, log-squashed. A simple log, NOT a sigmoid: a sigmoid needs a 'typical popularity' center (a scale assumption); the log needs one ceiling knob. No reviews → 0: no Google presence means out of the organic lane."
       >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
-            label="Reference volume"
-            value={gpParams.refCount.toLocaleString("en-US")}
-            min={500}
-            max={20000}
-            step={500}
-            v={gpParams.refCount}
-            onChange={(v) => setGpParams((p) => ({ ...p, refCount: v }))}
-            hint={`1,000 reviews → volume ${volumeOf(1000).toFixed(2)} · ${gpParams.refCount.toLocaleString("en-US")}+ → 1.00`}
+            label="ln ceiling"
+            value={gp.lnCeiling.toFixed(1)}
+            min={5}
+            max={15}
+            step={0.5}
+            v={gp.lnCeiling}
+            onChange={(v) => setGp({ lnCeiling: v })}
+            hint={`GP hits 1 at e^${gp.lnCeiling.toFixed(1)} ≈ ${Math.round(Math.exp(gp.lnCeiling)).toLocaleString("en-US")} star mass — each ×e adds ${(1 / gp.lnCeiling).toFixed(2)}`}
           />
-          <Slider
-            label="Quality midpoint"
-            value={`${gpParams.qualityMid.toFixed(2)}★`}
-            min={3}
-            max={4.5}
-            step={0.05}
-            v={gpParams.qualityMid}
-            onChange={(v) => setGpParams((p) => ({ ...p, qualityMid: v }))}
-            hint={`a ${gpParams.qualityMid.toFixed(2)}★ place scores 0.50 · 4.5★ → ${quality(4.5).toFixed(2)}`}
-          />
-          <Slider
-            label="Quality steepness"
-            value={gpParams.qualitySteep.toFixed(2)}
-            min={0.5}
-            max={5}
-            step={0.25}
-            v={gpParams.qualitySteep}
-            onChange={(v) => setGpParams((p) => ({ ...p, qualitySteep: v }))}
-            hint={`3.0★ → ${quality(3).toFixed(2)} · 4.5★ → ${quality(4.5).toFixed(2)} — the gap IS the knob`}
-          />
-          <Slider
-            label="Cold-start floor"
-            value={gpParams.coldStartFloor.toFixed(2)}
-            min={0}
-            max={0.5}
-            step={0.05}
-            v={gpParams.coldStartFloor}
-            onChange={(v) => setGpParams((p) => ({ ...p, coldStartFloor: v }))}
-            hint={`unreviewed places keep ≥ ${gpParams.coldStartFloor.toFixed(2)} of their organic weight`}
-          />
-          <Slider
-            label="Floor applies under"
-            value={`${gpParams.minReviews} reviews`}
-            min={0}
-            max={50}
-            step={1}
-            v={gpParams.minReviews}
-            onChange={(v) => setGpParams((p) => ({ ...p, minReviews: v }))}
-            hint={`${gpParams.minReviews}+ reviews → the curve speaks for itself`}
+          <Chip
+            label="Reading"
+            value={`${gp.lnCeiling.toFixed(0)} e-folds span 0→1`}
+            hint="≈ 4.5★ × ~4,900 reviews reads fully popular at the default 10"
           />
         </div>
         <div className="mt-4">
-          <SubHead>Worked examples · live at these knobs</SubHead>
+          <SubHead>Worked examples · live at this ceiling</SubHead>
           <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
-            {archetypes.map((a) => (
+            {gpArchetypes.map((a) => (
               <div key={a.label} className="bg-muted/60 border-border/60 rounded-xl border px-2.5 py-2">
                 <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.04em] uppercase">
                   {a.label}
                 </p>
                 <p className="mt-0.5 font-mono text-[11px]">
-                  {a.stars.toFixed(1)}★ × {a.reviews.toLocaleString("en-US")}
+                  {a.stars != null ? `${a.stars.toFixed(1)}★ × ${a.reviews.toLocaleString("en-US")}` : "—"}
                 </p>
                 <p className="text-muted-foreground mt-0.5 font-mono text-[10px] leading-snug">
-                  {a.parts.floored
-                    ? `raw ${a.parts.raw.toFixed(2)} → floor → `
-                    : `vol ${a.parts.volume.toFixed(2)} × qual ${a.parts.quality.toFixed(2)} → `}
+                  raw {a.parts.raw.toLocaleString("en-US", { maximumFractionDigits: 0 })} →{" "}
                   <b className="text-foreground">GP {a.parts.gp.toFixed(2)}</b>
                 </p>
               </div>
@@ -200,26 +294,29 @@ export function SubscoresPanel() {
       {/* ══ RP ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="RP Subscore · Rewards Promotions"
-        subtitle="Posture from the place's live promo rates → a rung — BOUGHT popularity, the paid lanes' multiplier. Linear so relevance can beat money inside the paid lane; 0 = not in the paid lane (nothing to promote). Rates never reach the consumer blended-down — RP reads them server-side only."
+        subtitle="Posture from the place's live promo rates → a rung in [0,1] — BOUGHT merit, the paid lanes' multiplier. No literal 0: non-members never enter the paid lanes at all (a lane filter, not a score); the zero-posture member keeps a whisper. Rates never reach the consumer — RP reads them server-side only."
       >
-        <div className="mt-4 grid max-w-md grid-cols-4 gap-2">
+        <div className="mt-4 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
           {STRATEGIES.map((s) => (
-            <div key={s.id} className="bg-muted/60 border-border/60 rounded-xl border px-2 py-2.5 text-center">
-              <p className="text-muted-foreground text-[11px]">{s.name}</p>
+            <div key={s.id} className="bg-muted/60 border-border/60 rounded-xl border px-2.5 py-2.5">
+              <p className="text-muted-foreground text-center text-[11px]">{s.name}</p>
+              <p className="font-display mt-0.5 text-center text-lg font-semibold tabular-nums">
+                {rp[s.id].toFixed(2)}
+              </p>
               <input
-                type="number"
+                type="range"
                 min={0}
-                max={9}
-                step={1}
-                value={rpVals[s.id]}
+                max={1}
+                step={0.05}
+                value={rp[s.id]}
                 onChange={(e) =>
-                  setRpVals((p) => ({
+                  setRp((p) => ({
                     ...p,
-                    [s.id]: Math.max(0, Math.min(9, Number(e.target.value))),
+                    [s.id]: Math.max(0, Math.min(1, Number(e.target.value))),
                   }))
                 }
                 aria-label={`RP rung for ${s.name}`}
-                className="border-border/70 bg-card font-display mt-1 w-14 rounded-lg border px-1 py-0.5 text-center text-lg font-semibold tabular-nums"
+                className="accent-primary mt-1 w-full"
               />
             </div>
           ))}
@@ -227,108 +324,41 @@ export function SubscoresPanel() {
         <ContextCols ctx={PIPELINE_CONTEXT.rp} />
       </PanelCard>
 
-      {/* ══ IC ═══════════════════════════════════════════════════════ */}
+      {/* ══ XX ═══════════════════════════════════════════════════════ */}
       <PanelCard
-        title="IC Subscore · Intent Context — where · when"
-        subtitle="How the place sits in the intent's numeric context: distance decay × open-window. Multiplies the match in now-mode; never feeds it. Time resolves to 30-minute blocks. (The daypart WHAT term was deleted in v9 — ES alone carries semantic fit.)"
+        title="XX Subscore · Random Number"
+        subtitle="XX = U^control, U ~ Uniform[0,1) drawn fresh per card per lane (three independent draws — Organic, Inorganic, Hybrid). One deck-wide knob: control 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos. Higher control never changes WHO is luckiest, only how much luck beats merit."
+        pill={xx.control === 0 ? "off — pure merit" : `control ${xx.control.toFixed(1)}`}
       >
-        <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-2">
-          <div>
-            <SubHead>Where · distance decay</SubHead>
-            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
-              <Slider
-                label="Half-pull radius · d₀"
-                value={`${cfg.distanceHalfKm.toFixed(1)} km`}
-                min={1}
-                max={20}
-                step={0.5}
-                v={cfg.distanceHalfKm}
-                onChange={(v) => setIc("distanceHalfKm", v)}
-                hint={`20 km lands at ${whereScore(20, cfg).toFixed(2)}`}
-              />
-              <Slider
-                label="Falloff exponent · s"
-                value={cfg.distanceExp.toFixed(1)}
-                min={1}
-                max={3}
-                step={0.1}
-                v={cfg.distanceExp}
-                onChange={(v) => setIc("distanceExp", v)}
-                hint="1.6 ≈ the empirical human-mobility exponent"
-              />
-            </div>
-          </div>
-          <div>
-            <SubHead>When · wait × fit</SubHead>
-            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
-              <Slider
-                label="Wait half-life · a½"
-                value={`${cfg.waitHalfH.toFixed(1)} h`}
-                min={0.5}
-                max={4}
-                step={0.25}
-                v={cfg.waitHalfH}
-                onChange={(v) => setIc("waitHalfH", v)}
-                hint={`a 2 h wait lands at ${waitScore(2, cfg).toFixed(2)}`}
-              />
-              <Slider
-                label="Cliff sharpness · k"
-                value={cfg.waitExp.toFixed(2)}
-                min={1}
-                max={5}
-                step={0.25}
-                v={cfg.waitExp}
-                onChange={(v) => setIc("waitExp", v)}
-                hint={
-                  cfg.waitExp <= 1.25
-                    ? "no plateau — every block costs"
-                    : `30 min → ${waitScore(0.5, cfg).toFixed(2)} · plateau then cliff`
-                }
-              />
-              <Slider
-                label="Session length · L"
-                value={`${cfg.sessionH.toFixed(1)} h`}
-                min={0.5}
-                max={4}
-                step={0.25}
-                v={cfg.sessionH}
-                onChange={(v) => setIc("sessionH", v)}
-                hint={`30 min left → fit ${fitScore(0.5, cfg).toFixed(2)}`}
-              />
-              <Slider
-                label="Time grid"
-                value={`${Math.round(cfg.timeBlockH * 60)} min`}
-                min={0.25}
-                max={1}
-                step={0.25}
-                v={cfg.timeBlockH}
-                onChange={(v) => setIc("timeBlockH", v)}
-                hint="hours quantize to this block before wait/fit"
-              />
-            </div>
-          </div>
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
+          <Slider
+            label="Control"
+            value={xx.control.toFixed(1)}
+            min={0}
+            max={5}
+            step={0.5}
+            v={xx.control}
+            onChange={(v) => setXx({ control: v })}
+            hint={
+              xx.control === 0
+                ? "off — every card draws XX = 1"
+                : `median XX ${xxMedian.toFixed(3)} · ~${buriedPct}% of cards land below 0.1`
+            }
+          />
+          <Chip
+            label="Ladder"
+            value={`U¹ ${xxScore(0.5, 1).toFixed(2)} · U³ ${xxScore(0.5, 3).toFixed(2)} · U⁵ ${xxScore(0.5, 5).toFixed(3)}`}
+            hint="the median card at control 1 / 3 / 5 — frozen → boiling"
+          />
+          <Chip label="Determinism" value="seeded per (card, lane, roll)" hint="the playgrounds re-roll on demand; live decks draw fresh" />
         </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.ic} />
-      </PanelCard>
-
-
-      {/* ══ CH ═══════════════════════════════════════════════════════ */}
-      <PanelCard
-        title="CH Subscore · Context History"
-        subtitle="The consumer × place PAIR's history — did this consumer save this place, visit it, skip it n times in the deck? SWIPE-ONLY: it multiplies all four Swipe lanes; Map and Pre-Memo skip it. A STUB today — always 1, so no number moves anywhere — until the history starts boosting/penalizing."
-        pill="Swipe only"
-      >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
-          <Chip label="Today" value="always 1" hint="stub — boosts/penalties arrive with the history data" />
-          <Chip label="Knobs" value="none yet" hint="they join the saved blob when CH stops being a stub" />
-        </div>
-        <ContextCols ctx={PIPELINE_CONTEXT.ch} />
+        <ContextCols ctx={PIPELINE_CONTEXT.xx} />
       </PanelCard>
 
       {/* ══ Persistence ══════════════════════════════════════════════ */}
       <PanelCard
         title="Saved config"
-        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. The Cards and Decks tabs follow whatever the form holds, saved or not — Cards is the playground that walks every Subscore's internals."
+        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. Both playgrounds follow whatever the form holds, saved or not."
       >
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -379,30 +409,24 @@ export function SubscoresPanel() {
 
         {/* Definitions footer */}
         <div className="text-muted-foreground border-border/60 mt-4 flex flex-col gap-1 border-t pt-3 font-mono text-[11px] leading-relaxed">
+          <p>EM = max(0, cos(A, B)) · A = place doc · B = consumer + intent doc · [0,1]</p>
           <p>
-            lanes:{" "}
-            {LANES.map((l) => `${LANE_SHORT[l.id]} ${l.lane} ${l.mode} = ${laneFormula(l)}`).join("  ·  ")}
+            SM = where × when × what · where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · wait ={" "}
+            {sm.when.waitFloor.toFixed(2)} + {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/
+            {sm.when.waitTransitionH.toFixed(1)})^{sm.when.waitSteep.toFixed(1)}) · fit = min(1, h/
+            {sm.when.sessionH.toFixed(1)}) · {Math.round(sm.when.timeBlockH * 60)}-min blocks
           </p>
           <p>
-            ES = embeddings cosine · 0–{ES_MAX} · GP = volume × quality · 0–1 · RP = rates → posture
-            → rung · 0–{RP_MAX} · IC = where × when · 0–1 · CH = context history · Swipe only ·
-            stub 1
+            GP = min(1, ln(1 + ★·n)/{gp.lnCeiling.toFixed(1)}) · RP rungs {rp.zero.toFixed(2)} /{" "}
+            {rp.conservative.toFixed(2)} / {rp.aggressive.toFixed(2)} / {rp.dominant.toFixed(2)} ·
+            XX = U^{xx.control.toFixed(1)}
           </p>
-          <p>
-            GP = log10(1+n)/log10(1+{gpParams.refCount.toLocaleString("en-US")}) ×
-            1/(1+e^(−{gpParams.qualitySteep.toFixed(1)}·(★−{gpParams.qualityMid.toFixed(2)}))) ·
-            floor {gpParams.coldStartFloor.toFixed(2)} under {gpParams.minReviews} reviews
-          </p>
-          <p>
-            IC: where = 1/(1+(km/d₀)^{cfg.distanceExp.toFixed(1)}) · wait = 1/(1+(h/a½)^k) · fit =
-            min(1, h/L) · {Math.round(cfg.timeBlockH * 60)}-min blocks
-          </p>
-          <p>
-            ES reads TEXT only — GP · RP · IC are the numeric Subscores, and they multiply ES,
-            never feed it
-          </p>
+          <p>EM reads TEXT only — SM · GP · RP · XX are the numeric subscores; they multiply EM, never feed it</p>
         </div>
       </PanelCard>
+
+      {/* ══ The Subscore playground ══════════════════════════════════ */}
+      <SubscorePlayground />
 
       <GroupHead>Every knob is a belief, not a fitted value — judge changes by break-even, not spread.</GroupHead>
     </div>

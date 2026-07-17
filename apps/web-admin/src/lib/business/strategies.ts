@@ -154,30 +154,29 @@ export function strategyForPlace(rates: StrategyRates): StrategyId | null {
   return match?.id ?? null;
 }
 
-// RP — the Rewards Promotions Sub-Score of the recommendation-Scores model
-// (0–3; see ./scores) — the posture as a number. Linear, so posture and
-// relevance stay comparable and a sharply-matched Conservative place can
-// still out-rank a loosely-matched Dominant one inside the paid lane (which
-// only ranks against itself, so only the SPREAD between rungs matters, never
-// the absolute scale).
+// RP — the Rewards Promotions subscore of the recommendation model (v10:
+// [0,1] rungs; see ./scores) — the posture as a number. The rung each
+// posture earns is CONFIG (the scoring blob's rp block); these are the code
+// defaults. Only the SPREAD between rungs matters inside the paid lanes
+// (they rank against themselves), never the absolute scale.
 //
-// Zero is 0: no discounts, no paid placement. A Zero member is listed on Mesita
-// and competes organically like anyone else — it simply doesn't enter the paid
-// lane, because there is nothing to promote. Custom/legacy rates that match no
-// preset (null) land here too, as will strike-paused members once enforcement
-// ships.
-//
-// NOTE: the `visibility` labels above still read Low/Mid/High/Max across the
-// four postures, which no longer lines up — Zero earns no placement here but is
-// labelled "Low" on the business-facing cards. One of the two needs to move.
+// No literal 0 (decision 2026-07-16): non-members never ENTER the paid
+// lanes at all — a lane filter, not a score — and the zero-posture member
+// keeps a 0.1 whisper (membership buys a whisper of paid presence;
+// generosity buys placement — promos v4.1). Custom/legacy rates that match
+// no preset (null) land on the zero rung too.
 export const RP_BY_STRATEGY: Record<StrategyId, number> = {
-  zero: 0,
-  conservative: 1,
-  aggressive: 2,
-  dominant: 3,
+  zero: 0.1,
+  conservative: 0.4,
+  aggressive: 0.7,
+  dominant: 1.0,
 };
 
-/** RP — the Rewards Promotions Sub-Score for a place's posture. See ./scores. */
-export function rpForStrategy(id: StrategyId | null): number {
-  return id == null ? 0 : RP_BY_STRATEGY[id];
+/** RP — the Rewards Promotions subscore for a place's posture. The saved
+ * blob's rungs override these code defaults on the Scoring Config page. */
+export function rpForStrategy(
+  id: StrategyId | null,
+  rungs: Record<StrategyId, number> = RP_BY_STRATEGY,
+): number {
+  return rungs[id ?? "zero"];
 }

@@ -7,7 +7,7 @@ import {
   MessagesSquare,
   type LucideIcon,
 } from "lucide-react";
-import type { EngineId } from "@/lib/business/scores";
+import type { EngineId, LaneId } from "@/lib/business/scores";
 import { SAMPLE_MAX } from "@/lib/business/cip";
 import { PanelCard } from "./panel-ui";
 
@@ -32,8 +32,8 @@ export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: str
         <div className="min-w-0">
           <p className="font-semibold">n = 0 — no places to score.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            The Cards and Decks tabs draw a random sample of up to {SAMPLE_MAX} places from
-            the catalog, and the catalog came back empty. The model still stands; there is
+            The playgrounds draw a random sample of up to {SAMPLE_MAX} places from the
+            catalog, and the catalog came back empty. The model still stands; there is
             simply nothing to run it on.
           </p>
         </div>
@@ -153,20 +153,23 @@ export function ScoreCell({ label, value, hint }: { label: string; value: string
   );
 }
 
-/** ON/OF/IN/IF card-type badge — organic sky, inorganic (paid) pink. */
-export function LaneBadge({ short, title }: { short: string; title?: string }) {
-  const paid = short === "IN" || short === "IF";
+/** Lane badge — Organic sky · Inorganic (paid) pink · Hybrid violet. */
+const LANE_BADGE_TONES: Record<LaneId, string> = {
+  organic: "border-sky-300/80 bg-sky-50 text-sky-700",
+  inorganic: "border-pink-300/80 bg-pink-50 text-pink-700",
+  hybrid: "border-violet-300/80 bg-violet-50 text-violet-700",
+};
+
+export function LaneBadge({ laneId, title }: { laneId: LaneId; title?: string }) {
   return (
     <span
-      title={title}
+      title={title ?? laneId}
       className={
-        "inline-flex w-8 shrink-0 items-center justify-center rounded-md border px-1 py-0.5 font-mono text-[9.5px] font-bold " +
-        (paid
-          ? "border-pink-300/80 bg-pink-50 text-pink-700"
-          : "border-sky-300/80 bg-sky-50 text-sky-700")
+        "inline-flex w-8 shrink-0 items-center justify-center rounded-md border px-1 py-0.5 font-mono text-[9.5px] font-bold uppercase " +
+        LANE_BADGE_TONES[laneId]
       }
     >
-      {short}
+      {laneId[0]}
     </span>
   );
 }

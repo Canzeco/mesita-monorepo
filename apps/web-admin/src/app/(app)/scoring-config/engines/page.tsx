@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
-// v9 (MESITA-620): Engines became the Deck Sim — counts in, ordered deck
-// out. Old links land there.
+// v10 (MESITA-644): engines are containers on the Scores & Lanes tab.
 export default function ScoringEnginesRedirect() {
-  redirect("/scoring-config/decks");
+  redirect("/scoring-config/lanes");
 }

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Braces, Gauge } from "lucide-react";
 import {
-  rpForStrategy,
   RP_BY_STRATEGY,
   strategyForPlace,
   STRATEGIES,
@@ -12,18 +11,18 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import {
-  DEFAULT_IC_PARAMS as CFG,
-  ES_MAX,
+  DEFAULT_SM_PARAMS as SM,
   fitScore,
   gpParts,
+  laneFormula,
   laneScore,
   LANES,
   quantizeH,
-  RP_MAX,
+  rpScore,
   waitScore,
-  whenScore,
   whereScore,
   type Lane,
+  type LaneId,
 } from "@/lib/business/scores";
 import type { AdminPlace } from "../actions";
 import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
@@ -32,19 +31,21 @@ import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 // Scores — this place's potency in the recommendation engines (Swipe · Map ·
 // Memo). Admin-only: the whole console sits behind the super-admin gate.
 //
-// This file RENDERS the model; the model, its knobs and the reasoning behind
-// every one live in @/lib/business/scores (RP in ./strategies), and the
-// global view is Scoring Config. Four Lanes, one Score each:
+// This file RENDERS the model (v10); the model, its knobs and the reasoning
+// live in @/lib/business/scores (RP postures in ./strategies), and the
+// global view is Scoring Config. Three lanes, one score each, all [0,1]:
 //
-//   ON = ES · GP · IC     OF = ES · GP
-//   IN = ES · RP · IC     IF = ES · RP
+//   Organic   EM · SM · GP · XX
+//   Inorganic EM · SM · RP · XX
+//   Hybrid    EM · SM · GP · RP · XX
 //
-// TWO Sub-Scores are real data here: GP (the place's google rating × review
-// count) and RP (its live promo rates). There is no consumer and no query in
-// an admin view, so ES and the intent context (IC) are operator controls —
-// that is the nature of the surface, not a gap in it. This page uses the
-// CODE defaults for GP/IC knobs, same as it always has — the saved blob
-// binds the Scoring Config page, not this one.
+// TWO subscores are real data here: GP (the place's google star mass) and RP
+// (its live promo rates → posture → rung). There is no consumer and no query
+// in an admin view, so EM and SM's inputs are operator controls — that is
+// the nature of the surface, not a gap in it. XX is pinned to 1 (off): a
+// per-card random draw has no meaning for a single place. This page uses the
+// CODE defaults for the knobs — the saved blob binds the Scoring Config
+// page, not this one.
 // ════════════════════════════════════════════════════════════════════════
 
 /** Deterministic pseudo-vector from the place id — stand-in until real embeddings exist. */
@@ -59,13 +60,13 @@ function mockVector(seed: string, dims: number): number[] {
   return out;
 }
 
-function fmt(n: number, digits = 1): string {
+function fmt(n: number, digits = 2): string {
   return n.toFixed(digits);
 }
 
 export function ScoresSection({ place }: { place: AdminPlace }) {
   // The query and the consumer don't exist here, so these are controls.
-  const [es, setEs] = useState(ES_MAX);
+  const [em, setEm] = useState(1);
   const [km, setKm] = useState(2);
   const [opensIn, setOpensIn] = useState(0);
   const [openFor, setOpenFor] = useState(6);
@@ -76,17 +77,20 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
     free_rate: place.free_rate,
     premium_rate: place.premium_rate,
   });
-  const rp = rpForStrategy(strategyId); // 0 · 1 · 2 · 3 — real
+  const rp = rpScore(strategyId); // [0,1] rung — real (code-default rungs)
   const posture = strategyId ? STRATEGY_BY_ID[strategyId] : null;
 
   // GP — real data: the place's google aggregates through the live curve.
   const gp = gpParts(place.google_review_count, place.google_stars_overall);
 
-  const where = whereScore(km);
-  const wait = waitScore(opensIn);
-  const fit = fitScore(openFor);
-  const when = whenScore(opensIn, openFor);
-  const ic = where * when;
+  // SM — where × when at the operator's inputs; what = 1 (nothing asked).
+  const where = whereScore(km, SM.where.pointTolKm, SM.where.distExp);
+  const wait = waitScore(opensIn, SM.when);
+  const fit = fitScore(openFor, SM.when);
+  const when = wait * fit;
+  const sm = where * when;
+
+  const subs = { em, sm, gp: gp.gp, rp, xx: 1 };
 
   const vector = useMemo(() => mockVector(place.id, 48), [place.id]);
 
@@ -100,8 +104,8 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         <div className="min-w-0">
           <p className="font-semibold">Draft simulator — does not affect Swipe, Map, or Memo.</p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            GP and RP are real data — Google popularity and the live promo rates; ES and the
-            moment are operator sliders. Global knobs live in{" "}
+            GP and RP are real data — Google star mass and the live promo rates; EM and SM&apos;s
+            inputs are operator sliders, XX is pinned to 1 (off). Global knobs live in{" "}
             <Link href="/scoring-config" className="font-semibold underline-offset-2 hover:underline">
               Scoring Config
             </Link>
@@ -110,51 +114,56 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         </div>
       </div>
 
-      {/* ── Scores — four lanes for this place ───────────────────────── */}
+      {/* ── Scores — three lanes for this place ──────────────────────── */}
       <SectionCard
         icon={<Gauge className="h-4.5 w-4.5" />}
         tint="pink"
         title="Scores"
-        subtitle="Four Lanes that never compete: {organic, inorganic} × {now, future}. Zero Match zeroes every Score — money can't buy irrelevance."
-        action={<Pill>Draft model</Pill>}
+        subtitle="Three lanes that never compete — Organic (earned merit), Inorganic (bought), Hybrid (both). Every subscore is [0,1], so a lane score is too. Zero EM or SM zeroes every lane — money can't buy irrelevance."
+        action={<Pill>Model v10</Pill>}
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           {LANES.map((lane) => (
             <LaneCard
               key={lane.id}
               lane={lane}
-              score={laneScore(lane, { es, gp: gp.gp, rp, ic })}
-              detail={
-                (lane.lane === "organic"
-                  ? `ES ${fmt(es, 0)} · GP ${fmt(gp.gp, 2)}`
-                  : `ES ${fmt(es, 0)} · RP ${rp}`) +
-                (lane.mode === "now" ? ` · IC ${fmt(ic, 2)}` : "")
-              }
+              score={laneScore(lane, subs)}
+              detail={lane.parts
+                .map((p) =>
+                  p === "em"
+                    ? `EM ${fmt(em)}`
+                    : p === "sm"
+                      ? `SM ${fmt(sm)}`
+                      : p === "gp"
+                        ? `GP ${fmt(gp.gp)}`
+                        : p === "rp"
+                          ? `RP ${fmt(rp)}`
+                          : "XX 1",
+                )
+                .join(" · ")}
             />
           ))}
         </div>
 
-        {/* ES — the gate */}
+        {/* EM — the semantic gate */}
         <div className="mt-6">
           <div className="flex items-baseline justify-between">
-            <GroupLabel>ES · Embeddings Similarity — the gate on every Lane</GroupLabel>
-            <span className="text-sm font-semibold tabular-nums">
-              {fmt(es, 0)}/{ES_MAX}
-            </span>
+            <GroupLabel>EM · Embeddings Match — the semantic gate on every lane</GroupLabel>
+            <span className="text-sm font-semibold tabular-nums">{fmt(em)}</span>
           </div>
           <input
             type="range"
             min={0}
-            max={ES_MAX}
-            step={1}
-            value={es}
-            onChange={(e) => setEs(Number(e.target.value))}
+            max={1}
+            step={0.01}
+            value={em}
+            onChange={(e) => setEm(Number(e.target.value))}
             className="accent-primary mt-2 w-full"
-            aria-label="Embeddings Similarity score"
+            aria-label="Embeddings Match score"
           />
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            Always semantic — embeddings cosine, per query; never binary tags. One tier, no
-            judge. Zero zeroes every lane.
+            max(0, cos) of the place vector against a consumer + intent vector — per query,
+            never binary tags. Zero zeroes every lane.
           </p>
         </div>
 
@@ -168,66 +177,63 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            Smooth volume × quality — earned popularity, the organic lanes&apos; multiplier.
-            {gp.floored
-              ? " The cold-start floor is holding this place up (too few reviews for the curve to speak)."
-              : " A 1★-farm can't raise it; a ≤3★ place at volume earns ≈ 0."}
+            Total star mass, log-squashed — earned popularity, the organic lanes&apos;
+            multiplier. Each ×e more star mass adds 0.1; no reviews → 0 (out of the organic
+            lane).
           </p>
           <p className="mt-2 font-mono text-[11px]">
-            {gp.floored
-              ? `raw ${fmt(gp.raw, 2)} → floor → `
-              : `volume ${fmt(gp.volume, 2)} × quality ${fmt(gp.quality, 2)} → `}
-            <b>GP {fmt(gp.gp, 2)}</b>
+            star mass {gp.raw.toLocaleString("en-US", { maximumFractionDigits: 0 })} → ln(1 +
+            raw)/10 → <b>GP {fmt(gp.gp)}</b>
           </p>
         </div>
 
-        {/* The moment */}
+        {/* SM — the structured moment */}
         <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
-            <GroupLabel>IC · Intent Context — where × when · now-mode lanes only</GroupLabel>
+            <GroupLabel>SM · Structured Match — where × when (what = 1, nothing asked)</GroupLabel>
             <p className="text-muted-foreground font-mono text-[11px]">
-              where {fmt(where, 2)} × when {fmt(when, 2)} = {fmt(ic, 2)}
+              where {fmt(where)} × when {fmt(when)} = {fmt(sm)}
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            Planning Saturday from the sofa, distance and hours are noise;
-            choosing where to go in the next hour, they&apos;re most of the
-            decision. Time resolves to 30-minute blocks.
+            The intent&apos;s structured asks against this place&apos;s facts. Point-mode
+            tolerance {SM.where.pointTolKm} km · doubling distance beyond it costs{" "}
+            {Math.pow(2, SM.where.distExp).toFixed(0)}×. Time resolves to 30-minute blocks.
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-3">
             <Ctl
               label="Where · distance"
               read={`${km} km`}
-              factor={`×${fmt(where, 2)}`}
+              factor={`×${fmt(where)}`}
               min={0}
               max={40}
               step={0.5}
               v={km}
               onChange={setKm}
-              note={`Halves every ${CFG.distanceHalfKm} km.`}
+              note={`Halves at ${SM.where.pointTolKm} km (the tolerance).`}
             />
             <Ctl
               label="Wait · opens in"
               read={opensIn === 0 ? "open now" : `+${quantizeH(opensIn)} h`}
-              factor={`×${fmt(wait, 2)}`}
+              factor={`×${fmt(wait)}`}
               min={0}
               max={6}
               step={0.5}
               v={opensIn}
               onChange={setOpensIn}
-              note={`Waiting ${CFG.waitHalfH} h halves it.`}
+              note={`Two plateaus — floor ${SM.when.waitFloor}, never 0.`}
               warn={opensIn > 0}
             />
             <Ctl
               label="Fit · open for"
               read={openFor === 0 ? "closed" : `${quantizeH(openFor)} h`}
-              factor={`×${fmt(fit, 2)}`}
+              factor={`×${fmt(fit)}`}
               min={0}
               max={6}
               step={0.5}
               v={openFor}
               onChange={setOpenFor}
-              note={`The visit needs ${CFG.sessionH} h.`}
+              note={`The visit needs ${SM.when.sessionH} h.`}
               warn={fit < 1}
             />
           </div>
@@ -237,25 +243,26 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         <div className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
             <GroupLabel>RP · Rewards Promotions — live from this place&apos;s rates</GroupLabel>
-            <p className="text-muted-foreground font-mono text-[11px]">
-              {fmt(rp, 0)}/{RP_MAX}
-            </p>
+            <p className="text-muted-foreground font-mono text-[11px]">{fmt(rp)}</p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            Linear, so posture and relevance stay comparable — a sharply-matched
-            Conservative place can still out-rank a loosely-matched Dominant one.
-            Zero earns no paid placement: nothing to promote. Set on the Promos
-            tab.
+            Posture → rung in [0,1]. Only the spread between rungs matters — a sharply-matched
+            Conservative place can still out-rank a loosely-matched Dominant one. Set on the
+            Promos tab.
           </p>
           <div className="mt-2">
             <PostureLadder current={strategyId} />
           </div>
           {posture ? null : (
             <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
-              These rates match no preset — custom or legacy, so the place
-              isn&apos;t in the paid lane at all.
+              These rates match no preset — custom or legacy, so RP lands on the zero rung.
             </p>
           )}
+        </div>
+
+        {/* Definitions footer */}
+        <div className="text-muted-foreground border-border/60 mt-6 border-t pt-3 font-mono text-[10.5px] leading-relaxed">
+          {LANES.map((l) => `${l.label} = ${laneFormula(l)}`).join("  ·  ")} · XX pinned 1 here
         </div>
       </SectionCard>
 
@@ -264,7 +271,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         icon={<Braces className="h-4.5 w-4.5" />}
         tint="indigo"
         title="Semantic"
-        subtitle="ES is never binary tags — the place is queried by meaning: its profile embedded as a vector, matched by cosine. Tags only enrich the text."
+        subtitle="EM is never binary tags — the place is queried by meaning: its profile embedded as a vector, matched by cosine. Tags only enrich the text."
         action={<Pill>Mock — no vectors yet</Pill>}
       >
         <div className="mt-5 grid gap-5 md:grid-cols-2">
@@ -304,8 +311,8 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
               ))}
             </div>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              48 of 1,536 dims, mocked from the place id — the real vector comes
-              from embedding the text on the left.
+              48 of 1,536 dims, mocked from the place id — the real vector comes from OpenAI
+              text-embedding-3-small over the text on the left.
             </p>
           </div>
         </div>
@@ -324,24 +331,26 @@ function Pill({ children }: { children: React.ReactNode }) {
   );
 }
 
+const LANE_TINTS: Record<LaneId, { box: string; head: string }> = {
+  organic: { box: "border-sky-500/30 bg-sky-500/[0.04]", head: "text-sky-700" },
+  inorganic: { box: "border-pink-500/30 bg-pink-500/[0.04]", head: "text-pink-700" },
+  hybrid: { box: "border-violet-500/30 bg-violet-500/[0.04]", head: "text-violet-700" },
+};
+
 function LaneCard({ lane, score, detail }: { lane: Lane; score: number; detail: string }) {
-  const organic = lane.lane === "organic";
-  const tint = organic
-    ? "border-sky-500/30 bg-sky-500/[0.04]"
-    : "border-pink-500/30 bg-pink-500/[0.04]";
-  const head = organic ? "text-sky-700" : "text-pink-700";
+  const t = LANE_TINTS[lane.id];
   return (
-    <div className={"flex flex-col gap-2 rounded-2xl border p-4 " + tint}>
-      <p className={"text-[10px] font-bold tracking-[0.14em] uppercase " + head}>
-        {organic ? "Organic" : "Inorganic"} · {lane.mode}
+    <div className={"flex flex-col gap-2 rounded-2xl border p-4 " + t.box}>
+      <p className={"text-[10px] font-bold tracking-[0.14em] uppercase " + t.head}>
+        {lane.label} · {laneFormula(lane)}
       </p>
       <div className="flex items-end gap-2">
         <p className="font-display text-4xl leading-none font-semibold tracking-tight tabular-nums">
-          {fmt(score)}
+          {score.toFixed(3)}
         </p>
-        <p className="text-muted-foreground pb-0.5 text-xs">/ {lane.max}</p>
+        <p className="text-muted-foreground pb-0.5 text-xs">/ 1</p>
       </div>
-      <Meter value={score / lane.max} />
+      <Meter value={score} />
       <p className="text-muted-foreground font-mono text-[10px] leading-snug">{detail}</p>
     </div>
   );
@@ -394,7 +403,7 @@ function Ctl({
   );
 }
 
-/** The 0 · 1 · 2 · 3 posture ladder, current rung lit. */
+/** The 0.1 · 0.4 · 0.7 · 1.0 posture ladder, current rung lit. */
 function PostureLadder({ current }: { current: StrategyId | null }) {
   return (
     <div className="grid grid-cols-4 gap-2">
@@ -414,7 +423,7 @@ function PostureLadder({ current }: { current: StrategyId | null }) {
                 (active ? "text-pink-700" : "text-muted-foreground")
               }
             >
-              {RP_BY_STRATEGY[s.id]}
+              {RP_BY_STRATEGY[s.id].toFixed(1)}
             </p>
             <p className="text-muted-foreground mt-0.5 text-[10px] leading-tight">{s.name}</p>
           </div>

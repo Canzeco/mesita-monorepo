@@ -2,19 +2,23 @@
 //
 // Writes the scoring model's hyperparameters as ONE versioned jsonb blob on
 // the public.app_settings singleton (scoring_config). Whole-blob writes only
-// — the Pipeline tab always saves its full form, so partial patches would
+// — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v3 blob (scoring v9.1, MESITA-621) — keys follow the Subscore names:
-//   { v: 3, decks, retrieval, es, gp, rp, ic, context }
-//   decks     per-lane MAXES per engine — sub-deck ceilings, not quotas
-//             (the merged deck dedupes and never backfills)
-//   es        Embeddings Similarity params (embedDims)
-//   gp        Google Popularity curve (refCount · qualityMid · qualitySteep ·
-//             coldStartFloor · minReviews)
-//   rp        Rewards Promotions rungs per posture
-//   ic        Intent Context knobs (where × when; was `ww` in v2)
-//   context   which TEXT fields ES reads (ES is the only configurable one)
+// v4 blob (scoring v10, MESITA-644) — keys follow the subscore names
+// (EM · SM · GP · RP · XX, all [0,1]; three lanes; merge O → I → H):
+//   { v: 4, laneN, retrieval, em, sm, gp, rp, xx, context }
+//   laneN     shared lane length N — each lane contributes up to N cards;
+//             the merged deck (dedupe, no backfill) is ≤ 3·N
+//   em        Embeddings Match params (embedDims — the encoder's Matryoshka
+//             `dimensions` knob; OpenAI text-embedding-3-small)
+//   sm        Structured Match knobs — where (pointTolKm · zoneSpillKm ·
+//             distExp) · when (waitFloor · waitTransitionH · waitSteep ·
+//             sessionH · timeBlockH) · what (sibling · mismatch)
+//   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
+//   rp        Rewards Promotions rungs per posture, [0,1]
+//   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
+//   context   which TEXT fields EM reads (EM is the only configurable one)
 // See web-admin lib/business/scores.ts — the RANGE TABLE there is mirrored
 // VERBATIM here; a value the UI allows but this EF clamps would silently
 // move the form on save.
@@ -35,10 +39,8 @@ import {
 
 type Body = { config?: unknown };
 
-const ENGINES = ["swipe", "map", "memo"] as const;
-const DECK_KEYS = ["on", "of", "in", "if"] as const;
 const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
-const DECK_COUNT_MAX = 20;
+const LANE_N_MAX = 20;
 
 function num(v: unknown, lo: number, hi: number): number | null {
   if (typeof v !== "number" || !Number.isFinite(v)) return null;
@@ -50,69 +52,67 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (!raw || typeof raw !== "object") return { ok: false, error: "config must be an object" };
   const r = raw as Record<string, unknown>;
 
-  // Deck composition — per-lane MAXES; required per engine per lane; ints, 0–20.
-  const decksIn = r.decks as Record<string, Record<string, unknown>> | undefined;
-  if (!decksIn || typeof decksIn !== "object") return { ok: false, error: "config.decks missing" };
-  const decks: Record<string, Record<string, number>> = {};
-  for (const e of ENGINES) {
-    decks[e] = {};
-    for (const k of DECK_KEYS) {
-      const v = num(decksIn[e]?.[k], 0, DECK_COUNT_MAX);
-      if (v == null) {
-        return { ok: false, error: `decks.${e}.${k} must be a number 0–${DECK_COUNT_MAX}` };
-      }
-      decks[e][k] = Math.round(v);
-    }
-  }
+  // Lane length — shared N.
+  const laneN = num(r.laneN, 1, LANE_N_MAX);
+  if (laneN == null) return { ok: false, error: `laneN must be a number 1–${LANE_N_MAX}` };
 
   const ret = r.retrieval as Record<string, unknown> | undefined;
   const recallTopK = num(ret?.recallTopK, 10, 200);
   if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
 
-  // ES — the encoder's params.
-  const esIn = r.es as Record<string, unknown> | undefined;
-  const embedDims = num(esIn?.embedDims, 16, 256);
-  if (embedDims == null) return { ok: false, error: "es.embedDims out of range" };
+  // EM — the encoder's params.
+  const emIn = r.em as Record<string, unknown> | undefined;
+  const embedDims = num(emIn?.embedDims, 16, 4096);
+  if (embedDims == null) return { ok: false, error: "em.embedDims out of range" };
 
-  // GP — the smooth popularity curve.
-  const gpIn = r.gp as Record<string, unknown> | undefined;
-  const refCount = num(gpIn?.refCount, 100, 100000);
-  const qualityMid = num(gpIn?.qualityMid, 1, 5);
-  const qualitySteep = num(gpIn?.qualitySteep, 0.1, 10);
-  const coldStartFloor = num(gpIn?.coldStartFloor, 0, 1);
-  const minReviews = num(gpIn?.minReviews, 0, 1000);
+  // SM — where × when × what.
+  const smIn = r.sm as Record<string, unknown> | undefined;
+  const whereIn = smIn?.where as Record<string, unknown> | undefined;
+  const pointTolKm = num(whereIn?.pointTolKm, 0.5, 20);
+  const zoneSpillKm = num(whereIn?.zoneSpillKm, 0.5, 10);
+  const distExp = num(whereIn?.distExp, 1, 5);
+  if (pointTolKm == null || zoneSpillKm == null || distExp == null) {
+    return { ok: false, error: "sm.where knobs out of range" };
+  }
+  const whenIn = smIn?.when as Record<string, unknown> | undefined;
+  const waitFloor = num(whenIn?.waitFloor, 0, 1);
+  const waitTransitionH = num(whenIn?.waitTransitionH, 0.5, 6);
+  const waitSteep = num(whenIn?.waitSteep, 1, 8);
+  const sessionH = num(whenIn?.sessionH, 0.5, 4);
+  const timeBlockH = num(whenIn?.timeBlockH, 0.25, 1);
   if (
-    refCount == null || qualityMid == null || qualitySteep == null ||
-    coldStartFloor == null || minReviews == null
+    waitFloor == null || waitTransitionH == null || waitSteep == null ||
+    sessionH == null || timeBlockH == null
   ) {
-    return { ok: false, error: "gp knobs out of range" };
+    return { ok: false, error: "sm.when knobs out of range" };
+  }
+  const whatIn = smIn?.what as Record<string, unknown> | undefined;
+  const sibling = num(whatIn?.sibling, 0, 1);
+  const mismatch = num(whatIn?.mismatch, 0, 1);
+  if (sibling == null || mismatch == null) {
+    return { ok: false, error: "sm.what knobs out of range" };
   }
 
-  // RP — the posture rungs.
+  // GP — the log squash's ceiling.
+  const gpIn = r.gp as Record<string, unknown> | undefined;
+  const lnCeiling = num(gpIn?.lnCeiling, 5, 15);
+  if (lnCeiling == null) return { ok: false, error: "gp.lnCeiling out of range" };
+
+  // RP — the posture rungs, [0,1].
   const rpIn = r.rp as Record<string, unknown> | undefined;
   const rp: Record<string, number> = {};
   for (const p of POSTURES) {
-    const v = num(rpIn?.[p], 0, 9);
-    if (v == null) return { ok: false, error: `rp.${p} must be a number 0–9` };
+    const v = num(rpIn?.[p], 0, 1);
+    if (v == null) return { ok: false, error: `rp.${p} must be a number 0–1` };
     rp[p] = v;
   }
 
-  // IC — the intent context's knobs.
-  const icIn = r.ic as Record<string, unknown> | undefined;
-  const distanceHalfKm = num(icIn?.distanceHalfKm, 1, 20);
-  const distanceExp = num(icIn?.distanceExp, 1, 3);
-  const waitHalfH = num(icIn?.waitHalfH, 0.5, 4);
-  const waitExp = num(icIn?.waitExp, 1, 5);
-  const sessionH = num(icIn?.sessionH, 0.5, 4);
-  const timeBlockH = num(icIn?.timeBlockH, 0.25, 1);
-  if (
-    distanceHalfKm == null || distanceExp == null || waitHalfH == null ||
-    waitExp == null || sessionH == null || timeBlockH == null
-  ) {
-    return { ok: false, error: "ic knobs out of range" };
-  }
+  // XX — the deck-wide randomness control.
+  const xxIn = r.xx as Record<string, unknown> | undefined;
+  const control = num(xxIn?.control, 0, 5);
+  if (control == null) return { ok: false, error: "xx.control must be a number 0–5" };
 
-  // Context — which TEXT fields ES reads. Validation is STRUCTURAL only
+  // Context — which TEXT fields EM reads. Validation is STRUCTURAL only
   // ("side.name" strings, deduped, capped) — the exact key list lives in the
   // frontend registry and its coercer drops unknowns on read, so this EF
   // never has to chase it. Missing/absent → omitted; the client coerces to
@@ -126,7 +126,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       return { ok: false, error: "config.context must be an object" };
     }
     context = {};
-    for (const tier of ["es"] as const) {
+    for (const tier of ["em"] as const) {
       const v = contextIn[tier];
       if (!Array.isArray(v)) return { ok: false, error: `context.${tier} must be an array` };
       const clean = [...new Set(v.filter((k) => typeof k === "string" && KEY_RE.test(k)))];
@@ -141,26 +141,18 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 3,
-      decks,
+      v: 4,
+      laneN: Math.round(laneN),
       retrieval: { recallTopK },
-      es: { embedDims: Math.round(embedDims) },
-      gp: {
-        refCount: Math.round(refCount),
-        qualityMid,
-        qualitySteep,
-        coldStartFloor,
-        minReviews: Math.round(minReviews),
+      em: { embedDims: Math.round(embedDims) },
+      sm: {
+        where: { pointTolKm, zoneSpillKm, distExp },
+        when: { waitFloor, waitTransitionH, waitSteep, sessionH, timeBlockH },
+        what: { sibling, mismatch },
       },
+      gp: { lnCeiling },
       rp,
-      ic: {
-        distanceHalfKm,
-        distanceExp,
-        waitHalfH,
-        waitExp,
-        sessionH,
-        timeBlockH,
-      },
+      xx: { control },
       ...(context ? { context } : {}),
     },
   };
