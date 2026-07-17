@@ -3,34 +3,40 @@
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 
-// Discovery filters — un-parked (MESITA-632): the shared Where / When /
-// What / Randomness panel, opened from the Filter button in the swipe
-// action bar and from the Search bar's tune icon. Rides the shared
-// LocalSheet (portals into the app card, animated open/close, ESC) with
-// keepMounted so selections survive a close. Frontend-only for now — see
-// DiscoveryFilters for the wiring status. `onActiveChange` reports whether
-// any filter deviates from defaults so the host can dot its trigger
-// (MESITA-633).
+// Discovery filters (MESITA-646): the shared flat pill sheet, opened from the
+// Filter button in the swipe action bar and from the Search bar's tune icon.
+// Rides the shared LocalSheet (portals into the app card, animated
+// open/close, ESC). Filter state lives in the global use-discovery-filters
+// store — not in the sheet — so it survives close/unmount, is identical on
+// both surfaces, and hosts derive their trigger dot from the same store
+// (no keepMounted, no onActiveChange plumbing).
 
 export function FilterSheet({
   open,
   onClose,
   ariaLabel = "Discovery filters",
-  onActiveChange,
+  zones,
+  count,
+  showSurprise = false,
 }: {
   open: boolean;
   onClose: () => void;
   ariaLabel?: string;
-  onActiveChange?: (active: boolean) => void;
+  /** Zones present in the host's catalog, most places first. */
+  zones: string[];
+  /** How many places the current filters leave visible on the host. */
+  count: number;
+  /** Swipe shows the Surprise-me toggle; the map hides it. */
+  showSurprise?: boolean;
 }) {
   return (
-    <LocalSheet
-      open={open}
-      onClose={onClose}
-      ariaLabel={ariaLabel}
-      keepMounted
-    >
-      <DiscoveryFilters onClose={onClose} onActiveChange={onActiveChange} />
+    <LocalSheet open={open} onClose={onClose} ariaLabel={ariaLabel}>
+      <DiscoveryFilters
+        onClose={onClose}
+        zones={zones}
+        count={count}
+        showSurprise={showSurprise}
+      />
     </LocalSheet>
   );
 }
