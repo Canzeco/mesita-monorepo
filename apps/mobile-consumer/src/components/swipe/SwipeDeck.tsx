@@ -321,53 +321,7 @@ function DeckBody({
           </Animated.View>
         </GestureDetector>
 
-        {stamp === 'right' ? (
-          <View
-            className="absolute inset-0 z-40 items-center justify-center"
-            pointerEvents="none"
-          >
-            <LinearGradient
-              colors={[...GRADIENTS.pink]}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  borderRadius: 16,
-                  borderWidth: 3,
-                  borderColor: '#fff',
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                  transform: [{ rotate: '-8deg' }],
-                },
-                SHADOW_GLOW,
-              ]}
-            >
-              <Heart color="#fff" fill="#fff" size={24} />
-              <Text className="text-2xl font-black tracking-[0.15em] text-white uppercase">
-                Saved
-              </Text>
-            </LinearGradient>
-          </View>
-        ) : null}
-
-        {stamp === 'left' ? (
-          <View
-            className="absolute inset-0 z-40 items-center justify-center"
-            pointerEvents="none"
-          >
-            <View className="flex-row items-center gap-2 rounded-2xl border-[3px] border-foreground/70 bg-foreground/85 px-5 py-2.5"
-              style={{ transform: [{ rotate: '8deg' }] }}
-            >
-              <X color="#fff7f8" size={24} strokeWidth={3} />
-              <Text className="text-2xl font-black tracking-[0.15em] text-background uppercase">
-                Skip
-              </Text>
-            </View>
-          </View>
-        ) : null}
+        <SwipeExitStamp direction={stamp} />
 
         {showTutorial ? <SwipeTutorialOverlay /> : null}
       </View>
@@ -386,6 +340,65 @@ function DeckBody({
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
       />
+    </View>
+  );
+}
+
+function SwipeExitStamp({
+  direction,
+}: {
+  direction: 'left' | 'right' | null;
+}) {
+  if (!direction) return null;
+
+  if (direction === 'right') {
+    return (
+      <View
+        className="absolute inset-0 z-40 items-center justify-center"
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={[...GRADIENTS.pink]}
+          start={GRADIENT_DIAGONAL.start}
+          end={GRADIENT_DIAGONAL.end}
+          style={[
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              borderRadius: 16,
+              borderWidth: 3,
+              borderColor: '#fff',
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              transform: [{ rotate: '-8deg' }],
+            },
+            SHADOW_GLOW,
+          ]}
+        >
+          <Heart color="#fff" fill="#fff" size={24} />
+          <Text className="text-2xl font-black tracking-[0.15em] text-white uppercase">
+            Saved
+          </Text>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className="absolute inset-0 z-40 items-center justify-center"
+      pointerEvents="none"
+    >
+      <View
+        className="flex-row items-center gap-2 rounded-2xl border-[3px] border-foreground/70 bg-foreground/85 px-5 py-2.5"
+        style={{ transform: [{ rotate: '8deg' }] }}
+      >
+        <X color="#fff7f8" size={24} strokeWidth={3} />
+        <Text className="text-2xl font-black tracking-[0.15em] text-background uppercase">
+          Skip
+        </Text>
+      </View>
     </View>
   );
 }
