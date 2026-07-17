@@ -30,7 +30,7 @@ const SlideOverCloseContext = createContext<(() => void) | null>(null);
 
 // Animated close for anything rendered inside the panel (header back button,
 // action bars, body links that should dismiss the modal first).
-export function useSlideOverClose() {
+function useSlideOverClose() {
   const close = useContext(SlideOverCloseContext);
   const router = useRouter();
   return close ?? (() => router.back());
