@@ -1,19 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { Crown, Instagram, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { Place } from "@/lib/api/places";
-import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
-import { cn, firstInitial } from "@/lib/utils";
-import { placeHref } from "@/lib/place-route";
+import { cn } from "@/lib/utils";
 import {
-  SOCIAL_ACTION_META,
   SOCIAL_PEOPLE,
   socialRelevance,
   type SocialPerson,
 } from "./social-feed-data";
+import { SocialActivityRow } from "./social-activity-row";
 import { SocialProfileModal } from "./SocialProfileModal";
 
 // Two ways to order the activity feed: most-recent-first, or by how relevant
@@ -132,109 +128,19 @@ export function SocialFeed({ places }: { places: Place[] }) {
           {people.map((p) => {
             const place =
               places.length > 0 ? places[p.placeSlot % places.length] : null;
-            const meta = SOCIAL_ACTION_META[p.action];
             return (
-              <div
+              <SocialActivityRow
                 key={p.id}
-                className="border-border bg-card flex w-full items-center gap-2 rounded-2xl border p-2.5"
-              >
-                {/* Person → profile modal */}
-                <button
-                  type="button"
-                  onClick={() => setProfile(p)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left transition active:scale-[0.99]"
-                >
-                  <div className="relative shrink-0">
-                    <Image
-                      src={p.avatarUrl}
-                      alt={p.name}
-                      width={44}
-                      height={44}
-                      className="h-11 w-11 rounded-full object-cover"
-                    />
-                    {p.plan === "premium" && (
-                      <span className="bg-tier-premium ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
-                        <Crown className="h-2.5 w-2.5 fill-current" />
-                      </span>
-                    )}
-                    <span
-                      className={cn(
-                        "ring-background absolute -right-0.5 -bottom-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2",
-                        INSTAGRAM_BADGE_GRADIENT_CLASS,
-                      )}
-                    >
-                      <Instagram className="h-2.5 w-2.5" />
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-foreground truncate text-sm leading-tight font-semibold">
-                        {p.name}
-                      </p>
-                      <span
-                        className={cn(
-                          "inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full px-1.5 text-[10px] font-semibold",
-                          meta.bg,
-                          meta.color,
-                        )}
-                      >
-                        <meta.Icon className="h-2.5 w-2.5" />
-                        {meta.label}
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground truncate text-[11px]">
-                      {p.igHandle} · {p.time}
-                    </p>
-                  </div>
-                </button>
-
-                {/* Place → detail (real place when the deck has one) */}
-                {place ? (
-                  <Link
-                    href={placeHref(place.slug || place.id)}
-                    className="border-border bg-background/80 flex shrink-0 items-center gap-2 rounded-xl border p-1.5 pr-2 transition hover:shadow-sm active:scale-[0.99]"
-                  >
-                    <PlaceThumb name={place.name} photo={place.photos[0]} />
-                    <span className="text-foreground max-w-[80px] truncate text-[11px] font-semibold">
-                      {place.name}
-                    </span>
-                  </Link>
-                ) : (
-                  <div className="border-border bg-muted/40 flex shrink-0 items-center gap-2 rounded-xl border p-1.5 pr-2">
-                    <PlaceThumb name={p.fallbackPlaceName} />
-                    <span className="text-muted-foreground max-w-[80px] truncate text-[11px] font-semibold">
-                      {p.fallbackPlaceName}
-                    </span>
-                  </div>
-                )}
-              </div>
+                person={p}
+                place={place}
+                onPersonClick={setProfile}
+              />
             );
           })}
         </div>
       </div>
 
       <SocialProfileModal person={profile} onClose={() => setProfile(null)} />
-    </div>
-  );
-}
-
-function PlaceThumb({ name, photo }: { name: string; photo?: string }) {
-  if (photo) {
-    return (
-      <Image
-        src={photo}
-        alt={name}
-        width={36}
-        height={36}
-        className="h-9 w-9 rounded-lg object-cover"
-      />
-    );
-  }
-  return (
-    <div className="bg-pink-gradient grid h-9 w-9 place-items-center rounded-lg text-white/85">
-      <span className="font-display text-sm font-bold">
-        {firstInitial(name)}
-      </span>
     </div>
   );
 }
