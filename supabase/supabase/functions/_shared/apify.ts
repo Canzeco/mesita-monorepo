@@ -25,7 +25,7 @@ export const APIFY_ACTORS = {
 // One actor run's outcome. `items` is null on any failure; `status`/`error`
 // carry the WHY into the per-source diags — a v2 launch bug hid weeks of
 // silent 4xx behind indistinguishable nulls (MESITA-120).
-export type ApifyRunResult<T = Record<string, unknown>> = {
+type ApifyRunResult<T = Record<string, unknown>> = {
   items: T[] | null;
   // HTTP status of the run-sync call (null = network error / client abort).
   status: number | null;
