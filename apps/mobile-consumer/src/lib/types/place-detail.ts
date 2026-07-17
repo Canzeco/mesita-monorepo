@@ -5,7 +5,7 @@ import type { MenuKind } from '@/lib/menu-url';
 
 export type ConsumerClassKey = 'free' | 'premium';
 
-export type PlaceDetailTag = {
+type PlaceDetailTag = {
   slug: string;
   label: string;
   facet: string;

@@ -93,8 +93,8 @@ def pick_first(urls: list[str], host_needles: tuple[str, ...], path_re: str | No
     return None
 
 
-def discover_firecrawl(api_key: str, venue: dict[str, Any]) -> dict[str, str | None]:
-    scope = f"{venue['name']} {venue.get('city', '')}".strip()
+def discover_firecrawl(api_key: str, place: dict[str, Any]) -> dict[str, str | None]:
+    scope = f"{place['name']} {place.get('city', '')}".strip()
     ig = firecrawl_search(api_key, f"{scope} instagram")
     fb = firecrawl_search(api_key, f"{scope} facebook")
     ot = firecrawl_search(api_key, f"{scope} opentable")
@@ -107,10 +107,10 @@ def discover_firecrawl(api_key: str, venue: dict[str, Any]) -> dict[str, str | N
     }
 
 
-def discover_perplexity(api_key: str, venue: dict[str, Any]) -> dict[str, str | None]:
+def discover_perplexity(api_key: str, place: dict[str, Any]) -> dict[str, str | None]:
     prompt = (
         f"Find official Instagram, Facebook, OpenTable, and Uber Eats URLs for "
-        f"\"{venue['name']}\" in {venue.get('locationLine', venue.get('city', ''))}. "
+        f"\"{place['name']}\" in {place.get('locationLine', place.get('city', ''))}. "
         f"Return JSON keys: instagram_url, facebook_url, opentable_url, uber_eats_url. "
         f"Use null when unsure."
     )
@@ -185,18 +185,18 @@ def main() -> int:
 
     fixtures = json.loads(Path(args.fixtures).read_text())
     rows: list[dict[str, Any]] = []
-    for venue in fixtures:
+    for place in fixtures:
         row = {
-            "name": venue["name"],
-            "truth": venue.get("truth", {}),
+            "name": place["name"],
+            "truth": place.get("truth", {}),
             "results": {
-                "firecrawl": discover_firecrawl(fc_key, venue),
+                "firecrawl": discover_firecrawl(fc_key, place),
             },
         }
         if pp_key:
-            row["results"]["perplexity"] = discover_perplexity(pp_key, venue)
+            row["results"]["perplexity"] = discover_perplexity(pp_key, place)
         rows.append(row)
-        print(f"\n=== {venue['name']} ===")
+        print(f"\n=== {place['name']} ===")
         for provider, found in row["results"].items():
             print(f"  [{provider}]")
             for field in ("instagram_url", "facebook_url", "opentable_url", "uber_eats_url"):

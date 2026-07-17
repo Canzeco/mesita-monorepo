@@ -4,14 +4,14 @@
 import { EFError, invokeEF } from '@/lib/ef';
 import { supabase } from '@/lib/supabase';
 
-export type ConsumerSummary = {
+type ConsumerSummary = {
   id: string;
   code: string;
   full_name: string | null;
   phone: string | null;
 };
 
-export type SigninPhoneResult = {
+type SigninPhoneResult = {
   role: string;
   consumer: ConsumerSummary | null;
   onboarded: boolean;
