@@ -8,7 +8,7 @@ const dsn =
   (Constants.expoConfig?.extra?.sentryDsn as string | undefined) ??
   '';
 
-export const sentryEnabled = Boolean(dsn);
+const sentryEnabled = Boolean(dsn);
 
 if (sentryEnabled) {
   Sentry.init({

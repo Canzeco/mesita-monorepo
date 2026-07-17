@@ -86,26 +86,6 @@ export async function apiUpdateConsumerProfile(
   return consumer;
 }
 
-// Visibility-only patch for consumer-web-update-profile. The EF patches just
-// the keys present, so identity fields are untouched.
-export type ProfileVisibilityPatch = {
-  profile_public?: boolean;
-  profile_show_saves?: boolean;
-  profile_show_visits?: boolean;
-};
-
-export async function apiUpdateProfileVisibility(
-  client: SupabaseClient,
-  patch: ProfileVisibilityPatch,
-): Promise<ConsumerProfile> {
-  const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
-    client,
-    "consumer-web-update-profile",
-    patch,
-  );
-  return consumer;
-}
-
 export async function apiFetchConsumerProfile(
   client: SupabaseClient,
 ): Promise<{ consumer: ConsumerProfile; consumerClass: ConsumerClass }> {

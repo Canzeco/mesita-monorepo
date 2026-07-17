@@ -1,5 +1,5 @@
 // staff-web-benchmark-link-strategies
-// Diagnostic EF: given one or more venues (name + city), runs the 5 link-discovery
+// Diagnostic EF: given one or more places (name + city), runs the 5 link-discovery
 // strategies in linklab/strategies.ts and returns each strategy's {website, instagram}.
 // This is the SAME strategy module the local benchmark runner (scripts/linklab/run.ts)
 // exercises — so the offline leaderboard reflects exactly what this EF would produce.
@@ -19,8 +19,8 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type Venue = { name: string; city: string; country?: string };
-type Body = { venues?: Venue[]; name?: string; city?: string; country?: string };
+type Place = { name: string; city: string; country?: string };
+type Body = { venues?: Place[]; name?: string; city?: string; country?: string };
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Invalid JSON" }, 400);
   }
 
-  const venues: Venue[] = body.venues?.length
+  const venues: Place[] = body.venues?.length
     ? body.venues
     : body.name && body.city
     ? [{ name: body.name, city: body.city, country: body.country }]

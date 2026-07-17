@@ -1,5 +1,5 @@
 // linklab benchmark runner (local, Deno).
-// Loads API keys from supabase/.env.local, resolves per-venue context, runs all 5 strategies
+// Loads API keys from supabase/.env.local, resolves per-place context, runs all 5 strategies
 // against the ground-truth set, scores website + instagram, prints a leaderboard.
 //
 //   deno run --allow-env --allow-net --allow-read --allow-write \
@@ -7,7 +7,7 @@
 //
 // Cache lives in scripts/linklab/.cache (per-request JSON) so re-runs don't re-bill.
 
-import { assembleContext, VenueInput } from "../../supabase/functions/_shared/linklab/context.ts";
+import { assembleContext, PlaceInput } from "../../supabase/functions/_shared/linklab/context.ts";
 import { Keys, meter } from "../../supabase/functions/_shared/linklab/providers.ts";
 import { runAllStrategies, STRATEGIES } from "../../supabase/functions/_shared/linklab/strategies.ts";
 import {
@@ -65,7 +65,7 @@ function loadKeys(): Keys {
 }
 
 // ---- run --------------------------------------------------------------------
-type VenueRow = {
+type PlaceRow = {
   truth: Truth;
   placeIdResolved: boolean;
   results: Record<string, { website: string | null; instagram: string | null }>;
@@ -95,18 +95,18 @@ async function main() {
   meter.reset();
   const started = performance.now();
   console.log(
-    `\nlinklab — ${truth.length} venues x ${strategyIds.length} strategies` +
+    `\nlinklab — ${truth.length} places x ${strategyIds.length} strategies` +
       `${NO_CACHE ? " (cache OFF)" : " (cache ON)"}\n`,
   );
 
   const rows = await mapPool(truth, CONCURRENCY, async (t) => {
-    const v: VenueInput = { name: t.name, city: t.city, country: t.country };
+    const v: PlaceInput = { name: t.name, city: t.city, country: t.country };
     const ctx = await assembleContext(keys, v);
     const all = await runAllStrategies(ctx, keys);
-    const results: VenueRow["results"] = {};
+    const results: PlaceRow["results"] = {};
     for (const id of strategyIds) results[id] = { website: all[id]?.website ?? null, instagram: all[id]?.instagram ?? null };
     process_tick(t.name);
-    return { truth: t, placeIdResolved: !!ctx.google, results } as VenueRow;
+    return { truth: t, placeIdResolved: !!ctx.google, results } as PlaceRow;
   });
 
   // ---- score ----
@@ -180,20 +180,20 @@ async function main() {
     meter.perplexityAgent * UNIT.perplexityAgent +
     meter.perplexitySonar * UNIT.perplexitySonar +
     meter.googleText * UNIT.googleText;
-  const perVenue = rows.length ? estUsd / rows.length : 0;
+  const perPlace = rows.length ? estUsd / rows.length : 0;
   // Strategy C alone ≈ 2–3 fc-search + 1 scrape + 1 sonar (+ shared g-text once)
-  const cPerVenueUsd = 3 * UNIT.firecrawlSearch + UNIT.firecrawlScrape + UNIT.perplexitySonar;
+  const cPerPlaceUsd = 3 * UNIT.firecrawlSearch + UNIT.firecrawlScrape + UNIT.perplexitySonar;
 
   console.log("\n================= COST / RUN =================");
-  console.log(`  venues: ${rows.length}  (google-resolved ${resolved}/${rows.length})   time ${secs}s`);
+  console.log(`  places: ${rows.length}  (google-resolved ${resolved}/${rows.length})   time ${secs}s`);
   console.log(
     `  calls  fc-search ${meter.firecrawlSearch}  fc-scrape ${meter.firecrawlScrape}  ` +
       `ppx-search ${meter.perplexitySearch}  ppx-agent ${meter.perplexityAgent}  ` +
       `ppx-sonar ${meter.perplexitySonar}  g-text ${meter.googleText}  cache-hits ${meter.cacheHits}`,
   );
   console.log(
-    `  est $  suite ~$${estUsd.toFixed(2)}  (~$${perVenue.toFixed(3)}/venue)  |  ` +
-      `strategy C alone ~$${cPerVenueUsd.toFixed(3)}/venue (excl. shared Google resolve)`,
+    `  est $  suite ~$${estUsd.toFixed(2)}  (~$${perPlace.toFixed(3)}/place)  |  ` +
+      `strategy C alone ~$${cPerPlaceUsd.toFixed(3)}/place (excl. shared Google resolve)`,
   );
 
   // persist raw results for inspection

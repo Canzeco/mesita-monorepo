@@ -115,25 +115,6 @@ type RecommendDeckResponse = {
   deck: Place[];
   summary: { candidates: number; embedded: number; intent?: string };
 };
-export type CatalogCategory = {
-  key: string;
-  label: string;
-  description: string;
-  emoji: string;
-  places: Place[];
-};
-type RecommendCatalogInput = {
-  lat?: number;
-  lng?: number;
-  radiusKm?: number;
-  maxCategories?: number;
-  perCategory?: number;
-};
-type RecommendCatalogResponse = {
-  categories: CatalogCategory[];
-  summary: { candidates: number; embedded?: number; categoryCount: number };
-};
-
 export async function apiFetchPublicPlaces(
   client: SupabaseClient,
   limit = 50,
@@ -185,23 +166,6 @@ export async function apiRecommendDeck(
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
 }
 
-export async function apiRecommendCatalog(
-  client: SupabaseClient,
-  input: RecommendCatalogInput = {},
-): Promise<RecommendCatalogResponse> {
-  const data = await invokeEF<RecommendCatalogResponse>(
-    client,
-    "consumer-web-recommend-map",
-    input,
-  );
-  return {
-    categories: data.categories.map((c) => ({
-      ...c,
-      places: c.places.map(stripInsecurePhotos),
-    })),
-    summary: data.summary,
-  };
-}
 // Per-row status mirrored from atlas-suggest-places. Drives the badge
 // in the consumer search picker:
 //   - not_in_mesita: Google has it, Mesita doesn't — show "Not on
@@ -229,35 +193,6 @@ export type PlacePrediction = {
   mesitaSlug?: string;
 };
 
-type ConsumerCreatePlaceResponse = {
-  place: { id: string; slug: string; name: string; status: PlaceStatus };
-  enrichment: {
-    google: boolean;
-    photoCount: number;
-    firecrawl: boolean;
-    perplexity: boolean;
-    openai: boolean;
-  };
-};
-
-export type ConsumerCreatePlaceResult =
-  | {
-      kind: "created";
-      place: { id: string; slug: string; name: string; status: PlaceStatus };
-      message: string;
-    }
-  | {
-      kind: "already_exists";
-      message: string;
-      existing: {
-        id: string;
-        slug: string | null;
-        name: string | null;
-        status: PlaceStatus | null;
-        listing_type: PlaceListingType | null;
-      } | null;
-    };
-
 /**
  * Google Places autocomplete + Mesita merge for the consumer
  * /discover/search picker. Calls consumer-suggest-places, which
@@ -278,73 +213,6 @@ export async function apiSuggestPlaces(
     { input: trimmed, sessionToken },
   );
   return predictions;
-}
-
-/**
- * Consumer-triggered place add.
- *
- * Intentionally reuses the same create pipeline as business onboarding,
- * but does NOT claim ownership: the function inserts a public web listing
- * (`listing_type=web`) with no place_members owner row.
- *
- * Returns a discriminated result rather than throwing on the expected
- * "already listed" case: the EF signals it with code `place_already_exists`
- * (as an `ok: false` body or a non-2xx FunctionsHttpError), which invokeEF
- * surfaces uniformly via EFError.code + EFError.body.
- */
-export async function apiCreatePlaceAsConsumerResult(
-  client: SupabaseClient,
-  placeId: string,
-): Promise<ConsumerCreatePlaceResult> {
-  try {
-    const data = await invokeEF<ConsumerCreatePlaceResponse>(
-      client,
-      "business-web-create-project",
-      { googlePlaceId: placeId },
-      "Couldn't add that place right now.",
-    );
-    return {
-      kind: "created",
-      place: data.place,
-      message: `${data.place.name} is now listed on Mesita and visible to everyone.`,
-    };
-  } catch (err) {
-    if (err instanceof EFError && err.code === "place_already_exists") {
-      const bodyError =
-        typeof err.body?.error === "string" ? err.body.error : null;
-      return {
-        kind: "already_exists",
-        message:
-          bodyError ??
-          "This place is already on Mesita. If you manage it, contact support to claim ownership.",
-        existing: normalizeExistingPlace(err.body?.existing),
-      };
-    }
-    throw err;
-  }
-}
-
-// Narrow the untyped `existing` blob off an EFError body into the shape the
-// already_exists result promises.
-function normalizeExistingPlace(
-  raw: unknown,
-): Extract<ConsumerCreatePlaceResult, { kind: "already_exists" }>["existing"] {
-  if (!raw || typeof raw !== "object") return null;
-  const e = raw as {
-    id?: string;
-    slug?: string | null;
-    name?: string | null;
-    status?: PlaceStatus | null;
-    listing_type?: PlaceListingType | null;
-  };
-  if (!e.id) return null;
-  return {
-    id: e.id,
-    slug: e.slug ?? null,
-    name: e.name ?? null,
-    status: e.status ?? null,
-    listing_type: e.listing_type ?? null,
-  };
 }
 
 // Legacy rows may carry http:// photos. Next.js Image rejects them and

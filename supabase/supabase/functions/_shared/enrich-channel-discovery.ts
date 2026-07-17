@@ -273,9 +273,9 @@ export async function selectChannels(
   const askLines: string[] = fields.map((f) => `- ${FIELD_SPEC[f]}`);
 
   const igRule = want.has("instagram_url")
-    ? "For instagram_url, prefer the venue's OWN account over a parent brand / group / " +
+    ? "For instagram_url, prefer the place's OWN account over a parent brand / group / " +
       "umbrella account spanning many locations. If SEVERAL official accounts exist for " +
-      "this same venue (e.g. an older/secondary handle alongside a current one), pick the " +
+      "this same place (e.g. an older/secondary handle alongside a current one), pick the " +
       "FLAGSHIP: the account with the MOST FOLLOWERS and most recent activity — never an " +
       "older, secondary, regional, or lower-follower duplicate. "
     : "";
@@ -302,7 +302,7 @@ export async function selectChannels(
     `dropping a correct one, so return a value whenever a candidate (or the web) ` +
     `plausibly IS this place's own channel. Return null for a field ONLY when NOTHING ` +
     `you can find is even plausibly this place's own presence. ${igRule}` +
-    `Each URL must be the venue's OWN channel — NEVER a review site, ranking / "best of" ` +
+    `Each URL must be the place's OWN channel — NEVER a review site, ranking / "best of" ` +
     `list, guide, directory, aggregator, a single post/video, or a source you merely cited. ` +
     `A franchise / multi-location brand's MAIN account or page IS acceptable. ` +
     `Never invent a URL.`;

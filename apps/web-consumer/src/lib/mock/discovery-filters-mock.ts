@@ -16,14 +16,6 @@ export type ZoneNode = {
   children?: ZoneNode[];
 };
 
-/** Human label for a hierarchy level ("browse by" copy). */
-export const ZONE_KIND_LABELS: Record<ZoneKind, string> = {
-  country: "Country",
-  state: "State",
-  city: "City",
-  zone: "Zone",
-};
-
 /** Plural forms for the browse hint ("Cities in Nuevo León"). */
 export const ZONE_KIND_PLURAL_LABELS: Record<ZoneKind, string> = {
   country: "Countries",
