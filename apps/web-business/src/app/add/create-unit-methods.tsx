@@ -21,7 +21,7 @@ import type { VerificationCallbacks } from "./create-unit-shared";
 // auto-lands on the first actionable method (phone → email → manual)
 // so a bare listing opens straight on the WhatsApp/email panel.
 
-export type MethodKey = "phone" | "email" | "manual";
+type MethodKey = "phone" | "email" | "manual";
 
 export function MethodsPicker({
   place,
