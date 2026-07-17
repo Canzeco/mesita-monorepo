@@ -28,6 +28,7 @@ import {
 } from "./swipe-deck-shells";
 import { SwipeActionRow } from "./swipe-action-row";
 import { readSwipeSnapshot, writeSwipeSnapshot } from "./swipe-deck-storage";
+import { SwipeDecisionBadge } from "./swipe-decision-badge";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -501,22 +502,12 @@ function Deck({ places }: { places: Place[] }) {
               className="absolute inset-0"
             />
 
-            <div
-              className={cn(
-                "bg-foreground/40 pointer-events-none absolute top-4 left-4 z-30 rounded-md border-2 border-white px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
-                dragX < -30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
-              )}
-            >
+            <SwipeDecisionBadge side="left" active={dragX < -30}>
               Skip
-            </div>
-            <div
-              className={cn(
-                "bg-pink-gradient pointer-events-none absolute top-4 right-4 z-30 rounded-md px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
-                dragX > 30 ? "scale-100 opacity-100" : "scale-90 opacity-0",
-              )}
-            >
+            </SwipeDecisionBadge>
+            <SwipeDecisionBadge side="right" active={dragX > 30}>
               Save
-            </div>
+            </SwipeDecisionBadge>
           </div>
 
           {exiting === "right" && (
