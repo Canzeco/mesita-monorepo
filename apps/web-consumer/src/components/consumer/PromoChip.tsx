@@ -52,8 +52,10 @@ export function PromoChip({
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
   const emptyTone =
     tone === "light"
-      ? "border-border bg-card text-foreground border"
+      ? "border-border bg-background text-foreground border"
       : "border border-white/35 bg-black/45 text-white";
+  const emptyIconTone =
+    tone === "light" ? "text-muted-foreground" : undefined;
 
   // Hard gate: only Verified Partners can offer rewards. Web-listed places
   // never resolve a rate; a Verified Partner may also choose not to set one.
@@ -73,7 +75,10 @@ export function PromoChip({
       <span
         className={`inline-flex max-w-full items-center gap-1.5 rounded-md whitespace-nowrap ${emptyTone} ${sizing}`}
       >
-        <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
+        <Gift
+          className={`${iconSize} shrink-0 ${emptyIconTone ?? ""}`}
+          strokeWidth={2.25}
+        />
         <span className="font-semibold">No Reward for You</span>
       </span>
     );
@@ -101,7 +106,9 @@ export function PromoChip({
     >
       <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
       <span className="font-semibold">
-        {promoPercent}% {mechanicWord} · {promoKindLabel}
+        {tone === "light"
+          ? `${promoPercent}% Discount for You`
+          : `${promoPercent}% ${mechanicWord} · ${promoKindLabel}`}
       </span>
     </span>
   );
