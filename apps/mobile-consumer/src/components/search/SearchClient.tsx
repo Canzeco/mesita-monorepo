@@ -1,8 +1,6 @@
 import { useRouter } from 'expo-router';
 import {
   ChevronUp,
-  Search as SearchIcon,
-  SlidersHorizontal,
   X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -11,12 +9,12 @@ import {
   FlatList,
   Pressable,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GooglePlaceSheet } from '@/components/search/GooglePlaceSheet';
+import { SearchBar } from '@/components/search/SearchBar';
 import { SearchMap } from '@/components/search/SearchMap';
 import { RailCard } from '@/components/search/SearchRailCard';
 import { SearchResultsPanel } from '@/components/search/SearchResultsPanel';
@@ -229,47 +227,17 @@ export function SearchClient() {
         />
       </View>
 
-      {/* Floating search bar */}
-      <View
-        className="absolute inset-x-0 z-30 px-3"
-        style={{ top: insets.top + 8 }}
-      >
-        <View
-          className="flex-row items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5"
-          style={SHADOW_ELEV}
-        >
-          <SearchIcon color="#775254" size={18} />
-          <TextInput
-            value={query}
-            onChangeText={updateQuery}
-            onFocus={() => setSearchOpen(true)}
-            placeholder="Search places"
-            placeholderTextColor="#77525466"
-            className="min-w-0 flex-1 text-[15px] text-foreground"
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-          {query.length > 0 ? (
-            <Pressable
-              onPress={() => {
-                updateQuery('');
-                setSearchOpen(false);
-              }}
-              hitSlop={8}
-            >
-              <X color="#775254" size={18} />
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => setFiltersOpen(true)}
-              hitSlop={8}
-              accessibilityLabel="Filters"
-            >
-              <SlidersHorizontal color="#775254" size={18} />
-            </Pressable>
-          )}
-        </View>
-      </View>
+      <SearchBar
+        query={query}
+        top={insets.top + 8}
+        onChangeQuery={updateQuery}
+        onFocus={() => setSearchOpen(true)}
+        onClear={() => {
+          updateQuery('');
+          setSearchOpen(false);
+        }}
+        onOpenFilters={() => setFiltersOpen(true)}
+      />
 
       {/* Results: height fits content; max ~70% so the map stays visible */}
       {showResults ? (
