@@ -176,6 +176,35 @@ export async function maybeDecayStrikes(
   return update.data as MembershipRow;
 }
 
+type ActivationStampField = "staff_channel_pinged_at" | "first_ticket_honored_at";
+
+function buildActivationPatch(
+  row: MembershipRow,
+  stampField: ActivationStampField,
+  now: Date,
+): { patch: Record<string, unknown>; membershipLive: boolean } {
+  const iso = now.toISOString();
+  const patch: Record<string, unknown> = { [stampField]: iso };
+  let membershipLive = !!row.membership_live_at;
+  const hasPing = stampField === "staff_channel_pinged_at" ||
+    !!row.staff_channel_pinged_at;
+  const hasFirstHonor = stampField === "first_ticket_honored_at" ||
+    !!row.first_ticket_honored_at;
+
+  if (
+    !row.membership_live_at &&
+    hasPing &&
+    hasFirstHonor &&
+    !row.membership_forfeited_at &&
+    isPaidPlan(row.plan)
+  ) {
+    patch.membership_live_at = iso;
+    membershipLive = true;
+  }
+
+  return { patch, membershipLive };
+}
+
 /** Stamp a successful staff WhatsApp activation/test ping. */
 export async function recordStaffChannelPing(
   admin: SupabaseClient,
@@ -184,21 +213,14 @@ export async function recordStaffChannelPing(
 ): Promise<
   { ok: true; membershipLive: boolean } | { ok: false; error: string }
 > {
-  const iso = now.toISOString();
   const row = await loadMembershipRow(admin, projectId);
   if (!row) return { ok: false, error: "project not found" };
 
-  const patch: Record<string, unknown> = { staff_channel_pinged_at: iso };
-  let membershipLive = !!row.membership_live_at;
-  if (
-    !row.membership_live_at &&
-    row.first_ticket_honored_at &&
-    !row.membership_forfeited_at &&
-    isPaidPlan(row.plan)
-  ) {
-    patch.membership_live_at = iso;
-    membershipLive = true;
-  }
+  const { patch, membershipLive } = buildActivationPatch(
+    row,
+    "staff_channel_pinged_at",
+    now,
+  );
 
   const update = await admin.from("projects").update(patch).eq("id", projectId);
   if (update.error) return { ok: false, error: update.error.message };
@@ -230,18 +252,11 @@ export async function recordFirstTicketHonored(
     };
   }
 
-  const iso = now.toISOString();
-  const patch: Record<string, unknown> = { first_ticket_honored_at: iso };
-  let membershipLive = !!row.membership_live_at;
-  if (
-    !row.membership_live_at &&
-    row.staff_channel_pinged_at &&
-    !row.membership_forfeited_at &&
-    isPaidPlan(row.plan)
-  ) {
-    patch.membership_live_at = iso;
-    membershipLive = true;
-  }
+  const { patch, membershipLive } = buildActivationPatch(
+    row,
+    "first_ticket_honored_at",
+    now,
+  );
 
   const update = await admin.from("projects").update(patch).eq("id", projectId);
   if (update.error) return { ok: false, error: update.error.message };
