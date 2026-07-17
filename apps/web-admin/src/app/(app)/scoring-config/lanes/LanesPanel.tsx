@@ -4,13 +4,12 @@ import { ArrowRight, Cog } from "lucide-react";
 import {
   LANE_N_MAX,
   laneCountsTotal,
-  laneFormula,
   LANES,
   MERGE_ROTATION,
   STANDARD_ENGINE,
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { BoxSaveBar, GroupHead, PanelCard, Slider, SubHead } from "../panel-ui";
+import { BoxSaveBar, GroupHead, PanelCard, Slider, SubHead, SubscoreFormula } from "../panel-ui";
 import { LaneBadge } from "../playground-ui";
 import { DeckPlayground } from "./DeckPlayground";
 
@@ -38,7 +37,7 @@ export function LanesPanel() {
       {/* ══ Lane composition ═════════════════════════════════════════ */}
       <PanelCard
         title="Lane composition · score = product of subscores"
-        subtitle="Three lanes, one score each — every subscore lands in [0,1], so a lane score is [0,1] too. EM and SM multiply in every lane (never blend): semantically dead OR structurally infeasible → the card dies. The inorganic lane is the organic one with bought merit (RP) swapped in for earned (GP); Hybrid carries both."
+        subtitle="Three lanes, one score each — the product of its subscores, all in [0,1]. EM·SM multiply in every lane (never blend): dead vibes OR infeasible → the card dies. Inorganic swaps bought merit (RP) for earned (GP); Hybrid carries both."
         pill="formulas locked"
       >
         <div className="mt-4 flex flex-col gap-2">
@@ -49,9 +48,7 @@ export function LanesPanel() {
             >
               <LaneBadge laneId={l.id} />
               <span className="w-24 text-[13px] font-semibold">{l.label}</span>
-              <span className="font-mono text-[13px] font-semibold tracking-tight">
-                {laneFormula(l)}
-              </span>
+              <SubscoreFormula parts={l.parts} />
               <span className="text-muted-foreground ml-auto text-[11px]">merit: {l.merit}</span>
             </div>
           ))}
@@ -66,7 +63,7 @@ export function LanesPanel() {
       {/* ══ Merge ════════════════════════════════════════════════════ */}
       <PanelCard
         title="Merge · three lanes → the final deck"
-        subtitle="Each lane ranks the pool by its own score and takes its OWN top-N — the counts below are per lane, and 0 turns a lane off (e.g. no paid cards). Round-robin one card at a time — identical for Swipe and Map — dedupe ON INSERT (first occurrence wins; O leads, so organic keeps dupes), NO backfill: the deck is ≤ the counts' sum and shrinks as lanes agree. Shrinkage is signal, not defect."
+        subtitle="Each lane takes its own top-N (below; 0 turns a lane off), then round-robin O → I → H, dedupe on insert, no backfill. The deck is ≤ the counts' sum and shrinks as lanes agree — shrinkage is signal, not defect."
         pill={`deck ≤ ${total}`}
       >
         <div className="mt-4 grid gap-x-8 gap-y-4 lg:grid-cols-2">
@@ -161,7 +158,7 @@ export function LanesPanel() {
       {/* ══ Filters ══════════════════════════════════════════════════ */}
       <PanelCard
         title="Filters · Where · When · What · Randomness"
-        subtitle="The consumer-facing filter row and where each filter lands in the model. Where/When/What are SM's intent-side inputs — the filters ARE the structured ask; Randomness sets XX's control per query. These are the CONSUMER's knobs — the admin configures only their no-filter defaults; none of them is a separate scoring stage."
+        subtitle="The consumer's filter row, mapped to the model — Where/When/What are SM's intent inputs; Randomness sets XX's control. Consumer knobs; the admin sets only their no-filter defaults."
       >
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {[

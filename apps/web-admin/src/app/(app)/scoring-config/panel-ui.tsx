@@ -5,6 +5,7 @@ import {
   CONTEXT_FIELDS,
   DATA_SOURCES,
   LANES,
+  SUBSCORE_BY_ID,
   SUBSCORES,
   type ContextSide,
   type DataAccess,
@@ -19,6 +20,108 @@ import {
 export const LANE_SHORT: Record<LaneId, string> = Object.fromEntries(
   LANES.map((l) => [l.id, l.label[0].toUpperCase()]),
 ) as Record<LaneId, string>;
+
+// ── Subscore identity — one learnable colour per subscore (EM · SM · GP · RP
+// · XX). Static class strings (Tailwind JIT reads the literals), used by the
+// overview strip, the per-subscore card headers and the coloured lane
+// formulas so a subscore reads the SAME everywhere. Distinct from the lane
+// badges (sky/pink/violet) on purpose — RP/pink echoing the inorganic lane is
+// meaning, not collision.
+export const SUBSCORE_TINT: Record<SubscoreId, { chip: string; text: string }> = {
+  em: { chip: "bg-indigo-500", text: "text-indigo-600" },
+  sm: { chip: "bg-teal-500", text: "text-teal-600" },
+  gp: { chip: "bg-amber-500", text: "text-amber-600" },
+  rp: { chip: "bg-pink-600", text: "text-pink-700" },
+  xx: { chip: "bg-slate-500", text: "text-slate-600" },
+};
+
+/** The five subscores as a legend + jump strip — the model's spine at a
+ * glance. Each pill anchors to its card (`#sub-<id>`). */
+export function SubscoreOverview() {
+  return (
+    <section className="border-border bg-card shadow-card rounded-2xl border p-4 sm:p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        {SUBSCORES.map((s) => (
+          <a
+            key={s.id}
+            href={`#sub-${s.id}`}
+            className="border-border/70 bg-muted/40 hover:bg-muted inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition active:scale-[0.98]"
+          >
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded-md font-mono text-[10px] font-bold text-white ${SUBSCORE_TINT[s.id].chip}`}
+            >
+              {s.short}
+            </span>
+            <span className="text-[13px] font-semibold">{s.name}</span>
+          </a>
+        ))}
+      </div>
+      <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+        Five subscores, each in [0,1]. Three lanes multiply their own subset into one score, then
+        merge into the final deck on{" "}
+        <span className="text-foreground/70 font-semibold">Scores &amp; Lanes</span>. Tune each
+        subscore below.
+      </p>
+    </section>
+  );
+}
+
+/** A subscore's card — identity header (colour chip + canonical name) over the
+ * shared shell. `blurb` is ONE line; the full rationale lives in scores.ts. */
+export function SubscoreCard({
+  id,
+  blurb,
+  pill,
+  children,
+}: {
+  id: SubscoreId;
+  blurb: string;
+  pill?: string;
+  children: React.ReactNode;
+}) {
+  const def = SUBSCORE_BY_ID[id];
+  const t = SUBSCORE_TINT[id];
+  return (
+    <section
+      id={`sub-${id}`}
+      className="border-border bg-card shadow-card scroll-mt-24 rounded-2xl border p-5 sm:p-6"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-[13px] font-bold text-white ${t.chip}`}
+          >
+            {def.short}
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold tracking-tight">{def.name}</h2>
+            <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">{blurb}</p>
+          </div>
+        </div>
+        {pill ? (
+          <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold">
+            {pill}
+          </span>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** A lane's formula with each subscore in its identity colour — EM·SM·GP·XX. */
+export function SubscoreFormula({ parts }: { parts: readonly SubscoreId[] }) {
+  return (
+    <span className="inline-flex flex-wrap items-center font-mono text-[13px] font-semibold tracking-tight">
+      {parts.map((p, i) => (
+        <span key={p} className="inline-flex items-center">
+          <span className={SUBSCORE_TINT[p].text}>{SUBSCORE_BY_ID[p].short}</span>
+          {i < parts.length - 1 ? <span className="text-muted-foreground/40 px-1">·</span> : null}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export function GroupHead({ children }: { children: React.ReactNode }) {
   return (

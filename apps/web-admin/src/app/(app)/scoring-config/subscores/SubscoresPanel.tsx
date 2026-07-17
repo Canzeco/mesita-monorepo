@@ -22,6 +22,8 @@ import {
   PanelCard,
   Slider,
   SubHead,
+  SubscoreCard,
+  SubscoreOverview,
 } from "../panel-ui";
 import { SubscorePlayground } from "./SubscorePlayground";
 
@@ -101,10 +103,12 @@ export function SubscoresPanel() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
+      <SubscoreOverview />
+
       {/* ══ Data access — THE core config ════════════════════════════ */}
       <PanelCard
         title="Data access · the core config"
-        subtitle="Each subscore can be configured to select which data it is allowed to access — the default is all data ON; any individual data source can be toggled OFF per subscore (the spec's main knob). Four sources: Consumer (constant per consumer) · Place (constant per place) · Intent (per query — Where · When · What) · Interaction (per consumer × place, the edge — only SM can read it). Both playgrounds enforce the matrix live: revoke a source and watch that subscore's numbers move."
+        subtitle="The core knob — which of the four data sources (Consumer · Place · Intent · Interaction) each subscore may read. Default all ON; toggle any applicable cell OFF. Both playgrounds enforce it live."
         pill="all data ON by default"
       >
         <DataAccessMatrix access={dataAccess} onToggle={toggleSource} />
@@ -116,9 +120,9 @@ export function SubscoresPanel() {
       </PanelCard>
 
       {/* ══ EM ═══════════════════════════════════════════════════════ */}
-      <PanelCard
-        title="EM Subscore · Embeddings Match"
-        subtitle="cosine(place vector, consumer + intent vector), clamped max(0, cos) → [0,1]. The encoder is a FIXED decision, not a param: OpenAI text-embedding-3-small at its native 1536 dims (unit vectors, so cos = A·B — pgvector computes it at recall); the playground emulates it with a feature-hash encoder. Reads TEXT only — the context below is CONFIG: click a field to include or exclude it from the embedded documents."
+      <SubscoreCard
+        id="em"
+        blurb="cosine(place vector, consumer + intent vector), clamped to [0,1]. Encoder is fixed (text-embedding-3-small · 1536d); the context below is CONFIG — toggle which text fields get embedded."
         pill={`${context.em.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
@@ -141,12 +145,12 @@ export function SubscoresPanel() {
         </div>
         <ContextConfigCols enabled={emSet} onToggle={toggleContext} />
         {bar("em")}
-      </PanelCard>
+      </SubscoreCard>
 
       {/* ══ SM ═══════════════════════════════════════════════════════ */}
-      <PanelCard
-        title="SM Subscore · Structured Match — where × when × what"
-        subtitle="Deterministic checks of the intent's structured asks against place facts, each factor [0,1], multiplied — any hard miss tanks the card. where measures km to the consumer's W (a named region set, else the GPS point); when = wait × fit on the real hours; what is the category ladder. Every knob is a belief argued from the product."
+      <SubscoreCard
+        id="sm"
+        blurb="where × when × what — deterministic checks of the intent's structured asks against place facts, each in [0,1], multiplied. Any hard miss tanks the card."
       >
         <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <div>
@@ -271,12 +275,12 @@ export function SubscoresPanel() {
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.sm} />
         {bar("sm")}
-      </PanelCard>
+      </SubscoreCard>
 
       {/* ══ GP ═══════════════════════════════════════════════════════ */}
-      <PanelCard
-        title="GP Subscore · Google Popularity"
-        subtitle="min(1, ln(1 + rating × reviews) / ceiling) — total star mass, log-squashed. A simple log, NOT a sigmoid: a sigmoid needs a 'typical popularity' center (a scale assumption); the log needs one ceiling knob. No reviews → 0: no Google presence means out of the organic lane."
+      <SubscoreCard
+        id="gp"
+        blurb="min(1, ln(1 + rating × reviews) / ceiling) — total star mass, log-squashed. No reviews → 0: no Google presence means out of the organic lane."
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
@@ -316,12 +320,12 @@ export function SubscoresPanel() {
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.gp} />
         {bar("gp")}
-      </PanelCard>
+      </SubscoreCard>
 
       {/* ══ RP ═══════════════════════════════════════════════════════ */}
-      <PanelCard
-        title="RP Subscore · Rewards Promotions"
-        subtitle="Posture from the place's live promo rates → a rung in [0,1] — BOUGHT merit, the paid lanes' multiplier. No literal 0: non-members never enter the paid lanes at all (a lane filter, not a score); the zero-posture member keeps a whisper. Rates never reach the consumer — RP reads them server-side only."
+      <SubscoreCard
+        id="rp"
+        blurb="Membership posture → a rung in [0,1] — BOUGHT merit, the paid lanes' multiplier. Non-members never enter the paid lanes (a lane filter, not a score); rates stay server-side."
       >
         <div className="mt-4 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
           {STRATEGIES.map((s) => (
@@ -350,12 +354,12 @@ export function SubscoresPanel() {
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.rp} />
         {bar("rp")}
-      </PanelCard>
+      </SubscoreCard>
 
       {/* ══ XX ═══════════════════════════════════════════════════════ */}
-      <PanelCard
-        title="XX Subscore · Random Number"
-        subtitle="XX = U^control, U ~ Uniform[0,1) drawn fresh per card per lane (three independent draws — Organic, Inorganic, Hybrid). Control is the CONSUMER'S knob — the Randomness filter sets it per query. The admin configures only the DEFAULT below: what the Standard Engine uses when the consumer sets no filter. 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos; higher control never changes WHO is luckiest, only how much luck beats merit."
+      <SubscoreCard
+        id="xx"
+        blurb="U^control, drawn fresh per card per lane. Control is the CONSUMER's Randomness knob; the admin sets only the no-filter default below. 0 → off (pure merit) … 5 → near-total chaos."
         pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
@@ -383,7 +387,7 @@ export function SubscoresPanel() {
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.xx} />
         {bar("xx")}
-      </PanelCard>
+      </SubscoreCard>
 
       {/* ══ Persistence ══════════════════════════════════════════════ */}
       <PanelCard
