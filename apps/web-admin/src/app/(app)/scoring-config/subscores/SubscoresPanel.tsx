@@ -400,7 +400,7 @@ export function SubscoresPanel() {
             Reset all boxes to defaults
           </button>
           <span className="text-muted-foreground ml-3 text-xs">
-            loads the code defaults into every box — each box stays unsaved until ITS Save
+            loads the code defaults into every box on BOTH pages — each box stays unsaved until ITS Save
           </span>
         </div>
 
