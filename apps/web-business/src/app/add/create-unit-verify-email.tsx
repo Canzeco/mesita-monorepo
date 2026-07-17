@@ -17,7 +17,7 @@ import {
   type VerificationCallbacks,
 } from "./create-unit-shared";
 
-export type EmailState =
+type EmailState =
   | { kind: "idle" }
   | { kind: "sending" }
   | {
