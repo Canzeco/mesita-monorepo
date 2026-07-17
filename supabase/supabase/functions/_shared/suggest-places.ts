@@ -43,6 +43,14 @@ import {
   evaluatePlaceForChannel,
   readChannelPolicy,
 } from "./sourcing.ts";
+import {
+  type GoogleTypeFilter,
+  googleTypeFilterForPolicy,
+  mergePredictionsByPlaceId,
+  type Prediction,
+  type PredictionStatus,
+  sortMesitaPredictionsFirst,
+} from "./suggest-places-helpers.ts";
 
 export type SuggestPlacesArgs = {
   input?: string;
@@ -55,25 +63,6 @@ export type SuggestPlacesArgs = {
   // app_settings.sourcing_config[sourcingChannel]. On-Mesita rows always
   // pass — they're already onboarded.
   sourcingChannel?: ChannelKey;
-};
-
-type PredictionStatus =
-  | "not_in_mesita"
-  | "web_listed"
-  | "verified_partner_other"
-  | "verified_partner_self";
-
-type Prediction = {
-  placeId: string;
-  mainText: string;
-  secondaryText: string;
-  status: PredictionStatus;
-  // Present only on on-Mesita rows (status !== "not_in_mesita"):
-  // projects_view id + slug so clients can navigate directly to the
-  // place instead of fuzzy-matching by name. Google-only predictions
-  // omit both.
-  mesitaId?: string;
-  mesitaSlug?: string;
 };
 
 // Runs the merge and returns the full HTTP response for the facade to
@@ -108,11 +97,7 @@ export async function suggestPlaces(
   // places before the rating/review post-filter can run. Family + floors
   // are enforced after merge via filterPredictionsBySourcing.
   // Skip the Google leg only when the channel is off or has no families.
-  const googleTypeFilter: GoogleTypeFilter = !sourcingPolicy
-    ? "legacy"
-    : !sourcingPolicy.enabled || sourcingPolicy.families.length === 0
-      ? "skip"
-      : "open";
+  const googleTypeFilter = googleTypeFilterForPolicy(sourcingPolicy);
 
   // Fire Google + Mesita searches in parallel. Either can fail
   // independently; we merge whatever comes back.
@@ -121,44 +106,34 @@ export async function suggestPlaces(
     fetchMesitaPredictions(admin, input, callerUserId),
   ]);
 
-  if (googleResult.status === "rejected" && mesitaResult.status === "rejected") {
+  if (
+    googleResult.status === "rejected" && mesitaResult.status === "rejected"
+  ) {
     return json({
       ok: false,
       code: "network_error",
-      error:
-        googleResult.reason instanceof Error
-          ? googleResult.reason.message
-          : "Search failed.",
+      error: googleResult.reason instanceof Error
+        ? googleResult.reason.message
+        : "Search failed.",
     });
   }
   if (googleResult.status === "fulfilled" && googleResult.value.errorEnvelope) {
     return json(googleResult.value.errorEnvelope);
   }
 
-  const googlePreds = googleResult.status === "fulfilled" ? googleResult.value.predictions : [];
-  const mesitaPreds = mesitaResult.status === "fulfilled" ? mesitaResult.value : [];
+  const googlePreds = googleResult.status === "fulfilled"
+    ? googleResult.value.predictions
+    : [];
+  const mesitaPreds = mesitaResult.status === "fulfilled"
+    ? mesitaResult.value
+    : [];
 
   // Merge: Mesita-side hits take precedence (status wins for matching
   // placeId), then any remaining Google entries follow. Google's
   // structured text is nicer, so we keep its mainText/secondaryText but
   // graft Mesita's status (+ mesitaId/mesitaSlug) on top when the
   // placeId is in both sources.
-  const byPlaceId = new Map<string, Prediction>();
-  for (const p of mesitaPreds) byPlaceId.set(p.placeId, p);
-  for (const p of googlePreds) {
-    const existing = byPlaceId.get(p.placeId);
-    byPlaceId.set(
-      p.placeId,
-      existing
-        ? {
-            ...p,
-            status: existing.status,
-            mesitaId: existing.mesitaId,
-            mesitaSlug: existing.mesitaSlug,
-          }
-        : p,
-    );
-  }
+  const byPlaceId = mergePredictionsByPlaceId(googlePreds, mesitaPreds);
 
   // Backfill status for predictions Google returned but the ILIKE
   // fallback missed (e.g., "Strana San Pedro" vs the place named just
@@ -168,7 +143,11 @@ export async function suggestPlaces(
     .filter((p) => p.status === "not_in_mesita")
     .map((p) => p.placeId);
   if (orphanPlaceIds.length > 0) {
-    const mesitaByPlaceId = await enrichByPlaceIds(admin, orphanPlaceIds, callerUserId);
+    const mesitaByPlaceId = await enrichByPlaceIds(
+      admin,
+      orphanPlaceIds,
+      callerUserId,
+    );
     for (const [placeId, mesita] of mesitaByPlaceId) {
       const existing = byPlaceId.get(placeId);
       if (!existing) continue;
@@ -176,11 +155,9 @@ export async function suggestPlaces(
     }
   }
 
-  const predictions = Array.from(byPlaceId.values()).sort((a, b) => {
-    const aIn = a.status !== "not_in_mesita";
-    const bIn = b.status !== "not_in_mesita";
-    return aIn === bIn ? 0 : aIn ? -1 : 1;
-  });
+  const predictions = sortMesitaPredictionsFirst(
+    Array.from(byPlaceId.values()),
+  );
 
   const filtered = sourcingPolicy
     ? await filterPredictionsBySourcing(predictions, sourcingPolicy, apiKey)
@@ -190,12 +167,6 @@ export async function suggestPlaces(
 }
 
 // ── Google ────────────────────────────────────────────────────────────
-
-// How to constrain Google Autocomplete primary types for this call:
-// - "legacy": no sourcing channel → static hospitality allowlist
-// - "skip": channel disabled / no families → don't call Google
-// - "open": sourced search → omit includedPrimaryTypes; post-filter enforces policy
-type GoogleTypeFilter = "legacy" | "skip" | "open";
 
 async function fetchGooglePredictions(
   input: string,
@@ -213,7 +184,13 @@ async function fetchGooglePredictions(
   const body: Record<string, unknown> = { input, sessionToken };
   if (typeFilter === "legacy") {
     // Legacy path (no sourcing channel): broad static hospitality filter.
-    body.includedPrimaryTypes = ["restaurant", "bar", "cafe", "night_club", "bakery"];
+    body.includedPrimaryTypes = [
+      "restaurant",
+      "bar",
+      "cafe",
+      "night_club",
+      "bakery",
+    ];
   }
   // "open": omit includedPrimaryTypes so night_club / cake_shop / bakery /
   // museum / etc. can surface; filterPredictionsBySourcing drops the rest.
@@ -312,7 +289,9 @@ async function enrichByPlaceIds(
   admin: SupabaseClient,
   placeIds: string[],
   callerId: string | null,
-): Promise<Map<string, Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">>> {
+): Promise<
+  Map<string, Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">>
+> {
   const { data, error } = await admin
     .from("projects_view")
     .select("id, slug, google_place_id")
@@ -324,7 +303,10 @@ async function enrichByPlaceIds(
   type Row = { id: string; slug: string; google_place_id: string };
   const rows = (data ?? []) as Row[];
   const statuses = await statusesForPlaces(admin, rows, callerId);
-  const out = new Map<string, Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">>();
+  const out = new Map<
+    string,
+    Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">
+  >();
   for (const r of rows) {
     out.set(r.google_place_id, {
       status: statuses.get(r.google_place_id) ?? "web_listed",
@@ -354,10 +336,12 @@ async function statusesForPlaces(
     console.error("[suggest-places] owner lookup:", error.message);
   }
   const ownerByPlace = new Map<string, string>();
-  for (const m of (data ?? []) as Array<{
-    project_id: string;
-    business_id: string;
-  }>) {
+  for (
+    const m of (data ?? []) as Array<{
+      project_id: string;
+      business_id: string;
+    }>
+  ) {
     ownerByPlace.set(m.project_id, m.business_id);
   }
   const out = new Map<string, PredictionStatus>();
@@ -389,7 +373,11 @@ async function filterPredictionsBySourcing(
 
   const signalsByPlaceId = new Map<
     string,
-    { primaryType: string | null; rating: number | null; reviewCount: number | null }
+    {
+      primaryType: string | null;
+      rating: number | null;
+      reviewCount: number | null;
+    }
   >();
   await Promise.all(
     googleOnly.map(async (p) => {
