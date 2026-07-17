@@ -22,8 +22,10 @@ import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   applyDiscoveryFilters,
-  deriveZones,
+  deriveCategoryOptions,
+  deriveWhereOptions,
   discoveryFiltersAreActive,
+  orderByRandomness,
 } from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
@@ -211,14 +213,26 @@ function Deck({ places }: { places: Place[] }) {
   );
 
   // The deck the user actually swipes (MESITA-646): the shared discovery
-  // filters narrow `located` live, and Surprise-me trades the ranked
-  // partner-first order for a shuffle. Zone options derive from the RAW
-  // snapshot so the sheet offers every zone this deck actually has.
-  const deck = useMemo(() => {
-    const filtered = applyDiscoveryFilters(located, filters);
-    return filters.surprise ? shuffleDeck(filtered) : filtered;
-  }, [located, filters]);
-  const zones = useMemo(() => deriveZones(runtimeDeck), [runtimeDeck]);
+  // filters narrow `located` live, and the randomness level (MESITA-650)
+  // reorders it — jittered ranks at 1–2, full shuffle at 3. Option lists
+  // derive from the RAW snapshot so the sheet offers everything this deck
+  // actually has.
+  const deck = useMemo(
+    () =>
+      orderByRandomness(
+        applyDiscoveryFilters(located, filters),
+        filters.randomness,
+      ),
+    [located, filters],
+  );
+  const whereOptions = useMemo(
+    () => deriveWhereOptions(runtimeDeck),
+    [runtimeDeck],
+  );
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(runtimeDeck),
+    [runtimeDeck],
+  );
 
   // Past the last card the deck is exhausted — no silent wrap. Looping
   // back to the first card with a tiny flash was reading as "the last
@@ -463,9 +477,11 @@ function Deck({ places }: { places: Place[] }) {
     <FilterSheet
       open={filtersOpen}
       onClose={() => setFiltersOpen(false)}
-      zones={zones}
+      whereOptions={whereOptions}
+      categoryOptions={categoryOptions}
       count={deck.length}
-      showSurprise
+      hasLocation={coords != null}
+      showRandomness
     />
   );
 

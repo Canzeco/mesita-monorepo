@@ -46,7 +46,8 @@ import { SearchBar } from "./SearchBar";
 import type { AddState } from "./PredictionRow";
 import {
   applyDiscoveryFilters,
-  deriveZones,
+  deriveCategoryOptions,
+  deriveWhereOptions,
   discoveryFiltersAreActive,
 } from "@/lib/discovery-filters-engine";
 import {
@@ -120,7 +121,11 @@ export function SearchClient({
     () => withDistances(places, userLocation),
     [places, userLocation],
   );
-  const zones = useMemo(() => deriveZones(catalog), [catalog]);
+  const whereOptions = useMemo(() => deriveWhereOptions(catalog), [catalog]);
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(catalog),
+    [catalog],
+  );
   const visible = useMemo(() => {
     const filtered = applyDiscoveryFilters(catalog, filters);
     // The selection must stay pinned even when the active filters would
@@ -474,14 +479,16 @@ export function SearchClient({
 
       {searchOpen && trimmed.length === 0 && <EmptySearchPrompt />}
 
-      {/* Surprise-me stays hidden here — it shuffles the swipe deck; a map
-          can't be shuffled. */}
+      {/* The Random row stays hidden here — it orders the swipe deck; a map
+          can't be reordered. */}
       <FilterSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         ariaLabel="Search filters"
-        zones={zones}
+        whereOptions={whereOptions}
+        categoryOptions={categoryOptions}
         count={visible.length}
+        hasLocation={userLocation != null}
       />
 
       <GooglePlaceSheet

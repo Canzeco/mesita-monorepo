@@ -5,23 +5,33 @@ import { Clock, Dices, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
+  DISTANCE_STEPS_KM,
+  RANDOMNESS_LABELS,
+  type CategoryOption,
+  type RandomnessLevel,
+  type WhereOption,
+} from "@/lib/discovery-filters-engine";
+import {
   patchDiscoveryFilters,
   resetDiscoveryFilters,
+  toggleDiscoveryCategory,
   toggleDiscoveryFamily,
   useDiscoveryFilters,
 } from "@/lib/use-discovery-filters";
 
-// Shared body of the discovery FilterSheet (Home Swipe + Search map) — the
-// MESITA-646 simplification of MESITA-632's four-card sheet. One control
-// language (pills), no in-sheet navigation, no sliders, and every control
-// filters for real, client-side (discovery-filters-engine):
-//   Type — the six place families (MESITA-635), multi-select, empty = all.
-//   Zone — "Near me" (= no zone constraint; ranking is already
-//          distance-aware) + zones derived from the catalog the host is
-//          actually showing, so no pick can ever be a dead end.
-//   Open now / Surprise me — standalone toggles. Surprise is Swipe-only
-//          (it shuffles the deck; a map can't be shuffled), so the map
-//          host hides it.
+// Shared body of the discovery FilterSheet (Home Swipe + Search map) —
+// Pato's two-tier model (MESITA-650) on the MESITA-646 flat pill language:
+//   Type       — super-categories (six families), multi-select
+//   Categories — concrete categories from the catalog, multi; ORed with Type
+//   Zone       — 📍 Near me (no constraint) | super-zones (cities) | zones,
+//                city + zone tiers derived from the catalog; picking a city
+//                reveals its zones
+//   Distance   — Here-mode tolerance over the computed distance_km (only
+//                when geolocation is granted; hidden otherwise)
+//   When       — Now (neutral default) or a 0–23 hour: open at that hour,
+//                place-local
+//   Random     — Ranked · Mild · Adventurous · Surprise (0–3); Swipe-only,
+//                it orders the deck and a map can't be reordered
 // State lives in the ONE shared store (use-discovery-filters): both surfaces
 // and both trigger dots read the same filters. Live-apply — every tap
 // narrows immediately; the footer CTA is feedback (real count) + close, and
@@ -29,25 +39,55 @@ import {
 
 export function DiscoveryFilters({
   onClose,
-  zones,
+  whereOptions,
+  categoryOptions,
   count,
-  showSurprise = false,
+  hasLocation,
+  showRandomness = false,
 }: {
   onClose: () => void;
-  /** Zones present in the host's catalog, most places first. */
-  zones: string[];
+  /** Cities + their zones present in the host's catalog, biggest first. */
+  whereOptions: WhereOption[];
+  /** Concrete categories present in the host's catalog, biggest first. */
+  categoryOptions: CategoryOption[];
   /** How many places the current filters leave visible on the host. */
   count: number;
-  /** Swipe shows the Surprise-me toggle; the map hides it. */
-  showSurprise?: boolean;
+  /** Geolocation granted — enables the Here distance tolerance. */
+  hasLocation: boolean;
+  /** Swipe shows the Random level row; the map hides it. */
+  showRandomness?: boolean;
 }) {
   const filters = useDiscoveryFilters();
 
-  // A persisted zone can predate the current catalog (other surface, older
-  // session). Surface it as an extra active pill so the selection is never
-  // invisible — tapping it (or Near me) clears it.
+  const here = filters.city === null && filters.zone === null;
+  // The city whose zones row is expanded: an explicit city pick, or the
+  // parent of the selected zone.
+  const activeCity =
+    filters.city ??
+    (filters.zone !== null
+      ? (whereOptions.find((o) => o.zones.includes(filters.zone!))?.city ??
+        null)
+      : null);
+  const activeCityZones =
+    activeCity !== null
+      ? (whereOptions.find((o) => o.city === activeCity)?.zones ?? [])
+      : [];
+
+  // Persisted picks can predate the current catalog (other surface, older
+  // session). Surface them as extra active pills so a selection is never
+  // invisible — tapping clears it back to Near me / all.
+  const staleCity =
+    filters.city !== null && !whereOptions.some((o) => o.city === filters.city)
+      ? filters.city
+      : null;
   const staleZone =
-    filters.zone !== null && !zones.includes(filters.zone) ? filters.zone : null;
+    filters.zone !== null &&
+    !whereOptions.some((o) => o.zones.includes(filters.zone!))
+      ? filters.zone
+      : null;
+  const staleCategories = filters.categories.filter(
+    (slug) => !categoryOptions.some((c) => c.slug === slug),
+  );
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -94,55 +134,151 @@ export function DiscoveryFilters({
           ))}
         </div>
 
-        {(zones.length > 0 || staleZone) && (
+        {(categoryOptions.length > 1 || staleCategories.length > 0) && (
           <>
-            <SectionLabel className="mt-5">Zone</SectionLabel>
+            <SectionLabel className="mt-5">Categories</SectionLabel>
             <div className="flex flex-wrap gap-1.5">
-              <Pill
-                active={filters.zone === null}
-                onClick={() => patchDiscoveryFilters({ zone: null })}
-              >
-                <MapPin className="h-3.5 w-3.5" /> Near me
-              </Pill>
-              {zones.map((zone) => (
+              {categoryOptions.map((option) => (
                 <Pill
-                  key={zone}
-                  active={filters.zone === zone}
-                  onClick={() => patchDiscoveryFilters({ zone })}
+                  key={option.slug}
+                  active={filters.categories.includes(option.slug)}
+                  onClick={() => toggleDiscoveryCategory(option.slug)}
                 >
-                  {zone}
+                  {option.label}
                 </Pill>
               ))}
-              {staleZone && (
+              {staleCategories.map((slug) => (
                 <Pill
+                  key={slug}
                   active
-                  onClick={() => patchDiscoveryFilters({ zone: null })}
+                  onClick={() => toggleDiscoveryCategory(slug)}
                 >
-                  {staleZone}
+                  {slug}
                 </Pill>
-              )}
+              ))}
             </div>
           </>
         )}
 
-        <div className="mt-6 flex flex-wrap gap-1.5">
+        <SectionLabel className="mt-5">Zone</SectionLabel>
+        <div className="flex flex-wrap gap-1.5">
           <Pill
-            active={filters.openNow}
-            onClick={() => patchDiscoveryFilters({ openNow: !filters.openNow })}
+            active={here}
+            onClick={() => patchDiscoveryFilters({ city: null, zone: null })}
           >
-            <Clock className="h-3.5 w-3.5" /> Open now
+            <MapPin className="h-3.5 w-3.5" /> Near me
           </Pill>
-          {showSurprise && (
+          {whereOptions.map((option) => (
             <Pill
-              active={filters.surprise}
+              key={option.city}
+              active={filters.city === option.city && filters.zone === null}
               onClick={() =>
-                patchDiscoveryFilters({ surprise: !filters.surprise })
+                patchDiscoveryFilters({ city: option.city, zone: null })
               }
             >
-              <Dices className="h-3.5 w-3.5" /> Surprise me
+              {option.city}
+            </Pill>
+          ))}
+          {staleCity && (
+            <Pill
+              active
+              onClick={() => patchDiscoveryFilters({ city: null, zone: null })}
+            >
+              {staleCity}
+            </Pill>
+          )}
+          {staleZone && (
+            <Pill
+              active
+              onClick={() => patchDiscoveryFilters({ city: null, zone: null })}
+            >
+              {staleZone}
             </Pill>
           )}
         </div>
+        {activeCity !== null && activeCityZones.length > 0 && (
+          <>
+            <SectionLabel className="mt-3">
+              Zones in {activeCity}
+            </SectionLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {activeCityZones.map((zone) => (
+                <Pill
+                  key={zone}
+                  active={filters.zone === zone}
+                  onClick={() =>
+                    filters.zone === zone
+                      ? patchDiscoveryFilters({ city: activeCity, zone: null })
+                      : patchDiscoveryFilters({ city: activeCity, zone })
+                  }
+                >
+                  {zone}
+                </Pill>
+              ))}
+            </div>
+          </>
+        )}
+        {here && hasLocation && (
+          <>
+            <SectionLabel className="mt-3">Distance</SectionLabel>
+            <div className="flex flex-wrap gap-1.5">
+              <Pill
+                active={filters.maxKm === null}
+                onClick={() => patchDiscoveryFilters({ maxKm: null })}
+              >
+                Any
+              </Pill>
+              {DISTANCE_STEPS_KM.map((km) => (
+                <Pill
+                  key={km}
+                  active={filters.maxKm === km}
+                  onClick={() => patchDiscoveryFilters({ maxKm: km })}
+                >
+                  {km} km
+                </Pill>
+              ))}
+            </div>
+          </>
+        )}
+
+        <SectionLabel className="mt-5">When</SectionLabel>
+        <div className="flex items-center gap-3">
+          <Pill
+            active={filters.hour === null}
+            onClick={() => patchDiscoveryFilters({ hour: null })}
+          >
+            <Clock className="h-3.5 w-3.5" /> Now
+          </Pill>
+          {filters.hour !== null && (
+            <span className="font-display ml-auto text-base font-semibold tabular-nums">
+              {formatHourLabel(filters.hour)}
+            </span>
+          )}
+        </div>
+        <HourRange
+          value={filters.hour ?? new Date().getHours()}
+          dimmed={filters.hour === null}
+          onChange={(hour) => patchDiscoveryFilters({ hour })}
+        />
+
+        {showRandomness && (
+          <>
+            <SectionLabel className="mt-5">Random</SectionLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {([0, 1, 2, 3] as const).map((level) => (
+                <Pill
+                  key={level}
+                  active={filters.randomness === level}
+                  onClick={() => patchDiscoveryFilters({ randomness: level })}
+                >
+                  {level === 0 && "🎯 "}
+                  {level === 3 && "🎲 "}
+                  {RANDOMNESS_LABELS[level]}
+                </Pill>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer CTA — live count feedback + close; a zero-match state flips
@@ -168,6 +304,14 @@ export function DiscoveryFilters({
       </div>
     </div>
   );
+}
+
+/** "8:00 PM"-style label for a 0–23 hour. */
+function formatHourLabel(hour: number): string {
+  const clamped = Math.min(23, Math.max(0, Math.round(hour)));
+  const suffix = clamped < 12 ? "AM" : "PM";
+  const base = clamped % 12 === 0 ? 12 : clamped % 12;
+  return `${base}:00 ${suffix}`;
 }
 
 function SectionLabel({
@@ -214,5 +358,41 @@ function Pill({
     >
       {children}
     </button>
+  );
+}
+
+// Slim styled native range for the hour — brand fill up to the thumb.
+// Dimmed while "Now" is active, but stays live: dragging it IS how the
+// user leaves Now. Only rendered inside the sheet (client-only mount), so
+// the new Date() resting position can't desync hydration.
+function HourRange({
+  value,
+  dimmed,
+  onChange,
+}: {
+  value: number;
+  dimmed: boolean;
+  onChange: (hour: number) => void;
+}) {
+  const pct = (value / 23) * 100;
+  return (
+    <input
+      type="range"
+      min={0}
+      max={23}
+      step={1}
+      value={value}
+      aria-label="Hour of day"
+      onChange={(e) => onChange(Number(e.target.value))}
+      className={cn(
+        "mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full transition-opacity outline-none",
+        "[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md",
+        "[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow-md",
+        dimmed && "opacity-50",
+      )}
+      style={{
+        background: `linear-gradient(to right, var(--color-secondary) 0%, var(--color-primary) ${pct}%, var(--color-muted) ${pct}%)`,
+      }}
+    />
   );
 }
