@@ -3,29 +3,25 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  AlertCircle,
   Calendar,
-  CheckCircle2,
-  Clock,
   Instagram,
   MapPin,
   Share2,
   Sparkles,
   Ticket,
-  X,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type {
   CouponItem,
   InstagramCouponStatus,
-  LinkedReservationSummary,
   NormalCouponStatus,
 } from "@/lib/mock/coupons-mock";
+import { LinkedReservationCard } from "@/components/consumer/LinkedReservationCard";
+import { MetaRow, StatusBanner } from "@/components/consumer/coupon-detail-ui";
+import { IG_STATUS, NORMAL_STATUS } from "@/components/consumer/coupon-status";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { cn, guestNoun } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
-import { reservationPath } from "@/lib/consumer-route-contract";
 
 // Shared body for /coupon/[id]. Used by both the intercepted modal
 // (CouponDetailModalShell) and the hard-nav page. Same pattern as
@@ -35,111 +31,6 @@ import { reservationPath } from "@/lib/consumer-route-contract";
 // and Instagram coupons, so each renders its own status-meta record.
 // Everything else (hero, metadata rows, linked-reservation card, action
 // cluster) is shared.
-
-type StatusMeta = {
-  label: string;
-  pillClass: string;
-  Icon: LucideIcon;
-  iconClass: string;
-  banner: { tone: "info" | "warn" | "error" | "muted"; text: string } | null;
-};
-
-const NORMAL_STATUS: Record<NormalCouponStatus, StatusMeta> = {
-  active: {
-    label: "Active",
-    pillClass: "border-emerald-500/30 bg-emerald-50 text-emerald-800",
-    Icon: CheckCircle2,
-    iconClass: "text-emerald-600",
-    banner: null,
-  },
-  redeemed: {
-    label: "Redeemed",
-    pillClass: "border-border bg-muted text-muted-foreground",
-    Icon: CheckCircle2,
-    iconClass: "text-muted-foreground",
-    banner: {
-      tone: "muted",
-      text: "Already redeemed. Your discount was applied at the bill.",
-    },
-  },
-  expired: {
-    label: "Expired",
-    pillClass: "border-border bg-muted text-muted-foreground",
-    Icon: Clock,
-    iconClass: "text-muted-foreground",
-    banner: {
-      tone: "muted",
-      text: "This coupon expired. Save the place again to mint a fresh one.",
-    },
-  },
-  cancelled: {
-    label: "Cancelled",
-    pillClass: "border-border bg-muted text-muted-foreground",
-    Icon: X,
-    iconClass: "text-muted-foreground",
-    banner: {
-      tone: "muted",
-      text: "Cancelled. Tap the place to mint a new coupon.",
-    },
-  },
-};
-
-const IG_STATUS: Record<InstagramCouponStatus, StatusMeta> = {
-  pending_story: {
-    label: "Post your story",
-    pillClass: "border-pink-500/30 bg-pink-50 text-pink-800",
-    Icon: Instagram,
-    iconClass: "text-pink-600",
-    banner: {
-      tone: "info",
-      text: "Post the welcome story tagged @mesita to unlock this coupon. We auto-detect it within a few minutes.",
-    },
-  },
-  under_review: {
-    label: "Under review",
-    pillClass: "border-amber-500/30 bg-amber-50 text-amber-800",
-    Icon: Clock,
-    iconClass: "text-amber-600",
-    banner: {
-      tone: "warn",
-      text: "We saw your story — a Mesita reviewer is confirming it now.",
-    },
-  },
-  verified: {
-    label: "Verified · Active",
-    pillClass: "border-emerald-500/30 bg-emerald-50 text-emerald-800",
-    Icon: CheckCircle2,
-    iconClass: "text-emerald-600",
-    banner: null,
-  },
-  rejected: {
-    label: "Rejected — try again",
-    pillClass: "border-destructive/30 bg-destructive/10 text-destructive",
-    Icon: AlertCircle,
-    iconClass: "text-destructive",
-    banner: null, // reject reason renders separately
-  },
-  redeemed: {
-    label: "Redeemed",
-    pillClass: "border-border bg-muted text-muted-foreground",
-    Icon: CheckCircle2,
-    iconClass: "text-muted-foreground",
-    banner: {
-      tone: "muted",
-      text: "Already redeemed. Your discount was applied at the bill.",
-    },
-  },
-  expired: {
-    label: "Expired",
-    pillClass: "border-border bg-muted text-muted-foreground",
-    Icon: Clock,
-    iconClass: "text-muted-foreground",
-    banner: {
-      tone: "muted",
-      text: "This coupon expired. Save the place again to mint a fresh one.",
-    },
-  },
-};
 
 export function CouponDetailBody({ c }: { c: CouponItem }) {
   const isInstagram = c.kind === "instagram";
@@ -311,88 +202,5 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
         </button>
       </section>
     </div>
-  );
-}
-
-function StatusBanner({
-  banner,
-}: {
-  banner: NonNullable<StatusMeta["banner"]>;
-}) {
-  const tone = {
-    info: "border-sky-400/30 bg-sky-50 text-sky-900",
-    warn: "border-amber-400/30 bg-amber-50 text-amber-900",
-    error: "border-destructive/30 bg-destructive/10 text-destructive",
-    muted: "border-border bg-muted text-muted-foreground",
-  }[banner.tone];
-  return (
-    <p
-      className={cn(
-        "rounded-2xl border px-3 py-2.5 text-[12.5px] leading-snug",
-        tone,
-      )}
-    >
-      {banner.text}
-    </p>
-  );
-}
-
-function MetaRow({
-  Icon,
-  label,
-  value,
-}: {
-  Icon: LucideIcon;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <Icon className="text-muted-foreground h-4 w-4" strokeWidth={2} />
-      <span className="text-muted-foreground flex-1 text-[12px] font-medium tracking-wide uppercase">
-        {label}
-      </span>
-      <span className="text-foreground text-sm font-semibold">{value}</span>
-    </div>
-  );
-}
-
-function LinkedReservationCard({
-  reservation,
-}: {
-  reservation: LinkedReservationSummary;
-}) {
-  const isBooking = reservation.state === "booking";
-  return (
-    <Link
-      href={reservationPath(reservation.id)}
-      className="flex items-center gap-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-3.5 transition hover:bg-emerald-500/[0.06]"
-    >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/20">
-        <Calendar className="h-5 w-5 text-emerald-700" strokeWidth={2} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-          Reservation tied to this coupon
-        </p>
-        <p className="text-foreground mt-0.5 truncate text-[14px] leading-tight font-semibold">
-          {reservation.when}{" "}
-          <span className="text-muted-foreground font-normal">
-            · {reservation.partySize}{" "}
-            {guestNoun(reservation.partySize)}
-          </span>
-        </p>
-      </div>
-      <span
-        className={cn(
-          "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
-          isBooking
-            ? "border-amber-500/30 bg-amber-50 text-amber-800"
-            : "border-emerald-500/30 bg-emerald-50 text-emerald-800",
-        )}
-      >
-        {isBooking ? "Booking" : "Booked"}
-      </span>
-    </Link>
   );
 }
