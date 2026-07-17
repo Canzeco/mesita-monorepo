@@ -6,8 +6,8 @@ import { Percent, Crown } from "lucide-react";
 //
 // Light-theme premium treatment — a branded gradient tint + tinted icon
 // circles, semantic tokens only (no bg-zinc/text-white on the surface).
-// Discounts-only language: never "cashback"/"wallet" — Mesita holds no money,
-// the discount lands straight on the bill.
+// Discounts-only language: avoid wallet framing — Mesita holds no money; the
+// discount lands straight on the bill.
 export function RewardsInfoBanner() {
   return (
     <div className="border-border/70 from-primary/5 via-secondary/5 to-accent/5 rounded-2xl border bg-gradient-to-br p-3">

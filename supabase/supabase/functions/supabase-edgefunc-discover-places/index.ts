@@ -8,7 +8,7 @@
 //
 // Quality filters (optional): minRating and minUserRatingCount let the
 // operator drop low-signal places (a place with 800 reviews at 4.6 is
-// almost always a real, good venue; one with 3 reviews usually isn't).
+// almost always a real, good place; one with 3 reviews usually isn't).
 // Both are applied EF-side after the Google fetch — Google's Text Search
 // has no server-side review-count filter, and filtering both here (rather
 // than passing minRating natively) keeps a single code path AND lets us
