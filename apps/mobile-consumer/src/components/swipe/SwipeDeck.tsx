@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -55,12 +54,11 @@ import {
 } from '@/lib/saved-places';
 import { supabase } from '@/lib/supabase';
 import { errMsg } from '@/lib/utils';
+import { useSwipeTutorial } from './useSwipeTutorial';
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 800; // px/s — RNGH velocity is px/s, not px/ms
 const EXIT_MS = 280;
-const TUTORIAL_KEY = 'mesita_swipe_tutorial_seen';
-const TUTORIAL_AUTO_DISMISS_MS = 5500;
 const SCREEN_W = Dimensions.get('window').width;
 
 async function fetchSwipeDeck(): Promise<Place[]> {
@@ -78,9 +76,9 @@ export function SwipeDeck() {
   const [idx, setIdx] = useState(0);
   const [overridePlaces, setOverridePlaces] = useState<Place[] | null>(null);
   const [restarting, setRestarting] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
   const { isSaved, setSaved } = useSavedPlaces();
+  const { showTutorial, dismissTutorial } = useSwipeTutorial();
 
   const deckQuery = useQuery({
     queryKey: ['swipe-deck'],
@@ -95,24 +93,6 @@ export function SwipeDeck() {
     deckQuery.isError && !overridePlaces
       ? errMsg(deckQuery.error, 'Failed to load places.')
       : null;
-
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    void (async () => {
-      const seen = await AsyncStorage.getItem(TUTORIAL_KEY);
-      if (cancelled || seen) return;
-      setShowTutorial(true);
-      timer = setTimeout(() => {
-        setShowTutorial(false);
-        void AsyncStorage.setItem(TUTORIAL_KEY, '1');
-      }, TUTORIAL_AUTO_DISMISS_MS);
-    })();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
 
   // Soft geolocation — web parity distance chips. Denied/unavailable → "- km".
   useEffect(() => {
@@ -130,13 +110,6 @@ export function SwipeDeck() {
     () => places.map((p) => withUserDistance(p, coords)),
     [places, coords],
   );
-
-  const dismissTutorial = useCallback(() => {
-    setShowTutorial((was) => {
-      if (was) void AsyncStorage.setItem(TUTORIAL_KEY, '1');
-      return false;
-    });
-  }, []);
 
   const restart = useCallback(async () => {
     if (restarting) return;
