@@ -27,7 +27,8 @@ import {
   apiFetchConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
-import { BoxRow, ProfileSummaryCard } from "./profile-sections";
+import { BoxRow } from "./profile-sections";
+import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
 // The Me surface — a static identity summary followed by a stack of modular
 // boxes, each opening its own bottom-sheet modal, ordered conversion →
