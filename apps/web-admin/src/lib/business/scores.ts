@@ -496,23 +496,22 @@ export function composeFinalDeck(candidates: readonly DeckCandidate[], laneN: nu
   return { lanes, slots, fills };
 }
 
-// ── ENGINES — containers, not formulas ─────────────────────────────────
+// ── THE STANDARD ENGINE — the one engine (decision 2026-07-16) ─────────
+// There is exactly ONE engine. It consists of the three lanes — Organic ·
+// Inorganic · Hybrid — merged O → I → H (dedupe on insert, no backfill).
+// Swipe, Map and Memo are SURFACES, not engines: each runs the Standard
+// Engine and differs only in where its intent-data comes from (prebuilt
+// taste embedding · taste + viewport · synthesized from the question).
 
-export type EngineId = "swipe" | "map" | "memo";
-
-export type EngineContainer = {
-  id: EngineId;
-  engine: "Swipe" | "Map" | "Memo";
-  /** How the engine consumes the lanes. */
-  composition: string;
-  intent: string;
-};
-
-export const ENGINE_CONTAINERS: readonly EngineContainer[] = [
-  { id: "swipe", engine: "Swipe", composition: "Organic + Inorganic + Hybrid, merged O → I → H", intent: "prebuilt taste embedding" },
-  { id: "map",   engine: "Map",   composition: "Organic + Inorganic + Hybrid, merged O → I → H", intent: "taste embedding + viewport" },
-  { id: "memo",  engine: "Memo",  composition: "free / dynamic — indexes + RAG, decomposes the subscores as the question needs", intent: "synthesized from the question, per query" },
-];
+export const STANDARD_ENGINE = {
+  name: "Standard Engine",
+  composition: "Organic + Inorganic + Hybrid, merged O → I → H · dedupe on insert · no backfill",
+  surfaces: [
+    { surface: "Swipe", intent: "prebuilt taste embedding" },
+    { surface: "Map",   intent: "taste embedding + viewport" },
+    { surface: "Memo",  intent: "synthesized from the question, per query" },
+  ],
+} as const;
 
 /**
  * Retrieval knob — how wide EM recall casts. Recall is filtered by the

@@ -26,13 +26,13 @@ import {
   resolveWhere,
   whatRelation,
 } from "@/lib/business/cip";
-import type { EngineId } from "@/lib/business/scores";
+import type { IntentStyle } from "@/lib/business/cip";
 import { useScoring } from "../ScoringProvider";
 import { PanelCard, SubHead } from "../panel-ui";
 import {
   DocPre,
   EmptyCatalog,
-  ENGINE_ICONS,
+  INTENT_STYLE_ICONS,
   FactChip,
   FactorRow,
   LaneBadge,
@@ -50,7 +50,7 @@ import {
 // numbers, RP the live rates, XX its seeded draws. Focus chips narrow to one
 // subscore; the lane footer shows the three products.
 
-const ENGINES: readonly EngineId[] = ["swipe", "map", "memo"];
+const INTENT_STYLES: readonly IntentStyle[] = ["browse", "viewport", "question"];
 
 const pct = (v: number) => v.toFixed(2);
 
@@ -59,7 +59,7 @@ export function SubscorePlayground() {
 
   const [consumerIdx, setConsumerIdx] = useState(0);
   const [placeIdx, setPlaceIdx] = useState(0);
-  const [engine, setEngine] = useState<EngineId>("swipe");
+  const [style, setStyle] = useState<IntentStyle>("browse");
   const [roll, setRoll] = useState(1);
   const [focus, setFocus] = useState<SubscoreId | "all">("all");
 
@@ -69,7 +69,7 @@ export function SubscorePlayground() {
   const run = useMemo(() => {
     if (!place) return null;
     const profile = buildConsumerProfile(consumer);
-    const intent = generateIntent(engine, profile, places, consumerIdx * 7 + roll);
+    const intent = generateIntent(style, profile, places, consumerIdx * 7 + roll);
     const enabled = new Set(context.em);
     // The data-access matrix, enforced: a revoked source is withheld from
     // the subscore's inputs and its missing-data rule applies.
@@ -141,7 +141,7 @@ export function SubscorePlayground() {
     ) as Record<LaneId, number>;
 
     return { profile, intent, ciDoc, placeDoc, ciVec, placeVec, emVal, w, win, rel, smP, gpP, posture, rpVal, draws, xxVals, laneScores };
-  }, [consumer, place, places, engine, roll, consumerIdx, context.em, em.embedDims, sm, gp, rp, xx, dataAccess]);
+  }, [consumer, place, places, style, roll, consumerIdx, context.em, em.embedDims, sm, gp, rp, xx, dataAccess]);
 
   if (places.length === 0) {
     return (
@@ -153,7 +153,7 @@ export function SubscorePlayground() {
   }
 
   const show = (id: SubscoreId) => focus === "all" || focus === id;
-  const EngineIcon = ENGINE_ICONS[engine];
+  const StyleIcon = INTENT_STYLE_ICONS[style];
 
   const selectCls =
     "border-border/70 bg-card w-full rounded-lg border px-2 py-1.5 text-[12px] font-medium";
@@ -181,22 +181,22 @@ export function SubscorePlayground() {
             ))}
           </select>
         </SpecimenCell>
-        <SpecimenCell icon={EngineIcon} tone="bg-sky-600 text-white" label="Engine · intent">
+        <SpecimenCell icon={StyleIcon} tone="bg-sky-600 text-white" label="Intent">
           <div className="flex items-center gap-1.5">
-            {ENGINES.map((e) => (
+            {INTENT_STYLES.map((s) => (
               <button
-                key={e}
+                key={s}
                 type="button"
-                onClick={() => setEngine(e)}
-                aria-pressed={engine === e}
+                onClick={() => setStyle(s)}
+                aria-pressed={style === s}
                 className={
                   "rounded-md border px-2 py-1 text-[11px] font-semibold capitalize transition active:scale-[0.97] " +
-                  (engine === e
+                  (style === s
                     ? "border-primary/50 bg-primary/10"
                     : "border-border/60 text-muted-foreground hover:text-foreground")
                 }
               >
-                {e}
+                {s}
               </button>
             ))}
           </div>
