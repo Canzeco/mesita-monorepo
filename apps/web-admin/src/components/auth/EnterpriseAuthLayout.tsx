@@ -59,7 +59,7 @@ function LandingPane() {
             mesita.
           </span>
         </Link>
-        <span className="text-[10px] font-bold tracking-[0.2em] text-white/70 uppercase">
+        <span className="text-[10px] font-bold tracking-[0.2em] text-background/70 uppercase">
           Admin
         </span>
       </div>
@@ -92,7 +92,7 @@ function LandingPane() {
         </ul>
       </div>
 
-      <p className="relative z-10 text-[11.5px] text-white/70">
+      <p className="relative z-10 text-[11.5px] text-background/70">
         Made in Monterrey · © Mesita
       </p>
     </aside>
@@ -116,7 +116,7 @@ function ValueProp({
       <p className="font-display text-[15px] font-semibold tracking-[-0.01em]">
         {title}
       </p>
-      <p className="text-[12.5px] leading-[1.5] text-white/80">{blurb}</p>
+      <p className="text-[12.5px] leading-[1.5] text-background/80">{blurb}</p>
     </li>
   );
 }

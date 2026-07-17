@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { PageHeader } from "@/components/PageContainer";
-import { ManageMultipleTabs } from "./TabNav";
+import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { MULTIPLE_SUBROUTES } from "./nav";
 
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
@@ -30,7 +30,10 @@ export function ManageMultipleLayoutShell({
   return (
     <>
       <PageHeader title="Manage Multiple Units" description={description} />
-      <ManageMultipleTabs />
+      <ConfigTabNav
+        ariaLabel="Manage Multiple Units"
+        subroutes={MULTIPLE_SUBROUTES}
+      />
       <div className="mt-6 sm:mt-8">{children}</div>
     </>
   );
