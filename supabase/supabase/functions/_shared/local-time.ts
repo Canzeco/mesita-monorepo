@@ -17,7 +17,7 @@
 // keys; multiple ranges per day cover same-day split shifts (lunch + dinner);
 // an overnight shift is a single range on the opening day where `close <= open`
 // means the close lands the next day; closed days omit the key.
-export type HourRange = { open: string; close: string };
+type HourRange = { open: string; close: string };
 export type WeeklyHours = Record<string, HourRange[]>;
 
 const DAY_KEYS = [
