@@ -23,6 +23,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@17";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { STRIPE_API_VERSION, STRIPE_CATALOG } from "../_shared/stripe-billing.ts";
+import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -142,25 +143,6 @@ async function handleStripeEvent(
       // Unhandled event types are acknowledged and ignored.
       break;
   }
-}
-
-function subscriptionSnapshot(sub: Stripe.Subscription): {
-  localStatus: string;
-  customerId: string;
-  periodEnd: string | null;
-  priceCents: number | null;
-  currency: string;
-  isLive: boolean;
-} {
-  const localStatus = mapStatus(sub.status);
-  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-  const periodEnd = sub.current_period_end
-    ? new Date(sub.current_period_end * 1000).toISOString()
-    : null;
-  const priceCents = sub.items.data[0]?.price.unit_amount ?? null;
-  const currency = (sub.items.data[0]?.price.currency ?? "mxn").toUpperCase();
-  const isLive = localStatus === "active" || localStatus === "past_due";
-  return { localStatus, customerId, periodEnd, priceCents, currency, isLive };
 }
 
 // ─── Consumer side ──────────────────────────────────────────────────────────
@@ -389,18 +371,3 @@ async function reconcileProjectSubscription(
   }
 }
 
-function mapStatus(s: string): string {
-  switch (s) {
-    case "active":
-    case "trialing":
-      return "active";
-    case "past_due":
-      return "past_due";
-    case "canceled":
-      return "canceled";
-    case "unpaid":
-      return "unpaid";
-    default:
-      return "incomplete";
-  }
-}
