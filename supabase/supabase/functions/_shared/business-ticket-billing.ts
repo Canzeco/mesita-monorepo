@@ -10,7 +10,7 @@ export type TicketBillSnapshot = {
   eligibleCents: number;
 };
 
-export type ComputeTicketBillInput = {
+type ComputeTicketBillInput = {
   subtotal: number;
   ratePercent: number;
   capPesos: number | null;
