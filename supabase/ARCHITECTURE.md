@@ -12,14 +12,14 @@ own Next.js app, over one shared Supabase backend:
 
 - **Consumer** (`consumer.mesita.ai`) — discovery (swipe / map / AI concierge),
   reservations, an at-the-bill instant discount, and a Free/**Premium** class.
-- **Business** (`business.mesita.ai`) — the venue console: manage places, team,
+- **Business** (`business.mesita.ai`) — the business console: manage places, team,
   promos, tickets, and a `free`/`pro`/`ultra` **plan**.
 - **Admin** (internal) — super-admin console: settings, verifications, the
   Enricher (place-intelligence) config, per-place inspection.
 
 Plus a **landing** site. The platform sells **experiences**, never holds money
-(instant discount at the bill — no cashback/wallet), and Mesita only ever earns
-via subscriptions (Stripe).
+(instant discount at the bill — discounts-only, no wallet), and Mesita only ever
+earns via subscriptions (Stripe).
 
 ## Repo topology (GitHub org: Canzeco)
 

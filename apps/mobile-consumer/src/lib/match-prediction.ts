@@ -1,14 +1,17 @@
 import type { Place, PlacePrediction } from '@/lib/api/places';
 
+// Accent/case-insensitive name key — keep in sync with web
+// `apps/web-consumer/src/components/consumer/search/search-utils.ts`.
 function normalizeName(name: string | null | undefined): string {
   return (name ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 }
 
-/** Accent-insensitive exact name join of a Memo prediction to the catalog. */
+/** Accent-insensitive exact name join of a prediction to the catalog. */
 export function matchPredictionToPlace(
   prediction: PlacePrediction,
   places: Place[],

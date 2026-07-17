@@ -12,8 +12,8 @@ Source of truth for consumer, staff (WhatsApp), and business-console flows.
 ### Billing sequence
 
 1. Bot sends the billing form to the waiter.
-2. Waiter enters bill total (and tip if cashback) into the form.
-3. Bot calculates the bill with the discount/cashback applied.
+2. Waiter enters bill total into the form.
+3. Bot calculates the bill with the discount applied.
 4. Bot sends bill to consumer and waiter as passive payment instructions.
 
 ### Story sequence

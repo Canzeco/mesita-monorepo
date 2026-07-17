@@ -36,10 +36,6 @@ export const PRIMARY_BUTTON_CLASS =
 export const TINY_LABEL_CLASS =
   "text-muted-foreground text-[10px] font-semibold uppercase tracking-[0.14em]";
 
-// Numeric display used for stat figures (audience counts, balance, etc.).
-// Pairs naturally with a smaller cadence/suffix sibling.
-export const NUMBER_CLASS = "font-display tabular-nums leading-none font-bold";
-
 // Small pill action button — the canonical header CTA ("Invite business",
 // "Add staff", etc.). Dark fill, 12px text, pill-shaped. For a
 // full-width form submit use PRIMARY_BUTTON_CLASS instead.

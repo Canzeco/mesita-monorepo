@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { CheckCircle2, Crown, MapPin, Phone } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Crown, MapPin, Phone } from "lucide-react";
 import type { PredictionStatus } from "@/lib/api/places";
 import type { LookupPlace } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
@@ -115,4 +115,16 @@ export function newSessionToken(): string {
     return crypto.randomUUID();
   }
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+export function MockCodePill({ code }: { code: string }) {
+  return (
+    <p className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-amber-200/70 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-800">
+      <AlertTriangle className="h-3 w-3" />
+      Mock mode · type{" "}
+      <span className="font-mono font-bold tracking-[0.18em] text-amber-900">
+        {code}
+      </span>
+    </p>
+  );
 }

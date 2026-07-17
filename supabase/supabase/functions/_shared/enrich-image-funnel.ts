@@ -438,7 +438,7 @@ function selectWithDiversity(
 // capped, metadata-sorted bucket), then ANALYZE (vision describes the per-source
 // analyze-capped top of each bucket) → SORT (text model ranks the descriptions
 // by the experience rubric) → SAVE the best N overall (source-independent).
-// business-create-unit may have seeded Places photos into existingPhotos — fold
+// Place create may have seeded Places photos into existingPhotos — fold
 // those into the Google bucket so they're never lost, capped at the Google cap.
 export async function runImageFunnel(opts: {
   googleImages: string[];

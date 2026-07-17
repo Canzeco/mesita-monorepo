@@ -12,6 +12,18 @@ export function errMsg(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
+export function formatRelative(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  const abs = Math.abs(ms);
+  const day = 24 * 60 * 60 * 1000;
+  if (abs < day) {
+    const hr = Math.round(abs / (60 * 60 * 1000));
+    return ms >= 0 ? `in ${hr}h` : `${hr}h ago`;
+  }
+  const d = Math.round(abs / day);
+  return ms >= 0 ? `in ${d}d` : `${d}d ago`;
+}
+
 // First letter of a name/label, upper-cased, for avatar chips. Trims so
 // leading whitespace never becomes the "initial", and falls back to a
 // neutral glyph when the source is empty/blank. Single source so every
@@ -31,7 +43,6 @@ export function formatCompactCount(n: number): string {
   return n.toLocaleString();
 }
 
-
 /** $-symbol price level for catalog/preview chips (e.g. $$$). */
 export function formatPriceLevelSymbols(
   priceLevel: number | null | undefined,
@@ -41,11 +52,8 @@ export function formatPriceLevelSymbols(
   return "$".repeat(level);
 }
 
-
 /** Star rating rounded to one decimal, or null when absent. */
-export function formatRating(
-  rating: number | null | undefined,
-): string | null {
+export function formatRating(rating: number | null | undefined): string | null {
   return rating != null ? rating.toFixed(1) : null;
 }
 

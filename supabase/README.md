@@ -123,7 +123,7 @@ advancing places through the `place_research` stage table
 poller `run_place_enrichment_stages` drives the stages. n8n is fully out of
 the stack (the Reservationist will be ElevenLabs-based).
 
-Reward ticket sequences (scan, billing, story, payment, review, cashback) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). They orchestrate in **business-** / **consumer-** / **staff-** functions; Twilio sends the messages.
+Reward ticket sequences (scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). They orchestrate in **business-** / **consumer-** / **staff-** functions; Twilio sends the messages.
 
 Business console: `business-web-create-ticket` with `scanOnly: true`, then `business-web-submit-ticket-bill`. Consumer step order and staff floor steppers live in each web repo’s `ticket-flow-steps.ts` / `ticket-staff-lifecycle.ts`.
 
@@ -155,7 +155,7 @@ deno task test
 
 - **`places`** — catalog (`lead | active | paused | archived`)
 - **`project_members` / `project_roles`** — business and staff access
-- **`tickets`** — reward tickets (discount/cashback × story/no-story)
+- **`tickets`** — reward tickets (discount × story/no-story)
 - **`reservations`** — consumer bookings (MVP)
 - **`staff_invites` / `business_invites`** — token invites
 
