@@ -27,6 +27,7 @@ import {
   withUserDistance,
 } from "./swipe-deck-shells";
 import { SwipeActionRow } from "./swipe-action-row";
+import { readSwipeSnapshot, writeSwipeSnapshot } from "./swipe-deck-storage";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -34,7 +35,6 @@ const MIN_FLICK_DISTANCE = 16;
 const EXIT_ANIMATION_MS = 300;
 const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
 const TUTORIAL_AUTO_DISMISS_MS = 5500;
-const SWIPE_STATE_STORAGE_KEY = "mesita_swipe_state_v1";
 // How many upcoming cards' cover photos to pre-warm ahead of the active card.
 const PRELOAD_CARDS_AHEAD = 3;
 
@@ -68,40 +68,6 @@ export function SwipeDeck({
     );
   }
   return <Deck places={places} />;
-}
-
-type SwipeDeckSnapshot = {
-  runtimeDeck: Place[];
-  idx: number;
-};
-
-function readSwipeSnapshot(): SwipeDeckSnapshot | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(SWIPE_STATE_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SwipeDeckSnapshot;
-    if (!Array.isArray(parsed.runtimeDeck)) return null;
-    if (typeof parsed.idx !== "number") return null;
-    return {
-      runtimeDeck: parsed.runtimeDeck,
-      idx: Math.max(0, Math.floor(parsed.idx)),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeSwipeSnapshot(snapshot: SwipeDeckSnapshot) {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.setItem(
-      SWIPE_STATE_STORAGE_KEY,
-      JSON.stringify(snapshot),
-    );
-  } catch {
-    // ignore storage failures
-  }
 }
 
 function Deck({ places }: { places: Place[] }) {
