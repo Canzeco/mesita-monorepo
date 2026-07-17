@@ -22,7 +22,7 @@ export type PlaceCategory = {
 
 // Signals fed to the classifier. All optional except name — the more present,
 // the sharper the pick, but the place name alone already yields a sane guess.
-export type CategorySignals = {
+type CategorySignals = {
   name: string;
   address?: string | null;
   googlePrimaryType?: string | null;
