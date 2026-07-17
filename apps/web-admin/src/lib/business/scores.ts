@@ -525,13 +525,58 @@ export const DEFAULT_RETRIEVAL = {
   recallTopK: 50,
 };
 
-// ── CONTEXT FIELD REGISTRY — the configurable pipeline ─────────────────
+// ── DATA-ACCESS CONFIGURATION — the core config ─────────────────────────
+// (Notion Scoring spec: "Each subscore can be configured to select which
+// data it is allowed to access. The default is all data ON; any individual
+// data source can be toggled OFF per subscore. This is the main knob of the
+// Subscores page.")
+//
+// FOUR data sources. Each subscore has an APPLICABLE subset (a source a
+// subscore structurally cannot read isn't a toggle — it's a "—"): EM can
+// never see interaction (it compares two independently-built vectors,
+// neither of which knows the pair); GP and RP read only the place; XX reads
+// nothing but its own draw.
+
+export type DataSourceId = "consumer" | "place" | "intent" | "interaction";
+
+export type DataSourceDef = {
+  id: DataSourceId;
+  label: string;
+  blurb: string;
+};
+
+export const DATA_SOURCES: readonly DataSourceDef[] = [
+  { id: "consumer",    label: "Consumer",    blurb: "per consumer — constant" },
+  { id: "place",       label: "Place",       blurb: "per place — constant" },
+  { id: "intent",      label: "Intent",      blurb: "per query — Where · When · What" },
+  { id: "interaction", label: "Interaction", blurb: "per consumer × place — the edge" },
+];
+
+/** Which sources each subscore CAN read — the matrix's toggleable cells. */
+export const APPLICABLE_SOURCES: Record<SubscoreId, readonly DataSourceId[]> = {
+  em: ["consumer", "place", "intent"],
+  sm: ["place", "intent", "interaction"],
+  gp: ["place"],
+  rp: ["place"],
+  xx: [],
+};
+
+/** The saved matrix — per subscore, which applicable sources are ON. */
+export type DataAccess = Record<SubscoreId, DataSourceId[]>;
+
+// Default: ALL data ON (the spec's default) — every applicable cell enabled.
+export const DEFAULT_DATA_ACCESS: DataAccess = Object.fromEntries(
+  SUBSCORES.map((s) => [s.id, [...APPLICABLE_SOURCES[s.id]]]),
+) as DataAccess;
+
+// ── CONTEXT FIELD REGISTRY — EM's per-field detail ──────────────────────
 // Every TEXT field EM could read, with a stable key. Which of these EM
 // actually receives is CONFIG (ContextConfig, persisted in the blob): the
 // admin toggles fields and the playground assembles its documents from
 // exactly the enabled set — a toggle visibly changes the embedding, the
-// cosine, and the ranking. SM/GP/RP/XX are the FixedSubscoreIds — not
-// field-configurable; their knobs live above.
+// cosine, and the ranking. "ignored" fields are the spec's "ignored for
+// now" list — shown greyed, never toggleable, never embedded. SM/GP/RP/XX
+// are the FixedSubscoreIds — not field-configurable; their knobs live above.
 
 export type ContextSide = "consumer" | "intent" | "place";
 
@@ -540,59 +585,65 @@ export type ContextFieldDef = {
   key: string;
   side: ContextSide;
   label: string;
-  /** "live" = data exists and the doc builders consume it; "planned" = in the contract, no data yet. */
-  status: "live" | "planned";
+  /** "live" = data exists and the doc builders consume it · "planned" = in
+   * the contract, no data yet · "ignored" = the spec's "ignored for now"
+   * list — greyed, never toggleable, never embedded. */
+  status: "live" | "planned" | "ignored";
   note?: string;
 };
 
-// Defaults follow the 2026-07-16 data-access decisions: the consumer side
-// goes in WHOLE (everything but the UUID — name/class/sex/age/country/IG all
-// carry taste signal); numbers, IDs and hard constraints stay out (they are
-// GP's / SM's / the filters' jobs).
+// The lists ARE the spec (Notion Scoring, data taxonomy, 2026-07-16):
+//   Consumer → EM: sex · age · name · country · class+why. Ignored: taste ·
+//     history. (IG-origin lives inside class+why, not as its own field.)
+//   Intent → EM (text): query · near-zone · time. Ignored: party · budget ·
+//     day-of-week. (The NUMERIC where/when/what go to SM, never EM.)
+//   Place → EM: name · category · tags · description · zone & city ·
+//     reviews summary (G·IG·FB, planned) · price (planned). Rating & review
+//     count are GP's; hours and lat/lng are SM's — ROUTED, so they are not
+//     EM chips at all.
 export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
-  // Consumer — everything about the person except the UUID.
+  // Consumer.
   { key: "consumer.name",    side: "consumer", label: "name (first)",                status: "live", note: "cultural/cuisine priors — textualized, never the id" },
   { key: "consumer.sex",     side: "consumer", label: "sex",                         status: "live" },
   { key: "consumer.age",     side: "consumer", label: "age (from birthday, server-side)", status: "live" },
   { key: "consumer.country", side: "consumer", label: "country (inferred from phone)", status: "live" },
   { key: "consumer.class",   side: "consumer", label: "class + why (IG-invited vs subscribed)", status: "live" },
-  { key: "consumer.ig",      side: "consumer", label: "IG followers (magnetism)",    status: "live", note: "bucketed as words (~45k · high-reach), never raw digits" },
-  { key: "consumer.taste",   side: "consumer", label: "taste tokens (saved + visited)", status: "live" },
-  { key: "consumer.history", side: "consumer", label: "history sentence (saves · visits)", status: "live" },
+  { key: "consumer.taste",   side: "consumer", label: "taste tokens",                status: "ignored", note: "ignored for now (spec)" },
+  { key: "consumer.history", side: "consumer", label: "history",                     status: "ignored", note: "ignored for now (spec)" },
   // Intent — the per-query half. Where/when appear as TEXT here by design;
   // their NUMERIC versions are SM's inputs, never EM's.
   { key: "intent.query",     side: "intent",   label: "what / occasion (question text)", status: "live" },
-  { key: "intent.time",      side: "intent",   label: "day + time (as text)",        status: "live" },
   { key: "intent.zone",      side: "intent",   label: "near-zone (as text)",         status: "live" },
-  { key: "intent.party",     side: "intent",   label: "party size",                  status: "live", note: "a filter's job — off by default" },
-  { key: "intent.budget",    side: "intent",   label: "budget",                      status: "planned" },
-  // Place — the Enricher-built profile. Hours/rating stay out by default:
-  // numeric hours are SM's, popularity numbers are GP's.
+  { key: "intent.time",      side: "intent",   label: "day + time (as text)",        status: "live" },
+  { key: "intent.party",     side: "intent",   label: "party size",                  status: "ignored", note: "ignored for now (spec) — a filter's job" },
+  { key: "intent.budget",    side: "intent",   label: "budget",                      status: "ignored", note: "ignored for now (spec)" },
+  { key: "intent.dow",       side: "intent",   label: "day-of-week",                 status: "ignored", note: "ignored for now (spec)" },
+  // Place — the Enricher-built profile.
   { key: "place.name",        side: "place",   label: "name",                        status: "live", note: "info-dense — cuisine, format and register live in the string" },
   { key: "place.category",    side: "place",   label: "category",                    status: "live" },
-  { key: "place.zone_city",   side: "place",   label: "zone · city",                 status: "live" },
   { key: "place.tags",        side: "place",   label: "tags",                        status: "live" },
   { key: "place.description", side: "place",   label: "description",                 status: "live" },
-  { key: "place.rating",      side: "place",   label: "google rating + review count (as text)", status: "live", note: "GP's job numerically — off by default" },
-  { key: "place.hours_text",  side: "place",   label: "hours (as text)",             status: "live", note: "SM's job numerically — off by default" },
-  { key: "place.reviews",     side: "place",   label: "reviews summary (Google · IG · FB)", status: "planned" },
-  { key: "place.price",       side: "place",   label: "price level",                 status: "planned" },
+  { key: "place.zone_city",   side: "place",   label: "zone & city",                 status: "live" },
+  { key: "place.reviews",     side: "place",   label: "reviews summary (Google · Instagram · Facebook)", status: "planned" },
+  { key: "place.price",       side: "place",   label: "price",                       status: "planned" },
 ];
 
 export const CONTEXT_KEYS: ReadonlySet<string> = new Set(CONTEXT_FIELDS.map((f) => f.key));
+
+/** Keys an operator may actually toggle — "ignored" is out of bounds. */
+export const TOGGLEABLE_CONTEXT_KEYS: ReadonlySet<string> = new Set(
+  CONTEXT_FIELDS.filter((f) => f.status !== "ignored").map((f) => f.key),
+);
 
 /** Which fields EM reads — the configurable half of the pipeline. */
 export type ContextConfig = Record<ConfigurableSubscoreId, string[]>;
 
 // Arrays kept SORTED — the canonical order everywhere (form state sorts
-// too), so key order can never fake an unsaved-changes diff.
+// too), so key order can never fake an unsaved-changes diff. Default = all
+// LIVE fields on (planned contribute nothing until data exists; ignored are
+// not selectable at all).
 export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
-  em: [
-    "consumer.name", "consumer.sex", "consumer.age", "consumer.country",
-    "consumer.class", "consumer.ig", "consumer.taste", "consumer.history",
-    "intent.query", "intent.time", "intent.zone",
-    "place.name", "place.category", "place.zone_city", "place.tags", "place.description",
-  ].sort(),
+  em: CONTEXT_FIELDS.filter((f) => f.status === "live").map((f) => f.key).sort(),
 };
 
 // ── Persisted settings (app_settings.scoring_config) ───────────────────
@@ -613,6 +664,7 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   gp.lnCeiling          5–15
 //   rp.*                  0–1
 //   xx.control            0–5
+//   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
 
 export type ScoringSettings = {
   v: 4;
@@ -623,6 +675,8 @@ export type ScoringSettings = {
   gp: GpParams;
   rp: RpRungs;
   xx: XxParams;
+  /** The core config — per-subscore source toggles. */
+  dataAccess: DataAccess;
   context: ContextConfig;
 };
 
@@ -635,16 +689,45 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   gp: DEFAULT_GP_PARAMS,
   rp: DEFAULT_RP_RUNGS,
   xx: DEFAULT_XX_PARAMS,
+  dataAccess: DEFAULT_DATA_ACCESS,
   context: DEFAULT_CONTEXT_CONFIG,
 };
 
 // Sorted + deduped so key order can never fake a settings diff. An empty
 // array is a VALID (degenerate) config — everything off; only a non-array
-// falls back to defaults.
+// falls back to defaults. Only TOGGLEABLE keys survive — "ignored" fields
+// can never enter the blob.
 function coerceContextKeys(v: unknown, fallback: string[]): string[] {
   if (!Array.isArray(v)) return [...fallback].sort();
-  return [...new Set(v.filter((k): k is string => typeof k === "string" && CONTEXT_KEYS.has(k)))]
-    .sort();
+  return [
+    ...new Set(
+      v.filter((k): k is string => typeof k === "string" && TOGGLEABLE_CONTEXT_KEYS.has(k)),
+    ),
+  ].sort();
+}
+
+// Per-subscore source list — unknown/inapplicable sources dropped, sorted.
+// A missing/non-array cell falls back to the default (all applicable ON);
+// an empty array is VALID (that subscore reads nothing — degenerate on
+// purpose, visible in the playgrounds).
+function coerceDataAccess(v: unknown, fallback: DataAccess): DataAccess {
+  const raw = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  return Object.fromEntries(
+    SUBSCORES.map((s) => {
+      const cell = raw[s.id];
+      const applicable = APPLICABLE_SOURCES[s.id];
+      if (!Array.isArray(cell)) return [s.id, [...fallback[s.id]].sort()];
+      const clean = [
+        ...new Set(
+          cell.filter(
+            (x): x is DataSourceId =>
+              typeof x === "string" && (applicable as readonly string[]).includes(x),
+          ),
+        ),
+      ].sort();
+      return [s.id, clean];
+    }),
+  ) as DataAccess;
 }
 
 function num(v: unknown, fallback: number, lo: number, hi: number): number {
@@ -713,6 +796,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
     xx: {
       control: num(xx.control, d.xx.control, 0, 5),
     },
+    dataAccess: coerceDataAccess(r.dataAccess, d.dataAccess),
     context: {
       em: coerceContextKeys(ctx.em, d.context.em),
     },

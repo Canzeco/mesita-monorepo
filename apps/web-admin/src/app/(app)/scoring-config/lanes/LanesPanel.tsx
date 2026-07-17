@@ -88,10 +88,10 @@ export function LanesPanel() {
         </div>
       </PanelCard>
 
-      {/* ══ Engines ══════════════════════════════════════════════════ */}
+      {/* ══ Lanes container ══════════════════════════════════════════ */}
       <PanelCard
-        title="Engines · containers, not formulas"
-        subtitle="Swipe and Map compose the three lanes exactly as above and differ only in where intent-data comes from. Memo is free/dynamic — indexes + RAG, decomposing the five subscores however the question needs; its own knobs live in Memo Config."
+        title="Lanes container · Swipe · Map · Memo"
+        subtitle="Engines are containers, not formulas. Swipe and Map compose the three lanes exactly as above and differ only in where intent-data comes from. Memo is free/dynamic — indexes + RAG, decomposing the five subscores however the question needs; its own knobs live in Memo Config."
       >
         <div className="mt-4 flex flex-col gap-2">
           {ENGINE_CONTAINERS.map((e) => {
@@ -110,6 +110,29 @@ export function LanesPanel() {
               </div>
             );
           })}
+        </div>
+      </PanelCard>
+
+      {/* ══ Filters ══════════════════════════════════════════════════ */}
+      <PanelCard
+        title="Filters · Where · When · What · Randomness"
+        subtitle="The consumer-facing filter row and where each filter lands in the model. Where/When/What are SM's intent-side inputs — the filters ARE the structured ask; Randomness is XX's control. None of them is a separate scoring stage."
+      >
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { name: "Where", owner: "SM · where", detail: "zone / anchor set + tolerated distance (the consumer slider, point mode only)" },
+            { name: "When", owner: "SM · when", detail: "target time vs the place's open windows — wait × fit" },
+            { name: "What", owner: "SM · what", detail: "category / mega-category set — the ladder 1 / 0.6 / 0.2" },
+            { name: "Randomness", owner: "XX · control", detail: "the deck-wide luck knob, 0 (off) … 5 (chaos)" },
+          ].map((f) => (
+            <div key={f.name} className="border-border/60 bg-muted/40 rounded-xl border px-3 py-2.5">
+              <p className="text-[12px] font-semibold">{f.name}</p>
+              <p className="mt-0.5 font-mono text-[10px] font-bold text-muted-foreground">
+                → {f.owner}
+              </p>
+              <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{f.detail}</p>
+            </div>
+          ))}
         </div>
       </PanelCard>
 

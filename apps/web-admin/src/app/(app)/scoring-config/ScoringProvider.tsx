@@ -2,15 +2,20 @@
 
 import { createContext, useContext, useMemo, useState, useTransition } from "react";
 import {
+  APPLICABLE_SOURCES,
   coerceScoringSettings,
   DEFAULT_SCORING_SETTINGS,
   LANE_N_MAX,
+  SUBSCORES,
   type ContextConfig,
+  type DataAccess,
+  type DataSourceId,
   type EmParams,
   type GpParams,
   type RpRungs,
   type ScoringSettings,
   type SmParams,
+  type SubscoreId,
   type XxParams,
 } from "@/lib/business/scores";
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
@@ -34,6 +39,7 @@ function fromSettings(s: ScoringSettings): {
   gp: GpParams;
   rp: RpRungs;
   xx: XxParams;
+  dataAccess: DataAccess;
   context: ContextConfig;
 } {
   return {
@@ -44,6 +50,9 @@ function fromSettings(s: ScoringSettings): {
     gp: { ...s.gp },
     rp: { ...s.rp },
     xx: { ...s.xx },
+    dataAccess: Object.fromEntries(
+      SUBSCORES.map((sub) => [sub.id, [...s.dataAccess[sub.id]]]),
+    ) as DataAccess,
     context: { em: [...s.context.em] },
   };
 }
@@ -66,7 +75,10 @@ type ScoringCtx = {
   setRp: React.Dispatch<React.SetStateAction<RpRungs>>;
   xx: XxParams;
   setXx: React.Dispatch<React.SetStateAction<XxParams>>;
-  /** Which fields EM reads — the configurable pipeline. */
+  /** The core config — per-subscore source toggles (the data-access matrix). */
+  dataAccess: DataAccess;
+  toggleSource: (subscore: SubscoreId, source: DataSourceId) => void;
+  /** Which fields EM reads — the per-field detail under the matrix. */
   context: ContextConfig;
   toggleContext: (key: string) => void;
   /** Current form as a settings blob. */
@@ -107,6 +119,7 @@ export function ScoringProvider({
   const [gp, setGp] = useState<GpParams>(seed.gp);
   const [rp, setRp] = useState<RpRungs>(seed.rp);
   const [xx, setXx] = useState<XxParams>(seed.xx);
+  const [dataAccess, setDataAccess] = useState<DataAccess>(seed.dataAccess);
   const [context, setContext] = useState<ContextConfig>(seed.context);
 
   const setLaneN = (n: number) =>
@@ -118,6 +131,18 @@ export function ScoringProvider({
     setContext((c) => ({
       em: c.em.includes(key) ? c.em.filter((k) => k !== key) : [...c.em, key],
     }));
+
+  const toggleSource = (subscore: SubscoreId, source: DataSourceId) =>
+    setDataAccess((da) => {
+      if (!APPLICABLE_SOURCES[subscore].includes(source)) return da;
+      const cell = da[subscore];
+      return {
+        ...da,
+        [subscore]: cell.includes(source)
+          ? cell.filter((s) => s !== source)
+          : [...cell, source],
+      };
+    });
 
   const [saving, startSave] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -155,9 +180,12 @@ export function ScoringProvider({
       },
       xx: { control: xx.control },
       // Sorted so toggle order never fakes a diff against the saved blob.
+      dataAccess: Object.fromEntries(
+        SUBSCORES.map((sub) => [sub.id, [...dataAccess[sub.id]].sort()]),
+      ) as DataAccess,
       context: { em: [...context.em].sort() },
     }),
-    [laneN, recallTopK, em, sm, gp, rp, xx, context],
+    [laneN, recallTopK, em, sm, gp, rp, xx, dataAccess, context],
   );
 
   const dirty = useMemo(
@@ -174,6 +202,7 @@ export function ScoringProvider({
     setGp(f.gp);
     setRp(f.rp);
     setXx(f.xx);
+    setDataAccess(f.dataAccess);
     setContext(f.context);
   };
 
@@ -213,6 +242,8 @@ export function ScoringProvider({
         setRp,
         xx,
         setXx,
+        dataAccess,
+        toggleSource,
         context,
         toggleContext,
         current,
