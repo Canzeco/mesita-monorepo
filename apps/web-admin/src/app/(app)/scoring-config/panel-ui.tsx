@@ -321,3 +321,67 @@ export function DataAccessMatrix({
     </div>
   );
 }
+
+/**
+ * Per-box Save/Cancel footer (Pato: every box saves ITSELF, never the whole
+ * page). Renders only when the box's section is dirty; Save merges this
+ * section over the last-saved blob (the EF's whole-blob contract holds),
+ * Cancel reverts only this section.
+ */
+export function BoxSaveBar({
+  dirty,
+  saving,
+  savedOk,
+  error,
+  onSave,
+  onCancel,
+}: {
+  dirty: boolean;
+  saving: boolean;
+  savedOk: boolean;
+  error?: string | null;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  if (!dirty && !saving && !savedOk && !error) return null;
+  return (
+    <div className="border-border/60 mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+      <span className="text-xs" aria-live="polite">
+        {dirty && !saving ? (
+          <span className="text-muted-foreground inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
+            Unsaved changes in this box
+          </span>
+        ) : savedOk && !saving ? (
+          <span className="text-muted-foreground">Saved ✓</span>
+        ) : saving ? (
+          <span className="text-muted-foreground">Saving…</span>
+        ) : null}
+        {error ? <span className="ml-2 font-medium text-red-600">{error}</span> : null}
+      </span>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving || !dirty}
+          className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-8 items-center rounded-full border px-3.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving || !dirty}
+          className={
+            "inline-flex h-8 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition " +
+            (saving || dirty
+              ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
+              : "bg-muted text-muted-foreground")
+          }
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+      </div>
+    </div>
+  );
+}

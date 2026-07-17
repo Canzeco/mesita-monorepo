@@ -10,7 +10,7 @@ import {
   STANDARD_ENGINE,
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { GroupHead, PanelCard, Slider, SubHead } from "../panel-ui";
+import { BoxSaveBar, GroupHead, PanelCard, Slider, SubHead } from "../panel-ui";
 import { LaneBadge } from "../playground-ui";
 import { DeckPlayground } from "./DeckPlayground";
 
@@ -20,7 +20,16 @@ import { DeckPlayground } from "./DeckPlayground";
 // provider, so both tabs and both playgrounds always agree).
 
 export function LanesPanel() {
-  const { laneN, setLaneN } = useScoring();
+  const {
+    laneN,
+    setLaneN,
+    sectionDirty,
+    savingSection,
+    saveError,
+    savedSection,
+    saveSection,
+    revertSection,
+  } = useScoring();
   const total = laneCountsTotal(laneN);
 
   return (
@@ -106,6 +115,14 @@ export function LanesPanel() {
             </div>
           </div>
         </div>
+        <BoxSaveBar
+          dirty={sectionDirty.lanes}
+          saving={savingSection === "lanes"}
+          savedOk={savedSection === "lanes"}
+          error={savingSection === "lanes" || sectionDirty.lanes ? saveError : null}
+          onSave={() => saveSection("lanes")}
+          onCancel={() => revertSection("lanes")}
+        />
       </PanelCard>
 
       {/* ══ The Standard Engine ══════════════════════════════════════ */}
@@ -143,14 +160,14 @@ export function LanesPanel() {
       {/* ══ Filters ══════════════════════════════════════════════════ */}
       <PanelCard
         title="Filters · Where · When · What · Randomness"
-        subtitle="The consumer-facing filter row and where each filter lands in the model. Where/When/What are SM's intent-side inputs — the filters ARE the structured ask; Randomness is XX's control. None of them is a separate scoring stage."
+        subtitle="The consumer-facing filter row and where each filter lands in the model. Where/When/What are SM's intent-side inputs — the filters ARE the structured ask; Randomness sets XX's control per query. These are the CONSUMER's knobs — the admin configures only their no-filter defaults; none of them is a separate scoring stage."
       >
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { name: "Where", owner: "SM · where", detail: "zone / anchor set + tolerated distance (the consumer slider, point mode only)" },
             { name: "When", owner: "SM · when", detail: "target time vs the place's open windows — wait × fit" },
             { name: "What", owner: "SM · what", detail: "category / mega-category set — the ladder 1 / 0.6 / 0.2" },
-            { name: "Randomness", owner: "XX · control", detail: "the deck-wide luck knob, 0 (off) … 5 (chaos)" },
+            { name: "Randomness", owner: "XX · control", detail: "the CONSUMER's luck knob, 0 (off) … 5 (chaos) — the admin only sets the no-filter default (XX box)" },
           ].map((f) => (
             <div key={f.name} className="border-border/60 bg-muted/40 rounded-xl border px-3 py-2.5">
               <p className="text-[12px] font-semibold">{f.name}</p>

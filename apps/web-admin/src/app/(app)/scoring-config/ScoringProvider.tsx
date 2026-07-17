@@ -25,12 +25,22 @@ import { updateScoringSettings } from "./settings-actions";
 // Shared state for the Scoring Config tabs (v10 blob). The layout mounts
 // this ONCE, so knobs set on Subscores carry into Scores & Lanes live and
 // survive tab switches — both playgrounds compute from the SAME form state.
-// The DB sample flows through as plain props; the SAVED settings blob seeds
-// the knobs on first mount (null in DB = code defaults).
 //
-// Save = whole-blob write to app_settings.scoring_config via the EF pair.
-// Reset-to-defaults = load DEFAULT_SCORING_SETTINGS into the form (dirty
-// until saved). Revert = the form back to the last-saved values.
+// SAVE IS PER-BOX (Pato 2026-07-16: "each individual box must have its own
+// save changes / cancel button, not for the whole page"). Each box owns a
+// SECTION of the blob; its Save merges THAT section's live values over the
+// last-saved blob and writes the WHOLE blob (the EF's whole-blob contract is
+// unchanged — partial patches would invite drift). Its Cancel reverts only
+// that section. Other boxes' unsaved edits are never swept along.
+
+export type SettingsSection =
+  | "dataAccess"
+  | "em" // recall top-K + EM's field context (the EM box's two configs)
+  | "sm"
+  | "gp"
+  | "rp"
+  | "xx"
+  | "lanes"; // laneN — lives on the Scores & Lanes page
 
 function fromSettings(s: ScoringSettings): {
   laneN: LaneCounts;
@@ -70,6 +80,8 @@ type ScoringCtx = {
   setGp: React.Dispatch<React.SetStateAction<GpParams>>;
   rp: RpRungs;
   setRp: React.Dispatch<React.SetStateAction<RpRungs>>;
+  /** XX — the DEFAULT control: the consumer's Randomness filter overrides
+   * it per query; this is what the Standard Engine uses with no filter set. */
   xx: XxParams;
   setXx: React.Dispatch<React.SetStateAction<XxParams>>;
   /** The core config — per-subscore source toggles (the data-access matrix). */
@@ -78,15 +90,19 @@ type ScoringCtx = {
   /** Which fields EM reads — the per-field detail under the matrix. */
   context: ContextConfig;
   toggleContext: (key: string) => void;
-  /** Current form as a settings blob. */
+  /** Current form as a settings blob (the playgrounds compute from this). */
   current: ScoringSettings;
-  dirty: boolean;
-  saving: boolean;
+  /** Per-section dirty flags — each box renders its own Save/Cancel. */
+  sectionDirty: Record<SettingsSection, boolean>;
+  /** The section currently being saved, if any. */
+  savingSection: SettingsSection | null;
   saveError: string | null;
-  savedOk: boolean;
-  save: () => void;
+  /** The section whose save just landed (transient ✓). */
+  savedSection: SettingsSection | null;
+  saveSection: (section: SettingsSection) => void;
+  revertSection: (section: SettingsSection) => void;
+  /** Load code defaults into the whole form (each box dirty until saved). */
   resetToDefaults: () => void;
-  revert: () => void;
 };
 
 const Ctx = createContext<ScoringCtx | null>(null);
@@ -144,12 +160,13 @@ export function ScoringProvider({
       };
     });
 
-  const [saving, startSave] = useTransition();
+  const [savingSection, setSavingSection] = useState<SettingsSection | null>(null);
+  const [, startSave] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [savedOk, setSavedOk] = useState(false);
+  const [savedSection, setSavedSection] = useState<SettingsSection | null>(null);
 
   // Literal-constructed in the SAME key order coerceScoringSettings outputs —
-  // the dirty diff is JSON.stringify equality.
+  // dirty diffs are JSON.stringify equality per section.
   const current: ScoringSettings = useMemo(
     () => ({
       v: 5,
@@ -193,13 +210,122 @@ export function ScoringProvider({
     [laneN, recallTopK, sm, gp, rp, xx, dataAccess, context],
   );
 
-  const dirty = useMemo(
-    () => JSON.stringify(current) !== JSON.stringify(saved),
+  // A section's slice of a blob — the unit of dirty/save/revert.
+  const slice = (s: ScoringSettings, section: SettingsSection): unknown => {
+    switch (section) {
+      case "dataAccess":
+        return s.dataAccess;
+      case "em":
+        return { recallTopK: s.retrieval.recallTopK, em: s.context.em };
+      case "sm":
+        return s.sm;
+      case "gp":
+        return s.gp;
+      case "rp":
+        return s.rp;
+      case "xx":
+        return s.xx;
+      case "lanes":
+        return s.laneN;
+    }
+  };
+
+  const SECTIONS: readonly SettingsSection[] = [
+    "dataAccess",
+    "em",
+    "sm",
+    "gp",
+    "rp",
+    "xx",
+    "lanes",
+  ];
+
+  const sectionDirty = useMemo(
+    () =>
+      Object.fromEntries(
+        SECTIONS.map((sec) => [
+          sec,
+          JSON.stringify(slice(current, sec)) !== JSON.stringify(slice(saved, sec)),
+        ]),
+      ) as Record<SettingsSection, boolean>,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [current, saved],
   );
 
-  const apply = (s: ScoringSettings) => {
+  // THIS section's live values merged over the last-saved blob — other
+  // boxes' unsaved edits are never swept along by someone else's Save.
+  const blobFor = (section: SettingsSection): ScoringSettings => {
+    switch (section) {
+      case "dataAccess":
+        return { ...saved, dataAccess: current.dataAccess };
+      case "em":
+        return { ...saved, retrieval: current.retrieval, context: current.context };
+      case "sm":
+        return { ...saved, sm: current.sm };
+      case "gp":
+        return { ...saved, gp: current.gp };
+      case "rp":
+        return { ...saved, rp: current.rp };
+      case "xx":
+        return { ...saved, xx: current.xx };
+      case "lanes":
+        return { ...saved, laneN: current.laneN };
+    }
+  };
+
+  // Re-apply ONE section from a blob into the form (post-save clamp echo,
+  // or a Cancel).
+  const applySection = (s: ScoringSettings, section: SettingsSection) => {
     const f = fromSettings(s);
+    switch (section) {
+      case "dataAccess":
+        setDataAccess(f.dataAccess);
+        return;
+      case "em":
+        setRecallTopKRaw(f.recallTopK);
+        setContext(f.context);
+        return;
+      case "sm":
+        setSm(f.sm);
+        return;
+      case "gp":
+        setGp(f.gp);
+        return;
+      case "rp":
+        setRp(f.rp);
+        return;
+      case "xx":
+        setXx(f.xx);
+        return;
+      case "lanes":
+        setLaneNRaw(f.laneN);
+        return;
+    }
+  };
+
+  const saveSection = (section: SettingsSection) => {
+    setSaveError(null);
+    setSavedSection(null);
+    setSavingSection(section);
+    startSave(async () => {
+      const r = await updateScoringSettings(blobFor(section));
+      setSavingSection(null);
+      if (!r.ok) {
+        setSaveError(r.error);
+        return;
+      }
+      const clean = coerceScoringSettings(r.config);
+      setSaved(clean);
+      applySection(clean, section);
+      setSavedSection(section);
+      window.setTimeout(() => setSavedSection(null), 2500);
+    });
+  };
+
+  const revertSection = (section: SettingsSection) => applySection(saved, section);
+
+  const resetToDefaults = () => {
+    const f = fromSettings(DEFAULT_SCORING_SETTINGS);
     setLaneNRaw(f.laneN);
     setRecallTopKRaw(f.recallTopK);
     setSm(f.sm);
@@ -208,23 +334,6 @@ export function ScoringProvider({
     setXx(f.xx);
     setDataAccess(f.dataAccess);
     setContext(f.context);
-  };
-
-  const save = () => {
-    setSaveError(null);
-    setSavedOk(false);
-    startSave(async () => {
-      const r = await updateScoringSettings(current);
-      if (!r.ok) {
-        setSaveError(r.error);
-        return;
-      }
-      const clean = coerceScoringSettings(r.config);
-      setSaved(clean);
-      apply(clean);
-      setSavedOk(true);
-      window.setTimeout(() => setSavedOk(false), 2500);
-    });
   };
 
   return (
@@ -249,13 +358,13 @@ export function ScoringProvider({
         context,
         toggleContext,
         current,
-        dirty,
-        saving,
+        sectionDirty,
+        savingSection,
         saveError,
-        savedOk,
-        save,
-        resetToDefaults: () => apply(DEFAULT_SCORING_SETTINGS),
-        revert: () => apply(saved),
+        savedSection,
+        saveSection,
+        revertSection,
+        resetToDefaults,
       }}
     >
       {children}
