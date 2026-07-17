@@ -1,4 +1,4 @@
-import { formatMoneyMx } from "./ticket-informal.ts";
+import { formatMoneyMx } from "./ticket-bill-payload.ts";
 
 type BillTotals = {
   subtotal: number;

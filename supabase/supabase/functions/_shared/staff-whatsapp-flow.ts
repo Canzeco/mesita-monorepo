@@ -48,8 +48,8 @@ import {
 } from "./staff-place-ops.ts";
 import { placeHasVerifiedOwner } from "./place-ownership.ts";
 import { replyStaffCoach } from "./staff-whatsapp-replies.ts";
+import { buildConsumerBillPayload } from "./ticket-bill-payload.ts";
 import {
-  buildConsumerBillPayload,
   computeInformalBill,
   type ConsumerRow,
 } from "./ticket-informal.ts";

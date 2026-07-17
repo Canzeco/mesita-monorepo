@@ -21,7 +21,7 @@ import {
   assessPromoLane,
   loadMembershipRow,
 } from "../_shared/membership-enforcement.ts";
-import { placeInstagramHandleForPayload } from "../_shared/ticket-informal.ts";
+import { placeInstagramHandleForPayload } from "../_shared/ticket-bill-payload.ts";
 import { toCents } from "../_shared/money.ts";
 
 type Body = {
