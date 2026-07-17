@@ -31,6 +31,7 @@ import Animated, {
 
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
 import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
+import { SwipeDecisionBadge } from '@/components/swipe/SwipeDecisionBadge';
 import {
   EmptyState,
   shuffleDeck,
@@ -288,44 +289,6 @@ function DeckBody({
     };
   });
 
-  const skipBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateX.value,
-      [-80, -30, 0],
-      [1, 1, 0],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          translateX.value,
-          [-80, -30, 0],
-          [1, 1, 0.9],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-  }));
-
-  const saveBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateX.value,
-      [0, 30, 80],
-      [0, 1, 1],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          translateX.value,
-          [0, 30, 80],
-          [0.9, 1, 1],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-  }));
-
   const saved = isSaved(v.id);
 
   return (
@@ -353,48 +316,8 @@ function DeckBody({
           <Animated.View style={[{ flex: 1 }, frontStyle]}>
             <PlaceSwipeCard place={v} />
 
-            <Animated.View
-              style={[
-                {
-                  position: 'absolute',
-                  top: 16,
-                  left: 16,
-                  zIndex: 30,
-                  borderRadius: 6,
-                  borderWidth: 2,
-                  borderColor: '#fff',
-                  backgroundColor: 'rgba(38,4,9,0.4)',
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                },
-                skipBadgeStyle,
-              ]}
-              pointerEvents="none"
-            >
-              <Text className="text-[11px] font-bold tracking-wider text-white uppercase">
-                Skip
-              </Text>
-            </Animated.View>
-
-            <Animated.View
-              style={[{ position: 'absolute', top: 16, right: 16, zIndex: 30 }, saveBadgeStyle]}
-              pointerEvents="none"
-            >
-              <LinearGradient
-                colors={[...GRADIENTS.pink]}
-                start={GRADIENT_DIAGONAL.start}
-                end={GRADIENT_DIAGONAL.end}
-                style={{
-                  borderRadius: 6,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                }}
-              >
-                <Text className="text-[11px] font-bold tracking-wider text-white uppercase">
-                  Save
-                </Text>
-              </LinearGradient>
-            </Animated.View>
+            <SwipeDecisionBadge side="left" translateX={translateX} />
+            <SwipeDecisionBadge side="right" translateX={translateX} />
           </Animated.View>
         </GestureDetector>
 
