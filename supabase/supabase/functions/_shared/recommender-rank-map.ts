@@ -38,6 +38,13 @@ import {
   stripInternal,
   type PlaceRow,
 } from "./recommender-pool.ts";
+import {
+  clampInt,
+  fallbackCategories,
+  pickEmoji,
+  type ProposedCategory,
+  slug,
+} from "./recommender-rank-map-fallback.ts";
 import { demoteClosed, localClock } from "./local-time.ts";
 
 const CANDIDATE_POOL = 300;
@@ -56,14 +63,6 @@ export type RankMapInput = {
   maxCategories: number;
   perCategory: number;
   profile: ConsumerProfile | null;
-};
-
-type ProposedCategory = {
-  key: string;
-  label: string;
-  description: string;
-  emoji: string;
-  intent_query: string;
 };
 
 type BuiltCategory = {
@@ -313,48 +312,4 @@ async function proposeCategories({
       intent_query: (c.intent_query ?? c.label ?? "").slice(0, 240),
     }));
   return items;
-}
-
-// Used if the LLM proposal fails: bucket by Google primary category.
-function fallbackCategories(rows: PlaceRow[], maxCategories: number): ProposedCategory[] {
-  const byCat = new Map<string, PlaceRow[]>();
-  for (const r of rows) {
-    const c = (r.category ?? "").toLowerCase().trim();
-    if (!c) continue;
-    if (!byCat.has(c)) byCat.set(c, []);
-    byCat.get(c)!.push(r);
-  }
-  return [...byCat.entries()]
-    .sort((a, b) => b[1].length - a[1].length)
-    .slice(0, maxCategories)
-    .map(([cat]) => ({
-      key: slug(cat),
-      label: cat.charAt(0).toUpperCase() + cat.slice(1),
-      description: `Top ${cat} places nearby`,
-      emoji: "✨",
-      intent_query: `${cat} places with great vibe and worth the visit`,
-    }));
-}
-
-function slug(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
-
-function pickEmoji(raw: unknown): string {
-  if (typeof raw !== "string" || !raw) return "✨";
-  const it = raw[Symbol.iterator]();
-  const first = it.next();
-  return first.done ? "✨" : (first.value as string);
-}
-
-function clampInt(v: unknown, def: number, lo: number, hi: number): number {
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) return def;
-  return Math.max(lo, Math.min(hi, Math.trunc(n)));
 }
