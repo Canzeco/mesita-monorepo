@@ -57,7 +57,7 @@ import {
 } from "./staff-whatsapp-bill-messages.ts";
 import { sendStaffWhatsAppReply } from "./staff-whatsapp-messages.ts";
 import { sendWhatsAppText, type TwilioEnv } from "./twilio.ts";
-import { recordMembershipStrike } from "./membership-enforcement.ts";
+import { handleStaffCancel } from "./staff-whatsapp-cancel.ts";
 import { handleStaffPaymentConfirm } from "./staff-whatsapp-payment-confirm.ts";
 import { buildStaffBillTicketInsert } from "./staff-whatsapp-ticket-payload.ts";
 
@@ -183,42 +183,13 @@ export async function handleStaffInboundMessage(opts: {
   session = resolved.session;
 
   if (intent.intent === "cancel") {
-    // Cancelling after a guest code was identified = ignored QR strike (MESITA-542).
-    const hadGuest =
-      !!session.consumer_id &&
-      session.state !== "idle" &&
-      session.state !== "selecting_project";
-    let strikeNote = "";
-    if (hadGuest && session.consumer_id) {
-      const strike = await recordMembershipStrike(admin, {
-        projectId: staff.projectId,
-        reason: "ignored_qr",
-        consumerId: session.consumer_id,
-        ticketId: session.ticket_id,
-        notes: "staff WhatsApp cancel after guest identified",
-      });
-      if (strike.ok && !strike.alreadyRecorded) {
-        if (strike.consequence === "warning_retest") {
-          strikeNote =
-            "\n\n⚠️ Strike 1 — aviso. Vuelve a mandar el test ping desde Team.";
-        } else if (strike.consequence === "pause_30d") {
-          strikeNote =
-            "\n\n⚠️ Strike 2 — promos pausadas 30 días.";
-        } else {
-          strikeNote =
-            "\n\n⚠️ Strike 3 — membresía removida. El local sigue listado sin promos.";
-        }
-      }
-    }
-    await resetSession(admin, session.id, staff.projectId);
-    await reply(
+    await handleStaffCancel({
       admin,
       twilio,
-      staff.phoneE164,
-      `Sesión reiniciada en ${staff.placeName}.\nCuando tengas un comensal, manda su código (0000-0000).\n` +
-        (places.length > 1 ? "Escribe cambiar unidad para moverte a otro local." : "") +
-        strikeNote,
-    );
+      staff,
+      session,
+      places,
+    });
     return;
   }
 
