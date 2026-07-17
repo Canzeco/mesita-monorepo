@@ -3,12 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
-  CalendarCheck,
   Hand,
   Heart,
   RotateCcw,
-  SlidersHorizontal,
-  Store,
   X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,8 +31,8 @@ import Animated, {
 /* eslint-disable react-hooks/immutability */
 
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
+import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
 import {
-  ActionBtn,
   EmptyState,
   shuffleDeck,
   sortPartnersFirst,
@@ -492,29 +489,12 @@ function DeckBody({
       </View>
 
       <View className="mt-3 flex-row items-center gap-1.5">
-        <ActionBtn
-          label="Filter"
-          Icon={SlidersHorizontal}
-          onPress={() => setFiltersOpen(true)}
-        />
-        <ActionBtn label="Skip" Icon={X} onPress={() => beginExit('left')} />
-        <ActionBtn
-          label="Info"
-          Icon={Store}
-          onPress={() => router.push(`/place/${v.id}`)}
-        />
-        <ActionBtn
-          label={saved ? 'Saved' : 'Save'}
-          Icon={Heart}
-          onPress={() => beginExit('right')}
-          primary={saved}
-          filled={saved}
-        />
-        <ActionBtn
-          label="Reserve"
-          Icon={CalendarCheck}
-          onPress={() => undefined}
-          disabled
+        <SwipeActionRow
+          saved={saved}
+          onOpenFilters={() => setFiltersOpen(true)}
+          onSkip={() => beginExit('left')}
+          onOpenInfo={() => router.push(`/place/${v.id}`)}
+          onSave={() => beginExit('right')}
         />
       </View>
 
