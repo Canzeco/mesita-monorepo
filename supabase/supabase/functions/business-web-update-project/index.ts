@@ -37,6 +37,10 @@ import {
 } from "./project-urls.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "./promo-rates.ts";
 import {
+  isMissingCategoryLabelColumnError,
+  optString,
+} from "./project-update-utils.ts";
+import {
   type ReservationContact,
   sanitiseReservationContacts,
 } from "./reservation-contacts.ts";
@@ -651,22 +655,4 @@ async function resolveCategoryInput(
     error:
       "category could not be mapped to a Mesita category. Try a clearer category name.",
   };
-}
-
-function isMissingCategoryLabelColumnError(
-  err: { message?: string } | null,
-): boolean {
-  if (!err?.message) return false;
-  return (
-    err.message.includes("category_label") &&
-    (err.message.includes("schema cache") || err.message.includes("column"))
-  );
-}
-
-function optString(v: unknown, maxLen: number): string | null {
-  if (v == null) return null;
-  if (typeof v !== "string") return null;
-  const trimmed = v.trim();
-  if (!trimmed) return null;
-  return trimmed.slice(0, maxLen);
 }
