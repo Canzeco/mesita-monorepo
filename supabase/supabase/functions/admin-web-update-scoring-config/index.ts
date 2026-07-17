@@ -6,12 +6,13 @@
 // only invite drift.
 //
 // v4 blob (scoring v10, MESITA-644) — keys follow the subscore names
-// (EM · SM · GP · RP · XX, all [0,1]; three lanes; merge O → I → H):
-//   { v: 4, laneN, retrieval, em, sm, gp, rp, xx, context }
+// (EM · SM · GP · RP · XX, all [0,1]; three lanes; merge O → I → H). The EM
+// encoder (text-embedding-3-small @ its native 1536 dims) is a FIXED
+// decision, deliberately NOT in the blob — a stray `em` key from an older
+// client is ignored:
+//   { v: 4, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
 //   laneN     shared lane length N — each lane contributes up to N cards;
 //             the merged deck (dedupe, no backfill) is ≤ 3·N
-//   em        Embeddings Match params (embedDims — the encoder's Matryoshka
-//             `dimensions` knob; OpenAI text-embedding-3-small)
 //   sm        Structured Match knobs — where (pointTolKm · zoneSpillKm ·
 //             distExp) · when (waitFloor · waitTransitionH · waitSteep ·
 //             sessionH · timeBlockH) · what (sibling · mismatch)
@@ -73,11 +74,6 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   const ret = r.retrieval as Record<string, unknown> | undefined;
   const recallTopK = num(ret?.recallTopK, 10, 200);
   if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
-
-  // EM — the encoder's params.
-  const emIn = r.em as Record<string, unknown> | undefined;
-  const embedDims = num(emIn?.embedDims, 16, 4096);
-  if (embedDims == null) return { ok: false, error: "em.embedDims out of range" };
 
   // SM — where × when × what.
   const smIn = r.sm as Record<string, unknown> | undefined;
@@ -187,7 +183,6 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       v: 4,
       laneN: Math.round(laneN),
       retrieval: { recallTopK },
-      em: { embedDims: Math.round(embedDims) },
       sm: {
         where: { pointTolKm, zoneSpillKm, distExp },
         when: { waitFloor, waitTransitionH, waitSteep, sessionH, timeBlockH },

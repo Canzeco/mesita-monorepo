@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  EM_ENCODER,
   gpParts,
   PIPELINE_CONTEXT,
   fitScore,
@@ -43,8 +44,6 @@ export function SubscoresPanel() {
   const {
     recallTopK,
     setRecallTopK,
-    em,
-    setEm,
     sm,
     setSm,
     gp,
@@ -106,7 +105,7 @@ export function SubscoresPanel() {
       {/* ══ EM ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="EM Subscore · Embeddings Match"
-        subtitle="cosine(place vector, consumer + intent vector), clamped max(0, cos) → [0,1]. Encoder: OpenAI text-embedding-3-small at the dims below (unit vectors, so cos = A·B — pgvector computes it at recall); the playground emulates it with a feature-hash encoder. Reads TEXT only — the context below is CONFIG: click a field to include or exclude it from the embedded documents."
+        subtitle="cosine(place vector, consumer + intent vector), clamped max(0, cos) → [0,1]. The encoder is a FIXED decision, not a param: OpenAI text-embedding-3-small at its native 1536 dims (unit vectors, so cos = A·B — pgvector computes it at recall); the playground emulates it with a feature-hash encoder. Reads TEXT only — the context below is CONFIG: click a field to include or exclude it from the embedded documents."
         pill={`${context.em.length} fields in context`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
@@ -120,15 +119,10 @@ export function SubscoresPanel() {
             onChange={setRecallTopK}
             hint="places pgvector returns per query, metro-filtered — the lanes score these"
           />
-          <Slider
-            label="Embedding dims"
-            value={`${em.embedDims}d`}
-            min={256}
-            max={3072}
-            step={256}
-            v={em.embedDims}
-            onChange={(v) => setEm({ embedDims: v })}
-            hint="the API's Matryoshka `dimensions` knob — 1536 = small's native size"
+          <Chip
+            label="Encoder · fixed"
+            value={`${EM_ENCODER.model} · ${EM_ENCODER.dims}d`}
+            hint="a decision, not a knob — changing encoder = a new decision + catalog re-embed"
           />
           <Chip label="Mapping" value="max(0, cos)" hint="revisit (percentile calibration) only if real cosines cluster" />
         </div>

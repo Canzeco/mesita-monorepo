@@ -21,6 +21,7 @@ import {
   composeFinalDeck,
   DEFAULT_DATA_ACCESS,
   DEFAULT_SCORING_SETTINGS,
+  EM_ENCODER,
   emScore,
   fitScore,
   gpScore,
@@ -271,28 +272,30 @@ export function runCongruency(s: ScoringSettings): CongruencyResult[] {
   const clamped = coerceScoringSettings({
     xx: { control: 99 },
     gp: { lnCeiling: 999 },
-    em: { embedDims: 1 },
   });
   out.push(
     structural(
       "coerce-clamps",
       "the coercer clamps garbage to the range table (and NULL → pure defaults)",
-      "control 5 · ceiling 15 · dims 16",
-      `control ${clamped.xx.control} · ceiling ${clamped.gp.lnCeiling} · dims ${clamped.em.embedDims}`,
-      clamped.xx.control === 5 && clamped.gp.lnCeiling === 15 && clamped.em.embedDims === 16,
+      "control 5 · ceiling 15",
+      `control ${clamped.xx.control} · ceiling ${clamped.gp.lnCeiling}`,
+      clamped.xx.control === 5 && clamped.gp.lnCeiling === 15,
+    ),
+  );
+
+  out.push(
+    structural(
+      "encoder-fixed",
+      "the encoder is a FIXED constant — text-embedding-3-small at its native 1536 dims, not a param (not in the blob, no slider)",
+      "text-embedding-3-small · 1536",
+      `${EM_ENCODER.model} · ${EM_ENCODER.dims}`,
+      EM_ENCODER.model === "text-embedding-3-small" && EM_ENCODER.dims === 1536,
     ),
   );
 
   // ── LOCKED VALUES — the agreed spec vs the current form ───────────────
 
   out.push(
-    locked(
-      "encoder-dims",
-      "EM encoder: OpenAI text-embedding-3-small at its NATIVE 1536 dims (agreed — small over large)",
-      "1536",
-      String(s.em.embedDims),
-      s.em.embedDims === 1536,
-    ),
     locked(
       "gp-ceiling",
       "GP ceiling: ln(1+raw)/10 — e¹⁰ ≈ 22,026 star mass reads fully popular (locked)",
@@ -393,7 +396,6 @@ export function runCongruency(s: ScoringSettings): CongruencyResult[] {
 function runLockedOnDefaults(): boolean {
   const d = DEFAULT_SCORING_SETTINGS;
   return (
-    d.em.embedDims === 1536 &&
     d.gp.lnCeiling === 10 &&
     near(d.rp.zero, 0.1) &&
     near(d.rp.conservative, 0.4) &&

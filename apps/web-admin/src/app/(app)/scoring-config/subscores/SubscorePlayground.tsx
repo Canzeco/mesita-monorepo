@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Dices, MapPin, MessageSquareText, Store, UserRound } from "lucide-react";
 import {
+  EM_ENCODER,
   gpParts,
   LANES,
   laneScore,
@@ -55,7 +56,7 @@ const INTENT_STYLES: readonly IntentStyle[] = ["browse", "viewport", "question"]
 const pct = (v: number) => v.toFixed(2);
 
 export function SubscorePlayground() {
-  const { consumers, places, em, sm, gp, rp, xx, dataAccess, context } = useScoring();
+  const { consumers, places, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
   const [consumerIdx, setConsumerIdx] = useState(0);
   const [placeIdx, setPlaceIdx] = useState(0);
@@ -88,8 +89,8 @@ export function SubscorePlayground() {
       intent: emSrc.intent,
     });
     const placeDoc = buildPlaceDoc(place, enabled, emSrc.place);
-    const ciVec = embedText(ciDoc, em.embedDims);
-    const placeVec = embedText(placeDoc, em.embedDims);
+    const ciVec = embedText(ciDoc, EM_ENCODER.dims);
+    const placeVec = embedText(placeDoc, EM_ENCODER.dims);
     const emVal = emFromVectors(ciVec, placeVec);
 
     const smLive = smPlaceOn && smIntentOn;
@@ -141,7 +142,7 @@ export function SubscorePlayground() {
     ) as Record<LaneId, number>;
 
     return { profile, intent, ciDoc, placeDoc, ciVec, placeVec, emVal, w, win, rel, smP, gpP, posture, rpVal, draws, xxVals, laneScores };
-  }, [consumer, place, places, style, roll, consumerIdx, context.em, em.embedDims, sm, gp, rp, xx, dataAccess]);
+  }, [consumer, place, places, style, roll, consumerIdx, context.em, sm, gp, rp, xx, dataAccess]);
 
   if (places.length === 0) {
     return (
@@ -282,7 +283,7 @@ export function SubscorePlayground() {
                 icon={MessageSquareText}
                 tint="sky"
                 title="EM · Embeddings Match"
-                note={`${em.embedDims}d emulated encoder · ${context.em.length} fields enabled`}
+                note={`${EM_ENCODER.dims}d emulated encoder · ${context.em.length} fields enabled`}
                 result={pct(run.emVal)}
                 className="lg:col-span-2"
               >

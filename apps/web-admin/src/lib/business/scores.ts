@@ -156,18 +156,18 @@ export function laneScore(lane: Lane, subs: Record<SubscoreId, number>): number 
 }
 
 // ── EM — Embeddings Match ──────────────────────────────────────────────
-// The real encoder is OpenAI text-embedding-3-small at `dimensions =
-// embedDims` (vectors unit-normalized, so cos = A·B, computed by pgvector at
-// recall). The playground emulates it with a feature-hash encoder (cip.ts).
-// Chose small over large: the MTEB gap is ~2 pts, not worth 2× vector size +
-// ~6.5× cost; upgrade path is a cheap catalog re-embed.
+// The encoder is a FIXED DECISION, not a param (Pato 2026-07-16): OpenAI
+// text-embedding-3-small at its NATIVE 1536 dims. Vectors are
+// unit-normalized, so cos = A·B — pgvector computes it at recall; the
+// playground emulates the encoder with a feature-hash stand-in at the same
+// dims. Chose small over large: the MTEB gap is ~2 pts, not worth 2× vector
+// size + ~6.5× cost; upgrade path (a cheap catalog re-embed) would be a NEW
+// decision here, never a knob.
 
-export type EmParams = {
-  /** Embedding dimensionality — the API's Matryoshka `dimensions` knob. */
-  embedDims: number;
-};
-
-export const DEFAULT_EM_PARAMS: EmParams = { embedDims: 1536 };
+export const EM_ENCODER = {
+  model: "text-embedding-3-small",
+  dims: 1536,
+} as const;
 
 /** EM from a raw cosine — clamp negatives (opposite/unrelated → 0). Revisit
  * (percentile calibration) only if real cosines cluster too tight. */
@@ -651,9 +651,10 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 // saves an override. Reset-to-defaults loads these values into the form;
 // Save writes the blob.
 //
-// RANGE TABLE (mirrored VERBATIM in admin-web-update-scoring-config):
+// RANGE TABLE (mirrored VERBATIM in admin-web-update-scoring-config).
+// The encoder (EM_ENCODER — small @ 1536) is a FIXED constant, deliberately
+// absent: fixed decisions never enter the blob.
 //   laneN                 1–20 int      retrieval.recallTopK   10–200
-//   em.embedDims          16–4096 int
 //   sm.where.pointTolKm   0.5–20        sm.where.zoneSpillKm   0.5–10
 //   sm.where.distExp      1–5
 //   sm.when.waitFloor     0–1           sm.when.waitTransitionH 0.5–6
@@ -669,7 +670,6 @@ export type ScoringSettings = {
   v: 4;
   laneN: number;
   retrieval: { recallTopK: number };
-  em: EmParams;
   sm: SmParams;
   gp: GpParams;
   rp: RpRungs;
@@ -683,7 +683,6 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
   v: 4,
   laneN: DEFAULT_LANE_N,
   retrieval: DEFAULT_RETRIEVAL,
-  em: DEFAULT_EM_PARAMS,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
   rp: DEFAULT_RP_RUNGS,
@@ -746,7 +745,8 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const r = raw as Record<string, unknown>;
 
   const ret = (r.retrieval ?? {}) as Record<string, unknown>;
-  const em = (r.em ?? {}) as Record<string, unknown>;
+  // Note: a stray `em` key from an older blob is silently dropped — the
+  // encoder is EM_ENCODER, a fixed constant, never config.
   const sm = (r.sm ?? {}) as Record<string, unknown>;
   const smWhere = (sm.where ?? {}) as Record<string, unknown>;
   const smWhen = (sm.when ?? {}) as Record<string, unknown>;
@@ -761,9 +761,6 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
     laneN: Math.round(num(r.laneN, d.laneN, 1, LANE_N_MAX)),
     retrieval: {
       recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
-    },
-    em: {
-      embedDims: Math.round(num(em.embedDims, d.em.embedDims, 16, 4096)),
     },
     sm: {
       where: {
