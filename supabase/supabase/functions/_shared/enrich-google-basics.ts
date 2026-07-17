@@ -15,6 +15,7 @@ import { classifyLinks } from "./channels.ts";
 import { slugify } from "./place-slug.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { mapGoogleReviews } from "./enrich-google-review-snippets.ts";
 
 const GOOGLE_FIELD_MASK = [
   "id",
@@ -323,21 +324,6 @@ async function fetchTimezone(
 }
 
 // ── helpers (ported verbatim from atlas-seed-place) ─────────────────────────
-function mapGoogleReviews(
-  reviews: GoogleDetails["reviews"],
-): { author: string; rating: number; quote: string; date: string }[] | null {
-  if (!Array.isArray(reviews) || reviews.length === 0) return null;
-  const mapped = reviews
-    .map((r) => ({
-      author: r.authorAttribution?.displayName ?? "Google reviewer",
-      rating: typeof r.rating === "number" ? r.rating : 0,
-      quote: (r.text?.text ?? r.originalText?.text ?? "").trim(),
-      date: r.relativePublishTimeDescription ?? "",
-    }))
-    .filter((r) => r.quote.length > 0);
-  return mapped.length > 0 ? mapped : null;
-}
-
 function findAddressComponent(
   components: GoogleDetails["addressComponents"],
   types: string[],
