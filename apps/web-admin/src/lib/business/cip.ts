@@ -28,7 +28,17 @@
 // registry / edge-distance geometry is the backend build), and the category
 // ladder proxies mega-category siblings through tag overlap.
 
-import type { EngineId, WhatRelation } from "./scores";
+import type { WhatRelation } from "./scores";
+
+/**
+ * Synthetic intent STYLES — how the playground fabricates the query side.
+ * There is only ONE engine (the Standard Engine); the surfaces differ only
+ * in where intent-data comes from, and these styles emulate that:
+ *   browse   — open-ended feed browsing (Swipe-shaped intent)
+ *   viewport — spatial browsing around a viewport (Map-shaped intent)
+ *   question — a concrete ask with category set (Memo-shaped intent)
+ */
+export type IntentStyle = "browse" | "viewport" | "question";
 
 /** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
 export const SAMPLE_MAX = 10;
@@ -110,8 +120,8 @@ export function buildConsumerProfile(c: SampleConsumer | null): ConsumerProfile 
 // ── Intent side ─────────────────────────────────────────────────────────
 
 export type Intent = {
-  engine: EngineId;
-  /** The rendered prompt. Fixed structure for swipe/map; flexible for memo. */
+  style: IntentStyle;
+  /** The rendered prompt. Fixed structure for browse/viewport; flexible for question. */
   text: string;
   /**
    * The prompt decomposed by context key, so the configurable pipeline can
@@ -132,10 +142,10 @@ export type Intent = {
 const DAYS = ["wednesday", "friday", "saturday", "sunday"] as const;
 const HOURS = [13, 18.5, 20.5, 22.5] as const;
 
-// Memo's flexible bank — occasion templates with their own natural time.
-// Swipe/Map never touch these: their prompt structure is fixed and only the
-// data changes. Memo's question IS its retrieval query — the "+RAG" leg.
-const MEMO_BANK = [
+// The question style's flexible bank — occasion templates with their own
+// natural time and category set. Browse/viewport never touch these: their
+// prompt structure is fixed and only the data changes.
+const QUESTION_BANK = [
   { text: "Where do I take a first date tonight?", hour: 20.5, day: "friday", cats: ["cocktail_bar", "wine_bar", "fine_dining"] },
   { text: "Best brunch for Sunday with my parents?", hour: 11, day: "sunday", cats: ["brunch"] },
   { text: "Where can we dance until late on Saturday?", hour: 23, day: "saturday", cats: ["night_club"] },
@@ -172,14 +182,14 @@ function anchor(places: SamplePlace[], seed: number): {
 }
 
 export function generateIntent(
-  engine: EngineId,
+  style: IntentStyle,
   profile: ConsumerProfile,
   places: SamplePlace[],
   seed: number,
 ): Intent {
   const a = anchor(places, seed);
-  if (engine === "memo") {
-    const t = MEMO_BANK[seed % MEMO_BANK.length];
+  if (style === "question") {
+    const t = QUESTION_BANK[seed % QUESTION_BANK.length];
     const parts = {
       query: t.text,
       zone: `near ${a.near}`,
@@ -187,7 +197,7 @@ export function generateIntent(
       party: null,
     };
     return {
-      engine,
+      style,
       text: t.text,
       parts,
       zoneName: a.zoneName,
@@ -199,25 +209,26 @@ export function generateIntent(
       timeLabel: `${t.day} ${fmtHour(t.hour)}`,
     };
   }
-  // Swipe/Map — FIXED prompt structure; only the data slots change. No
-  // taste tokens here: taste/history are the spec's "ignored for now", and
-  // party size is a filter's job — neither leaks into the embedded intent.
+  // Browse/viewport — FIXED prompt structure; only the data slots change.
+  // No taste tokens here: taste/history are the spec's "ignored for now",
+  // and party size is a filter's job — neither leaks into the embedded
+  // intent.
   const day = DAYS[seed % DAYS.length];
   const hour = HOURS[seed % HOURS.length];
   const daypart = hour < 15 ? "lunch" : hour < 20 ? "evening" : "night";
   const parts = {
-    query: `${engine === "map" ? "map browse" : "swipe deck"} · ${daypart} plans`,
-    zone: engine === "map" ? `viewport ≈2 km around ${a.near}` : `near ${a.near}`,
+    query: `${style === "viewport" ? "viewport browse" : "feed browse"} · ${daypart} plans`,
+    zone: style === "viewport" ? `viewport ≈2 km around ${a.near}` : `near ${a.near}`,
     time: `${day} ${fmtHour(hour)}`,
     party: null,
   };
   return {
-    engine,
+    style,
     text: [parts.query, parts.zone, parts.time].filter(Boolean).join(" · "),
     parts,
     zoneName: a.zoneName,
-    // Swipe/Map default intents ask no category — the deck is open-ended
-    // (what → 1 for every place); Memo's questions carry category sets.
+    // Browse intents ask no category — the deck is open-ended (what → 1 for
+    // every place); questions carry category sets.
     cats: [],
     lat: a.lat,
     lng: a.lng,

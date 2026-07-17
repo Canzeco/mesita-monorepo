@@ -1,16 +1,16 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Cog } from "lucide-react";
 import {
-  ENGINE_CONTAINERS,
   LANE_N_MAX,
   laneFormula,
   LANES,
   MERGE_ROTATION,
+  STANDARD_ENGINE,
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
 import { GroupHead, PanelCard, Slider, SubHead } from "../panel-ui";
-import { ENGINE_ICONS, LaneBadge } from "../playground-ui";
+import { LaneBadge } from "../playground-ui";
 import { DeckPlayground } from "./DeckPlayground";
 
 // Scores & Lanes — the composition layer. The lane FORMULAS are locked
@@ -88,28 +88,35 @@ export function LanesPanel() {
         </div>
       </PanelCard>
 
-      {/* ══ Lanes container ══════════════════════════════════════════ */}
+      {/* ══ The Standard Engine ══════════════════════════════════════ */}
       <PanelCard
-        title="Lanes container · Swipe · Map · Memo"
-        subtitle="Engines are containers, not formulas. Swipe and Map compose the three lanes exactly as above and differ only in where intent-data comes from. Memo is free/dynamic — indexes + RAG, decomposing the five subscores however the question needs; its own knobs live in Memo Config."
+        title="The Standard Engine · the one engine"
+        subtitle="There is exactly ONE engine. The Standard Engine consists of the three lanes — Organic · Inorganic · Hybrid — merged as above. Swipe, Map and Memo are SURFACES, not engines: each runs the Standard Engine and differs only in where its intent-data comes from."
+        pill="1 engine · 3 lanes"
       >
-        <div className="mt-4 flex flex-col gap-2">
-          {ENGINE_CONTAINERS.map((e) => {
-            const Icon = ENGINE_ICONS[e.id];
-            return (
-              <div
-                key={e.id}
-                className="border-border/60 bg-muted/40 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white">
-                  <Icon className="h-3.5 w-3.5" aria-hidden />
-                </span>
-                <span className="w-16 text-[13px] font-semibold">{e.engine}</span>
-                <span className="text-foreground/80 min-w-0 flex-1 text-[12px]">{e.composition}</span>
-                <span className="text-muted-foreground text-[11px]">intent: {e.intent}</span>
-              </div>
-            );
-          })}
+        <div className="border-border/60 bg-muted/40 mt-4 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-3">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white">
+            <Cog className="h-4 w-4" aria-hidden />
+          </span>
+          <span className="text-[13px] font-semibold">{STANDARD_ENGINE.name}</span>
+          <span className="flex items-center gap-1.5">
+            {LANES.map((l) => (
+              <LaneBadge key={l.id} laneId={l.id} />
+            ))}
+          </span>
+          <span className="text-foreground/80 min-w-0 flex-1 text-[12px]">
+            {STANDARD_ENGINE.composition}
+          </span>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {STANDARD_ENGINE.surfaces.map((s) => (
+            <div key={s.surface} className="border-border/60 rounded-xl border px-3 py-2">
+              <p className="text-[12px] font-semibold">{s.surface}</p>
+              <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+                intent: {s.intent}
+              </p>
+            </div>
+          ))}
         </div>
       </PanelCard>
 

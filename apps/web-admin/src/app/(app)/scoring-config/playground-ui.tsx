@@ -7,17 +7,19 @@ import {
   MessagesSquare,
   type LucideIcon,
 } from "lucide-react";
-import type { EngineId, LaneId } from "@/lib/business/scores";
-import { SAMPLE_MAX } from "@/lib/business/cip";
+import type { LaneId } from "@/lib/business/scores";
+import { SAMPLE_MAX, type IntentStyle } from "@/lib/business/cip";
 import { PanelCard } from "./panel-ui";
 
-// Presentational bits shared by the simulator subpages (Cards and Decks).
-// Pure UI — all scoring math stays in @/lib/business.
+// Presentational bits shared by both playgrounds. Pure UI — all scoring
+// math stays in @/lib/business.
 
-export const ENGINE_ICONS: Record<EngineId, LucideIcon> = {
-  swipe: GalleryHorizontalEnd,
-  map: MapIcon,
-  memo: MessagesSquare,
+/** Synthetic-intent style icons — there is only ONE engine (the Standard
+ * Engine); these are the intent SHAPES the playground can fabricate. */
+export const INTENT_STYLE_ICONS: Record<IntentStyle, LucideIcon> = {
+  browse: GalleryHorizontalEnd,
+  viewport: MapIcon,
+  question: MessagesSquare,
 };
 
 /** The n = 0 state both playgrounds share — nothing in the catalog to score. */

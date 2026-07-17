@@ -12,7 +12,6 @@ import {
   unitDraw,
   xxScore,
   type DeckCandidate,
-  type EngineId,
   type LaneId,
 } from "@/lib/business/scores";
 import { strategyForPlace } from "@/lib/business/strategies";
@@ -26,24 +25,26 @@ import {
   openWindow,
   resolveWhere,
   whatRelation,
+  type IntentStyle,
   type SamplePlace,
 } from "@/lib/business/cip";
 import { useScoring } from "../ScoringProvider";
 import { PanelCard, SubHead } from "../panel-ui";
-import { EmptyCatalog, ENGINE_ICONS, FactChip, LaneBadge, SpecimenCell } from "../playground-ui";
+import { EmptyCatalog, INTENT_STYLE_ICONS, FactChip, LaneBadge, SpecimenCell } from "../playground-ui";
 
-// The Deck playground — one full "game": score EVERY sampled place in all
-// three lanes at the CURRENT knobs, fill each lane's top-N, merge round-robin
-// O → I → H with dedupe-on-insert and no backfill, and show the final deck.
-// The whole pipeline (subscores × lane composition × merge), end to end.
+// The Deck playground — one full run of the STANDARD ENGINE (the one
+// engine): score EVERY sampled place in all three lanes at the CURRENT
+// knobs, fill each lane's top-N, merge round-robin O → I → H with
+// dedupe-on-insert and no backfill, and show the final deck. The whole
+// pipeline (subscores × lane composition × merge), end to end.
 
-const ENGINES: readonly EngineId[] = ["swipe", "map", "memo"];
+const INTENT_STYLES: readonly IntentStyle[] = ["browse", "viewport", "question"];
 
 export function DeckPlayground() {
   const { consumers, places, laneN, em, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
   const [consumerIdx, setConsumerIdx] = useState(0);
-  const [engine, setEngine] = useState<EngineId>("swipe");
+  const [style, setStyle] = useState<IntentStyle>("browse");
   const [roll, setRoll] = useState(1);
 
   const consumer = consumers[consumerIdx] ?? null;
@@ -51,7 +52,7 @@ export function DeckPlayground() {
   const run = useMemo(() => {
     if (places.length === 0) return null;
     const profile = buildConsumerProfile(consumer);
-    const intent = generateIntent(engine, profile, places, consumerIdx * 7 + roll);
+    const intent = generateIntent(style, profile, places, consumerIdx * 7 + roll);
     const enabled = new Set(context.em);
     // The data-access matrix, enforced across the whole pool.
     const emSrc = {
@@ -119,7 +120,7 @@ export function DeckPlayground() {
 
     const deck = composeFinalDeck(candidates, laneN);
     return { intent, deck, byId };
-  }, [consumer, consumerIdx, places, engine, roll, context.em, em.embedDims, sm, gp, rp, xx, dataAccess, laneN]);
+  }, [consumer, consumerIdx, places, style, roll, context.em, em.embedDims, sm, gp, rp, xx, dataAccess, laneN]);
 
   if (places.length === 0) {
     return (
@@ -130,7 +131,7 @@ export function DeckPlayground() {
     );
   }
 
-  const EngineIcon = ENGINE_ICONS[engine];
+  const StyleIcon = INTENT_STYLE_ICONS[style];
   const selectCls =
     "border-border/70 bg-card w-full rounded-lg border px-2 py-1.5 text-[12px] font-medium";
 
@@ -157,22 +158,22 @@ export function DeckPlayground() {
             ))}
           </select>
         </SpecimenCell>
-        <SpecimenCell icon={EngineIcon} tone="bg-sky-600 text-white" label="Engine · intent">
+        <SpecimenCell icon={StyleIcon} tone="bg-sky-600 text-white" label="Intent">
           <div className="flex items-center gap-1.5">
-            {ENGINES.map((e) => (
+            {INTENT_STYLES.map((s) => (
               <button
-                key={e}
+                key={s}
                 type="button"
-                onClick={() => setEngine(e)}
-                aria-pressed={engine === e}
+                onClick={() => setStyle(s)}
+                aria-pressed={style === s}
                 className={
                   "rounded-md border px-2 py-1 text-[11px] font-semibold capitalize transition active:scale-[0.97] " +
-                  (engine === e
+                  (style === s
                     ? "border-primary/50 bg-primary/10"
                     : "border-border/60 text-muted-foreground hover:text-foreground")
                 }
               >
-                {e}
+                {s}
               </button>
             ))}
           </div>
