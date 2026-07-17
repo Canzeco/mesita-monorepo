@@ -2,8 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  CarouselMuteButton,
+  CarouselPillDots,
+  CarouselSlideCounter,
+  CarouselTapZones,
+} from "./image-carousel-chrome";
 
 type MediaItem =
   | { type: "image"; src: string }
@@ -261,69 +266,28 @@ export function ImageCarousel({
       </div>
 
       {hasVideo && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleMute();
-          }}
-          aria-label={muted ? "Unmute video" : "Mute video"}
-          data-no-swipe
-          className={cn(
-            "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white backdrop-blur transition hover:bg-black/80",
-            mutePosition === "top-right"
-              ? items.length > 1
-                ? "top-12 right-3"
-                : "top-3 right-3"
-              : "right-3 bottom-3",
-          )}
-        >
-          {muted ? (
-            <VolumeX className="h-4 w-4" />
-          ) : (
-            <Volume2 className="h-4 w-4" />
-          )}
-        </button>
+        <CarouselMuteButton
+          muted={muted}
+          mutePosition={mutePosition}
+          multiSlide={items.length > 1}
+          onToggle={toggleMute}
+        />
       )}
 
       {items.length > 1 && (
-        <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center gap-1.5">
-          {items.map((_, i) => (
-            <span
-              key={i}
-              className={cn(
-                "h-1.5 rounded-full bg-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)] transition-all duration-200",
-                i === idx ? "w-5 opacity-100" : "w-1.5 opacity-60",
-              )}
-            />
-          ))}
-        </div>
+        <CarouselPillDots count={items.length} activeIdx={idx} />
       )}
 
       {items.length > 1 && (
-        <>
-          <div
-            role="button"
-            aria-label="Previous photo"
-            onPointerDown={handleZoneDown}
-            onPointerUp={handleZoneUp(-1)}
-            className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-default"
-          />
-          <div
-            role="button"
-            aria-label="Next photo"
-            onPointerDown={handleZoneDown}
-            onPointerUp={handleZoneUp(1)}
-            className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-default"
-          />
-        </>
+        <CarouselTapZones
+          onPointerDown={handleZoneDown}
+          onPointerUpLeft={handleZoneUp(-1)}
+          onPointerUpRight={handleZoneUp(1)}
+        />
       )}
 
       {items.length > 1 && (
-        <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.35)] backdrop-blur">
-          {idx + 1} / {items.length}
-        </div>
+        <CarouselSlideCounter idx={idx} count={items.length} />
       )}
     </div>
   );
