@@ -48,7 +48,6 @@ import {
   type ChannelPolicy,
   readChannelPolicy,
 } from "../_shared/sourcing.ts";
-import { openScore } from "../_shared/local-time.ts";
 import { fallbackAnswer } from "../_shared/memo-fallback.ts";
 import { isPlaceSeeking } from "../_shared/memo-intent.ts";
 import { localMoment } from "../_shared/memo-local-moment.ts";
@@ -60,6 +59,10 @@ import {
   type PredictionStatus,
 } from "./memo-google-text-search.ts";
 import { toPlainText } from "./memo-text.ts";
+import {
+  candidateBlock,
+  mergeAndRankMemoPredictions,
+} from "./memo-catalog-helpers.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -229,7 +232,7 @@ async function answerWithPerplexity(
   // matched.
   messages.push({
     role: "user",
-    content: `${query}${ctx}${candidateBlock(candidates)}`,
+    content: `${query}${ctx}${candidateBlock(candidates, MAX_CARDS)}`,
   });
 
   const res = await callPerplexityChat(key, messages, {
@@ -240,27 +243,6 @@ async function answerWithPerplexity(
   });
   if (!res) return null;
   return { text: res.text, related: res.related, citations: res.citations };
-}
-
-// Hidden prompt block listing the actual place cards (max 6) so Perplexity
-// recommends FROM them. Not echoed back; the model weaves 1–3 in naturally.
-function candidateBlock(candidates: Prediction[]): string {
-  if (candidates.length === 0) return "";
-  const lines = candidates.slice(0, MAX_CARDS).map((c, i) => {
-    const bits: string[] = [c.mainText];
-    if (c.secondaryText) bits.push(c.secondaryText.split(",")[0].trim());
-    if (typeof c.rating === "number") bits.push(`★${c.rating.toFixed(1)}`);
-    if (c.status !== "not_in_mesita") bits.push("on Mesita");
-    if (c.openNow === true) bits.push("open now");
-    else if (c.openNow === false) bits.push("closed now");
-    return `${i + 1}. ${bits.join(" · ")}`;
-  });
-  return (
-    ` [cards shown to the user below your reply — recommend from THESE so your` +
-    ` words match the cards; weave 1–3 in naturally, don't list them all` +
-    ` mechanically, and prefer open ones. If none truly fit the ask, say so` +
-    ` briefly and give general guidance:\n${lines.join("\n")}]`
-  );
 }
 
 // ── Leg 2: place candidates (Google Text Search + Mesita merge) ─────────
@@ -308,20 +290,7 @@ async function candidatePlaces(
   const mesitaPreds = await mesitaByName(admin, query);
 
   // Merge, de-dupe by placeId, rank Mesita-first then by Google rating.
-  const merged = new Map<string, Prediction>();
-  for (const p of mesitaPreds) merged.set(p.placeId, p);
-  for (const p of googlePreds) {
-    if (!merged.has(p.placeId)) merged.set(p.placeId, p);
-  }
-
-  const predictions = Array.from(merged.values()).sort((a, b) => {
-    const aIn = a.status !== "not_in_mesita" ? 1 : 0;
-    const bIn = b.status !== "not_in_mesita" ? 1 : 0;
-    if (aIn !== bIn) return bIn - aIn; // Mesita-first stays the top business rule
-    const openDelta = openScore(b.openNow) - openScore(a.openNow);
-    if (openDelta !== 0) return openDelta; // then open-now over closed
-    return (b.rating ?? 0) - (a.rating ?? 0);
-  });
+  const predictions = mergeAndRankMemoPredictions(mesitaPreds, googlePreds);
 
   // No random-sample fallback: if nothing genuinely matches, we return an
   // empty rail and Memo replies text-only. Better a clean answer than
