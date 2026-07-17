@@ -368,6 +368,22 @@ export type ImageFunnelResult = {
   diag: Record<string, unknown>;
 };
 
+function initialImageFunnelDiag(
+  saved: Img[],
+  saveTotalImages: number,
+): Record<string, unknown> {
+  return {
+    gathered: saved.length,
+    by_source: {
+      google: saved.filter((s) => s.source === "google").length,
+      website: saved.filter((s) => s.source === "website").length,
+      instagram: saved.filter((s) => s.source === "instagram").length,
+    },
+    save_cap: saveTotalImages,
+    vision: false,
+  };
+}
+
 // Image funnel: build the gathered pool (each source contributes its gather-
 // capped, metadata-sorted bucket), then ANALYZE (vision describes the per-source
 // analyze-capped top of each bucket) → SORT (text model ranks the descriptions
@@ -419,16 +435,7 @@ export async function runImageFunnel(opts: {
 
   const srcOf = new Map<string, Img["source"]>(saved.map((s) => [s.url, s.source]));
   let finalPhotos = selectWithDiversity(saved.map((s) => s.url), srcOf, saveTotalImages);
-  let diag: Record<string, unknown> = {
-    gathered: saved.length,
-    by_source: {
-      google: saved.filter((s) => s.source === "google").length,
-      website: saved.filter((s) => s.source === "website").length,
-      instagram: saved.filter((s) => s.source === "instagram").length,
-    },
-    save_cap: saveTotalImages,
-    vision: false,
-  };
+  let diag = initialImageFunnelDiag(saved, saveTotalImages);
 
   if (runVision && openaiKey && saved.length > 1) {
     // "website" retained in the source union for historical media assets, but
