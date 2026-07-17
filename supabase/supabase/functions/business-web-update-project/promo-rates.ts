@@ -5,7 +5,7 @@ export const PROMO_RATE_FIELDS = [
   "premium_rate",
 ] as const;
 
-export type PromoRateField = (typeof PROMO_RATE_FIELDS)[number];
+type PromoRateField = (typeof PROMO_RATE_FIELDS)[number];
 
 const LEGAL_PROMO_RATES = new Set([10, 20, 30, 40, 50]);
 
