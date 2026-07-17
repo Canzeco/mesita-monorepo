@@ -6,11 +6,6 @@ import {
   type TwilioEnv,
 } from "./twilio.ts";
 
-export type WhatsAppTemplateSend = {
-  contentSid: string;
-  contentVariables?: Record<string, string>;
-};
-
 export function readStaffInviteContentSid(): string | null {
   const sid = Deno.env.get("TWILIO_CONTENT_SID_STAFF_INVITE")?.trim();
   return sid && sid.startsWith("HX") ? sid : null;
