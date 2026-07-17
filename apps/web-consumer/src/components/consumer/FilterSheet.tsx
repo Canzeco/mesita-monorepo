@@ -7,13 +7,13 @@ import type {
   WhereOption,
 } from "@/lib/discovery-filters-engine";
 
-// Discovery filters (MESITA-646, two-tier model MESITA-650): the shared
-// sheet, opened from the Filter button in the swipe action bar and from the
-// Search bar's tune icon. Rides the shared LocalSheet (portals into the app
-// card, animated open/close, ESC). Filter state lives in the global
-// use-discovery-filters store — not in the sheet — so it survives
-// close/unmount, is identical on both surfaces, and hosts derive their
-// trigger dot from the same store.
+// Discovery filters (MESITA-646/650, module order MESITA-660): the shared
+// four-module sheet — Where · When · What · Randomness — opened from the
+// Filter button in the swipe action bar and from the Search bar's tune icon.
+// Rides the shared LocalSheet (portals into the app card, animated
+// open/close, ESC). Filter state lives in the global use-discovery-filters
+// store — not in the sheet — so it survives close/unmount, is identical on
+// both surfaces, and hosts derive their trigger dot from the same store.
 
 export function FilterSheet({
   open,
@@ -23,7 +23,6 @@ export function FilterSheet({
   categoryOptions,
   count,
   hasLocation,
-  showRandomness = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -36,8 +35,6 @@ export function FilterSheet({
   count: number;
   /** Geolocation granted — enables the Here distance tolerance. */
   hasLocation: boolean;
-  /** Swipe shows the Random level row; the map hides it. */
-  showRandomness?: boolean;
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel={ariaLabel}>
@@ -47,7 +44,6 @@ export function FilterSheet({
         categoryOptions={categoryOptions}
         count={count}
         hasLocation={hasLocation}
-        showRandomness={showRandomness}
       />
     </LocalSheet>
   );

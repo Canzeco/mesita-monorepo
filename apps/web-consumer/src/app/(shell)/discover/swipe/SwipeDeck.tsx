@@ -476,7 +476,6 @@ function Deck({ places }: { places: Place[] }) {
       categoryOptions={categoryOptions}
       count={deck.length}
       hasLocation={coords != null}
-      showRandomness
     />
   );
 

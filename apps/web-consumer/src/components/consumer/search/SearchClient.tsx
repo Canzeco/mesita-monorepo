@@ -409,8 +409,10 @@ export function SearchClient({
 
       {searchOpen && trimmed.length === 0 && <EmptySearchPrompt />}
 
-      {/* The Random row stays hidden here — it orders the swipe deck; a map
-          can't be reordered. */}
+      {/* Randomness shows here too (MESITA-660): the store is shared, so it
+          drives the Swipe deck's order today and becomes XX's per-query
+          input once the Standard Engine wires; the map's pin set itself is
+          unaffected client-side. */}
       <FilterSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
