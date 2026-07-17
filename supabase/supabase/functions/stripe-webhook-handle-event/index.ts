@@ -144,6 +144,25 @@ async function handleStripeEvent(
   }
 }
 
+function subscriptionSnapshot(sub: Stripe.Subscription): {
+  localStatus: string;
+  customerId: string;
+  periodEnd: string | null;
+  priceCents: number | null;
+  currency: string;
+  isLive: boolean;
+} {
+  const localStatus = mapStatus(sub.status);
+  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+  const periodEnd = sub.current_period_end
+    ? new Date(sub.current_period_end * 1000).toISOString()
+    : null;
+  const priceCents = sub.items.data[0]?.price.unit_amount ?? null;
+  const currency = (sub.items.data[0]?.price.currency ?? "mxn").toUpperCase();
+  const isLive = localStatus === "active" || localStatus === "past_due";
+  return { localStatus, customerId, periodEnd, priceCents, currency, isLive };
+}
+
 // ─── Consumer side ──────────────────────────────────────────────────────────
 
 // Maps a Stripe subscription back to a Mesita consumer via metadata, falling
@@ -182,15 +201,8 @@ async function reconcileConsumerSubscription(
   consumerId: string,
   sub: Stripe.Subscription,
 ): Promise<void> {
-  const localStatus = mapStatus(sub.status);
-  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-  const periodEnd = sub.current_period_end
-    ? new Date(sub.current_period_end * 1000).toISOString()
-    : null;
-  const priceCents = sub.items.data[0]?.price.unit_amount ?? null;
-  const currency = (sub.items.data[0]?.price.currency ?? "mxn").toUpperCase();
-
-  const isLive = localStatus === "active" || localStatus === "past_due";
+  const { localStatus, customerId, periodEnd, priceCents, currency, isLive } =
+    subscriptionSnapshot(sub);
 
   if (isLive) {
     // Keep the one-live invariant: retire any OTHER live row for this consumer
@@ -311,13 +323,8 @@ async function reconcileProjectSubscription(
   projectId: string,
   sub: Stripe.Subscription,
 ): Promise<void> {
-  const localStatus = mapStatus(sub.status);
-  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-  const periodEnd = sub.current_period_end
-    ? new Date(sub.current_period_end * 1000).toISOString()
-    : null;
-  const priceCents = sub.items.data[0]?.price.unit_amount ?? null;
-  const currency = (sub.items.data[0]?.price.currency ?? "mxn").toUpperCase();
+  const { localStatus, customerId, periodEnd, priceCents, currency, isLive } =
+    subscriptionSnapshot(sub);
 
   const planKey = await resolvePlanKey(admin, sub);
   if (!planKey) {
@@ -326,8 +333,6 @@ async function reconcileProjectSubscription(
     );
     return;
   }
-
-  const isLive = localStatus === "active" || localStatus === "past_due";
 
   if (isLive) {
     // Keep the one-live invariant: retire any OTHER live row for this project
