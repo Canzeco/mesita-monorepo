@@ -2,40 +2,52 @@
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
+import type {
+  CategoryOption,
+  WhereOption,
+} from "@/lib/discovery-filters-engine";
 
-// Discovery filters (MESITA-646): the shared flat pill sheet, opened from the
-// Filter button in the swipe action bar and from the Search bar's tune icon.
-// Rides the shared LocalSheet (portals into the app card, animated
-// open/close, ESC). Filter state lives in the global use-discovery-filters
-// store — not in the sheet — so it survives close/unmount, is identical on
-// both surfaces, and hosts derive their trigger dot from the same store
-// (no keepMounted, no onActiveChange plumbing).
+// Discovery filters (MESITA-646, two-tier model MESITA-650): the shared
+// sheet, opened from the Filter button in the swipe action bar and from the
+// Search bar's tune icon. Rides the shared LocalSheet (portals into the app
+// card, animated open/close, ESC). Filter state lives in the global
+// use-discovery-filters store — not in the sheet — so it survives
+// close/unmount, is identical on both surfaces, and hosts derive their
+// trigger dot from the same store.
 
 export function FilterSheet({
   open,
   onClose,
   ariaLabel = "Discovery filters",
-  zones,
+  whereOptions,
+  categoryOptions,
   count,
-  showSurprise = false,
+  hasLocation,
+  showRandomness = false,
 }: {
   open: boolean;
   onClose: () => void;
   ariaLabel?: string;
-  /** Zones present in the host's catalog, most places first. */
-  zones: string[];
+  /** Cities + their zones present in the host's catalog, biggest first. */
+  whereOptions: WhereOption[];
+  /** Concrete categories present in the host's catalog, biggest first. */
+  categoryOptions: CategoryOption[];
   /** How many places the current filters leave visible on the host. */
   count: number;
-  /** Swipe shows the Surprise-me toggle; the map hides it. */
-  showSurprise?: boolean;
+  /** Geolocation granted — enables the Here distance tolerance. */
+  hasLocation: boolean;
+  /** Swipe shows the Random level row; the map hides it. */
+  showRandomness?: boolean;
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel={ariaLabel}>
       <DiscoveryFilters
         onClose={onClose}
-        zones={zones}
+        whereOptions={whereOptions}
+        categoryOptions={categoryOptions}
         count={count}
-        showSurprise={showSurprise}
+        hasLocation={hasLocation}
+        showRandomness={showRandomness}
       />
     </LocalSheet>
   );
