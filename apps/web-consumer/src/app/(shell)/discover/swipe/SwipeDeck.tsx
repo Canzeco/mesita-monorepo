@@ -6,9 +6,6 @@ import {
   X,
   Heart,
   Hand,
-  Store,
-  CalendarCheck,
-  SlidersHorizontal,
 } from "lucide-react";
 import { PlaceSwipeCardFace } from "@/components/consumer/PlaceSwipeCardFace";
 import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
@@ -29,6 +26,7 @@ import {
   shuffleDeck,
   withUserDistance,
 } from "./swipe-deck-shells";
+import { SwipeActionRow } from "./swipe-action-row";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -591,75 +589,14 @@ function Deck({ places }: { places: Place[] }) {
           )}
         </div>
 
-        {/* Five actions, Filter first — icon-only (Pato: no labels), so the
-            row reads as a clean control strip; aria-label + title carry the
-            semantics. Filter/Skip/Info are neutral chrome, Save (soft pink,
-            red once saved — MESITA-591's universal "hearted" hue) is the
-            positive action. Reserve is parked while booking ships —
-            disabled + muted (the detail page CTA carries the "Soon"). */}
-        <div className="mt-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            aria-label={filtersActive ? "Filters (active)" : "Filters"}
-            title={filtersActive ? "Filters (active)" : "Filters"}
-            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
-          >
-            <span className="relative">
-              <SlidersHorizontal className="h-5 w-5" />
-              {/* Red "filters set" dot (MESITA-633) — any deviation from
-                  the sheet's defaults lights it. */}
-              {filtersActive && (
-                <span
-                  className="ring-card absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 ring-2"
-                  aria-hidden="true"
-                />
-              )}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={skip}
-            aria-label="Skip"
-            title="Skip"
-            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={openInfo}
-            aria-label="About this place"
-            title="About this place"
-            className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
-          >
-            <Store className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            aria-label={saved ? "Saved" : "Save"}
-            title={saved ? "Saved" : "Save"}
-            className={cn(
-              "flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]",
-              saved
-                ? "border-red-500/50 bg-red-500/12 text-red-600 hover:bg-red-500/18"
-                : "border-border bg-card text-secondary hover:bg-muted",
-            )}
-          >
-            <Heart className={cn("h-5 w-5", saved && "fill-current")} />
-          </button>
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            aria-label="Reserve (coming soon)"
-            title="Reserve (coming soon)"
-            className="border-border bg-muted/40 text-muted-foreground/70 flex h-12 flex-1 cursor-not-allowed items-center justify-center rounded-lg border"
-          >
-            <CalendarCheck className="h-5 w-5" />
-          </button>
-        </div>
+        <SwipeActionRow
+          filtersActive={filtersActive}
+          saved={saved}
+          onOpenFilters={() => setFiltersOpen(true)}
+          onSkip={skip}
+          onOpenInfo={openInfo}
+          onSave={save}
+        />
       </div>
 
       <FilterSheet
