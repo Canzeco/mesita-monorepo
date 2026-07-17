@@ -5,14 +5,16 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v4 blob (scoring v10, MESITA-644) — keys follow the subscore names
-// (EM · SM · GP · RP · XX, all [0,1]; three lanes; merge O → I → H). The EM
-// encoder (text-embedding-3-small @ its native 1536 dims) is a FIXED
-// decision, deliberately NOT in the blob — a stray `em` key from an older
-// client is ignored:
-//   { v: 4, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
-//   laneN     shared lane length N — each lane contributes up to N cards;
-//             the merged deck (dedupe, no backfill) is ≤ 3·N
+// v5 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659) — keys
+// follow the subscore names (EM · SM · GP · RP · XX, all [0,1]; three lanes;
+// merge O → I → H). The EM encoder (text-embedding-3-small @ its native 1536
+// dims) is a FIXED decision, deliberately NOT in the blob — a stray `em` key
+// from an older client is ignored:
+//   { v: 5, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
+//   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
+//             0–20 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
+//             no backfill) is ≤ their sum. A legacy v4 flat number expands
+//             to all three lanes.
 //   sm        Structured Match knobs — where (pointTolKm · zoneSpillKm ·
 //             distExp) · when (waitFloor · waitTransitionH · waitSteep ·
 //             sessionH · timeBlockH) · what (sibling · mismatch)
@@ -67,9 +69,35 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (!raw || typeof raw !== "object") return { ok: false, error: "config must be an object" };
   const r = raw as Record<string, unknown>;
 
-  // Lane length — shared N.
-  const laneN = num(r.laneN, 1, LANE_N_MAX);
-  if (laneN == null) return { ok: false, error: `laneN must be a number 1–${LANE_N_MAX}` };
+  // Per-lane deck counts (v5). A legacy flat number expands to all three;
+  // each lane 0–LANE_N_MAX (0 = lane off); an all-zero config would empty
+  // every deck, so the sum must be ≥ 1.
+  const LANE_IDS = ["organic", "inorganic", "hybrid"] as const;
+  const laneN: Record<string, number> = {};
+  if (typeof r.laneN === "number") {
+    const n = num(r.laneN, 0, LANE_N_MAX);
+    if (n == null) {
+      return { ok: false, error: `laneN must be a number 0–${LANE_N_MAX}` };
+    }
+    for (const id of LANE_IDS) laneN[id] = Math.round(n);
+  } else if (r.laneN && typeof r.laneN === "object") {
+    const rawLaneN = r.laneN as Record<string, unknown>;
+    for (const id of LANE_IDS) {
+      const n = num(rawLaneN[id], 0, LANE_N_MAX);
+      if (n == null) {
+        return { ok: false, error: `laneN.${id} must be a number 0–${LANE_N_MAX}` };
+      }
+      laneN[id] = Math.round(n);
+    }
+  } else {
+    return {
+      ok: false,
+      error: "laneN must be per-lane counts { organic, inorganic, hybrid }",
+    };
+  }
+  if (laneN.organic + laneN.inorganic + laneN.hybrid < 1) {
+    return { ok: false, error: "laneN: at least one lane must be > 0" };
+  }
 
   const ret = r.retrieval as Record<string, unknown> | undefined;
   const recallTopK = num(ret?.recallTopK, 10, 200);
@@ -180,8 +208,12 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 4,
-      laneN: Math.round(laneN),
+      v: 5,
+      laneN: {
+        organic: laneN.organic,
+        inorganic: laneN.inorganic,
+        hybrid: laneN.hybrid,
+      },
       retrieval: { recallTopK },
       sm: {
         where: { pointTolKm, zoneSpillKm, distExp },

@@ -11,6 +11,8 @@ import {
   type DataAccess,
   type DataSourceId,
   type GpParams,
+  type LaneCounts,
+  type LaneId,
   type RpRungs,
   type ScoringSettings,
   type SmParams,
@@ -41,7 +43,7 @@ export type SettingsSection =
   | "lanes"; // laneN — lives on the Scores & Lanes page
 
 function fromSettings(s: ScoringSettings): {
-  laneN: number;
+  laneN: LaneCounts;
   recallTopK: number;
   sm: SmParams;
   gp: GpParams;
@@ -51,7 +53,7 @@ function fromSettings(s: ScoringSettings): {
   context: ContextConfig;
 } {
   return {
-    laneN: s.laneN,
+    laneN: { ...s.laneN },
     recallTopK: s.retrieval.recallTopK,
     sm: { where: { ...s.sm.where }, when: { ...s.sm.when }, what: { ...s.sm.what } },
     gp: { ...s.gp },
@@ -67,9 +69,9 @@ function fromSettings(s: ScoringSettings): {
 type ScoringCtx = {
   consumers: SampleConsumer[];
   places: SamplePlace[];
-  /** Shared lane length N — every lane contributes up to N cards. */
-  laneN: number;
-  setLaneN: (n: number) => void;
+  /** Per-lane deck counts — how many cards each lane may contribute. */
+  laneN: LaneCounts;
+  setLaneN: (lane: LaneId, n: number) => void;
   recallTopK: number;
   setRecallTopK: (n: number) => void;
   sm: SmParams;
@@ -123,7 +125,7 @@ export function ScoringProvider({
     coerceScoringSettings(initialConfig),
   );
   const seed = useMemo(() => fromSettings(saved), [saved]);
-  const [laneN, setLaneNRaw] = useState<number>(seed.laneN);
+  const [laneN, setLaneNRaw] = useState<LaneCounts>(seed.laneN);
   const [recallTopK, setRecallTopKRaw] = useState<number>(seed.recallTopK);
   const [sm, setSm] = useState<SmParams>(seed.sm);
   const [gp, setGp] = useState<GpParams>(seed.gp);
@@ -132,8 +134,12 @@ export function ScoringProvider({
   const [dataAccess, setDataAccess] = useState<DataAccess>(seed.dataAccess);
   const [context, setContext] = useState<ContextConfig>(seed.context);
 
-  const setLaneN = (n: number) =>
-    setLaneNRaw(Math.max(1, Math.min(LANE_N_MAX, Math.round(Number.isFinite(n) ? n : 1))));
+  // Per-lane, 0 allowed (lane off) — the EF rejects an all-zero save.
+  const setLaneN = (lane: LaneId, n: number) =>
+    setLaneNRaw((c) => ({
+      ...c,
+      [lane]: Math.max(0, Math.min(LANE_N_MAX, Math.round(Number.isFinite(n) ? n : 0))),
+    }));
   const setRecallTopK = (n: number) =>
     setRecallTopKRaw(Math.max(10, Math.min(200, Math.round(Number.isFinite(n) ? n : 10))));
 
@@ -163,8 +169,14 @@ export function ScoringProvider({
   // dirty diffs are JSON.stringify equality per section.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 4,
-      laneN,
+      v: 5,
+      // Same key order as coerceLaneCounts' output — the dirty diff is
+      // JSON.stringify equality.
+      laneN: {
+        organic: laneN.organic,
+        inorganic: laneN.inorganic,
+        hybrid: laneN.hybrid,
+      },
       retrieval: { recallTopK },
       sm: {
         where: {

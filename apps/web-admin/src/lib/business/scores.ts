@@ -44,11 +44,13 @@
 // infeasible → the card dies. Relative strength, if ever needed, is exponent
 // weights (EM^a · SM^b) — never an average.
 //
-// MERGE (locked 2026-07-16): the three lanes each rank the pool by their own
-// score and take their top-N (laneN, shared). Round-robin O → I → H —
-// identical for Swipe and Map — dedupe ON INSERT (keep the FIRST occurrence,
-// drop later duplicates), NO backfill: the final deck is ≤ 3·N and shrinks
-// as lanes agree. Shrinkage is signal, not defect.
+// MERGE (locked 2026-07-16 · per-lane counts MESITA-659): the three lanes
+// each rank the pool by their own score and take their own top-N — laneN is
+// PER LANE ({ organic, inorganic, hybrid }; a lane at 0 is off). Round-robin
+// O → I → H — identical for Swipe and Map — dedupe ON INSERT (keep the FIRST
+// occurrence, drop later duplicates), NO backfill: the final deck is
+// ≤ N_O + N_I + N_H and shrinks as lanes agree. Shrinkage is signal, not
+// defect.
 //
 // ENGINES ARE CONTAINERS, not formulas: Swipe and Map compose the three
 // lanes exactly as above and differ only in intent source (taste embedding;
@@ -417,8 +419,21 @@ export function unitDraw(placeId: string, laneId: LaneId, roll: number): number 
 // ── THE FINAL DECK — three lanes, round-robin, dedupe, no backfill ─────
 
 /** Shared lane length N — every lane contributes up to N cards. */
-export const DEFAULT_LANE_N = 8;
+/** Per-lane deck counts — how many cards each lane may contribute
+ * (MESITA-659). 0 turns a lane off (e.g. no paid cards). */
+export type LaneCounts = Record<LaneId, number>;
+
+export const DEFAULT_LANE_COUNTS: LaneCounts = {
+  organic: 8,
+  inorganic: 8,
+  hybrid: 8,
+};
 export const LANE_N_MAX = 20;
+
+/** Ceiling of the merged deck at the given counts. */
+export function laneCountsTotal(counts: LaneCounts): number {
+  return counts.organic + counts.inorganic + counts.hybrid;
+}
 
 export type DeckSlot = {
   id: string;
@@ -442,7 +457,7 @@ export type LaneFill = {
 export type FinalDeck = {
   /** Each lane's top-N as generated — including cards later merged away. */
   lanes: Record<LaneId, DeckSlot[]>;
-  /** The merged deck, in rotation order. ≤ 3·N. */
+  /** The merged deck, in rotation order. ≤ N_O + N_I + N_H. */
   slots: DeckSlot[];
   fills: Record<LaneId, LaneFill>;
 };
@@ -451,13 +466,21 @@ export type FinalDeck = {
 export type DeckCandidate = { id: string; scores: Record<LaneId, number> };
 
 /**
- * The locked merge: each lane ranks the pool by its own score (ties by id —
- * deterministic), drops score ≤ 0, takes its top-N. Round-robin O → I → H
- * one card at a time; a place already in the deck is SKIPPED (first
- * occurrence wins — organic, since O leads the rotation). NO backfill.
+ * The locked merge, per-lane counts (MESITA-659): each lane ranks the pool
+ * by its own score (ties by id — deterministic), drops score ≤ 0, takes its
+ * OWN top-N (a lane at 0 contributes nothing). Round-robin O → I → H one
+ * card at a time, skipping lanes past their count; a place already in the
+ * deck is SKIPPED (first occurrence wins — organic, since O leads the
+ * rotation). NO backfill.
  */
-export function composeFinalDeck(candidates: readonly DeckCandidate[], laneN: number): FinalDeck {
-  const N = Math.max(0, Math.min(LANE_N_MAX, Math.round(laneN)));
+export function composeFinalDeck(
+  candidates: readonly DeckCandidate[],
+  counts: LaneCounts,
+): FinalDeck {
+  const n = {} as Record<LaneId, number>;
+  for (const lane of LANES) {
+    n[lane.id] = Math.max(0, Math.min(LANE_N_MAX, Math.round(counts[lane.id] ?? 0)));
+  }
   const lanes = {} as Record<LaneId, DeckSlot[]>;
   const fills = {} as Record<LaneId, LaneFill>;
 
@@ -467,19 +490,20 @@ export function composeFinalDeck(candidates: readonly DeckCandidate[], laneN: nu
       .slice()
       .sort((a, b) => b.scores[lane.id] - a.scores[lane.id] || (a.id < b.id ? -1 : 1));
     lanes[lane.id] = ranked
-      .slice(0, N)
+      .slice(0, n[lane.id])
       .map((c) => ({ id: c.id, laneId: lane.id, score: c.scores[lane.id] }));
     fills[lane.id] = {
-      taken: Math.min(ranked.length, N),
+      taken: Math.min(ranked.length, n[lane.id]),
       eligible: ranked.length,
       contributed: 0,
       mergedAway: 0,
     };
   }
 
+  const rounds = Math.max(n.organic, n.inorganic, n.hybrid);
   const seen = new Set<string>();
   const slots: DeckSlot[] = [];
-  for (let i = 0; i < N; i++) {
+  for (let i = 0; i < rounds; i++) {
     for (const laneId of MERGE_ROTATION) {
       const slot = lanes[laneId][i];
       if (!slot) continue;
@@ -518,6 +542,9 @@ export const STANDARD_ENGINE = {
  * consumer's METRO (city set — an identity fact, not a distance gate; the
  * curve does all demotion within a metro). Revisit with a wide bounding-box
  * prefilter only if catalog-per-metro passes ~400.
+ *
+ * decision (Pato 2026-07-17): recallTopK STAYS a config param — a good knob,
+ * unlike embedDims which became a fixed constant. Do not "fix" it.
  */
 export const DEFAULT_RETRIEVAL = {
   /** How many places pgvector recall returns for scoring. */
@@ -654,7 +681,9 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 // RANGE TABLE (mirrored VERBATIM in admin-web-update-scoring-config).
 // The encoder (EM_ENCODER — small @ 1536) is a FIXED constant, deliberately
 // absent: fixed decisions never enter the blob.
-//   laneN                 1–20 int      retrieval.recallTopK   10–200
+//   laneN.{organic,inorganic,hybrid}  0–20 int each, sum ≥ 1 (0 = lane off;
+//                                     legacy flat number expands to all three)
+//   retrieval.recallTopK  10–200
 //   sm.where.pointTolKm   0.5–20        sm.where.zoneSpillKm   0.5–10
 //   sm.where.distExp      1–5
 //   sm.when.waitFloor     0–1           sm.when.waitTransitionH 0.5–6
@@ -667,8 +696,10 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
 
 export type ScoringSettings = {
-  v: 4;
-  laneN: number;
+  v: 5;
+  /** Per-lane deck counts (v5, MESITA-659) — how many cards each lane may
+   * contribute to the merged deck; 0 turns the lane off. */
+  laneN: LaneCounts;
   retrieval: { recallTopK: number };
   sm: SmParams;
   gp: GpParams;
@@ -680,8 +711,8 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 4,
-  laneN: DEFAULT_LANE_N,
+  v: 5,
+  laneN: DEFAULT_LANE_COUNTS,
   retrieval: DEFAULT_RETRIEVAL,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
@@ -732,6 +763,24 @@ function num(v: unknown, fallback: number, lo: number, hi: number): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
 }
 
+// Per-lane counts (v5). A legacy flat number (v4 blobs) expands to all three
+// lanes; per-key garbage falls back to that lane's default; an all-zero
+// result (a config that would empty every deck) falls back to defaults —
+// degenerate lanes are fine, a degenerate DECK is not.
+function coerceLaneCounts(v: unknown, fallback: LaneCounts): LaneCounts {
+  if (typeof v === "number" && Number.isFinite(v)) {
+    const n = Math.round(Math.min(LANE_N_MAX, Math.max(0, v)));
+    return { organic: n, inorganic: n, hybrid: n };
+  }
+  const raw = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const counts: LaneCounts = {
+    organic: Math.round(num(raw.organic, fallback.organic, 0, LANE_N_MAX)),
+    inorganic: Math.round(num(raw.inorganic, fallback.inorganic, 0, LANE_N_MAX)),
+    hybrid: Math.round(num(raw.hybrid, fallback.hybrid, 0, LANE_N_MAX)),
+  };
+  return laneCountsTotal(counts) < 1 ? { ...fallback } : counts;
+}
+
 /**
  * Coerce a raw jsonb blob (or null) into a valid ScoringSettings — unknown
  * keys dropped, missing/malformed values fall back to defaults, everything
@@ -757,8 +806,8 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
-    v: 4,
-    laneN: Math.round(num(r.laneN, d.laneN, 1, LANE_N_MAX)),
+    v: 5,
+    laneN: coerceLaneCounts(r.laneN, d.laneN),
     retrieval: {
       recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
     },
