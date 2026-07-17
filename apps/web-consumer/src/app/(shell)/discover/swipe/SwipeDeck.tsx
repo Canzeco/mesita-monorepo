@@ -2,16 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  X,
-  Heart,
-  Hand,
-} from "lucide-react";
 import { PlaceSwipeCardFace } from "@/components/consumer/PlaceSwipeCardFace";
 import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
 import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn } from "@/lib/utils";
-import { Z_IN_FRAME_OVERLAY } from "@/lib/z-index";
 import { useUserLocation } from "@/lib/use-user-location";
 import { apiRecommendDeck, type Place } from "@/lib/api/places";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
@@ -39,6 +33,7 @@ import {
 import { SwipeActionRow } from "./swipe-action-row";
 import { readSwipeSnapshot, writeSwipeSnapshot } from "./swipe-deck-storage";
 import { SwipeDecisionBadge } from "./swipe-decision-badge";
+import { SwipeExitStamp, SwipeTutorialOverlay } from "./swipe-deck-overlays";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -585,66 +580,6 @@ function Deck({ places }: { places: Place[] }) {
       </div>
 
       {sheet}
-    </div>
-  );
-}
-
-function SwipeExitStamp({
-  direction,
-}: {
-  direction: "left" | "right" | null;
-}) {
-  if (!direction) return null;
-
-  const isSavedStamp = direction === "right";
-
-  return (
-    <div
-      className={cn(
-        "pointer-events-none absolute inset-0 flex items-center justify-center",
-        Z_IN_FRAME_OVERLAY,
-      )}
-    >
-      <span
-        className={cn(
-          "animate-in fade-in zoom-in-50 inline-flex items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.15em] uppercase duration-200 ease-out",
-          isSavedStamp
-            ? "bg-pink-gradient shadow-glow -rotate-[8deg] border-white text-white"
-            : "border-foreground/70 bg-foreground/85 text-background rotate-[8deg]",
-        )}
-      >
-        {isSavedStamp ? (
-          <>
-            <Heart className="h-6 w-6 fill-white" />
-            Saved
-          </>
-        ) : (
-          <>
-            <X className="h-6 w-6 stroke-[3]" />
-            Skip
-          </>
-        )}
-      </span>
-    </div>
-  );
-}
-
-function SwipeTutorialOverlay() {
-  return (
-    <div className="animate-in fade-in pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[2px] duration-500">
-      <div className="flex flex-col items-center gap-5">
-        <div className="animate-swipe-hint">
-          <Hand
-            className="h-20 w-20 text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
-            strokeWidth={1.4}
-          />
-        </div>
-        <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
-          Swipe left to skip
-          <span className="mx-1.5 opacity-50">·</span>
-          right to save
-        </p>
-      </div>
     </div>
   );
 }
