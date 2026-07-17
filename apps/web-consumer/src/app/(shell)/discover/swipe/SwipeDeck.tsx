@@ -569,22 +569,7 @@ function Deck({ places }: { places: Place[] }) {
             </SwipeDecisionBadge>
           </div>
 
-          {exiting === "right" && (
-            <div className={cn("pointer-events-none absolute inset-0 flex items-center justify-center", Z_IN_FRAME_OVERLAY)}>
-              <span className="bg-pink-gradient shadow-glow animate-in fade-in zoom-in-50 inline-flex -rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] border-white px-5 py-2.5 text-2xl font-black tracking-[0.15em] text-white uppercase duration-200 ease-out">
-                <Heart className="h-6 w-6 fill-white" />
-                Saved
-              </span>
-            </div>
-          )}
-          {exiting === "left" && (
-            <div className={cn("pointer-events-none absolute inset-0 flex items-center justify-center", Z_IN_FRAME_OVERLAY)}>
-              <span className="border-foreground/70 bg-foreground/85 text-background animate-in fade-in zoom-in-50 inline-flex rotate-[8deg] items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.15em] uppercase duration-200 ease-out">
-                <X className="h-6 w-6 stroke-[3]" />
-                Skip
-              </span>
-            </div>
-          )}
+          <SwipeExitStamp direction={exiting} />
 
           {showTutorial && <SwipeTutorialOverlay />}
         </div>
@@ -600,6 +585,46 @@ function Deck({ places }: { places: Place[] }) {
       </div>
 
       {sheet}
+    </div>
+  );
+}
+
+function SwipeExitStamp({
+  direction,
+}: {
+  direction: "left" | "right" | null;
+}) {
+  if (!direction) return null;
+
+  const isSavedStamp = direction === "right";
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-0 flex items-center justify-center",
+        Z_IN_FRAME_OVERLAY,
+      )}
+    >
+      <span
+        className={cn(
+          "animate-in fade-in zoom-in-50 inline-flex items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.15em] uppercase duration-200 ease-out",
+          isSavedStamp
+            ? "bg-pink-gradient shadow-glow -rotate-[8deg] border-white text-white"
+            : "border-foreground/70 bg-foreground/85 text-background rotate-[8deg]",
+        )}
+      >
+        {isSavedStamp ? (
+          <>
+            <Heart className="h-6 w-6 fill-white" />
+            Saved
+          </>
+        ) : (
+          <>
+            <X className="h-6 w-6 stroke-[3]" />
+            Skip
+          </>
+        )}
+      </span>
     </div>
   );
 }
