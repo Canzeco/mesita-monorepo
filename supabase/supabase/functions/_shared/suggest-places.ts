@@ -48,9 +48,9 @@ import {
   googleTypeFilterForPolicy,
   mergePredictionsByPlaceId,
   type Prediction,
-  type PredictionStatus,
   sortMesitaPredictionsFirst,
 } from "./suggest-places-helpers.ts";
+import { statusesForPlaces } from "./suggest-place-status.ts";
 
 export type SuggestPlacesArgs = {
   input?: string;
@@ -313,48 +313,6 @@ async function enrichByPlaceIds(
       mesitaId: r.id,
       mesitaSlug: r.slug,
     });
-  }
-  return out;
-}
-
-// One owner-lookup pass over a place-row set, returning the per-placeId
-// PredictionStatus. `web_listed` for unowned rows;
-// `verified_partner_self/_other` for owned ones depending on whether the
-// caller (resolved by the facade before this call) is the owner.
-async function statusesForPlaces(
-  admin: SupabaseClient,
-  rows: Array<{ id: string; google_place_id: string }>,
-  callerId: string | null,
-): Promise<Map<string, PredictionStatus>> {
-  if (rows.length === 0) return new Map();
-  const { data, error } = await admin
-    .from("project_members")
-    .select("project_id, business_id")
-    .in("project_id", rows.map((r) => r.id))
-    .eq("role", "owner");
-  if (error) {
-    console.error("[suggest-places] owner lookup:", error.message);
-  }
-  const ownerByPlace = new Map<string, string>();
-  for (
-    const m of (data ?? []) as Array<{
-      project_id: string;
-      business_id: string;
-    }>
-  ) {
-    ownerByPlace.set(m.project_id, m.business_id);
-  }
-  const out = new Map<string, PredictionStatus>();
-  for (const v of rows) {
-    const ownerId = ownerByPlace.get(v.id);
-    out.set(
-      v.google_place_id,
-      ownerId
-        ? callerId && ownerId === callerId
-          ? "verified_partner_self"
-          : "verified_partner_other"
-        : "web_listed",
-    );
   }
   return out;
 }
