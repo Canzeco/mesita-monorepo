@@ -199,21 +199,21 @@ export function generateIntent(
       timeLabel: `${t.day} ${fmtHour(t.hour)}`,
     };
   }
-  // Swipe/Map — FIXED prompt structure; only the data slots change.
+  // Swipe/Map — FIXED prompt structure; only the data slots change. No
+  // taste tokens here: taste/history are the spec's "ignored for now", and
+  // party size is a filter's job — neither leaks into the embedded intent.
   const day = DAYS[seed % DAYS.length];
   const hour = HOURS[seed % HOURS.length];
-  const party = [2, 2, 4, 6][seed % 4];
   const daypart = hour < 15 ? "lunch" : hour < 20 ? "evening" : "night";
-  const taste = profile.tasteTokens.slice(0, 4);
   const parts = {
-    query: `${engine === "map" ? "map browse" : "swipe deck"} · ${daypart} plans · taste: ${taste.join(", ")}`,
+    query: `${engine === "map" ? "map browse" : "swipe deck"} · ${daypart} plans`,
     zone: engine === "map" ? `viewport ≈2 km around ${a.near}` : `near ${a.near}`,
     time: `${day} ${fmtHour(hour)}`,
-    party: `party of ${party}`,
+    party: null,
   };
   return {
     engine,
-    text: [parts.query, parts.zone, parts.time, parts.party].filter(Boolean).join(" · "),
+    text: [parts.query, parts.zone, parts.time].filter(Boolean).join(" · "),
     parts,
     zoneName: a.zoneName,
     // Swipe/Map default intents ask no category — the deck is open-ended
@@ -347,56 +347,60 @@ export function openWindow(
 type Enabled = ReadonlySet<string> | null | undefined;
 const on = (enabled: Enabled, key: string) => !enabled || enabled.has(key);
 
-export function hoursToText(hours: SamplePlace["hours"]): string {
-  if (!hours || typeof hours !== "object") return "hours unknown";
-  const parts = Object.entries(hours)
-    .filter(([, v]) => Array.isArray(v) && v.length > 0)
-    .map(([day, v]) => `${day} ${v.map((r) => `${r.open}–${r.close}`).join(", ")}`);
-  return parts.length > 0 ? parts.join(" · ") : "hours unknown";
-}
-
-/** The consumer half of the CI document — barely-mutable side. */
-export function buildConsumerDoc(profile: ConsumerProfile, enabled?: Enabled): string {
+/**
+ * The consumer half of the CI document — barely-mutable side. Spec fields
+ * ONLY: name · sex · age · country · class+why. Taste and history are the
+ * spec's "ignored for now" — never embedded, whatever the toggles say.
+ * `sourceOn` = the data-access matrix's em×consumer cell.
+ */
+export function buildConsumerDoc(
+  profile: ConsumerProfile,
+  enabled?: Enabled,
+  sourceOn = true,
+): string {
+  if (!sourceOn) return "";
   const c = profile.consumer;
-  const who = [
+  const igWhy =
+    c?.instagram_followers != null && c.instagram_followers > 0 ? "IG-invited" : "subscribed";
+  return [
     on(enabled, "consumer.name") ? (c?.label ?? "Anonymous consumer") : "Consumer",
     on(enabled, "consumer.sex") ? (c?.sex ?? null) : null,
     on(enabled, "consumer.age") && c?.age != null ? `${c.age} years old` : null,
     on(enabled, "consumer.country") ? (c?.country ?? null) : null,
-    on(enabled, "consumer.class") ? `${c?.class_key ?? "free"} class` : null,
-    on(enabled, "consumer.ig") && c?.instagram_followers != null
-      ? `${c.instagram_followers} IG followers`
-      : null,
+    on(enabled, "consumer.class") ? `${c?.class_key ?? "free"} class (${igWhy})` : null,
   ]
     .filter(Boolean)
     .join(" · ");
-  const taste = on(enabled, "consumer.taste")
-    ? `Taste: ${profile.tasteTokens.join(", ")}${profile.synthetic ? " (synthesized — no history yet)" : ""}`
-    : null;
-  const history = on(enabled, "consumer.history")
-    ? c
-      ? `History: ${c.saved_taste.length > 0 ? `saves around ${c.saved_taste.slice(0, 6).join(", ")}` : "no saves"}; ${c.visited_taste.length > 0 ? `visits around ${c.visited_taste.slice(0, 6).join(", ")}` : "no paid visits"}.`
-      : "History: none."
-    : null;
-  return [who, taste, history].filter(Boolean).join("\n");
 }
 
-/** The full CI document — consumer (stable) + intent (per-query), merged. */
-export function buildCiDoc(profile: ConsumerProfile, intent: Intent, enabled?: Enabled): string {
-  const intentBits = [
-    on(enabled, "intent.query") ? intent.parts.query : null,
-    on(enabled, "intent.zone") ? intent.parts.zone : null,
-    on(enabled, "intent.time") ? intent.parts.time : null,
-    on(enabled, "intent.party") ? intent.parts.party : null,
-  ].filter(Boolean);
-  const consumerDoc = buildConsumerDoc(profile, enabled);
-  return intentBits.length > 0
-    ? `${consumerDoc}\nIntent: ${intentBits.join(" · ")}`
-    : consumerDoc;
+/** The full CI document — consumer (stable) + intent (per-query), merged.
+ * `sources` gates whole sides per the data-access matrix (default all on). */
+export function buildCiDoc(
+  profile: ConsumerProfile,
+  intent: Intent,
+  enabled?: Enabled,
+  sources?: { consumer?: boolean; intent?: boolean },
+): string {
+  const intentBits =
+    sources?.intent === false
+      ? []
+      : [
+          on(enabled, "intent.query") ? intent.parts.query : null,
+          on(enabled, "intent.zone") ? intent.parts.zone : null,
+          on(enabled, "intent.time") ? intent.parts.time : null,
+        ].filter(Boolean);
+  const consumerDoc = buildConsumerDoc(profile, enabled, sources?.consumer !== false);
+  return [consumerDoc, intentBits.length > 0 ? `Intent: ${intentBits.join(" · ")}` : ""]
+    .filter(Boolean)
+    .join("\n");
 }
 
-/** The place document — what the Enricher's profile embeds. */
-export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
+/** The place document — what the Enricher's profile embeds. Spec fields
+ * ONLY: name · category · tags · description · zone & city (+ reviews
+ * summary and price when the data exists). Rating/hours are ROUTED to
+ * GP/SM — numeric, never embedded here. */
+export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled, sourceOn = true): string {
+  if (!sourceOn) return "";
   const head = [
     on(enabled, "place.name") ? p.name : null,
     on(enabled, "place.category") && p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
@@ -409,12 +413,7 @@ export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled): string {
       ? `Tags: ${p.tags.join(", ")}.`
       : "";
   const desc = on(enabled, "place.description") && p.description ? p.description : "";
-  const proof =
-    on(enabled, "place.rating") && p.google_stars_overall != null
-      ? `Rated ${p.google_stars_overall}★ across ${p.google_review_count ?? 0} Google reviews.`
-      : "";
-  const hours = on(enabled, "place.hours_text") ? `Hours: ${hoursToText(p.hours)}.` : "";
-  return [head, tags, desc, proof, hours].filter(Boolean).join("\n");
+  return [head, tags, desc].filter(Boolean).join("\n");
 }
 
 // ── EMULATED EMBEDDINGS — feature-hashed bag-of-tokens ──────────────────

@@ -1,6 +1,17 @@
 "use client";
 
-import { CONTEXT_FIELDS, LANES, type ContextSide, type LaneId } from "@/lib/business/scores";
+import {
+  APPLICABLE_SOURCES,
+  CONTEXT_FIELDS,
+  DATA_SOURCES,
+  LANES,
+  SUBSCORES,
+  type ContextSide,
+  type DataAccess,
+  type DataSourceId,
+  type LaneId,
+  type SubscoreId,
+} from "@/lib/business/scores";
 
 // Tiny presentational bits shared by the Subscores and Scores & Lanes panels.
 
@@ -155,10 +166,11 @@ export function ContextCols({
 }
 
 /**
- * ES's CONFIGURABLE data-access contract: every registry field as a toggle.
- * Enabled fields go into the embedded documents — the Cards and Decks tabs
+ * EM's CONFIGURABLE data-access detail: every registry field as a toggle.
+ * Enabled fields go into the embedded documents — both playgrounds
  * assemble, embed and score from exactly this set, so a toggle here moves
- * the numbers there.
+ * the numbers there. "ignored" fields (the spec's "ignored for now") render
+ * greyed and cannot be toggled.
  */
 export function ContextConfigCols({
   enabled,
@@ -174,6 +186,17 @@ export function ContextConfigCols({
       </p>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {CONTEXT_FIELDS.filter((f) => f.side === side).map((f) => {
+          if (f.status === "ignored") {
+            return (
+              <span
+                key={f.key}
+                title={f.note ?? "ignored for now (spec)"}
+                className="border-border/40 text-muted-foreground/60 rounded-md border border-dashed px-2 py-0.5 font-mono text-[10.5px] opacity-60"
+              >
+                <span className="line-through">{f.label}</span> · ignored
+              </span>
+            );
+          }
           const isOn = enabled.has(f.key);
           return (
             <button
@@ -208,6 +231,93 @@ export function ContextConfigCols({
       {col("Consumer-data", "consumer")}
       {col("Intent-data", "intent")}
       {col("Place-data", "place")}
+    </div>
+  );
+}
+
+/**
+ * THE CORE CONFIG (Notion spec): the data-access matrix — one row per
+ * subscore, one column per data source. Applicable cells toggle ON/OFF
+ * (default all ON); a source a subscore structurally cannot read renders as
+ * "—". Both playgrounds enforce the matrix live.
+ */
+export function DataAccessMatrix({
+  access,
+  onToggle,
+}: {
+  access: DataAccess;
+  onToggle: (subscore: SubscoreId, source: DataSourceId) => void;
+}) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[560px] border-separate border-spacing-0">
+        <thead>
+          <tr>
+            <th className="text-muted-foreground pb-2 text-left text-[10px] font-bold tracking-[0.12em] uppercase">
+              Subscore
+            </th>
+            {DATA_SOURCES.map((src) => (
+              <th
+                key={src.id}
+                className="text-muted-foreground pb-2 text-center text-[10px] font-bold tracking-[0.12em] uppercase"
+                title={src.blurb}
+              >
+                {src.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {SUBSCORES.map((sub) => (
+            <tr key={sub.id}>
+              <td className="border-border/50 border-t py-2 pr-3">
+                <span className="font-mono text-[12px] font-bold">{sub.short}</span>
+                <span className="text-muted-foreground ml-2 hidden text-[11px] sm:inline">
+                  {sub.name}
+                </span>
+              </td>
+              {DATA_SOURCES.map((src) => {
+                const applicable = APPLICABLE_SOURCES[sub.id].includes(src.id);
+                if (!applicable) {
+                  return (
+                    <td
+                      key={src.id}
+                      className="border-border/50 text-muted-foreground/50 border-t py-2 text-center font-mono text-[11px]"
+                      title={`${sub.short} structurally cannot read ${src.label} data`}
+                    >
+                      —
+                    </td>
+                  );
+                }
+                const isOn = access[sub.id].includes(src.id);
+                return (
+                  <td key={src.id} className="border-border/50 border-t py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => onToggle(sub.id, src.id)}
+                      aria-pressed={isOn}
+                      aria-label={`${sub.short} reads ${src.label} data`}
+                      title={
+                        isOn
+                          ? `${sub.short} reads ${src.label} data — click to revoke`
+                          : `${src.label} data revoked for ${sub.short} — click to allow`
+                      }
+                      className={
+                        "inline-flex h-6 min-w-12 items-center justify-center rounded-full border px-2 font-mono text-[10px] font-bold transition active:scale-[0.96] " +
+                        (isOn
+                          ? "border-primary/50 bg-primary/10 text-foreground"
+                          : "border-border/50 text-muted-foreground border-dashed opacity-60 hover:opacity-100")
+                      }
+                    >
+                      {isOn ? "ON" : "off"}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

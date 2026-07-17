@@ -18,7 +18,10 @@
 //   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
 //   rp        Rewards Promotions rungs per posture, [0,1]
 //   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
-//   context   which TEXT fields EM reads (EM is the only configurable one)
+//   dataAccess the core config — per-subscore data-source toggles
+//             (consumer · place · intent · interaction), ⊂ each subscore's
+//             applicable set; default all ON
+//   context   which TEXT fields EM reads (EM is the only field-configurable one)
 // See web-admin lib/business/scores.ts — the RANGE TABLE there is mirrored
 // VERBATIM here; a value the UI allows but this EF clamps would silently
 // move the form on save.
@@ -41,6 +44,17 @@ type Body = { config?: unknown };
 
 const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
 const LANE_N_MAX = 20;
+
+// Mirrors APPLICABLE_SOURCES in web-admin lib/business/scores.ts — a source
+// a subscore structurally cannot read is rejected, not silently dropped.
+const APPLICABLE_SOURCES: Record<string, readonly string[]> = {
+  em: ["consumer", "place", "intent"],
+  sm: ["place", "intent", "interaction"],
+  gp: ["place"],
+  rp: ["place"],
+  xx: [],
+};
+const SUBSCORE_IDS = ["em", "sm", "gp", "rp", "xx"] as const;
 
 function num(v: unknown, lo: number, hi: number): number | null {
   if (typeof v !== "number" || !Number.isFinite(v)) return null;
@@ -112,6 +126,35 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   const control = num(xxIn?.control, 0, 5);
   if (control == null) return { ok: false, error: "xx.control must be a number 0–5" };
 
+  // dataAccess — the core config: per-subscore source toggles. Optional
+  // (older clients omit it; the frontend coercer default-fills all-ON).
+  // Each present cell must be an array ⊂ that subscore's applicable set;
+  // empty arrays are VALID (that subscore reads nothing — degenerate on
+  // purpose).
+  const daIn = r.dataAccess as Record<string, unknown> | undefined;
+  let dataAccess: Record<string, string[]> | null = null;
+  if (daIn !== undefined) {
+    if (!daIn || typeof daIn !== "object") {
+      return { ok: false, error: "config.dataAccess must be an object" };
+    }
+    dataAccess = {};
+    for (const sub of SUBSCORE_IDS) {
+      const cell = daIn[sub];
+      if (cell === undefined) continue; // missing cell → client defaults
+      if (!Array.isArray(cell)) {
+        return { ok: false, error: `dataAccess.${sub} must be an array` };
+      }
+      const applicable = APPLICABLE_SOURCES[sub];
+      const clean = [...new Set(cell)];
+      for (const src of clean) {
+        if (typeof src !== "string" || !applicable.includes(src)) {
+          return { ok: false, error: `dataAccess.${sub} has an inapplicable source` };
+        }
+      }
+      dataAccess[sub] = (clean as string[]).sort();
+    }
+  }
+
   // Context — which TEXT fields EM reads. Validation is STRUCTURAL only
   // ("side.name" strings, deduped, capped) — the exact key list lives in the
   // frontend registry and its coercer drops unknowns on read, so this EF
@@ -153,6 +196,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       gp: { lnCeiling },
       rp,
       xx: { control },
+      ...(dataAccess ? { dataAccess } : {}),
       ...(context ? { context } : {}),
     },
   };

@@ -15,6 +15,7 @@ import {
   Chip,
   ContextCols,
   ContextConfigCols,
+  DataAccessMatrix,
   GroupHead,
   PanelCard,
   Slider,
@@ -51,6 +52,8 @@ export function SubscoresPanel() {
     setRp,
     xx,
     setXx,
+    dataAccess,
+    toggleSource,
     context,
     toggleContext,
     dirty,
@@ -86,6 +89,19 @@ export function SubscoresPanel() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
+      {/* ══ Data access — THE core config ════════════════════════════ */}
+      <PanelCard
+        title="Data access · the core config"
+        subtitle="Each subscore can be configured to select which data it is allowed to access — the default is all data ON; any individual data source can be toggled OFF per subscore (the spec's main knob). Four sources: Consumer (constant per consumer) · Place (constant per place) · Intent (per query — Where · When · What) · Interaction (per consumer × place, the edge — only SM can read it). Both playgrounds enforce the matrix live: revoke a source and watch that subscore's numbers move."
+        pill="all data ON by default"
+      >
+        <DataAccessMatrix access={dataAccess} onToggle={toggleSource} />
+        <p className="text-muted-foreground mt-3 font-mono text-[10.5px] leading-relaxed">
+          — = structurally unreadable (EM never sees the pair; GP/RP read only the place; XX
+          reads nothing but its own draw). EM&apos;s per-field detail lives in its box below.
+        </p>
+      </PanelCard>
+
       {/* ══ EM ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="EM Subscore · Embeddings Match"

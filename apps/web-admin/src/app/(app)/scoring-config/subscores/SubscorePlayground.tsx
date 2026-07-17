@@ -55,7 +55,7 @@ const ENGINES: readonly EngineId[] = ["swipe", "map", "memo"];
 const pct = (v: number) => v.toFixed(2);
 
 export function SubscorePlayground() {
-  const { consumers, places, em, sm, gp, rp, xx, context } = useScoring();
+  const { consumers, places, em, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
   const [consumerIdx, setConsumerIdx] = useState(0);
   const [placeIdx, setPlaceIdx] = useState(0);
@@ -71,15 +71,33 @@ export function SubscorePlayground() {
     const profile = buildConsumerProfile(consumer);
     const intent = generateIntent(engine, profile, places, consumerIdx * 7 + roll);
     const enabled = new Set(context.em);
-    const ciDoc = buildCiDoc(profile, intent, enabled);
-    const placeDoc = buildPlaceDoc(place, enabled);
+    // The data-access matrix, enforced: a revoked source is withheld from
+    // the subscore's inputs and its missing-data rule applies.
+    const emSrc = {
+      consumer: dataAccess.em.includes("consumer"),
+      intent: dataAccess.em.includes("intent"),
+      place: dataAccess.em.includes("place"),
+    };
+    const smPlaceOn = dataAccess.sm.includes("place");
+    const smIntentOn = dataAccess.sm.includes("intent");
+    const gpOn = dataAccess.gp.includes("place");
+    const rpOn = dataAccess.rp.includes("place");
+
+    const ciDoc = buildCiDoc(profile, intent, enabled, {
+      consumer: emSrc.consumer,
+      intent: emSrc.intent,
+    });
+    const placeDoc = buildPlaceDoc(place, enabled, emSrc.place);
     const ciVec = embedText(ciDoc, em.embedDims);
     const placeVec = embedText(placeDoc, em.embedDims);
     const emVal = emFromVectors(ciVec, placeVec);
 
-    const w = resolveWhere(intent, place);
-    const win = openWindow(place.hours, intent.day, intent.hour);
-    const rel = whatRelation(intent, place);
+    const smLive = smPlaceOn && smIntentOn;
+    const w = smLive ? resolveWhere(intent, place) : { km: null, zoneMode: false };
+    const win = smLive
+      ? openWindow(place.hours, intent.day, intent.hour)
+      : { opensInH: 0, openForH: 0, unknown: true };
+    const rel = smLive ? whatRelation(intent, place) : ("none" as const);
     const smP = smParts(
       {
         km: w.km,
@@ -92,14 +110,20 @@ export function SubscorePlayground() {
       sm,
     );
 
-    const gpP = gpParts(place.google_review_count, place.google_stars_overall, gp);
+    const gpP = gpParts(
+      gpOn ? place.google_review_count : null,
+      gpOn ? place.google_stars_overall : null,
+      gp,
+    );
 
-    const posture = strategyForPlace({
-      welcome_free_rate: place.welcome_free_rate,
-      welcome_premium_rate: place.welcome_premium_rate,
-      free_rate: place.free_rate,
-      premium_rate: place.premium_rate,
-    });
+    const posture = rpOn
+      ? strategyForPlace({
+          welcome_free_rate: place.welcome_free_rate,
+          welcome_premium_rate: place.welcome_premium_rate,
+          free_rate: place.free_rate,
+          premium_rate: place.premium_rate,
+        })
+      : null;
     const rpVal = rpScore(posture, rp);
 
     const draws = Object.fromEntries(
@@ -117,7 +141,7 @@ export function SubscorePlayground() {
     ) as Record<LaneId, number>;
 
     return { profile, intent, ciDoc, placeDoc, ciVec, placeVec, emVal, w, win, rel, smP, gpP, posture, rpVal, draws, xxVals, laneScores };
-  }, [consumer, place, places, engine, roll, consumerIdx, context.em, em.embedDims, sm, gp, rp, xx]);
+  }, [consumer, place, places, engine, roll, consumerIdx, context.em, em.embedDims, sm, gp, rp, xx, dataAccess]);
 
   if (places.length === 0) {
     return (

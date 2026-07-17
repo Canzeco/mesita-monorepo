@@ -40,7 +40,7 @@ import { EmptyCatalog, ENGINE_ICONS, FactChip, LaneBadge, SpecimenCell } from ".
 const ENGINES: readonly EngineId[] = ["swipe", "map", "memo"];
 
 export function DeckPlayground() {
-  const { consumers, places, laneN, em, sm, gp, rp, xx, context } = useScoring();
+  const { consumers, places, laneN, em, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
   const [consumerIdx, setConsumerIdx] = useState(0);
   const [engine, setEngine] = useState<EngineId>("swipe");
@@ -53,13 +53,30 @@ export function DeckPlayground() {
     const profile = buildConsumerProfile(consumer);
     const intent = generateIntent(engine, profile, places, consumerIdx * 7 + roll);
     const enabled = new Set(context.em);
-    const ciVec = embedText(buildCiDoc(profile, intent, enabled), em.embedDims);
+    // The data-access matrix, enforced across the whole pool.
+    const emSrc = {
+      consumer: dataAccess.em.includes("consumer"),
+      intent: dataAccess.em.includes("intent"),
+      place: dataAccess.em.includes("place"),
+    };
+    const smLive = dataAccess.sm.includes("place") && dataAccess.sm.includes("intent");
+    const gpOn = dataAccess.gp.includes("place");
+    const rpOn = dataAccess.rp.includes("place");
+    const ciVec = embedText(
+      buildCiDoc(profile, intent, enabled, { consumer: emSrc.consumer, intent: emSrc.intent }),
+      em.embedDims,
+    );
 
     const byId = new Map<string, SamplePlace>(places.map((p) => [p.id, p]));
     const candidates: DeckCandidate[] = places.map((p) => {
-      const emVal = emFromVectors(ciVec, embedText(buildPlaceDoc(p, enabled), em.embedDims));
-      const w = resolveWhere(intent, p);
-      const win = openWindow(p.hours, intent.day, intent.hour);
+      const emVal = emFromVectors(
+        ciVec,
+        embedText(buildPlaceDoc(p, enabled, emSrc.place), em.embedDims),
+      );
+      const w = smLive ? resolveWhere(intent, p) : { km: null, zoneMode: false };
+      const win = smLive
+        ? openWindow(p.hours, intent.day, intent.hour)
+        : { opensInH: 0, openForH: 0, unknown: true };
       const smVal = smScore(
         {
           km: w.km,
@@ -67,17 +84,23 @@ export function DeckPlayground() {
           opensInH: win.opensInH,
           openForH: win.openForH,
           hoursUnknown: win.unknown,
-          whatRel: whatRelation(intent, p),
+          whatRel: smLive ? whatRelation(intent, p) : "none",
         },
         sm,
       );
-      const gpVal = gpParts(p.google_review_count, p.google_stars_overall, gp).gp;
-      const posture = strategyForPlace({
-        welcome_free_rate: p.welcome_free_rate,
-        welcome_premium_rate: p.welcome_premium_rate,
-        free_rate: p.free_rate,
-        premium_rate: p.premium_rate,
-      });
+      const gpVal = gpParts(
+        gpOn ? p.google_review_count : null,
+        gpOn ? p.google_stars_overall : null,
+        gp,
+      ).gp;
+      const posture = rpOn
+        ? strategyForPlace({
+            welcome_free_rate: p.welcome_free_rate,
+            welcome_premium_rate: p.welcome_premium_rate,
+            free_rate: p.free_rate,
+            premium_rate: p.premium_rate,
+          })
+        : null;
       const rpVal = rpScore(posture, rp);
       const scores = Object.fromEntries(
         LANES.map((l) => [
@@ -96,7 +119,7 @@ export function DeckPlayground() {
 
     const deck = composeFinalDeck(candidates, laneN);
     return { intent, deck, byId };
-  }, [consumer, consumerIdx, places, engine, roll, context.em, em.embedDims, sm, gp, rp, xx, laneN]);
+  }, [consumer, consumerIdx, places, engine, roll, context.em, em.embedDims, sm, gp, rp, xx, dataAccess, laneN]);
 
   if (places.length === 0) {
     return (
