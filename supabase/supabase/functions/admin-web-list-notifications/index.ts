@@ -63,20 +63,18 @@ import {
 import {
   one,
   placeRef,
-  type PlaceRef,
   type PlaceShape,
   projectPlaceRef,
   type ProjectPlaceShape,
   truncate,
 } from "./notification-shapes.ts";
-
-type Category = "atlas";
-
-type NotificationType =
-  | "atlas.place_created"
-  | "atlas.place_enriched"
-  | "atlas.enrichment_step"
-  | "atlas.ownership_claimed";
+import {
+  mapPlaceCreatedNotification,
+  type Category,
+  type CreatedNotificationRow,
+  type NotificationItem,
+  type NotificationType,
+} from "./notification-mappers.ts";
 
 const ALL_TYPES: NotificationType[] = [
   "atlas.place_created",
@@ -98,21 +96,6 @@ type Body = {
   // Case-insensitive place-name substring filter (applied post-merge).
   q?: string | null;
   limit?: number;
-};
-
-type NotificationItem = {
-  // Stable per underlying row so the client can key/dedupe across refreshes.
-  id: string;
-  category: Category;
-  type: NotificationType;
-  occurredAt: string;
-  place: PlaceRef;
-  // "Who" — owner display for creations, requester email for claims,
-  // "Enricher" for enrichment events. null when genuinely unknown.
-  actor: string | null;
-  // Free-text detail — the enrichment summary snippet / step detail line.
-  detail: string | null;
-  meta: Record<string, unknown>;
 };
 
 Deno.serve(async (req) => {
@@ -228,14 +211,7 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `claims: ${claimsRes.error.message}` }, 500);
     }
 
-    const createdRows = (createdRes.data ?? []) as Array<
-      PlaceShape & {
-        listing_type: string | null;
-        status: string | null;
-        created_at: string;
-        enriched_at: string | null;
-      }
-    >;
+    const createdRows = (createdRes.data ?? []) as CreatedNotificationRow[];
 
     // Resolve the current owner for the created places in one batched read.
     // Most freshly-created places are unclaimed, so this map is usually small.
@@ -271,28 +247,7 @@ Deno.serve(async (req) => {
     // ── atlas.place_created ──────────────────────────────────────────────
     for (const v of createdRows) {
       const owner = ownerByPlace.get(v.id);
-      const actor = owner
-        ? owner.name
-          ? owner.email
-            ? `${owner.name} · ${owner.email}`
-            : owner.name
-          : owner.email
-        : null;
-      items.push({
-        id: `atlas.place_created:${v.id}`,
-        category: "atlas",
-        type: "atlas.place_created",
-        occurredAt: v.created_at,
-        place: placeRef(v),
-        actor,
-        detail: null,
-        meta: {
-          listingType: v.listing_type,
-          status: v.status,
-          enriched: v.enriched_at != null,
-          claimed: !!owner,
-        },
-      });
+      items.push(mapPlaceCreatedNotification(v, owner));
     }
 
     // ── atlas.place_enriched ─────────────────────────────────────────────
