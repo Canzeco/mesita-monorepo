@@ -22,6 +22,7 @@ import type {
   SessionRow,
   StaffContext,
   StaffIdentity,
+  StaffPlace,
 } from "./staff-whatsapp-types.ts";
 import {
   displayConsumerCode,
@@ -123,15 +124,7 @@ export async function handleStaffInboundMessage(opts: {
   if (intent.intent === "select_project" && intent.place_index != null) {
     const picked = places[intent.place_index];
     if (picked) {
-      session = await applyActivePlace(admin, identity, session, picked);
-      const warn = await placeOpsShortWarning(admin, picked.projectId);
-      await reply(
-        admin,
-        twilio,
-        identity.phoneE164,
-        `Unidad activa: ${picked.placeName} ✓\nManda el código Mesita del comensal (0000-0000).` +
-          warn,
-      );
+      session = await activatePlaceAndPrompt(admin, twilio, identity, session, picked);
       return;
     }
     await reply(
@@ -156,15 +149,7 @@ export async function handleStaffInboundMessage(opts: {
     (session?.state === "selecting_project" || !session?.project_id)
   ) {
     const picked = places.find((v) => v.projectId === placePick)!;
-    session = await applyActivePlace(admin, identity, session, picked);
-    const warn = await placeOpsShortWarning(admin, picked.projectId);
-    await reply(
-      admin,
-      twilio,
-      identity.phoneE164,
-      `Unidad activa: ${picked.placeName} ✓\nManda el código Mesita del comensal (0000-0000).` +
-        warn,
-    );
+    session = await activatePlaceAndPrompt(admin, twilio, identity, session, picked);
     return;
   }
 
@@ -425,6 +410,25 @@ export async function handleStaffInboundMessage(opts: {
       situation: coachSituation,
     }),
   );
+}
+
+async function activatePlaceAndPrompt(
+  admin: SupabaseClient,
+  twilio: TwilioEnv,
+  identity: StaffIdentity,
+  session: SessionRow | null,
+  picked: StaffPlace,
+): Promise<SessionRow> {
+  const next = await applyActivePlace(admin, identity, session, picked);
+  const warn = await placeOpsShortWarning(admin, picked.projectId);
+  await reply(
+    admin,
+    twilio,
+    identity.phoneE164,
+    `Unidad activa: ${picked.placeName} ✓\nManda el código Mesita del comensal (0000-0000).` +
+      warn,
+  );
+  return next;
 }
 
 async function replyIfDiscountOpsBlocked(
