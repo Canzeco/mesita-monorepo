@@ -58,6 +58,7 @@ import { isPlaceSeeking } from "../_shared/memo-intent.ts";
 import { localMoment } from "../_shared/memo-local-moment.ts";
 import { readMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 import { readConsumerContext } from "./memo-consumer-context.ts";
+import { toPlainText } from "./memo-text.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -97,28 +98,6 @@ type MemoBody = {
 const MAX_CARDS = 3;
 const MAX_HISTORY = 8;
 const GOOGLE_RADIUS_M = 8000;
-
-// The consumer chat renders Memo's reply as RAW TEXT, so any markdown the
-// model emits (**bold**, *italics*, `code`, # headings, [links](url)) leaks
-// through as literal symbols. Strip the formatting markers but keep the words —
-// and keep emojis, accents (á/ñ), and ¡¿ punctuation untouched.
-function toPlainText(s: string): string {
-  return s
-    // Links: [text](url) → text (url)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
-    // Bold / italic / strikethrough wrappers → their inner text
-    .replace(/(\*\*|__)(.*?)\1/g, "$2")
-    .replace(/~~(.*?)~~/g, "$1")
-    .replace(/(\*|_)(?=\S)(.*?)(?<=\S)\1/g, "$2")
-    // Inline code / fenced code → inner text
-    .replace(/`{1,3}([^`]*)`{1,3}/g, "$1")
-    // Heading (#) and blockquote (>) markers at line start
-    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
-    .replace(/^\s{0,3}>\s?/gm, "")
-    // Any stray emphasis/heading/code markers left over
-    .replace(/[*_`#]/g, "")
-    .trim();
-}
 
 // ── Handler ────────────────────────────────────────────────────────────
 
