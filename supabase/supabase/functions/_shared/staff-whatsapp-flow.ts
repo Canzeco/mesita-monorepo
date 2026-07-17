@@ -49,9 +49,12 @@ import {
   buildConsumerBillPayload,
   closeTicketAndEnqueueReview,
   computeInformalBill,
-  formatMoneyMx,
   type ConsumerRow,
 } from "./ticket-informal.ts";
+import {
+  consumerBillMessage,
+  staffBillReadyMessage,
+} from "./staff-whatsapp-bill-messages.ts";
 import { sendStaffWhatsAppReply } from "./staff-whatsapp-messages.ts";
 import { sendWhatsAppText, type TwilioEnv } from "./twilio.ts";
 import { recordMembershipStrike } from "./membership-enforcement.ts";
@@ -632,12 +635,7 @@ async function handleSubmitBill(
       env: twilio,
       from: twilio.whatsappFromConsumers,
       to: guestPhone,
-      body:
-        `Mesita — ${place.name}\n` +
-        `Bill: ${formatMoneyMx(calc.total)}\n` +
-        `Discount (${calc.discountPercent}%): -${formatMoneyMx(calc.discountCents)}\n` +
-        `You pay: ${formatMoneyMx(calc.amountDueCents)}\n\n` +
-        `Pay at the table — the staff will close it out.`,
+      body: consumerBillMessage(place.name, calc),
     });
   }
 
@@ -645,11 +643,7 @@ async function handleSubmitBill(
     admin,
     twilio,
     staff.phoneE164,
-    `Cuenta lista ✓ (${staff.placeName})\n` +
-      `Subtotal: ${formatMoneyMx(calc.subtotal)}\n` +
-      `Descuento (${calc.discountPercent}%): -${formatMoneyMx(calc.discountCents)}\n` +
-      `Cobra al comensal: ${formatMoneyMx(calc.amountDueCents)} (efectivo o terminal).\n\n` +
-      `Cuando cobres, responde *listo* para cerrar el ticket.`,
+    staffBillReadyMessage(staff.placeName, calc),
   );
 }
 
