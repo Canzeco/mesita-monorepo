@@ -6,10 +6,8 @@
 // the discount math depends on.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import {
-  formatMoneyMx,
-  promoEligibleSubtotalCents,
-} from "./ticket-informal.ts";
+import { formatMoneyMx } from "./ticket-bill-payload.ts";
+import { promoEligibleSubtotalCents } from "./ticket-informal.ts";
 
 Deno.test("promoEligibleSubtotalCents: no cap -> whole subtotal is eligible", () => {
   assertEquals(promoEligibleSubtotalCents(85000, null), 85000);
