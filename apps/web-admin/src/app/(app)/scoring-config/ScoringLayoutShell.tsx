@@ -15,7 +15,7 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/scoring-config/subscores":
     "One box per subscore — EM (Embeddings Match), SM (Structured Match), GP (Google Popularity), RP (Rewards Promotions), XX (Random Number) — each with its knobs and its data-access contract, all in [0,1]. The Subscore playground below runs any subscore's internals on one consumer × intent × place.",
   "/scoring-config/lanes":
-    "Three lanes, one score each — Organic EM·SM·GP·XX · Inorganic EM·SM·RP·XX · Hybrid EM·SM·GP·RP·XX — merged round-robin O → I → H, dedupe on insert, no backfill (≤ 3·N). The Deck playground below runs the whole pipeline into a final deck.",
+    "Three lanes, one score each — Organic EM·SM·GP·XX · Inorganic EM·SM·RP·XX · Hybrid EM·SM·GP·RP·XX — merged round-robin O → I → H, dedupe on insert, no backfill (≤ the per-lane counts' sum). The Deck playground below runs the whole pipeline into a final deck.",
 };
 
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {

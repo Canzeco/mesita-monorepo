@@ -6,6 +6,7 @@ import {
   composeFinalDeck,
   EM_ENCODER,
   gpParts,
+  laneCountsTotal,
   LANES,
   laneScore,
   rpScore,
@@ -140,7 +141,7 @@ export function DeckPlayground() {
     <PanelCard
       title="Deck playground"
       subtitle="One full run at the CURRENT knobs: every sampled place scored in all three lanes → each lane's top-N → round-robin merge with dedupe (first occurrence wins) and no backfill. Struck-through cards were merged away — the place already arrived via an earlier lane."
-      pill={`deck ≤ ${laneN * 3} of ${places.length} places`}
+      pill={`deck ≤ ${laneCountsTotal(laneN)} of ${places.length} places`}
     >
       {/* Specimen bar */}
       <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
@@ -208,7 +209,7 @@ export function DeckPlayground() {
                     <LaneBadge laneId={l.id} />
                     <span className="text-[12px] font-semibold">{l.label}</span>
                     <span className="text-muted-foreground ml-auto font-mono text-[10px]">
-                      {fill.taken}/{laneN} · {fill.eligible} eligible
+                      {fill.taken}/{laneN[l.id]} · {fill.eligible} eligible
                     </span>
                   </div>
                   <div className="px-2 py-1.5">

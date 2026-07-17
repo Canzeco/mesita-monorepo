@@ -3,6 +3,7 @@
 import { ArrowRight, Cog } from "lucide-react";
 import {
   LANE_N_MAX,
+  laneCountsTotal,
   laneFormula,
   LANES,
   MERGE_ROTATION,
@@ -14,12 +15,13 @@ import { LaneBadge } from "../playground-ui";
 import { DeckPlayground } from "./DeckPlayground";
 
 // Scores & Lanes — the composition layer. The lane FORMULAS are locked
-// (2026-07-16): what's tunable here is the shared lane length N; the
-// subscores' own knobs live on the Subscores tab (shared provider, so both
-// tabs and both playgrounds always agree).
+// (2026-07-16): what's tunable here is each lane's deck count (per-lane N,
+// MESITA-659); the subscores' own knobs live on the Subscores tab (shared
+// provider, so both tabs and both playgrounds always agree).
 
 export function LanesPanel() {
   const { laneN, setLaneN } = useScoring();
+  const total = laneCountsTotal(laneN);
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
@@ -54,20 +56,38 @@ export function LanesPanel() {
       {/* ══ Merge ════════════════════════════════════════════════════ */}
       <PanelCard
         title="Merge · three lanes → the final deck"
-        subtitle="Each lane ranks the pool by its own score and takes its top-N (N shared across lanes). Round-robin one card at a time — identical for Swipe and Map — dedupe ON INSERT (first occurrence wins; O leads, so organic keeps dupes), NO backfill: the deck is ≤ 3·N and shrinks as lanes agree. Shrinkage is signal, not defect."
+        subtitle="Each lane ranks the pool by its own score and takes its OWN top-N — the counts below are per lane, and 0 turns a lane off (e.g. no paid cards). Round-robin one card at a time — identical for Swipe and Map — dedupe ON INSERT (first occurrence wins; O leads, so organic keeps dupes), NO backfill: the deck is ≤ the counts' sum and shrinks as lanes agree. Shrinkage is signal, not defect."
+        pill={`deck ≤ ${total}`}
       >
         <div className="mt-4 grid gap-x-8 gap-y-4 lg:grid-cols-2">
-          <div className="max-w-xs">
-            <Slider
-              label="Lane length · N"
-              value={String(laneN)}
-              min={1}
-              max={LANE_N_MAX}
-              step={1}
-              v={laneN}
-              onChange={setLaneN}
-              hint={`each lane contributes up to ${laneN} cards → final deck ≤ ${laneN * 3}`}
-            />
+          <div className="flex flex-col gap-3">
+            {LANES.map((l) => (
+              <div key={l.id} className="flex items-center gap-3">
+                <span className="w-24 shrink-0">
+                  <LaneBadge laneId={l.id} />
+                </span>
+                <div className="min-w-0 flex-1 max-w-xs">
+                  <Slider
+                    label={`${l.label} · N`}
+                    value={String(laneN[l.id])}
+                    min={0}
+                    max={LANE_N_MAX}
+                    step={1}
+                    v={laneN[l.id]}
+                    onChange={(n) => setLaneN(l.id, n)}
+                    hint={
+                      laneN[l.id] === 0
+                        ? "0 — lane off, contributes nothing"
+                        : `up to ${laneN[l.id]} cards`
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+            <p className="text-muted-foreground font-mono text-[10.5px]">
+              final deck ≤ {laneN.organic} + {laneN.inorganic} + {laneN.hybrid} ={" "}
+              {total} cards
+            </p>
           </div>
           <div>
             <SubHead>Rotation · locked 2026-07-16</SubHead>

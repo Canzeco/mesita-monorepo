@@ -221,7 +221,7 @@ export function runCongruency(s: ScoringSettings): CongruencyResult[] {
   );
 
   // Merge: dupes across lanes → first occurrence (rotation order) wins, no
-  // backfill, deck ≤ 3N.
+  // backfill, deck ≤ the per-lane counts' sum (MESITA-659).
   const N = 2;
   const cands: DeckCandidate[] = [
     { id: "dupe", scores: { organic: 0.9, inorganic: 0.9, hybrid: 0.9 } },
@@ -229,7 +229,7 @@ export function runCongruency(s: ScoringSettings): CongruencyResult[] {
     { id: "ino-only", scores: { organic: 0, inorganic: 0.8, hybrid: 0 } },
     { id: "hyb-only", scores: { organic: 0, inorganic: 0, hybrid: 0.8 } },
   ];
-  const deck = composeFinalDeck(cands, N);
+  const deck = composeFinalDeck(cands, { organic: N, inorganic: N, hybrid: N });
   const dupeSlot = deck.slots.find((slot) => slot.id === "dupe");
   const mergedAwayTotal = LANES.reduce((sum, l) => sum + deck.fills[l.id].mergedAway, 0);
   out.push(
