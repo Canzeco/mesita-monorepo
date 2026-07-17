@@ -7,6 +7,11 @@
 // coupon at another live partner place.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  isPaidPlan,
+  type StrikeConsequence,
+  strikeConsequenceForCount,
+} from "./membership-enforcement-helpers.ts";
 
 export const STRIKE_REASONS = ["refused_qr", "ignored_qr"] as const;
 export type StrikeReason = (typeof STRIKE_REASONS)[number];
@@ -41,9 +46,16 @@ export type PromoLaneBlockCode =
 
 export type PromoLaneEligibility =
   | { open: true; strikeCount: number; needsRetest: boolean }
-  | { open: false; code: PromoLaneBlockCode; strikeCount: number; staffMessage: string };
+  | {
+    open: false;
+    code: PromoLaneBlockCode;
+    strikeCount: number;
+    staffMessage: string;
+  };
 
-export function isStrikeReason(value: string | null | undefined): value is StrikeReason {
+export function isStrikeReason(
+  value: string | null | undefined,
+): value is StrikeReason {
   return value === "refused_qr" || value === "ignored_qr";
 }
 
@@ -76,14 +88,12 @@ export function assessPromoLane(
       open: false,
       code: "forfeited",
       strikeCount,
-      staffMessage:
-        "La membresía de este local fue removida tras 3 strikes. " +
+      staffMessage: "La membresía de este local fue removida tras 3 strikes. " +
         "El lugar sigue listado, pero las promos están apagadas.",
     };
   }
 
-  const plan = (row.plan ?? "free").toLowerCase();
-  if (plan === "free") {
+  if (!isPaidPlan(row.plan)) {
     return { open: true, strikeCount, needsRetest: false };
   }
 
@@ -116,8 +126,7 @@ export function assessPromoLane(
       open: false,
       code: "not_activated",
       strikeCount,
-      staffMessage:
-        `${detail}.\n\n` +
+      staffMessage: `${detail}.\n\n` +
         "En Mesita Business → Promos / Team: manda el test ping y canjea el primer reward.",
     };
   }
@@ -171,7 +180,9 @@ export async function recordStaffChannelPing(
   admin: SupabaseClient,
   projectId: string,
   now: Date = new Date(),
-): Promise<{ ok: true; membershipLive: boolean } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; membershipLive: boolean } | { ok: false; error: string }
+> {
   const iso = now.toISOString();
   const row = await loadMembershipRow(admin, projectId);
   if (!row) return { ok: false, error: "project not found" };
@@ -182,7 +193,7 @@ export async function recordStaffChannelPing(
     !row.membership_live_at &&
     row.first_ticket_honored_at &&
     !row.membership_forfeited_at &&
-    (row.plan ?? "free").toLowerCase() !== "free"
+    isPaidPlan(row.plan)
   ) {
     patch.membership_live_at = iso;
     membershipLive = true;
@@ -201,7 +212,12 @@ export async function recordFirstTicketHonored(
   admin: SupabaseClient,
   projectId: string,
   now: Date = new Date(),
-): Promise<{ ok: true; membershipLive: boolean; firstHonor: boolean } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; membershipLive: boolean; firstHonor: boolean } | {
+    ok: false;
+    error: string;
+  }
+> {
   const row = await loadMembershipRow(admin, projectId);
   if (!row) return { ok: false, error: "project not found" };
 
@@ -220,7 +236,7 @@ export async function recordFirstTicketHonored(
     !row.membership_live_at &&
     row.staff_channel_pinged_at &&
     !row.membership_forfeited_at &&
-    (row.plan ?? "free").toLowerCase() !== "free"
+    isPaidPlan(row.plan)
   ) {
     patch.membership_live_at = iso;
     membershipLive = true;
@@ -234,7 +250,7 @@ export async function recordFirstTicketHonored(
 export type RecordStrikeResult = {
   ok: true;
   strikeNumber: number;
-  consequence: "warning_retest" | "pause_30d" | "forfeit";
+  consequence: StrikeConsequence;
   compensationCouponId: string | null;
   alreadyRecorded?: boolean;
 } | { ok: false; error: string };
@@ -270,8 +286,10 @@ export async function recordMembershipStrike(
       return {
         ok: true,
         strikeNumber: n,
-        consequence: n >= 3 ? "forfeit" : n === 2 ? "pause_30d" : "warning_retest",
-        compensationCouponId: existing.data.compensation_coupon_id as string | null,
+        consequence: strikeConsequenceForCount(n),
+        compensationCouponId: existing.data.compensation_coupon_id as
+          | string
+          | null,
         alreadyRecorded: true,
       };
     }
@@ -284,14 +302,13 @@ export async function recordMembershipStrike(
     last_strike_at: iso,
   };
 
-  let consequence: "warning_retest" | "pause_30d" | "forfeit" = "warning_retest";
+  const consequence = strikeConsequenceForCount(next);
   if (next === 1) {
     // Warning + re-run activation test: clear the ping stamp.
     patch.staff_channel_pinged_at = null;
-    consequence = "warning_retest";
   } else if (next === 2) {
-    patch.promo_paused_until = new Date(now.getTime() + PROMO_PAUSE_MS).toISOString();
-    consequence = "pause_30d";
+    patch.promo_paused_until = new Date(now.getTime() + PROMO_PAUSE_MS)
+      .toISOString();
   } else {
     // Strike 3: remove paid posture, forfeit fee stamp, keep catalog listing.
     patch.plan = "free";
@@ -303,10 +320,12 @@ export async function recordMembershipStrike(
     patch.membership_live_at = null;
     patch.membership_forfeited_at = iso;
     patch.promo_paused_until = null;
-    consequence = "forfeit";
   }
 
-  const update = await admin.from("projects").update(patch).eq("id", opts.projectId);
+  const update = await admin.from("projects").update(patch).eq(
+    "id",
+    opts.projectId,
+  );
   if (update.error) return { ok: false, error: update.error.message };
 
   let compensationCouponId: string | null = null;
@@ -339,7 +358,12 @@ export async function recordMembershipStrike(
 export async function compensateBurnedGuest(
   admin: SupabaseClient,
   opts: { burnedProjectId: string; consumerId: string },
-): Promise<{ ok: true; couponId: string; projectId: string } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; couponId: string; projectId: string } | {
+    ok: false;
+    error: string;
+  }
+> {
   // Prefer another live partner place; fall back to any other partner.
   const live = await admin
     .from("projects")
@@ -397,7 +421,11 @@ export async function compensateBurnedGuest(
       .select("id")
       .maybeSingle();
     if (boost.data?.id) {
-      return { ok: true, couponId: boost.data.id as string, projectId: pick.id };
+      return {
+        ok: true,
+        couponId: boost.data.id as string,
+        projectId: pick.id,
+      };
     }
     return { ok: false, error: insert.error.message };
   }
