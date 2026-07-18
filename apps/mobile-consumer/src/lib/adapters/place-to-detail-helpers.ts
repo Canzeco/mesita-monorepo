@@ -1,3 +1,4 @@
+import { currencyPrefix, LEVEL_RANGES } from '@/lib/place-price';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
 export type Row = Record<string, unknown>;
@@ -99,25 +100,12 @@ function parseMinutes(t: unknown): number | null {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
-function currencyPrefix(code: string): string {
-  if (code === 'MXN') return 'MX$';
-  if (code === 'USD') return '$';
-  if (code === 'EUR') return '€';
-  return `${code} `;
-}
-
 function fallbackPriceRange(
   priceLevel: 1 | 2 | 3 | 4,
   currency: string,
 ): string {
   const prefix = currencyPrefix(currency);
-  const ranges: Record<1 | 2 | 3 | 4, [number, number]> = {
-    1: [100, 200],
-    2: [200, 300],
-    3: [300, 500],
-    4: [500, 800],
-  };
-  const [min, max] = ranges[priceLevel];
+  const [min, max] = LEVEL_RANGES[priceLevel];
   return `${prefix}${min}-${max}`;
 }
 

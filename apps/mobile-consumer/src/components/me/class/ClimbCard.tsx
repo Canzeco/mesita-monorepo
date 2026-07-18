@@ -86,7 +86,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
         {data.igGradient ? (
           <LinearGradient
-            colors={['#f58529', '#dd2a7b', '#8134af']}
+            colors={[...GRADIENTS.instagram]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{

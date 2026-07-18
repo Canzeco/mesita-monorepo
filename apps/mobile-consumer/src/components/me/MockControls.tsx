@@ -121,7 +121,7 @@ function EmulateRow({
     >
       {ig ? (
         <LinearGradient
-          colors={['#f58529', '#dd2a7b', '#8134af']}
+          colors={[...GRADIENTS.instagram]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{

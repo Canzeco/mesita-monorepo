@@ -13,6 +13,8 @@ export const GRADIENTS = {
   // Soft shell wash (web `from-background to-muted/30`)
   shell: ['#fff7f8', '#faeff0'] as const,
   peacock: ['#ff3a84', '#ed1c80', '#ed4096'] as const,
+  // Instagram brand gradient (social verify + IG-connected chrome)
+  instagram: ['#f58529', '#dd2a7b', '#8134af'] as const,
   gold: ['#f5cc58', '#eb881f'] as const,
   silver: ['#ced9e5', '#9ba6b1'] as const,
   free: ['#ced9e5', '#9ba6b1'] as const,

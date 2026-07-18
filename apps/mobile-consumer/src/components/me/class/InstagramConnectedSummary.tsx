@@ -2,6 +2,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AtSign, BadgeCheck } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
+import { GRADIENTS } from '@/constants/brand';
+
 export function InstagramConnectedSummary({ followers }: { followers: number }) {
   return (
     <View
@@ -17,7 +19,7 @@ export function InstagramConnectedSummary({ followers }: { followers: number }) 
       }}
     >
       <LinearGradient
-        colors={['#f58529', '#dd2a7b', '#8134af']}
+        colors={[...GRADIENTS.instagram]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
