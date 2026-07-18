@@ -138,7 +138,8 @@ Deno.serve(async (req) => {
     }
 
     if (typeof body.ticketId === "string" && body.ticketId.trim()) {
-      const ticketRow = ticketRes.data?.find((t) => t.id === body.ticketId!.trim());
+      const ticketId = body.ticketId.trim();
+      const ticketRow = ticketRes.data?.find((t) => t.id === ticketId);
       if (ticketRow?.project_id) {
         placeInstagramUrl = placeInstagramById.get(ticketRow.project_id) ?? null;
       }
