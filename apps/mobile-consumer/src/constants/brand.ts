@@ -16,10 +16,7 @@ export const GRADIENTS = {
   // Instagram brand gradient (social verify + IG-connected chrome)
   instagram: ['#f58529', '#dd2a7b', '#8134af'] as const,
   gold: ['#f5cc58', '#eb881f'] as const,
-  silver: ['#ced9e5', '#9ba6b1'] as const,
   free: ['#ced9e5', '#9ba6b1'] as const,
-  bronze: ['#d58042', '#a04f27'] as const,
-  diamond: ['#8ef9ff', '#8d90ff'] as const,
 } as const;
 
 // 135° like the web's `linear-gradient(135deg, …)`.

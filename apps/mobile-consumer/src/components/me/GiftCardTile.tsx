@@ -22,6 +22,7 @@ export type GiftCard = {
 export function GiftCardTile({ card }: { card: GiftCard }) {
   const [flash, setFlash] = useState<null | 'shared' | 'copied'>(null);
   const Emblem = card.Icon;
+  const contact = card.contact;
 
   const onShare = async () => {
     const url = card.share.url ?? DEFAULT_SHARE_URL;
@@ -88,14 +89,14 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
           Mesita · Gift card
         </Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {card.contact ? (
+          {contact ? (
             <PillButton
               icon={<Mail color="#fff" size={14} />}
               label="Contact"
               onPress={() =>
                 void Linking.openURL(
                   `mailto:${MESITA_CONTACT_EMAIL}?subject=${encodeURIComponent(
-                    card.contact!.subject,
+                    contact.subject,
                   )}`,
                 )
               }
