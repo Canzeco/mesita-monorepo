@@ -78,6 +78,7 @@ export function AiConnectModal({
   // (react-hooks/set-state-in-effect).
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [open, refresh]);
 
