@@ -279,7 +279,7 @@ function ResetCard() {
           placeholder={CONFIRM_PHRASE}
           autoComplete="off"
           spellCheck={false}
-          className="border-border h-11 rounded-xl border bg-white px-3 font-mono text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-200"
+          className="border-border bg-card h-11 rounded-xl border px-3 font-mono text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-200"
         />
       </label>
 
