@@ -58,30 +58,33 @@
 // subscores however the question needs.
 //
 // ── SM = where × when × what ───────────────────────────────────────────
-//   where = 1 / (1 + (km / tolerance)³)
+//   where = 1 / (1 + (km / tol)^exp) — CONTINUOUS, never a bucket.
 //     km measured to the consumer's W: a REGION SET if zones/anchors were
 //     named (inside any → 0; outside → distance from the nearest border),
-//     else a POINT at GPS. Tolerance is PER-MODE: point 5 km (car-city
-//     Friday span survives) · zone-spillover 1.5 km (a typed zone is a
-//     constraint, not a vibe). k = 3: doubling distance beyond tolerance
-//     costs 8× — distance is the app's most important param; the tail is
-//     honestly a soft gate. Zones registry / metro sets are the backend
-//     build (MESITA-644 review, D2–D11); the playground emulates W as the
-//     anchor point + zone string match.
+//     else a POINT at GPS. tol is the CONSUMER'S distance-tolerance input
+//     (the Where filter slider) — NOT admin config; unset → the frozen
+//     default 5 km (DEFAULT_POINT_TOL_KM). A named zone reuses 30% of it
+//     (ZONE_SPILL_FRAC — a typed zone is a constraint, not a vibe). The
+//     admin's ONE where knob is the exponent: exp = 3 → doubling distance
+//     beyond tolerance costs 8× — the tail is honestly a soft gate. Zones
+//     registry / metro sets are the backend build (MESITA-644 review,
+//     D2–D11); the playground emulates W as the anchor point + zone match.
 //   when = wait × fit, times snapped to the 30-min grid first.
 //     wait = floor + (1 − floor) / (1 + (opensIn / h)⁴) — TWO PLATEAUS,
 //     thin middle: ≈1 open-now-ish, floor if not, never 0 (the weekend-only
 //     gem browsed on a Monday keeps 0.3). h = 2: browsing at 21:00 for a
 //     club that opens at 23:00 → 0.65, not buried.
 //     fit = min(1, openFor / session) — sufficiency, not decay.
-//   what — the category ladder over the intent's SET of categories and/or
-//     mega categories: listed (or mega listed) → 1 · shares a mega category
-//     with a listed category → 0.6 · no overlap → 0.2 (never 0 — SM gets no
-//     veto over semantics) · nothing asked → 1.
+//   what — CATEGORICAL on purpose (the one discrete factor): the ladder
+//     over the intent's SET of categories and/or mega categories. listed
+//     (or mega listed) → 1 · shares a mega/super category → the sibling
+//     rung (the ONE what knob, default 0.6) · no overlap → 0.2 frozen
+//     (MISMATCH_RUNG — never 0: SM gets no veto over semantics) · nothing
+//     asked → 1.
 //
 // EVERY KNOB IS A BELIEF, NOT AN ESTIMATE — nothing here is fitted. Judge a
 // change by its break-even, never by how far apart numbers land. Tune here;
-// the Scoring Config page and the per-place Scores tab derive from this
+// the Lineup Config page and the per-place Scores tab derive from this
 // module and never restate a knob.
 
 // ── THE FIVE SUBSCORES — the model's spine ─────────────────────────────
@@ -179,14 +182,15 @@ export function emScore(cos: number): number {
 
 // ── SM — Structured Match ──────────────────────────────────────────────
 
-// SM was simplified to TWO knobs per factor (Pato 2026-07-17): the less-
-// tunable beliefs became fixed constants (below), leaving each of where /
-// when / what with the two knobs a product person actually reaches for.
+// SM's knob count is a deliberate diet (Pato 2026-07-17, twice): first to
+// two knobs per factor, then to 1 · 2 · 1 — where and what keep ONE knob
+// each (the consumer owns the where tolerance; the mismatch rung froze),
+// when keeps its two. Everything less tunable is a fixed constant below.
 export type SmWhereParams = {
-  /** Distance tolerance — km at which the pull halves (point mode; a named
-   * zone reuses a fraction of this, ZONE_SPILL_FRAC). The consumer slider. */
-  pointTolKm: number;
-  /** Distance falloff — 3 = doubling distance beyond tolerance costs 8×. */
+  /** Distance falloff — the ONE where knob: how hard distance bites.
+   * 3 = doubling distance beyond tolerance costs 8×. The tolerance itself
+   * is the CONSUMER'S runtime input (Where filter slider;
+   * DEFAULT_POINT_TOL_KM when unset), never admin config. */
   distExp: number;
 };
 
@@ -199,10 +203,9 @@ export type SmWhenParams = {
 };
 
 export type SmWhatParams = {
-  /** Shares a mega category with a listed category. */
+  /** The ONE what knob — the rung for sharing a mega/super category with a
+   * listed category. (No-overlap is MISMATCH_RUNG, frozen.) */
   sibling: number;
-  /** No overlap at all — floored above 0: SM gets no veto over semantics. */
-  mismatch: number;
 };
 
 export type SmParams = {
@@ -213,20 +216,26 @@ export type SmParams = {
 
 // The frozen SM beliefs — argued from the product, rarely worth a knob, so
 // they're constants rather than config (kept out of the blob):
-//   ZONE_SPILL_FRAC   a named zone is a constraint, not a vibe — its tolerance
-//                     is 30% of the point tolerance (5 km point → 1.5 km zone).
-//   WAIT_TRANSITION_H hours-until-open where the two wait plateaus cross.
-//   WAIT_STEEP        wait transition steepness — 4 = two plateaus, thin middle.
+//   ZONE_SPILL_FRAC      a named zone is a constraint, not a vibe — its
+//                        tolerance is 30% of the consumer's tolerance.
+//   WAIT_TRANSITION_H    hours-until-open where the two wait plateaus cross.
+//   WAIT_STEEP           wait steepness — 4 = two plateaus, thin middle.
+//   DEFAULT_POINT_TOL_KM the consumer's tolerance when no Where filter is
+//                        set (car metros — the Friday span survives).
+//   MISMATCH_RUNG        what's no-overlap rung — never 0 (SM gets no veto
+//                        over semantics), low enough to bury a true miss.
 export const ZONE_SPILL_FRAC = 0.3;
 export const WAIT_TRANSITION_H = 2;
 export const WAIT_STEEP = 4;
+export const DEFAULT_POINT_TOL_KM = 5;
+export const MISMATCH_RUNG = 0.2;
 
 // Defaults, argued from what Mesita IS (car metros, dinner-anchored,
 // nightlife-heavy — see the header):
 export const DEFAULT_SM_PARAMS: SmParams = {
-  where: { pointTolKm: 5, distExp: 3 },
+  where: { distExp: 3 },
   when: { waitFloor: 0.3, sessionH: 1.5 },
-  what: { sibling: 0.6, mismatch: 0.2 },
+  what: { sibling: 0.6 },
 };
 
 /** Time resolves to half-hour blocks. */
@@ -241,10 +250,10 @@ export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number 
 
 /**
  * where — distance decay from the consumer's W, 0–1. `tolKm` is per-mode:
- * pointTolKm when W is a point, the derived zone tolerance (pointTolKm ×
- * ZONE_SPILL_FRAC) when km measures spillover past a named region's border
- * (inside the region km = 0 → 1). Unknown distance → 1 (a geo-less place is
- * a data bug to flag, not a scoring case).
+ * the consumer's tolerance (DEFAULT_POINT_TOL_KM when unset) when W is a
+ * point, its derived zone tolerance (× ZONE_SPILL_FRAC) when km measures
+ * spillover past a named region's border (inside the region km = 0 → 1).
+ * Unknown distance → 1 (a geo-less place is a data bug, not a scoring case).
  */
 export function whereScore(km: number | null, tolKm: number, distExp: number): number {
   if (km == null) return 1;
@@ -285,7 +294,7 @@ export function whatScore(rel: WhatRelation, p: SmWhatParams): number {
     case "sibling":
       return clamp01(p.sibling);
     case "mismatch":
-      return clamp01(p.mismatch);
+      return MISMATCH_RUNG;
     case "none":
       return 1;
   }
@@ -294,8 +303,11 @@ export function whatScore(rel: WhatRelation, p: SmWhatParams): number {
 export type SmInputs = {
   /** km to W (0 inside a named region) · null = unknown → where 1. */
   km: number | null;
+  /** The consumer's distance tolerance (their Where filter slider), km ·
+   * null = unset → DEFAULT_POINT_TOL_KM. Runtime input, never config. */
+  tolKm: number | null;
   /** True when W is a named region (zone mode) — picks the derived zone
-   * tolerance (pointTolKm × ZONE_SPILL_FRAC). */
+   * tolerance (tolerance × ZONE_SPILL_FRAC). */
   zoneMode: boolean;
   /** Hours until the place opens at the intent time (0 = open now). */
   opensInH: number;
@@ -319,9 +331,10 @@ export type SmParts = {
 };
 
 export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
-  // A named zone is a constraint, not a vibe — its tolerance is a fixed
-  // fraction of the point tolerance (5 km point → 1.5 km zone).
-  const tolKm = i.zoneMode ? p.where.pointTolKm * ZONE_SPILL_FRAC : p.where.pointTolKm;
+  // The consumer owns the tolerance (unset → the frozen default); a named
+  // zone is a constraint, not a vibe — it gets a fixed fraction of it.
+  const baseTol = i.tolKm ?? DEFAULT_POINT_TOL_KM;
+  const tolKm = i.zoneMode ? baseTol * ZONE_SPILL_FRAC : baseTol;
   const where = whereScore(i.km, tolKm, p.where.distExp);
   const wait = i.hoursUnknown ? 1 : waitScore(i.opensInH, p.when);
   const fit = i.hoursUnknown ? 1 : fitScore(i.openForH, p.when);
@@ -533,20 +546,23 @@ export function composeFinalDeck(
   return { lanes, slots, fills };
 }
 
-// ── THE STANDARD ENGINE — the one engine (decision 2026-07-16) ─────────
-// There is exactly ONE engine. It consists of the three lanes — Organic ·
-// Inorganic · Hybrid — merged O → I → H (dedupe on insert, no backfill).
-// Swipe, Map and Memo are SURFACES, not engines: each runs the Standard
-// Engine and differs only in where its intent-data comes from (prebuilt
-// taste embedding · taste + viewport · synthesized from the question).
+// ── LINEUP — the one engine (named 2026-07-17) ─────────────────────────
+// Lineup is the candidate-generation engine: consumer + intent → scored
+// candidates → the deck. There is exactly ONE engine — the three lanes,
+// Organic · Inorganic · Hybrid, merged O → I → H (dedupe on insert, no
+// backfill). It has three CALLERS, not surfaces: Swipe and Map (the consumer
+// hits Lineup directly from Home and the Map) and Memo (the RAG concierge
+// calls Lineup as a TOOL, then reasons over what it returns). Callers differ
+// only in where the intent-data comes from (prebuilt taste embedding · taste +
+// viewport · synthesized from the question).
 
-export const STANDARD_ENGINE = {
-  name: "Standard Engine",
+export const LINEUP_ENGINE = {
+  name: "Lineup",
   composition: "Organic + Inorganic + Hybrid, merged O → I → H · dedupe on insert · no backfill",
-  surfaces: [
-    { surface: "Swipe", intent: "prebuilt taste embedding" },
-    { surface: "Map",   intent: "taste embedding + viewport" },
-    { surface: "Memo",  intent: "synthesized from the question, per query" },
+  callers: [
+    { caller: "Swipe", intent: "prebuilt taste embedding" },
+    { caller: "Map",   intent: "taste embedding + viewport" },
+    { caller: "Memo",  intent: "synthesized from the question — Lineup as a tool" },
   ],
 } as const;
 
@@ -697,18 +713,21 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;
 //                                     legacy flat number expands to all three)
 //   retrieval.recallTopK  10–200
-//   sm.where.pointTolKm   0.5–20        sm.where.distExp   1–5
+//   sm.where.distExp      1–5   (the ONE where knob — the tolerance is the
+//                                consumer's input, default frozen at 5 km)
 //   sm.when.waitFloor     0–1           sm.when.sessionH   0.5–4
-//   sm.what.sibling       0–1           sm.what.mismatch   0–1
-//   (zone spillover, wait transition/steepness and the 30-min grid are frozen
-//    constants — ZONE_SPILL_FRAC · WAIT_TRANSITION_H · WAIT_STEEP · TIME_BLOCK_H)
+//   sm.what.sibling       0–1   (the ONE what knob — mismatch frozen at 0.2)
+//   (zone spillover, default tolerance, mismatch rung, wait transition/
+//    steepness and the 30-min grid are frozen constants — ZONE_SPILL_FRAC ·
+//    DEFAULT_POINT_TOL_KM · MISMATCH_RUNG · WAIT_TRANSITION_H · WAIT_STEEP ·
+//    TIME_BLOCK_H)
 //   gp.lnCeiling          5–15
 //   rp.*                  0–1
 //   xx.control            0–5
 //   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
 
 export type ScoringSettings = {
-  v: 6;
+  v: 7;
   /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
@@ -723,7 +742,7 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 6,
+  v: 7,
   laneN: DEFAULT_LANE_COUNTS,
   retrieval: DEFAULT_RETRIEVAL,
   sm: DEFAULT_SM_PARAMS,
@@ -818,17 +837,17 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
-    v: 6,
+    v: 7,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
     retrieval: {
       recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
     },
     sm: {
-      // v6: two knobs per factor. Any leftover v5 keys (zoneSpillKm,
-      // waitTransitionH, waitSteep, timeBlockH) are simply not read — they're
-      // frozen constants now; the surviving knobs migrate straight over.
+      // v7: 1 · 2 · 1 knobs. Leftover v5/v6 keys (pointTolKm — the consumer
+      // owns the tolerance now — mismatch, zoneSpillKm, waitTransitionH,
+      // waitSteep, timeBlockH) are simply not read; the surviving knobs
+      // migrate straight over.
       where: {
-        pointTolKm: num(smWhere.pointTolKm, d.sm.where.pointTolKm, 0.5, 20),
         distExp: num(smWhere.distExp, d.sm.where.distExp, 1, 5),
       },
       when: {
@@ -837,7 +856,6 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       },
       what: {
         sibling: num(smWhat.sibling, d.sm.what.sibling, 0, 1),
-        mismatch: num(smWhat.mismatch, d.sm.what.mismatch, 0, 1),
       },
     },
     gp: {

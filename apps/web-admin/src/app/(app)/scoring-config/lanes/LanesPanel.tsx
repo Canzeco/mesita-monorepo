@@ -7,7 +7,7 @@ import {
   laneFormula,
   LANES,
   MERGE_ROTATION,
-  STANDARD_ENGINE,
+  LINEUP_ENGINE,
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
 import { BoxSaveBar, GroupHead, PanelCard, Slider, SubHead } from "../panel-ui";
@@ -127,30 +127,30 @@ export function LanesPanel() {
         />
       </PanelCard>
 
-      {/* ══ The Standard Engine ══════════════════════════════════════ */}
+      {/* ══ Lineup — the one engine ══════════════════════════════════ */}
       <PanelCard
-        title="The Standard Engine · the one engine"
-        subtitle="There is exactly ONE engine. The Standard Engine consists of the three lanes — Organic · Inorganic · Hybrid — merged as above. Swipe, Map and Memo are SURFACES, not engines: each runs the Standard Engine and differs only in where its intent-data comes from."
+        title="Lineup · the one engine"
+        subtitle="Lineup is the candidate-generation engine — consumer + intent → scored candidates → the deck. There is exactly ONE engine: the three lanes — Organic · Inorganic · Hybrid — merged as above. It has three callers — Swipe and Map (the consumer hits Lineup directly) and Memo (the RAG concierge calls Lineup as a tool) — differing only in where their intent-data comes from."
         pill="1 engine · 3 lanes"
       >
         <div className="border-border/60 bg-muted/40 mt-4 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-3">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white">
             <Cog className="h-4 w-4" aria-hidden />
           </span>
-          <span className="text-[13px] font-semibold">{STANDARD_ENGINE.name}</span>
+          <span className="text-[13px] font-semibold">{LINEUP_ENGINE.name}</span>
           <span className="flex items-center gap-1.5">
             {LANES.map((l) => (
               <LaneBadge key={l.id} laneId={l.id} />
             ))}
           </span>
           <span className="text-foreground/80 min-w-0 flex-1 text-[12px]">
-            {STANDARD_ENGINE.composition}
+            {LINEUP_ENGINE.composition}
           </span>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          {STANDARD_ENGINE.surfaces.map((s) => (
-            <div key={s.surface} className="border-border/60 rounded-xl border px-3 py-2">
-              <p className="text-[12px] font-semibold">{s.surface}</p>
+          {LINEUP_ENGINE.callers.map((s) => (
+            <div key={s.caller} className="border-border/60 rounded-xl border px-3 py-2">
+              <p className="text-[12px] font-semibold">{s.caller}</p>
               <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
                 intent: {s.intent}
               </p>

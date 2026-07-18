@@ -32,7 +32,7 @@ import type { WhatRelation } from "./scores";
 
 /**
  * Synthetic intent STYLES — how the playground fabricates the query side.
- * There is only ONE engine (the Standard Engine); the surfaces differ only
+ * There is only ONE engine (Lineup); its callers differ only
  * in where intent-data comes from, and these styles emulate that:
  *   browse   — open-ended feed browsing (Swipe-shaped intent)
  *   viewport — spatial browsing around a viewport (Map-shaped intent)
