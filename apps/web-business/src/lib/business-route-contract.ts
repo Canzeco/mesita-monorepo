@@ -11,7 +11,7 @@ export const BUSINESS_ROUTES = {
   onboard: "/onboard",
 } as const;
 
-export type UnitSection = "scan" | "performance" | "team";
+type UnitSection = "scan" | "performance" | "team";
 
 export function placePath(projectId: string, tab: PlaceSubTab = "preview"): string {
   return `/unit/${projectId}/place/${tab}`;
@@ -21,7 +21,7 @@ export function promosPath(projectId: string): string {
   return `/unit/${projectId}/promos`;
 }
 
-export function unitSectionPath(projectId: string, section: UnitSection): string {
+function unitSectionPath(projectId: string, section: UnitSection): string {
   return `/unit/${projectId}/${section}`;
 }
 

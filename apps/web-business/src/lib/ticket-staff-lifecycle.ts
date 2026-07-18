@@ -63,11 +63,11 @@ export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
   return STORY_KINDS.has(kind) ? "B" : "A";
 }
 
-export function ticketHasBill(input: StaffTicketProgressInput): boolean {
+function ticketHasBill(input: StaffTicketProgressInput): boolean {
   return (input.total_cents ?? 0) > 0;
 }
 
-export const STAFF_STEPS_BY_FLOW_TYPE: Record<
+const STAFF_STEPS_BY_FLOW_TYPE: Record<
   TicketFlowType,
   StaffLifecycleStepId[]
 > = {
@@ -75,7 +75,7 @@ export const STAFF_STEPS_BY_FLOW_TYPE: Record<
   B: ["scan", "bill", "story", "pay", "done"],
 };
 
-export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
+const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   scan: "Scan",
   bill: "Billing",
   story: "Story",
@@ -83,11 +83,11 @@ export const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   done: "Done",
 };
 
-export function staffDoneStepLabel(_kind: string): string {
+function staffDoneStepLabel(_kind: string): string {
   return "Closed";
 }
 
-export const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
+const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
   scan: "Guest code scanned — bot validated and linked the visit.",
   bill: "Enter the subtotal and send the bill. The guest pays the discounted total at the table.",
   story: "Guest posts IG story; confirm when the bot asks you to validate.",
@@ -145,7 +145,7 @@ function inferCurrentIndex(
   return stepIds.length;
 }
 
-export function resolveStaffLifecycleSteps(
+function resolveStaffLifecycleSteps(
   input: StaffTicketProgressInput,
 ): StaffLifecycleStepView[] {
   const flowType = ticketFlowTypeFromKind(input.kind);

@@ -8,7 +8,7 @@ import {
 const DAYS = PLACE_HOUR_DAYS;
 const MAX_SHIFTS_PER_DAY = 1;
 
-export function mergeOvernightSplit(h: PlaceHours): PlaceHours {
+function mergeOvernightSplit(h: PlaceHours): PlaceHours {
   const longKeys = DAYS.map((d) => d.long);
   const out: PlaceHours = {};
   for (const k of longKeys) {
