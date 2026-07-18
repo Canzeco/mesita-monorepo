@@ -428,7 +428,7 @@ export const DEFAULT_LANE_COUNTS: LaneCounts = {
   inorganic: 8,
   hybrid: 8,
 };
-export const LANE_N_MAX = 20;
+export const LANE_N_MAX = 50;
 
 /** Ceiling of the merged deck at the given counts. */
 export function laneCountsTotal(counts: LaneCounts): number {
@@ -681,7 +681,7 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 // RANGE TABLE (mirrored VERBATIM in admin-web-update-scoring-config).
 // The encoder (EM_ENCODER — small @ 1536) is a FIXED constant, deliberately
 // absent: fixed decisions never enter the blob.
-//   laneN.{organic,inorganic,hybrid}  0–20 int each, sum ≥ 1 (0 = lane off;
+//   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;
 //                                     legacy flat number expands to all three)
 //   retrieval.recallTopK  10–200
 //   sm.where.pointTolKm   0.5–20        sm.where.zoneSpillKm   0.5–10
