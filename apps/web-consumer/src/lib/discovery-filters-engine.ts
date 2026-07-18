@@ -61,17 +61,27 @@ export const RANDOMNESS_LABELS: Record<RandomnessLevel, string> = {
   3: "Surprise",
 };
 
-/** Any deviation from defaults — drives the red trigger dot (MESITA-633). */
-export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
+/**
+ * The *narrowing* predicates — the fields that actually drop the visible
+ * count. Randomness is deck ordering, not a filter, so it's excluded. This is
+ * the exact set `applyDiscoveryFilters` gates on, and the sheet's empty-state
+ * copy keys off it: predicates set → "no matches, reset"; none set → the host
+ * simply has nothing to show and Reset can't help (MESITA-670).
+ */
+export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
   return (
     f.familyKeys.length > 0 ||
     f.categories.length > 0 ||
     f.city !== null ||
     f.zone !== null ||
     f.maxKm !== null ||
-    f.hour !== null ||
-    f.randomness !== 0
+    f.hour !== null
   );
+}
+
+/** Any deviation from defaults — drives the red trigger dot (MESITA-633). */
+export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
+  return hasDiscoveryPredicates(f) || f.randomness !== 0;
 }
 
 /** places.city rides on the raw row (PLACE_PUBLIC_COLUMNS) but not the type. */
@@ -132,14 +142,7 @@ export function applyDiscoveryFilters(
   places: Place[],
   f: DiscoveryFilters,
 ): Place[] {
-  const hasPredicates =
-    f.familyKeys.length > 0 ||
-    f.categories.length > 0 ||
-    f.city !== null ||
-    f.zone !== null ||
-    f.maxKm !== null ||
-    f.hour !== null;
-  if (!hasPredicates) return places;
+  if (!hasDiscoveryPredicates(f)) return places;
   return places.filter((place) => matchesDiscoveryFilters(place, f));
 }
 

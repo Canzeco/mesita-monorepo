@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   DISTANCE_STEPS_KM,
+  hasDiscoveryPredicates,
   RANDOMNESS_LABELS,
   type CategoryOption,
   type WhereOption,
@@ -57,6 +58,10 @@ export function DiscoveryFilters({
   hasLocation: boolean;
 }) {
   const filters = useDiscoveryFilters();
+  // A narrowing predicate is set (randomness excluded — it never drops the
+  // count). Splits the empty footer: predicates → reset escape; none → the
+  // host is simply empty and Reset can't help (MESITA-670).
+  const hasPredicates = hasDiscoveryPredicates(filters);
 
   const here = filters.city === null && filters.zone === null;
   const selectedZone = filters.zone;
@@ -284,8 +289,10 @@ export function DiscoveryFilters({
         </div>
       </div>
 
-      {/* Footer CTA — live count feedback + close; a zero-match state flips
-          it into the reset escape so the dead end is one tap deep. */}
+      {/* Footer CTA — live count feedback + close. Zero splits two ways: a
+          narrowing predicate set flips it into the reset escape (dead end, one
+          tap out); nothing filtered means the host is simply empty, so Reset
+          can't help — a neutral, non-actionable note stands in (MESITA-670). */}
       <div className="border-border/60 shrink-0 border-t p-4">
         {count > 0 ? (
           <button
@@ -295,7 +302,7 @@ export function DiscoveryFilters({
           >
             Show {count} {count === 1 ? "place" : "places"}
           </button>
-        ) : (
+        ) : hasPredicates ? (
           <button
             type="button"
             onClick={resetDiscoveryFilters}
@@ -303,6 +310,10 @@ export function DiscoveryFilters({
           >
             No matches — reset filters
           </button>
+        ) : (
+          <div className="bg-muted/60 text-muted-foreground flex h-12 w-full items-center justify-center rounded-xl text-sm font-medium">
+            No places to show
+          </div>
         )}
       </div>
     </div>
