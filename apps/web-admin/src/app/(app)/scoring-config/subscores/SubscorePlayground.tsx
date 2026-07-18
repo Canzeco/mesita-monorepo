@@ -32,17 +32,17 @@ import type { IntentStyle } from "@/lib/business/cip";
 import { useScoring } from "../ScoringProvider";
 import { PanelCard, SubHead } from "../panel-ui";
 import {
-  DocPre,
   EmptyCatalog,
   INTENT_STYLE_ICONS,
   FactChip,
   FactorRow,
   LaneBadge,
   LedgerRow,
+  MatchStrip,
   ResultLine,
   ScoreBox,
+  SemanticProfile,
   SpecimenCell,
-  VectorStrip,
 } from "../playground-ui";
 
 // The Subscore playground — simulate the subscores on ONE consumer × intent
@@ -290,15 +290,22 @@ export function SubscorePlayground() {
                 className="lg:col-span-2"
               >
                 <div className="grid gap-3 lg:grid-cols-2">
-                  <div>
-                    <DocPre label="B · consumer + intent document" text={run.ciDoc} empty="(every field toggled off)" />
-                    <VectorStrip vec={run.ciVec} className="mt-2" />
-                  </div>
-                  <div>
-                    <DocPre label="A · place document" text={run.placeDoc} empty="(every field toggled off)" />
-                    <VectorStrip vec={run.placeVec} className="mt-2" />
-                  </div>
+                  <SemanticProfile
+                    entity="B · Consumer + Intent entity"
+                    doc={run.ciDoc}
+                    empty="(every field toggled off)"
+                    vec={run.ciVec}
+                    tone="violet"
+                  />
+                  <SemanticProfile
+                    entity="A · Place entity"
+                    doc={run.placeDoc}
+                    empty="(every field toggled off)"
+                    vec={run.placeVec}
+                    tone="emerald"
+                  />
                 </div>
+                <MatchStrip a={run.ciVec} b={run.placeVec} className="mt-3" />
                 <ResultLine>
                   cos(A, B) = {run.emVal < 0 ? "negative → clamped" : pct(run.emVal)} → EM ={" "}
                   <b>{pct(run.emVal)}</b> · unit vectors, so cos is a plain dot product
