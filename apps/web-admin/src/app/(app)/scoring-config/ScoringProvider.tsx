@@ -33,9 +33,11 @@ import { updateScoringSettings } from "./settings-actions";
 // unchanged — partial patches would invite drift). Its Cancel reverts only
 // that section. Other boxes' unsaved edits are never swept along.
 
+// Each subscore box owns its section: knobs + its OWN data-access row (folded
+// in 2026-07-17 — the standalone data-access matrix box is gone). No separate
+// "dataAccess" section any more.
 export type SettingsSection =
-  | "dataAccess"
-  | "em" // recall top-K + EM's field context (the EM box's two configs)
+  | "em" // recall top-K + EM's field context + EM's data-access row
   | "sm"
   | "gp"
   | "rp"
@@ -101,8 +103,8 @@ type ScoringCtx = {
   savedSection: SettingsSection | null;
   saveSection: (section: SettingsSection) => void;
   revertSection: (section: SettingsSection) => void;
-  /** Load code defaults into the whole form (each box dirty until saved). */
-  resetToDefaults: () => void;
+  /** Load ONE box's code defaults into the form (dirty until its Save). */
+  resetSection: (section: SettingsSection) => void;
 };
 
 const Ctx = createContext<ScoringCtx | null>(null);
@@ -169,7 +171,7 @@ export function ScoringProvider({
   // dirty diffs are JSON.stringify equality per section.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 5,
+      v: 6,
       // Same key order as coerceLaneCounts' output — the dirty diff is
       // JSON.stringify equality.
       laneN: {
@@ -179,18 +181,8 @@ export function ScoringProvider({
       },
       retrieval: { recallTopK },
       sm: {
-        where: {
-          pointTolKm: sm.where.pointTolKm,
-          zoneSpillKm: sm.where.zoneSpillKm,
-          distExp: sm.where.distExp,
-        },
-        when: {
-          waitFloor: sm.when.waitFloor,
-          waitTransitionH: sm.when.waitTransitionH,
-          waitSteep: sm.when.waitSteep,
-          sessionH: sm.when.sessionH,
-          timeBlockH: sm.when.timeBlockH,
-        },
+        where: { pointTolKm: sm.where.pointTolKm, distExp: sm.where.distExp },
+        when: { waitFloor: sm.when.waitFloor, sessionH: sm.when.sessionH },
         what: { sibling: sm.what.sibling, mismatch: sm.what.mismatch },
       },
       gp: { lnCeiling: gp.lnCeiling },
@@ -210,35 +202,27 @@ export function ScoringProvider({
     [laneN, recallTopK, sm, gp, rp, xx, dataAccess, context],
   );
 
-  // A section's slice of a blob — the unit of dirty/save/revert.
+  // A section's slice of a blob — the unit of dirty/save/revert. Each subscore
+  // section carries its OWN data-access row, so a box saves its knobs and its
+  // sources together.
   const slice = (s: ScoringSettings, section: SettingsSection): unknown => {
     switch (section) {
-      case "dataAccess":
-        return s.dataAccess;
       case "em":
-        return { recallTopK: s.retrieval.recallTopK, em: s.context.em };
+        return { recallTopK: s.retrieval.recallTopK, em: s.context.em, da: s.dataAccess.em };
       case "sm":
-        return s.sm;
+        return { sm: s.sm, da: s.dataAccess.sm };
       case "gp":
-        return s.gp;
+        return { gp: s.gp, da: s.dataAccess.gp };
       case "rp":
-        return s.rp;
+        return { rp: s.rp, da: s.dataAccess.rp };
       case "xx":
-        return s.xx;
+        return { xx: s.xx, da: s.dataAccess.xx };
       case "lanes":
         return s.laneN;
     }
   };
 
-  const SECTIONS: readonly SettingsSection[] = [
-    "dataAccess",
-    "em",
-    "sm",
-    "gp",
-    "rp",
-    "xx",
-    "lanes",
-  ];
+  const SECTIONS: readonly SettingsSection[] = ["em", "sm", "gp", "rp", "xx", "lanes"];
 
   const sectionDirty = useMemo(
     () =>
@@ -253,49 +237,61 @@ export function ScoringProvider({
   );
 
   // THIS section's live values merged over the last-saved blob — other
-  // boxes' unsaved edits are never swept along by someone else's Save.
+  // boxes' unsaved edits are never swept along by someone else's Save. A
+  // subscore section also carries its OWN data-access cell over saved's matrix.
+  const withDa = (sub: SubscoreId): DataAccess => ({
+    ...saved.dataAccess,
+    [sub]: current.dataAccess[sub],
+  });
   const blobFor = (section: SettingsSection): ScoringSettings => {
     switch (section) {
-      case "dataAccess":
-        return { ...saved, dataAccess: current.dataAccess };
       case "em":
-        return { ...saved, retrieval: current.retrieval, context: current.context };
+        return {
+          ...saved,
+          retrieval: current.retrieval,
+          context: current.context,
+          dataAccess: withDa("em"),
+        };
       case "sm":
-        return { ...saved, sm: current.sm };
+        return { ...saved, sm: current.sm, dataAccess: withDa("sm") };
       case "gp":
-        return { ...saved, gp: current.gp };
+        return { ...saved, gp: current.gp, dataAccess: withDa("gp") };
       case "rp":
-        return { ...saved, rp: current.rp };
+        return { ...saved, rp: current.rp, dataAccess: withDa("rp") };
       case "xx":
-        return { ...saved, xx: current.xx };
+        return { ...saved, xx: current.xx, dataAccess: withDa("xx") };
       case "lanes":
         return { ...saved, laneN: current.laneN };
     }
   };
 
   // Re-apply ONE section from a blob into the form (post-save clamp echo,
-  // or a Cancel).
+  // or a Cancel). Each subscore section also restores its own data-access cell.
+  const setDaCell = (f: DataAccess, sub: SubscoreId) =>
+    setDataAccess((da) => ({ ...da, [sub]: [...f[sub]] }));
   const applySection = (s: ScoringSettings, section: SettingsSection) => {
     const f = fromSettings(s);
     switch (section) {
-      case "dataAccess":
-        setDataAccess(f.dataAccess);
-        return;
       case "em":
         setRecallTopKRaw(f.recallTopK);
         setContext(f.context);
+        setDaCell(f.dataAccess, "em");
         return;
       case "sm":
         setSm(f.sm);
+        setDaCell(f.dataAccess, "sm");
         return;
       case "gp":
         setGp(f.gp);
+        setDaCell(f.dataAccess, "gp");
         return;
       case "rp":
         setRp(f.rp);
+        setDaCell(f.dataAccess, "rp");
         return;
       case "xx":
         setXx(f.xx);
+        setDaCell(f.dataAccess, "xx");
         return;
       case "lanes":
         setLaneNRaw(f.laneN);
@@ -324,17 +320,11 @@ export function ScoringProvider({
 
   const revertSection = (section: SettingsSection) => applySection(saved, section);
 
-  const resetToDefaults = () => {
-    const f = fromSettings(DEFAULT_SCORING_SETTINGS);
-    setLaneNRaw(f.laneN);
-    setRecallTopKRaw(f.recallTopK);
-    setSm(f.sm);
-    setGp(f.gp);
-    setRp(f.rp);
-    setXx(f.xx);
-    setDataAccess(f.dataAccess);
-    setContext(f.context);
-  };
+  // Per-box Reset: load THIS box's code defaults into the form (dirty until
+  // its own Save). Other boxes are untouched — the old whole-form
+  // resetToDefaults is gone (every box owns its Reset now).
+  const resetSection = (section: SettingsSection) =>
+    applySection(DEFAULT_SCORING_SETTINGS, section);
 
   return (
     <Ctx.Provider
@@ -364,7 +354,7 @@ export function ScoringProvider({
         savedSection,
         saveSection,
         revertSection,
-        resetToDefaults,
+        resetSection,
       }}
     >
       {children}

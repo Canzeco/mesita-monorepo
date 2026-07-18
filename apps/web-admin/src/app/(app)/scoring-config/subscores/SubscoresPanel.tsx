@@ -17,11 +17,11 @@ import {
   Chip,
   ContextCols,
   ContextConfigCols,
-  DataAccessMatrix,
   GroupHead,
   PanelCard,
   Slider,
   SubHead,
+  SubscoreDataAccess,
 } from "../panel-ui";
 import { SubscorePlayground } from "./SubscorePlayground";
 
@@ -62,10 +62,10 @@ export function SubscoresPanel() {
     savedSection,
     saveSection,
     revertSection,
-    resetToDefaults,
+    resetSection,
   } = useScoring();
 
-  // One per-box footer per section — each box saves/cancels ITSELF.
+  // One per-box footer per section — each box saves / resets / cancels ITSELF.
   const bar = (section: Parameters<typeof saveSection>[0]) => (
     <BoxSaveBar
       dirty={sectionDirty[section]}
@@ -74,6 +74,7 @@ export function SubscoresPanel() {
       error={savingSection === section || sectionDirty[section] ? saveError : null}
       onSave={() => saveSection(section)}
       onCancel={() => revertSection(section)}
+      onReset={() => resetSection(section)}
     />
   );
 
@@ -101,20 +102,6 @@ export function SubscoresPanel() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      {/* ══ Data access — THE core config ════════════════════════════ */}
-      <PanelCard
-        title="Data access · the core config"
-        subtitle="Each subscore can be configured to select which data it is allowed to access — the default is all data ON; any individual data source can be toggled OFF per subscore (the spec's main knob). Four sources: Consumer (constant per consumer) · Place (constant per place) · Intent (per query — Where · When · What) · Interaction (per consumer × place, the edge — only SM can read it). Both playgrounds enforce the matrix live: revoke a source and watch that subscore's numbers move."
-        pill="all data ON by default"
-      >
-        <DataAccessMatrix access={dataAccess} onToggle={toggleSource} />
-        <p className="text-muted-foreground mt-3 font-mono text-[10.5px] leading-relaxed">
-          — = structurally unreadable (EM never sees the pair; GP/RP read only the place; XX
-          reads nothing but its own draw). EM&apos;s per-field detail lives in its box below.
-        </p>
-        {bar("dataAccess")}
-      </PanelCard>
-
       {/* ══ EM ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="EM Subscore · Embeddings Match"
@@ -140,6 +127,7 @@ export function SubscoresPanel() {
           <Chip label="Mapping" value="max(0, cos)" hint="revisit (percentile calibration) only if real cosines cluster" />
         </div>
         <ContextConfigCols enabled={emSet} onToggle={toggleContext} />
+        <SubscoreDataAccess subscore="em" access={dataAccess} onToggle={toggleSource} />
         {bar("em")}
       </PanelCard>
 
@@ -150,72 +138,42 @@ export function SubscoresPanel() {
       >
         <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <div>
-            <SubHead>where · distance decay — 1/(1+(km/tol)^k)</SubHead>
+            <SubHead>where · two knobs — how near, how hard</SubHead>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
               <Slider
-                label="Point tolerance"
+                label="Distance tolerance"
                 value={`${sm.where.pointTolKm.toFixed(1)} km`}
                 min={0.5}
                 max={20}
                 step={0.5}
                 v={sm.where.pointTolKm}
                 onChange={(v) => setWhere("pointTolKm", v)}
-                hint={`the consumer slider's default — 8 km lands at ${whereScore(8, sm.where.pointTolKm, sm.where.distExp).toFixed(2)}`}
+                hint={`km where the pull halves — 8 km → ${whereScore(8, sm.where.pointTolKm, sm.where.distExp).toFixed(2)}; a named zone uses 30% of this`}
               />
               <Slider
-                label="Zone spillover"
-                value={`${sm.where.zoneSpillKm.toFixed(1)} km`}
-                min={0.5}
-                max={10}
-                step={0.5}
-                v={sm.where.zoneSpillKm}
-                onChange={(v) => setWhere("zoneSpillKm", v)}
-                hint={`a typed zone is a constraint — 3 km past the border → ${whereScore(3, sm.where.zoneSpillKm, sm.where.distExp).toFixed(2)}`}
-              />
-              <Slider
-                label="Distance exponent"
+                label="Distance falloff"
                 value={sm.where.distExp.toFixed(1)}
                 min={1}
                 max={5}
                 step={0.5}
                 v={sm.where.distExp}
                 onChange={(v) => setWhere("distExp", v)}
-                hint={`doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×`}
+                hint={`the exponent — doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×`}
               />
             </div>
           </div>
           <div>
-            <SubHead>when · wait × fit</SubHead>
+            <SubHead>when · two knobs — closed-now, visit length</SubHead>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
               <Slider
-                label="Wait floor"
+                label="Closed-now floor"
                 value={sm.when.waitFloor.toFixed(2)}
                 min={0}
                 max={1}
                 step={0.05}
                 v={sm.when.waitFloor}
                 onChange={(v) => setWhen("waitFloor", v)}
-                hint="the weekend-only gem browsed Monday keeps this — never 0"
-              />
-              <Slider
-                label="Wait transition"
-                value={`${sm.when.waitTransitionH.toFixed(1)} h`}
-                min={0.5}
-                max={6}
-                step={0.25}
-                v={sm.when.waitTransitionH}
-                onChange={(v) => setWhen("waitTransitionH", v)}
-                hint={`a 2 h wait (21:00 → club at 23:00) lands at ${waitScore(2, sm.when).toFixed(2)}`}
-              />
-              <Slider
-                label="Wait steepness"
-                value={sm.when.waitSteep.toFixed(1)}
-                min={1}
-                max={8}
-                step={0.5}
-                v={sm.when.waitSteep}
-                onChange={(v) => setWhen("waitSteep", v)}
-                hint="4 = two plateaus, thin middle — open-now-ish vs not-open"
+                hint={`a place shut at the intent time floors here — a 2 h wait lands at ${waitScore(2, sm.when).toFixed(2)}; never 0`}
               />
               <Slider
                 label="Session length"
@@ -225,19 +183,12 @@ export function SubscoresPanel() {
                 step={0.25}
                 v={sm.when.sessionH}
                 onChange={(v) => setWhen("sessionH", v)}
-                hint={`dinner is the archetype — 30 min left → fit ${fitScore(0.5, sm.when).toFixed(2)}`}
-              />
-              <Slider
-                label="Time grid"
-                value={`${Math.round(sm.when.timeBlockH * 60)} min`}
-                min={0.25}
-                max={1}
-                step={0.25}
-                v={sm.when.timeBlockH}
-                onChange={(v) => setWhen("timeBlockH", v)}
-                hint="hours quantize to this block before wait/fit"
+                hint={`hours the visit needs — 30 min left → fit ${fitScore(0.5, sm.when).toFixed(2)}`}
               />
             </div>
+            <p className="text-muted-foreground mt-3 font-mono text-[10px] leading-relaxed">
+              transition (2 h) · steepness (4) · 30-min grid are frozen constants
+            </p>
           </div>
           <div>
             <SubHead>what · the category ladder</SubHead>
@@ -270,6 +221,7 @@ export function SubscoresPanel() {
           </div>
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.sm} />
+        <SubscoreDataAccess subscore="sm" access={dataAccess} onToggle={toggleSource} />
         {bar("sm")}
       </PanelCard>
 
@@ -315,6 +267,7 @@ export function SubscoresPanel() {
           </div>
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.gp} />
+        <SubscoreDataAccess subscore="gp" access={dataAccess} onToggle={toggleSource} />
         {bar("gp")}
       </PanelCard>
 
@@ -349,6 +302,7 @@ export function SubscoresPanel() {
           ))}
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.rp} />
+        <SubscoreDataAccess subscore="rp" access={dataAccess} onToggle={toggleSource} />
         {bar("rp")}
       </PanelCard>
 
@@ -382,36 +336,23 @@ export function SubscoresPanel() {
           <Chip label="Determinism" value="seeded per (card, lane, roll)" hint="the playgrounds re-roll on demand; live decks draw fresh" />
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.xx} />
+        <SubscoreDataAccess subscore="xx" access={dataAccess} onToggle={toggleSource} />
         {bar("xx")}
       </PanelCard>
 
-      {/* ══ Persistence ══════════════════════════════════════════════ */}
-      <PanelCard
-        title="Saved config"
-        subtitle="app_settings.scoring_config — a saved config overrides the code defaults; NULL follows them. Every box above saves ITSELF (its own Save/Cancel appears when it's dirty); both playgrounds follow whatever the form holds, saved or not."
-      >
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={resetToDefaults}
-            disabled={savingSection != null}
-            className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-          >
-            Reset all boxes to defaults
-          </button>
-          <span className="text-muted-foreground ml-3 text-xs">
-            loads the code defaults into every box on BOTH pages — each box stays unsaved until ITS Save
-          </span>
-        </div>
-
-        {/* Definitions footer */}
-        <div className="text-muted-foreground border-border/60 mt-4 flex flex-col gap-1 border-t pt-3 font-mono text-[11px] leading-relaxed">
+      {/* ══ Definitions · a footnote, not a config box ═══════════════ */}
+      <div className="border-border bg-muted/30 text-muted-foreground rounded-2xl border px-5 py-4 leading-relaxed">
+        <p className="text-foreground/80 mb-2 text-[11px] font-semibold tracking-tight">
+          Saved to app_settings.scoring_config — a saved config overrides the code defaults; NULL
+          follows them. Each box above Saves · Resets · Cancels ITSELF; both playgrounds follow
+          whatever the form holds, saved or not.
+        </p>
+        <div className="flex flex-col gap-1 font-mono text-[11px]">
           <p>EM = max(0, cos(A, B)) · A = place doc · B = consumer + intent doc · [0,1]</p>
           <p>
             SM = where × when × what · where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · wait ={" "}
-            {sm.when.waitFloor.toFixed(2)} + {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/
-            {sm.when.waitTransitionH.toFixed(1)})^{sm.when.waitSteep.toFixed(1)}) · fit = min(1, h/
-            {sm.when.sessionH.toFixed(1)}) · {Math.round(sm.when.timeBlockH * 60)}-min blocks
+            {sm.when.waitFloor.toFixed(2)} + {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit =
+            min(1, h/{sm.when.sessionH.toFixed(1)}) · 30-min blocks
           </p>
           <p>
             GP = min(1, ln(1 + ★·n)/{gp.lnCeiling.toFixed(1)}) · RP rungs {rp.zero.toFixed(2)} /{" "}
@@ -420,7 +361,7 @@ export function SubscoresPanel() {
           </p>
           <p>EM reads TEXT only — SM · GP · RP · XX are the numeric subscores; they multiply EM, never feed it</p>
         </div>
-      </PanelCard>
+      </div>
 
       {/* ══ The Subscore playground ══════════════════════════════════ */}
       <SubscorePlayground />

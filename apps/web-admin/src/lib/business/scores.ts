@@ -179,26 +179,23 @@ export function emScore(cos: number): number {
 
 // ── SM — Structured Match ──────────────────────────────────────────────
 
+// SM was simplified to TWO knobs per factor (Pato 2026-07-17): the less-
+// tunable beliefs became fixed constants (below), leaving each of where /
+// when / what with the two knobs a product person actually reaches for.
 export type SmWhereParams = {
-  /** Point mode — km at which pull halves. The consumer slider. */
+  /** Distance tolerance — km at which the pull halves (point mode; a named
+   * zone reuses a fraction of this, ZONE_SPILL_FRAC). The consumer slider. */
   pointTolKm: number;
-  /** Zone mode — spillover km past a named region's border. Admin-only. */
-  zoneSpillKm: number;
-  /** Distance exponent. 3 = doubling distance beyond tolerance costs 8×. */
+  /** Distance falloff — 3 = doubling distance beyond tolerance costs 8×. */
   distExp: number;
 };
 
 export type SmWhenParams = {
-  /** The "not open now" plateau — a closed-today place never drops below this. */
+  /** Closed-now floor — a place not open at the intent time never drops below
+   * this (the weekend-only gem browsed Monday keeps it; never 0). */
   waitFloor: number;
-  /** Hours-until-open where the two plateaus cross (wait = ~0.65). */
-  waitTransitionH: number;
-  /** Transition steepness — 4 = two plateaus, thin middle. */
-  waitSteep: number;
-  /** Hours the visit needs. Category-shaped later (coffee 0.5 · club 2.5). */
+  /** Session length, hours — how long the visit needs (drives fit). */
   sessionH: number;
-  /** Time-grid resolution, hours. 0.5 = 30-min blocks. */
-  timeBlockH: number;
 };
 
 export type SmWhatParams = {
@@ -214,11 +211,21 @@ export type SmParams = {
   what: SmWhatParams;
 };
 
+// The frozen SM beliefs — argued from the product, rarely worth a knob, so
+// they're constants rather than config (kept out of the blob):
+//   ZONE_SPILL_FRAC   a named zone is a constraint, not a vibe — its tolerance
+//                     is 30% of the point tolerance (5 km point → 1.5 km zone).
+//   WAIT_TRANSITION_H hours-until-open where the two wait plateaus cross.
+//   WAIT_STEEP        wait transition steepness — 4 = two plateaus, thin middle.
+export const ZONE_SPILL_FRAC = 0.3;
+export const WAIT_TRANSITION_H = 2;
+export const WAIT_STEEP = 4;
+
 // Defaults, argued from what Mesita IS (car metros, dinner-anchored,
 // nightlife-heavy — see the header):
 export const DEFAULT_SM_PARAMS: SmParams = {
-  where: { pointTolKm: 5, zoneSpillKm: 1.5, distExp: 3 },
-  when: { waitFloor: 0.3, waitTransitionH: 2, waitSteep: 4, sessionH: 1.5, timeBlockH: 0.5 },
+  where: { pointTolKm: 5, distExp: 3 },
+  when: { waitFloor: 0.3, sessionH: 1.5 },
   what: { sibling: 0.6, mismatch: 0.2 },
 };
 
@@ -234,9 +241,10 @@ export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number 
 
 /**
  * where — distance decay from the consumer's W, 0–1. `tolKm` is per-mode:
- * pointTolKm when W is a point, zoneSpillKm when km measures spillover past
- * a named region's border (inside the region km = 0 → 1). Unknown distance
- * → 1 (a geo-less place is a data bug to flag, not a scoring case).
+ * pointTolKm when W is a point, the derived zone tolerance (pointTolKm ×
+ * ZONE_SPILL_FRAC) when km measures spillover past a named region's border
+ * (inside the region km = 0 → 1). Unknown distance → 1 (a geo-less place is
+ * a data bug to flag, not a scoring case).
  */
 export function whereScore(km: number | null, tolKm: number, distExp: number): number {
   if (km == null) return 1;
@@ -245,18 +253,20 @@ export function whereScore(km: number | null, tolKm: number, distExp: number): n
   return 1 / (1 + Math.pow(km / tol, distExp));
 }
 
-/** wait — two plateaus: ≈1 open-now-ish, the floor if not, never 0. */
+/** wait — two plateaus: ≈1 open-now-ish, the floor if not, never 0. Transition
+ * point and steepness are frozen beliefs (WAIT_TRANSITION_H · WAIT_STEEP); the
+ * floor is the one knob. */
 export function waitScore(opensInH: number, p: SmWhenParams): number {
-  const q = quantizeH(opensInH, p.timeBlockH);
+  const q = quantizeH(opensInH);
   if (q <= 0) return 1;
   const f = clamp01(p.waitFloor);
-  return f + (1 - f) / (1 + Math.pow(q / Math.max(0.5, p.waitTransitionH), p.waitSteep));
+  return f + (1 - f) / (1 + Math.pow(q / WAIT_TRANSITION_H, WAIT_STEEP));
 }
 
 /** fit — is there time to complete the visit, 0–1. Caps at 1: enough is enough. */
 export function fitScore(openForH: number, p: SmWhenParams): number {
   if (p.sessionH <= 0) return 1;
-  return clamp01(quantizeH(openForH, p.timeBlockH) / p.sessionH);
+  return clamp01(quantizeH(openForH) / p.sessionH);
 }
 
 /** when — wait × fit, 0–1. No hours data → the caller passes unknown and uses 1. */
@@ -284,7 +294,8 @@ export function whatScore(rel: WhatRelation, p: SmWhatParams): number {
 export type SmInputs = {
   /** km to W (0 inside a named region) · null = unknown → where 1. */
   km: number | null;
-  /** True when W is a named region (zone mode) — picks zoneSpillKm. */
+  /** True when W is a named region (zone mode) — picks the derived zone
+   * tolerance (pointTolKm × ZONE_SPILL_FRAC). */
   zoneMode: boolean;
   /** Hours until the place opens at the intent time (0 = open now). */
   opensInH: number;
@@ -308,7 +319,9 @@ export type SmParts = {
 };
 
 export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
-  const tolKm = i.zoneMode ? p.where.zoneSpillKm : p.where.pointTolKm;
+  // A named zone is a constraint, not a vibe — its tolerance is a fixed
+  // fraction of the point tolerance (5 km point → 1.5 km zone).
+  const tolKm = i.zoneMode ? p.where.pointTolKm * ZONE_SPILL_FRAC : p.where.pointTolKm;
   const where = whereScore(i.km, tolKm, p.where.distExp);
   const wait = i.hoursUnknown ? 1 : waitScore(i.opensInH, p.when);
   const fit = i.hoursUnknown ? 1 : fitScore(i.openForH, p.when);
@@ -684,20 +697,19 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;
 //                                     legacy flat number expands to all three)
 //   retrieval.recallTopK  10–200
-//   sm.where.pointTolKm   0.5–20        sm.where.zoneSpillKm   0.5–10
-//   sm.where.distExp      1–5
-//   sm.when.waitFloor     0–1           sm.when.waitTransitionH 0.5–6
-//   sm.when.waitSteep     1–8           sm.when.sessionH       0.5–4
-//   sm.when.timeBlockH    0.25–1
-//   sm.what.sibling       0–1           sm.what.mismatch       0–1
+//   sm.where.pointTolKm   0.5–20        sm.where.distExp   1–5
+//   sm.when.waitFloor     0–1           sm.when.sessionH   0.5–4
+//   sm.what.sibling       0–1           sm.what.mismatch   0–1
+//   (zone spillover, wait transition/steepness and the 30-min grid are frozen
+//    constants — ZONE_SPILL_FRAC · WAIT_TRANSITION_H · WAIT_STEEP · TIME_BLOCK_H)
 //   gp.lnCeiling          5–15
 //   rp.*                  0–1
 //   xx.control            0–5
 //   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
 
 export type ScoringSettings = {
-  v: 5;
-  /** Per-lane deck counts (v5, MESITA-659) — how many cards each lane may
+  v: 6;
+  /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
   retrieval: { recallTopK: number };
@@ -711,7 +723,7 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 5,
+  v: 6,
   laneN: DEFAULT_LANE_COUNTS,
   retrieval: DEFAULT_RETRIEVAL,
   sm: DEFAULT_SM_PARAMS,
@@ -806,23 +818,22 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
-    v: 5,
+    v: 6,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
     retrieval: {
       recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
     },
     sm: {
+      // v6: two knobs per factor. Any leftover v5 keys (zoneSpillKm,
+      // waitTransitionH, waitSteep, timeBlockH) are simply not read — they're
+      // frozen constants now; the surviving knobs migrate straight over.
       where: {
         pointTolKm: num(smWhere.pointTolKm, d.sm.where.pointTolKm, 0.5, 20),
-        zoneSpillKm: num(smWhere.zoneSpillKm, d.sm.where.zoneSpillKm, 0.5, 10),
         distExp: num(smWhere.distExp, d.sm.where.distExp, 1, 5),
       },
       when: {
         waitFloor: num(smWhen.waitFloor, d.sm.when.waitFloor, 0, 1),
-        waitTransitionH: num(smWhen.waitTransitionH, d.sm.when.waitTransitionH, 0.5, 6),
-        waitSteep: num(smWhen.waitSteep, d.sm.when.waitSteep, 1, 8),
         sessionH: num(smWhen.sessionH, d.sm.when.sessionH, 0.5, 4),
-        timeBlockH: num(smWhen.timeBlockH, d.sm.when.timeBlockH, 0.25, 1),
       },
       what: {
         sibling: num(smWhat.sibling, d.sm.what.sibling, 0, 1),

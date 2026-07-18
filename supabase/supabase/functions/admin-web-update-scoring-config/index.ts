@@ -5,19 +5,22 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v5 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659) — keys
-// follow the subscore names (EM · SM · GP · RP · XX, all [0,1]; three lanes;
-// merge O → I → H). The EM encoder (text-embedding-3-small @ its native 1536
-// dims) is a FIXED decision, deliberately NOT in the blob — a stray `em` key
-// from an older client is ignored:
-//   { v: 5, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
+// v6 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM cut to
+// two knobs per factor) — keys follow the subscore names (EM · SM · GP · RP ·
+// XX, all [0,1]; three lanes; merge O → I → H). The EM encoder
+// (text-embedding-3-small @ its native 1536 dims) is a FIXED decision,
+// deliberately NOT in the blob — a stray `em` key from an older client is
+// ignored:
+//   { v: 6, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
 //             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
 //             no backfill) is ≤ their sum. A legacy v4 flat number expands
 //             to all three lanes.
-//   sm        Structured Match knobs — where (pointTolKm · zoneSpillKm ·
-//             distExp) · when (waitFloor · waitTransitionH · waitSteep ·
-//             sessionH · timeBlockH) · what (sibling · mismatch)
+//   sm        Structured Match knobs — where (pointTolKm · distExp) · when
+//             (waitFloor · sessionH) · what (sibling · mismatch). Zone
+//             spillover, wait transition/steepness and the 30-min grid are
+//             frozen constants in the model — not config; leftover v5 keys
+//             are ignored.
 //   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
 //   rp        Rewards Promotions rungs per posture, [0,1]
 //   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
@@ -103,25 +106,20 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   const recallTopK = num(ret?.recallTopK, 10, 200);
   if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
 
-  // SM — where × when × what.
+  // SM — where × when × what (v6: two knobs each; zone spillover, wait
+  // transition/steepness and the 30-min grid are frozen constants in the
+  // model, so they're not in the blob and a stray v5 key is ignored).
   const smIn = r.sm as Record<string, unknown> | undefined;
   const whereIn = smIn?.where as Record<string, unknown> | undefined;
   const pointTolKm = num(whereIn?.pointTolKm, 0.5, 20);
-  const zoneSpillKm = num(whereIn?.zoneSpillKm, 0.5, 10);
   const distExp = num(whereIn?.distExp, 1, 5);
-  if (pointTolKm == null || zoneSpillKm == null || distExp == null) {
+  if (pointTolKm == null || distExp == null) {
     return { ok: false, error: "sm.where knobs out of range" };
   }
   const whenIn = smIn?.when as Record<string, unknown> | undefined;
   const waitFloor = num(whenIn?.waitFloor, 0, 1);
-  const waitTransitionH = num(whenIn?.waitTransitionH, 0.5, 6);
-  const waitSteep = num(whenIn?.waitSteep, 1, 8);
   const sessionH = num(whenIn?.sessionH, 0.5, 4);
-  const timeBlockH = num(whenIn?.timeBlockH, 0.25, 1);
-  if (
-    waitFloor == null || waitTransitionH == null || waitSteep == null ||
-    sessionH == null || timeBlockH == null
-  ) {
+  if (waitFloor == null || sessionH == null) {
     return { ok: false, error: "sm.when knobs out of range" };
   }
   const whatIn = smIn?.what as Record<string, unknown> | undefined;
@@ -208,7 +206,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 5,
+      v: 6,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
@@ -216,8 +214,8 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       },
       retrieval: { recallTopK },
       sm: {
-        where: { pointTolKm, zoneSpillKm, distExp },
-        when: { waitFloor, waitTransitionH, waitSteep, sessionH, timeBlockH },
+        where: { pointTolKm, distExp },
+        when: { waitFloor, sessionH },
         what: { sibling, mismatch },
       },
       gp: { lnCeiling },
