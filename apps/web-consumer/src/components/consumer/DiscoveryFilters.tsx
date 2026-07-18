@@ -59,12 +59,13 @@ export function DiscoveryFilters({
   const filters = useDiscoveryFilters();
 
   const here = filters.city === null && filters.zone === null;
+  const selectedZone = filters.zone;
   // The city whose zones row is expanded: an explicit city pick, or the
   // parent of the selected zone.
   const activeCity =
     filters.city ??
-    (filters.zone !== null
-      ? (whereOptions.find((o) => o.zones.includes(filters.zone!))?.city ??
+    (selectedZone !== null
+      ? (whereOptions.find((o) => o.zones.includes(selectedZone))?.city ??
         null)
       : null);
   const activeCityZones =
@@ -80,9 +81,9 @@ export function DiscoveryFilters({
       ? filters.city
       : null;
   const staleZone =
-    filters.zone !== null &&
-    !whereOptions.some((o) => o.zones.includes(filters.zone!))
-      ? filters.zone
+    selectedZone !== null &&
+    !whereOptions.some((o) => o.zones.includes(selectedZone))
+      ? selectedZone
       : null;
   const staleCategories = filters.categories.filter(
     (slug) => !categoryOptions.some((c) => c.slug === slug),
