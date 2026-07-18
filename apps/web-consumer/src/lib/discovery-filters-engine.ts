@@ -1,93 +1,168 @@
-// Discovery filter engine — the ONE place consumer surfaces narrow places
-// (MESITA-646 flat sheet → MESITA-650 two-tier model).
+// Discovery filter engine — the ONE place consumer surfaces narrow places.
+// v3 (MESITA-672) — FIVE parameters, Pato's order (Where · Distance · When ·
+// What · Randomness):
 //
-// Pure predicates over fields already on the public places projection:
-//   · what  — super-categories (place families via familyKeysOfCategory) OR
-//             concrete category slugs; OR across the two tiers, so picking
-//             "Bars & Nightlife" + "Fine Dining" means either matches
-//   · where — a zone (places.zone) OR its super-zone city (places.city, read
-//             off the raw row) OR "Here" = no geo constraint, optionally
-//             tightened by a distance tolerance over the computed distance_km
-//   · when  — null = Now (neutral, no constraint) or a 0–23 place-local hour:
-//             "open at that hour today", using the SAME split-shift/overnight
-//             math as the detail modal (computeOpenState with atMinutes)
-// `randomness` (0–3) is NOT a predicate — it's a deck-ordering level only the
-// Swipe host applies (orderByRandomness); the map ignores it.
+//   · zone       — a resolved CENTER the user searched for at ANY hierarchy
+//                  level (address → street → neighborhood → city → county →
+//                  state → country) OR their current location; `null` = current
+//                  location / "here". Only lat/lng matter to the engine; `level`
+//                  is a best-effort hint that seeds the default radius and feeds
+//                  a future hierarchical picker (MESITA-672 "search now, levels
+//                  later"). Picking a zone does NOT exclude anything on its own
+//                  — it just recenters distances; the narrowing is the distance
+//                  tolerance below.
+//   · maxKm      — distance tolerance: radius in km around the zone center;
+//                  `null` = any distance. Reads place.distance_km, which the
+//                  host recomputes relative to the SAME center (withDistances),
+//                  so "close cases only" vs "tolerate farther" is one knob.
+//   · when       — now (open right now) · anytime (no time constraint) ·
+//                  at{day,hour} (open at that place-local weekday + hour, e.g.
+//                  "Saturday at noon"), using the SAME split-shift/overnight
+//                  math as the detail modal (computeOpenState). No hours table
+//                  = can't confirm open = excluded for now/at.
+//   · what       — super-categories (place families) OR concrete category
+//                  slugs; OR across the two tiers.
+//   · randomness — 0..5 deck-ordering level (0 ranked → 5 full shuffle); NOT a
+//                  predicate — only the Swipe host applies it (orderByRandomness);
+//                  the map's pin set is unaffected.
 //
-// Every option list (cities, zones, categories) derives from the catalog the
-// host is actually showing — never a hand-written geography or taxonomy — so
-// no pick can be a dead end and the sheet grows with the catalog.
+// The category option list still derives from the catalog the host is showing,
+// so no category pick is a dead end. The zone, by contrast, is a free location
+// search (any level), not catalog-derived.
 
 import type { Place } from "@/lib/api/places";
 import { computeOpenState } from "@/lib/adapters/place-to-detail-helpers";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { familyKeysOfCategory, type FamilyKey } from "@/lib/place-families";
 
-export type RandomnessLevel = 0 | 1 | 2 | 3;
+// ── Randomness ────────────────────────────────────────────────────────────
+export type RandomnessLevel = 0 | 1 | 2 | 3 | 4 | 5;
+export const RANDOMNESS_MIN = 0;
+export const RANDOMNESS_MAX = 5;
+// Only the ends are named — the middle is a continuum, so the NUMBER stays the
+// primary signal (Pato: "a number from 0 to 5", not categorical labels).
+export const RANDOMNESS_ENDPOINTS = { min: "Ranked", max: "Surprise" } as const;
 
+// ── Where / distance ────────────────────────────────────────────────────────
+export type DiscoveryZoneLevel =
+  | "address"
+  | "street"
+  | "neighborhood"
+  | "city"
+  | "county"
+  | "state"
+  | "country";
+
+/** A resolved geographic center for the Where filter (a searched location). */
+export type DiscoveryZone = {
+  /** Human label for the active pill, e.g. "Polanco, CDMX". */
+  label: string;
+  lat: number;
+  lng: number;
+  /** Best-effort hierarchy level of the pick (seeds the default radius). */
+  level?: DiscoveryZoneLevel;
+};
+
+/** Distance-tolerance slider bounds, in km. */
+export const DISTANCE_MIN_KM = 1;
+export const DISTANCE_MAX_KM = 50;
+
+/**
+ * A sensible starting radius for a freshly-picked zone, by level — a street
+ * wants a tight ring, a city a loose one; state/country/unknown default to "any
+ * distance" (null) since no fixed radius bounds them.
+ */
+export function defaultRadiusForLevel(
+  level: DiscoveryZoneLevel | undefined,
+): number | null {
+  switch (level) {
+    case "address":
+    case "street":
+      return 2;
+    case "neighborhood":
+      return 5;
+    case "city":
+      return 15;
+    case "county":
+      return 30;
+    default:
+      return null;
+  }
+}
+
+// ── When ────────────────────────────────────────────────────────────────────
+export type DiscoveryWhen =
+  | { mode: "now" }
+  | { mode: "anytime" }
+  // day 0=Sun..6=Sat (JS getDay order), hour 0..23, place-local.
+  | { mode: "at"; day: number; hour: number };
+
+/** Sunday-first weekday captions — matches JS getDay() / computeOpenState. */
+export const WEEKDAY_LABELS = [
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+] as const;
+
+/** "8:00 PM"-style label for a 0–23 hour. */
+export function formatHourLabel(hour: number): string {
+  const clamped = Math.min(23, Math.max(0, Math.round(hour)));
+  const suffix = clamped < 12 ? "AM" : "PM";
+  const base = clamped % 12 === 0 ? 12 : clamped % 12;
+  return `${base}:00 ${suffix}`;
+}
+
+// ── Filter state ────────────────────────────────────────────────────────────
 export type DiscoveryFilters = {
   /** Super-categories: multi-select place families; empty = no constraint. */
   familyKeys: FamilyKey[];
   /** Concrete category slugs; ORed with familyKeys. Empty = no constraint. */
   categories: string[];
-  /** Super-zone (places.city). Ignored while a zone is set. */
-  city: string | null;
-  /** places.zone; selecting one implies its city. */
-  zone: string | null;
-  /** "Here" distance tolerance in km; null = any distance. */
+  /** Searched center; null = current location / here. */
+  zone: DiscoveryZone | null;
+  /** Distance tolerance in km (radius from the center); null = any distance. */
   maxKm: number | null;
-  /** 0–23 place-local hour; null = Now (no time constraint). */
-  hour: number | null;
-  /** Deck ordering: 0 ranked · 1 mild · 2 adventurous · 3 full surprise. */
+  /** When to go — now / anytime / a specific weekday + hour. */
+  when: DiscoveryWhen;
+  /** Deck ordering level, 0 ranked → 5 full shuffle. */
   randomness: RandomnessLevel;
 };
 
 export const DISCOVERY_FILTER_DEFAULTS: DiscoveryFilters = {
   familyKeys: [],
   categories: [],
-  city: null,
   zone: null,
   maxKm: null,
-  hour: null,
+  // Anytime = neutral: the sheet opens on the full catalog. Now / At are opt-in
+  // narrowings, so a fresh sheet never hides everything behind a time filter.
+  when: { mode: "anytime" },
   randomness: 0,
 };
 
-export const DISTANCE_STEPS_KM = [1, 3, 5, 10] as const;
-
-export const RANDOMNESS_LABELS: Record<RandomnessLevel, string> = {
-  0: "Ranked",
-  1: "Mild",
-  2: "Adventurous",
-  3: "Surprise",
-};
-
 /**
- * The *narrowing* predicates — the fields that actually drop the visible
- * count. Randomness is deck ordering, not a filter, so it's excluded. This is
- * the exact set `applyDiscoveryFilters` gates on, and the sheet's empty-state
- * copy keys off it: predicates set → "no matches, reset"; none set → the host
- * simply has nothing to show and Reset can't help (MESITA-670).
+ * The *narrowing* predicates — the fields that actually drop the visible count.
+ * A zone alone only recenters distances (no exclusion) and randomness is deck
+ * ordering, so both are excluded here. This is the exact set
+ * applyDiscoveryFilters gates on, and the sheet's empty-state copy keys off it:
+ * predicates set → "no matches, reset"; none set → the host is simply empty and
+ * Reset can't help (MESITA-670).
  */
 export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
   return (
     f.familyKeys.length > 0 ||
     f.categories.length > 0 ||
-    f.city !== null ||
-    f.zone !== null ||
     f.maxKm !== null ||
-    f.hour !== null
+    f.when.mode !== "anytime"
   );
 }
 
 /** Any deviation from defaults — drives the red trigger dot (MESITA-633). */
 export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
-  return hasDiscoveryPredicates(f) || f.randomness !== 0;
-}
-
-/** places.city rides on the raw row (PLACE_PUBLIC_COLUMNS) but not the type. */
-export function placeCity(place: Place): string | null {
-  const city = (place as unknown as Record<string, unknown>).city;
-  return typeof city === "string" && city.trim() ? city : null;
+  return hasDiscoveryPredicates(f) || f.zone !== null || f.randomness !== 0;
 }
 
 export function matchesDiscoveryFilters(
@@ -108,20 +183,19 @@ export function matchesDiscoveryFilters(
     if (!categoryHit && !familyHit) return false;
   }
 
-  // Where — zone beats city beats the Here distance tolerance.
-  if (f.zone !== null) {
-    if (place.zone !== f.zone) return false;
-  } else if (f.city !== null) {
-    if (placeCity(place) !== f.city) return false;
-  } else if (f.maxKm !== null) {
-    // distance_km 0 is the "couldn't calculate" placeholder (real readings
-    // floor at 0.1) — unknown distances honestly fail a tolerance filter.
+  // Distance tolerance — radius (km) around the chosen zone center. The host
+  // computes distance_km relative to that SAME center (searched location or the
+  // device's location). distance_km 0 is the "couldn't calculate" placeholder
+  // (real readings floor at 0.1), so unknown distances honestly fail a radius.
+  if (f.maxKm !== null) {
     const d = place.distance_km;
     if (typeof d !== "number" || d < 0.1 || d > f.maxKm) return false;
   }
 
-  // When — open at the parked place-local hour; no hours table = no match.
-  if (f.hour !== null) {
+  // When — open at the requested place-local moment. Anytime = no constraint;
+  // Now = the current moment; At = a specific weekday + hour. No hours table =
+  // can't confirm open = excluded (same as the old hour filter).
+  if (f.when.mode !== "anytime") {
     const row = place as unknown as Record<string, unknown>;
     const hours = row.hours;
     const hasHours =
@@ -131,7 +205,11 @@ export function matchesDiscoveryFilters(
       Object.keys(hours as object).length > 0;
     if (!hasHours) return false;
     const tz = typeof row.timezone === "string" ? row.timezone : undefined;
-    if (!computeOpenState(hours, tz, f.hour * 60).open_now) return false;
+    const open =
+      f.when.mode === "at"
+        ? computeOpenState(hours, tz, f.when.hour * 60, f.when.day).open_now
+        : computeOpenState(hours, tz).open_now;
+    if (!open) return false;
   }
 
   return true;
@@ -146,39 +224,7 @@ export function applyDiscoveryFilters(
   return places.filter((place) => matchesDiscoveryFilters(place, f));
 }
 
-export type WhereOption = { city: string; zones: string[] };
-
-/**
- * Super-zones (cities) with their zones, from the loaded catalog — most
- * places first at both tiers.
- */
-export function deriveWhereOptions(
-  places: Place[],
-  cityCap = 6,
-  zoneCap = 10,
-): WhereOption[] {
-  const cities = new Map<string, { n: number; zones: Map<string, number> }>();
-  for (const place of places) {
-    const city = placeCity(place);
-    if (!city) continue;
-    const entry = cities.get(city) ?? { n: 0, zones: new Map() };
-    entry.n += 1;
-    const zone = typeof place.zone === "string" ? place.zone.trim() : "";
-    if (zone) entry.zones.set(zone, (entry.zones.get(zone) ?? 0) + 1);
-    cities.set(city, entry);
-  }
-  return [...cities.entries()]
-    .sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0]))
-    .slice(0, cityCap)
-    .map(([city, entry]) => ({
-      city,
-      zones: [...entry.zones.entries()]
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .slice(0, zoneCap)
-        .map(([zone]) => zone),
-    }));
-}
-
+// ── What options (catalog-derived) ──────────────────────────────────────────
 export type CategoryOption = { slug: string; label: string };
 
 /** Concrete categories present in the catalog, most places first. */
@@ -208,17 +254,19 @@ export function deriveCategoryOptions(
     .map(([slug, { label }]) => ({ slug, label }));
 }
 
+// ── Randomness ordering ─────────────────────────────────────────────────────
 /**
- * Deck ordering for the randomness level: 0 keeps the ranked order, 3 is a
- * full shuffle, 1–2 jitter each card around its rank (a card can drift ~k
- * positions), so exploration scales without discarding ranking entirely.
+ * Deck ordering for the 0..5 randomness level: 0 keeps the ranked order, 5 is a
+ * full shuffle, 1–4 jitter each card around its rank (drift ~k positions, k
+ * scaling with the level), so exploration scales smoothly without discarding
+ * ranking outright.
  */
 export function orderByRandomness(
   places: Place[],
   level: RandomnessLevel,
 ): Place[] {
-  if (level === 0 || places.length < 2) return places;
-  if (level >= 3) {
+  if (level <= 0 || places.length < 2) return places;
+  if (level >= 5) {
     const out = [...places];
     for (let i = out.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -226,7 +274,7 @@ export function orderByRandomness(
     }
     return out;
   }
-  const k = level === 1 ? 3 : 10;
+  const k = level * 4; // 1→4, 2→8, 3→12, 4→16 positions of drift
   return places
     .map((place, i) => ({ place, key: i + Math.random() * k }))
     .sort((a, b) => a.key - b.key)

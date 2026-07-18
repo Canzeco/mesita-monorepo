@@ -159,6 +159,10 @@ export function computeOpenState(
   // discovery filters ask "open at hour H today?" with the SAME split-shift
   // and overnight math. Omitted = evaluate at the current moment.
   atMinutes?: number,
+  // Optional weekday override, 0=Sun..6=Sat (MESITA-672): the "When → at" filter
+  // asks "open at hour H on THIS weekday?" (e.g. Saturday at noon). Omitted =
+  // the current place-local weekday.
+  atDayIdx?: number,
 ): { open_now: boolean; opens_at: string; closes_at: string } {
   const fallback = { open_now: false, opens_at: "", closes_at: "" };
   const h = obj(hours);
@@ -192,6 +196,9 @@ export function computeOpenState(
   }
   if (atMinutes != null && Number.isFinite(atMinutes)) {
     nowMin = Math.min(Math.max(Math.round(atMinutes), 0), 24 * 60 - 1);
+  }
+  if (atDayIdx != null && Number.isFinite(atDayIdx)) {
+    dayIdx = ((Math.round(atDayIdx) % 7) + 7) % 7;
   }
 
   const todayKey = WEEK_KEYS[dayIdx];
