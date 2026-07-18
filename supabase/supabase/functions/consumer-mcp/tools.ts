@@ -99,7 +99,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "list_rewards",
     description:
-      "List active reward coupons (at-the-bill discounts) in the consumer wallet.",
+      "List active reward coupons (at-the-bill discounts) available to the consumer.",
     inputSchema: {
       type: "object",
       properties: {

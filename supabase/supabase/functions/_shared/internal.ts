@@ -63,8 +63,8 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 // Two accepted bearer shapes (the platform migrated EF env to the NEW API
 // keys on 2026-07-05, so both circulate):
 //   1. Legacy service_role JWT — gateway-verified signature; we decode the
-//      payload and require role === 'service_role'. (n8n creds, Vault
-//      scheduler secret, dashboard key.)
+//      payload and require role === 'service_role'. (Vault scheduler
+//      secret, dashboard key.)
 //   2. New secret API key (sb_secret_…) — this is what the platform now
 //      injects as SUPABASE_SERVICE_ROLE_KEY into EF env, so it's what
 //      invokeArtificialCaller sends. Not a JWT, so no payload to check;
