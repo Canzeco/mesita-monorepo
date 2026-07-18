@@ -29,7 +29,7 @@ export type PlacePayload = Record<string, unknown> & {
 };
 
 export type SavedPlace = {
-  unit_id: string;
+  project_id: string;
   place_id: string;
   slug: string;
   name: string;
@@ -109,7 +109,7 @@ export async function savePlaceData(
   }
 
   // ── 2) projects (entity, shared PK). content_status is caller-supplied. ──
-  const { data: unitRow, error: unitErr } = await admin
+  const { data: projectRow, error: projectErr } = await admin
     .from("projects")
     .insert({
       id: placeRow.id,
@@ -120,29 +120,29 @@ export async function savePlaceData(
     })
     .select("id, slug, status")
     .single();
-  if (unitErr || !unitRow) {
+  if (projectErr || !projectRow) {
     // Compensate: drop the orphan place so a failed create leaves nothing.
     await admin.from("places").delete().eq("id", placeRow.id);
-    if (unitErr?.code === "23505" && /\bslug\b/.test(unitErr.message)) {
+    if (projectErr?.code === "23505" && /\bslug\b/.test(projectErr.message)) {
       return fail(409, {
         code: "slug_already_taken",
         error: "A place with this URL slug already exists. Try again.",
       });
     }
     return fail(400, {
-      error: `unit_insert: ${unitErr?.message ?? "no row"}`,
-      code: unitErr?.code ?? null,
+      error: `project_insert: ${projectErr?.message ?? "no row"}`,
+      code: projectErr?.code ?? null,
     });
   }
 
   return {
     ok: true,
     saved: {
-      unit_id: unitRow.id,
+      project_id: projectRow.id,
       place_id: placeRow.id,
-      slug: unitRow.slug,
+      slug: projectRow.slug,
       name,
-      status: unitRow.status,
+      status: projectRow.status,
     },
   };
 }

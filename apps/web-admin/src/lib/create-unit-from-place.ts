@@ -2,11 +2,11 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 // Shared create-place helper. Both the single-place console and the bulk
 // creator run each Google Place ID through the SAME create pipeline:
-// admin-web-create-project fetches Google data, persists the place + photos,
-// then triggers the n8n Enricher webhook — deep enrichment runs ASYNC in
-// the background. The admin operator's session authorises the call (admin
-// allowlist). Callers invoke this once per Place ID (with small concurrency
-// for bulk) so progress streams in.
+// admin-web-create-project fetches Google data and persists a minimal
+// 'generating' place; deep enrichment then runs async in the Enricher cron
+// pipeline (supabase-cron-enrich-place-*). The admin operator's session
+// authorises the call (admin allowlist). Callers invoke this once per Place ID
+// (with small concurrency for bulk) so progress streams in.
 
 export type CreateUnitOk = {
   ok: true;
@@ -14,7 +14,7 @@ export type CreateUnitOk = {
   name: string;
   slug: string | null;
   photoCount: number;
-  /** The n8n Enricher webhook accepted the job — enrichment runs async. */
+  /** The create call enqueued async enrichment (Enricher cron pipeline). */
   enrichmentTriggered: boolean;
   enrichmentError: string | null;
 };

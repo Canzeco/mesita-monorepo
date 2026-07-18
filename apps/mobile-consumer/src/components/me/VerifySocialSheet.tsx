@@ -6,6 +6,7 @@ import { Alert, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
+import { GRADIENTS } from '@/constants/brand';
 import { apiClaimInstagram } from '@/lib/api/auth';
 import { DEMO_INSTAGRAM_FOLLOWERS } from '@/lib/instagram-demo';
 import { errMsg } from '@/lib/utils';
@@ -59,7 +60,7 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <LinearGradient
-          colors={['#f58529', '#dd2a7b', '#8134af']}
+          colors={[...GRADIENTS.instagram]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{

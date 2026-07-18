@@ -1,4 +1,4 @@
-import { Compass } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
 function FeatureCard({
   title,
@@ -8,7 +8,7 @@ function FeatureCard({
 }: {
   title: string;
   body: string;
-  Icon: typeof Compass;
+  Icon: LucideIcon;
   iconClass: string;
 }) {
   return (

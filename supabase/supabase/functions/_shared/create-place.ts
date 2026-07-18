@@ -162,12 +162,12 @@ export async function createMinimalPlace(opts: {
   // stage='research'; the pg_cron poller picks it up
   // (supabase-cron-enrich-place-*). A seed failure NEVER fails the create —
   // the row exists ('generating') and can be re-seeded. ──
-  const trigger = await seedPlaceResearch(admin, saved.unit_id, googlePlaceId, callerName);
+  const trigger = await seedPlaceResearch(admin, saved.project_id, googlePlaceId, callerName);
 
   const channelCount = CHANNEL_KEYS.filter((k) => !!place[k]).length;
   return {
     ok: true,
-    place: { id: saved.unit_id, slug: saved.slug, name: saved.name, status: saved.status },
+    place: { id: saved.project_id, slug: saved.slug, name: saved.name, status: saved.status },
     enrichment: {
       google: true,
       enrichmentTriggered: trigger.ok,

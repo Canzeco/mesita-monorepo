@@ -8,8 +8,6 @@ import type { PlacePlan } from "@/lib/api/places";
 // grant the same Verified membership (`plan=pro`). Legacy `ultra` folds onto
 // Verified for display.
 
-export type PlanVisibility = "Low" | "Medium" | "Max";
-
 /** Catalog id — Free or the single Verified membership. */
 export type SubscriptionId = "free" | "verified";
 
@@ -19,7 +17,6 @@ type SubscriptionRow = {
   price: string;
   cadence: string;
   tagline: string;
-  visibility: PlanVisibility;
   setup?: string;
   featured?: boolean;
 };
@@ -31,7 +28,6 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     price: "MX$0",
     cadence: "/ year",
     tagline: "Listed on Mesita.",
-    visibility: "Low",
   },
   {
     id: "verified",
@@ -39,7 +35,6 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     price: "MX$1,000",
     cadence: "/ year",
     tagline: "Membership — discounts at the bill, algorithm placement.",
-    visibility: "Max",
     setup: "WhatsApp ping + first ticket",
     featured: true,
   },
@@ -48,10 +43,6 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
 /** True when the place holds Verified membership (any paid plan key). */
 function isVerifiedMember(p: PlacePlan): boolean {
   return p !== "free";
-}
-
-export function visibilityForPlan(p: PlacePlan): PlanVisibility {
-  return isVerifiedMember(p) ? "Max" : "Low";
 }
 
 export function subscriptionForPlace(p: PlacePlan): SubscriptionId {

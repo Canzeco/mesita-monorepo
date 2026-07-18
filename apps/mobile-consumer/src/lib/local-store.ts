@@ -12,10 +12,11 @@ function subscribeKey(key: string, onChange: () => void): () => void {
     set = new Set();
     listeners.set(key, set);
   }
-  set.add(onChange);
+  const subscribers = set;
+  subscribers.add(onChange);
   return () => {
-    set!.delete(onChange);
-    if (set!.size === 0) listeners.delete(key);
+    subscribers.delete(onChange);
+    if (subscribers.size === 0) listeners.delete(key);
   };
 }
 

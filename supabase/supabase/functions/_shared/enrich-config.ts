@@ -46,7 +46,7 @@ export const ENRICH_DESCRIPTION_MAX = ENRICH_DESCRIPTION_TARGET_WORDS * 7;
 
 // Per-call cost estimates (USD), from each provider's PUBLISHED price list
 // (verified 2026-07-07). MIRRORS the admin cost calculator's rate card
-// (mesita-web-admin `atlas-config/cost-model.ts`). Documentation only — no EF
+// (apps/web-admin `enricher-config/cost-model.ts`). Documentation only — no EF
 // reads this; approximate, not billing. Keep the two in sync.
 //
 // Sources: Google Maps Platform pricing list (Places API New, first tier) ·

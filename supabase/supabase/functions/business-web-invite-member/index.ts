@@ -3,7 +3,7 @@
 // Invite a colleague to the place as owner / editor / viewer. Two
 // paths:
 //
-//   1. Email matches an existing businesses row → link directly: insert
+//   1. Email matches an existing accounts row → link directly: insert
 //      project_members at the requested role. No email goes out.
 //
 //   2. Email is unknown → create a account_invites row with a fresh

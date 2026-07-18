@@ -1,10 +1,10 @@
-import { BadgeCheck, Instagram, Sparkles } from "lucide-react";
+import { BadgeCheck, Instagram, type LucideIcon, Sparkles } from "lucide-react";
 import { SectionFooter } from "@/components/landing/section-footer";
 import { SectionHeader } from "@/components/landing/section-header";
 import { CONSUMER_URL } from "@/components/landing/urls";
 
 function Premium() {
-  const doors: { title: string; body: string; Icon: typeof Instagram }[] = [
+  const doors: { title: string; body: string; Icon: LucideIcon }[] = [
     {
       title: "Instagram",
       body: "Gratis. Verifica una cuenta con más de 1,000 seguidores y sube una historia etiquetando al lugar para liberar cada recompensa.",

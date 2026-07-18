@@ -107,59 +107,6 @@ export function pickInternalPages(
   return scored.slice(0, max).map((s) => s.url);
 }
 
-export async function rankWebsiteImagesByRelevance(
-  openaiKey: string | undefined,
-  images: WebImage[],
-): Promise<string[]> {
-  if (images.length <= 1 || !openaiKey) return images.map((i) => i.url);
-  const list = images
-    .map((img, i) => {
-      const file = img.url.split("/").pop()?.split("?")[0] ?? img.url;
-      const dims = img.width && img.height ? `${img.width}x${img.height}` : "unknown";
-      return `${i}: file="${file}" alt="${img.alt.slice(0, 80)}" dims=${dims} page=${img.page}`;
-    })
-    .join("\n");
-  const user =
-    `These are all the images found on a place's website (filename, alt text, ` +
-    `dimensions, page). Rank them from MOST likely to be a hero / representative ` +
-    `place photo (the space, interior, exterior, food, ambiance) to LEAST. ` +
-    `PRIORITISE roughly SQUARE dimensions when known. ALWAYS rank LAST anything ` +
-    `whose filename or alt contains logo / icon / favicon / badge / sprite / ` +
-    `pixel / avatar, plus payment-method glyphs, social glyphs, and heavily ` +
-    `text-laden banners.\n\n${list}\n\n` +
-    `Return a SINGLE JSON object {"order": [indices best-to-worst]} including ` +
-    `every index exactly once. No prose.`;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20000);
-    let r: Response;
-    try {
-      r = await fetch(OPENAI_URL, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-        signal: ctrl.signal,
-        body: JSON.stringify({
-          model: VISION_MODEL,
-          temperature: 0,
-          response_format: { type: "json_object" },
-          messages: [{ role: "user", content: user }],
-        }),
-      });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!r.ok) return images.map((i) => i.url);
-    const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
-    const raw = (safeParseJson(data.choices?.[0]?.message?.content ?? "") as { order?: unknown })
-      ?.order;
-    const order = normaliseImageOrder(raw, images.length);
-    if (!order) return images.map((i) => i.url);
-    return order.map((i) => images[i].url);
-  } catch {
-    return images.map((i) => i.url);
-  }
-}
-
 // Vision describes every analyzed image CONCURRENTLY. The per-source analyze
 // caps bound the pool (Google ≤10 + Instagram ≤30 = 40 max), so 40 in flight
 // means one round for any real config. Per-image memory stays bounded by the

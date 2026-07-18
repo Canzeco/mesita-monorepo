@@ -2,13 +2,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { GRADIENTS } from '@/constants/brand';
+
 // Approximates web `--gradient-hero` (two radial pink blobs + vertical wash).
 // RN has no CSS radials — soft absolute blobs + a linear wash get close.
 export function HeroBackdrop() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <LinearGradient
-        colors={['#fff9fa', '#f5e6e8']}
+        colors={[...GRADIENTS.hero]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -50,7 +52,7 @@ export function ShellWash({ children }: { children: ReactNode }) {
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient
-        colors={['#fff7f8', '#faeff0']}
+        colors={[...GRADIENTS.shell]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}

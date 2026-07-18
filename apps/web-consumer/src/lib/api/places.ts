@@ -70,7 +70,7 @@ export type Place = {
   // places row (name, vibe, category, price_level, closes_at, reward).
   // The "all info on the tinder card too" checkpoint widens that to
   // mirror the place-detail overview grid. Every field below is
-  // optional because the recommend-deck / list-places EFs don't return
+  // optional because the recommend-swipe / list-places EFs don't return
   // them yet — the card hides cells when the field is null/undefined,
   // so the contract degrades cleanly until the EF starts populating
   // them (sourced from Google Places + cached on the row).

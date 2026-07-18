@@ -1,5 +1,5 @@
 import {
-  Compass,
+  type LucideIcon,
   MapPin,
   MessageCircle,
   Sparkles,
@@ -9,7 +9,7 @@ import { FeatureCard } from "@/components/landing/feature-card";
 import { SectionHeader } from "@/components/landing/section-header";
 
 function DiscoveryIntelligence() {
-  const items: { title: string; body: string; Icon: typeof Compass }[] = [
+  const items: { title: string; body: string; Icon: LucideIcon }[] = [
     {
       title: "Desliza",
       body: "El mazo de la noche: los mejores lugares de hoy, uno por uno, ordenados por lo que te late.",
