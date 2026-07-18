@@ -1,6 +1,6 @@
 // Shared Perplexity Agent (pro-search) client. One fetch/parse contract for
-// every Atlas Perplexity call: P2's SERP summary (atlas-serp.ts) and P3's channel
-// fill + phone/email legs (atlas-channel-discovery.ts). Best-effort: any non-2xx /
+// every Atlas Perplexity call: P2's SERP summary (enrich-serp.ts) and P3's channel
+// fill + phone/email legs (enrich-channel-discovery.ts). Best-effort: any non-2xx /
 // network / parse failure returns null, so callers degrade to null.
 
 import { safeParseJson } from "./parse-utils.ts";

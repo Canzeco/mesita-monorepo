@@ -7,7 +7,7 @@
 //
 // The family → Google-primaryType map below is the enforcement contract. It
 // MUST stay in lock-step with the admin catalog
-// (mesita-web-admin/src/app/(app)/sourcing-config/catalog.ts, FAMILIES[].googleTypes)
+// (apps/web-admin/src/app/(app)/sourcing-config/catalog.ts, FAMILIES[].googleTypes)
 // and the migration default (20260708120000_sourcing_config.sql) — the family
 // keys are the shared contract. A Google primaryType in NO family is ineligible
 // for every channel: that's how hotels, schools, hospitals, shops, gas stations

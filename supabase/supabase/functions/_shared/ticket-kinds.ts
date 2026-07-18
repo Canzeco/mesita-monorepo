@@ -26,12 +26,6 @@ export const STORY_KINDS = new Set([
   "r_s_dp_sf",
 ]);
 
-// Alias for callers that specifically mean "discount + story".
-export const INFORMAL_STORY_KINDS = new Set([
-  "s_dp_sf",
-  "r_s_dp_sf",
-]);
-
 export const RESERVATION_KINDS = new Set([
   "r_dp",
   "r_s_dp_sf",

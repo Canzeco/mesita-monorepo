@@ -19,22 +19,6 @@ export {
 // for environments that haven't been renamed yet.
 const GOOGLE_PLACES_KEY_ENVS = ["GMP_KEY", "SUPA_GMP_KEY"] as const;
 
-// Restrict Google autocomplete + text-search to F&B / nightlife primary
-// types so non-hospitality matches (tire shops, mechanics, pharmacies,
-// hardware stores…) don't pollute the picker. Google caps this at 5 from
-// Table A; we pick the broadest 5 that cover Mesita's universe. Trade-off:
-// cuisine-specific Table A types (italian_restaurant, mexican_restaurant,
-// sushi_restaurant, …) get filtered out because each place has exactly one
-// primary type. The Mesita-side ILIKE fallback in _shared/suggest-places.ts (absorbed from enricher suggest-places, MESITA-55)
-// still surfaces them once they've been onboarded.
-export const MESITA_PRIMARY_TYPES = [
-  "restaurant",
-  "bar",
-  "cafe",
-  "night_club",
-  "bakery",
-];
-
 // Endpoint URLs for the three Places (New) surfaces we use.
 export const GOOGLE_PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
