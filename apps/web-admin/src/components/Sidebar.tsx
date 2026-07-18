@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BadgeCheck,
   Building2,
   Radar,
   ShieldCheck,
@@ -75,6 +76,8 @@ const SIDEBAR_NAV = [
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
+  // The ownership queue sits with the unit surfaces it acts on.
+  { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
 ] as const;
 
 function NavLink({
