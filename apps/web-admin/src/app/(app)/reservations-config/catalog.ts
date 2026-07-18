@@ -1,17 +1,28 @@
-// Reservations Config catalog — the human-facing names behind the endpoint policy.
+// Reservations Config catalog — the human-facing names behind the reservation agent.
 //
-// Every Mesita place carries ONE selected reservation endpoint at
+// Mesita books tables with the Reservationist: a Supabase function briefs an
+// ElevenLabs voice agent with the venue + the guest's parameters, then the agent
+// phones the place over Twilio and holds the table. This page is where an operator
+// tunes that agent — the number it calls while we test, how hard it retries, and
+// which contact channel it books through.
+//
+// Every place carries ONE selected reservation endpoint at
 // products.reservations = { channel, value } — the address the Reservationist
-// actually books through. This config decides how the Enricher picks it: an
-// ordered channel priority, the channels parked out of the running, and whether
-// an operator's hand-picked channel survives a re-enrich.
+// dials. The Enricher picks it from an ordered channel priority. TODAY only phone
+// is live; WhatsApp + Instagram are reserved for verified partners and switched on
+// per-venue from the business console, so the priority list is kept (for that
+// launch) but the agent only ever calls a phone.
 //
 // The channel keys are the contract shared with the Edge Functions
 // (admin-web-{get,update}-reservations-config) and with
 // supabase/functions/_shared/enrich-reservation-endpoint.ts — keep them in
-// lock-step.
+// lock-step. The testCall + attempts knobs are read by the (future) calling
+// orchestration; they persist through the same whole-blob save.
 
 export type ReservationChannel = "phone" | "whatsapp" | "instagram";
+
+/** Live today, or held for a future launch (verified partners only). */
+export type ChannelStatus = "live" | "soon";
 
 export type ReservationsConfig = {
   /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */
@@ -20,9 +31,25 @@ export type ReservationsConfig = {
   disabled: ReservationChannel[];
   /** True: a channel an operator picked by hand is never re-seeded by an enrich. */
   respectAdminOverride: boolean;
+  /**
+   * Testing override. While enabled, EVERY reservation call dials `number`
+   * instead of the place's real line — no matter which venue the guest booked —
+   * so we never ring a real business during testing.
+   */
+  testCall: { enabled: boolean; number: string };
+  /**
+   * How many times the Reservationist tries a place before giving up. Attempt 1
+   * always fires immediately when the guest taps Reserve (many venues run a 24/7
+   * AI receptionist); attempts 2..N wait for the venue's next opening window.
+   */
+  attempts: number;
 };
 
 export const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
+
+export const ATTEMPTS_MIN = 1;
+export const ATTEMPTS_MAX = 3;
+export const ATTEMPTS_DEFAULT = 3;
 
 export type Channel = {
   key: ReservationChannel;
@@ -30,6 +57,8 @@ export type Channel = {
   emoji: string;
   /** The places column the endpoint value is read from. */
   source: string;
+  /** Whether the agent can book through this channel today. */
+  status: ChannelStatus;
   blurb: string;
 };
 
@@ -39,41 +68,61 @@ export const CHANNELS: Channel[] = [
     label: "Phone",
     emoji: "☎️",
     source: "places.phone",
+    status: "live",
     blurb:
-      "A call to the place's line. The most universal channel — nearly every place has one, and it reaches a human who can hold a table.",
+      "A call to the place's line. The one channel the Reservationist books through today — nearly every place has one, and it reaches a human (or their AI receptionist) who can hold a table.",
   },
   {
     key: "whatsapp",
     label: "WhatsApp",
     emoji: "💬",
     source: "places.whatsapp_url",
+    status: "soon",
     blurb:
-      "A WhatsApp thread with the place. Written, async and the default way Mexico books — but only some places publish a number.",
+      "A WhatsApp thread with the place. Coming later for verified partners — a partner switches their bookings to WhatsApp from the business console. Not used for the 99% of places that stay phone-first.",
   },
   {
     key: "instagram",
     label: "Instagram",
     emoji: "📸",
     source: "places.instagram_url",
+    status: "soon",
     blurb:
-      "A DM to the place's IG. The weakest channel — DMs get missed — but often the only contact a new place publishes.",
+      "A DM to the place's IG. Coming later for verified partners, set on the business console. Never used automatically — DMs get missed, and most places publish no reservation IG.",
   },
 ];
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
   priority: ["phone", "whatsapp", "instagram"],
-  disabled: [],
+  // Phone is the only bookable channel today; WhatsApp + Instagram are parked
+  // until their verified-partner launch, so the Enricher only ever seeds a phone.
+  disabled: ["whatsapp", "instagram"],
   respectAdminOverride: true,
+  testCall: { enabled: false, number: "" },
+  attempts: ATTEMPTS_DEFAULT,
 };
 
 function isChannel(v: unknown): v is ReservationChannel {
   return v === "phone" || v === "whatsapp" || v === "instagram";
 }
 
+function clampAttempts(v: unknown): number {
+  const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v) : ATTEMPTS_DEFAULT;
+  return Math.max(ATTEMPTS_MIN, Math.min(ATTEMPTS_MAX, n));
+}
+
+/**
+ * A loose E.164 check: a leading + and 8–15 digits. Good enough to stop a typo
+ * from being saved as the test number; the real validity check is placing a call.
+ */
+export function looksLikePhone(v: string): boolean {
+  return /^\+[1-9]\d{7,14}$/.test(v.trim());
+}
+
 /**
  * Coerce whatever the row holds into a renderable config. Anything malformed
  * resolves to the default — the page must always be usable, never a blank screen.
- * Mirrors coerceReservationsPolicy in the EF _shared module.
+ * Mirrors normalizeConfig in the update EF (which is the strict gate on save).
  */
 export function coerceConfig(raw: unknown): ReservationsConfig {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return DEFAULT_CONFIG;
@@ -91,11 +140,21 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
     ? c.disabled.filter(isChannel).filter((ch, i, a) => a.indexOf(ch) === i)
     : [];
 
+  const testRaw =
+    c.testCall && typeof c.testCall === "object" && !Array.isArray(c.testCall)
+      ? (c.testCall as Record<string, unknown>)
+      : {};
+
   return {
     priority,
     disabled,
     respectAdminOverride:
       typeof c.respectAdminOverride === "boolean" ? c.respectAdminOverride : true,
+    testCall: {
+      enabled: typeof testRaw.enabled === "boolean" ? testRaw.enabled : false,
+      number: typeof testRaw.number === "string" ? testRaw.number.trim() : "",
+    },
+    attempts: clampAttempts(c.attempts),
   };
 }
 
