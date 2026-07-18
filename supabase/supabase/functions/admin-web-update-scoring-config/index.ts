@@ -5,22 +5,24 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v6 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM cut to
-// two knobs per factor) — keys follow the subscore names (EM · SM · GP · RP ·
+// v7 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM cut to
+// 1 · 2 · 1 knobs — the consumer owns the where tolerance, the mismatch rung
+// froze) — keys follow the subscore names (EM · SM · GP · RP ·
 // XX, all [0,1]; three lanes; merge O → I → H). The EM encoder
 // (text-embedding-3-small @ its native 1536 dims) is a FIXED decision,
 // deliberately NOT in the blob — a stray `em` key from an older client is
 // ignored:
-//   { v: 6, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
+//   { v: 7, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
 //             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
 //             no backfill) is ≤ their sum. A legacy v4 flat number expands
 //             to all three lanes.
-//   sm        Structured Match knobs — where (pointTolKm · distExp) · when
-//             (waitFloor · sessionH) · what (sibling · mismatch). Zone
+//   sm        Structured Match knobs — where (distExp only: the consumer
+//             owns the tolerance, default frozen at 5 km) · when (waitFloor ·
+//             sessionH) · what (sibling only: mismatch frozen at 0.2). Zone
 //             spillover, wait transition/steepness and the 30-min grid are
-//             frozen constants in the model — not config; leftover v5 keys
-//             are ignored.
+//             frozen constants in the model — not config; leftover v5/v6
+//             keys (pointTolKm · mismatch) are ignored.
 //   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
 //   rp        Rewards Promotions rungs per posture, [0,1]
 //   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
@@ -106,14 +108,13 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   const recallTopK = num(ret?.recallTopK, 10, 200);
   if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
 
-  // SM — where × when × what (v6: two knobs each; zone spillover, wait
-  // transition/steepness and the 30-min grid are frozen constants in the
-  // model, so they're not in the blob and a stray v5 key is ignored).
+  // SM — where × when × what (v7: 1 · 2 · 1 knobs; the consumer owns the
+  // where tolerance and the mismatch rung is frozen, so stray v5/v6 keys —
+  // pointTolKm · mismatch — are ignored like the other frozen constants).
   const smIn = r.sm as Record<string, unknown> | undefined;
   const whereIn = smIn?.where as Record<string, unknown> | undefined;
-  const pointTolKm = num(whereIn?.pointTolKm, 0.5, 20);
   const distExp = num(whereIn?.distExp, 1, 5);
-  if (pointTolKm == null || distExp == null) {
+  if (distExp == null) {
     return { ok: false, error: "sm.where knobs out of range" };
   }
   const whenIn = smIn?.when as Record<string, unknown> | undefined;
@@ -124,8 +125,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   }
   const whatIn = smIn?.what as Record<string, unknown> | undefined;
   const sibling = num(whatIn?.sibling, 0, 1);
-  const mismatch = num(whatIn?.mismatch, 0, 1);
-  if (sibling == null || mismatch == null) {
+  if (sibling == null) {
     return { ok: false, error: "sm.what knobs out of range" };
   }
 
@@ -206,7 +206,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 6,
+      v: 7,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
@@ -214,9 +214,9 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       },
       retrieval: { recallTopK },
       sm: {
-        where: { pointTolKm, distExp },
+        where: { distExp },
         when: { waitFloor, sessionH },
-        what: { sibling, mismatch },
+        what: { sibling },
       },
       gp: { lnCeiling },
       rp,

@@ -22,7 +22,7 @@ import {
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 import { updateScoringSettings } from "./settings-actions";
 
-// Shared state for the Scoring Config tabs (v10 blob). The layout mounts
+// Shared state for the Lineup Config tabs (v10 blob). The layout mounts
 // this ONCE, so knobs set on Subscores carry into Scores & Lanes live and
 // survive tab switches — both playgrounds compute from the SAME form state.
 //
@@ -83,7 +83,7 @@ type ScoringCtx = {
   rp: RpRungs;
   setRp: React.Dispatch<React.SetStateAction<RpRungs>>;
   /** XX — the DEFAULT control: the consumer's Randomness filter overrides
-   * it per query; this is what the Standard Engine uses with no filter set. */
+   * it per query; this is what Lineup uses with no filter set. */
   xx: XxParams;
   setXx: React.Dispatch<React.SetStateAction<XxParams>>;
   /** The core config — per-subscore source toggles (the data-access matrix). */
@@ -171,7 +171,7 @@ export function ScoringProvider({
   // dirty diffs are JSON.stringify equality per section.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 6,
+      v: 7,
       // Same key order as coerceLaneCounts' output — the dirty diff is
       // JSON.stringify equality.
       laneN: {
@@ -181,9 +181,9 @@ export function ScoringProvider({
       },
       retrieval: { recallTopK },
       sm: {
-        where: { pointTolKm: sm.where.pointTolKm, distExp: sm.where.distExp },
+        where: { distExp: sm.where.distExp },
         when: { waitFloor: sm.when.waitFloor, sessionH: sm.when.sessionH },
-        what: { sibling: sm.what.sibling, mismatch: sm.what.mismatch },
+        what: { sibling: sm.what.sibling },
       },
       gp: { lnCeiling: gp.lnCeiling },
       rp: {

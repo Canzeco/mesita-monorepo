@@ -173,7 +173,7 @@ export const RP_BY_STRATEGY: Record<StrategyId, number> = {
 };
 
 /** RP — the Rewards Promotions subscore for a place's posture. The saved
- * blob's rungs override these code defaults on the Scoring Config page. */
+ * blob's rungs override these code defaults on the Lineup Config page. */
 export function rpForStrategy(
   id: StrategyId | null,
   rungs: Record<StrategyId, number> = RP_BY_STRATEGY,

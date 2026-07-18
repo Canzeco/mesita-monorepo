@@ -83,6 +83,7 @@ export function DeckPlayground() {
       const smVal = smScore(
         {
           km: w.km,
+          tolKm: null,
           zoneMode: w.zoneMode,
           opensInH: win.opensInH,
           openForH: win.openForH,

@@ -13,7 +13,7 @@ export default function MemoConfigLayout({
     <ConfigPageLayout
       eyebrow="Agents · Memo"
       title="Memo Config"
-      description="Memo — Mesita's consumer AI concierge (consumer-web-ask-memo), the Ask AI tab on consumer Home. Tune its persona, model, and how it retrieves places. Its retrieval set is the Pre-Memo deck, composed over in Scoring Config → Decks."
+      description="Memo — Mesita's consumer AI concierge (consumer-web-ask-memo), the Ask AI tab on consumer Home. Tune its persona, model, and how it retrieves places. It retrieves its candidates from Lineup (configured in Lineup Config → Scores & Lanes)."
     >
       {children}
     </ConfigPageLayout>

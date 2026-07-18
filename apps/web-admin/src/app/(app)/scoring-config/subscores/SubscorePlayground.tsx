@@ -7,6 +7,7 @@ import {
   gpParts,
   LANES,
   laneScore,
+  MISMATCH_RUNG,
   rpScore,
   smParts,
   SUBSCORES,
@@ -102,6 +103,7 @@ export function SubscorePlayground() {
     const smP = smParts(
       {
         km: w.km,
+        tolKm: null,
         zoneMode: w.zoneMode,
         opensInH: win.opensInH,
         openForH: win.openForH,
@@ -343,7 +345,7 @@ export function SubscorePlayground() {
                       ? "nothing asked → 1"
                       : `${run.rel} · place is ${place?.category ?? "uncategorized"}`
                   }
-                  math={`ladder 1 / ${sm.what.sibling.toFixed(2)} / ${sm.what.mismatch.toFixed(2)}`}
+                  math={`ladder 1 / ${sm.what.sibling.toFixed(2)} / ${MISMATCH_RUNG.toFixed(2)}`}
                   value={run.smP.what}
                 />
                 <ResultLine>

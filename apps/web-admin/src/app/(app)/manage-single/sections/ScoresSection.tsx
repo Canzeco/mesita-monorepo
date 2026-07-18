@@ -11,6 +11,7 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import {
+  DEFAULT_POINT_TOL_KM,
   DEFAULT_SM_PARAMS as SM,
   fitScore,
   gpParts,
@@ -33,7 +34,7 @@ import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 //
 // This file RENDERS the model (v10); the model, its knobs and the reasoning
 // live in @/lib/business/scores (RP postures in ./strategies), and the
-// global view is Scoring Config. Three lanes, one score each, all [0,1]:
+// global view is Lineup Config. Three lanes, one score each, all [0,1]:
 //
 //   Organic   EM · SM · GP · XX
 //   Inorganic EM · SM · RP · XX
@@ -44,7 +45,7 @@ import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
 // in an admin view, so EM and SM's inputs are operator controls — that is
 // the nature of the surface, not a gap in it. XX is pinned to 1 (off): a
 // per-card random draw has no meaning for a single place. This page uses the
-// CODE defaults for the knobs — the saved blob binds the Scoring Config
+// CODE defaults for the knobs — the saved blob binds the Lineup Config
 // page, not this one.
 // ════════════════════════════════════════════════════════════════════════
 
@@ -84,7 +85,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
   const gp = gpParts(place.google_review_count, place.google_stars_overall);
 
   // SM — where × when at the operator's inputs; what = 1 (nothing asked).
-  const where = whereScore(km, SM.where.pointTolKm, SM.where.distExp);
+  const where = whereScore(km, DEFAULT_POINT_TOL_KM, SM.where.distExp);
   const wait = waitScore(opensIn, SM.when);
   const fit = fitScore(openFor, SM.when);
   const when = wait * fit;
@@ -107,7 +108,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
             GP and RP are real data — Google star mass and the live promo rates; EM and SM&apos;s
             inputs are operator sliders, XX is pinned to 1 (off). Global knobs live in{" "}
             <Link href="/scoring-config" className="font-semibold underline-offset-2 hover:underline">
-              Scoring Config
+              Lineup Config
             </Link>
             .
           </p>
@@ -196,8 +197,8 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
             </p>
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-            The intent&apos;s structured asks against this place&apos;s facts. Point-mode
-            tolerance {SM.where.pointTolKm} km · doubling distance beyond it costs{" "}
+            The intent&apos;s structured asks against this place&apos;s facts. The consumer owns
+            the tolerance (default {DEFAULT_POINT_TOL_KM} km) · doubling distance beyond it costs{" "}
             {Math.pow(2, SM.where.distExp).toFixed(0)}×. Time resolves to 30-minute blocks.
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-3">
@@ -210,7 +211,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
               step={0.5}
               v={km}
               onChange={setKm}
-              note={`Halves at ${SM.where.pointTolKm} km (the tolerance).`}
+              note={`Halves at ${DEFAULT_POINT_TOL_KM} km (the default tolerance).`}
             />
             <Ctl
               label="Wait · opens in"

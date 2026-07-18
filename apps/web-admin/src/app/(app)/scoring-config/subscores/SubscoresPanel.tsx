@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  DEFAULT_POINT_TOL_KM,
   EM_ENCODER,
   gpParts,
+  MISMATCH_RUNG,
   PIPELINE_CONTEXT,
   fitScore,
   waitScore,
@@ -134,22 +136,12 @@ export function SubscoresPanel() {
       {/* ══ SM ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="SM Subscore · Structured Match — where × when × what"
-        subtitle="Deterministic checks of the intent's structured asks against place facts, each factor [0,1], multiplied — any hard miss tanks the card. where measures km to the consumer's W (a named region set, else the GPS point); when = wait × fit on the real hours; what is the category ladder. Every knob is a belief argued from the product."
+        subtitle="Deterministic checks of the intent's structured asks against place facts, each factor [0,1], multiplied — any hard miss tanks the card. where and when are CONTINUOUS curves, never buckets; what is the one categorical ladder. The consumer owns the where tolerance (their Where filter slider; default 5 km, frozen) — the admin tunes only how hard distance bites. 1 · 2 · 1 knobs, every one a belief argued from the product."
       >
         <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <div>
-            <SubHead>where · two knobs — how near, how hard</SubHead>
+            <SubHead>where · one knob — how hard distance bites</SubHead>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
-              <Slider
-                label="Distance tolerance"
-                value={`${sm.where.pointTolKm.toFixed(1)} km`}
-                min={0.5}
-                max={20}
-                step={0.5}
-                v={sm.where.pointTolKm}
-                onChange={(v) => setWhere("pointTolKm", v)}
-                hint={`km where the pull halves — 8 km → ${whereScore(8, sm.where.pointTolKm, sm.where.distExp).toFixed(2)}; a named zone uses 30% of this`}
-              />
               <Slider
                 label="Distance falloff"
                 value={sm.where.distExp.toFixed(1)}
@@ -158,9 +150,13 @@ export function SubscoresPanel() {
                 step={0.5}
                 v={sm.where.distExp}
                 onChange={(v) => setWhere("distExp", v)}
-                hint={`the exponent — doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×`}
+                hint={`the exponent — doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×; at the default ${DEFAULT_POINT_TOL_KM} km tolerance, 8 km → ${whereScore(8, DEFAULT_POINT_TOL_KM, sm.where.distExp).toFixed(2)}`}
               />
             </div>
+            <p className="text-muted-foreground mt-3 font-mono text-[10px] leading-relaxed">
+              tolerance = the consumer&apos;s Where slider (default {DEFAULT_POINT_TOL_KM} km,
+              frozen) · a named zone uses 30% of it · continuous, never a bucket
+            </p>
           </div>
           <div>
             <SubHead>when · two knobs — closed-now, visit length</SubHead>
@@ -191,32 +187,23 @@ export function SubscoresPanel() {
             </p>
           </div>
           <div>
-            <SubHead>what · the category ladder</SubHead>
+            <SubHead>what · one knob — the category ladder</SubHead>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
               <Slider
-                label="Sibling rung"
+                label="Super-category rung"
                 value={sm.what.sibling.toFixed(2)}
                 min={0}
                 max={1}
                 step={0.05}
                 v={sm.what.sibling}
                 onChange={(v) => setWhat("sibling", v)}
-                hint="shares a mega category — asked cocktail bar, got a mezcalería"
-              />
-              <Slider
-                label="Mismatch rung"
-                value={sm.what.mismatch.toFixed(2)}
-                min={0}
-                max={1}
-                step={0.05}
-                v={sm.what.mismatch}
-                onChange={(v) => setWhat("mismatch", v)}
-                hint="no overlap — floored above 0 so SM never vetoes semantics"
+                hint="same super category, different category — asked cocktail bar, got a mezcalería"
               />
             </div>
             <p className="text-muted-foreground mt-3 font-mono text-[10px] leading-relaxed">
-              listed (or mega category listed) → 1 · sibling → {sm.what.sibling.toFixed(2)} ·
-              mismatch → {sm.what.mismatch.toFixed(2)} · nothing asked → 1
+              categorical on purpose: same category → 1 · same super category →{" "}
+              {sm.what.sibling.toFixed(2)} · none → {MISMATCH_RUNG.toFixed(2)} (frozen, never 0)
+              · nothing asked → 1
             </p>
           </div>
         </div>
@@ -309,7 +296,7 @@ export function SubscoresPanel() {
       {/* ══ XX ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="XX Subscore · Random Number"
-        subtitle="XX = U^control, U ~ Uniform[0,1) drawn fresh per card per lane (three independent draws — Organic, Inorganic, Hybrid). Control is the CONSUMER'S knob — the Randomness filter sets it per query. The admin configures only the DEFAULT below: what the Standard Engine uses when the consumer sets no filter. 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos; higher control never changes WHO is luckiest, only how much luck beats merit."
+        subtitle="XX = U^control, U ~ Uniform[0,1) drawn fresh per card per lane (three independent draws — Organic, Inorganic, Hybrid). Control is the CONSUMER'S knob — the Randomness filter sets it per query. The admin configures only the DEFAULT below: what Lineup uses when the consumer sets no filter. 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos; higher control never changes WHO is luckiest, only how much luck beats merit."
         pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
@@ -350,7 +337,8 @@ export function SubscoresPanel() {
         <div className="flex flex-col gap-1 font-mono text-[11px]">
           <p>EM = max(0, cos(A, B)) · A = place doc · B = consumer + intent doc · [0,1]</p>
           <p>
-            SM = where × when × what · where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · wait ={" "}
+            SM = where × when × what · where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · tol
+            = consumer slider (default {DEFAULT_POINT_TOL_KM} km) · wait ={" "}
             {sm.when.waitFloor.toFixed(2)} + {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit =
             min(1, h/{sm.when.sessionH.toFixed(1)}) · 30-min blocks
           </p>
