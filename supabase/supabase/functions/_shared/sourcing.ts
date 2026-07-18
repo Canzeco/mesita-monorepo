@@ -83,21 +83,31 @@ const FAMILY_GOOGLE_TYPES: Record<FamilyKey, readonly string[]> = {
 
 const ALL_FAMILY_KEYS = Object.keys(FAMILY_GOOGLE_TYPES) as FamilyKey[];
 
-// gastropub is listed under both restaurants and bars_nightlife in the catalog;
-// first-match wins, which is fine — either family being enabled admits it.
-const GOOGLE_TYPE_TO_FAMILY: Record<string, FamilyKey> = (() => {
-  const m: Record<string, FamilyKey> = {};
+// A Google type can belong to more than one family — gastropub is listed
+// under both restaurants and bars_nightlife — so keep every family it maps
+// to. This used to be first-match-wins, which silently bound gastropub to
+// restaurants alone and made a bars-only policy reject it (MESITA-631).
+const GOOGLE_TYPE_TO_FAMILIES: Record<string, FamilyKey[]> = (() => {
+  const m: Record<string, FamilyKey[]> = {};
   for (const fam of ALL_FAMILY_KEYS) {
     for (const t of FAMILY_GOOGLE_TYPES[fam]) {
-      if (!(t in m)) m[t] = fam;
+      (m[t] ??= []).push(fam);
     }
   }
   return m;
 })();
 
+/** Every family a Google type belongs to. Empty = not a Mesita type. */
+export function familiesForGoogleType(
+  primaryType: string | null | undefined,
+): FamilyKey[] {
+  if (!primaryType) return [];
+  return GOOGLE_TYPE_TO_FAMILIES[primaryType] ?? [];
+}
+
+/** The primary (catalog-order first) family a Google type belongs to. */
 export function familyForGoogleType(primaryType: string | null | undefined): FamilyKey | null {
-  if (!primaryType) return null;
-  return GOOGLE_TYPE_TO_FAMILY[primaryType] ?? null;
+  return familiesForGoogleType(primaryType)[0] ?? null;
 }
 
 // The launch policy — must match 20260708120000_sourcing_config.sql and the
@@ -186,8 +196,9 @@ export function evaluatePlaceForChannel(
     return { eligible: false, code: "channel_disabled", reason: "Adding new places is currently turned off." };
   }
 
-  const family = familyForGoogleType(signals.primaryType);
-  if (family === null || !policy.families.includes(family)) {
+  // Any family the type belongs to being enabled admits it.
+  const families = familiesForGoogleType(signals.primaryType);
+  if (!families.some((f) => policy.families.includes(f))) {
     return {
       eligible: false,
       code: "family_not_eligible",

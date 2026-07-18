@@ -89,3 +89,27 @@ Deno.test("consumer_search fallback rejects below review floor", () => {
   assertEquals(verdict.eligible, false);
   if (!verdict.eligible) assertEquals(verdict.code, "below_min_reviews");
 });
+
+// A type listed under two families must be admitted by EITHER of them —
+// gastropub is both a restaurant and a bar. Regression: the map was built
+// first-match-wins, so gastropub silently bound to restaurants only and a
+// bars-only policy rejected it (MESITA-631).
+Deno.test("dual-family type is admitted by either family", () => {
+  const barsOnly = coerceChannelPolicy(
+    { enabled: true, families: ["bars_nightlife"], minRating: 0, minReviews: 0 },
+    "consumer_add",
+  );
+  const restaurantsOnly = coerceChannelPolicy(
+    { enabled: true, families: ["restaurants"], minRating: 0, minReviews: 0 },
+    "consumer_add",
+  );
+  const gastropub = { primaryType: "gastropub", rating: 4.8, reviewCount: 5000 };
+
+  assertEquals(evaluatePlaceForChannel(barsOnly, gastropub).eligible, true);
+  assertEquals(evaluatePlaceForChannel(restaurantsOnly, gastropub).eligible, true);
+
+  // A single-family type is still gated by its own family.
+  const nightClub = { primaryType: "night_club", rating: 4.8, reviewCount: 5000 };
+  assertEquals(evaluatePlaceForChannel(restaurantsOnly, nightClub).eligible, false);
+  assertEquals(evaluatePlaceForChannel(barsOnly, nightClub).eligible, true);
+});
