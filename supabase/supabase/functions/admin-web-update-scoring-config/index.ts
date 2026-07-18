@@ -12,7 +12,7 @@
 // from an older client is ignored:
 //   { v: 5, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
-//             0–20 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
+//             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
 //             no backfill) is ≤ their sum. A legacy v4 flat number expands
 //             to all three lanes.
 //   sm        Structured Match knobs — where (pointTolKm · zoneSpillKm ·
@@ -46,7 +46,7 @@ import {
 type Body = { config?: unknown };
 
 const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
-const LANE_N_MAX = 20;
+const LANE_N_MAX = 50;
 
 // Mirrors APPLICABLE_SOURCES in web-admin lib/business/scores.ts — a source
 // a subscore structurally cannot read is rejected, not silently dropped.
