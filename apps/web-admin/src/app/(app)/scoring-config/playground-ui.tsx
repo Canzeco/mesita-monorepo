@@ -14,8 +14,8 @@ import { PanelCard } from "./panel-ui";
 // Presentational bits shared by both playgrounds. Pure UI — all scoring
 // math stays in @/lib/business.
 
-/** Synthetic-intent style icons — there is only ONE engine (the Standard
- * Engine); these are the intent SHAPES the playground can fabricate. */
+/** Synthetic-intent style icons — there is only ONE engine (Lineup); these
+ * are the intent SHAPES its callers feed it, fabricated by the playground. */
 export const INTENT_STYLE_ICONS: Record<IntentStyle, LucideIcon> = {
   browse: GalleryHorizontalEnd,
   viewport: MapIcon,
@@ -288,8 +288,9 @@ export function RateCell({ label, value }: { label: string; value: number | null
   );
 }
 
-/** A generated vector as a mirrored waveform: bars up = positive slots,
- * bars down = negative, around a faint baseline. */
+/** A vector's semantic profile as a mirrored waveform. Every dim lands in a
+ * bin (positive mass drawn up, negative mass down) — aggregation, never
+ * sampling: the old strip read 1 dim in ~24 and missed 96% of the vector. */
 export function VectorStrip({
   vec,
   mini,
@@ -299,36 +300,147 @@ export function VectorStrip({
   mini?: boolean;
   className?: string;
 }) {
-  const bins = mini ? 16 : 64;
-  const step = Math.max(1, Math.floor(vec.length / bins));
-  const vals: number[] = [];
-  for (let i = 0; i < vec.length; i += step) vals.push(vec[i]);
-  const max = Math.max(0.0001, ...vals.map((v) => Math.abs(v)));
+  const bins = mini ? 16 : 96;
+  const size = Math.max(1, Math.ceil(vec.length / bins));
+  const pos: number[] = [];
+  const neg: number[] = [];
+  for (let b = 0; b * size < vec.length; b++) {
+    let p = 0;
+    let n = 0;
+    for (let i = b * size; i < Math.min(vec.length, (b + 1) * size); i++) {
+      const v = vec[i];
+      if (v > 0) p += v;
+      else n -= v;
+    }
+    pos.push(p);
+    neg.push(n);
+  }
+  const max = Math.max(0.0001, ...pos, ...neg);
   return (
     <div
       className={
         "bg-muted/40 border-border/50 relative flex items-stretch gap-px overflow-hidden rounded-md border px-0.5 " +
-        (mini ? "h-4" : "h-9") +
+        (mini ? "h-4" : "h-12") +
         " " +
         className
       }
-      title={`${vec.length}d feature-hash embedding (emulated) — up = positive slot, down = negative`}
+      title={`${vec.length}d embedding in ${pos.length} bins — up = positive mass, down = negative (every dim counted; emulated feature-hash encoder)`}
     >
       <span className="border-border/60 pointer-events-none absolute inset-x-0 top-1/2 border-t" aria-hidden />
-      {vals.map((v, i) => {
-        const h = Math.max(6, (Math.abs(v) / max) * 46);
-        return (
-          <span key={i} className="relative w-full" aria-hidden>
+      {pos.map((p, i) => (
+        <span key={i} className="relative w-full" aria-hidden>
+          {p > 0 ? (
             <span
-              className={
-                "absolute right-0 left-0 " +
-                (v >= 0 ? "bottom-1/2 rounded-t-[1px] bg-sky-500/70" : "top-1/2 rounded-b-[1px] bg-pink-500/70")
-              }
-              style={{ height: `${h}%` }}
+              className="absolute right-0 bottom-1/2 left-0 rounded-t-[1px] bg-sky-500/70"
+              style={{ height: `${Math.max(4, (p / max) * 46)}%` }}
             />
+          ) : null}
+          {neg[i] > 0 ? (
+            <span
+              className="absolute top-1/2 right-0 left-0 rounded-b-[1px] bg-pink-500/70"
+              style={{ height: `${Math.max(4, (neg[i] / max) * 46)}%` }}
+            />
+          ) : null}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** One ENTITY's semantic profile — the document the encoder reads and the
+ * vector it becomes, labeled and audited (active dims · unit norm). The two
+ * entities Lineup matches: Consumer + Intent (B) and Place (A). */
+export function SemanticProfile({
+  entity,
+  doc,
+  empty,
+  vec,
+  tone,
+  className = "",
+}: {
+  entity: string;
+  doc: string;
+  empty: string;
+  vec: number[];
+  tone: "violet" | "emerald" | "sky";
+  className?: string;
+}) {
+  const active = vec.reduce((n, v) => n + (v !== 0 ? 1 : 0), 0);
+  const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
+  const DOT: Record<typeof tone, string> = {
+    violet: "bg-violet-500",
+    emerald: "bg-emerald-500",
+    sky: "bg-sky-500",
+  };
+  return (
+    <div className={className}>
+      <div className="flex items-baseline gap-2">
+        <span className={"h-2 w-2 shrink-0 self-center rounded-full " + DOT[tone]} aria-hidden />
+        <p className="min-w-0 truncate text-[11px] font-semibold">{entity}</p>
+        <p className="text-muted-foreground ml-auto shrink-0 font-mono text-[9.5px]">
+          {active} active / {vec.length}d · ‖v‖ {norm.toFixed(2)}
+        </p>
+      </div>
+      <DocPre label="document · what the encoder reads" text={doc} empty={empty} className="mt-1.5" />
+      <VectorStrip vec={vec} className="mt-2" />
+    </div>
+  );
+}
+
+/** Where the match comes from — per-bin a·b contribution between the two
+ * entity vectors. Bars up (emerald) push the cosine up, bars down (rose)
+ * pull it down; the strip sums EXACTLY to cos(A, B) before EM's clamp. */
+export function MatchStrip({
+  a,
+  b,
+  className = "",
+}: {
+  a: number[];
+  b: number[];
+  className?: string;
+}) {
+  const dims = Math.min(a.length, b.length);
+  const size = Math.max(1, Math.ceil(dims / 96));
+  const vals: number[] = [];
+  let cos = 0;
+  for (let bi = 0; bi * size < dims; bi++) {
+    let c = 0;
+    for (let i = bi * size; i < Math.min(dims, (bi + 1) * size); i++) c += a[i] * b[i];
+    vals.push(c);
+    cos += c;
+  }
+  const max = Math.max(0.0001, ...vals.map((v) => Math.abs(v)));
+  return (
+    <div className={className}>
+      <div className="flex items-baseline gap-2">
+        <p className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.08em] uppercase">
+          match anatomy · per-bin a·b contribution
+        </p>
+        <p className="text-muted-foreground ml-auto shrink-0 font-mono text-[9.5px]">
+          Σ = raw cos(A, B) = {cos.toFixed(3)}
+        </p>
+      </div>
+      <div
+        className="bg-muted/40 border-border/50 relative mt-1 flex h-9 items-stretch gap-px overflow-hidden rounded-md border px-0.5"
+        title="each bar = one region of the two vectors — up pushes the cosine (and EM) up, down pulls it toward 0"
+      >
+        <span className="border-border/60 pointer-events-none absolute inset-x-0 top-1/2 border-t" aria-hidden />
+        {vals.map((v, i) => (
+          <span key={i} className="relative w-full" aria-hidden>
+            {v !== 0 ? (
+              <span
+                className={
+                  "absolute right-0 left-0 " +
+                  (v > 0
+                    ? "bottom-1/2 rounded-t-[1px] bg-emerald-500/70"
+                    : "top-1/2 rounded-b-[1px] bg-rose-500/70")
+                }
+                style={{ height: `${Math.max(4, (Math.abs(v) / max) * 46)}%` }}
+              />
+            ) : null}
           </span>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
