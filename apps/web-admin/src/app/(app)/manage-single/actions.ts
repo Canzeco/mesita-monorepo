@@ -2,13 +2,15 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { createUnitFromPlaceId as createUnitFromPlaceIdImpl } from "@/lib/create-unit-from-place";
+import type { PlanKey } from "@/lib/business/plans";
 
 // ════════════════════════════════════════════════════════════════════════
 // Single-unit console — a super-admin drives ANY place through the existing
 // business-* edge functions. The operator's JWT email is in super_admins, so
 // _shared/auth.ts (checkMembership / requireMembership / requireOwner) grants
-// access regardless of project_members. No bespoke data EFs needed — only the
-// place search below is admin-specific.
+// access regardless of project_members. Two things need admin-specific EFs:
+// the place search below, and setting `plan` (business-web-update-project
+// rejects it — it's the paid door's field, so admin gets its own).
 // ════════════════════════════════════════════════════════════════════════
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -188,6 +190,21 @@ export async function updatePlace(
   patch: Record<string, unknown> & { id: string },
 ): Promise<Result<AdminPlace>> {
   const r = await efInvoke<{ place: AdminPlace }>("business-web-update-project", patch);
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.place };
+}
+
+// Plan is billing, not profile: business-web-update-project rejects any body
+// carrying a `plan` key. The admin grants it through its own door instead —
+// no Stripe, no money (admin-web-set-plan).
+export async function setPlacePlan(
+  placeId: string,
+  plan: PlanKey,
+): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{ place: AdminPlace }>("admin-web-set-plan", {
+    placeId,
+    plan,
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
 }

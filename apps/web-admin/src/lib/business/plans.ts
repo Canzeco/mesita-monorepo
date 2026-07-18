@@ -5,8 +5,12 @@
 // Six levels (Low → Modest → Medium → High → Peak → Max). Plan cards show
 // the floor each subscription alone contributes; the rail shows the live sum.
 //
-// Admin writes plan directly (no Stripe Checkout). Legacy formal_* rows
-// still exist in the DB enum — fold them onto the matching discount tier.
+// Admin writes plan directly via admin-web-set-plan (no Stripe Checkout).
+//
+// The DB enum is `membership` = free | pro | ultra. The informal_*/formal_*
+// labels were collapsed and the old type dropped (20260626250000_r1_enum_
+// renames.sql), so `plan` only ever holds those three; reads still fold the
+// legacy spellings in case an old client sends one.
 
 /** Live visibility ladder — plan + discounts + cap. */
 export type VisibilityLevel =
@@ -202,12 +206,16 @@ export function subscriptionForPlan(p: PlacePlan): SubscriptionId {
   return "ultra_discount";
 }
 
-/** Atomic write payload for the plan picker — admin bypasses Stripe. */
-export function dbStateForSubscription(sub: SubscriptionId): {
-  plan: string;
-  fiscal_type?: string;
-} {
-  if (sub === "pro_discount") return { plan: "informal_pro", fiscal_type: "informal" };
-  if (sub === "ultra_discount") return { plan: "informal_ultra", fiscal_type: "informal" };
-  return { plan: "free" };
+/** The `membership` enum value a posture maps to. */
+export type PlanKey = "free" | "pro" | "ultra";
+
+/**
+ * The plan a posture grants. Goes to admin-web-set-plan, NOT into a
+ * business-web-update-project patch — that EF rejects any body carrying a
+ * `plan` key (plan is billing, not profile).
+ */
+export function planForSubscription(sub: SubscriptionId): PlanKey {
+  if (sub === "pro_discount") return "pro";
+  if (sub === "ultra_discount") return "ultra";
+  return "free";
 }
