@@ -58,6 +58,8 @@ import { toPlainText } from "./memo-text.ts";
 import {
   mergeAndRankMemoPredictions,
 } from "./memo-catalog-helpers.ts";
+import { answerWithAgent } from "./memo-agent.ts";
+import { localMoment } from "../_shared/memo-local-moment.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -120,6 +122,42 @@ Deno.serve(async (req) => {
   const profileCtxPromise = user
     ? readConsumerContext(admin, user.id)
     : Promise.resolve<string | null>(null);
+
+  // Memo v-next: the OpenAI reasoning airlock (sources: Perplexity · Lineup RAG
+  // · passive public-DB reads). Gated behind MEMO_ENGINE=agent so this ships
+  // dark until flipped; returns the exact same response contract as below, so
+  // the (already-enabled) frontend is untouched either way.
+  if ((Deno.env.get("MEMO_ENGINE") ?? "").trim() === "agent") {
+    const [persona, profileCtx] = await Promise.all([
+      systemPromptPromise,
+      profileCtxPromise,
+    ]);
+    const gp = readGooglePlacesKey();
+    const agent = await answerWithAgent({
+      admin,
+      userId: user?.id ?? null,
+      query,
+      lat,
+      lng,
+      persona,
+      hiddenContext: hiddenMemoContext(profileCtx, lat, lng),
+      history: body.history,
+      keys: {
+        openai: Deno.env.get("OPENAI_KEY") ?? "",
+        perplexity: perplexityKey,
+        google: gp.ok ? gp.key : "",
+      },
+      model: (Deno.env.get("MEMO_MODEL") ?? "gpt-4o").trim(),
+    });
+    return json({
+      ok: true,
+      answer: agent.answer,
+      predictions: agent.predictions,
+      related: agent.related,
+      citations: agent.citations,
+      userId: user?.id ?? null,
+    });
+  }
 
   // Candidates FIRST (place-seeking only), so Perplexity can write its
   // recommendation ABOUT the exact cards the user sees — prose and rail stay
@@ -309,4 +347,24 @@ async function mesitaByName(
     mesitaSlug: row.slug,
     rating: row.google_stars_overall,
   }));
+}
+
+// Location + local time (+ signed-in profile) the agent reasons over but must
+// not recite. Mirrors the legacy hidden context; buildAgentSystemPrompt wraps
+// it under a "never recite verbatim" header.
+function hiddenMemoContext(
+  profileCtx: string | null,
+  lat: number | null,
+  lng: number | null,
+): string | null {
+  const { clock, daypart } = localMoment(lng);
+  const bits: string[] = [];
+  if (profileCtx) bits.push(profileCtx);
+  if (lat !== null && lng !== null) {
+    bits.push(`near latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}`);
+  }
+  if (clock) bits.push(`local time ${clock} (${daypart})`);
+  return bits.length > 0
+    ? `The user is ${bits.join("; ")}. Favour places open and appropriate for this time of day.`
+    : null;
 }
