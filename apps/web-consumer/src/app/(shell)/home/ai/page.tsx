@@ -1,20 +1,17 @@
-import { redirect } from "next/navigation";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+"use client";
 
-// Ask AI (the Memo concierge, MESITA-156) is temporarily BLOCKED while we finish
-// Swipe / Favorites / Search first. The route is kept (not deleted) so un-parking
-// is a one-file revert: restore the AskAiTab render below and flip `soon: false`
-// in HomeModeNav. The nav pill is disabled; this redirect also blocks direct URLs.
-//
-//   "use client";
-//   import { AskAiTab } from "@/components/consumer/home/AskAiTab";
-//   import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
-//   const { places } = useHomeDeck();
-//   return (
-//     <div className="min-h-0 flex-1 overflow-hidden">
-//       <AskAiTab places={places} />
-//     </div>
-//   );
+import { AskAiTab } from "@/components/consumer/home/AskAiTab";
+import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
+
+// Ask AI — the Memo concierge (MESITA-156) as a full Home tab. Shares the
+// fetched deck (HomeDeckBoundary) with its sibling tabs so the cards Memo
+// surfaces resolve against the same catalog snapshot. Clipped flex slot: the
+// panel owns its own scroll, so the page itself never scrolls here.
 export default function HomeAiPage() {
-  redirect(CONSUMER_ROUTES.homeDefault);
+  const { places } = useHomeDeck();
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <AskAiTab places={places} />
+    </div>
+  );
 }
