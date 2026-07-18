@@ -29,14 +29,7 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
-  {
-    href: CONSUMER_ROUTES.homeTabs.ai,
-    label: "Memo",
-    Icon: Sparkles,
-    soon: true,
-    blurb:
-      "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
-  },
+  { href: CONSUMER_ROUTES.homeTabs.ai, label: "Memo", Icon: Sparkles },
   {
     href: CONSUMER_ROUTES.homeTabs.social,
     label: "Social",
