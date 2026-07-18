@@ -17,7 +17,6 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
-  deriveWhereOptions,
   discoveryFiltersAreActive,
   orderByRandomness,
 } from "@/lib/discovery-filters-engine";
@@ -202,16 +201,19 @@ function Deck({ places }: { places: Place[] }) {
   // (or a denied prompt) keep whatever distance they had, or fall back
   // to a "0 km" placeholder so the chip never just vanishes.
   const coords = useUserLocation();
+  // Distances measure from the chosen zone center (a searched location) or,
+  // with none, the device fix — the same center the distance filter rings.
+  const center = filters.zone ?? coords;
   const located = useMemo(
-    () => runtimeDeck.map((v) => withUserDistance(v, coords)),
-    [runtimeDeck, coords],
+    () => runtimeDeck.map((v) => withUserDistance(v, center)),
+    [runtimeDeck, center],
   );
 
   // The deck the user actually swipes (MESITA-646): the shared discovery
-  // filters narrow `located` live, and the randomness level (MESITA-650)
-  // reorders it — jittered ranks at 1–2, full shuffle at 3. Option lists
-  // derive from the RAW snapshot so the sheet offers everything this deck
-  // actually has.
+  // filters narrow `located` live, and the 0–5 randomness level (MESITA-672)
+  // reorders it — jittered ranks in the middle, full shuffle at 5. Category
+  // options derive from the RAW snapshot so the sheet offers everything this
+  // deck actually has.
   const deck = useMemo(
     () =>
       orderByRandomness(
@@ -219,10 +221,6 @@ function Deck({ places }: { places: Place[] }) {
         filters.randomness,
       ),
     [located, filters],
-  );
-  const whereOptions = useMemo(
-    () => deriveWhereOptions(runtimeDeck),
-    [runtimeDeck],
   );
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(runtimeDeck),
@@ -472,7 +470,6 @@ function Deck({ places }: { places: Place[] }) {
     <FilterSheet
       open={filtersOpen}
       onClose={() => setFiltersOpen(false)}
-      whereOptions={whereOptions}
       categoryOptions={categoryOptions}
       count={deck.length}
       hasLocation={coords != null}

@@ -1,25 +1,26 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** "8:00 PM"-style label for a 0–23 hour. */
-export function formatHourLabel(hour: number): string {
-  const clamped = Math.min(23, Math.max(0, Math.round(hour)));
-  const suffix = clamped < 12 ? "AM" : "PM";
-  const base = clamped % 12 === 0 ? 12 : clamped % 12;
-  return `${base}:00 ${suffix}`;
-}
+// Shared presentational primitives for the discovery filter sheet (MESITA-672):
+// Pill + SectionLabel + a generic brand-filled RangeSlider driving the When
+// (hour), Distance (km) and Randomness (0–5) modules. One copy, both the sheet
+// body and the Where search field read from here.
 
 export function SectionLabel({
   children,
   className,
+  sub = false,
 }: {
   children: ReactNode;
   className?: string;
+  /** Sub-row label inside a module (Distance, Categories, …). */
+  sub?: boolean;
 }) {
   return (
     <p
       className={cn(
-        "text-muted-foreground mb-2 text-[11px] font-semibold tracking-wide",
+        "mb-2 text-[11px] font-semibold tracking-wide",
+        sub ? "text-muted-foreground/70" : "text-muted-foreground",
         className,
       )}
     >
@@ -56,34 +57,44 @@ export function Pill({
   );
 }
 
-// Slim styled native range for the hour — brand fill up to the thumb.
-// Dimmed while "Now" is active, but stays live: dragging it IS how the
-// user leaves Now. Only rendered inside the sheet (client-only mount), so
-// the new Date() resting position can't desync hydration.
-export function HourRange({
+// Slim brand-filled native range (hour / km / randomness). The fill runs to the
+// thumb; `dimmed` softens it while the module rests on a neutral default but
+// keeps it live — dragging is how the user leaves that default.
+export function RangeSlider({
+  min,
+  max,
+  step = 1,
   value,
-  dimmed,
   onChange,
+  ariaLabel,
+  dimmed = false,
+  className,
 }: {
+  min: number;
+  max: number;
+  step?: number;
   value: number;
-  dimmed: boolean;
-  onChange: (hour: number) => void;
+  onChange: (n: number) => void;
+  ariaLabel: string;
+  dimmed?: boolean;
+  className?: string;
 }) {
-  const pct = (value / 23) * 100;
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return (
     <input
       type="range"
-      min={0}
-      max={23}
-      step={1}
+      min={min}
+      max={max}
+      step={step}
       value={value}
-      aria-label="Hour of day"
+      aria-label={ariaLabel}
       onChange={(e) => onChange(Number(e.target.value))}
       className={cn(
-        "mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full transition-opacity outline-none",
+        "h-1.5 w-full cursor-pointer appearance-none rounded-full transition-opacity outline-none",
         "[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md",
         "[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow-md",
         dimmed && "opacity-50",
+        className,
       )}
       style={{
         background: `linear-gradient(to right, var(--color-secondary) 0%, var(--color-primary) ${pct}%, var(--color-muted) ${pct}%)`,

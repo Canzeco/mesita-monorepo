@@ -47,7 +47,6 @@ import { EmptySearchPrompt, SearchRailOverlay } from "./search-catalog-overlays"
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
-  deriveWhereOptions,
   discoveryFiltersAreActive,
 } from "@/lib/discovery-filters-engine";
 import {
@@ -115,13 +114,13 @@ export function SearchClient({
   // and catalog rail only exist here; the results panel owns the other state.
   const idle = trimmed.length === 0 && !searchOpen;
 
-  // Distances ride on the consumer's live location; the discovery filters
-  // then facet the SAME array the map pins and rail render.
+  // Distances ride on the chosen zone center (a searched location) or, with
+  // none, the consumer's live location; the discovery filters then facet the
+  // SAME array the map pins and rail render.
   const catalog = useMemo(
-    () => withDistances(places, userLocation),
-    [places, userLocation],
+    () => withDistances(places, filters.zone ?? userLocation),
+    [places, filters.zone, userLocation],
   );
-  const whereOptions = useMemo(() => deriveWhereOptions(catalog), [catalog]);
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(catalog),
     [catalog],
@@ -417,7 +416,6 @@ export function SearchClient({
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         ariaLabel="Search filters"
-        whereOptions={whereOptions}
         categoryOptions={categoryOptions}
         count={visible.length}
         hasLocation={userLocation != null}
