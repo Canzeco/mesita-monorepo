@@ -43,6 +43,7 @@ type SidebarProps = {
 
 const SIDEBAR_NAV = [
   { href: "/global-performance", label: "Global Monitor", Icon: Radar },
+  { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
   {
     href: ATLAS_PARENT.href,
@@ -76,8 +77,6 @@ const SIDEBAR_NAV = [
   },
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
-  // The ownership queue sits with the unit surfaces it acts on.
-  { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
 ] as const;
 
 function NavLink({
