@@ -145,26 +145,26 @@ export function ReservationsConfigClient({
         </p>
       </SectionCard>
 
-      {/* Testing — mock call number. The big affordance while we're not ringing
-          real venues. */}
+      {/* Test mode — while we're not ringing real venues, the agent calls one
+          fixed test number for every reservation. */}
       <SectionCard
         icon={<FlaskConical className="text-secondary h-4 w-4" />}
-        title="Testing — mock call number"
-        subtitle="While on, every reservation call dials this one number instead of the place's real line — whichever venue the guest booked. So we can test the whole flow end to end without ringing a single business."
+        title="Test mode"
+        subtitle="While test mode is on, every reservation call dials the test number below instead of the place's real line — whichever venue the guest booked. So we can run the whole flow end to end without ringing a single business."
       >
         <div className="mt-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Route every call to a test number</p>
+            <p className="text-sm font-semibold">Test mode</p>
             <p className="text-muted-foreground mt-0.5 text-xs">
               {cfg.testCall.enabled
-                ? "On — the agent ignores each place's real phone and dials the number below. Turn this off before real venues are ever called."
-                : "Off — the agent calls each place's actual reservation line. Leave off only when you mean to reach real businesses."}
+                ? "On — the agent ignores each place's real phone and dials the test number below. Keep this on until we're ready to call real venues."
+                : "Off — the agent calls each place's actual reservation line. Only turn test mode off when you mean to reach real businesses."}
             </p>
           </div>
           <Switch
             on={cfg.testCall.enabled}
             pending={pending}
-            label="Route every call to a test number"
+            label="Test mode"
             onClick={() =>
               patch({
                 testCall: { ...cfg.testCall, enabled: !cfg.testCall.enabled },
@@ -181,7 +181,7 @@ export function ReservationsConfigClient({
           <input
             type="tel"
             inputMode="tel"
-            placeholder="+52 1 55 1234 5678"
+            placeholder="+52 444 549 9597"
             value={cfg.testCall.number}
             disabled={pending || !cfg.testCall.enabled}
             onChange={(e) =>
@@ -197,7 +197,7 @@ export function ReservationsConfigClient({
           ) : (
             <span className="text-muted-foreground text-xs">
               E.164 format (leading +, country code). This is the only line the
-              agent will dial while the override is on.
+              agent will dial while test mode is on.
             </span>
           )}
         </label>

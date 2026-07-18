@@ -92,13 +92,19 @@ export const CHANNELS: Channel[] = [
   },
 ];
 
+// Current testing seed (Pato, 2026-07-17): while the agent is under test it dials
+// this one number for EVERY reservation instead of any real venue. Fully editable
+// from the admin page — this is only what the page (and a fresh/reset config row)
+// starts from. Ships ON so a missing config can never fall through to a real place.
+export const TEST_CALL_SEED = { enabled: true, number: "+524445499597" };
+
 export const DEFAULT_CONFIG: ReservationsConfig = {
   priority: ["phone", "whatsapp", "instagram"],
   // Phone is the only bookable channel today; WhatsApp + Instagram are parked
   // until their verified-partner launch, so the Enricher only ever seeds a phone.
   disabled: ["whatsapp", "instagram"],
   respectAdminOverride: true,
-  testCall: { enabled: false, number: "" },
+  testCall: { ...TEST_CALL_SEED },
   attempts: ATTEMPTS_DEFAULT,
 };
 
@@ -151,8 +157,8 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
     respectAdminOverride:
       typeof c.respectAdminOverride === "boolean" ? c.respectAdminOverride : true,
     testCall: {
-      enabled: typeof testRaw.enabled === "boolean" ? testRaw.enabled : false,
-      number: typeof testRaw.number === "string" ? testRaw.number.trim() : "",
+      enabled: typeof testRaw.enabled === "boolean" ? testRaw.enabled : TEST_CALL_SEED.enabled,
+      number: typeof testRaw.number === "string" ? testRaw.number.trim() : TEST_CALL_SEED.number,
     },
     attempts: clampAttempts(c.attempts),
   };
