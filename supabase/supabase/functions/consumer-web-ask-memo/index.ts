@@ -128,35 +128,44 @@ Deno.serve(async (req) => {
   // dark until flipped; returns the exact same response contract as below, so
   // the (already-enabled) frontend is untouched either way.
   if ((Deno.env.get("MEMO_ENGINE") ?? "").trim() === "agent") {
-    const [persona, profileCtx] = await Promise.all([
-      systemPromptPromise,
-      profileCtxPromise,
-    ]);
-    const gp = readGooglePlacesKey();
-    const agent = await answerWithAgent({
-      admin,
-      userId: user?.id ?? null,
-      query,
-      lat,
-      lng,
-      persona,
-      hiddenContext: hiddenMemoContext(profileCtx, lat, lng),
-      history: body.history,
-      keys: {
-        openai: Deno.env.get("OPENAI_KEY") ?? "",
-        perplexity: perplexityKey,
-        google: gp.ok ? gp.key : "",
-      },
-      model: (Deno.env.get("MEMO_MODEL") ?? "gpt-4o").trim(),
-    });
-    return json({
-      ok: true,
-      answer: agent.answer,
-      predictions: agent.predictions,
-      related: agent.related,
-      citations: agent.citations,
-      userId: user?.id ?? null,
-    });
+    try {
+      const [persona, profileCtx] = await Promise.all([
+        systemPromptPromise,
+        profileCtxPromise,
+      ]);
+      const gp = readGooglePlacesKey();
+      const agent = await answerWithAgent({
+        admin,
+        userId: user?.id ?? null,
+        query,
+        lat,
+        lng,
+        persona,
+        hiddenContext: hiddenMemoContext(profileCtx, lat, lng),
+        history: body.history,
+        keys: {
+          openai: Deno.env.get("OPENAI_KEY") ?? "",
+          perplexity: perplexityKey,
+          google: gp.ok ? gp.key : "",
+        },
+        model: (Deno.env.get("MEMO_MODEL") ?? "gpt-4o").trim(),
+      });
+      return json({
+        ok: true,
+        answer: agent.answer,
+        predictions: agent.predictions,
+        related: agent.related,
+        citations: agent.citations,
+        userId: user?.id ?? null,
+      });
+    } catch (e) {
+      // Dark-launch safety net: any agent-path failure degrades to the proven
+      // legacy pipeline below instead of 500-ing the consumer.
+      console.error(
+        "[ask-memo] agent path failed, falling back to legacy:",
+        (e as Error).message,
+      );
+    }
   }
 
   // Candidates FIRST (place-seeking only), so Perplexity can write its
