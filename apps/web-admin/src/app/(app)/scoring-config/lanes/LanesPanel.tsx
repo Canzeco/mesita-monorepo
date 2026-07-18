@@ -29,7 +29,7 @@ export function LanesPanel() {
     savedSection,
     saveSection,
     revertSection,
-    resetToDefaults,
+    resetSection,
   } = useScoring();
   const total = laneCountsTotal(laneN);
 
@@ -123,6 +123,7 @@ export function LanesPanel() {
           error={savingSection === "lanes" || sectionDirty.lanes ? saveError : null}
           onSave={() => saveSection("lanes")}
           onCancel={() => revertSection("lanes")}
+          onReset={() => resetSection("lanes")}
         />
       </PanelCard>
 
@@ -178,26 +179,6 @@ export function LanesPanel() {
               <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{f.detail}</p>
             </div>
           ))}
-        </div>
-      </PanelCard>
-
-      {/* ══ Defaults ═════════════════════════════════════════════════ */}
-      <PanelCard
-        title="Defaults"
-        subtitle="Both Ranking Config pages share ONE form — this loads the code defaults into every box on Subscores AND Scores & Lanes; each box stays unsaved until ITS own Save."
-      >
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={resetToDefaults}
-            disabled={savingSection != null}
-            className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-          >
-            Reset all boxes to defaults
-          </button>
-          <span className="text-muted-foreground ml-3 text-xs">
-            nothing is written until a box&apos;s Save — Cancel on any box reverts just that box
-          </span>
         </div>
       </PanelCard>
 

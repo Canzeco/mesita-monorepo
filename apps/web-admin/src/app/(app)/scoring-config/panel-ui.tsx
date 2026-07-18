@@ -5,7 +5,6 @@ import {
   CONTEXT_FIELDS,
   DATA_SOURCES,
   LANES,
-  SUBSCORES,
   type ContextSide,
   type DataAccess,
   type DataSourceId,
@@ -236,97 +235,84 @@ export function ContextConfigCols({
 }
 
 /**
- * THE CORE CONFIG (Notion spec): the data-access matrix — one row per
- * subscore, one column per data source. Applicable cells toggle ON/OFF
- * (default all ON); a source a subscore structurally cannot read renders as
- * "—". Both playgrounds enforce the matrix live.
+ * ONE subscore's data-access row (Notion spec, "the core config") — lives
+ * INSIDE that subscore's box (2026-07-17: the standalone matrix is gone). The
+ * subscore's applicable sources toggle ON/off (default all ON); a source it
+ * structurally cannot read shows a muted "—". XX reads nothing but its own
+ * draw, so it gets a note instead of toggles. Both playgrounds enforce it live.
  */
-export function DataAccessMatrix({
+export function SubscoreDataAccess({
+  subscore,
   access,
   onToggle,
 }: {
+  subscore: SubscoreId;
   access: DataAccess;
   onToggle: (subscore: SubscoreId, source: DataSourceId) => void;
 }) {
+  const applicable = APPLICABLE_SOURCES[subscore];
   return (
-    <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[560px] border-separate border-spacing-0">
-        <thead>
-          <tr>
-            <th className="text-muted-foreground pb-2 text-left text-[10px] font-bold tracking-[0.12em] uppercase">
-              Subscore
-            </th>
-            {DATA_SOURCES.map((src) => (
-              <th
+    <div className="border-border/50 mt-4 border-t pt-3">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+        Data access · sources this subscore may read
+      </p>
+      {applicable.length === 0 ? (
+        <p className="text-muted-foreground mt-1.5 font-mono text-[10.5px]">
+          reads nothing but its own draw — no data sources
+        </p>
+      ) : (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {DATA_SOURCES.map((src) => {
+            if (!(applicable as readonly DataSourceId[]).includes(src.id)) {
+              return (
+                <span
+                  key={src.id}
+                  title={`structurally cannot read ${src.label} data`}
+                  className="border-border/40 text-muted-foreground/50 inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-0.5 font-mono text-[10.5px]"
+                >
+                  {src.label} <span aria-hidden>—</span>
+                </span>
+              );
+            }
+            const isOn = access[subscore].includes(src.id);
+            return (
+              <button
                 key={src.id}
-                className="text-muted-foreground pb-2 text-center text-[10px] font-bold tracking-[0.12em] uppercase"
-                title={src.blurb}
+                type="button"
+                onClick={() => onToggle(subscore, src.id)}
+                aria-pressed={isOn}
+                aria-label={`${subscore.toUpperCase()} reads ${src.label} data`}
+                title={
+                  (src.blurb ? `${src.blurb} · ` : "") +
+                  (isOn ? "reading — click to revoke" : "revoked — click to allow")
+                }
+                className={
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] font-semibold transition active:scale-[0.97] " +
+                  (isOn
+                    ? "border-primary/50 bg-primary/10 text-foreground"
+                    : "border-border/50 text-muted-foreground border-dashed opacity-60 hover:opacity-100")
+                }
               >
                 {src.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {SUBSCORES.map((sub) => (
-            <tr key={sub.id}>
-              <td className="border-border/50 border-t py-2 pr-3">
-                <span className="font-mono text-[12px] font-bold">{sub.short}</span>
-                <span className="text-muted-foreground ml-2 hidden text-[11px] sm:inline">
-                  {sub.name}
+                <span className={isOn ? "text-primary font-bold" : "font-bold"}>
+                  {isOn ? "ON" : "off"}
                 </span>
-              </td>
-              {DATA_SOURCES.map((src) => {
-                const applicable = APPLICABLE_SOURCES[sub.id].includes(src.id);
-                if (!applicable) {
-                  return (
-                    <td
-                      key={src.id}
-                      className="border-border/50 text-muted-foreground/50 border-t py-2 text-center font-mono text-[11px]"
-                      title={`${sub.short} structurally cannot read ${src.label} data`}
-                    >
-                      —
-                    </td>
-                  );
-                }
-                const isOn = access[sub.id].includes(src.id);
-                return (
-                  <td key={src.id} className="border-border/50 border-t py-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => onToggle(sub.id, src.id)}
-                      aria-pressed={isOn}
-                      aria-label={`${sub.short} reads ${src.label} data`}
-                      title={
-                        isOn
-                          ? `${sub.short} reads ${src.label} data — click to revoke`
-                          : `${src.label} data revoked for ${sub.short} — click to allow`
-                      }
-                      className={
-                        "inline-flex h-6 min-w-12 items-center justify-center rounded-full border px-2 font-mono text-[10px] font-bold transition active:scale-[0.96] " +
-                        (isOn
-                          ? "border-primary/50 bg-primary/10 text-foreground"
-                          : "border-border/50 text-muted-foreground border-dashed opacity-60 hover:opacity-100")
-                      }
-                    >
-                      {isOn ? "ON" : "off"}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 /**
- * Per-box Save/Cancel footer (Pato: every box saves ITSELF, never the whole
- * page). Renders only when the box's section is dirty; Save merges this
- * section over the last-saved blob (the EF's whole-blob contract holds),
- * Cancel reverts only this section.
+ * Per-box Save / Reset / Cancel footer (Pato: every box owns its three
+ * buttons, never the whole page). Always rendered so Reset-to-defaults is
+ * reachable even on a clean box; Save/Cancel enable only when the box is
+ * dirty. Save merges this section over the last-saved blob (the EF's
+ * whole-blob contract holds), Cancel reverts only this section, Reset loads
+ * this box's code defaults into the form (dirty until Saved).
  */
 export function BoxSaveBar({
   dirty,
@@ -335,6 +321,7 @@ export function BoxSaveBar({
   error,
   onSave,
   onCancel,
+  onReset,
 }: {
   dirty: boolean;
   saving: boolean;
@@ -342,11 +329,21 @@ export function BoxSaveBar({
   error?: string | null;
   onSave: () => void;
   onCancel: () => void;
+  onReset?: () => void;
 }) {
-  if (!dirty && !saving && !savedOk && !error) return null;
   return (
     <div className="border-border/60 mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-      <span className="text-xs" aria-live="polite">
+      <span className="flex items-center gap-3 text-xs" aria-live="polite">
+        {onReset ? (
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={saving}
+            className="text-muted-foreground hover:text-foreground text-[12px] font-semibold underline-offset-2 transition hover:underline disabled:pointer-events-none disabled:opacity-40"
+          >
+            Reset to defaults
+          </button>
+        ) : null}
         {dirty && !saving ? (
           <span className="text-muted-foreground inline-flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
@@ -357,7 +354,7 @@ export function BoxSaveBar({
         ) : saving ? (
           <span className="text-muted-foreground">Saving…</span>
         ) : null}
-        {error ? <span className="ml-2 font-medium text-red-600">{error}</span> : null}
+        {error ? <span className="font-medium text-red-600">{error}</span> : null}
       </span>
       <div className="flex shrink-0 items-center gap-2">
         <button
