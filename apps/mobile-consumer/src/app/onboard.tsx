@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
@@ -33,6 +34,8 @@ export default function Onboard() {
 
   const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim());
   const canSubmit = firstName.trim().length > 0 && sex !== null && validBirthday;
+
+  const phoneLabel = session?.user.phone ? `+${session.user.phone}` : null;
 
   if (onboarded) {
     return <Redirect href="/(tabs)/home" />;
@@ -59,6 +62,38 @@ export default function Onboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+      {/* Identity header — the signed-in phone is already on auth.user from the
+          OTP step. "Not you?" signs out and returns to /sign-in. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 24,
+          paddingTop: 8,
+          paddingBottom: 4,
+        }}
+      >
+        <Text
+          className="text-muted-foreground"
+          style={{ fontSize: 13 }}
+          numberOfLines={1}
+        >
+          {phoneLabel ? `Signed in as ${phoneLabel}` : 'Signed in'}
+        </Text>
+        <Pressable
+          onPress={() => void signOut()}
+          accessibilityRole="button"
+          accessibilityLabel="Not you? Sign out"
+          hitSlop={8}
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text className="font-semibold text-primary" style={{ fontSize: 13 }}>
+            Not you?
+          </Text>
+        </Pressable>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
@@ -131,15 +166,13 @@ export default function Onboard() {
             })}
           </View>
 
-          <View style={{ marginTop: 20 }}>
-            <TextField
-            label="Birthday (YYYY-MM-DD)"
-            keyboardType="numbers-and-punctuation"
-            placeholder="1995-06-15"
-            value={birthday}
-            onChangeText={setBirthday}
-            />
-          </View>
+          <Text
+            className="font-semibold text-muted-foreground"
+            style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
+          >
+            BIRTHDAY
+          </Text>
+          <BirthdayPicker value={birthday} onChange={setBirthday} />
 
           <View style={{ marginTop: 24 }}>
             <Button
@@ -156,14 +189,14 @@ export default function Onboard() {
               {error}
             </Text>
           ) : null}
-        </View>
 
-        <View style={{ marginTop: 24 }}>
-          <Button variant="ghost" onPress={() => void signOut()}>
-            {session?.user.phone
-              ? `Not ${session.user.phone}? Sign out`
-              : 'Sign out'}
-          </Button>
+          <Text
+            className="text-muted-foreground"
+            style={{ marginTop: 12, textAlign: 'center', fontSize: 11, lineHeight: 15 }}
+          >
+            We use these to personalize recommendations. Your details are never
+            shared with places.
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { router } from 'expo-router';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 import {
@@ -97,7 +98,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Sign-out must land the user on the auth surface — clearing the session
+    // alone left them stranded on whatever authed screen they were on. The
+    // (tabs) guard also redirects once `session` clears, but navigating here
+    // makes the transition immediate and covers non-tab callers.
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      router.replace('/sign-in');
+    }
   };
 
   return (

@@ -33,6 +33,7 @@ export default function SignIn() {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   const country: Country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
   const e164 = useMemo(
@@ -44,6 +45,7 @@ export default function SignIn() {
 
   const sendCode = async () => {
     setError(null);
+    setInfo(null);
     setBusy(true);
     const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
     setBusy(false);
@@ -52,6 +54,21 @@ export default function SignIn() {
       return;
     }
     setStep('code');
+  };
+
+  // "Resend code" re-calls signInWithOtp without leaving the code step, then
+  // confirms inline (web PhoneOtpForm parity).
+  const resendCode = async () => {
+    setError(null);
+    setInfo(null);
+    setBusy(true);
+    const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
+    setBusy(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setInfo('We sent you a new code.');
   };
 
   const verifyCode = async () => {
@@ -167,6 +184,13 @@ export default function SignIn() {
                     onChangeText={setLocalNumber}
                   />
                 </View>
+                <Text
+                  className="text-muted-foreground"
+                  style={{ marginTop: 10, fontSize: 11, lineHeight: 15 }}
+                >
+                  We&apos;ll text you a 6-digit code. Standard SMS rates may
+                  apply.
+                </Text>
                 <View style={{ marginTop: 16 }}>
                   <Button
                     onPress={() => void sendCode()}
@@ -214,17 +238,64 @@ export default function SignIn() {
                     Verify
                   </Button>
                 </View>
-                <Button variant="ghost" onPress={() => setStep('phone')}>
+                <Pressable
+                  onPress={() => void resendCode()}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Resend code"
+                  style={{
+                    minHeight: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: busy ? 0.5 : 1,
+                  }}
+                >
+                  <Text
+                    className="font-semibold text-muted-foreground"
+                    style={{ fontSize: 12 }}
+                  >
+                    Didn&apos;t get it? Resend code
+                  </Text>
+                </Pressable>
+                <Button
+                  variant="ghost"
+                  onPress={() => {
+                    setStep('phone');
+                    setInfo(null);
+                    setError(null);
+                  }}
+                >
                   Change number
                 </Button>
               </>
             )}
+            {info ? (
+              <Text
+                className="mt-2 text-muted-foreground"
+                style={{ fontSize: 12 }}
+              >
+                {info}
+              </Text>
+            ) : null}
             {error ? (
               <Text className="mt-2 text-destructive" style={{ fontSize: 12 }}>
                 {error}
               </Text>
             ) : null}
           </View>
+
+          <Text
+            className="text-muted-foreground"
+            style={{
+              marginTop: 24,
+              textAlign: 'center',
+              fontSize: 12,
+              lineHeight: 17,
+            }}
+          >
+            By continuing you agree to Mesita&apos;s terms of service and
+            privacy policy.
+          </Text>
         </KeyboardAvoidingView>
       </SafeAreaView>
 
