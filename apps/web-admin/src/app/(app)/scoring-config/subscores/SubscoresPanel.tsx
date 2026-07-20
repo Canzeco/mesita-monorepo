@@ -107,10 +107,10 @@ export function SubscoresPanel() {
       {/* ══ EM ═══════════════════════════════════════════════════════ */}
       <PanelCard
         title="EM Subscore · Embeddings Match"
-        subtitle="cosine(place vector, consumer + intent vector), clamped max(0, cos) → [0,1]. The encoder is a FIXED decision, not a param: OpenAI text-embedding-3-small at its native 1536 dims (unit vectors, so cos = A·B — pgvector computes it at recall); the playground emulates it with a feature-hash encoder. Reads TEXT only — the context below is CONFIG: click a field to include or exclude it from the embedded documents."
+        subtitle="max(0, cos(place vector, consumer + intent vector)) → [0,1] — EM reads TEXT only; click a field below to include or exclude it from the embedded documents."
         pill={`${context.em.length} fields in context`}
       >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-md">
           <Slider
             label="Recall top-K"
             value={String(recallTopK)}
@@ -119,14 +119,13 @@ export function SubscoresPanel() {
             step={10}
             v={recallTopK}
             onChange={setRecallTopK}
-            hint="places pgvector returns per query, metro-filtered — the lanes score these"
+            hint="places recalled per query (metro-filtered) — the lanes score these"
           />
           <Chip
             label="Encoder · fixed"
             value={`${EM_ENCODER.model} · ${EM_ENCODER.dims}d`}
-            hint="a decision, not a knob — changing encoder = a new decision + catalog re-embed"
+            hint="a decision, not a knob — a new encoder means a catalog re-embed"
           />
-          <Chip label="Mapping" value="max(0, cos)" hint="revisit (percentile calibration) only if real cosines cluster" />
         </div>
         <ContextConfigCols enabled={emSet} onToggle={toggleContext} />
         <SubscoreDataAccess subscore="em" access={dataAccess} onToggle={toggleSource} />
