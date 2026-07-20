@@ -1,9 +1,12 @@
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
+  Camera,
   Download,
   Trash2,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Linking, Text } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import {
   LinkRow,
@@ -11,13 +14,16 @@ import {
   SectionLabel,
   SelectRow,
 } from '@/components/me/me-settings-rows';
+import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
+import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
-import { errMsg } from '@/lib/utils';
+import { toast } from '@/lib/toast';
+import { errMsg, firstInitial } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 const TERMS_URL = 'https://www.mesita.ai/terms';
@@ -54,6 +60,9 @@ export function PersonalDetailsSheet({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const avatarUrl = profile?.avatar_url ?? null;
+  const initials = firstInitial(firstName, 'M');
+
   const save = async () => {
     if (!firstName.trim()) {
       setError('First name required');
@@ -83,6 +92,65 @@ export function PersonalDetailsSheet({
       title="Personal details"
       subtitle="How you appear across Mesita"
     >
+      {/* Tappable avatar — photo upload isn't wired to storage yet, so it
+          surfaces a coming-soon toast rather than a dead control (web parity). */}
+      <View style={{ alignItems: 'center' }}>
+        <Pressable
+          onPress={() => toast('Photo uploads are coming soon.')}
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+          hitSlop={8}
+          style={{ position: 'relative' }}
+        >
+          <LinearGradient
+            colors={[...GRADIENTS.pink]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 999,
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                accessibilityLabel="Profile photo"
+              />
+            ) : (
+              <Text
+                className="font-display font-bold"
+                style={{ fontSize: 28, color: '#ffffff' }}
+              >
+                {initials}
+              </Text>
+            )}
+          </LinearGradient>
+          <View
+            style={{
+              position: 'absolute',
+              right: -2,
+              bottom: -2,
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              backgroundColor: '#260409',
+              borderWidth: 2,
+              borderColor: '#fff7f8',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Camera color="#fff7f8" size={14} />
+          </View>
+        </Pressable>
+      </View>
+
       <TextField
         label="First name"
         value={firstName}
@@ -96,13 +164,12 @@ export function PersonalDetailsSheet({
         editable={false}
         helper="Phone is your sign-in identity and can’t be edited here."
       />
-      <TextField
-        label="Birthday (YYYY-MM-DD)"
-        value={birthday}
-        onChangeText={setBirthday}
-        placeholder="1990-01-15"
-        autoCapitalize="none"
-      />
+      <View className="gap-1.5">
+        <Text className="font-semibold text-foreground" style={{ fontSize: 13 }}>
+          Birthday
+        </Text>
+        <BirthdayPicker value={birthday} onChange={setBirthday} />
+      </View>
       {error && firstName.trim() ? (
         <Text className="text-destructive" style={{ fontSize: 13 }}>
           {error}

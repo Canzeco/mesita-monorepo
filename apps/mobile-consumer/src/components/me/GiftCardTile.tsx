@@ -58,13 +58,24 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
       style={{
         borderRadius: 16,
         padding: 20,
-        minHeight: 168,
+        // Credit-card proportions (ISO/IEC 7810 ID-1, 85.6×53.98) — web parity.
+        aspectRatio: 85.6 / 53.98,
         overflow: 'hidden',
         ...SHADOW_GLOW,
       }}
     >
+      {/* Gift-card gloss: a soft diagonal sheen across the gradient, bottom-left
+          → top-right (web `bg-gradient-to-tr from-transparent via-white/5
+          to-white/20`). Sits above the gradient, below emblem + content. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['transparent', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.2)']}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
       <Emblem
-        color="rgba(255,255,255,0.12)"
+        color="rgba(255,255,255,0.1)"
         size={112}
         strokeWidth={1.5}
         style={{ position: 'absolute', right: -12, bottom: -16 }}

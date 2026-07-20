@@ -58,30 +58,22 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
       title="Verify Instagram"
       subtitle="via @mesita.bot · 1-minute setup"
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <LinearGradient
-          colors={[...GRADIENTS.instagram]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <AtSign color="#fff" size={22} />
-        </LinearGradient>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '700', fontSize: 20, color: '#260409' }}>
-            Verify Instagram
-          </Text>
-          <Text style={{ color: '#775254', fontSize: 13 }}>
-            1,000+ followers unlocks Premium
-          </Text>
-        </View>
-      </View>
+      {/* Branded icon tile only — the sheet header already carries the title
+          and "via @mesita.bot" subtitle, so the body no longer repeats it. */}
+      <LinearGradient
+        colors={[...GRADIENTS.instagram]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <AtSign color="#fff" size={22} />
+      </LinearGradient>
 
       {[
         'Follow @mesita.bot on Instagram.',
