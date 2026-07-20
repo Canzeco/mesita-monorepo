@@ -4,7 +4,6 @@ import {
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   Text,
@@ -38,10 +37,14 @@ import {
   type TicketFlowStepId,
 } from '@/lib/ticket-flow-steps';
 import { ActionCard } from '@/components/rewards/ActionCard';
+import { TicketDetailsSkeleton } from '@/components/rewards/TicketDetailsSkeleton';
 import { VisitComplete } from '@/components/rewards/VisitComplete';
 import { VisitHeader } from '@/components/rewards/VisitHeader';
 import { renderStepActions } from '@/components/rewards/renderStepActions';
-import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
+import {
+  CONSUMER_ROUTES,
+  placePath,
+} from '@/lib/consumer-route-contract';
 import { errMsg } from '@/lib/utils';
 
 export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
@@ -62,7 +65,11 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
     overall: 0,
     comments: '',
   });
-  const [peekStepId, setPeekStepId] = useState<TicketFlowStepId | null>(null);
+  // Peek is scoped to the active step id — advances invalidate peek without effects.
+  const [peek, setPeek] = useState<{
+    forActive: TicketFlowStepId | null;
+    id: TicketFlowStepId;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -128,14 +135,17 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
   const isComplete = isTicketFlowComplete(progress);
   const flowSteps = useMemo(() => resolveTicketFlowSteps(progress), [progress]);
   const activeStep = flowSteps.find((s) => s.state === 'active');
+  const activeStepId = activeStep?.id ?? null;
+  const peekStepId =
+    peek && peek.forActive === activeStepId ? peek.id : null;
 
   const displayStepId: TicketFlowStepId = useMemo(() => {
     if (peekStepId && flowSteps.some((s) => s.id === peekStepId)) {
-      const peek = flowSteps.find((s) => s.id === peekStepId)!;
-      if (peek.state !== 'upcoming') return peekStepId;
+      const peeked = flowSteps.find((s) => s.id === peekStepId)!;
+      if (peeked.state !== 'upcoming') return peekStepId;
     }
-    return activeStep?.id ?? flowSteps[flowSteps.length - 1]?.id ?? 'scan';
-  }, [peekStepId, activeStep, flowSteps]);
+    return activeStepId ?? flowSteps[flowSteps.length - 1]?.id ?? 'scan';
+  }, [peekStepId, activeStepId, flowSteps]);
 
   const displayStep = flowSteps.find((s) => s.id === displayStepId);
 
@@ -151,6 +161,10 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
     rows[0]?.created_at ??
     null;
   const placeName = payload.place_name ?? 'Partner place';
+  const placeLink =
+    payload.place_slug || payload.project_id
+      ? placePath(payload.place_slug || payload.project_id!)
+      : null;
   const visitDateLabel = formatTicketVisitDate(visitDateIso);
   const capMxn = payload.reward_cap_mxn ?? payload.monthly_promo_cap ?? null;
   const rewardLabel = formatTicketRewardLabel(payload, { capMxn });
@@ -169,8 +183,8 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
   const handleStepSelect = (id: TicketFlowStepId) => {
     const step = flowSteps.find((s) => s.id === id);
     if (!step || step.state === 'upcoming') return;
-    if (step.state === 'active') setPeekStepId(null);
-    else setPeekStepId(id);
+    if (step.state === 'active') setPeek(null);
+    else setPeek({ forActive: activeStepId, id });
   };
 
   const onMockStoryDetect = useCallback(async () => {
@@ -244,11 +258,12 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
         showsVerticalScrollIndicator={false}
       >
         {loading ? (
-          <ActivityIndicator color="#fb2b7b" style={{ marginTop: 40 }} />
+          <TicketDetailsSkeleton />
         ) : (
           <>
             <VisitHeader
               placeName={placeName}
+              placeHref={placeLink}
               placePhotoUrl={payload.place_photo_url}
               rewardLabel={rewardLabel}
               visitDateLabel={visitDateLabel}

@@ -66,8 +66,8 @@ export function ClassPreviewToggle() {
         {(
           [
             { value: 'free', label: 'Free' },
-            { value: 'subscription', label: 'Sub' },
-            { value: 'instagram', label: 'IG' },
+            { value: 'subscription', label: 'Subscription' },
+            { value: 'instagram', label: 'Instagram' },
           ] as const
         ).map((opt) => {
           const active = selected === opt.value;
@@ -86,9 +86,10 @@ export function ClassPreviewToggle() {
               }}
             >
               <Text
+                numberOfLines={1}
                 style={{
                   fontWeight: '600',
-                  fontSize: 13,
+                  fontSize: 11,
                   color: active ? '#260409' : '#775254',
                 }}
               >

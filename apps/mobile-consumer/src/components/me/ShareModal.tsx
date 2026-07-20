@@ -35,11 +35,14 @@ export function ShareModal({ visible, onClose }: Props) {
           <UserPlus color="#fff" size={22} />
         </LinearGradient>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '700', fontSize: 20, color: '#260409' }}>
-            Share Mesita
+          <Text
+            className="font-display font-bold text-foreground"
+            style={{ fontSize: 18 }}
+          >
+            Pass it on
           </Text>
-          <Text style={{ color: '#775254', fontSize: 13 }}>
-            Five gift cards — friend to partner
+          <Text className="text-muted-foreground" style={{ fontSize: 13 }}>
+            Your seat at the table — pass it on
           </Text>
         </View>
       </View>
