@@ -22,29 +22,8 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
     p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: 12,
-        overflow: 'hidden',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
-        padding: 12,
-      }}
-    >
-      <View
-        style={{
-          height: 64,
-          width: 64,
-          borderRadius: 12,
-          overflow: 'hidden',
-          backgroundColor: '#faeff0',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+    <View className="flex-row gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3">
+      <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-muted">
         {p.place_photo_url ? (
           <Image
             source={{ uri: p.place_photo_url }}
@@ -55,57 +34,25 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
           <MapPin color="#775254" size={20} style={{ opacity: 0.4 }} />
         )}
       </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
+      <View className="min-w-0 flex-1">
         <Text
           numberOfLines={2}
-          style={{
-            fontSize: 14,
-            lineHeight: 18,
-            fontFamily: 'Inter_600SemiBold',
-            color: '#260409',
-          }}
+          className="text-sm font-semibold leading-[18px] text-foreground"
         >
           {p.place_name ?? 'Mesita partner'}
         </Text>
-        <View
-          style={{
-            marginTop: 2,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
+        <View className="mt-0.5 flex-row items-center gap-1.5">
           <KindIcon kind={n.kind} />
-          <Text
-            style={{
-              fontSize: 12,
-              color: '#775254',
-              fontFamily: 'Inter_400Regular',
-            }}
-          >
+          <Text className="text-xs text-muted-foreground">
             {kindLabel(n.kind)}
           </Text>
         </View>
         {reward > 0 ? (
-          <Text
-            style={{
-              marginTop: 4,
-              fontSize: 12,
-              fontFamily: 'Inter_500Medium',
-              color: '#0284c7',
-            }}
-          >
+          <Text className="mt-1 text-xs font-medium text-sky-600">
             Reward {formatPayMx(reward, p.currency)}
           </Text>
         ) : null}
-        <Text
-          style={{
-            marginTop: 4,
-            fontSize: 10,
-            color: '#775254',
-            fontFamily: 'Inter_400Regular',
-          }}
-        >
+        <Text className="mt-1 text-[10px] text-muted-foreground">
           {new Date(n.created_at).toLocaleString(undefined, {
             month: 'short',
             day: 'numeric',
@@ -120,15 +67,6 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
 
 export function SkeletonRow() {
   return (
-    <View
-      style={{
-        height: 88,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
-        opacity: 0.7,
-      }}
-    />
+    <View className="h-[88px] rounded-2xl border border-border bg-card opacity-70" />
   );
 }

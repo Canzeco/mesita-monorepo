@@ -8,6 +8,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { addEfBreadcrumb, sentryEnabled, Sentry } from '@/lib/sentry';
+
 // The shape every EF returns. Discriminated on `ok` so TypeScript narrows
 // correctly after the helper's success check.
 type EFResult<T> =
@@ -49,6 +51,8 @@ export async function invokeEF<T>(
   body: Record<string, unknown>,
   fallback = `${fn} failed`,
 ): Promise<T> {
+  addEfBreadcrumb({ fn, level: 'info', message: `invoke ${fn}` });
+
   const { data, error } = await client.functions.invoke<EFResult<T>>(fn, {
     body,
   });
@@ -57,20 +61,37 @@ export async function invokeEF<T>(
     const parsed = await parseInvokeErrorBody(error);
     const message = pickErrorMessage(parsed) ?? error.message;
     const code = parsed && typeof parsed.code === 'string' ? parsed.code : null;
+    const status = readInvokeStatus(error);
+    addEfBreadcrumb({
+      fn,
+      level: 'error',
+      status,
+      code,
+      message,
+    });
+    if (sentryEnabled) {
+      Sentry.captureException(
+        new EFError(message, { fn, code, status, body: parsed }),
+      );
+    }
     throw new EFError(message, {
       fn,
       code,
-      status: readInvokeStatus(error),
+      status,
       body: parsed,
     });
   }
   if (!data) {
+    addEfBreadcrumb({ fn, level: 'error', message: fallback });
     throw new EFError(fallback, { fn });
   }
   if (!data.ok) {
-    throw new EFError(data.error ?? fallback, {
+    const message = data.error ?? fallback;
+    const code = data.code ?? null;
+    addEfBreadcrumb({ fn, level: 'error', code, message });
+    throw new EFError(message, {
       fn,
-      code: data.code ?? null,
+      code,
       body: data as Record<string, unknown>,
     });
   }

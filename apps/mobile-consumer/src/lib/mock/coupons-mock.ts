@@ -1,0 +1,160 @@
+// Coupon entity, independent of reservations and of the legacy ticket
+// model. A coupon is a discount instrument: it is held by the guest, gets
+// redeemed on a visit, and has its own per-kind lifecycle.
+//
+// When the coupon is being used (or planned-to-be-used) at a known
+// reservation, the embedded `linkedReservation` summary travels with
+// the coupon so the card can render a "tied reservation" stub without
+// a cross-lookup.
+
+export type NormalCouponStatus =
+  | "active"
+  | "redeemed"
+  | "expired"
+  | "cancelled";
+
+export type InstagramCouponStatus =
+  | "pending_story"
+  | "under_review"
+  | "verified"
+  | "rejected"
+  | "redeemed"
+  | "expired";
+
+/** Compact reservation summary shown as a stub below a coupon card. */
+export type LinkedReservationSummary = {
+  id: string;
+  when: string;
+  partySize: number;
+  /** Subset of the full reservation status — only the states a coupon stub cares about. */
+  state: "booking" | "booked";
+};
+
+type CouponBase = {
+  id: string;
+  projectId: string;
+  placeName: string;
+  placePhoto: string | null;
+  percent: number;
+  classLabel: string;
+  capLabel: string;
+  expiresAt: string | null;
+  linkedReservation?: LinkedReservationSummary;
+};
+
+export type CouponItem =
+  | (CouponBase & { kind: "normal"; status: NormalCouponStatus })
+  | (CouponBase & {
+      kind: "instagram";
+      status: InstagramCouponStatus;
+      rejectReason?: string;
+    });
+
+export const MOCK_COUPONS: CouponItem[] = [
+  {
+    id: "cp-mar-verde",
+    projectId: "mar-verde",
+    placeName: "Mar Verde",
+    placePhoto:
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
+    kind: "normal",
+    status: "active",
+    percent: 20,
+    classLabel: "Mesita Premium",
+    capLabel: "Capped MX$500 / visit",
+    expiresAt: null,
+    linkedReservation: {
+      id: "res-mar-verde",
+      when: "Wed May 28 · 8:00 PM",
+      partySize: 2,
+      state: "booked",
+    },
+  },
+  {
+    id: "cp-neon-bar",
+    projectId: "neon-bar",
+    placeName: "Neón Bar",
+    placePhoto:
+      "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80",
+    kind: "normal",
+    status: "active",
+    percent: 20,
+    classLabel: "Mesita Premium",
+    capLabel: "Capped MX$500 / visit",
+    expiresAt: null,
+    linkedReservation: {
+      id: "res-neon-bar",
+      when: "Sat May 31 · 9:00 PM",
+      partySize: 6,
+      state: "booking",
+    },
+  },
+  {
+    id: "cp-casa-luminar",
+    projectId: "casa-luminar",
+    placeName: "Casa Luminar",
+    placePhoto:
+      "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80",
+    kind: "normal",
+    status: "active",
+    percent: 10,
+    classLabel: "Mesita Premium",
+    capLabel: "Capped MX$300 / visit",
+    expiresAt: null,
+    linkedReservation: {
+      id: "res-casa-luminar",
+      when: "Fri Jun 6 · 8:30 PM",
+      partySize: 4,
+      state: "booked",
+    },
+  },
+  {
+    id: "cp-ig-ferment",
+    projectId: "ferment-co",
+    placeName: "Ferment & Co",
+    placePhoto:
+      "https://images.unsplash.com/photo-1485921325833-c519f76c4927?w=800&q=80",
+    kind: "instagram",
+    status: "verified",
+    percent: 50,
+    classLabel: "Mesita Premium",
+    capLabel: "Welcome bonus · one-time",
+    expiresAt: "2026-06-10",
+  },
+  {
+    id: "cp-ig-rooftop",
+    projectId: "rooftop-lex",
+    placeName: "Rooftop Lex",
+    placePhoto:
+      "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=800&q=80",
+    kind: "instagram",
+    status: "under_review",
+    percent: 70,
+    classLabel: "Mesita Premium",
+    capLabel: "Welcome bonus · one-time",
+    expiresAt: "2026-06-04",
+  },
+  {
+    id: "cp-ig-azul",
+    projectId: "azul-bistro",
+    placeName: "Azul Bistro",
+    placePhoto:
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
+    kind: "instagram",
+    status: "pending_story",
+    percent: 50,
+    classLabel: "Mesita Premium",
+    capLabel: "Welcome bonus · one-time",
+    expiresAt: "2026-06-08",
+  },
+];
+
+/**
+ * Lookup by id used by `/coupon/[id]` (both the hard-nav page and the
+ * intercepted modal). Returns null on a miss so the route can render a
+ * not-found state without crashing — every id is mock for now, but once
+ * the real Edge Function lands the same shape applies.
+ */
+export function getMockCouponById(id: string): CouponItem | null {
+  return MOCK_COUPONS.find((c) => c.id === id) ?? null;
+}

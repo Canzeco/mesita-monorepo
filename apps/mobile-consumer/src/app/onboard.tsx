@@ -16,8 +16,8 @@ import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { useAuth } from '@/providers/auth';
 
 const SEX_OPTIONS = [
-  { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
+  { value: 'male', label: 'Male' },
   { value: 'other', label: 'Other' },
 ] as const;
 
@@ -33,14 +33,22 @@ export default function Onboard() {
   const [error, setError] = useState<string | null>(null);
 
   const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim());
-  const canSubmit = firstName.trim().length > 0 && sex !== null && validBirthday;
+  const canSubmit =
+    firstName.trim().length > 0 && sex !== null && validBirthday;
 
   if (onboarded) {
     return <Redirect href={CONSUMER_ROUTES.homeDefault} />;
   }
 
   const submit = async () => {
-    if (!sex) return;
+    if (!sex) {
+      setError('Pick a sex from the list.');
+      return;
+    }
+    if (!firstName.trim() || !validBirthday) {
+      setError('Please complete all required fields');
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
@@ -52,55 +60,58 @@ export default function Onboard() {
       await refreshProfile();
       router.replace('/');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your profile');
+      setError(e instanceof Error ? e.message : "Couldn't save. Try again.");
     } finally {
       setBusy(false);
     }
   };
 
+  const phone = session?.user.phone ?? '';
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
+        className="flex-1 justify-center px-6"
       >
-        <Text
-          className="font-display font-semibold text-foreground"
-          style={{ fontSize: 28, letterSpacing: -0.42 }}
-        >
-          Welcome to Mesita
+        <Text className="font-display text-[28px] font-semibold tracking-tight text-foreground">
+          Tell us about you
         </Text>
-        <Text
-          className="mt-2 text-muted-foreground"
-          style={{ fontSize: 14 }}
-        >
+        <Text className="mt-2 text-sm text-muted-foreground">
           A few details and your table is ready.
         </Text>
 
-        <View
-          className="rounded-2xl border border-border bg-card"
-          style={{
-            marginTop: 32,
-            padding: 24,
-            shadowColor: '#260409',
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 2,
-          }}
-        >
+        {phone ? (
+          <View className="mt-4 flex-row flex-wrap items-center gap-2">
+            <View className="rounded-full border border-border bg-card px-3 py-1.5">
+              <Text className="text-xs text-muted-foreground">
+                Signed in as{' '}
+                <Text className="font-semibold text-foreground">{phone}</Text>
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => void signOut()}
+              accessibilityRole="button"
+              accessibilityLabel="Not you? Sign out"
+            >
+              <Text className="text-xs font-semibold text-primary">
+                Not you?
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <View className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <TextField
             label="First name"
             autoComplete="given-name"
             value={firstName}
             onChangeText={setFirstName}
+            placeholder="First name"
           />
 
-          <Text
-            className="font-semibold text-muted-foreground"
-            style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
-          >
-            SEX
+          <Text className="mb-2 mt-5 text-xs font-medium text-muted-foreground">
+            Sex
           </Text>
           <View className="flex-row rounded-2xl border border-border bg-muted p-1">
             {SEX_OPTIONS.map((option) => {
@@ -120,10 +131,9 @@ export default function Onboard() {
                   <Text
                     className={
                       active
-                        ? 'font-semibold text-foreground'
-                        : 'font-semibold text-muted-foreground'
+                        ? 'text-[13px] font-semibold text-foreground'
+                        : 'text-[13px] font-semibold text-muted-foreground'
                     }
-                    style={{ fontSize: 13 }}
                   >
                     {option.label}
                   </Text>
@@ -132,39 +142,36 @@ export default function Onboard() {
             })}
           </View>
 
-          <View style={{ marginTop: 20 }}>
+          <View className="mt-5">
             <TextField
-            label="Birthday (YYYY-MM-DD)"
-            keyboardType="numbers-and-punctuation"
-            placeholder="1995-06-15"
-            value={birthday}
-            onChangeText={setBirthday}
+              label="Birthday"
+              keyboardType="numbers-and-punctuation"
+              placeholder="YYYY-MM-DD"
+              value={birthday}
+              onChangeText={setBirthday}
             />
           </View>
 
-          <View style={{ marginTop: 24 }}>
+          {error ? (
+            <View className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
+              <Text className="text-xs text-destructive">{error}</Text>
+            </View>
+          ) : null}
+
+          <View className="mt-6">
             <Button
               onPress={() => void submit()}
               loading={busy}
               disabled={!canSubmit || busy}
             >
-              Let&apos;s go
+              Continue
             </Button>
           </View>
 
-          {error ? (
-            <Text className="mt-2 text-destructive" style={{ fontSize: 12 }}>
-              {error}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={{ marginTop: 24 }}>
-          <Button variant="ghost" onPress={() => void signOut()}>
-            {session?.user.phone
-              ? `Not ${session.user.phone}? Sign out`
-              : 'Sign out'}
-          </Button>
+          <Text className="mt-3 text-center text-[11px] text-muted-foreground">
+            We use these to personalize recommendations. Your details are never
+            shared with places.
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

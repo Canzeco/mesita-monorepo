@@ -8,7 +8,7 @@ const dsn =
   (Constants.expoConfig?.extra?.sentryDsn as string | undefined) ??
   '';
 
-const sentryEnabled = Boolean(dsn);
+export const sentryEnabled = Boolean(dsn);
 
 if (sentryEnabled) {
   Sentry.init({
@@ -17,6 +17,28 @@ if (sentryEnabled) {
     tracesSampleRate: 0.2,
     // Dev client noise — only ship crashes from release/preview builds.
     enabled: !__DEV__,
+  });
+}
+
+/** EF breadcrumb helper — safe no-op when DSN unset (#50). */
+export function addEfBreadcrumb(input: {
+  fn: string;
+  level?: 'info' | 'warning' | 'error';
+  status?: number | null;
+  code?: string | null;
+  message?: string;
+}): void {
+  if (!sentryEnabled) return;
+  Sentry.addBreadcrumb({
+    category: 'ef',
+    type: 'http',
+    level: input.level ?? 'info',
+    message: input.message ?? input.fn,
+    data: {
+      fn: input.fn,
+      status: input.status ?? undefined,
+      code: input.code ?? undefined,
+    },
   });
 }
 

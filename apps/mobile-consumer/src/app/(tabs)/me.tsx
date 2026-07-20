@@ -98,7 +98,8 @@ export default function MeScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: TAB_SCROLL_PADDING_BOTTOM, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        {!profile && !session ? (
+        {/* Skeleton until profile lands — covers session-without-profile flash (#50). */}
+        {!profile ? (
           <IdentityHeroSkeleton />
         ) : (
           <IdentityHero
