@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bike, Clock, MapPin } from 'lucide-react-native';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ImageCarousel } from '@/components/place/ImageCarousel';
+import { PopularTimesCard } from '@/components/place/PopularTimesCard';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { buildUberDropoffUrl } from '@/lib/uber-link';
@@ -103,57 +104,77 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       ? `opens ${place.opens_at}`
       : null;
   const tz = place.timezone || undefined;
+  const popular = place.popular_times.filter(
+    (d) => d.day && d.bars.length > 0,
+  );
+  const featured =
+    place.popular_times_featured || popular[0]?.day || today.slice(0, 3);
 
   return (
-    <Box title="Time" icon={Clock} iconColor="#a78bfa" right={tz}>
-      <Text className="text-xs leading-snug">
-        <Text
-          className={`font-semibold ${
-            place.open_now ? 'text-emerald-700' : 'text-muted-foreground'
-          }`}
-        >
-          {place.open_now ? 'Open' : 'Closed'}
+    <>
+      <Box title="Time" icon={Clock} iconColor="#a78bfa" right={tz}>
+        <Text className="text-xs leading-snug">
+          <Text
+            className={`font-semibold ${
+              place.open_now ? 'text-emerald-700' : 'text-muted-foreground'
+            }`}
+          >
+            {place.open_now ? 'Open' : 'Closed'}
+          </Text>
+          {statusDetail ? (
+            <Text className="text-foreground/80"> · {statusDetail}</Text>
+          ) : null}
         </Text>
-        {statusDetail ? (
-          <Text className="text-foreground/80"> · {statusDetail}</Text>
+        {place.hours_table.length > 0 ? (
+          <View className="overflow-hidden rounded-xl border border-border">
+            {place.hours_table.map((row) => {
+              const isToday = row.day === today;
+              const closed = row.range.toLowerCase() === 'closed';
+              return (
+                <View
+                  key={row.day}
+                  className={`flex-row items-center justify-between gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0 ${
+                    isToday ? 'bg-violet-50/80' : ''
+                  }`}
+                >
+                  <Text
+                    className={`shrink-0 text-xs font-semibold ${
+                      isToday ? 'text-violet-800' : 'text-foreground'
+                    }`}
+                  >
+                    {row.day}
+                  </Text>
+                  <Text
+                    className={`min-w-0 flex-1 text-right text-xs tabular-nums ${
+                      closed
+                        ? 'text-muted-foreground'
+                        : isToday
+                          ? 'font-semibold text-violet-950'
+                          : 'text-foreground/85'
+                    }`}
+                    numberOfLines={1}
+                  >
+                    {row.range}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         ) : null}
-      </Text>
-      {place.hours_table.length > 0 ? (
-        <View className="overflow-hidden rounded-xl border border-border">
-          {place.hours_table.map((row) => {
-            const isToday = row.day === today;
-            const closed = row.range.toLowerCase() === 'closed';
-            return (
-              <View
-                key={row.day}
-                className={`flex-row items-center justify-between gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0 ${
-                  isToday ? 'bg-violet-50/80' : ''
-                }`}
-              >
-                <Text
-                  className={`shrink-0 text-xs font-semibold ${
-                    isToday ? 'text-violet-800' : 'text-foreground'
-                  }`}
-                >
-                  {row.day}
-                </Text>
-                <Text
-                  className={`min-w-0 flex-1 text-right text-xs tabular-nums ${
-                    closed
-                      ? 'text-muted-foreground'
-                      : isToday
-                        ? 'font-semibold text-violet-950'
-                        : 'text-foreground/85'
-                  }`}
-                  numberOfLines={1}
-                >
-                  {row.range}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
+      </Box>
+      {popular.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="gap-3"
+          className="-mx-0"
+        >
+          <PopularTimesCard
+            popularTimes={popular}
+            initialDay={featured}
+          />
+        </ScrollView>
       ) : null}
-    </Box>
+    </>
   );
 }
