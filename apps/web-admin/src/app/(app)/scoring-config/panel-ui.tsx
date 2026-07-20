@@ -168,8 +168,9 @@ export function ContextCols({
  * EM's CONFIGURABLE data-access detail: every registry field as a toggle.
  * Enabled fields go into the embedded documents — both playgrounds
  * assemble, embed and score from exactly this set, so a toggle here moves
- * the numbers there. "ignored" fields (the spec's "ignored for now") render
- * greyed and cannot be toggled.
+ * the numbers there. "ignored" fields (the spec's "ignored for now") are not
+ * toggles, so they collapse into one muted footnote line per column instead
+ * of chips — less noise, same information.
  */
 export function ContextConfigCols({
   enabled,
@@ -178,53 +179,56 @@ export function ContextConfigCols({
   enabled: ReadonlySet<string>;
   onToggle: (key: string) => void;
 }) {
-  const col = (label: string, side: ContextSide) => (
-    <div>
-      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
-        {label}
-      </p>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {CONTEXT_FIELDS.filter((f) => f.side === side).map((f) => {
-          if (f.status === "ignored") {
-            return (
-              <span
-                key={f.key}
-                title={f.note ?? "ignored for now (spec)"}
-                className="border-border/40 text-muted-foreground/60 rounded-md border border-dashed px-2 py-0.5 font-mono text-[10.5px] opacity-60"
-              >
-                <span className="line-through">{f.label}</span> · ignored
-              </span>
-            );
-          }
-          const isOn = enabled.has(f.key);
-          return (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => onToggle(f.key)}
-              aria-pressed={isOn}
-              title={
-                (f.note ? `${f.note} · ` : "") +
-                (f.status === "planned" ? "planned — no data yet · " : "") +
-                (isOn ? "in the context — click to exclude" : "excluded — click to include")
-              }
-              className={
-                "rounded-md border px-2 py-0.5 font-mono text-[10.5px] transition active:scale-[0.97] " +
-                (isOn
-                  ? "border-primary/50 bg-primary/10 text-foreground"
-                  : "border-border/50 text-muted-foreground border-dashed opacity-70 hover:opacity-100")
-              }
-            >
-              {f.label}
-              {f.status === "planned" ? (
-                <span className="text-muted-foreground/80"> · planned</span>
-              ) : null}
-            </button>
-          );
-        })}
+  const col = (label: string, side: ContextSide) => {
+    const fields = CONTEXT_FIELDS.filter((f) => f.side === side);
+    const ignored = fields.filter((f) => f.status === "ignored");
+    return (
+      <div>
+        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+          {label}
+        </p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {fields
+            .filter((f) => f.status !== "ignored")
+            .map((f) => {
+              const isOn = enabled.has(f.key);
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => onToggle(f.key)}
+                  aria-pressed={isOn}
+                  title={
+                    (f.note ? `${f.note} · ` : "") +
+                    (f.status === "planned" ? "planned — no data yet · " : "") +
+                    (isOn ? "in the context — click to exclude" : "excluded — click to include")
+                  }
+                  className={
+                    "rounded-md border px-2 py-0.5 font-mono text-[10.5px] transition active:scale-[0.97] " +
+                    (isOn
+                      ? "border-primary/50 bg-primary/10 text-foreground"
+                      : "border-border/50 text-muted-foreground border-dashed opacity-70 hover:opacity-100")
+                  }
+                >
+                  {f.label}
+                  {f.status === "planned" ? (
+                    <span className="text-muted-foreground/80"> · planned</span>
+                  ) : null}
+                </button>
+              );
+            })}
+        </div>
+        {ignored.length > 0 ? (
+          <p
+            className="text-muted-foreground/70 mt-1.5 font-mono text-[9.5px]"
+            title="ignored for now (spec) — never embedded, not toggleable"
+          >
+            ignored (spec): {ignored.map((f) => f.label).join(" · ")}
+          </p>
+        ) : null}
       </div>
-    </div>
-  );
+    );
+  };
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-3">
       {col("Consumer-data", "consumer")}
