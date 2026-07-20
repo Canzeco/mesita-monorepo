@@ -9,6 +9,7 @@ import {
 import { ActionBtn } from '@/components/swipe/swipe-deck-shells';
 
 type SwipeActionRowProps = {
+  filtersActive: boolean;
   saved: boolean;
   onOpenFilters: () => void;
   onSkip: () => void;
@@ -17,6 +18,7 @@ type SwipeActionRowProps = {
 };
 
 export function SwipeActionRow({
+  filtersActive,
   saved,
   onOpenFilters,
   onSkip,
@@ -29,6 +31,8 @@ export function SwipeActionRow({
         label="Filter"
         Icon={SlidersHorizontal}
         onPress={onOpenFilters}
+        badge={filtersActive}
+        accessibilityLabel={filtersActive ? 'Filters (active)' : 'Filters'}
       />
       <ActionBtn label="Skip" Icon={X} onPress={onSkip} />
       <ActionBtn label="Info" Icon={Store} onPress={onOpenInfo} />

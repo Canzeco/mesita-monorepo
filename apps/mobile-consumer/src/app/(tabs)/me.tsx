@@ -28,7 +28,7 @@ import { VerifySocialSheet } from '@/components/me/VerifySocialSheet';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
-import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
+import { inboxPath } from '@/lib/consumer-route-contract';
 import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import {
@@ -123,7 +123,7 @@ export default function MeScreen() {
           tint="pink"
           title="Inbox"
           summary="Notifications and activity"
-          onPress={() => router.push(CONSUMER_ROUTES.inbox.mine)}
+          onPress={() => router.push(inboxPath('mine'))}
         />
 
         <BoxRow

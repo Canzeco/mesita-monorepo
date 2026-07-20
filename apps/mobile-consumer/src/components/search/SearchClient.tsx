@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FilterSheet } from '@/components/discovery/FilterSheet';
 import { GooglePlaceSheet } from '@/components/search/GooglePlaceSheet';
 import { SearchBar } from '@/components/search/SearchBar';
 import {
@@ -16,7 +17,6 @@ import {
 import { SearchMap } from '@/components/search/SearchMap';
 import { SearchResultsPanel } from '@/components/search/SearchResultsPanel';
 import type { AddState } from '@/components/memo/types';
-import { FiltersComingSoonSheet } from '@/components/ui/FiltersComingSoon';
 import { SHADOW_ELEV } from '@/constants/brand';
 import {
   apiCreateProject,
@@ -25,9 +25,15 @@ import {
 } from '@/lib/api/place-search';
 import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
 import { placePath } from '@/lib/consumer-route-contract';
+import {
+  applyDiscoveryFilters,
+  deriveCategoryOptions,
+  discoveryFiltersAreActive,
+} from '@/lib/discovery-filters-engine';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
 import { supabase } from '@/lib/supabase';
+import { useDiscoveryFilters } from '@/lib/use-discovery-filters';
 import { errMsg } from '@/lib/utils';
 
 const SUGGEST_DEBOUNCE_MS = 300;
@@ -56,6 +62,8 @@ export function SearchClient() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
@@ -93,17 +101,25 @@ export function SearchClient() {
     );
   }, []);
 
+  // Distances ride on the chosen zone center or the device fix; filters then
+  // facet the SAME array the map pins and rail render (web SearchClient parity).
   const catalog = useMemo(
-    () => withDistances(places, coords),
-    [places, coords],
+    () => withDistances(places, filters.zone ?? coords),
+    [places, filters.zone, coords],
+  );
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(catalog),
+    [catalog],
   );
 
   const visible = useMemo(() => {
-    if (selectedId && !catalog.some((p) => p.id === selectedId)) {
-      return catalog;
+    const filtered = applyDiscoveryFilters(catalog, filters);
+    if (selectedId && !filtered.some((p) => p.id === selectedId)) {
+      const held = catalog.find((p) => p.id === selectedId);
+      if (held) return [held, ...filtered];
     }
-    return catalog;
-  }, [catalog, selectedId]);
+    return filtered;
+  }, [catalog, filters, selectedId]);
 
   const resetSearchSession = useCallback(() => {
     sessionTokenRef.current = newSessionToken();
@@ -226,6 +242,7 @@ export function SearchClient() {
       <SearchBar
         query={query}
         top={insets.top + 8}
+        filtersActive={filtersActive}
         onChangeQuery={updateQuery}
         onFocus={() => setSearchOpen(true)}
         onClear={() => {
@@ -301,9 +318,13 @@ export function SearchClient() {
         onAdd={handleAdd}
         onClose={() => setPreviewOpen(false)}
       />
-      <FiltersComingSoonSheet
+      <FilterSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
+        ariaLabel="Search filters"
+        categoryOptions={categoryOptions}
+        count={visible.length}
+        hasLocation={coords != null}
       />
     </View>
   );
