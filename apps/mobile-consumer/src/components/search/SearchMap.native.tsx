@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapPin } from 'lucide-react-native';
+import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
@@ -13,15 +14,53 @@ import {
   MONTERREY_CENTER,
 } from '@/lib/map-defaults';
 
-
 export function SearchMap({
   places,
   selectedId,
   userLocation,
   apiKey,
-  onSelect,
+  onSelectPlace,
+  onOpenPlace,
   onMapPress,
 }: SearchMapProps) {
+  const mapRef = useRef<MapView | null>(null);
+  const center = userLocation ?? MONTERREY_CENTER;
+  const region: Region = {
+    latitude: center.lat,
+    longitude: center.lng,
+    latitudeDelta: 0.08,
+    longitudeDelta: 0.08,
+  };
+
+  const selectedLat =
+    selectedId != null
+      ? places.find((p) => p.id === selectedId)?.lat
+      : null;
+  const selectedLng =
+    selectedId != null
+      ? places.find((p) => p.id === selectedId)?.lng
+      : null;
+
+  useEffect(() => {
+    if (
+      !apiKey ||
+      selectedId == null ||
+      selectedLat == null ||
+      selectedLng == null
+    ) {
+      return;
+    }
+    mapRef.current?.animateToRegion(
+      {
+        latitude: selectedLat,
+        longitude: selectedLng,
+        latitudeDelta: 0.04,
+        longitudeDelta: 0.04,
+      },
+      280,
+    );
+  }, [apiKey, selectedId, selectedLat, selectedLng]);
+
   if (!apiKey) {
     return (
       <LinearGradient
@@ -45,42 +84,41 @@ export function SearchMap({
     );
   }
 
-  const center = userLocation ?? MONTERREY_CENTER;
-  const region: Region = {
-    latitude: center.lat,
-    longitude: center.lng,
-    latitudeDelta: 0.08,
-    longitudeDelta: 0.08,
-  };
-
   return (
     <MapView
+      ref={mapRef}
       style={{ flex: 1 }}
       provider={PROVIDER_GOOGLE}
       customMapStyle={MAP_MINIMAL_STYLES}
       initialRegion={region}
       showsUserLocation={userLocation != null}
       showsMyLocationButton={false}
+      accessibilityLabel="Search map"
       onPress={onMapPress}
     >
       {places.map((place) => {
         if (place.lat == null || place.lng == null) return null;
-        const selected = place.id === selectedId;
+        const isSelected = place.id === selectedId;
         const partner = place.listing_type === 'partner';
         return (
           <Marker
             key={place.id}
             coordinate={{ latitude: place.lat, longitude: place.lng }}
+            title={place.name}
             pinColor={
-              selected
+              isSelected
                 ? MAP_SELECTED_PIN_COLOR
                 : partner
                   ? MAP_PARTNER_PIN_COLOR
                   : MAP_WEB_PIN_COLOR
             }
+            accessibilityLabel={`${place.name}${
+              isSelected ? ', selected' : ''
+            }. ${isSelected ? 'Tap to open' : 'Tap to select'}`}
             onPress={(e) => {
               e.stopPropagation();
-              onSelect(place.id);
+              if (isSelected) onOpenPlace(place);
+              else onSelectPlace(place);
             }}
           />
         );
