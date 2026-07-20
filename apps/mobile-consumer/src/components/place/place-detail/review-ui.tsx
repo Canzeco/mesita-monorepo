@@ -1,10 +1,87 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Star, Users } from 'lucide-react-native';
+import { type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { ChannelMark } from '@/components/brand/channel-marks';
+import { MesitaMark } from '@/components/brand/MesitaMark';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { formatRating } from '@/lib/utils';
+
+// ── Source badges — RN port of web BrandLogos (Google / Instagram /
+//    Facebook / Mesita). Same shape language: a 32px (md) / 20px (sm) tile
+//    per source so the reviews-summary row and review cards read as branded
+//    attributions rather than bare text labels.
+
+/** Multi-colour Google "G" inside a white circle. */
+export function GoogleBadge({ size = 32 }: { size?: number }) {
+  return (
+    <View
+      className="items-center justify-center rounded-full bg-white"
+      style={{ width: size, height: size }}
+    >
+      <ChannelMark channel="google" size={Math.round(size * 0.62)} />
+    </View>
+  );
+}
+
+/** Instagram brand-gradient tile with a white glyph. */
+export function InstagramBadge({ size = 32 }: { size?: number }) {
+  return (
+    <LinearGradient
+      colors={[...GRADIENTS.instagram]}
+      start={GRADIENT_DIAGONAL.start}
+      end={GRADIENT_DIAGONAL.end}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <ChannelMark channel="instagram" size={Math.round(size * 0.5)} color="#ffffff" />
+    </LinearGradient>
+  );
+}
+
+/** Facebook brand-blue tile with a white glyph. */
+export function FacebookBadge({ size = 32 }: { size?: number }) {
+  return (
+    <View
+      className="items-center justify-center rounded-lg"
+      style={{ width: size, height: size, backgroundColor: '#1877F2' }}
+    >
+      <ChannelMark channel="facebook" size={Math.round(size * 0.5)} color="#ffffff" />
+    </View>
+  );
+}
+
+/** Mesita flame in a pink-gradient badge — circle (md) or rounded square (sm). */
+export function MesitaBadge({
+  variant = 'md',
+}: {
+  variant?: 'sm' | 'md';
+}) {
+  const size = variant === 'sm' ? 20 : 32;
+  return (
+    <LinearGradient
+      colors={[...GRADIENTS.pink]}
+      start={GRADIENT_DIAGONAL.start}
+      end={GRADIENT_DIAGONAL.end}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: variant === 'sm' ? 6 : 999,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <MesitaMark size={Math.round(size * 0.6)} color="#ffffff" />
+    </LinearGradient>
+  );
+}
 
 export function RatingBar({ label, value }: { label: string; value: number }) {
   const pct = Math.min(100, (value / 5) * 100);
@@ -29,21 +106,19 @@ export function RatingBar({ label, value }: { label: string; value: number }) {
 }
 
 export function ExternalCard({
-  label,
+  logo,
   icon,
   value,
   meta,
 }: {
-  label: string;
+  logo: ReactNode;
   icon: 'star' | 'users';
   value: string;
   meta: string;
 }) {
   return (
     <View className="flex-1 items-center gap-1.5 rounded-xl bg-background px-2 py-3">
-      <Text className="mb-1 text-[10px] font-bold text-muted-foreground">
-        {label}
-      </Text>
+      <View className="mb-1">{logo}</View>
       <View className="flex-row items-center gap-1">
         {icon === 'star' ? (
           <Star color="#fbbf24" fill="#fbbf24" size={14} />
