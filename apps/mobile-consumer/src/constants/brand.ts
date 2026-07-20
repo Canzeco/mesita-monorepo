@@ -1,4 +1,4 @@
-// Brand gradients + shadows, copied from mesita-web-consumer globals.css
+// Brand gradients + shadows, copied from apps/web-consumer globals.css
 // (CSS gradients don't exist in RN — surfaces render these with
 // expo-linear-gradient; shadows use the style objects below).
 

@@ -1,4 +1,4 @@
-// Auth + profile EF surface — mirrors mesita-web-consumer src/lib/api/{auth,profile}.ts.
+// Auth + profile EF surface — mirrors apps/web-consumer/src/lib/api/{auth,profile}.ts.
 // Clients never touch the DB: every read/write goes through an Edge Function.
 
 import { EFError, invokeEF } from '@/lib/ef';

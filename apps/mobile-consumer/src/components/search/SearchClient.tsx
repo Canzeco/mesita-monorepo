@@ -199,8 +199,6 @@ export function SearchClient() {
     ? catalog.find((p) => p.id === selectedId)
     : null;
 
-  const showResults = searchOpen || trimmed.length >= 2;
-
   return (
     <View className="flex-1 bg-background">
       <View className="absolute inset-0">
@@ -236,31 +234,30 @@ export function SearchClient() {
         onOpenFilters={() => setFiltersOpen(true)}
       />
 
-      {/* Results: height fits content; max ~70% so the map stays visible */}
-      {showResults ? (
+      {/* Typing: height fits result count; max-h 70% so the map stays visible.
+          Focused-but-empty uses a separate fixed ~70% prompt (web parity). */}
+      {trimmed.length > 0 ? (
         <View
-          className="absolute inset-x-0 z-20 overflow-hidden rounded-b-2xl border-b border-border bg-card"
+          className="absolute inset-x-0 z-20 overflow-hidden rounded-b-3xl border-b border-border bg-background"
           style={{
             top: insets.top + 60,
             maxHeight: '70%',
             ...SHADOW_ELEV,
           }}
         >
-          {trimmed.length === 0 ? (
-            <EmptySearchPrompt />
-          ) : (
-            <SearchResultsPanel
-              query={trimmed}
-              searching={searching}
-              searchError={searchError}
-              predictions={predictions}
-              addStates={addStates}
-              onPickMesita={handlePickMesita}
-              onPickGoogle={handlePickGoogle}
-            />
-          )}
+          <SearchResultsPanel
+            query={trimmed}
+            searching={searching}
+            searchError={searchError}
+            predictions={predictions}
+            addStates={addStates}
+            onPickMesita={handlePickMesita}
+            onPickGoogle={handlePickGoogle}
+          />
         </View>
       ) : null}
+
+      {searchOpen && trimmed.length === 0 ? <EmptySearchPrompt /> : null}
 
       <IdleCatalogRail
         idle={idle}

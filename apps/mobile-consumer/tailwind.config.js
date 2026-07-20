@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-// Token values are copied from mesita-web-consumer src/app/globals.css
+// Token values are copied from apps/web-consumer/src/app/globals.css
 // (Tailwind v4 oklch vars, converted to sRGB hex — NativeWind runs Tailwind 3,
 // which can't read the web app's CSS-first config). Light theme only.
 module.exports = {
