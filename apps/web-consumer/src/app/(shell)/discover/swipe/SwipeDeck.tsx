@@ -16,6 +16,7 @@ import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   applyDiscoveryFilters,
+  createSeededRandom,
   deriveCategoryOptions,
   discoveryFiltersAreActive,
   orderByRandomness,
@@ -214,13 +215,19 @@ function Deck({ places }: { places: Place[] }) {
   // reorders it — jittered ranks in the middle, full shuffle at 5. Category
   // options derive from the RAW snapshot so the sheet offers everything this
   // deck actually has.
+  // The seed pins the random permutation for the session: this memo also
+  // re-runs when `located` merely changes identity (the geolocation fix
+  // arriving, a zone recenter), and an unseeded shuffle would visibly swap
+  // the top card mid-swipe.
+  const [orderSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
   const deck = useMemo(
     () =>
       orderByRandomness(
         applyDiscoveryFilters(located, filters),
         filters.randomness,
+        createSeededRandom(orderSeed),
       ),
-    [located, filters],
+    [located, filters, orderSeed],
   );
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(runtimeDeck),

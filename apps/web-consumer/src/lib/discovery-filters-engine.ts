@@ -256,27 +256,47 @@ export function deriveCategoryOptions(
 
 // ── Randomness ordering ─────────────────────────────────────────────────────
 /**
+ * Deterministic PRNG (mulberry32) for `orderByRandomness`. Hosts derive the
+ * deck order inside a memo that re-runs on unrelated changes (the geolocation
+ * fix arriving, a zone recenter), so the randomness source must replay the
+ * same sequence per seed or the deck visibly reshuffles under the user.
+ */
+export function createSeededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * Deck ordering for the 0..5 randomness level: 0 keeps the ranked order, 5 is a
  * full shuffle, 1–4 jitter each card around its rank (drift ~k positions, k
  * scaling with the level), so exploration scales smoothly without discarding
- * ranking outright.
+ * ranking outright. Pass a seeded `rand` (createSeededRandom) when the call
+ * site re-derives the order across renders — the permutation must only change
+ * when the level or the membership does.
  */
 export function orderByRandomness(
   places: Place[],
   level: RandomnessLevel,
+  rand: () => number = Math.random,
 ): Place[] {
   if (level <= 0 || places.length < 2) return places;
   if (level >= 5) {
     const out = [...places];
     for (let i = out.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rand() * (i + 1));
       [out[i], out[j]] = [out[j], out[i]];
     }
     return out;
   }
   const k = level * 4; // 1→4, 2→8, 3→12, 4→16 positions of drift
   return places
-    .map((place, i) => ({ place, key: i + Math.random() * k }))
+    .map((place, i) => ({ place, key: i + rand() * k }))
     .sort((a, b) => a.key - b.key)
     .map(({ place }) => place);
 }
