@@ -1,5 +1,6 @@
 import {
   ChevronUp,
+  Search,
   X,
 } from 'lucide-react-native';
 import {
@@ -114,14 +115,24 @@ export function IdleCatalogRail({
   );
 }
 
+/** Focused but empty — solid prompt over the top ~70% so the map stays
+ *  visible below (web EmptySearchPrompt parity). */
 export function EmptySearchPrompt() {
   return (
-    <View className="items-center px-6 py-10">
-      <Text className="font-display text-xl font-semibold text-foreground">
+    <View
+      className="absolute inset-x-0 top-0 z-20 items-center justify-center rounded-b-3xl border-b border-border bg-background px-8"
+      style={{ height: '70%', ...SHADOW_ELEV }}
+      accessibilityRole="text"
+      accessibilityLabel="Where to today? Find the perfect place by name or category."
+    >
+      <View className="h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+        <Search color="#fb2b7b" size={24} strokeWidth={1.75} />
+      </View>
+      <Text className="mt-4 font-display text-lg font-semibold text-foreground">
         Where to today?
       </Text>
-      <Text className="mt-1 text-center text-sm text-muted-foreground">
-        Search Mesita partners and Google places.
+      <Text className="mt-1.5 max-w-[260px] text-center text-sm text-muted-foreground">
+        Find the perfect place by name or category.
       </Text>
     </View>
   );

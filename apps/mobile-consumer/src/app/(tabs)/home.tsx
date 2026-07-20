@@ -15,9 +15,10 @@ import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
 // The parked mode stays tappable and opens a coming-soon modal (MESITA-601).
 // SocialTab stays in tree for a one-flag unpark.
 type Mode = 'swipe' | 'ai' | 'favorites';
+type NavMode = Mode | 'social';
 
 const MODES: (SegmentItem & {
-  key: Mode | 'ai' | 'social';
+  key: NavMode;
   Icon: ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },

@@ -44,14 +44,19 @@ type SoonMeta = {
   Icon: IconComponent;
 };
 
-// Parked tab copy — mirrors web BottomNav (MESITA-383).
-// Reservations navigates to Upcoming/History empty states (MESITA-569);
-// only Rewards stays behind ComingSoonModal on the tab bar.
+// Parked tab copy — mirrors web BottomNav (MESITA-383). Both Rewards and
+// Reservations stay behind ComingSoonModal; their route screens remain in
+// tree for deep links / one-flag unpark (Rewards page is built; tab parked).
 const SOON: Record<string, SoonMeta> = {
   rewards: {
     title: 'Rewards coming soon',
     body: 'Pay with QR and claim Mesita rewards from here shortly. Hang tight.',
     Icon: QrCode,
+  },
+  reservations: {
+    title: 'Reservations coming soon',
+    body: 'Your bookings will live here. For now, reach places from Contact on a place.',
+    Icon: CalendarCheck,
   },
 };
 
@@ -73,7 +78,6 @@ const LABELS: Record<string, string> = {
 
 // Custom tab bar — RN port of web BottomNav: card/95 + blur, active top
 // pill + tinted icon circle + stroke-weight swap, dynamic `Me · <class>`.
-// Rewards / Reservations open ComingSoonModal instead of navigating.
 export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
   const insets = useSafeAreaInsets();
   const { consumerClass } = useAuth();

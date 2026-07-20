@@ -1,8 +1,8 @@
 import { Root, Thumb } from '@rn-primitives/switch';
 import { View } from 'react-native';
 
-// Styled @rn-primitives/switch — replaces react-native-paper Switch.
-// Outer hit target ≥44px; visible track stays compact.
+// Styled @rn-primitives/switch (MESITA-582). Outer hit target ≥44px;
+// visible track stays compact.
 export function Switch({
   value,
   onValueChange,

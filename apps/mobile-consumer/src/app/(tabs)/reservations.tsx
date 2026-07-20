@@ -9,7 +9,8 @@ import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
 
 // Parked reservations surface — web `/saved/reservations` parity:
 // Upcoming / History segment + polished empty states (MESITA-569).
-// Tab bar navigates here (Rewards alone stays behind ComingSoonModal).
+// Tab bar opens ComingSoonModal (web BottomNav); this screen stays for
+// deep links / one-flag unpark.
 
 type Tab = 'upcoming' | 'history';
 
