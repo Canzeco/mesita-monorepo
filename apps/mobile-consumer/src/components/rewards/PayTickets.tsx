@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Ticket } from 'lucide-react-native';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { RewardsTicketCard } from '@/components/rewards/RewardsTicketCard';
 import { Button } from '@/components/ui/Button';
@@ -48,7 +48,6 @@ export function PayTickets({
         <>
           <TicketCardSkeleton />
           <TicketCardSkeleton />
-          <ActivityIndicator style={{ marginTop: 8 }} color="#fb2b7b" />
         </>
       ) : status === 'error' ? (
         <View

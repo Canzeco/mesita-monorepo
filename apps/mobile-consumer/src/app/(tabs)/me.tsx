@@ -17,7 +17,10 @@ import { AiConnectModal } from '@/components/me/AiConnectModal';
 import { ClassModal } from '@/components/me/ClassModal';
 import { ContactSheet } from '@/components/me/contact-sheet';
 import { DeleteAccountSheet } from '@/components/me/DeleteAccountSheet';
-import { IdentityHero } from '@/components/me/IdentityHero';
+import {
+  IdentityHero,
+  IdentityHeroSkeleton,
+} from '@/components/me/IdentityHero';
 import {
   PersonalDetailsSheet,
   SettingsSheet,
@@ -51,6 +54,7 @@ type Sheet =
 
 // Me screen — 583 chrome (NativeWind BoxRow) + 568 conversion modals.
 // Order: identity → Instagram → Class → Inbox → Personal → Settings → Share → AI → Contact.
+// decision: conversion rows LIVE (design lock profile-premium-20260720); no Stripe.
 export default function MeScreen() {
   const router = useRouter();
   const { profile, consumerClass, session, refreshProfile, signOut } =
@@ -62,7 +66,10 @@ export default function MeScreen() {
   const isPremium = effective.key === 'premium';
   const [sheet, setSheet] = useState<Sheet>(null);
 
-  const name = profile?.full_name ?? 'Mesita guest';
+  const name =
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
+    profile?.full_name ||
+    'Mesita member';
   const phone = profile?.phone ?? session?.user.phone ?? '';
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
@@ -78,7 +85,9 @@ export default function MeScreen() {
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
 
   function openVerify() {
-    setSheet('verify');
+    // Close Class before Verify — two FullScreenSheets must not stack.
+    setSheet(null);
+    setTimeout(() => setSheet('verify'), 50);
   }
 
   return (
@@ -89,21 +98,25 @@ export default function MeScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: TAB_SCROLL_PADDING_BOTTOM, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        <IdentityHero
-          isPremium={isPremium}
-          name={name}
-          phone={phone}
-          meta={meta}
-          igConnected={igConnected}
-          handle={handle ?? null}
-          followers={effective.followers}
-          classLabel={classLabel}
-          classVia={classVia}
-        />
+        {!profile && !session ? (
+          <IdentityHeroSkeleton />
+        ) : (
+          <IdentityHero
+            isPremium={isPremium}
+            name={name}
+            phone={phone}
+            meta={meta}
+            avatarUrl={profile?.avatar_url}
+            igConnected={igConnected}
+            handle={handle ?? null}
+            followers={effective.followers}
+            classLabel={classLabel}
+            classVia={classVia}
+          />
+        )}
 
         <MockControls />
 
-        {/* decision: conversion rows LIVE so ported modals are reachable (no Stripe). */}
         <BoxRow
           Icon={AtSign}
           tint="pink"
@@ -139,7 +152,7 @@ export default function MeScreen() {
           Icon={SettingsIcon}
           tint="muted"
           title="Settings"
-          summary="Notifications, permissions, language"
+          summary="Preferences on this device"
           onPress={() => setSheet('settings')}
         />
 
@@ -174,7 +187,7 @@ export default function MeScreen() {
           className="text-center text-muted-foreground"
           style={{ fontSize: 11 }}
         >
-          Mesita · mobile
+          Mesita · v2.4.1
         </Text>
       </ScrollView>
 

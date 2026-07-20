@@ -14,16 +14,21 @@ export type BoxTint =
   | 'violet'
   | 'amber'
   | 'muted'
-  | 'premium';
+  | 'premium'
+  | 'destructive';
 
 // Ports web ProfileClient BOX_TINT — each Me option-box icon gets its own
 // tinted tile so the page reads premium, never a flat gray stack.
-const SOLID_TINT: Record<Exclude<BoxTint, 'pink' | 'premium'>, string> = {
+const SOLID_TINT: Record<
+  Exclude<BoxTint, 'pink' | 'premium'>,
+  string
+> = {
   sky: 'bg-sky-500/15',
   emerald: 'bg-emerald-500/15',
   violet: 'bg-violet-500/15',
   amber: 'bg-amber-400/20',
   muted: 'bg-muted',
+  destructive: 'bg-destructive/10',
 };
 
 const ICON_COLOR: Record<BoxTint, string> = {
@@ -34,6 +39,7 @@ const ICON_COLOR: Record<BoxTint, string> = {
   amber: '#b45309',
   muted: 'rgba(38,4,9,0.7)',
   premium: '#ffffff',
+  destructive: '#dc2626',
 };
 
 function TintedIconTile({

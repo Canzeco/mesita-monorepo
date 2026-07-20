@@ -1,9 +1,12 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import {
+  Camera,
   Download,
   Trash2,
+  Users,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Linking, Text } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import {
   LinkRow,
@@ -15,9 +18,14 @@ import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
-import { apiUpdateConsumerProfile } from '@/lib/api/auth';
+import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import {
+  apiUpdateConsumerProfile,
+  type ConsumerProfile,
+} from '@/lib/api/auth';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
-import { errMsg } from '@/lib/utils';
+import { toast } from '@/lib/toast';
+import { errMsg, firstInitials } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 const TERMS_URL = 'https://www.mesita.ai/terms';
@@ -49,12 +57,57 @@ export function PersonalDetailsSheet({
   onSaved: () => void;
 }) {
   const { profile, session } = useAuth();
-  const [firstName, setFirstName] = useState(profile?.first_name ?? '');
-  const [birthday, setBirthday] = useState(profile?.birthday ?? '');
+  // Remount form when opened so draft state re-seeds from profile (no effect).
+  const formKey = visible
+    ? `${profile?.first_name ?? ''}|${profile?.birthday ?? ''}|open`
+    : 'closed';
+
+  return (
+    <FullScreenSheet
+      visible={visible}
+      onClose={onClose}
+      title="Personal details"
+      subtitle="How you appear across Mesita"
+    >
+      {profile ? (
+        <PersonalDetailsForm
+          key={formKey}
+          profile={profile}
+          phone={profile.phone ?? session?.user.phone ?? '—'}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      ) : null}
+    </FullScreenSheet>
+  );
+}
+
+function PersonalDetailsForm({
+  profile,
+  phone,
+  onClose,
+  onSaved,
+}: {
+  profile: ConsumerProfile;
+  phone: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState(profile.first_name ?? '');
+  const [birthday, setBirthday] = useState(profile.birthday ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const dirty =
+    firstName.trim() !== (profile.first_name ?? '') ||
+    birthday !== (profile.birthday ?? '');
+
+  const initials = firstInitials(
+    firstName.trim() || profile.full_name || 'Mesita member',
+  );
+
   const save = async () => {
+    if (!dirty || saving) return;
     if (!firstName.trim()) {
       setError('First name required');
       return;
@@ -64,9 +117,10 @@ export function PersonalDetailsSheet({
     try {
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
-        sex: (profile?.sex as 'male' | 'female' | 'other') ?? 'other',
+        sex: (profile.sex as 'male' | 'female' | 'other') ?? 'other',
         birthday: birthday || '',
       });
+      toast.success('Profile updated.');
       onSaved();
       onClose();
     } catch (e) {
@@ -77,12 +131,40 @@ export function PersonalDetailsSheet({
   };
 
   return (
-    <FullScreenSheet
-      visible={visible}
-      onClose={onClose}
-      title="Personal details"
-      subtitle="How you appear across Mesita"
-    >
+    <>
+      <View className="items-center">
+        <Pressable
+          onPress={() => toast('Photo uploads are coming soon.')}
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+          className="relative"
+        >
+          <LinearGradient
+            colors={[...GRADIENTS.pink]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 999,
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            <Text
+              className="font-display font-bold text-white"
+              style={{ fontSize: 28 }}
+            >
+              {initials}
+            </Text>
+          </LinearGradient>
+          <View className="absolute -bottom-0.5 -right-0.5 h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-foreground">
+            <Camera color="#fff7f8" size={14} />
+          </View>
+        </Pressable>
+      </View>
+
       <TextField
         label="First name"
         value={firstName}
@@ -92,7 +174,7 @@ export function PersonalDetailsSheet({
       />
       <TextField
         label="Phone"
-        value={profile?.phone ?? session?.user.phone ?? '—'}
+        value={phone}
         editable={false}
         helper="Phone is your sign-in identity and can’t be edited here."
       />
@@ -108,10 +190,23 @@ export function PersonalDetailsSheet({
           {error}
         </Text>
       ) : null}
-      <Button loading={saving} disabled={saving} onPress={() => void save()}>
-        Save
-      </Button>
-    </FullScreenSheet>
+      <View className="flex-row gap-2">
+        <View className="flex-1">
+          <Button variant="outline" onPress={onClose}>
+            Cancel
+          </Button>
+        </View>
+        <View className="flex-1">
+          <Button
+            loading={saving}
+            disabled={!dirty || saving}
+            onPress={() => void save()}
+          >
+            Save
+          </Button>
+        </View>
+      </View>
+    </>
   );
 }
 
@@ -125,7 +220,7 @@ export function SettingsSheet({
   onDeleteAccount: () => void;
 }) {
   const [push, setPush] = useStoredFlag(PREF_KEYS.push, true);
-  const [location, setLocation] = useStoredFlag(PREF_KEYS.location, true);
+  const [location, setLocation] = useStoredFlag(PREF_KEYS.location, false);
   const [contacts, setContacts] = useStoredFlag(PREF_KEYS.contacts, false);
   const [language, setLanguage] = useStoredString(PREF_KEYS.language, 'es');
   const [city, setCity] = useStoredString(PREF_KEYS.defaultCity, 'cdmx');
@@ -140,23 +235,35 @@ export function SettingsSheet({
       <SectionLabel>Notifications</SectionLabel>
       <PrefRow
         title="Push notifications"
-        summary="Offers and reservation updates"
+        summary="Ticket updates and rewards"
         value={push}
         onValueChange={setPush}
       />
+
+      <SectionLabel>Community</SectionLabel>
+      <BoxRow
+        Icon={Users}
+        tint="violet"
+        title="Communities"
+        summary="Connect with your community"
+        onPress={() => {}}
+        soon
+      />
+
       <SectionLabel>Permissions</SectionLabel>
       <PrefRow
         title="Location"
-        summary="Better nearby recommendations"
+        summary="Recommend places near you"
         value={location}
         onValueChange={setLocation}
       />
       <PrefRow
         title="Contacts"
-        summary="Find friends on Mesita"
+        summary="Find friends already on Mesita"
         value={contacts}
         onValueChange={setContacts}
       />
+
       <SectionLabel>Preferences</SectionLabel>
       <SelectRow
         label="Language"
@@ -165,20 +272,22 @@ export function SettingsSheet({
         onChange={setLanguage}
       />
       <SelectRow
-        label="Default city"
+        label="Default location"
         value={city}
         options={CITY_OPTIONS}
         onChange={setCity}
       />
+
       <SectionLabel>Legal</SectionLabel>
       <LinkRow
-        title="Terms of service"
+        title="Terms of use"
         onPress={() => void Linking.openURL(TERMS_URL)}
       />
       <LinkRow
         title="Privacy policy"
         onPress={() => void Linking.openURL(PRIVACY_URL)}
       />
+
       <SectionLabel>Privacy & data</SectionLabel>
       <BoxRow
         Icon={Download}
@@ -195,15 +304,21 @@ export function SettingsSheet({
       />
       <BoxRow
         Icon={Trash2}
-        tint="muted"
+        tint="destructive"
         title="Delete account"
         summary="Permanently delete your account"
         onPress={() => {
           onClose();
-          // Defer so Settings sheet unmounts before Delete mounts.
           setTimeout(onDeleteAccount, 50);
         }}
       />
+
+      <Text
+        className="mt-2 text-center text-muted-foreground"
+        style={{ fontSize: 11 }}
+      >
+        Mesita · v2.4.1
+      </Text>
     </FullScreenSheet>
   );
 }

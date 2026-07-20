@@ -57,16 +57,27 @@ export function CurrentClassCard() {
       </View>
       <View style={{ flex: 1 }}>
         <Text
+          className="font-display font-semibold tracking-tight"
           style={{
             color: isPremium ? '#fff' : '#260409',
-            fontWeight: '700',
+            fontSize: 22,
+            textShadowColor: isPremium ? 'rgba(0,0,0,0.35)' : 'transparent',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 6,
           }}
         >
           Mesita {meta.label}
         </Text>
         {via ? (
           <Text
-            style={{ color: isPremium ? 'rgba(255,255,255,0.9)' : '#775254' }}
+            style={{
+              color: isPremium ? 'rgba(255,255,255,0.95)' : '#775254',
+              fontSize: 11,
+              marginTop: 2,
+              textShadowColor: isPremium ? 'rgba(0,0,0,0.3)' : 'transparent',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 4,
+            }}
           >
             {via}
           </Text>

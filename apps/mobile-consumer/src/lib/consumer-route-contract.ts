@@ -15,8 +15,7 @@ import type { Href } from 'expo-router';
 //   web /place/:id                         →  Expo /place/[id]
 //   web /rewards/ticket/:id                →  Expo /rewards/ticket/[id]
 //   web /onboard                           →  Expo /onboard
-//   web /share                             →  (no mobile Share screen yet;
-//       constant kept for parity / future deep link)
+//   web /share                             →  Expo /share
 //   web /inbox/{mine,global}               →  Expo /inbox/{mine,global}
 
 export const CONSUMER_ROUTES = {

@@ -22,6 +22,8 @@ export const CLASSES: {
   },
 ];
 
-/** Web subscribe path — opened in the system browser (no Stripe in-app). */
-export const PREMIUM_SUBSCRIBE_URL =
-  'https://consumer.mesita.ai/subscribe/premium';
+/**
+ * Premium subscribe handoff — design lock profile-premium-20260720.
+ * Opens web /me (never Stripe/PaymentSheet/IAP in the iOS binary).
+ */
+export const PREMIUM_SUBSCRIBE_URL = 'https://consumer.mesita.ai/me';

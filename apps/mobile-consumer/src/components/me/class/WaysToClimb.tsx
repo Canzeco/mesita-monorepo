@@ -58,7 +58,7 @@ export function WaysToClimb({
       accent: true,
       price: `$${premium.priceMxn} MXN`,
       priceNote: 'per month · cancel anytime',
-      desc: 'Subscribe on the web to unlock full Premium instantly — boosted discounts, personalized recommendations, and unlimited reservations. No follower count needed; cancel whenever you want.',
+      desc: 'Subscribe and unlock full Premium instantly — boosted discounts, personalized recommendations, and unlimited reservations. No follower count needed; cancel whenever you want. Manage on web from this app.',
       reached: origin === 'subscription',
       reachedLabel: 'Active',
       action: {
