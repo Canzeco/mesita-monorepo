@@ -11,6 +11,11 @@ export type SearchMapProps = {
   places: Place[];
   selectedId: string | null;
   userLocation: Coords | null;
+  /**
+   * Recenter target — the searched zone center when set, else the device
+   * location. The native map pans to it when it changes (web stub ignores it).
+   */
+  center?: Coords | null;
   apiKey: string;
   onSelect: (placeId: string) => void;
   onMapPress?: () => void;

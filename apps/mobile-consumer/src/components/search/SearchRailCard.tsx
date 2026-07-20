@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Star } from 'lucide-react-native';
+import { BadgeCheck, Star } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+import { resolvePlaceCategoryName } from '@/lib/place-category';
 import { formatPlacePriceLevelSymbols } from '@/lib/place-price';
 import { getOpeningStatusLabel } from '@/lib/place-status';
 import {
@@ -30,6 +31,13 @@ export function RailCard({
     place.distance_km != null && place.distance_km > 0
       ? formatKm(place.distance_km)
       : null;
+  // "category · zone" secondary line — same subtitle the web rail card shows.
+  const category = resolvePlaceCategoryName({
+    categoryLabel: place.category_label,
+    category: place.category,
+  });
+  const subtitle = [category, place.zone].filter(Boolean).join(' · ');
+  const partner = place.listing_type === 'partner';
 
   return (
     <Pressable
@@ -60,12 +68,29 @@ export function RailCard({
         )}
       </View>
       <View className="gap-0.5 p-2.5">
-        <Text
-          className="font-display text-[14px] font-semibold text-foreground"
-          numberOfLines={1}
-        >
-          {place.name}
-        </Text>
+        <View className="flex-row items-center gap-1">
+          <Text
+            className="min-w-0 flex-1 font-display text-[14px] font-semibold text-foreground"
+            numberOfLines={1}
+          >
+            {place.name}
+          </Text>
+          {partner ? (
+            <BadgeCheck
+              color="#fb2b7b"
+              size={14}
+              accessibilityLabel="Verified Partner"
+            />
+          ) : null}
+        </View>
+        {subtitle ? (
+          <Text
+            className="text-[11px] text-muted-foreground"
+            numberOfLines={1}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
         <View className="flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
           {rating ? (
             <View className="flex-row items-center gap-0.5">

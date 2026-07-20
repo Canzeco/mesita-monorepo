@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapPin } from 'lucide-react-native';
+import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
@@ -16,10 +17,44 @@ export function SearchMap({
   places,
   selectedId,
   userLocation,
+  center,
   apiKey,
   onSelect,
   onMapPress,
 }: SearchMapProps) {
+  const mapRef = useRef<MapView>(null);
+
+  // Pan to whichever pin / rail card / on-Mesita result the consumer just
+  // picked. Primitive lat/lng deps (not the place object) so the camera moves
+  // only when the SELECTION changes — re-renders must never fight the user's
+  // panning. animateCamera pans without resetting the current zoom (mirrors
+  // web SearchMap's PanTo).
+  const selected = selectedId
+    ? (places.find((p) => p.id === selectedId) ?? null)
+    : null;
+  const selLat = selected?.lat ?? null;
+  const selLng = selected?.lng ?? null;
+  useEffect(() => {
+    if (selLat == null || selLng == null) return;
+    mapRef.current?.animateCamera(
+      { center: { latitude: selLat, longitude: selLng } },
+      { duration: 350 },
+    );
+  }, [selLat, selLng]);
+
+  // Recenter on the searched zone or the device location once it resolves —
+  // primitive deps so it fires on the center CHANGE, not every render (mirrors
+  // web SearchMap's Recentre).
+  const cLat = center?.lat ?? null;
+  const cLng = center?.lng ?? null;
+  useEffect(() => {
+    if (cLat == null || cLng == null) return;
+    mapRef.current?.animateCamera(
+      { center: { latitude: cLat, longitude: cLng } },
+      { duration: 350 },
+    );
+  }, [cLat, cLng]);
+
   if (!apiKey) {
     return (
       <LinearGradient
@@ -43,16 +78,17 @@ export function SearchMap({
     );
   }
 
-  const center = userLocation ?? MONTERREY_CENTER;
+  const initial = center ?? userLocation ?? MONTERREY_CENTER;
   const region: Region = {
-    latitude: center.lat,
-    longitude: center.lng,
+    latitude: initial.lat,
+    longitude: initial.lng,
     latitudeDelta: 0.08,
     longitudeDelta: 0.08,
   };
 
   return (
     <MapView
+      ref={mapRef}
       style={{ flex: 1 }}
       provider={PROVIDER_GOOGLE}
       initialRegion={region}
@@ -62,14 +98,14 @@ export function SearchMap({
     >
       {places.map((place) => {
         if (place.lat == null || place.lng == null) return null;
-        const selected = place.id === selectedId;
+        const selectedPin = place.id === selectedId;
         const partner = place.listing_type === 'partner';
         return (
           <Marker
             key={place.id}
             coordinate={{ latitude: place.lat, longitude: place.lng }}
             pinColor={
-              selected
+              selectedPin
                 ? MAP_SELECTED_PIN_COLOR
                 : partner
                   ? MAP_PARTNER_PIN_COLOR

@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FilterSheet } from '@/components/discovery/FilterSheet';
 import { GooglePlaceSheet } from '@/components/search/GooglePlaceSheet';
 import { SearchBar } from '@/components/search/SearchBar';
 import {
@@ -16,7 +17,6 @@ import {
 import { SearchMap } from '@/components/search/SearchMap';
 import { SearchResultsPanel } from '@/components/search/SearchResultsPanel';
 import type { AddState } from '@/components/memo/types';
-import { FiltersComingSoonSheet } from '@/components/ui/FiltersComingSoon';
 import { SHADOW_ELEV } from '@/constants/brand';
 import {
   apiCreateProject,
@@ -24,9 +24,19 @@ import {
   type PlacePrediction,
 } from '@/lib/api/place-search';
 import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
+import {
+  applyDiscoveryFilters,
+  deriveCategoryOptions,
+  discoveryFiltersAreActive,
+} from '@/lib/discovery-filters-engine';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
+import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
 import { supabase } from '@/lib/supabase';
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from '@/lib/use-discovery-filters';
 import { errMsg } from '@/lib/utils';
 
 const SUGGEST_DEBOUNCE_MS = 300;
@@ -55,6 +65,12 @@ export function SearchClient() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Shared discovery filters (MESITA-646/672): pins + rail narrow LIVE off the
+  // ONE global store — Swipe shows the exact same state — and the red tune dot
+  // lights on any deviation from defaults.
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
@@ -92,17 +108,45 @@ export function SearchClient() {
     );
   }, []);
 
+  // Derive the overview-parity fields (rating, open_now, zone, price…) the same
+  // way the swipe deck does — the chip filters and rail cards read them — then
+  // keep only mappable rows: the rail mirrors the pins one-to-one (web parity).
+  // Memoized: enrichPlaceOverview is pure but runs once per row.
+  const located = useMemo(
+    () =>
+      places
+        .map((p) => enrichPlaceOverview(p))
+        .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number'),
+    [places],
+  );
+
+  // Distances ride on the searched zone center when set, else the device's live
+  // location; the discovery filters then facet the SAME array the pins + rail
+  // render.
+  const center = filters.zone ?? coords;
   const catalog = useMemo(
-    () => withDistances(places, coords),
-    [places, coords],
+    () => withDistances(located, center),
+    [located, center],
+  );
+
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(catalog),
+    [catalog],
   );
 
   const visible = useMemo(() => {
-    if (selectedId && !catalog.some((p) => p.id === selectedId)) {
-      return catalog;
+    const filtered = applyDiscoveryFilters(catalog, filters);
+    // A search pick / pin lands here regardless of the active filters, so keep
+    // the selection pinned even when the filters would exclude it — otherwise
+    // the red pin the user just asked for silently disappears.
+    if (selectedId && !filtered.some((p) => p.id === selectedId)) {
+      const held = catalog.find((p) => p.id === selectedId);
+      if (held) return [held, ...filtered];
     }
-    return catalog;
-  }, [catalog, selectedId]);
+    return filtered;
+  }, [catalog, filters, selectedId]);
+
+  const hasLocation = filters.zone != null || coords != null;
 
   const resetSearchSession = useCallback(() => {
     sessionTokenRef.current = newSessionToken();
@@ -152,23 +196,31 @@ export function SearchClient() {
     };
   }, [trimmed]);
 
+  // On-Mesita row tap → show the place on the map (red selected pin + rail
+  // card) instead of opening detail; the detail is one more tap on the pin or
+  // card. The EF-provided Mesita id is the primary join; the exact-name match
+  // covers older suggest payloads. Web parity (MESITA-672).
   const handlePickMesita = (prediction: PlacePrediction) => {
-    const id = prediction.mesitaId ?? prediction.mesitaSlug;
     const match =
       (prediction.mesitaId
         ? catalog.find((p) => p.id === prediction.mesitaId)
         : null) ?? matchPredictionToPlace(prediction, catalog);
+    if (match) {
+      // Clearing the query is the selection that ends the Places session
+      // (updateQuery mints the next token) and hands back the idle map.
+      updateQuery('');
+      setSearchOpen(false);
+      setRailCollapsed(false);
+      setSelectedId(match.id);
+      return;
+    }
+    // On Mesita per the EF but outside the mappable catalog snapshot — no
+    // coordinates to pin, so fall back to opening the detail directly.
     updateQuery('');
     setSearchOpen(false);
     resetSearchSession();
-    if (match) {
-      setSelectedId(match.id);
-      setRailCollapsed(false);
-      // No interactive map selection on web/placeholder — open detail.
-      router.push(`/place/${match.id}`);
-      return;
-    }
-    if (id) router.push(`/place/${id}`);
+    const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+    if (direct) router.push(`/place/${direct}`);
   };
 
   const handlePickGoogle = (prediction: PlacePrediction) => {
@@ -195,6 +247,12 @@ export function SearchClient() {
     })();
   };
 
+  // The rail's "No places match" escape resets the SHARED filter store — the
+  // same reset the sheet's Reset button runs (MESITA-646).
+  const clearFilters = () => {
+    resetDiscoveryFilters();
+  };
+
   const selectedPlace = selectedId
     ? catalog.find((p) => p.id === selectedId)
     : null;
@@ -208,6 +266,7 @@ export function SearchClient() {
           places={visible}
           selectedId={selectedId}
           userLocation={coords}
+          center={center}
           apiKey={GMP_KEY}
           onSelect={(id) => {
             setSelectedId(id);
@@ -227,6 +286,7 @@ export function SearchClient() {
       <SearchBar
         query={query}
         top={insets.top + 8}
+        filtersActive={filtersActive}
         onChangeQuery={updateQuery}
         onFocus={() => setSearchOpen(true)}
         onClear={() => {
@@ -269,9 +329,11 @@ export function SearchClient() {
         fetchError={fetchError}
         places={visible}
         selectedId={selectedId}
+        catalogCount={catalog.length}
         bottomInset={insets.bottom}
         onCollapse={() => setRailCollapsed(true)}
         onExpand={() => setRailCollapsed(false)}
+        onClearFilters={clearFilters}
         onSelectPlace={setSelectedId}
         onOpenPlace={(id) => router.push(`/place/${id}`)}
       />
@@ -303,9 +365,17 @@ export function SearchClient() {
         onAdd={handleAdd}
         onClose={() => setPreviewOpen(false)}
       />
-      <FiltersComingSoonSheet
+      {/* Shared five-parameter discovery sheet (Where · Distance · When · What
+          · Randomness). Pins + rail narrow live off the same store; the sheet
+          reads/writes it itself — the host only supplies the catalog-derived
+          category options, the live post-filter count, and whether a location
+          center exists. */}
+      <FilterSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
+        categoryOptions={categoryOptions}
+        count={visible.length}
+        hasLocation={hasLocation}
       />
     </View>
   );
