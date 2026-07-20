@@ -92,7 +92,9 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
               marginTop: 4,
               fontSize: 12,
               fontFamily: 'Inter_500Medium',
-              color: '#0284c7',
+              // Brand --secondary (crimson), matching web notification-row's
+              // text-secondary — was an off-token sky-blue (#0284c7).
+              color: '#cf0360',
             }}
           >
             Reward {formatPayMx(reward, p.currency)}
