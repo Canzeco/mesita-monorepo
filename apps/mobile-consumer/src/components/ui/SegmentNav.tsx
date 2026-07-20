@@ -17,8 +17,6 @@ export type SegmentItem = {
 // `.segment-tab-active`: rounded-full pills, active = brand pink gradient +
 // shadow-glow with white label/icon, idle = muted. `soon` tabs stay visible
 // and open a parent-owned coming-soon modal (MESITA-383 / MESITA-565 / 601).
-// Replaces react-native-paper
-// `SegmentedButtons`, whose MD3 look breaks web parity. (MESITA-579)
 export function SegmentNav({
   items,
   value,

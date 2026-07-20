@@ -41,6 +41,7 @@ import { ActionCard } from '@/components/rewards/ActionCard';
 import { VisitComplete } from '@/components/rewards/VisitComplete';
 import { VisitHeader } from '@/components/rewards/VisitHeader';
 import { renderStepActions } from '@/components/rewards/renderStepActions';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { errMsg } from '@/lib/utils';
 
 export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
@@ -272,7 +273,7 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
                 ticketKind={ticketKind}
                 capMxn={capMxn}
                 placeInstagramHandle={placeInstagramHandle}
-                onShowQr={() => router.push('/(tabs)/rewards')}
+                onShowQr={() => router.push(CONSUMER_ROUTES.rewards.root)}
               >
                 {renderStepActions({
                   step: displayStep,

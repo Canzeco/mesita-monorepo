@@ -1,6 +1,6 @@
 # Mesita — Consumer Mobile App
 
-Native iOS/Android consumer app for [Mesita](https://mesita.ai), built with Expo (SDK 57), Expo Router, NativeWind, TanStack Query, and Supabase (Edge Functions only — clients never touch the DB). This is the mobile port of `mesita-web-consumer`.
+Native iOS/Android consumer app for [Mesita](https://mesita.ai), built with Expo (SDK 57), Expo Router, NativeWind, TanStack Query, and Supabase (Edge Functions only — clients never touch the DB). This is the mobile port of `apps/web-consumer`.
 
 ## Get started
 

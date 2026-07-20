@@ -44,6 +44,7 @@ import {
   apiRecommendDeck,
   type Place,
 } from '@/lib/api/places';
+import { placePath } from '@/lib/consumer-route-contract';
 import {
   upsertSavedPlacePreview,
   useSavedPlaces,
@@ -329,7 +330,7 @@ function DeckBody({
           saved={saved}
           onOpenFilters={() => setFiltersOpen(true)}
           onSkip={() => beginExit('left')}
-          onOpenInfo={() => router.push(`/place/${v.id}`)}
+          onOpenInfo={() => router.push(placePath(v.id))}
           onSave={() => beginExit('right')}
         />
       </View>

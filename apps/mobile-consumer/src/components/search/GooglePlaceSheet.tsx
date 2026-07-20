@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AddState } from '@/components/memo/types';
 import { GooglePlacePreview } from '@/components/search/google-place-preview';
 import { Button } from '@/components/ui/Button';
-import type { PlacePrediction } from '@/lib/api/places';
+import type { PlacePrediction } from '@/lib/api/place-search';
 
 type GoogleProfile = {
   photoUrl?: string;

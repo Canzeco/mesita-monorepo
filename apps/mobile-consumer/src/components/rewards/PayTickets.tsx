@@ -4,6 +4,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 
 import { RewardsTicketCard } from '@/components/rewards/RewardsTicketCard';
 import { Button } from '@/components/ui/Button';
+import { rewardsTicketPath } from '@/lib/consumer-route-contract';
 import {
   bundleToCardView,
   type PayTicketsState,
@@ -135,7 +136,7 @@ export function PayTickets({
           <RewardsTicketCard
             key={b.ticketId}
             view={bundleToCardView(b, ticketMetaById.get(b.ticketId))}
-            onOpen={() => router.push(`/rewards/ticket/${b.ticketId}`)}
+            onOpen={() => router.push(rewardsTicketPath(b.ticketId))}
           />
         ))
       )}

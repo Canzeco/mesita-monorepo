@@ -1,4 +1,4 @@
-// Shared Edge Function invoker — ported verbatim from mesita-web-consumer
+// Shared Edge Function invoker — ported verbatim from apps/web-consumer
 // src/lib/api/_invoke.ts (it only depends on supabase-js, so it works
 // unchanged in React Native).
 //

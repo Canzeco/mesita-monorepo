@@ -4,13 +4,15 @@ import { Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
 import type { SearchMapProps } from '@/components/search/SearchMap';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import {
+  MAP_MINIMAL_STYLES,
   MAP_PARTNER_PIN_COLOR,
   MAP_SELECTED_PIN_COLOR,
   MAP_WEB_PIN_COLOR,
   MONTERREY_CENTER,
 } from '@/lib/map-defaults';
+
 
 export function SearchMap({
   places,
@@ -30,7 +32,7 @@ export function SearchMap({
       >
         <View className="items-center px-10">
           <View className="size-14 items-center justify-center rounded-2xl bg-primary/10">
-            <MapPin color="#fb2b7b" size={28} />
+            <MapPin color={COLORS.primary} size={28} />
           </View>
           <Text className="mt-3 font-display text-lg font-semibold text-foreground">
             Live map coming soon
@@ -55,6 +57,7 @@ export function SearchMap({
     <MapView
       style={{ flex: 1 }}
       provider={PROVIDER_GOOGLE}
+      customMapStyle={MAP_MINIMAL_STYLES}
       initialRegion={region}
       showsUserLocation={userLocation != null}
       showsMyLocationButton={false}

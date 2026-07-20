@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 
 import type { AddState } from '@/components/memo/types';
-import type { PlacePrediction } from '@/lib/api/places';
+import type { PlacePrediction } from '@/lib/api/place-search';
 
 import { SuggestionLine } from './SuggestionLine';
 
@@ -32,10 +32,10 @@ export function SearchResultsPanel({
   const fromGoogle = predictions.filter((p) => p.status === 'not_in_mesita');
   const settled = !searching && query.trim().length >= 2;
 
+  // No fixed height — panel grows/shrinks with rows; parent caps at max-h 70%.
   return (
     <ScrollView
-      style={{ maxHeight: '100%' }}
-      contentContainerStyle={{ padding: 12, gap: 8 }}
+      contentContainerStyle={{ padding: 12, gap: 8, flexGrow: 0 }}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
       accessibilityRole="list"

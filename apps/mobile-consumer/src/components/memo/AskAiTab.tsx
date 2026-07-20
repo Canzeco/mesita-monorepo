@@ -12,6 +12,7 @@ import {
   apiRecommendDeck,
   type Place,
 } from '@/lib/api/places';
+import { placePath } from '@/lib/consumer-route-contract';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { supabase } from '@/lib/supabase';
 import { errMsg } from '@/lib/utils';
@@ -73,7 +74,7 @@ export function AskAiTab() {
         );
         return;
       }
-      router.push(`/place/${id}`);
+      router.push(placePath(id));
     },
     [router],
   );

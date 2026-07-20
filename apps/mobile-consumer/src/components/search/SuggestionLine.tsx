@@ -2,7 +2,7 @@ import { BadgeCheck } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import type { AddState } from '@/components/memo/types';
-import type { PlacePrediction } from '@/lib/api/places';
+import type { PlacePrediction } from '@/lib/api/place-search';
 
 export function SuggestionLine({
   prediction,
