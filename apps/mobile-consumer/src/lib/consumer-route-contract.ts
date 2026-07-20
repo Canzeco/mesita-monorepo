@@ -8,8 +8,9 @@ import type { Href } from 'expo-router';
 //   web /home[/swipe|ai|social|favorites]  →  Expo /(tabs)/home  (modes are
 //       in-screen state on mobile, not nested routes — same IA)
 //   web /search                            →  Expo /(tabs)/search
-//   web /rewards                           →  Expo /(tabs)/rewards
-//   web /saved/reservations                →  Expo /(tabs)/reservations
+//   web /rewards                           →  Expo /(tabs)/rewards  (also /rewards)
+//   web /saved/reservations                →  Expo /saved/reservations → /(tabs)/reservations
+//   web /pay (legacy)                      →  Expo /pay → /(tabs)/rewards
 //   web /me                                →  Expo /(tabs)/me
 //   web /place/:id                         →  Expo /place/[id]
 //   web /rewards/ticket/:id                →  Expo /rewards/ticket/[id]

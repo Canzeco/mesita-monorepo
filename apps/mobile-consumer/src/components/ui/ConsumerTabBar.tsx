@@ -9,6 +9,7 @@ import { MesitaMark } from '@/components/brand/MesitaMark';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { COLORS } from '@/constants/brand';
 import { isTabParked, PARKED, type ParkedTabKey } from '@/lib/parked-flags';
+import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useAuth } from '@/providers/auth';
 
 type IconComponent = ComponentType<{
@@ -64,8 +65,10 @@ const LABELS: Record<string, string> = {
 // Custom tab bar — RN port of web BottomNav: card/95 + blur, active top
 // pill + tinted icon circle + stroke-weight swap, dynamic `Me · <class>`.
 // Parked flags/copy live in parked-flags.ts (flip `soon` to unpark).
+// Deep-linked parked routes stay live; tab tap always opens ComingSoonModal.
 export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const { consumerClass } = useAuth();
   const classLabel =
     consumerClass?.key === 'premium' ? 'Premium' : 'Free';
@@ -86,7 +89,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
           />
         ) : (
           <BlurView
-            intensity={48}
+            intensity={56}
             tint="light"
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           />
@@ -105,16 +108,19 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
             const baseLabel = LABELS[name] ?? name;
             const displayLabel =
               name === 'me' ? `${baseLabel} · ${classLabel}` : baseLabel;
-            const tint = focused ? COLORS.primary : COLORS.mutedForeground;
-            const stroke = focused ? 2.25 : 1.75;
+            // Parked tabs never show focused chrome (web BottomNav soon buttons).
+            const showActive = focused && !parked;
+            const tint = showActive ? COLORS.primary : COLORS.mutedForeground;
+            const stroke = showActive ? 2.25 : 1.75;
 
             return (
               <Pressable
                 key={route.key}
                 accessibilityRole="button"
-                accessibilityState={{ selected: focused }}
+                accessibilityState={{ selected: showActive }}
                 accessibilityLabel={displayLabel}
                 onPress={() => {
+                  // Parked: modal only — even when already on the deep-linked page.
                   if (parked) {
                     setSoonKey(name);
                     return;
@@ -128,9 +134,15 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
                     navigation.navigate(route.name, route.params);
                   }
                 }}
-                className="relative min-w-0 flex-1 items-center gap-1 rounded-lg px-0.5 py-1"
+                className="relative min-h-[44px] min-w-0 flex-1 items-center justify-end gap-1 rounded-lg px-0.5 py-1"
+                style={({ pressed }) => ({
+                  transform: [
+                    { scale: pressed && !reduceMotion ? 0.96 : 1 },
+                  ],
+                  opacity: pressed && parked ? 0.85 : 1,
+                })}
               >
-                {focused && !parked ? (
+                {showActive ? (
                   <View
                     className="absolute h-0.5 w-5 rounded-full bg-primary"
                     style={{ top: -8, left: '50%', marginLeft: -10 }}
@@ -139,12 +151,12 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
 
                 <View
                   className={
-                    focused && !parked
+                    showActive
                       ? 'h-8 w-8 items-center justify-center rounded-full bg-primary/10'
                       : 'h-8 w-8 items-center justify-center rounded-full'
                   }
                   style={
-                    focused && !parked
+                    showActive
                       ? {
                           borderWidth: 1,
                           borderColor: 'rgba(251, 43, 123, 0.2)',
@@ -158,7 +170,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
                 <Text
                   numberOfLines={1}
                   className={
-                    focused && !parked
+                    showActive
                       ? 'w-full text-center font-medium text-primary'
                       : 'w-full text-center font-medium text-muted-foreground'
                   }

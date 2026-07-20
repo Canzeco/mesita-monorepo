@@ -1,7 +1,8 @@
+import { BlurView } from 'expo-blur';
 import { Flame, Heart, Sparkles, Users } from 'lucide-react-native';
 import type { ComponentType } from 'react';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FavoritesTab } from '@/components/home/FavoritesTab';
@@ -50,21 +51,45 @@ export default function HomeScreen() {
   return (
     <ShellWash>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <View
-          className="border-b border-border bg-background/90"
-          style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8 }}
-        >
-          <SegmentNav
-            items={MODES}
-            value={mode}
-            onChange={(v) => {
-              if (v === 'swipe' || v === 'ai' || v === 'favorites') {
-                setMode(v);
-                return;
-              }
-              if (isHomeModeParked(v)) setSoonMode(v);
-            }}
+        <View className="relative z-20 shrink-0 border-b border-border">
+          {Platform.OS === 'web' ? (
+            <View
+              className="absolute inset-0 bg-background/90"
+              pointerEvents="none"
+            />
+          ) : (
+            <BlurView
+              intensity={40}
+              tint="light"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+            />
+          )}
+          <View
+            className="absolute inset-0 bg-background/80"
+            pointerEvents="none"
           />
+          <View
+            className="relative"
+            style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 10 }}
+          >
+            <SegmentNav
+              items={MODES}
+              value={mode}
+              onChange={(v) => {
+                if (v === 'swipe' || v === 'ai' || v === 'favorites') {
+                  setMode(v);
+                  return;
+                }
+                if (isHomeModeParked(v)) setSoonMode(v);
+              }}
+            />
+          </View>
         </View>
 
         <View style={{ flex: 1, minHeight: 0 }}>
@@ -83,6 +108,7 @@ export default function HomeScreen() {
           title={soon?.title ?? 'Coming soon'}
           body={soon?.body}
           icon={SoonIcon}
+          variant="homeMode"
         />
       </SafeAreaView>
     </ShellWash>
