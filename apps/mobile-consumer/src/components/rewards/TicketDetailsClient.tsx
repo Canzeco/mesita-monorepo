@@ -4,7 +4,6 @@ import {
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   Text,
@@ -38,6 +37,7 @@ import {
   type TicketFlowStepId,
 } from '@/lib/ticket-flow-steps';
 import { ActionCard } from '@/components/rewards/ActionCard';
+import { TicketDetailsSkeleton } from '@/components/rewards/TicketDetailsSkeleton';
 import { VisitComplete } from '@/components/rewards/VisitComplete';
 import { VisitHeader } from '@/components/rewards/VisitHeader';
 import { renderStepActions } from '@/components/rewards/renderStepActions';
@@ -150,6 +150,7 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
     rows[0]?.created_at ??
     null;
   const placeName = payload.place_name ?? 'Partner place';
+  const placeHref = payload.place_slug ?? payload.project_id ?? null;
   const visitDateLabel = formatTicketVisitDate(visitDateIso);
   const capMxn = payload.reward_cap_mxn ?? payload.monthly_promo_cap ?? null;
   const rewardLabel = formatTicketRewardLabel(payload, { capMxn });
@@ -243,11 +244,12 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
         showsVerticalScrollIndicator={false}
       >
         {loading ? (
-          <ActivityIndicator color="#fb2b7b" style={{ marginTop: 40 }} />
+          <TicketDetailsSkeleton />
         ) : (
           <>
             <VisitHeader
               placeName={placeName}
+              placeHref={placeHref}
               placePhotoUrl={payload.place_photo_url}
               rewardLabel={rewardLabel}
               visitDateLabel={visitDateLabel}

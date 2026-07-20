@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { MapPin } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { TicketFlowStepper } from '@/components/rewards/TicketFlowStepper';
 import { VisitHeaderStatus } from '@/components/rewards/visit-header-status';
@@ -9,6 +10,7 @@ import type { TicketFlowStepId, TicketFlowStepView } from '@/lib/ticket-flow-ste
 
 export function VisitHeader({
   placeName,
+  placeHref,
   placePhotoUrl,
   rewardLabel,
   visitDateLabel,
@@ -19,6 +21,7 @@ export function VisitHeader({
   statusLine,
 }: {
   placeName: string;
+  placeHref?: string | null;
   placePhotoUrl?: string | null;
   rewardLabel: string;
   visitDateLabel?: string | null;
@@ -28,6 +31,7 @@ export function VisitHeader({
   transactionSummaryLine?: string | null;
   statusLine?: string | null;
 }) {
+  const router = useRouter();
   const pill = {
     flex: 1,
     borderRadius: 12,
@@ -73,17 +77,42 @@ export function VisitHeader({
             )}
           </View>
           <View style={{ flex: 1, gap: 8 }}>
-            <View
-              style={{
-                ...pill,
-                backgroundColor: 'rgba(255,247,248,0.7)',
-                borderColor: 'rgba(235,217,219,0.5)',
-              }}
-            >
-              <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600' }}>
-                {placeName}
-              </Text>
-            </View>
+            {placeHref ? (
+              <Pressable
+                onPress={() => router.push(`/place/${placeHref}`)}
+                hitSlop={{ top: 8, bottom: 8 }}
+                accessibilityRole="link"
+                accessibilityLabel={`View ${placeName}`}
+                style={({ pressed }) => ({
+                  ...pill,
+                  backgroundColor: 'rgba(255,247,248,0.7)',
+                  borderColor: 'rgba(235,217,219,0.5)',
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={{ fontSize: 14, fontWeight: '600' }}
+                >
+                  {placeName}
+                </Text>
+              </Pressable>
+            ) : (
+              <View
+                style={{
+                  ...pill,
+                  backgroundColor: 'rgba(255,247,248,0.7)',
+                  borderColor: 'rgba(235,217,219,0.5)',
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={{ fontSize: 14, fontWeight: '600' }}
+                >
+                  {placeName}
+                </Text>
+              </View>
+            )}
             <View
               style={{
                 ...pill,
