@@ -55,11 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(result.consumer);
         setConsumerClass(normalizeClass(result.class));
       } catch {
-        // Same behavior as the web onboard page: EF failure falls through to
-        // the onboard form rather than crashing the gate.
+        // Keep the last-known-good profile on a transient EF/network failure.
+        // Nulling it here would flip `onboarded` to false and, via the (tabs)
+        // guard, eject an already-onboarded user to /onboard on a routine
+        // TOKEN_REFRESHED refetch (app foreground after token expiry). A
+        // genuine "no profile" arrives on the SUCCESS path above
+        // (result.consumer === null), never through this catch.
         if (!active) return;
-        setProfile(null);
-        setConsumerClass(null);
       }
     };
 
