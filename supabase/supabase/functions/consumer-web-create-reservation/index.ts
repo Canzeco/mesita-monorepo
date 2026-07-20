@@ -18,6 +18,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { getTierConfig } from "../_shared/membership.ts";
+import { invokeArtificialCaller } from "../_shared/internal.ts";
 
 type Body = {
   project_id?: string;
@@ -127,5 +128,20 @@ Deno.serve(async (req) => {
 
   if (error) return json({ ok: false, error: error.message }, 500);
 
-  return json({ ok: true, reservation, linked_coupon_id: coupon?.id ?? null });
+  // Attempt 1 is immediate: hand off to the Reservationist to phone the venue.
+  // Best-effort — the reservation already exists, so a call-trigger failure must
+  // NOT fail the request (the call EF returns 503 until ELEVENLABS_KEY is set).
+  const call = await invokeArtificialCaller(
+    envRes.env,
+    "consumer-web-create-reservation",
+    "supabase-edgefunc-reservation-call",
+    { reservation_id: reservation.id },
+  );
+
+  return json({
+    ok: true,
+    reservation,
+    linked_coupon_id: coupon?.id ?? null,
+    call_triggered: call.ok,
+  });
 });
