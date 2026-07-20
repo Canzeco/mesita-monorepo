@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
-// v10 (MESITA-644): internals live in the Subscores tab's playground.
+// 4-subpage restructure (2026-07-20): subscore internals live on the
+// Playground tab now. Old links land there.
 export default function ScoringInternalsRedirect() {
-  redirect("/scoring-config/subscores");
+  redirect("/scoring-config/playground");
 }

@@ -14,6 +14,16 @@ import { PanelCard } from "./panel-ui";
 // Presentational bits shared by both playgrounds. Pure UI — all scoring
 // math stays in @/lib/business.
 
+/** The shared specimen — ONE consumer × intent × roll drives BOTH playground
+ * sections (decision D3); placeIdx is read only by the n = 1 Subscore
+ * section (the Deck section scores the whole pool). */
+export type PlaygroundSpecimen = {
+  consumerIdx: number;
+  style: IntentStyle;
+  roll: number;
+  placeIdx: number;
+};
+
 /** Synthetic-intent style icons — there is only ONE engine (Lineup); these
  * are the intent SHAPES its callers feed it, fabricated by the playground. */
 export const INTENT_STYLE_ICONS: Record<IntentStyle, LucideIcon> = {

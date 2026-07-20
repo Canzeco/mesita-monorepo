@@ -5,18 +5,19 @@ import { PageHeader } from "@/components/PageContainer";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { SCORING_SUBROUTES } from "./nav";
 
-// Lineup Config — two tabs (v10): Subscores (the five subscores' knobs +
-// data-access, with the Subscore playground) and Scores & Lanes (lane
-// composition + the merge into the final deck, with the Deck playground).
-//
-// "Lineup" is the candidate-generation engine's name; the sidebar, this header
-// and the engine label all read Lineup. Only the route and the backend
-// scoring_config identifiers stay "scoring" (see nav.ts).
+// Lineup Config — four tabs, one job each (tune → understand → compose →
+// simulate). "Lineup" is the candidate-generation engine's name; the sidebar,
+// this header and the engine label all read Lineup. Only the route and the
+// backend scoring_config identifiers stay "scoring" (see nav.ts).
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/scoring-config/subscores":
-    "One box per subscore — EM (Embeddings Match), SM (Structured Match), GP (Google Popularity), RP (Rewards Promotions), XX (Random Number) — each with its knobs and its data-access contract, all in [0,1]. The Subscore playground below runs any subscore's internals on one consumer × intent × place.",
+    "Tune the five subscores — every knob is a belief, not a fitted value.",
+  "/scoring-config/scores":
+    "How the five subscores multiply into the three lane scores — read-mostly; tune on Subscores.",
   "/scoring-config/lanes":
-    "Three lanes, one score each — Organic EM·SM·GP·XX · Inorganic EM·SM·RP·XX · Hybrid EM·SM·GP·RP·XX — merged round-robin O → I → H, dedupe on insert, no backfill (≤ the per-lane counts' sum). The Deck playground below runs the whole pipeline into a final deck.",
+    "Compose the deck: how many cards each lane contributes, how they merge, and who calls Lineup.",
+  "/scoring-config/playground":
+    "Both simulators, running the CURRENT form values — nothing on this page writes config.",
 };
 
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {

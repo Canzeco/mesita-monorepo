@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Dices, MessageSquareText, UserRound } from "lucide-react";
+import { useMemo } from "react";
+import { MessageSquareText } from "lucide-react";
 import {
   composeFinalDeck,
   EM_ENCODER,
@@ -27,27 +27,24 @@ import {
   openWindow,
   resolveWhere,
   whatRelation,
-  type IntentStyle,
   type SamplePlace,
 } from "@/lib/business/cip";
 import { useScoring } from "../ScoringProvider";
 import { PanelCard, SubHead } from "../panel-ui";
-import { EmptyCatalog, INTENT_STYLE_ICONS, FactChip, LaneBadge, SpecimenCell } from "../playground-ui";
+import { EmptyCatalog, FactChip, LaneBadge, type PlaygroundSpecimen } from "../playground-ui";
 
-// The Deck playground — one full run of the STANDARD ENGINE (the one
-// engine): score EVERY sampled place in all three lanes at the CURRENT
-// knobs, fill each lane's top-N, merge round-robin O → I → H with
-// dedupe-on-insert and no backfill, and show the final deck. The whole
-// pipeline (subscores × lane composition × merge), end to end.
+// The Deck playground — one full run of LINEUP (the one engine): score EVERY
+// sampled place in all three lanes at the CURRENT knobs, fill each lane's
+// top-N, merge round-robin O → I → H with dedupe-on-insert and no backfill,
+// and show the final deck. The whole pipeline (subscores × lane composition
+// × merge), end to end. The specimen (consumer × intent × roll) comes from
+// the Playground page's SHARED bar; the bar's place picker is n = 1-only and
+// ignored here.
 
-const INTENT_STYLES: readonly IntentStyle[] = ["browse", "viewport", "question"];
-
-export function DeckPlayground() {
+export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   const { consumers, places, laneN, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
-  const [consumerIdx, setConsumerIdx] = useState(0);
-  const [style, setStyle] = useState<IntentStyle>("browse");
-  const [roll, setRoll] = useState(1);
+  const { consumerIdx, style, roll } = specimen;
 
   const consumer = consumers[consumerIdx] ?? null;
 
@@ -134,64 +131,12 @@ export function DeckPlayground() {
     );
   }
 
-  const StyleIcon = INTENT_STYLE_ICONS[style];
-  const selectCls =
-    "border-border/70 bg-card w-full rounded-lg border px-2 py-1.5 text-[12px] font-medium";
-
   return (
     <PanelCard
-      title="Deck playground"
-      subtitle="One full run at the CURRENT knobs: every sampled place scored in all three lanes → each lane's top-N → round-robin merge with dedupe (first occurrence wins) and no backfill. Struck-through cards were merged away — the place already arrived via an earlier lane."
+      title="Deck playground · the full run"
+      subtitle="Every sampled place scored in all three lanes at the CURRENT knobs → each lane's top-N → round-robin merge with dedupe (first occurrence wins) and no backfill. Struck-through cards were merged away — the place already arrived via an earlier lane."
       pill={`deck ≤ ${laneCountsTotal(laneN)} of ${places.length} places`}
     >
-      {/* Specimen bar */}
-      <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
-        <SpecimenCell icon={UserRound} tone="bg-violet-600 text-white" label="Consumer">
-          <select
-            aria-label="Consumer"
-            className={selectCls}
-            value={consumerIdx}
-            onChange={(e) => setConsumerIdx(Number(e.target.value))}
-          >
-            {consumers.length === 0 ? <option value={0}>no consumers — synthetic</option> : null}
-            {consumers.map((c, i) => (
-              <option key={c.id} value={i}>
-                {c.label ?? c.id.slice(0, 8)} · {c.class_key}
-              </option>
-            ))}
-          </select>
-        </SpecimenCell>
-        <SpecimenCell icon={StyleIcon} tone="bg-sky-600 text-white" label="Intent">
-          <div className="flex items-center gap-1.5">
-            {INTENT_STYLES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStyle(s)}
-                aria-pressed={style === s}
-                className={
-                  "rounded-md border px-2 py-1 text-[11px] font-semibold capitalize transition active:scale-[0.97] " +
-                  (style === s
-                    ? "border-primary/50 bg-primary/10"
-                    : "border-border/60 text-muted-foreground hover:text-foreground")
-                }
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </SpecimenCell>
-        <SpecimenCell icon={Dices} tone="bg-amber-600 text-white" label="Roll">
-          <button
-            type="button"
-            onClick={() => setRoll((r) => r + 1)}
-            className="border-border/70 hover:bg-muted inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]"
-          >
-            <Dices className="h-3.5 w-3.5" aria-hidden /> Re-roll intent + XX · #{roll}
-          </button>
-        </SpecimenCell>
-      </div>
-
       {run ? (
         <>
           <div className="border-border/60 bg-muted/40 mt-3 flex flex-wrap items-center gap-1.5 rounded-xl border px-3 py-2">

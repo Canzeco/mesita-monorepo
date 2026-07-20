@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-// v10 (MESITA-644): the Cards tab folded into the Subscores tab's playground.
-// Old links land there.
+// 4-subpage restructure (2026-07-20): per-card simulation lives on the
+// Playground tab now. Old links land there.
 export default function ScoringCardsRedirect() {
-  redirect("/scoring-config/subscores");
+  redirect("/scoring-config/playground");
 }

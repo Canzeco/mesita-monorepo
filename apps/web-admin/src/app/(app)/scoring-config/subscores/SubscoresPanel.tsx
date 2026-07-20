@@ -25,22 +25,16 @@ import {
   SubHead,
   SubscoreDataAccess,
 } from "../panel-ui";
-import { SubscorePlayground } from "./SubscorePlayground";
 
-// Subscores — ONE BOX PER SUBSCORE (EM · SM · GP · RP · XX), each with its
-// knobs AND its data-access contract. Every subscore outputs [0,1], so a
-// lane score (the product on the Scores & Lanes tab) is itself [0,1].
+// Subscores — TUNE, nothing else (4-subpage restructure 2026-07-20): ONE BOX
+// PER SUBSCORE (EM · SM · GP · RP · XX), each with its knobs, its data-access
+// contract, and its own save bar. Every subscore outputs [0,1], so a lane
+// score (the product, shown on the Scores tab) is itself [0,1].
 //
-//   EM  Embeddings Match — documents in, cosine out (context = CONFIG)
-//   SM  Structured Match — where × when × what, the intent's structured asks
-//   GP  Google Popularity — ln(1 + rating × reviews) / ceiling
-//   RP  Rewards Promotions — posture from the live rates → a rung
-//   XX  Random Number — U^control, per card per lane
-//
-// Values set here drive BOTH playgrounds live (shared provider) and persist
-// to app_settings.scoring_config via the save bar. The Subscore playground
-// at the bottom walks every subscore's internals on ONE consumer × intent ×
-// place.
+// Values set here drive the Scores tab's live definitions and both
+// playgrounds live (shared provider) and persist to
+// app_settings.scoring_config via each box's save bar. Each box carries an
+// anchor id (em·sm·gp·rp·xx) — the Scores tab's factor chips deep-link here.
 
 export function SubscoresPanel() {
   const {
@@ -105,6 +99,7 @@ export function SubscoresPanel() {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       {/* ══ EM ═══════════════════════════════════════════════════════ */}
+      <section id="em" className="scroll-mt-24">
       <PanelCard
         title="EM Subscore · Embeddings Match"
         subtitle="max(0, cos(place vector, consumer + intent vector)) → [0,1] — EM reads TEXT only; click a field below to include or exclude it from the embedded documents."
@@ -131,11 +126,13 @@ export function SubscoresPanel() {
         <SubscoreDataAccess subscore="em" access={dataAccess} onToggle={toggleSource} />
         {bar("em")}
       </PanelCard>
+      </section>
 
       {/* ══ SM ═══════════════════════════════════════════════════════ */}
+      <section id="sm" className="scroll-mt-24">
       <PanelCard
         title="SM Subscore · Structured Match — where × when × what"
-        subtitle="Deterministic checks of the intent's structured asks against place facts, each factor [0,1], multiplied — any hard miss tanks the card. where and when are CONTINUOUS curves, never buckets; what is the one categorical ladder. The consumer owns the where tolerance (their Where filter slider; default 5 km, frozen) — the admin tunes only how hard distance bites. 1 · 2 · 1 knobs, every one a belief argued from the product."
+        subtitle="The intent's structured asks against place facts — where/when are continuous curves, what is the categorical ladder; 1 · 2 · 1 knobs, and the consumer owns the where tolerance."
       >
         <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <div>
@@ -210,11 +207,13 @@ export function SubscoresPanel() {
         <SubscoreDataAccess subscore="sm" access={dataAccess} onToggle={toggleSource} />
         {bar("sm")}
       </PanelCard>
+      </section>
 
       {/* ══ GP ═══════════════════════════════════════════════════════ */}
+      <section id="gp" className="scroll-mt-24">
       <PanelCard
         title="GP Subscore · Google Popularity"
-        subtitle="min(1, ln(1 + rating × reviews) / ceiling) — total star mass, log-squashed. A simple log, NOT a sigmoid: a sigmoid needs a 'typical popularity' center (a scale assumption); the log needs one ceiling knob. No reviews → 0: no Google presence means out of the organic lane."
+        subtitle="min(1, ln(1 + rating × reviews) / ceiling) — earned popularity, log-squashed; no Google presence → 0 (out of the organic lanes)."
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
           <Slider
@@ -256,11 +255,13 @@ export function SubscoresPanel() {
         <SubscoreDataAccess subscore="gp" access={dataAccess} onToggle={toggleSource} />
         {bar("gp")}
       </PanelCard>
+      </section>
 
       {/* ══ RP ═══════════════════════════════════════════════════════ */}
+      <section id="rp" className="scroll-mt-24">
       <PanelCard
         title="RP Subscore · Rewards Promotions"
-        subtitle="Posture from the place's live promo rates → a rung in [0,1] — BOUGHT merit, the paid lanes' multiplier. No literal 0: non-members never enter the paid lanes at all (a lane filter, not a score); the zero-posture member keeps a whisper. Rates never reach the consumer — RP reads them server-side only."
+        subtitle="The place's live promo rates → posture → a rung in [0,1] — bought merit; rates never reach the consumer."
       >
         <div className="mt-4 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
           {STRATEGIES.map((s) => (
@@ -291,11 +292,13 @@ export function SubscoresPanel() {
         <SubscoreDataAccess subscore="rp" access={dataAccess} onToggle={toggleSource} />
         {bar("rp")}
       </PanelCard>
+      </section>
 
       {/* ══ XX ═══════════════════════════════════════════════════════ */}
+      <section id="xx" className="scroll-mt-24">
       <PanelCard
         title="XX Subscore · Random Number"
-        subtitle="XX = U^control, U ~ Uniform[0,1) drawn fresh per card per lane (three independent draws — Organic, Inorganic, Hybrid). Control is the CONSUMER'S knob — the Randomness filter sets it per query. The admin configures only the DEFAULT below: what Lineup uses when the consumer sets no filter. 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos; higher control never changes WHO is luckiest, only how much luck beats merit."
+        subtitle="U^control, drawn per card per lane — the admin sets only the no-filter DEFAULT; the consumer's Randomness filter overrides it per query."
         pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
@@ -325,33 +328,7 @@ export function SubscoresPanel() {
         <SubscoreDataAccess subscore="xx" access={dataAccess} onToggle={toggleSource} />
         {bar("xx")}
       </PanelCard>
-
-      {/* ══ Definitions · a footnote, not a config box ═══════════════ */}
-      <div className="border-border bg-muted/30 text-muted-foreground rounded-2xl border px-5 py-4 leading-relaxed">
-        <p className="text-foreground/80 mb-2 text-[11px] font-semibold tracking-tight">
-          Saved to app_settings.scoring_config — a saved config overrides the code defaults; NULL
-          follows them. Each box above Saves · Resets · Cancels ITSELF; both playgrounds follow
-          whatever the form holds, saved or not.
-        </p>
-        <div className="flex flex-col gap-1 font-mono text-[11px]">
-          <p>EM = max(0, cos(A, B)) · A = place doc · B = consumer + intent doc · [0,1]</p>
-          <p>
-            SM = where × when × what · where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · tol
-            = consumer slider (default {DEFAULT_POINT_TOL_KM} km) · wait ={" "}
-            {sm.when.waitFloor.toFixed(2)} + {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit =
-            min(1, h/{sm.when.sessionH.toFixed(1)}) · 30-min blocks
-          </p>
-          <p>
-            GP = min(1, ln(1 + ★·n)/{gp.lnCeiling.toFixed(1)}) · RP rungs {rp.zero.toFixed(2)} /{" "}
-            {rp.conservative.toFixed(2)} / {rp.aggressive.toFixed(2)} / {rp.dominant.toFixed(2)} ·
-            XX = U^{xx.control.toFixed(1)}
-          </p>
-          <p>EM reads TEXT only — SM · GP · RP · XX are the numeric subscores; they multiply EM, never feed it</p>
-        </div>
-      </div>
-
-      {/* ══ The Subscore playground ══════════════════════════════════ */}
-      <SubscorePlayground />
+      </section>
 
       <GroupHead>Every knob is a belief, not a fitted value — judge changes by break-even, not spread.</GroupHead>
     </div>

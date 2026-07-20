@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Dices, MapPin, MessageSquareText, Store, UserRound } from "lucide-react";
+import { Dices, MapPin, MessageSquareText, Store } from "lucide-react";
 import {
   EM_ENCODER,
   gpParts,
@@ -28,12 +28,10 @@ import {
   resolveWhere,
   whatRelation,
 } from "@/lib/business/cip";
-import type { IntentStyle } from "@/lib/business/cip";
 import { useScoring } from "../ScoringProvider";
 import { PanelCard, SubHead } from "../panel-ui";
 import {
   EmptyCatalog,
-  INTENT_STYLE_ICONS,
   FactChip,
   FactorRow,
   LaneBadge,
@@ -42,27 +40,23 @@ import {
   ResultLine,
   ScoreBox,
   SemanticProfile,
-  SpecimenCell,
+  type PlaygroundSpecimen,
 } from "../playground-ui";
 
 // The Subscore playground — simulate the subscores on ONE consumer × intent
-// × place specimen. Every box is that subscore's ACTUAL internal process at
-// the CURRENT knobs (the shared provider): EM assembles + embeds the real
+// × place specimen (the Playground page's SHARED specimen bar; this section
+// is the n = 1 half). Every box is that subscore's ACTUAL internal process
+// at the CURRENT knobs (the shared provider): EM assembles + embeds the real
 // documents, SM resolves km/hours/category, GP reads the real google
 // numbers, RP the live rates, XX its seeded draws. Focus chips narrow to one
 // subscore; the lane footer shows the three products.
 
-const INTENT_STYLES: readonly IntentStyle[] = ["browse", "viewport", "question"];
-
 const pct = (v: number) => v.toFixed(2);
 
-export function SubscorePlayground() {
+export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   const { consumers, places, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
-  const [consumerIdx, setConsumerIdx] = useState(0);
-  const [placeIdx, setPlaceIdx] = useState(0);
-  const [style, setStyle] = useState<IntentStyle>("browse");
-  const [roll, setRoll] = useState(1);
+  const { consumerIdx, placeIdx, style, roll } = specimen;
   const [focus, setFocus] = useState<SubscoreId | "all">("all");
 
   const consumer = consumers[consumerIdx] ?? null;
@@ -156,79 +150,13 @@ export function SubscorePlayground() {
   }
 
   const show = (id: SubscoreId) => focus === "all" || focus === id;
-  const StyleIcon = INTENT_STYLE_ICONS[style];
-
-  const selectCls =
-    "border-border/70 bg-card w-full rounded-lg border px-2 py-1.5 text-[12px] font-medium";
 
   return (
     <PanelCard
-      title="Subscore playground"
-      subtitle="One consumer × intent × place, every subscore's internal process at the CURRENT knobs — drag a slider above and the numbers here move. The intent is synthetic by design; consumers and places are real DB rows."
+      title="Subscore playground · n = 1"
+      subtitle="One consumer × intent × place (the shared bar above), every subscore's internal process at the CURRENT knobs — edit a knob on Subscores and the numbers here move. The intent is synthetic by design; consumers and places are real DB rows."
       pill={`n = 1 of ${places.length}`}
     >
-      {/* Specimen bar */}
-      <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <SpecimenCell icon={UserRound} tone="bg-violet-600 text-white" label="Consumer">
-          <select
-            aria-label="Consumer"
-            className={selectCls}
-            value={consumerIdx}
-            onChange={(e) => setConsumerIdx(Number(e.target.value))}
-          >
-            {consumers.length === 0 ? <option value={0}>no consumers — synthetic</option> : null}
-            {consumers.map((c, i) => (
-              <option key={c.id} value={i}>
-                {c.label ?? c.id.slice(0, 8)} · {c.class_key}
-              </option>
-            ))}
-          </select>
-        </SpecimenCell>
-        <SpecimenCell icon={StyleIcon} tone="bg-sky-600 text-white" label="Intent">
-          <div className="flex items-center gap-1.5">
-            {INTENT_STYLES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStyle(s)}
-                aria-pressed={style === s}
-                className={
-                  "rounded-md border px-2 py-1 text-[11px] font-semibold capitalize transition active:scale-[0.97] " +
-                  (style === s
-                    ? "border-primary/50 bg-primary/10"
-                    : "border-border/60 text-muted-foreground hover:text-foreground")
-                }
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </SpecimenCell>
-        <SpecimenCell icon={Store} tone="bg-emerald-600 text-white" label="Place">
-          <select
-            aria-label="Place"
-            className={selectCls}
-            value={placeIdx}
-            onChange={(e) => setPlaceIdx(Number(e.target.value))}
-          >
-            {places.map((p, i) => (
-              <option key={p.id} value={i}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </SpecimenCell>
-        <SpecimenCell icon={Dices} tone="bg-amber-600 text-white" label="Roll">
-          <button
-            type="button"
-            onClick={() => setRoll((r) => r + 1)}
-            className="border-border/70 hover:bg-muted inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]"
-          >
-            <Dices className="h-3.5 w-3.5" aria-hidden /> Re-roll intent + XX · #{roll}
-          </button>
-        </SpecimenCell>
-      </div>
-
       {run ? (
         <>
           <div className="border-border/60 bg-muted/40 mt-3 flex flex-wrap items-center gap-1.5 rounded-xl border px-3 py-2">
